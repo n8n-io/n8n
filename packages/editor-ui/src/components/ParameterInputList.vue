@@ -100,7 +100,7 @@
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="getParameterValue(nodeValues, parameter.name, path)"
-					:displayOptions="parameter.type !== 'resourceMapper'"
+					:displayOptions="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					:hideLabel="PARAMETER_TYPES_WITHOUT_LABEL.includes(parameter.type)"
@@ -402,6 +402,9 @@ export default mixins(workflowHelpers).extend({
 			// Ideally, we should check if any non-auth field depends on it before hiding it but
 			// since there is no such case, omitting it to avoid additional computation
 			return isAuthRelatedParameter(this.nodeAuthFields, parameter);
+		},
+		shouldShowOptions(parameter: INodeProperties): boolean {
+			return parameter.type !== 'resourceMapper';
 		},
 	},
 	watch: {

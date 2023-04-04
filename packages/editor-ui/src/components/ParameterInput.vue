@@ -39,6 +39,7 @@
 				:node="node"
 				:path="path"
 				:inputSize="inputSize"
+				:labelSize="label.size || 'small'"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
@@ -339,6 +340,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	IParameterLabel,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
@@ -448,6 +450,12 @@ export default mixins(
 		},
 		expressionEvaluated: {
 			type: String as PropType<string | undefined>,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	data() {

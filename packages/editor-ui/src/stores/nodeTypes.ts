@@ -198,9 +198,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		async getResourceMapperFields(
 			sendData: ResourceMapperReqParams,
-		): Promise<ResourceMapperFields> {
+		): Promise<ResourceMapperFields | null> {
 			const rootStore = useRootStore();
-			return getResourceMapperFields(rootStore.getRestApiContext, sendData);
+			try {
+				return getResourceMapperFields(rootStore.getRestApiContext, sendData);
+			} catch (error) {
+				return null;
+			}
 		},
 	},
 });

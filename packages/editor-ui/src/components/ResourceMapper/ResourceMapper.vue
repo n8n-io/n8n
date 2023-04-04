@@ -12,13 +12,20 @@ export interface Props {
 	node: INode | null;
 	path: string;
 	inputSize: string;
+	labelSize: string;
 }
 
 const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
 
+const paramValue = ref({ mappingMode: props.parameter.mode || 'defineBelow', value: {} } as {
+	mappingMode: string;
+	value: Object;
+});
 const fieldsToMap = ref([] as ResourceMapperFields['fields']);
+const loading = ref(false);
+const loadingError = ref(false);
 
 const fields = computed<string>(() => {
 	if (fieldsToMap.value.length === 0) {
@@ -36,7 +43,7 @@ const isInsertMode = computed<boolean>(() => {
 });
 
 onMounted(async () => {
-	await loadFieldsToMap();
+	await initFetching();
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -45,6 +52,27 @@ const nodeType = computed<INodeTypeDescription | null>(() => {
 	}
 	return null;
 });
+
+const showMappingFields = computed<boolean>(() => {
+	return (
+		paramValue.value.mappingMode === 'defineBelow' &&
+		!loading.value &&
+		!loadingError.value &&
+		fieldsToMap.value.length > 0
+	);
+});
+
+async function initFetching(): Promise<void> {
+	loading.value = true;
+	loadingError.value = false;
+	try {
+		await loadFieldsToMap();
+	} catch (error) {
+		loadingError.value = true;
+	} finally {
+		loading.value = false;
+	}
+}
 
 async function loadFieldsToMap(): Promise<void> {
 	if (!props.node) {
@@ -60,11 +88,19 @@ async function loadFieldsToMap(): Promise<void> {
 		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
 		credentials: props.node.credentials,
 	};
-	fieldsToMap.value = (await nodeTypesStore.getResourceMapperFields(requestParams)).fields;
+	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
+	if (fetchedFields !== null) {
+		fieldsToMap.value = fetchedFields.fields;
+	}
 }
 
 function onModeChanged(mode: string): void {
-	console.log('MODE CHANGED', mode);
+	paramValue.value.mappingMode = mode;
+	if (mode === 'defineBelow') {
+		initFetching();
+	} else {
+		loadingError.value = false;
+	}
 }
 
 defineExpose({
@@ -77,11 +113,16 @@ defineExpose({
 		<mapping-mode-select
 			v-if="isInsertMode"
 			:inputSize="inputSize"
+			:labelSize="labelSize"
 			:initial-value="props.parameter.mode || 'defineBelow'"
 			:type-options="props.parameter.typeOptions?.resourceMapper"
 			:serviceName="nodeType?.displayName || ''"
+			:loading="loading"
+			:loadingError="loadingError"
+			:fieldsToMap="fieldsToMap"
 			@modeChanged="onModeChanged"
+			@retryFetch="initFetching"
 		/>
-		<n8n-notice :content="`${prefix} ${fields}`" />
+		<n8n-notice v-if="showMappingFields" :content="`${prefix} ${fields}`" />
 	</div>
 </template>

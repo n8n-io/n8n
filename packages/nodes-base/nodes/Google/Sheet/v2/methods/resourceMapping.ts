@@ -24,10 +24,7 @@ export async function getMappingColumns(
 	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No data got returned');
-	}
-	const columns = sheet.testFilter(sheetData, 0, 0).filter((col) => col !== '');
+	const columns = sheet.testFilter(sheetData || [], 0, 0).filter((col) => col !== '');
 	const columnData: ResourceMapperFields = {
 		fields: columns.map((col) => ({
 			id: col,

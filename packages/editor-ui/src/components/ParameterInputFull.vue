@@ -55,6 +55,7 @@
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
 							:hide-issues="hideIssues"
+							:label="label"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
