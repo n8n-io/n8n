@@ -92,6 +92,7 @@
 				:isProductionExecutionPreview="isProductionExecutionPreview"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
+				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
 			<node-creation
 				v-if="!isReadOnly"
@@ -751,9 +752,24 @@ export default mixins(
 
 			return uniqueName;
 		},
-		async onSaveKeyboardShortcut() {
-			const saved = await this.saveCurrentWorkflow();
+		async onSaveKeyboardShortcut(e: KeyboardEvent) {
+			let saved = await this.saveCurrentWorkflow();
 			if (saved) await this.settingsStore.fetchPromptsData();
+			if (this.activeNode) {
+				// If NDV is open, save will not work from editable input fields
+				// so don't show success message if this is true
+				if (e.target instanceof HTMLInputElement) {
+					saved = e.target.readOnly;
+				} else {
+					saved = true;
+				}
+				if (saved) {
+					this.$showMessage({
+						title: this.$locale.baseText('generic.workflowSaved'),
+						type: 'success',
+					});
+				}
+			}
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
@@ -993,6 +1009,19 @@ export default mixins(
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
+			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				if (this.isReadOnly) {
+					return;
+				}
+
+				this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
+
+				return;
+			}
+
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 
@@ -1081,16 +1110,6 @@ export default mixins(
 					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
-			} else if (e.key === 's' && this.isCtrlKeyPressed(e)) {
-				// Save workflow
-				e.stopPropagation();
-				e.preventDefault();
-
-				if (this.isReadOnly) {
-					return;
-				}
-
-				this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
 			} else if (e.key === 'Enter') {
 				// Activate the last selected node
 				const lastSelectedNode = this.lastSelectedNode;
@@ -2933,9 +2952,9 @@ export default mixins(
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 
-									if (output.isArtificalRecoveredEventItem) {
+									if (output.isArtificialRecoveredEventItem) {
 										NodeViewUtils.recoveredConnection(connection);
-									} else if ((!output || !output.total) && !output.isArtificalRecoveredEventItem) {
+									} else if ((!output || !output.total) && !output.isArtificialRecoveredEventItem) {
 										NodeViewUtils.resetConnection(connection);
 									} else {
 										NodeViewUtils.addConnectionOutputSuccess(connection, output);
@@ -3884,8 +3903,8 @@ export default mixins(
 					this.bindCanvasEvents();
 				} catch {} // This will break if mounted after jsplumb has been initiated from executions preview, so continue if it breaks
 				await this.initView();
-				if (window.top) {
-					window.top.postMessage(
+				if (window.parent) {
+					window.parent.postMessage(
 						JSON.stringify({ command: 'n8nReady', version: this.rootStore.versionCli }),
 						'*',
 					);

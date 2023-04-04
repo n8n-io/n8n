@@ -6,6 +6,7 @@
 			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
+			[$style.showGap]: showGap,
 		}"
 	>
 		<router-link
@@ -38,9 +39,7 @@
 						<execution-time :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
-						v-else-if="
-							executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'
-						"
+						v-else-if="executionUIDetails.runningTime !== ''"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
@@ -109,6 +108,10 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 			type: Boolean,
 			default: false,
 		},
+		showGap: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
 		retryExecutionActions(): object[] {
@@ -141,6 +144,7 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 <style module lang="scss">
 .executionCard {
 	display: flex;
+	flex-direction: column;
 	padding-right: var(--spacing-m);
 
 	&.active {
@@ -252,6 +256,12 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 
 	& + & {
 		margin-left: var(--spacing-2xs);
+	}
+}
+.showGap {
+	margin-bottom: var(--spacing-2xs);
+	.executionLink {
+		border-bottom: 1px solid var(--color-foreground-dark);
 	}
 }
 </style>

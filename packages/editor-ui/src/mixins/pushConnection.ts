@@ -295,7 +295,7 @@ export const pushConnection = mixins(
 						for (const key of Object.keys(activeRunData)) {
 							if (
 								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
-									.isArtificalRecoveredEventItem === true &&
+									?.isArtificialRecoveredEventItem === true &&
 								activeRunData[key].length > 0
 							)
 								pushData.data.data.resultData.runData[key] = activeRunData[key];
