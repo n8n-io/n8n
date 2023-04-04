@@ -48,7 +48,7 @@
 					></n8n-button>
 				</div>
 			</div>
-			<div>
+			<div v-if="isMfaFeatureEnabled">
 				<div :class="$style.mfaSection">
 					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')">
 					</n8n-input-label>
@@ -174,6 +174,9 @@ export default mixins(showMessage).extend({
 		},
 		mfaDisabled(): boolean {
 			return !this.usersStore.mfaEnabled;
+		},
+		isMfaFeatureEnabled(): boolean {
+			return this.settingsStore.isMfaFeatureEnabled;
 		},
 	},
 	methods: {

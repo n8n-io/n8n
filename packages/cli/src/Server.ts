@@ -159,6 +159,7 @@ import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { MultiFactorAuthService } from './MultiFactorAuthService';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 
 const exec = promisify(callbackExec);
 
@@ -316,6 +317,9 @@ class Server extends AbstractServer {
 				logStreaming: false,
 				advancedExecutionFilters: false,
 			},
+			mfa: {
+				enabled: false,
+			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
@@ -364,6 +368,8 @@ class Server extends AbstractServer {
 			this.frontendSettings.missingPackages = true;
 		}
 
+		this.frontendSettings.mfa.enabled = isMfaFeatureEnabled();
+
 		return this.frontendSettings;
 	}
 
@@ -384,7 +390,6 @@ class Server extends AbstractServer {
 			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
 			new MeController({ externalHooks, internalHooks, repositories, logger }),
-			new MFAController(repositories.User, mfaService),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
 				config,
@@ -418,6 +423,10 @@ class Server extends AbstractServer {
 			controllers.push(
 				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
 			);
+		}
+
+		if (isMfaFeatureEnabled()) {
+			controllers.push(new MFAController(repositories.User, mfaService));
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -500,6 +509,8 @@ class Server extends AbstractServer {
 		}
 
 		await handleLdapInit();
+
+		await handleMfaDisable();
 
 		this.registerControllers(ignoredEndpoints);
 

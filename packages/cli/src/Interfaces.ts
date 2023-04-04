@@ -528,6 +528,9 @@ export interface IN8nUISettings {
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
 	};
+	mfa: {
+		enabled: boolean;
+	};
 	hideUsagePage: boolean;
 	license: {
 		environment: 'production' | 'staging';

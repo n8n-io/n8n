@@ -804,6 +804,9 @@ export interface IN8nUISettings {
 	license: {
 		environment: 'development' | 'production';
 	};
+	mfa:  {
+		enabled: boolean;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -1232,6 +1235,9 @@ export interface ISettingsState {
 	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
+	};
+	mfa: {
+		enabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
