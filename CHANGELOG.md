@@ -4,6 +4,7 @@
 ### Bug Fixes
 
 * **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([f0954b9](https://github.com/n8n-io/n8n/commit/f0954b94e164f0ff3e809849731137cf479670a4))
+* **core:** `augmentObject` should clone Buffer/Uint8Array instead of wrapping them in a proxy ([#5902](https://github.com/n8n-io/n8n/issues/5902)) ([a877b02](https://github.com/n8n-io/n8n/commit/a877b025b8c93a31822e7ccb5b935dca00595439))
 * **core:** `augmentObject` should use existing property descriptors whenever possible ([#5872](https://github.com/n8n-io/n8n/issues/5872)) ([b1ee8f4](https://github.com/n8n-io/n8n/commit/b1ee8f4d991ffc5017894f588e9bd21f652f23c6))
 * **core:** Fix the issue of nodes not loading when run via npx ([#5888](https://github.com/n8n-io/n8n/issues/5888)) ([163446c](https://github.com/n8n-io/n8n/commit/163446c674d07c060eaa0d7ec54a087a4cb671d5))
 * **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([f0a51a0](https://github.com/n8n-io/n8n/commit/f0a51a0b7671945b84e18774483dc7079f559845))
