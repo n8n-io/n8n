@@ -24,7 +24,7 @@ export class TotpApi implements ICredentialType {
 			default: '',
 			placeholder: 'e.g. GitHub:john-doe',
 			description:
-				'Identifier for the TOTP account, usually in the <code>issuer:username</code> format. <a href="https://github.com/google/google-authenticator/wiki/Key-Uri-Format#label">Learn more</a>.',
+				'Identifier for the TOTP account, in the <code>issuer:username</code> format. <a href="https://github.com/google/google-authenticator/wiki/Key-Uri-Format#label">Learn more</a>.',
 		},
 	];
 }

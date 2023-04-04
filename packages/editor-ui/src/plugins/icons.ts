@@ -55,6 +55,7 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFingerprint,
 	faFlask,
 	faFolderOpen,
 	faFont,
@@ -188,6 +189,7 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFingerprint);
 addIcon(faFlask);
 addIcon(faFolderOpen);
 addIcon(faFont);
