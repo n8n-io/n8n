@@ -118,6 +118,11 @@ export class MySql implements ICredentialType {
 					value: 'privateKey',
 				},
 			],
+			displayOptions: {
+				show: {
+					sshTunnel: [true],
+				},
+			},
 		},
 		{
 			displayName: 'SSH Host',
