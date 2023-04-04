@@ -450,6 +450,7 @@ export interface IInternalHooksClass {
 	}): Promise<void>;
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
+	onVariableCreated(createData: { variable_type: string }): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {

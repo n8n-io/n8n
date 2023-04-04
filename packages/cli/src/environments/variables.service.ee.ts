@@ -1,5 +1,7 @@
 import type { Variables } from '@/databases/entities/Variables';
 import { collections } from '@/Db';
+import { InternalHooks } from '@/InternalHooks';
+import Container from 'typedi';
 import { canCreateNewVariable } from './enviromentHelpers';
 import { VariablesService } from './variables.service';
 
@@ -14,6 +16,7 @@ export class EEVariablesService extends VariablesService {
 		if (!canCreateNewVariable(await this.getCount())) {
 			throw new VariablesLicenseError('Variables limit reached');
 		}
+		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
 		return collections.Variables.save(variable);
 	}
 
