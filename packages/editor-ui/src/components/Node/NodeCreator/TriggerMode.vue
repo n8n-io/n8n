@@ -11,31 +11,65 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { SubcategoryCreateElement } from '@/Interface';
 import { INodeCreateElement } from '@/Interface';
 import { useViewStacks } from './composables/useViewStacks';
+import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+
 const instance = getCurrentInstance();
 const nodeTypesStore = useNodeTypesStore();
 const nodeCreatorStore = useNodeCreatorStore();
-const { pushViewStack, activeViewStack, viewStacks, popViewStack } = useViewStacks();
+const {
+	pushViewStack,
+	activeViewStack,
+	viewStacks,
+	globalSearchItemsDiff,
+	popViewStack,
+	updateViewStack,
+} = useViewStacks();
+
+// const search = ref('');
+
+function onSearchInput(value: string) {
+	// search.value = value;
+	if (activeViewStack.value.uuid) {
+		updateViewStack(activeViewStack.value.uuid, { search: value });
+	}
+}
+
+function isTriggerNode(nodeType: INodeTypeDescription) {
+	return nodeType.group.includes('trigger');
+}
 
 function onSelected(item: INodeCreateElement) {
+	console.log('🚀 ~ file: TriggerMode.vue:42 ~ onSelected ~ item:', item);
 	if (item.type === 'subcategory') {
 		console.log('🚀 ~ file: TriggerMode.vue:70 ~ onSelected ~ item:', item);
 		pushViewStack({
 			subcategory: item.key,
 			title: item.properties.title,
-			search: '',
 			hasHeaderBg: true,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
-			baseFilter: filterTriggerNodes,
-			itemsMapper: (i) => i,
+			baseFilter: baseSubcategoriesFilter,
+			itemsMapper: subcategoriesMapper,
 		});
 	}
 }
-function filterTriggerNodes(item: INodeCreateElement) {
-	if (item.type !== 'node') return false;
+function subcategoriesMapper(item: INodeCreateElement) {
+	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
 	const hasActions = (item.properties.actions ?? []).length > 0;
-	console.log('🚀 ~ file: TriggerMode.vue:34 ~ filterTriggerNodes ~ item:', item);
+
+	if (hasTriggerGroup && hasActions) {
+		item.properties.displayName = item.properties.displayName.replace(' Trigger', '');
+	}
+	return item;
+}
+
+function baseSubcategoriesFilter(item: INodeCreateElement) {
+	if (item.type !== 'node') return false;
+
+	const hasTriggerGroup = isTriggerNode(item.properties);
+	const hasActions = (item.properties.actions ?? []).length > 0;
+
 	return hasActions || hasTriggerGroup;
 }
 // Mode displays list of subcategories or nodes or categories. It aggregates only from regular nodes.
@@ -45,28 +79,46 @@ pushViewStack({
 	title: view.title,
 	subtitle: view.subtitle,
 	items: view.items as INodeCreateElement[],
-	search: '',
 	hasHeaderBg: false,
 	hasSearch: true,
 	mode: 'trigger',
+	// Root search should include all nodes
+	searchItems: nodeCreatorStore.mergedAppNodes,
 });
 </script>
 
 <template>
 	<NodesListPanel
-		:title="activeViewStack.title"
-		:subtitle="activeViewStack.subtitle"
 		:hasBackButton="viewStacks.length > 1"
-		:hasSearch="activeViewStack.hasSearch"
-		:searchPlaceholder="'123'"
-		:hasHeaderBg="activeViewStack.hasHeaderBg"
-		:transitionDirection="activeViewStack.transitionDirection"
+		v-bind="activeViewStack"
 		:key="activeViewStack.uuid"
 		@back="popViewStack"
+		@searchInput="onSearchInput"
 	>
-		<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected" />
-		Active items: {{ activeViewStack.items.length }}
+		<div :class="$style.items">
+			<ItemsRenderer
+				:elements="activeViewStack.items"
+				@selected="onSelected"
+				:class="$style.stackItems"
+			/>
+			<CategorizedItemsRenderer
+				v-if="globalSearchItemsDiff.length > 0"
+				:elements="globalSearchItemsDiff"
+				:category="'Results in other categories'"
+				@selected="onSelected"
+				:class="$style.stackItems"
+			/>
+		</div>
 	</NodesListPanel>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+// .stackItems {
+// 	height: 100%;
+// 	flex: 1;
+// }
+// .searchDiff {
+// 	height: 100%;
+// 	flex: 1;
+// }
+</style>

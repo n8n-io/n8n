@@ -38,25 +38,10 @@ function wrappedEmit(
 	element: INodeCreateElement,
 	$e?: Event,
 ) {
+	console.log('Click yo');
 	if (props.disabled) return;
 
 	emit((event as 'selected') || 'dragstart' || 'dragend', element, $e);
-}
-
-// Lazy render large items lists to prevent the browser from freezing
-// when loading many items.
-function renderItems() {
-	if (props.elements.length <= 20 || props.lazyRender === false) {
-		state.renderedItems = props.elements;
-		return;
-	}
-
-	if (state.renderedItems.length < props.elements.length) {
-		state.renderedItems.push(
-			...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 10),
-		);
-		state.renderAnimationRequest = window.requestAnimationFrame(renderItems);
-	}
 }
 
 function beforeEnter(el: HTMLElement) {
@@ -75,17 +60,6 @@ function leave(el: HTMLElement) {
 	el.style.height = '0';
 }
 
-// onMounted(() => {
-// 	// renderItems();
-// });
-
-// onUnmounted(() => {
-// 	window.cancelAnimationFrame(state.renderAnimationRequest);
-// 	state.renderedItems = [];
-// });
-
-// Make sure the active item is always visible
-// scroll if needed
 watch(
 	() => props.activeIndex,
 	async () => {
@@ -93,18 +67,6 @@ watch(
 		iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
 	},
 );
-
-// Trigger elements re-render when they change
-// watch(
-// 	() => props.elements,
-// 	async () => {
-// 		window.cancelAnimationFrame(state.renderAnimationRequest);
-// 		state.renderedItems = [];
-// 		renderItems();
-// 	},
-// );
-
-// const { renderedItems } = toRefs(state);
 </script>
 
 <template>
@@ -118,12 +80,7 @@ watch(
 	>
 		<DynamicScroller :items="elements" keyField="key" :min-item-size="40" class="scroller">
 			<template #default="{ item, index, active }">
-				<DynamicScrollerItem
-					:item="item"
-					:active="active"
-					@click="wrappedEmit('selected', item)"
-					:data-index="index"
-				>
+				<DynamicScrollerItem :item="item" :active="active" :data-index="index">
 					<div
 						:key="`${item.key}-${index}`"
 						data-test-id="item-iterator-item"

@@ -1,36 +1,29 @@
 <template>
-	<div :class="$style.categoryWrapper">
+	<div :class="$style.categoryWrapper" v-on="$listeners">
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
-			<span :class="$style.name" v-text="`${item.name} (${item.count})`" />
-			<font-awesome-icon v-if="item.expanded" icon="chevron-down" :class="$style.arrow" />
+			<span :class="$style.name" v-text="categoryName" />
+			<font-awesome-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
 			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 		</div>
-		<!-- <n8n-callout
-			theme="custom"
-			iconless
-			:class="$style.callout"
-			v-if="categoryCallout && item.expanded"
-		>
-			{{ categoryCallout }}
-		</n8n-callout> -->
 	</div>
 </template>
 
 <script lang="ts" setup>
-import useCategoryCallouts from './composables/useCategoryCallouts';
-import { ICategoryItemProps } from '@/Interface';
 import { computed } from 'vue';
 
 export interface Props {
-	item: ICategoryItemProps;
-	active: boolean;
+	expanded?: boolean;
+	active?: boolean;
+	count?: number;
+	name: string;
 }
-const props = defineProps<Props>();
-const { categoryCallout } = useCategoryCallouts(props.item.name);
+const props = withDefaults(defineProps<Props>(), {
+	expanded: true,
+});
 
 const categoryName = computed(() => {
-	const itemsCount = props.item.count || 0;
-	return itemsCount > 0 ? `${props.item.name} (${itemsCount})` : props.item.name;
+	const itemsCount = props.count || 0;
+	return itemsCount > 0 ? `${props.name} (${itemsCount})` : props.name;
 });
 </script>
 

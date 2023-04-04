@@ -1,3 +1,9 @@
+<script lang="ts">
+export default {
+	inheritAttrs: false,
+};
+</script>
+
 <script setup lang="ts">
 import { reactive, computed, watch } from 'vue';
 import SearchBar from './SearchBar.vue';
@@ -135,12 +141,6 @@ function onSearch(e: string) {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-
-	// padding-top: 1px;
-	// padding-bottom: var(--spacing-xl);
-	// overflow-y: auto;
-	// overflow-x: visible;
-
 	scrollbar-width: none; /* Firefox 64 */
 	&::-webkit-scrollbar {
 		display: none;
@@ -213,16 +213,4 @@ function onSearch(e: string) {
 .offsetSubtitle {
 	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
 }
-// .scrollable {
-// 	height: calc(100% - 120px);
-// 	padding-top: 1px;
-// 	padding-bottom: var(--spacing-xl);
-// 	overflow-y: auto;
-// 	overflow-x: visible;
-
-// 	scrollbar-width: none; /* Firefox 64 */
-// 	&::-webkit-scrollbar {
-// 		display: none;
-// 	}
-// }
 </style>

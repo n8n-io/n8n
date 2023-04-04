@@ -4,7 +4,6 @@
 		:draggable="!showActionArrow"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		@click.stop="onClick"
 		:class="$style.nodeItem"
 		:description="subcategory !== '*' ? description : ''"
 		:title="displayName"

@@ -1,10 +1,12 @@
-import { getCurrentInstance, computed, ref, ComputedRef, nextTick } from 'vue';
+import { getCurrentInstance, computed, ref, ComputedRef, nextTick, watchEffect, set } from 'vue';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { INodeCreateElement, SubcategorizedNodeTypes } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
+import { useNodesSearch } from './useNodesSearch';
+import { transformNodeType, subcategorizeItems } from '../utils';
 
 interface ViewStack {
 	title?: string;
@@ -16,6 +18,8 @@ interface ViewStack {
 	transitionDirection?: 'in' | 'out';
 	hasSearch?: boolean;
 	items?: INodeCreateElement[];
+	baselineItems?: INodeCreateElement[];
+	searchItems?: INodeTypeDescription[];
 	forceIncludeNodes?: string[];
 	mode?: 'regular' | 'trigger';
 	baseFilter?: (item: INodeCreateElement) => boolean;
@@ -23,17 +27,63 @@ interface ViewStack {
 }
 
 export const useViewStacks = () => {
-	const nodeTypesStore = useNodeTypesStore();
 	const nodeCreatorStore = useNodeCreatorStore();
+	const { searchNodes } = useNodesSearch();
 	const stacks = ref<ViewStack[]>([]);
-
 	const viewStacks = computed<ViewStack[]>(() => stacks.value);
 
 	const isRootView = computed(() => stacks.value.length === 1);
 
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
 		const stack = stacks.value[stacks.value.length - 1];
-		let stackItems = stack?.items ?? subcategorizedItems.value[stack?.subcategory ?? '*'] ?? [];
+
+		if (!stack || !stack.baselineItems) return [];
+
+		if (stack.search && searchBaseItems.value) {
+			const searchBase =
+				searchBaseItems.value.length > 0 ? searchBaseItems.value : stack.baselineItems;
+
+			return searchNodes(stack.search || '', searchBase);
+		}
+		return stack.baselineItems;
+	});
+
+	const activeViewStack = computed<ViewStack>(() => {
+		const stack = stacks.value[stacks.value.length - 1];
+
+		return {
+			...stack,
+			items: activeStackItems.value,
+			hasSearch: (stack.baselineItems || []).length > 3 || stack?.hasSearch,
+		};
+	});
+
+	const searchBaseItems = computed<INodeCreateElement[]>(() => {
+		const stack = stacks.value[stacks.value.length - 1];
+
+		if (!stack || !stack.searchItems) return [];
+
+		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
+	});
+
+	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
+		const stack = stacks.value[stacks.value.length - 1];
+		if (!stack || !stack.search) return [];
+
+		const allNodes = nodeCreatorStore.mergedAppNodes.map((item) => transformNodeType(item));
+		const globalSearchResult = searchNodes(stack.search || '', allNodes);
+
+		return globalSearchResult.filter((item) => {
+			return !activeStackItems.value.find((activeItem) => activeItem.key === item.key);
+		});
+	});
+
+	function setStackBaselineItems() {
+		const stack = stacks.value[stacks.value.length - 1];
+		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedAppNodes);
+		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? '*'] ?? [];
+
+		if (!stack || !activeViewStack.value.uuid) return;
 
 		// Adds the nodes specified in `stack.forceIncludeNodes` to the `stackItems` array.
 		// This is done to ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
@@ -41,7 +91,7 @@ export const useViewStacks = () => {
 		if ((stack.forceIncludeNodes ?? []).length > 0) {
 			const matchedNodes = nodeCreatorStore.mergedAppNodes
 				.filter((item) => stack.forceIncludeNodes?.includes(item.name))
-				.map((item) => transformNode(item, stack.subcategory));
+				.map((item) => transformNodeType(item, stack.subcategory));
 
 			stackItems.push(...matchedNodes);
 		}
@@ -64,58 +114,18 @@ export const useViewStacks = () => {
 				return displayNameA.localeCompare(displayNameB, undefined, { sensitivity: 'base' });
 			});
 		}
-		return stackItems;
-	});
 
-	const activeViewStack = computed<ViewStack>(() => {
-		const stack = stacks.value[stacks.value.length - 1];
-
-		return {
-			...stack,
-			items: activeStackItems.value,
-			hasSearch: activeStackItems.value.length > 8 || stack?.hasSearch,
-		};
-	});
-
-	const subcategorizedItems = computed(() => {
-		return subcategorizeItems(nodeCreatorStore.mergedAppNodes);
-	});
-
-	function transformNode(node: INodeTypeDescription, subcategory?: string): INodeCreateElement {
-		return {
-			key: node.name,
-			properties: node,
-			subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
-			category: '',
-			type: 'node',
-		};
-	}
-
-	function subcategorizeItems(items: INodeTypeDescription[]) {
-		return items.reduce((acc: SubcategorizedNodeTypes, item) => {
-			// Only Core Nodes subcategories are valid, others are uncategorized
-			const isCoreNodesCategory = item.codex?.categories?.includes(CORE_NODES_CATEGORY);
-			const subcategories = isCoreNodesCategory
-				? item?.codex?.subcategories?.[CORE_NODES_CATEGORY] ?? []
-				: ['*'];
-
-			subcategories.forEach((subcategory: string) => {
-				if (!acc[subcategory]) {
-					acc[subcategory] = [];
-				}
-				acc[subcategory].push(transformNode(item, subcategory));
-			});
-
-			return acc;
-		}, {});
+		updateViewStack(activeViewStack.value.uuid, { baselineItems: stackItems });
 	}
 
 	function pushViewStack(stack: ViewStack) {
+		const newStackUuid = uuid();
 		stacks.value.push({
 			...stack,
-			uuid: uuid(),
+			uuid: newStackUuid,
 			transitionDirection: 'in',
 		});
+		setStackBaselineItems();
 	}
 
 	function popViewStack() {
@@ -126,17 +136,21 @@ export const useViewStacks = () => {
 	}
 
 	function updateViewStack(uuid: string, stack: ViewStack) {
-		const matchedStack = stacks.value.find((s) => s.uuid === uuid);
-		if (matchedStack) {
-			Object.assign(matchedStack, stack);
-		}
+		const matchedIndex = stacks.value.findIndex((s) => s.uuid === uuid);
+		const matchedStack = stacks.value[matchedIndex];
+
+		// For each key in the stack, update the matched stack
+		Object.keys(stack).forEach((key) => {
+			set(matchedStack, key, stack[key]);
+		});
 	}
 
 	return {
 		viewStacks,
 		activeViewStack,
+		globalSearchItemsDiff,
+		updateViewStack,
 		pushViewStack,
 		popViewStack,
-		updateViewStack,
 	};
 };

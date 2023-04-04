@@ -960,6 +960,9 @@ importers:
       vue-typed-mixins:
         specifier: ^0.2.0
         version: 0.2.0
+      vue-virtual-scroller:
+        specifier: ^1.1.2
+        version: 1.1.2(vue@2.7.14)
       vue2-boring-avatars:
         specifier: 0.3.4
         version: 0.3.4
@@ -4772,7 +4775,7 @@ packages:
       '@storybook/csf-plugin': 7.0.0-beta.46
       '@storybook/csf-tools': 7.0.0-beta.46
       '@storybook/global': 5.0.0
-      '@storybook/mdx2-csf': 1.0.0-next.7
+      '@storybook/mdx2-csf': 1.0.0-next.8
       '@storybook/node-logger': 7.0.0-beta.46
       '@storybook/postinstall': 7.0.0-beta.46
       '@storybook/preview-api': 7.0.0-beta.46
@@ -5379,7 +5382,7 @@ packages:
       '@storybook/core-events': 7.0.0-beta.46
       '@storybook/csf': 0.0.2-next.11
       '@storybook/csf-tools': 7.0.0-beta.46
-      '@storybook/docs-mdx': 0.0.1-next.6
+      '@storybook/docs-mdx': 0.0.1-next.7
       '@storybook/global': 5.0.0
       '@storybook/manager': 7.0.0-beta.46
       '@storybook/node-logger': 7.0.0-beta.46
@@ -5468,8 +5471,8 @@ packages:
       type-fest: 2.19.0
     dev: true
 
-  /@storybook/docs-mdx@0.0.1-next.6:
-    resolution: {integrity: sha512-DjoSIXADmLJtdroXAjUotFiZlcZ2usWhqrS7aeOtZs0DVR0Ws5WQjnwtpDUXt8gryTSd+OZJ0cNsDcqg4JDEvQ==}
+  /@storybook/docs-mdx@0.0.1-next.7:
+    resolution: {integrity: sha512-JbgBf/EMBtx65iXtB3pOiX3818UeL9jZ+KAY241OAPqJVXjMQ5KaVOdg/57MSmd508HDIGx7CiImOMEmWwQ9/g==}
     dev: true
 
   /@storybook/docs-tools@7.0.0-beta.46:
@@ -5521,8 +5524,8 @@ packages:
     resolution: {integrity: sha512-0Tsm47YM3SU9rvPpXxp6/toQ1DDUrIbZt1pXcj72szLZvi7U/fXTMpsBX9gOB1MNVYIYRqS2V+jcO8UjFd4qyQ==}
     dev: true
 
-  /@storybook/mdx2-csf@1.0.0-next.7:
-    resolution: {integrity: sha512-xcQ8w4IecABAjsakaZTGiUEnEgFZzVKsMjqECjd+qdkwgD3R/kwrBdfyC15CLM5Ye1miPwYBIwJGeBXB9qxsZg==}
+  /@storybook/mdx2-csf@1.0.0-next.8:
+    resolution: {integrity: sha512-t2O5s/HHTH5evZVHgVtCWTZgMZ/CaqDu3xVGgjVbKeTvpPAbi0Waab5SSX8T9PG5jNDei/x+jpAVCcNMOHoWzg==}
     dev: true
 
   /@storybook/node-logger@6.5.15:
@@ -18806,6 +18809,10 @@ packages:
       ajv-keywords: 5.1.0(ajv@8.12.0)
     dev: true
 
+  /scrollparent@2.0.1:
+    resolution: {integrity: sha512-HSdN78VMvFCSGCkh0oYX/tY4R3P1DW61f8+TeZZ4j2VLgfwvw0bpRSOv4PCVKisktIwbzHCfZsx+rLbbDBqIBA==}
+    dev: false
+
   /seedrandom@3.0.5:
     resolution: {integrity: sha512-8OwmbklUNzwezjGInmZ+2clQmExQPvomqjL7LFqOYqtmuxRgQYqOD3mHaU+MvZn5FLUeVxVfQjwLZW/n/JFuqg==}
     dev: true
@@ -21572,6 +21579,10 @@ packages:
       - whiskers
     dev: true
 
+  /vue-observe-visibility@0.4.6:
+    resolution: {integrity: sha512-xo0CEVdkjSjhJoDdLSvoZoQrw/H2BlzB5jrCBKGZNXN2zdZgMuZ9BKrxXDjNP2AxlcCoKc8OahI3F3r3JGLv2Q==}
+    dev: false
+
   /vue-prism-editor@0.3.0:
     resolution: {integrity: sha512-yNSuwql/xHMJrWghn/OhZ5WPBKdhx7FkvFjgq2uDm99jHSJhuGwhcgPyuoGzpm6w8DRDzi85lgerKCu8DTDWWg==}
     dependencies:
@@ -21589,6 +21600,14 @@ packages:
       vue: 2.7.14
       vue-class-component: 7.2.6(vue@2.7.14)
     dev: true
+
+  /vue-resize@0.4.5(vue@2.7.14):
+    resolution: {integrity: sha512-bhP7MlgJQ8TIkZJXAfDf78uJO+mEI3CaLABLjv0WNzr4CcGRGPIAItyWYnP6LsPA4Oq0WE+suidNs6dgpO4RHg==}
+    peerDependencies:
+      vue: ^2.3.0
+    dependencies:
+      vue: 2.7.14
+    dev: false
 
   /vue-router@3.6.5(vue@2.7.14):
     resolution: {integrity: sha512-VYXZQLtjuvKxxcshuRAwjHnciqZVoXAjTjcqBTz4rKc8qih9g9pI3hbDjmqXaHdgL3v8pV6P8Z335XvHzESxLQ==}
@@ -21628,6 +21647,17 @@ packages:
 
   /vue-typed-mixins@0.2.0:
     resolution: {integrity: sha512-0OxuinandPWv3nm5k/reYkuKtX3jjPZ40Sy9roJz0ih8PUzmI7zSRiXFEJ62LsyRegw9Tqy+qMkajk7ipKP8Vg==}
+    dev: false
+
+  /vue-virtual-scroller@1.1.2(vue@2.7.14):
+    resolution: {integrity: sha512-SkUyc7QHCJFB5h1Fya7LxVizlVzOZZuFVipBGHYoTK8dwLs08bIz/tclvRApYhksaJIm/nn51inzO2UjpGJPMQ==}
+    peerDependencies:
+      vue: ^2.6.11
+    dependencies:
+      scrollparent: 2.0.1
+      vue: 2.7.14
+      vue-observe-visibility: 0.4.6
+      vue-resize: 0.4.5(vue@2.7.14)
     dev: false
 
   /vue2-boring-avatars@0.3.4:
