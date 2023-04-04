@@ -597,7 +597,7 @@ export interface IUserResponse {
 		isOnboarded?: boolean;
 		showUserActivationSurvey?: boolean;
 		firstSuccessfulWorkflowId?: string;
-		userActivated?:  boolean;
+		userActivated?: boolean;
 	};
 }
 
