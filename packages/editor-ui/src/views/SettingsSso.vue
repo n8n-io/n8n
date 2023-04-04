@@ -51,7 +51,12 @@ const onTest = async () => {
 	}
 };
 
+const onSeePlansClick = () => {};
+
 onBeforeMount(async () => {
+	if (!ssoStore.isEnterpriseSamlEnabled) {
+		return;
+	}
 	try {
 		await getSamlConfig();
 	} catch (error) {
@@ -69,7 +74,7 @@ onBeforeMount(async () => {
 		<n8n-heading size="2xlarge">{{ locale.baseText('settings.sso.title') }}</n8n-heading>
 		<div :class="$style.top">
 			<n8n-heading size="medium">{{ locale.baseText('settings.sso.subtitle') }}</n8n-heading>
-			<n8n-tooltip :disabled="ssoStore.isSamlLoginEnabled">
+			<n8n-tooltip v-if="ssoStore.isEnterpriseSamlEnabled" :disabled="ssoStore.isSamlLoginEnabled">
 				<template #content>
 					<span>
 						{{ locale.baseText('settings.sso.activation.tooltip') }}
@@ -92,39 +97,52 @@ onBeforeMount(async () => {
 				</template>
 			</i18n>
 		</n8n-info-tip>
-		<div :class="$style.group">
-			<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-			<CopyInput
-				:class="$style.copyInput"
-				:value="redirectUrl"
-				:copy-button-text="locale.baseText('generic.clickToCopy')"
-				:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')"
-			/>
-			<small>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+		<div v-if="ssoStore.isEnterpriseSamlEnabled">
+			<div :class="$style.group">
+				<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+				<CopyInput
+					:class="$style.copyInput"
+					:value="redirectUrl"
+					:copy-button-text="locale.baseText('generic.clickToCopy')"
+					:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')"
+				/>
+				<small>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+			</div>
+			<div :class="$style.group">
+				<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
+				<CopyInput
+					:class="$style.copyInput"
+					:value="entityId"
+					:copy-button-text="locale.baseText('generic.clickToCopy')"
+					:toast-title="locale.baseText('settings.sso.settings.entityId.copied')"
+				/>
+				<small>{{ locale.baseText('settings.sso.settings.entityId.help') }}</small>
+			</div>
+			<div :class="$style.group">
+				<label>{{ locale.baseText('settings.sso.settings.ips.label') }}</label>
+				<n8n-input v-model="metadata" type="textarea" />
+				<small>{{ locale.baseText('settings.sso.settings.ips.help') }}</small>
+			</div>
+			<div :class="$style.buttons">
+				<n8n-button :disabled="!ssoSettingsSaved" type="tertiary" @click="onTest">
+					{{ locale.baseText('settings.sso.settings.test') }}
+				</n8n-button>
+				<n8n-button :disabled="!metadata" @click="onSave">
+					{{ locale.baseText('settings.sso.settings.save') }}
+				</n8n-button>
+			</div>
 		</div>
-		<div :class="$style.group">
-			<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
-			<CopyInput
-				:class="$style.copyInput"
-				:value="entityId"
-				:copy-button-text="locale.baseText('generic.clickToCopy')"
-				:toast-title="locale.baseText('settings.sso.settings.entityId.copied')"
-			/>
-			<small>{{ locale.baseText('settings.sso.settings.entityId.help') }}</small>
-		</div>
-		<div :class="$style.group">
-			<label>{{ locale.baseText('settings.sso.settings.ips.label') }}</label>
-			<n8n-input v-model="metadata" type="textarea" />
-			<small>{{ locale.baseText('settings.sso.settings.ips.help') }}</small>
-		</div>
-		<div :class="$style.buttons">
-			<n8n-button :disabled="!ssoSettingsSaved" type="tertiary" @click="onTest">
-				{{ locale.baseText('settings.sso.settings.test') }}
-			</n8n-button>
-			<n8n-button :disabled="!metadata" @click="onSave">
-				{{ locale.baseText('settings.sso.settings.save') }}
-			</n8n-button>
-		</div>
+		<n8n-action-box
+			v-else
+			:class="$style.actionBox"
+			:description="locale.baseText('settings.sso.actionBox.description')"
+			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"
+			@click="onSeePlansClick"
+		>
+			<template #heading>
+				<span>{{ locale.baseText('settings.sso.actionBox.title') }}</span>
+			</template>
+		</n8n-action-box>
 	</div>
 </template>
 
@@ -170,5 +188,9 @@ onBeforeMount(async () => {
 		font-size: var(--font-size-2xs);
 		color: var(--color-text-base);
 	}
+}
+
+.actionBox {
+	margin: var(--spacing-2xl) 0 0;
 }
 </style>
