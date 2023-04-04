@@ -12,9 +12,8 @@ export class MultiFactorAuthService {
 		});
 	}
 
-	generateSecret(data: { issuer?: string; label?: string }) {
+	generateSecret(data: { label?: string }) {
 		const { base32, otpauth_url } = speakeasy.generateSecret({
-			issuer: data.issuer ?? '',
 			name: data.label ?? '',
 			otpauth_url: true,
 		});

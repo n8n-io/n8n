@@ -217,7 +217,7 @@ export default mixins(showMessage, copyPaste).extend({
 			this.formBus.$emit('submit');
 		},
 		onDownloadClick() {
-			const filename = 'n8n-recovery-codes';
+			const filename = 'n8n-recovery-codes.txt';
 			const temporalElement = document.createElement('a');
 			temporalElement.setAttribute(
 				'href',
@@ -274,6 +274,7 @@ export default mixins(showMessage, copyPaste).extend({
 
 <style module lang="scss">
 .container > * {
+	overflow: visible;
 	margin-bottom: var(--spacing-s);
 	&:last-child {
 		margin-bottom: 0;

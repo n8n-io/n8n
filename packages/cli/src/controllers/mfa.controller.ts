@@ -40,7 +40,7 @@ export class MFAController {
 			const qrCode = this.mfaService.createQrUrlFromSecret({
 				issuer,
 				secret: decryptedSecret,
-				label: email,
+				label: `${issuer}:${email}`,
 			});
 
 			return {
@@ -53,7 +53,7 @@ export class MFAController {
 		const codes = Array.from(Array(10)).map(() => uuid());
 
 		const { secret, url } = this.mfaService.generateSecret({
-			label: email,
+			label: `${issuer}:${email}`,
 		});
 
 		const encryptionKey = await UserSettings.getEncryptionKey();

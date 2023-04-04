@@ -52,16 +52,16 @@
 				<div :class="$style.mfaSection">
 					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')">
 					</n8n-input-label>
-					<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
+					<n8n-text :bold="false" :class="$style.infoText">
 						{{
 							mfaDisabled
 								? $locale.baseText('settings.personal.mfa.button.disabled.infobox')
-								: $locale.baseText('settings.personal.mfa.infobox.enabled.infobox')
+								: $locale.baseText('settings.personal.mfa.button.enabled.infobox')
 						}}
 						<n8n-link :to="mfaDocsUrl" size="small" :bold="true">
 							{{ $locale.baseText('generic.learnMore') }}
 						</n8n-link>
-					</n8n-info-tip>
+					</n8n-text>
 				</div>
 				<div :class="$style.mfaButtonContainer" v-if="mfaDisabled">
 					<n8n-button
@@ -288,6 +288,11 @@ export default mixins(showMessage).extend({
 
 .mfaSection {
 	margin-top: var(--spacing-l);
+}
+
+.infoText {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
 }
 
 .sectionHeader {
