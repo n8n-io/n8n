@@ -169,8 +169,9 @@ export class ImportCredentialsCommand extends BaseCommand {
 			['credentialsId', 'userId'],
 		);
 		if (config.getEnv('database.type') === 'postgresdb') {
+			const tablePrefix = config.getEnv('database.tablePrefix');
 			await this.transactionManager.query(
-				"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
+				`SELECT setval('${tablePrefix}credentials_entity_id_seq', (SELECT MAX(id) from ${tablePrefix}credentials_entity))`,
 			);
 		}
 	}
