@@ -65,7 +65,7 @@ export class DateTimeV2 implements INodeType {
 					default: 'getCurrentDate',
 				},
 				...CurrentDateDescription,
-				//	...AddToDateDescription,
+				...AddToDateDescription,
 			],
 		};
 	}
@@ -94,15 +94,17 @@ export class DateTimeV2 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const responseData = [];
 		const operation = this.getNodeParameter('operation', 0);
+		const workflowTimezone = this.getTimezone();
 		for (let i = 0; i < items.length; i++) {
 			if (operation === 'getCurrentDate') {
 				const includeTime = this.getNodeParameter('includeTime', i) as boolean;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				responseData.push(
 					includeTime
-						? { [outputFieldName]: moment() }
-						: { [outputFieldName]: moment().startOf('day') },
+						? { [outputFieldName]: moment.tz(workflowTimezone) }
+						: { [outputFieldName]: moment().startOf('day').tz(workflowTimezone) },
 				);
+			} else if (operation === 'addToDate') {
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
