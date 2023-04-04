@@ -54,9 +54,9 @@ import config from '@/config';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { getLicense } from './License';
-import { InternalHooks } from './InternalHooks';
-import { PostHogClient } from './posthog';
+import { License } from '@/License';
+import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -127,16 +127,13 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const license = getLicense();
+		const license = Container.get(License);
 		await license.init(instanceId);
 
-		// Start timeout for the execution
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
-			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
+		const workflowSettings = this.data.workflowData.settings ?? {};
 
+		// Start timeout for the execution
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}

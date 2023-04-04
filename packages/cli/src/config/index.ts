@@ -24,11 +24,7 @@ if (inE2ETests) {
 	dotenv.config();
 }
 
-const config = convict(schema);
-
-if (inE2ETests) {
-	config.set('enterprise.features.sharing', true);
-}
+const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;

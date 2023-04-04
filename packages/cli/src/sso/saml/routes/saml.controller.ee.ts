@@ -1,5 +1,5 @@
 import express from 'express';
-import { Get, Post, RestController } from '../../../decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -8,15 +8,15 @@ import {
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
-import { AuthError, BadRequestError } from '../../../ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getInitSSOFormView } from '../views/initSsoPost';
-import { getInitSSOPostView } from '../views/initSsoRedirect';
-import { issueCookie } from '../../../auth/jwt';
+import { issueCookie } from '@/auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import { isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
-import { AuthenticatedRequest } from '../../../requests';
+import { AuthenticatedRequest } from '@/requests';
+import { getServiceProviderEntityId, getServiceProviderReturnUrl } from '../serviceProvider.ee';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -36,7 +36,11 @@ export class SamlController {
 	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
 	async configGet(req: AuthenticatedRequest, res: express.Response) {
 		const prefs = this.samlService.samlPreferences;
-		return res.send(prefs);
+		return res.send({
+			...prefs,
+			entityID: getServiceProviderEntityId(),
+			returnUrl: getServiceProviderReturnUrl(),
+		});
 	}
 
 	/**
@@ -106,7 +110,7 @@ export class SamlController {
 						return res.redirect(SamlUrls.defaultRedirect);
 					}
 				} else {
-					return res.status(202).send('SAML is not enabled, but authentication successful.');
+					return res.status(202).send(loginResult.attributes);
 				}
 			}
 		}
@@ -136,10 +140,7 @@ export class SamlController {
 	private async handleInitSSO(res: express.Response) {
 		const result = this.samlService.getLoginRequestUrl();
 		if (result?.binding === 'redirect') {
-			// forced client side redirect through the use of a javascript redirect
-			return res.send(getInitSSOPostView(result.context));
-			// TODO:SAML: If we want the frontend to handle the redirect, we will send the redirect URL instead:
-			// return res.status(301).send(result.context.context);
+			return res.send(result.context.context);
 		} else if (result?.binding === 'post') {
 			return res.send(getInitSSOFormView(result.context as PostBindingContext));
 		} else {

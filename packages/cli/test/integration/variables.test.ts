@@ -1,18 +1,36 @@
 import type { Application } from 'express';
 
 import type { User } from '@/databases/entities/User';
-import config from '@/config';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
-import * as EnvironmentHelpers from '@/environments/enviromentHelpers';
 
 import type { AuthAgent } from './shared/types';
+import type { ClassLike, MockedClass } from 'jest-mock';
+import { License } from '@/License';
 
 // mock that credentialsSharing is not enabled
 let app: Application;
 let ownerUser: User;
 let memberUser: User;
 let authAgent: AuthAgent;
+let variablesSpy: jest.SpyInstance<boolean>;
+let licenseLike = {
+	isVariablesEnabled: jest.fn().mockReturnValue(true),
+	getVariablesLimit: jest.fn().mockReturnValue(-1),
+};
+
+jest.mock('typedi', () => {
+	const original = jest.requireActual('typedi');
+	return {
+		...original,
+		get: jest.fn((cls: ClassLike) => {
+			if (cls === License) {
+				return licenseLike;
+			}
+			return original.get(cls);
+		}),
+	};
+});
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['variables'] });
@@ -27,7 +45,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['Variables']);
-	config.set('enterprise.features.variables', true);
 });
 
 afterAll(async () => {
@@ -137,7 +154,7 @@ test('POST /variables should not create a new credential and return it for a mem
 });
 
 test("POST /variables should not create a new credential and return it if the instance doesn't have a license", async () => {
-	config.set('enterprise.features.variables', false);
+	licenseLike.isVariablesEnabled.mockReturnValueOnce(false);
 	const toCreate = {
 		key: 'create1',
 		value: 'createvalue1',
@@ -159,6 +176,48 @@ test('POST /variables should fail to create a new credential and if one with the
 	await testDb.createVariable(toCreate.key, toCreate.value);
 	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
 	expect(response.statusCode).toBe(500);
+	expect(response.body.data?.key).not.toBe(toCreate.key);
+	expect(response.body.data?.value).not.toBe(toCreate.value);
+});
+
+test('POST /variables should not fail if variable limit not reached', async () => {
+	licenseLike.getVariablesLimit.mockReturnValueOnce(5);
+	let i = 1;
+	let toCreate = {
+		key: `create${i}`,
+		value: `createvalue${i}`,
+	};
+	while (i < 3) {
+		await testDb.createVariable(toCreate.key, toCreate.value);
+		i++;
+		toCreate = {
+			key: `create${i}`,
+			value: `createvalue${i}`,
+		};
+	}
+	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data?.key).toBe(toCreate.key);
+	expect(response.body.data?.value).toBe(toCreate.value);
+});
+
+test('POST /variables should fail if variable limit reached', async () => {
+	licenseLike.getVariablesLimit.mockReturnValueOnce(5);
+	let i = 1;
+	let toCreate = {
+		key: `create${i}`,
+		value: `createvalue${i}`,
+	};
+	while (i < 6) {
+		await testDb.createVariable(toCreate.key, toCreate.value);
+		i++;
+		toCreate = {
+			key: `create${i}`,
+			value: `createvalue${i}`,
+		};
+	}
+	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
+	expect(response.statusCode).toBe(400);
 	expect(response.body.data?.key).not.toBe(toCreate.key);
 	expect(response.body.data?.value).not.toBe(toCreate.value);
 });

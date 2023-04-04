@@ -9,6 +9,7 @@ import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	IPollFunctions,
 	JsonObject,
@@ -351,9 +352,64 @@ export function extractEmail(s: string) {
 	return s;
 }
 
+export const prepareTimestamp = (
+	node: INode,
+	itemIndex: number,
+	query: string,
+	dateValue: string | number | DateTime,
+	label: 'after' | 'before',
+) => {
+	if (dateValue instanceof DateTime) {
+		dateValue = dateValue.toISO();
+	}
+
+	let timestamp = DateTime.fromISO(dateValue as string).toSeconds();
+	const timestampLengthInMilliseconds1990 = 12;
+
+	if (typeof timestamp === 'number') {
+		timestamp = Math.round(timestamp);
+	}
+
+	if (
+		!timestamp &&
+		typeof dateValue === 'number' &&
+		dateValue.toString().length < timestampLengthInMilliseconds1990
+	) {
+		timestamp = dateValue;
+	}
+
+	if (!timestamp && (dateValue as string).length < timestampLengthInMilliseconds1990) {
+		timestamp = parseInt(dateValue as string, 10);
+	}
+
+	if (!timestamp) {
+		timestamp = Math.floor(DateTime.fromMillis(parseInt(dateValue as string, 10)).toSeconds());
+	}
+
+	if (!timestamp) {
+		const description = `'${dateValue}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+		throw new NodeOperationError(
+			node,
+			`Invalid date/time in 'Received ${label[0].toUpperCase() + label.slice(1)}' field`,
+			{
+				description,
+				itemIndex,
+			},
+		);
+	}
+
+	if (query) {
+		query += ` ${label}:${timestamp}`;
+	} else {
+		query = `${label}:${timestamp}`;
+	}
+	return query;
+};
+
 export function prepareQuery(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	fields: IDataObject,
+	itemIndex: number,
 ) {
 	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
@@ -383,68 +439,24 @@ export function prepareQuery(
 	}
 
 	if (qs.receivedAfter) {
-		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
-		const timestampLengthInMilliseconds1990 = 12;
-
-		if (
-			!timestamp &&
-			typeof qs.receivedAfter === 'number' &&
-			qs.receivedAfter.toString().length < timestampLengthInMilliseconds1990
-		) {
-			timestamp = qs.receivedAfter;
-		}
-
-		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
-			timestamp = parseInt(qs.receivedAfter as string, 10);
-		}
-
-		if (!timestamp) {
-			timestamp = Math.floor(
-				DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds(),
-			);
-		}
-
-		if (!timestamp) {
-			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received After' field", {
-				description,
-			});
-		}
-
-		if (qs.q) {
-			qs.q += ` after:${timestamp}`;
-		} else {
-			qs.q = `after:${timestamp}`;
-		}
+		qs.q = prepareTimestamp(
+			this.getNode(),
+			itemIndex,
+			qs.q as string,
+			qs.receivedAfter as string,
+			'after',
+		);
 		delete qs.receivedAfter;
 	}
 
 	if (qs.receivedBefore) {
-		let timestamp = DateTime.fromISO(qs.receivedBefore as string).toSeconds();
-		const timestampLengthInMilliseconds1990 = 12;
-
-		if (!timestamp && (qs.receivedBefore as string).length < timestampLengthInMilliseconds1990) {
-			timestamp = parseInt(qs.receivedBefore as string, 10);
-		}
-
-		if (!timestamp) {
-			timestamp = Math.floor(
-				DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds(),
-			);
-		}
-
-		if (!timestamp) {
-			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received Before' field", {
-				description,
-			});
-		}
-
-		if (qs.q) {
-			qs.q += ` before:${timestamp}`;
-		} else {
-			qs.q = `before:${timestamp}`;
-		}
+		qs.q = prepareTimestamp(
+			this.getNode(),
+			itemIndex,
+			qs.q as string,
+			qs.receivedBefore as string,
+			'before',
+		);
 		delete qs.receivedBefore;
 	}
 
