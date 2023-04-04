@@ -1,0 +1,10 @@
+{
+	"node": "n8n-nodes-base.totp",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"alias": ["time based", "one time password", "otp"],
+	"categories": ["Development", "Core Nodes"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}
