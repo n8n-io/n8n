@@ -6,6 +6,7 @@ import { INode, INodeParameters, INodeProperties, INodeTypeDescription } from 'n
 import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 import { computed, onMounted, ref } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
+import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -19,13 +20,23 @@ const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
 
-const paramValue = ref({ mappingMode: props.parameter.mode || 'defineBelow', value: {} } as {
+// TODO: Extract this to constants
+const paramValue = ref({
+	mappingMode: props.parameter.mode || 'defineBelow',
+	value: {},
+	matchingColumns: [],
+} as {
 	mappingMode: string;
 	value: Object;
+	matchingColumns: string[];
 });
 const fieldsToMap = ref([] as ResourceMapperFields['fields']);
 const loading = ref(false);
 const loadingError = ref(false);
+
+onMounted(async () => {
+	await initFetching();
+});
 
 const fields = computed<string>(() => {
 	if (fieldsToMap.value.length === 0) {
@@ -36,14 +47,6 @@ const fields = computed<string>(() => {
 
 const prefix = computed<string>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.mode === 'add' ? '+' : '-';
-});
-
-const isInsertMode = computed<boolean>(() => {
-	return props.parameter.typeOptions?.resourceMapper?.mode === 'add';
-});
-
-onMounted(async () => {
-	await initFetching();
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -60,6 +63,19 @@ const showMappingFields = computed<boolean>(() => {
 		!loadingError.value &&
 		fieldsToMap.value.length > 0
 	);
+});
+
+const showMatchingColumnsSelector = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.mode !== 'add';
+});
+
+const preselectedMatchingColumns = computed<string[]>(() => {
+	return fieldsToMap.value.reduce((acc, field) => {
+		if (field.defaultMatch) {
+			acc.push(field.id);
+		}
+		return acc;
+	}, [] as string[]);
 });
 
 async function initFetching(): Promise<void> {
@@ -103,6 +119,10 @@ function onModeChanged(mode: string): void {
 	}
 }
 
+function onMatchingColumnsChanged(matchingColumns: string[]): void {
+	paramValue.value.matchingColumns = matchingColumns;
+}
+
 defineExpose({
 	fields,
 });
@@ -111,17 +131,26 @@ defineExpose({
 <template>
 	<div class="mt-4xs">
 		<mapping-mode-select
-			v-if="isInsertMode"
 			:inputSize="inputSize"
 			:labelSize="labelSize"
-			:initial-value="props.parameter.mode || 'defineBelow'"
-			:type-options="props.parameter.typeOptions?.resourceMapper"
+			:initialValue="props.parameter.mode || 'defineBelow'"
+			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:serviceName="nodeType?.displayName || ''"
 			:loading="loading"
 			:loadingError="loadingError"
 			:fieldsToMap="fieldsToMap"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
+		/>
+		<matching-columns-select
+			v-if="showMatchingColumnsSelector"
+			:label-size="labelSize"
+			:fieldsToMap="fieldsToMap"
+			:typeOptions="props.parameter.typeOptions?.resourceMapper"
+			:inputSize="inputSize"
+			:loading="loading"
+			:initialValue="preselectedMatchingColumns"
+			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
 		<n8n-notice v-if="showMappingFields" :content="`${prefix} ${fields}`" />
 	</div>

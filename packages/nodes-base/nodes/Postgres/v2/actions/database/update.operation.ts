@@ -150,14 +150,13 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
-				mode: 'add',
+				mode: 'update',
 				fieldWords: {
 					singular: 'column',
 					plural: 'columns',
 				},
 				addAllFields: true,
-				noFieldsError: 'No columns found in the database',
-				multiKeyMatch: true,
+				multiKeyMatch: false,
 			},
 		},
 		displayOptions: {

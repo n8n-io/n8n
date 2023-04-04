@@ -122,8 +122,7 @@ const properties: INodeProperties[] = [
 					plural: 'columns',
 				},
 				addAllFields: true,
-				noFieldsError: 'No columns found in the database',
-				multiKeyMatch: true,
+				multiKeyMatch: false,
 			},
 		},
 		displayOptions: {

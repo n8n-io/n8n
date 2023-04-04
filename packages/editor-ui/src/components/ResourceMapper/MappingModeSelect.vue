@@ -24,7 +24,11 @@ const mappingModeOptions = [
 		description: instance?.proxy.$locale.baseText(
 			'resourceMapper.mappingMode.defineBelow.description',
 			{
-				interpolate: { fieldWord: props.typeOptions?.fieldWords?.singular || 'field' },
+				interpolate: {
+					fieldWord:
+						props.typeOptions?.fieldWords?.singular ||
+						instance?.proxy.$locale.baseText('generic.field'),
+				},
 			},
 		),
 	},
@@ -35,8 +39,10 @@ const mappingModeOptions = [
 			'resourceMapper.mappingMode.autoMapInputData.description',
 			{
 				interpolate: {
-					fieldWord: props.typeOptions?.fieldWords?.plural || 'fields',
-					serviceName: props.serviceName || 'the service',
+					fieldWord:
+						props.typeOptions?.fieldWords?.plural ||
+						instance?.proxy.$locale.baseText('generic.fields'),
+					serviceName: props.serviceName || instance?.proxy.$locale.baseText('generic.service'),
 				},
 			},
 		),
@@ -54,16 +60,25 @@ const errorMessage = computed<string>(() => {
 	if (selected.value === 'defineBelow' && instance) {
 		if (props.loadingError) {
 			return instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.errorMessage', {
-				interpolate: { fieldWord: props.typeOptions?.fieldWords?.plural || 'fields' },
+				interpolate: {
+					fieldWord:
+						props.typeOptions?.fieldWords?.plural ||
+						instance?.proxy.$locale.baseText('generic.fields'),
+				},
 			});
 		}
 		if (props.fieldsToMap.length === 0) {
-			return instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
-				interpolate: {
-					fieldWord: props.typeOptions?.fieldWords?.plural || 'fields',
-					serviceName: props.serviceName || 'the service',
-				},
-			});
+			return (
+				props.typeOptions?.noFieldsError ||
+				instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
+					interpolate: {
+						fieldWord:
+							props.typeOptions?.fieldWords?.plural ||
+							instance?.proxy.$locale.baseText('generic.fields'),
+						serviceName: props.serviceName || instance?.proxy.$locale.baseText('generic.service'),
+					},
+				})
+			);
 		}
 		return '';
 	}
@@ -119,7 +134,12 @@ defineExpose({
 						<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 						{{
 							$locale.baseText('resourceMapper.fetchingFields.message', {
-								interpolate: { fieldWord: props.typeOptions?.fieldWords?.plural || 'fields' },
+								interpolate: {
+									fieldWord:
+										props.typeOptions?.fieldWords?.plural ||
+										instance?.proxy.$locale.baseText('generic.fields') ||
+										'fields',
+								},
 							})
 						}}
 					</n8n-text>
