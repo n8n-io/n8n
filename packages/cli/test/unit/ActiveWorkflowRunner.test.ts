@@ -29,7 +29,6 @@ import { mockInstance } from '../integration/shared/utils';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
-import { MessageEventBus } from '@/eventbus';
 
 /**
  * TODO:
@@ -156,7 +155,6 @@ describe('ActiveWorkflowRunner', () => {
 		};
 		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
 		mockInstance(Push);
-		mockInstance(MessageEventBus);
 	});
 
 	beforeEach(() => {
