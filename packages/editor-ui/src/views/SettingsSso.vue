@@ -147,7 +147,7 @@ onBeforeMount(async () => {
 .buttons {
 	display: flex;
 	justify-content: flex-start;
-	padding: var(--spacing-2xl) 0 0;
+	padding: var(--spacing-2xl) 0 var(--spacing-3xl);
 
 	button {
 		margin: 0 var(--spacing-s) 0 0;
