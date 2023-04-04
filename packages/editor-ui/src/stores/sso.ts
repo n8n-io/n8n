@@ -5,10 +5,13 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import * as ssoApi from '@/api/sso';
 import { SamlPreferences } from '@/Interface';
+import { updateCurrentUser } from '@/api/users';
+import { useUsersStore } from '@/stores/users';
 
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const state = reactive({
 		loading: false,
@@ -58,6 +61,13 @@ export const useSSOStore = defineStore('sso', () => {
 		ssoApi.saveSamlConfig(rootStore.getRestApiContext, config);
 	const testSamlConfig = () => ssoApi.testSamlConfig(rootStore.getRestApiContext);
 
+	const updateUser = async (params: { firstName: string; lastName: string }) =>
+		updateCurrentUser(rootStore.getRestApiContext, {
+			id: usersStore.currentUser!.id,
+			email: usersStore.currentUser!.email!,
+			...params,
+		});
+
 	return {
 		isLoading,
 		setLoading,
@@ -69,5 +79,6 @@ export const useSSOStore = defineStore('sso', () => {
 		getSamlConfig,
 		saveSamlConfig,
 		testSamlConfig,
+		updateUser,
 	};
 });
