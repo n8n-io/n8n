@@ -1,4 +1,4 @@
-name: PR E2E (skip with label skip-e2e)
+name: PR E2E
 
 on:
   pull_request_review:
@@ -24,7 +24,7 @@ jobs:
   run-e2e-tests:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
-    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    if: ${{ github.event.review.state == 'approved' }}
     with:
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
