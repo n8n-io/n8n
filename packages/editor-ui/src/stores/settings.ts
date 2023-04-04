@@ -140,7 +140,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.telemetry && this.settings.telemetry.enabled;
 		},
 		isMfaFeatureEnabled(): boolean {
-			return this.settings.mfa.enabled;
+			return this.settings?.mfa?.enabled;
 		},
 		areTagsEnabled(): boolean {
 			return this.settings.workflowTagsDisabled !== undefined
