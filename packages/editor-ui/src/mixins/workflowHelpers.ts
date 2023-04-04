@@ -140,33 +140,6 @@ export function resolveParameter(
 		runExecutionData = executionData.data;
 	}
 
-	parentNode.forEach((parentNodeName) => {
-		const pinData: IPinData[string] | undefined =
-			useWorkflowsStore().pinDataByNodeName(parentNodeName);
-
-		if (pinData) {
-			runExecutionData = {
-				...runExecutionData,
-				resultData: {
-					...runExecutionData.resultData,
-					runData: {
-						...runExecutionData.resultData.runData,
-						[parentNodeName]: [
-							{
-								startTime: new Date().valueOf(),
-								executionTime: 0,
-								source: [],
-								data: {
-									main: [pinData.map((data) => ({ json: data }))],
-								},
-							},
-						],
-					},
-				},
-			};
-		}
-	});
-
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
 	}
@@ -254,7 +227,7 @@ function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boo
 		nodeTypes,
 		settings: useWorkflowsStore().workflowSettings,
 		// @ts-ignore
-		pinData: useWorkflowsStore().pinData,
+		pinData: useWorkflowsStore().getPinData,
 	});
 
 	return cachedWorkflow;
@@ -371,17 +344,6 @@ function executeData(
 		// Add the input data to be able to also resolve the short expression format
 		// which does not use the node name
 		const parentNodeName = parentNode[0];
-
-		const parentPinData = useWorkflowsStore().getPinData![parentNodeName];
-
-		// populate `executeData` from `pinData`
-
-		if (parentPinData) {
-			executeData.data = { main: [parentPinData] };
-			executeData.source = { main: [{ previousNode: parentNodeName }] };
-
-			return executeData;
-		}
 
 		// populate `executeData` from `runData`
 
