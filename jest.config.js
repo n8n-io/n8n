@@ -5,7 +5,7 @@ const tsJestOptions = {
 	tsconfig: {
 		...compilerOptions,
 		declaration: false,
-		sourceMap: false,
+		sourceMap: true,
 		skipLibCheck: true,
 	},
 };
@@ -22,11 +22,14 @@ const config = {
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
+	collectCoverage: true,
+	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
+	collectCoverageFrom: ['src/**/*.ts'],
 };
 
 if (process.env.CI === 'true') {
-	config.maxWorkers = 2;
-	config.workerIdleMemoryLimit = 2048;
+	config.workerIdleMemoryLimit = 1024;
+	config.coverageReporters = ['cobertura'];
 }
 
 module.exports = config;

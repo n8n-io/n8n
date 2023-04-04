@@ -12,7 +12,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
-import {
+import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -39,24 +39,17 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	LoggerProxy as Logger,
 	IExecuteData,
-	OAuth2GrantType,
 	IGetNodeParameterOptions,
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
-	deepCopy,
-	fileTypeFromMimeType,
 	ICredentialTestFunctions,
 	BinaryHelperFunctions,
+	NodeHelperFunctions,
 	RequestHelperFunctions,
 	FunctionsBase,
 	IExecuteFunctions,
@@ -66,23 +59,41 @@ import {
 	IPollFunctions,
 	ITriggerFunctions,
 	IWebhookFunctions,
+	BinaryMetadata,
+	FileSystemHelperFunctions,
+} from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	NodeApiError,
+	NodeHelpers,
+	NodeOperationError,
+	WorkflowDataProxy,
+	LoggerProxy as Logger,
+	OAuth2GrantType,
+	deepCopy,
+	fileTypeFromMimeType,
+	ExpressionError,
 } from 'n8n-workflow';
 
+import pick from 'lodash.pick';
 import { Agent } from 'https';
+import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
-import clientOAuth1, { Token } from 'oauth-1.0a';
+import type { Token } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
-import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
-import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
+import type { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import requestPromise from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
-import { IncomingHttpHeaders } from 'http';
-import axios, {
+import type { IncomingHttpHeaders } from 'http';
+import type {
 	AxiosError,
 	AxiosPromise,
 	AxiosProxyConfig,
@@ -90,14 +101,24 @@ import axios, {
 	AxiosResponse,
 	Method,
 } from 'axios';
+import axios from 'axios';
 import url, { URL, URLSearchParams } from 'url';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
+import { access as fsAccess } from 'fs/promises';
+import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
 import type { IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
+import { binaryToBuffer } from './BinaryDataManager/utils';
+import {
+	getAllWorkflowExecutionMetadata,
+	getWorkflowExecutionMetadata,
+	setAllWorkflowExecutionMetadata,
+	setWorkflowExecutionMetadata,
+} from './WorkflowExecutionMetadata';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -139,7 +160,6 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-
 function searchForHeader(headers: IDataObject, headerName: string) {
 	if (headers === undefined) {
 		return undefined;
@@ -463,7 +483,9 @@ async function parseRequestObject(requestObject: IDataObject) {
 		}
 	}
 
-	if (requestObject.encoding === null) {
+	if (requestObject.useStream) {
+		axiosConfig.responseType = 'stream';
+	} else if (requestObject.encoding === null) {
 		// When downloading files, return an arrayBuffer.
 		axiosConfig.responseType = 'arraybuffer';
 	}
@@ -519,7 +541,7 @@ function digestAuthAxiosConfig(
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
 			.replace(/"/g, '');
-		// If authDeatials does not have opaque, we should not add it to authorization.
+		// If authDetails does not have opaque, we should not add it to authorization.
 		const opaqueKV = authDetails.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1);
 		const opaque: string = opaqueKV ? opaqueKV[1].replace(/"/g, '') : undefined;
 		const nonce: string = authDetails
@@ -576,7 +598,7 @@ async function proxyRequestToAxios(
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 	};
-	let axiosPromise: AxiosPromise;
+
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
 		resolveWithFullResponse?: boolean;
@@ -602,107 +624,102 @@ async function proxyRequestToAxios(
 		// }
 	);
 
+	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
 		// for digest-auth
-		const { auth } = axiosConfig;
-		delete axiosConfig.auth;
-		// eslint-disable-next-line no-async-promise-executor
-		axiosPromise = new Promise(async (resolve, reject) => {
+		requestFn = async () => {
 			try {
-				const result = await axios(axiosConfig);
-				resolve(result);
-			} catch (resp: any) {
-				if (
-					resp.response === undefined ||
-					resp.response.status !== 401 ||
-					!resp.response.headers['www-authenticate']?.includes('nonce')
-				) {
-					reject(resp);
+				return await axios(axiosConfig);
+			} catch (error) {
+				const { response } = error;
+				if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+					throw error;
 				}
-				axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
-				resolve(axios(axiosConfig));
+				const { auth } = axiosConfig;
+				delete axiosConfig.auth;
+				axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
+				return await axios(axiosConfig);
 			}
-		});
+		};
 	} else {
-		axiosPromise = axios(axiosConfig);
+		requestFn = async () => axios(axiosConfig);
 	}
 
-	return new Promise((resolve, reject) => {
-		axiosPromise
-			.then(async (response) => {
-				if (configObject.resolveWithFullResponse === true) {
-					let body = response.data;
-					if (response.data === '') {
-						if (axiosConfig.responseType === 'arraybuffer') {
-							body = Buffer.alloc(0);
-						} else {
-							body = undefined;
-						}
-					}
-					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
-					resolve({
-						body,
-						headers: response.headers,
-						statusCode: response.status,
-						statusMessage: response.statusText,
-						request: response.request,
-					});
+	try {
+		const response = await requestFn();
+		if (configObject.resolveWithFullResponse === true) {
+			let body = response.data;
+			if (response.data === '') {
+				if (axiosConfig.responseType === 'arraybuffer') {
+					body = Buffer.alloc(0);
 				} else {
-					let body = response.data;
-					if (response.data === '') {
-						if (axiosConfig.responseType === 'arraybuffer') {
-							body = Buffer.alloc(0);
-						} else {
-							body = undefined;
-						}
-					}
-					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
-					resolve(body);
+					body = undefined;
 				}
-			})
-			.catch((error) => {
-				if (configObject.simple === false && error.response) {
+			}
+			await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
+			return {
+				body,
+				headers: response.headers,
+				statusCode: response.status,
+				statusMessage: response.statusText,
+				request: response.request,
+			};
+		} else {
+			let body = response.data;
+			if (response.data === '') {
+				if (axiosConfig.responseType === 'arraybuffer') {
+					body = Buffer.alloc(0);
+				} else {
+					body = undefined;
+				}
+			}
+			await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
+			return body;
+		}
+	} catch (error) {
+		const { config, response } = error;
+
+		// Axios hydrates the original error with more data. We extract them.
+		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+		// Note: `code` is ignored as it's an expected part of the errorData.
+		if (error.isAxiosError) {
+			if (response) {
+				Logger.debug('Request proxied to Axios failed', { status: response.status });
+				let responseData = response.data;
+
+				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
+					responseData = await binaryToBuffer(responseData).then((buffer) =>
+						buffer.toString('utf-8'),
+					);
+				}
+
+				if (configObject.simple === false) {
 					if (configObject.resolveWithFullResponse) {
-						resolve({
-							body: error.response.data,
-							headers: error.response.headers,
-							statusCode: error.response.status,
-							statusMessage: error.response.statusText,
-						});
+						return {
+							body: responseData,
+							headers: response.headers,
+							statusCode: response.status,
+							statusMessage: response.statusText,
+						};
 					} else {
-						resolve(error.response.data);
+						return responseData;
 					}
-					return;
 				}
 
-				Logger.debug('Request proxied to Axios failed', { error });
+				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+				throw Object.assign(new Error(message, { cause: error }), {
+					statusCode: response.status,
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			} else {
+				throw Object.assign(new Error(error.message, { cause: error }), {
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			}
+		}
 
-				// Axios hydrates the original error with more data. We extract them.
-				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
-				// Note: `code` is ignored as it's an expected part of the errorData.
-				const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
-				if (response) {
-					error.message = `${response.status as number} - ${JSON.stringify(response.data)}`;
-				}
-
-				error.cause = errorData;
-				error.error = error.response?.data || errorData;
-				error.statusCode = error.response?.status;
-				error.options = config || {};
-
-				// Remove not needed data and so also remove circular references
-				error.request = undefined;
-				error.config = undefined;
-				error.options.adapter = undefined;
-				error.options.httpsAgent = undefined;
-				error.options.paramsSerializer = undefined;
-				error.options.transformRequest = undefined;
-				error.options.transformResponse = undefined;
-				error.options.validateStatus = undefined;
-
-				reject(error);
-			});
-	});
+		throw error;
+	}
 }
 
 function isIterator(obj: unknown): boolean {
@@ -824,8 +841,45 @@ async function httpRequest(
 }
 
 /**
+ * Returns binary file metadata
+ */
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
+	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+}
+
+/**
+ * Returns binary file stream for piping
+ */
+export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
+	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+}
+
+export function assertBinaryData(
+	inputData: ITaskDataConnections,
+	node: INode,
+	itemIndex: number,
+	propertyName: string,
+	inputIndex: number,
+): IBinaryData {
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(node, 'No binary data exists on item!', {
+			itemIndex,
+		});
+	}
+
+	const binaryPropertyData = binaryKeyData[propertyName];
+	if (binaryPropertyData === undefined) {
+		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
+			itemIndex,
+		});
+	}
+
+	return binaryPropertyData;
+}
+
+/**
  * Returns binary data buffer for given item index and property name.
- *
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
@@ -879,13 +933,15 @@ export async function copyBinaryFile(
 				fileExtension = fileTypeData.ext;
 			}
 		}
+	}
 
-		if (!mimeType) {
-			// Fall back to text
-			mimeType = 'text/plain';
-		}
-	} else if (!fileExtension) {
+	if (!fileExtension && mimeType) {
 		fileExtension = extension(mimeType) || undefined;
+	}
+
+	if (!mimeType) {
+		// Fall back to text
+		mimeType = 'text/plain';
 	}
 
 	const returnData: IBinaryData = {
@@ -926,22 +982,29 @@ async function prepareBinaryData(
 			}
 		}
 
-		// TODO: detect filetype from streams
-		if (!mimeType && Buffer.isBuffer(binaryData)) {
-			// Use buffer to guess mime type
-			const fileTypeData = await FileType.fromBuffer(binaryData);
-			if (fileTypeData) {
-				mimeType = fileTypeData.mime;
-				fileExtension = fileTypeData.ext;
+		if (!mimeType) {
+			if (Buffer.isBuffer(binaryData)) {
+				// Use buffer to guess mime type
+				const fileTypeData = await FileType.fromBuffer(binaryData);
+				if (fileTypeData) {
+					mimeType = fileTypeData.mime;
+					fileExtension = fileTypeData.ext;
+				}
+			} else if (binaryData instanceof IncomingMessage) {
+				mimeType = binaryData.headers['content-type'];
+			} else {
+				// TODO: detect filetype from other kind of streams
 			}
 		}
+	}
 
-		if (!mimeType) {
-			// Fall back to text
-			mimeType = 'text/plain';
-		}
-	} else if (!fileExtension) {
+	if (!fileExtension && mimeType) {
 		fileExtension = extension(mimeType) || undefined;
+	}
+
+	if (!mimeType) {
+		// Fall back to text
+		mimeType = 'text/plain';
 	}
 
 	const returnData: IBinaryData = {
@@ -1009,7 +1072,10 @@ export async function requestOAuth2(
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
 	// if it's the first time using the credentials, get the access token and save it into the DB.
-	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
+	if (
+		credentials.grantType === OAuth2GrantType.clientCredentials &&
+		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+	) {
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
 
 		// Find the credentials
@@ -1566,6 +1632,7 @@ export async function requestWithAuthentication(
 export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	runExecutionData: IRunExecutionData | null,
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
@@ -1574,6 +1641,22 @@ export function getAdditionalKeys(
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			customData: runExecutionData
+				? {
+						set(key: string, value: string): void {
+							setWorkflowExecutionMetadata(runExecutionData, key, value);
+						},
+						setAll(obj: Record<string, string>): void {
+							setAllWorkflowExecutionMetadata(runExecutionData, obj);
+						},
+						get(key: string): string {
+							return getWorkflowExecutionMetadata(runExecutionData, key);
+						},
+						getAll(): Record<string, string> {
+							return getAllWorkflowExecutionMetadata(runExecutionData);
+						},
+				  }
+				: undefined,
 		},
 
 		// deprecated
@@ -1787,12 +1870,15 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
-
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+			returnData = [{ name: undefined, value: undefined }];
+		} else {
+			if (e.context) e.context.parameter = parameterName;
+			e.cause = value;
+			throw e;
+		}
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages
@@ -1905,6 +1991,7 @@ const getCommonWorkflowFunctions = (
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
+	logger: Logger,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -1986,15 +2073,41 @@ const getRequestHelperFunctions = (
 	},
 });
 
+const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
+	async createReadStream(filePath) {
+		try {
+			await fsAccess(filePath);
+		} catch (error) {
+			throw error.code === 'ENOENT'
+				? new NodeOperationError(node, error, {
+						message: `The file "${String(filePath)}" could not be accessed.`,
+				  })
+				: error;
+		}
+		return createReadStream(filePath);
+	},
+});
+
+const getNodeHelperFunctions = ({
+	executionId,
+}: IWorkflowExecuteAdditionalData): NodeHelperFunctions => ({
+	copyBinaryFile: async (filePath, fileName, mimeType) =>
+		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+});
+
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+	getBinaryStream,
+	getBinaryMetadata,
+	binaryToBuffer,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
 		setBinaryDataBuffer(data, binaryData, executionId!),
-	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+	copyBinaryFile: async () => {
+		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
+	},
 });
 
 /**
@@ -2042,13 +2155,14 @@ export function getExecutePollFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2100,13 +2214,14 @@ export function getExecuteTriggerFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
 				);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
@@ -2158,7 +2273,7 @@ export function getExecuteFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 			},
@@ -2224,7 +2339,7 @@ export function getExecuteFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
 					options,
@@ -2241,14 +2356,18 @@ export function getExecuteFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
+			binaryToBuffer,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
+				if (additionalData.setExecutionStatus) {
+					additionalData.setExecutionStatus('waiting');
+				}
 			},
 			sendMessageToUI(...args: any[]): void {
 				if (mode !== 'manual') {
@@ -2278,14 +2397,20 @@ export function getExecuteFunctions(
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				assertBinaryData: (itemIndex, propertyName) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				getBinaryDataBuffer: async (itemIndex, propertyName) =>
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
 			},
+			nodeHelpers: getNodeHelperFunctions(additionalData),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -2321,7 +2446,7 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 			},
@@ -2392,7 +2517,7 @@ export function getExecuteSingleFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
 					options,
@@ -2409,15 +2534,18 @@ export function getExecuteSingleFunctions(
 					{},
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
 				return dataProxy.getDataProxy();
 			},
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 
+				assertBinaryData: (propertyName, inputIndex = 0) =>
+					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
@@ -2499,7 +2627,7 @@ export function getLoadOptionsFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2548,7 +2676,7 @@ export function getExecuteHookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
 					options,
@@ -2562,7 +2690,7 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 					isTest,
 				);
 			},
@@ -2625,7 +2753,7 @@ export function getExecuteWebhookFunctions(
 					itemIndex,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 					undefined,
 					fallbackValue,
 					options,
@@ -2663,15 +2791,17 @@ export function getExecuteWebhookFunctions(
 					additionalData,
 					mode,
 					additionalData.timezone,
-					getAdditionalKeys(additionalData, mode),
+					getAdditionalKeys(additionalData, mode, null),
 				),
 			getWebhookName: () => webhookData.webhookDescription.name,
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
+				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
 				returnJsonArray,
 			},
+			nodeHelpers: getNodeHelperFunctions(additionalData),
 		};
 	})(workflow, node);
 }

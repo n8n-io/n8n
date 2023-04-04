@@ -1,5 +1,5 @@
-import { IDataObject } from 'n8n-workflow';
-import { TLP } from './AlertInterface';
+import type { IDataObject } from 'n8n-workflow';
+import type { TLP } from './AlertInterface';
 export interface ICase {
 	// Required attributes
 	id?: string;

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import * as append from './append.operation';
 import * as appendOrUpdate from './appendOrUpdate.operation';
 import * as clear from './clear.operation';
@@ -177,7 +177,7 @@ export const descriptions: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '[0-9]{2,}',
+							regex: '((gid=)?[0-9]{1,})',
 							errorMessage: 'Not a valid Sheet ID',
 						},
 					},

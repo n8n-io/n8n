@@ -28,7 +28,13 @@
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" v-if="activeNode">
+		<div
+			v-if="activeNode"
+			class="data-display"
+			ref="container"
+			@keydown.capture="onKeyDown"
+			tabindex="0"
+		>
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels
 				:isTriggerNode="isTriggerNode"
@@ -93,7 +99,7 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
-						:hasForeignCredential="hasForeignCredential"
+						:foreignCredentials="foreignCredentials"
 						:readOnly="readOnly"
 						:blockUI="blockUi && showTriggerPanel"
 						:executable="!readOnly"
@@ -156,6 +162,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import useDeviceSupport from '@/composables/useDeviceSupport';
 
 export default mixins(
 	externalHooks,
@@ -184,6 +191,11 @@ export default mixins(
 			default: false,
 		},
 	},
+	setup() {
+		return {
+			...useDeviceSupport(),
+		};
+	},
 	data() {
 		return {
 			settingsEventBus: new Vue(),
@@ -200,7 +212,6 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.ndvStore.setNDVSessionId;
 		dataPinningEventBus.$on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
@@ -376,11 +387,11 @@ export default mixins(
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
-		hasForeignCredential(): boolean {
+		foreignCredentials(): string[] {
 			const credentials = (this.activeNode || {}).credentials;
 			const usedCredentials = this.workflowsStore.usedCredentials;
 
-			let hasForeignCredential = false;
+			const foreignCredentials: string[] = [];
 			if (
 				credentials &&
 				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
@@ -391,12 +402,15 @@ export default mixins(
 						usedCredentials[credential.id] &&
 						!usedCredentials[credential.id].currentUserHasAccess
 					) {
-						hasForeignCredential = true;
+						foreignCredentials.push(credential.id);
 					}
 				});
 			}
 
-			return hasForeignCredential;
+			return foreignCredentials;
+		},
+		hasForeignCredential(): boolean {
+			return this.foreignCredentials.length > 0;
 		},
 	},
 	watch: {
@@ -410,9 +424,7 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => {
-					this.ndvStore.setNDVSessionId;
-				}, 0);
+				setTimeout(this.ndvStore.setNDVSessionId, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
@@ -469,6 +481,16 @@ export default mixins(
 		},
 	},
 	methods: {
+		onKeyDown(e: KeyboardEvent) {
+			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				if (this.readOnly) return;
+
+				this.$emit('saveKeyboardShortcut', e);
+			}
+		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (!this.inputNodeName) {
 				return;

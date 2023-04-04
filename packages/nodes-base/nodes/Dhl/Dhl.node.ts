@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -142,7 +141,7 @@ export class Dhl implements INodeType {
 
 						responseData = await dhlApiRequest.call(this, 'GET', '/track/shipments', {}, qs);
 
-						returnData.push(...responseData.shipments);
+						returnData.push(...(responseData.shipments as IDataObject[]));
 					}
 				}
 			} catch (error) {

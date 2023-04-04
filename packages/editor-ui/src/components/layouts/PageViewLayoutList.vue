@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.wrapper">
 		<div :class="$style.list">
-			<div v-if="$slots.header">
+			<div v-if="$slots.header" :class="$style.header">
 				<slot name="header" />
 			</div>
 			<div :class="$style.body">
@@ -21,12 +21,16 @@
 .list {
 	display: flex;
 	flex-direction: column;
-	align-items: stretch;
 	width: 100%;
 	height: 100%;
-}
 
-.body {
-	overflow: auto;
+	.header {
+		flex: 0 0 auto;
+	}
+
+	.body {
+		overflow: hidden;
+		flex: 1 1;
+	}
 }
 </style>

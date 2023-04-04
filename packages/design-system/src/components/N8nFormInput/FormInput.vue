@@ -7,6 +7,23 @@
 		ref="inputRef"
 	/>
 	<n8n-input-label
+		v-else-if="type === 'toggle'"
+		:inputName="name"
+		:label="label"
+		:tooltipText="tooltipText"
+		:required="required && showRequiredAsterisk"
+	>
+		<template #content>
+			{{ tooltipText }}
+		</template>
+		<el-switch
+			:value="value"
+			@change="onInput"
+			:active-color="activeColor"
+			:inactive-color="inactiveColor"
+		></el-switch>
+	</n8n-input-label>
+	<n8n-input-label
 		v-else
 		:inputName="name"
 		:label="label"
@@ -20,6 +37,7 @@
 				:value="value"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
+				:disabled="disabled"
 				@change="onInput"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -41,6 +59,7 @@
 				:value="value"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
+				:disabled="disabled"
 				@input="onInput"
 				@blur="onBlur"
 				@focus="onFocus"
@@ -73,6 +92,7 @@ import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
+import ElSwitch from 'element-ui/lib/switch';
 
 import { getValidationError, VALIDATORS } from './validators';
 import { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
@@ -100,6 +120,11 @@ export interface Props {
 	name?: string;
 	focusInitially?: boolean;
 	labelSize?: 'small' | 'medium';
+	disabled?: boolean;
+	activeLabel?: string;
+	activeColor?: string;
+	inactiveLabel?: string;
+	inactiveColor?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {

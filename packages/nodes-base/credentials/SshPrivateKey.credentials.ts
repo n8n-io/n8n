@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SshPrivateKey implements ICredentialType {
 	name = 'sshPrivateKey';
@@ -35,6 +35,7 @@ export class SshPrivateKey implements ICredentialType {
 			type: 'string',
 			typeOptions: {
 				rows: 4,
+				password: true,
 			},
 			default: '',
 		},

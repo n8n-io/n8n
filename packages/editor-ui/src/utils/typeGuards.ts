@@ -1,3 +1,4 @@
+import { NewCredentialsModal } from './../Interface';
 import { INodeParameterResourceLocator } from 'n8n-workflow';
 import { ICredentialsResponse } from '@/Interface';
 
@@ -31,3 +32,7 @@ export function isString(value: unknown): value is string {
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
+
+export const isCredentialModalState = (value: unknown): value is NewCredentialsModal => {
+	return typeof value === 'object' && value !== null && 'showAuthSelector' in value;
+};

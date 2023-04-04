@@ -61,11 +61,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			[CONTACT_PROMPT_MODAL_KEY]: {
 				open: false,
 			},
-			[CREDENTIAL_EDIT_MODAL_KEY]: {
-				open: false,
-				mode: '',
-				activeId: null,
-			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
 			},
@@ -122,6 +117,12 @@ export const useUIStore = defineStore(STORES.UI, {
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
 				data: undefined,
+			},
+			[CREDENTIAL_EDIT_MODAL_KEY]: {
+				open: false,
+				mode: '',
+				activeId: null,
+				showAuthSelector: false,
 			},
 		},
 		modalStack: [],
@@ -206,6 +207,15 @@ export const useUIStore = defineStore(STORES.UI, {
 						},
 					},
 				},
+				users: {
+					settings: {
+						unavailable: {
+							title: `contextual.users.settings.unavailable.title${contextKey}`,
+							description: `contextual.users.settings.unavailable.description${contextKey}`,
+							button: `contextual.users.settings.unavailable.button${contextKey}`,
+						},
+					},
+				},
 			};
 		},
 		getLastSelectedNode(): INodeUi | null {
@@ -250,11 +260,14 @@ export const useUIStore = defineStore(STORES.UI, {
 			return (id: string) =>
 				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
+		isReadOnlyView(): boolean {
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS);
+		},
 		isNodeView(): boolean {
 			return [
 				VIEWS.NEW_WORKFLOW.toString(),
 				VIEWS.WORKFLOW.toString(),
-				VIEWS.EXECUTION.toString(),
+				VIEWS.WORKFLOW_EXECUTIONS.toString(),
 			].includes(this.currentView);
 		},
 		isActionActive() {
@@ -289,6 +302,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		setActiveId(name: string, id: string): void {
 			Vue.set(this.modals[name], 'activeId', id);
+		},
+		setShowAuthSelector(name: string, show: boolean) {
+			Vue.set(this.modals[name], 'showAuthSelector', show);
 		},
 		setModalData(payload: { name: string; data: Record<string, unknown> }) {
 			Vue.set(this.modals[payload.name], 'data', payload.data);
@@ -348,8 +364,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		openNewCredential(type: string): void {
+		openNewCredential(type: string, showAuthOptions = false): void {
 			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
+			this.setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},

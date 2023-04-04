@@ -1,32 +1,43 @@
-import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { DeleteResult } from 'typeorm';
-import { EventMessageTypes } from '../EventMessageClasses/';
+import { LoggerProxy } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { DeleteResult } from 'typeorm';
+import type {
+	EventMessageTypes,
+	EventNamesTypes,
+	FailedEventSummary,
+} from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'events';
 import config from '@/config';
 import * as Db from '@/Db';
-import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers.ee';
+import {
+	messageEventBusDestinationFromDb,
+	incrementPrometheusMetric,
+} from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
-import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
-import {
-	EventMessageAuditOptions,
-	EventMessageAudit,
-} from '../EventMessageClasses/EventMessageAudit';
-import {
-	EventMessageWorkflowOptions,
-	EventMessageWorkflow,
-} from '../EventMessageClasses/EventMessageWorkflow';
+import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
+import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
+import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
 import { isLogStreamingEnabled } from './MessageEventBusHelper';
-import { EventMessageNode, EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
+import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 
-export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
+export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
-class MessageEventBus extends EventEmitter {
+export interface MessageWithCallback {
+	msg: EventMessageTypes;
+	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void;
+}
+
+export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
@@ -66,17 +77,17 @@ class MessageEventBus extends EventEmitter {
 
 		LoggerProxy.debug('Initializing event bus...');
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const savedEventDestinations = await Db.collections.EventDestinations.find({});
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
 				try {
-					const destination = messageEventBusDestinationFromDb(destinationData);
+					const destination = messageEventBusDestinationFromDb(this, destinationData);
 					if (destination) {
 						await this.addDestination(destination);
 					}
 				} catch (error) {
-					console.log(error);
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					if (error.message) LoggerProxy.debug(error.message as string);
 				}
 			}
 		}
@@ -89,14 +100,22 @@ class MessageEventBus extends EventEmitter {
 		// - cycle event logs and start the logging to a fresh file
 		// - retry sending events
 		LoggerProxy.debug('Checking for unsent event messages');
-		const unsentMessages = await this.getEventsUnsent();
+		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
 		LoggerProxy.debug(
-			`Start logging into ${
-				(await this.logWriter?.getThread()?.getLogFileName()) ?? 'unknown filename'
-			} `,
+			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
 		);
-		await this.logWriter?.startLogging();
-		await this.send(unsentMessages);
+		this.logWriter?.startLogging();
+		await this.send(unsentAndUnfinished.unsentMessages);
+
+		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
+			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
+				await recoverExecutionDataFromEventLogMessages(
+					executionId,
+					unsentAndUnfinished.unfinishedExecutions[executionId],
+					true,
+				);
+			}
+		}
 
 		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
@@ -124,10 +143,8 @@ class MessageEventBus extends EventEmitter {
 		if (id && Object.keys(this.destinations).includes(id)) {
 			result = [this.destinations[id].serialize()];
 		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			result = Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
@@ -169,70 +186,159 @@ class MessageEventBus extends EventEmitter {
 			msgs = [msgs];
 		}
 		for (const msg of msgs) {
-			await this.logWriter?.putMessage(msg);
+			this.logWriter?.putMessage(msg);
+			// if there are no set up destinations, immediately mark the event as sent
+			if (!this.shouldSendMsg(msg)) {
+				this.confirmSent(msg, { id: '0', name: 'eventBus' });
+			}
 			await this.emitMessage(msg);
 		}
 	}
 
 	async testDestination(destinationId: string): Promise<boolean> {
-		const testMessage = new EventMessageGeneric({
+		const msg = new EventMessageGeneric({
 			eventName: eventMessageGenericDestinationTestEvent,
 		});
 		const destination = await this.findDestination(destinationId);
 		if (destination.length > 0) {
-			const sendResult = await this.destinations[destinationId].receiveFromEventBus(testMessage);
+			const sendResult = await this.destinations[destinationId].receiveFromEventBus({
+				msg,
+				confirmCallback: () => this.confirmSent(msg, { id: '0', name: 'eventBus' }),
+			});
 			return sendResult;
 		}
 		return false;
 	}
 
-	async confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
-		await this.logWriter?.confirmMessageSent(msg.id, source);
+	confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
+		this.logWriter?.confirmMessageSent(msg.id, source);
+	}
+
+	private hasAnyDestinationSubscribedToEvent(msg: EventMessageTypes): boolean {
+		for (const destinationName of Object.keys(this.destinations)) {
+			if (this.destinations[destinationName].hasSubscribedToEvent(msg)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
+		if (config.getEnv('endpoints.metrics.enable')) {
+			await incrementPrometheusMetric(msg);
+		}
+
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
-		this.emit('message', msg);
+		this.emitMessageWithCallback('message', msg);
 
-		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
-
-		// if there are no set up destinations, immediately mark the event as sent
-		if (!isLogStreamingEnabled() || Object.keys(this.destinations).length === 0) {
-			await this.confirmSent(msg, { id: '0', name: 'eventBus' });
-		} else {
+		if (this.shouldSendMsg(msg)) {
 			for (const destinationName of Object.keys(this.destinations)) {
-				this.emit(this.destinations[destinationName].getId(), msg);
+				this.emitMessageWithCallback(this.destinations[destinationName].getId(), msg);
 			}
 		}
 	}
 
-	async getEvents(mode: EventMessageReturnMode = 'all'): Promise<EventMessageTypes[]> {
-		let queryResult: EventMessageTypes[];
-		switch (mode) {
-			case 'all':
-				queryResult = await this.logWriter?.getMessages();
-				break;
-			case 'sent':
-				queryResult = await this.logWriter?.getMessagesSent();
-				break;
-			case 'unsent':
-				queryResult = await this.logWriter?.getMessagesUnsent();
-		}
+	private emitMessageWithCallback(eventName: string, msg: EventMessageTypes): boolean {
+		const confirmCallback = (message: EventMessageTypes, src: EventMessageConfirmSource) =>
+			this.confirmSent(message, src);
+		return this.emit(eventName, msg, confirmCallback);
+	}
+
+	shouldSendMsg(msg: EventMessageTypes): boolean {
+		return (
+			isLogStreamingEnabled() &&
+			Object.keys(this.destinations).length > 0 &&
+			this.hasAnyDestinationSubscribedToEvent(msg)
+		);
+	}
+
+	async getEventsFailed(amount = 5): Promise<FailedEventSummary[]> {
+		const result: FailedEventSummary[] = [];
+		try {
+			const queryResult = await this.logWriter?.getMessagesAll();
+			const uniques = uniqby(queryResult, 'id');
+			const filteredExecutionIds = uniques
+				.filter((e) =>
+					(['n8n.workflow.crashed', 'n8n.workflow.failed'] as EventNamesTypes[]).includes(
+						e.eventName,
+					),
+				)
+				.map((e) => ({
+					executionId: e.payload.executionId as string,
+					name: e.payload.workflowName,
+					timestamp: e.ts,
+					event: e.eventName,
+				}))
+				.filter((e) => e)
+				.sort((a, b) => (a.timestamp > b.timestamp ? 1 : -1))
+				.slice(-amount);
+
+			for (const execution of filteredExecutionIds) {
+				const data = await recoverExecutionDataFromEventLogMessages(
+					execution.executionId,
+					queryResult,
+					false,
+				);
+				if (data) {
+					const lastNodeExecuted = data.resultData.lastNodeExecuted;
+					result.push({
+						lastNodeExecuted: lastNodeExecuted ?? '',
+						executionId: execution.executionId,
+						name: execution.name as string,
+						event: execution.event,
+						timestamp: execution.timestamp.toISO(),
+					});
+				}
+			}
+		} catch {}
+		return result;
+	}
+
+	async getEventsAll(): Promise<EventMessageTypes[]> {
+		const queryResult = await this.logWriter?.getMessagesAll();
 		const filtered = uniqby(queryResult, 'id');
 		return filtered;
 	}
 
 	async getEventsSent(): Promise<EventMessageTypes[]> {
-		const sentMessages = await this.getEvents('sent');
-		return sentMessages;
+		const queryResult = await this.logWriter?.getMessagesSent();
+		const filtered = uniqby(queryResult, 'id');
+		return filtered;
 	}
 
 	async getEventsUnsent(): Promise<EventMessageTypes[]> {
-		const unSentMessages = await this.getEvents('unsent');
-		return unSentMessages;
+		const queryResult = await this.logWriter?.getMessagesUnsent();
+		const filtered = uniqby(queryResult, 'id');
+		return filtered;
 	}
 
+	async getUnfinishedExecutions(): Promise<Record<string, EventMessageTypes[]>> {
+		const queryResult = await this.logWriter?.getUnfinishedExecutions();
+		return queryResult;
+	}
+
+	async getUnsentAndUnfinishedExecutions(): Promise<{
+		unsentMessages: EventMessageTypes[];
+		unfinishedExecutions: Record<string, EventMessageTypes[]>;
+	}> {
+		const queryResult = await this.logWriter?.getUnsentAndUnfinishedExecutions();
+		return queryResult;
+	}
+
+	/**
+	 * This will pull all events for a given execution id from the event log files. Note that this can be a very expensive operation, depending on the number of events and the size of the log files.
+	 * @param executionId id to look for
+	 * @param logHistory defaults to 1, which means it will look at the current log file AND the previous one.
+	 * @returns Array of EventMessageTypes
+	 */
+	async getEventsByExecutionId(
+		executionId: string,
+		logHistory?: number,
+	): Promise<EventMessageTypes[]> {
+		const result = await this.logWriter?.getMessagesByExecutionId(executionId, logHistory);
+		return result;
+	}
 	/**
 	 * Convenience Methods
 	 */

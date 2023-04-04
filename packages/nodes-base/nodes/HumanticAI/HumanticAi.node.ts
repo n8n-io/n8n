@@ -1,12 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { humanticAiApiRequest } from './GenericFunctions';
@@ -70,26 +67,9 @@ export class HumanticAi implements INodeType {
 					qs.userid = userId;
 
 					if (sendResume) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						const binaryData = item[binaryPropertyName];
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
 
 						responseData = await humanticAiApiRequest.call(
 							this,
@@ -143,26 +123,9 @@ export class HumanticAi implements INodeType {
 					qs.userid = userId;
 
 					if (sendResume) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						const binaryData = item[binaryPropertyName];
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-						if (binaryData === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
 
 						responseData = await humanticAiApiRequest.call(
 							this,

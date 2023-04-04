@@ -1,4 +1,4 @@
-import { RmmProperties } from '../../Interfaces';
+import type { RmmProperties } from '../../Interfaces';
 
 export const rmmCreateDescription: RmmProperties = [
 	{

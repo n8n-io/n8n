@@ -45,18 +45,18 @@ export default mixins(restApi).extend({
 		};
 	},
 	async mounted() {
-		const id = this.binaryData?.id;
-		const isJSONData = this.binaryData.fileType === 'json';
+		const { id, data, fileName, fileType, mimeType } = (this.binaryData || {}) as IBinaryData;
+		const isJSONData = fileType === 'json';
 
 		if (!id) {
 			if (isJSONData) {
-				this.jsonData = jsonParse(atob(this.binaryData.data));
+				this.jsonData = jsonParse(atob(data));
 			} else {
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
+				this.embedSource = 'data:' + mimeType + ';base64,' + data;
 			}
 		} else {
 			try {
-				const binaryUrl = this.restApi().getBinaryUrl(id, 'view');
+				const binaryUrl = this.restApi().getBinaryUrl(id, 'view', fileName, mimeType);
 				if (isJSONData) {
 					this.jsonData = await (await fetch(binaryUrl)).json();
 				} else {

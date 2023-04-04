@@ -6,6 +6,7 @@
 			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
+			[$style.showGap]: showGap,
 		}"
 	>
 		<router-link
@@ -14,11 +15,12 @@
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { workflowId: currentWorkflow, executionId: execution.id },
 			}"
+			:data-test-execution-status="executionUIDetails.name"
 		>
 			<div :class="$style.description">
-				<n8n-text color="text-dark" :bold="true" size="medium">{{
-					executionUIDetails.startTime
-				}}</n8n-text>
+				<n8n-text color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
+					{{ executionUIDetails.startTime }}
+				</n8n-text>
 				<div :class="$style.executionStatus">
 					<n8n-spinner
 						v-if="executionUIDetails.name === 'running'"
@@ -37,15 +39,13 @@
 						<execution-time :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
-						v-else-if="
-							executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'
-						"
+						v-else-if="executionUIDetails.runningTime !== ''"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
 						{{
 							$locale.baseText('executionDetails.runningTimeFinished', {
-								interpolate: { time: executionUIDetails.runningTime },
+								interpolate: { time: executionUIDetails?.runningTime },
 							})
 						}}
 					</n8n-text>
@@ -62,14 +62,19 @@
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					activatorIcon="redo"
+					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
-				<font-awesome-icon
-					v-if="execution.mode === 'manual'"
-					:class="[$style.icon, $style.manual]"
-					:title="$locale.baseText('executionsList.manual')"
-					icon="flask"
-				/>
+				<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+					<template #content>
+						<span>{{ $locale.baseText('executionsList.test') }}</span>
+					</template>
+					<font-awesome-icon
+						v-if="execution.mode === 'manual'"
+						:class="[$style.icon, $style.manual]"
+						icon="flask"
+					/>
+				</n8n-tooltip>
 			</div>
 		</router-link>
 	</div>
@@ -100,6 +105,10 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 			required: true,
 		},
 		highlight: {
+			type: Boolean,
+			default: false,
+		},
+		showGap: {
 			type: Boolean,
 			default: false,
 		},
@@ -135,10 +144,10 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 <style module lang="scss">
 .executionCard {
 	display: flex;
-	padding-right: var(--spacing-2xs);
+	flex-direction: column;
+	padding-right: var(--spacing-m);
 
 	&.active {
-		padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 
 		.executionStatus {
@@ -146,14 +155,10 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 		}
 	}
 
-	& + &.active {
-		padding-top: var(--spacing-2xs);
-	}
-
 	&:hover,
 	&.active {
 		.executionLink {
-			background-color: var(--color-foreground-base);
+			background-color: var(--color-foreground-light);
 		}
 	}
 
@@ -217,7 +222,6 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-xs);
 	padding-right: var(--spacing-s);
-	border-radius: var(--border-radius-base);
 	position: relative;
 	left: calc(
 		-1 * var(--spacing-4xs)
@@ -252,6 +256,12 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 
 	& + & {
 		margin-left: var(--spacing-2xs);
+	}
+}
+.showGap {
+	margin-bottom: var(--spacing-2xs);
+	.executionLink {
+		border-bottom: 1px solid var(--color-foreground-dark);
 	}
 }
 </style>

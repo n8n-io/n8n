@@ -1,6 +1,5 @@
-import { IPollFunctions } from 'n8n-core';
-
-import {
+import type {
+	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -10,7 +9,7 @@ import {
 
 import { getColumns, rowFormatColumns, seaTableApiRequest, simplify } from './GenericFunctions';
 
-import { ICtx, IRow, IRowResponse } from './Interfaces';
+import type { ICtx, IRow, IRowResponse } from './Interfaces';
 
 import moment from 'moment';
 

@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
 import { v4 as uuidv4 } from 'uuid';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class AddWorkflowVersionIdColumn1669739707126 implements MigrationInterface {
 	name = 'AddWorkflowVersionIdColumn1669739707126';
@@ -37,8 +36,7 @@ export class AddWorkflowVersionIdColumn1669739707126 implements MigrationInterfa
 	}
 
 	async down(queryRunner: QueryRunner) {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN "versionId"`);
 	}
 }

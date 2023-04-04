@@ -49,7 +49,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
 	saveSuccessfulExecutions: boolean;
-	saveManualExecutions: boolean;
+	saveTestExecutions: boolean;
 }
 
 export default mixins(workflowHelpers).extend({
@@ -70,7 +70,7 @@ export default mixins(workflowHelpers).extend({
 			workflowSaveSettings: {
 				saveFailedExecutions: false,
 				saveSuccessfulExecutions: false,
-				saveManualExecutions: false,
+				saveTestExecutions: false,
 			} as IWorkflowSaveSettings,
 		};
 	},
@@ -105,11 +105,9 @@ export default mixins(workflowHelpers).extend({
 				},
 				{
 					id: 'manualExecutions',
-					label: this.$locale.baseText(
-						'executionsLandingPage.emptyState.accordion.manualExecutions',
-					),
-					icon: this.workflowSaveSettings.saveManualExecutions ? 'check' : 'times',
-					iconColor: this.workflowSaveSettings.saveManualExecutions ? 'success' : 'danger',
+					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.testExecutions'),
+					icon: this.workflowSaveSettings.saveTestExecutions ? 'check' : 'times',
+					iconColor: this.workflowSaveSettings.saveTestExecutions ? 'success' : 'danger',
 				},
 			];
 		},
@@ -118,9 +116,9 @@ export default mixins(workflowHelpers).extend({
 				return false;
 			}
 			return (
-				this.workflowSaveSettings.saveFailedExecutions === false ||
-				this.workflowSaveSettings.saveSuccessfulExecutions === false ||
-				this.workflowSaveSettings.saveManualExecutions === false
+				!this.workflowSaveSettings.saveFailedExecutions ||
+				!this.workflowSaveSettings.saveSuccessfulExecutions ||
+				!this.workflowSaveSettings.saveTestExecutions
 			);
 		},
 		productionExecutionsIcon(): { icon: string; color: string } {
@@ -136,7 +134,7 @@ export default mixins(workflowHelpers).extend({
 				this.workflowSaveSettings.saveSuccessfulExecutions ===
 				this.workflowSaveSettings.saveFailedExecutions
 			) {
-				if (this.workflowSaveSettings.saveSuccessfulExecutions === true) {
+				if (this.workflowSaveSettings.saveSuccessfulExecutions) {
 					return 'saving';
 				}
 				return 'not-saving';
@@ -150,7 +148,7 @@ export default mixins(workflowHelpers).extend({
 		},
 		accordionIcon(): { icon: string; color: string } | null {
 			if (
-				this.workflowSaveSettings.saveManualExecutions !== true ||
+				!this.workflowSaveSettings.saveTestExecutions ||
 				this.productionExecutionsStatus !== 'saving'
 			) {
 				return { icon: 'exclamation-triangle', color: 'warning' };
@@ -184,7 +182,7 @@ export default mixins(workflowHelpers).extend({
 				workflowSettings.saveDataSuccessExecution === undefined
 					? this.defaultValues.saveSuccessfulExecutions === 'all'
 					: workflowSettings.saveDataSuccessExecution === 'all';
-			this.workflowSaveSettings.saveManualExecutions =
+			this.workflowSaveSettings.saveTestExecutions =
 				workflowSettings.saveManualExecutions === undefined
 					? this.defaultValues.saveManualExecutions
 					: (workflowSettings.saveManualExecutions as boolean);

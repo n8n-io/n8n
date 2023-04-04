@@ -1,7 +1,7 @@
 import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
 import { IZoomConfig } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { OnConnectionBindInfo } from 'jsplumb';
+import { ConnectionDetachedParams } from '@jsplumb/core';
 import { IConnection } from 'n8n-workflow';
 import { Route } from 'vue-router';
 
@@ -76,28 +76,23 @@ export const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: numbe
 };
 
 export const getNodeViewTab = (route: Route): string | null => {
-	const routeMeta = route.meta;
-	if (routeMeta && routeMeta.nodeView === true) {
+	if (route.meta?.nodeView) {
 		return MAIN_HEADER_TABS.WORKFLOW;
-	} else {
-		const executionTabRoutes = [
-			VIEWS.EXECUTION.toString(),
-			VIEWS.EXECUTION_PREVIEW.toString(),
-			VIEWS.EXECUTION_HOME.toString(),
-		];
-
-		if (executionTabRoutes.includes(route.name || '')) {
-			return MAIN_HEADER_TABS.EXECUTIONS;
-		}
+	} else if (
+		[VIEWS.WORKFLOW_EXECUTIONS, VIEWS.EXECUTION_PREVIEW, VIEWS.EXECUTION_HOME]
+			.map(String)
+			.includes(String(route.name))
+	) {
+		return MAIN_HEADER_TABS.EXECUTIONS;
 	}
 	return null;
 };
 
 export const getConnectionInfo = (
-	connection: OnConnectionBindInfo,
+	connection: ConnectionDetachedParams,
 ): [IConnection, IConnection] | null => {
-	const sourceInfo = connection.sourceEndpoint.getParameters();
-	const targetInfo = connection.targetEndpoint.getParameters();
+	const sourceInfo = connection.sourceEndpoint.parameters;
+	const targetInfo = connection.targetEndpoint.parameters;
 	const sourceNode = useWorkflowsStore().getNodeById(sourceInfo.nodeId);
 	const targetNode = useWorkflowsStore().getNodeById(targetInfo.nodeId);
 

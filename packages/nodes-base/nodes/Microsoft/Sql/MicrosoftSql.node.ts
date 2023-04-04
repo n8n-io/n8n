@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,14 +8,14 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import { chunk, flatten } from '../../../utils/utilities';
 
 import mssql from 'mssql';
 
-import { ITables } from './TableInterface';
+import type { ITables } from './TableInterface';
 
 import {
 	copyInputItem,
@@ -235,6 +234,8 @@ export class MicrosoftSql implements INodeType {
 						options: {
 							encrypt: credentials.tls as boolean,
 							enableArithAbort: false,
+							tdsVersion: credentials.tdsVersion as string,
+							trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 						},
 					};
 					const pool = new mssql.ConnectionPool(config);
@@ -269,6 +270,7 @@ export class MicrosoftSql implements INodeType {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
 				tdsVersion: credentials.tdsVersion as string,
+				trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 			},
 		};
 
@@ -395,7 +397,7 @@ export class MicrosoftSql implements INodeType {
 									.request()
 									.query(
 										`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-											deleteValues,
+											deleteValues as IDataObject[],
 											deleteKey,
 										)};`,
 									);

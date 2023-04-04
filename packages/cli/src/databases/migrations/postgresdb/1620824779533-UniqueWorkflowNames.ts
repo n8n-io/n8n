@@ -1,18 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import { getTablePrefix } from '@db/utils/migrationHelpers';
 
 export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 	name = 'UniqueWorkflowNames1620824779533';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const tablePrefixPure = tablePrefix;
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
+		const tablePrefix = getTablePrefix();
 
 		const workflowNames = await queryRunner.query(`
 				SELECT name
@@ -55,20 +48,12 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 		}
 
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab" ON ${tablePrefix}workflow_entity ("name") `,
+			`CREATE UNIQUE INDEX "IDX_${tablePrefix}a252c527c4c89237221fe2c0ab" ON ${tablePrefix}workflow_entity ("name") `,
 		);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const tablePrefixPure = tablePrefix;
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
-
-		await queryRunner.query(`DROP INDEX "IDX_${tablePrefixPure}a252c527c4c89237221fe2c0ab"`);
+		const tablePrefix = getTablePrefix();
+		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}a252c527c4c89237221fe2c0ab"`);
 	}
 }

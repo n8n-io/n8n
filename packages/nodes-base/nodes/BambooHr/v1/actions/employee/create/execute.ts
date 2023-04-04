@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -100,7 +98,7 @@ export async function create(
 	);
 
 	//obtain employeeID
-	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');
+	const rawEmployeeId: number = responseData.headers.location.lastIndexOf('/');
 	const employeeId = responseData.headers.location.substring(rawEmployeeId + 1);
 
 	//return

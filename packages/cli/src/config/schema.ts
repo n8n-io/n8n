@@ -325,6 +325,16 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
 		},
+
+		// Additional pruning option to delete executions if total count exceeds the configured max.
+		// Deletes the oldest entries first
+		// Default is 0 = No limit
+		pruneDataMaxCount: {
+			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			format: Number,
+			default: 0,
+			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
+		},
 	},
 
 	queue: {
@@ -469,6 +479,14 @@ export const schema = {
 	},
 
 	security: {
+		audit: {
+			daysAbandonedWorkflow: {
+				doc: 'Days for a workflow to be considered abandoned if not executed',
+				format: Number,
+				default: 90,
+				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
+			},
+		},
 		excludeEndpoints: {
 			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
 			format: String,
@@ -565,13 +583,61 @@ export const schema = {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_METRICS',
-				doc: 'Enable metrics endpoint',
+				doc: 'Enable /metrics endpoint. Default: false',
 			},
 			prefix: {
 				format: String,
 				default: 'n8n_',
 				env: 'N8N_METRICS_PREFIX',
 				doc: 'An optional prefix for metric names. Default: n8n_',
+			},
+			includeDefaultMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_DEFAULT_METRICS',
+				doc: 'Whether to expose default system and node.js metrics. Default: true',
+			},
+			includeWorkflowIdLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL',
+				doc: 'Whether to include a label for the workflow ID on workflow metrics. Default: false',
+			},
+			includeNodeTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_NODE_TYPE_LABEL',
+				doc: 'Whether to include a label for the node type on node metrics. Default: false',
+			},
+			includeCredentialTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CREDENTIAL_TYPE_LABEL',
+				doc: 'Whether to include a label for the credential type on credential metrics. Default: false',
+			},
+			includeApiEndpoints: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_ENDPOINTS',
+				doc: 'Whether to expose metrics for API endpoints. Default: false',
+			},
+			includeApiPathLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_PATH_LABEL',
+				doc: 'Whether to include a label for the path of API invocations. Default: false',
+			},
+			includeApiMethodLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_METHOD_LABEL',
+				doc: 'Whether to include a label for the HTTP method (GET, POST, ...) of API invocations. Default: false',
+			},
+			includeApiStatusCodeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
+				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
 			},
 		},
 		rest: {
@@ -747,6 +813,11 @@ export const schema = {
 				},
 			},
 		},
+		authenticationMethod: {
+			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
+			format: ['email', 'ldap', 'saml'] as const,
+			default: 'email',
+		},
 	},
 
 	externalFrontendHooksUrls: {
@@ -869,6 +940,15 @@ export const schema = {
 		},
 	},
 
+	push: {
+		backend: {
+			format: ['sse', 'websocket'] as const,
+			default: 'sse',
+			env: 'N8N_PUSH_BACKEND',
+			doc: 'Backend to use for push notifications',
+		},
+	},
+
 	binaryDataManager: {
 		availableModes: {
 			format: String,
@@ -910,15 +990,36 @@ export const schema = {
 		},
 	},
 
-	enterprise: {
-		features: {
-			sharing: {
+	sso: {
+		justInTimeProvisioning: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically create users when they login via SSO.',
+		},
+		redirectLoginToSso: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
+		},
+		saml: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+				doc: 'Whether to enable SAML SSO.',
+			},
+			loginLabel: {
+				format: String,
+				default: '',
+			},
+		},
+		ldap: {
+			loginEnabled: {
 				format: Boolean,
 				default: false,
 			},
-			logStreaming: {
-				format: Boolean,
-				default: false,
+			loginLabel: {
+				format: String,
+				default: '',
 			},
 		},
 	},
@@ -959,7 +1060,7 @@ export const schema = {
 				apiHost: {
 					doc: 'API host for PostHog',
 					format: String,
-					default: 'https://app.posthog.com',
+					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
 				disableSessionRecording: {
@@ -1040,6 +1141,12 @@ export const schema = {
 			env: 'N8N_LICENSE_TENANT_ID',
 			doc: 'Tenant id used by the license manager',
 		},
+		cert: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_CERT',
+			doc: 'Ephemeral license certificate',
+		},
 	},
 
 	hideUsagePage: {
@@ -1057,12 +1164,6 @@ export const schema = {
 			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
 		},
 		logWriter: {
-			syncFileAccess: {
-				doc: 'Whether all file access happens synchronously within the thread.',
-				format: Boolean,
-				default: false,
-				env: 'N8N_EVENTBUS_LOGWRITER_SYNCFILEACCESS',
-			},
 			keepLogCount: {
 				doc: 'How many event log files to keep.',
 				format: Number,
@@ -1072,7 +1173,7 @@ export const schema = {
 			maxFileSizeInKB: {
 				doc: 'Maximum size of an event log file before a new one is started.',
 				format: Number,
-				default: 102400, // 100MB
+				default: 10240, // 10MB
 				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
 			},
 			logBaseName: {

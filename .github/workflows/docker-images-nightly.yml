@@ -70,11 +70,12 @@ jobs:
         shell: bash
 
       - name: Build and push
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
+          provenance: false
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
           no-cache: true

@@ -129,7 +129,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					context,
 					inserted_text: insertedText,
 				});
-			} catch (_) {}
+			} catch {}
 		},
 	},
 	destroyed() {

@@ -2,6 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		:with-sso="true"
 		data-test-id="signin-form"
 		@submit="onSubmit"
 	/>
@@ -16,6 +17,7 @@ import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(showMessage).extend({
 	name: 'SigninView',
@@ -23,19 +25,33 @@ export default mixins(showMessage).extend({
 		AuthView,
 	},
 	data() {
-		const FORM_CONFIG: IFormBoxConfig = {
+		return {
+			FORM_CONFIG: {} as IFormBoxConfig,
+			loading: false,
+		};
+	},
+	computed: {
+		...mapStores(useUsersStore, useSettingsStore),
+	},
+	mounted() {
+		let emailLabel = this.$locale.baseText('auth.email');
+		const ldapLoginLabel = this.settingsStore.ldapLoginLabel;
+		const isLdapLoginEnabled = this.settingsStore.isLdapLoginEnabled;
+		if (isLdapLoginEnabled && ldapLoginLabel) {
+			emailLabel = ldapLoginLabel;
+		}
+		this.FORM_CONFIG = {
 			title: this.$locale.baseText('auth.signin'),
 			buttonText: this.$locale.baseText('auth.signin'),
 			redirectText: this.$locale.baseText('forgotPassword'),
-			redirectLink: '/forgot-password',
 			inputs: [
 				{
 					name: 'email',
 					properties: {
-						label: this.$locale.baseText('auth.email'),
+						label: emailLabel,
 						type: 'email',
 						required: true,
-						validationRules: [{ name: 'VALID_EMAIL' }],
+						...(!isLdapLoginEnabled && { validationRules: [{ name: 'VALID_EMAIL' }] }),
 						showRequiredAsterisk: false,
 						validateOnBlur: false,
 						autocomplete: 'email',
@@ -57,13 +73,9 @@ export default mixins(showMessage).extend({
 			],
 		};
 
-		return {
-			FORM_CONFIG,
-			loading: false,
-		};
-	},
-	computed: {
-		...mapStores(useUsersStore),
+		if (!this.settingsStore.isDesktopDeployment || this.settingsStore.isUserManagementEnabled) {
+			this.FORM_CONFIG.redirectLink = '/forgot-password';
+		}
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string }) {

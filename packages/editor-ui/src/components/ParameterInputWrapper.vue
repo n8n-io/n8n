@@ -16,18 +16,21 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
 			@textInput="onTextInput"
 			@valueChanged="onValueChanged"
-			:data-test-id="`parameter-input-${parameter.name}`"
 		/>
 		<input-hint
 			v-if="expressionOutput"
 			:class="$style.hint"
+			data-test-id="parameter-expression-preview"
+			class="ph-no-capture"
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
+			:singleLine="true"
 		/>
 		<input-hint
 			v-else-if="parameterHint"
@@ -53,7 +56,7 @@ import {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
+import { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';

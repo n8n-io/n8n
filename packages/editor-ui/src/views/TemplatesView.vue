@@ -35,17 +35,17 @@ export default Vue.extend({
 <style lang="scss" module>
 .template {
 	display: flex;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-4xl) var(--spacing-xl);
+	width: 100%;
+	max-width: 1280px;
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	justify-content: center;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .container {
 	width: 100%;
-	max-width: 1024px;
-	margin: 0 auto;
-
-	@media (max-width: $breakpoint-md) {
-		width: 900px;
-	}
 }
 
 .header {

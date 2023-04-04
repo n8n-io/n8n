@@ -106,6 +106,7 @@ export default Vue.extend({
 
 .heading {
 	margin-bottom: var(--spacing-l);
+	text-align: center;
 }
 
 .description {

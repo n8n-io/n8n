@@ -16,6 +16,8 @@ module.exports = {
 	],
 
 	rules: {
+		'@typescript-eslint/consistent-type-imports': 'error',
+
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
 		'import/order': 'off',

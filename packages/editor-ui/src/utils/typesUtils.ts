@@ -2,6 +2,9 @@ import dateformat from 'dateformat';
 import { IDataObject, jsonParse } from 'n8n-workflow';
 import { Schema, Optional, Primitives } from '@/Interface';
 import { isObj } from '@/utils/typeGuards';
+import { generatePath } from '@/utils/mappingUtils';
+import { DateTime } from 'luxon';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects
@@ -231,7 +234,7 @@ export const getSchema = (input: Optional<Primitives | object>, path = ''): Sche
 					type: 'object',
 					value: Object.entries(input).map(([k, v]) => ({
 						key: k,
-						...getSchema(v, path + `["${k}"]`),
+						...getSchema(v, generatePath(path, [k])),
 					})),
 					path,
 				};

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -12,8 +11,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	clean,
@@ -41,9 +40,9 @@ import { formFields, formOperations } from './FormDescription';
 
 import { ticketFields, ticketOperations } from './TicketDescription';
 
-import { IForm } from './FormInterface';
+import type { IForm } from './FormInterface';
 
-import { IAssociation, IDeal } from './DealInterface';
+import type { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
 
@@ -959,7 +958,7 @@ export class Hubspot implements INodeType {
 						`/contacts/v1/lists/${listId}/add`,
 						body,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
@@ -975,7 +974,7 @@ export class Hubspot implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2720,7 +2719,7 @@ export class Hubspot implements INodeType {
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

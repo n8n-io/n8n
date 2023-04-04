@@ -22,6 +22,7 @@
 				:label="$locale.baseText('auth.changePassword')"
 				@click="onSubmitClick"
 				float="right"
+				data-test-id="change-password-button"
 			/>
 		</template>
 	</Modal>

@@ -64,9 +64,7 @@ export const defaultCallout = template.bind({});
 defaultCallout.args = {
 	theme: 'success',
 	default: `
-		<n8n-text size="small" >
-			This is a default callout.
-		</n8n-text>
+		This is a default callout.
 	`,
 };
 
@@ -75,9 +73,7 @@ customCallout.args = {
 	theme: 'custom',
 	icon: 'code-branch',
 	default: `
-		<n8n-text size="small" >
-			This is a custom callout.
-		</n8n-text>
+		This is a custom callout.
 	`,
 	actions: `
 		<n8n-link size="small">
@@ -91,9 +87,7 @@ secondaryCallout.args = {
 	theme: 'secondary',
 	icon: 'thumbtack',
 	default: `
-		<n8n-text size="small">
-			This data is pinned.
-		</n8n-text>
+		This data is pinned.
 	`,
 	actions: `
 		<n8n-link theme="secondary" size="small" :bold="true" :underline="true">

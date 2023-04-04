@@ -1,10 +1,13 @@
+import { createReadStream } from 'fs';
 import fs from 'fs/promises';
-import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
 import type { Readable } from 'stream';
+import type { BinaryMetadata } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import { BinaryMetadata, IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import { FileNotFoundError } from '../errors';
 
 const PREFIX_METAFILE = 'binarymeta';
 const PREFIX_PERSISTED_METAFILE = 'persistedmeta';
@@ -74,22 +77,26 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return binaryDataId;
 	}
 
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+		return createReadStream(this.getBinaryPath(identifier), { highWaterMark: chunkSize });
+	}
+
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
 		return this.retrieveFromLocalStorage(identifier);
 	}
 
 	getBinaryPath(identifier: string): string {
-		return path.join(this.storagePath, identifier);
+		return this.resolveStoragePath(identifier);
 	}
 
 	getMetadataPath(identifier: string): string {
-		return path.join(this.storagePath, `${identifier}.metadata`);
+		return this.resolveStoragePath(`${identifier}.metadata`);
 	}
 
 	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
 		const tt = new Date(new Date().getTime() + this.binaryDataTTL * 60000);
 		return fs.writeFile(
-			path.join(this.getBinaryDataMetaPath(), `${PREFIX_METAFILE}_${executionId}_${tt.valueOf()}`),
+			this.resolveStoragePath('meta', `${PREFIX_METAFILE}_${executionId}_${tt.valueOf()}`),
 			'',
 		);
 	}
@@ -110,8 +117,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		const timeAtNextHour = currentTime + 3600000 - (currentTime % 3600000);
 		const timeoutTime = timeAtNextHour + this.persistedBinaryDataTTL * 60000;
 
-		const filePath = path.join(
-			this.getBinaryDataPersistMetaPath(),
+		const filePath = this.resolveStoragePath(
+			'persistMeta',
 			`${PREFIX_PERSISTED_METAFILE}_${executionId}_${timeoutTime}`,
 		);
 
@@ -164,21 +171,18 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		const newBinaryDataId = this.generateFileName(prefix);
 
 		return fs
-			.copyFile(
-				path.join(this.storagePath, binaryDataId),
-				path.join(this.storagePath, newBinaryDataId),
-			)
+			.copyFile(this.resolveStoragePath(binaryDataId), this.resolveStoragePath(newBinaryDataId))
 			.then(() => newBinaryDataId);
 	}
 
 	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
 		const regex = new RegExp(`${executionId}_*`);
-		const filenames = await fs.readdir(path.join(this.storagePath));
+		const filenames = await fs.readdir(this.storagePath);
 
 		const proms = filenames.reduce(
 			(allProms, filename) => {
 				if (regex.test(filename)) {
-					allProms.push(fs.rm(path.join(this.storagePath, filename)));
+					allProms.push(fs.rm(this.resolveStoragePath(filename)));
 				}
 
 				return allProms;
@@ -246,5 +250,12 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		} catch (e) {
 			throw new Error(`Error finding file: ${filePath}`);
 		}
+	}
+
+	private resolveStoragePath(...args: string[]) {
+		const returnPath = path.join(this.storagePath, ...args);
+		if (path.relative(this.storagePath, returnPath).startsWith('..'))
+			throw new FileNotFoundError('Invalid path detected');
+		return returnPath;
 	}
 }

@@ -1,6 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
-import config from '@/config';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class WorkflowStatistics1664196174001 implements MigrationInterface {
 	name = 'WorkflowStatistics1664196174001';
@@ -30,12 +29,7 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
+		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`DROP TABLE ${tablePrefix}workflow_statistics`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`);
 	}

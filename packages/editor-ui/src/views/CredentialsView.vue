@@ -6,11 +6,12 @@
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:item-size="77"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
 		<template #default="{ data }">
-			<credential-card :data="data" />
+			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">

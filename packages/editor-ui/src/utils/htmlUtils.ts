@@ -59,3 +59,7 @@ export function isChildOf(parent: Element, child: Element): boolean {
 
 	return isChildOf(parent, child.parentElement);
 }
+
+export const capitalizeFirstLetter = (text: string): string => {
+	return text.charAt(0).toUpperCase() + text.slice(1);
+};

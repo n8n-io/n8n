@@ -1,4 +1,5 @@
-import {
+import type {
+	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -7,8 +8,6 @@ import {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-
-import { IHookFunctions } from 'n8n-core';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
 
@@ -143,7 +142,6 @@ export class TaigaTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

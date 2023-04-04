@@ -28,7 +28,6 @@ export class AddWaitColumn1621707690587 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query(`VACUUM;`);
 
 		logMigrationEnd(this.name);
 	}
@@ -50,6 +49,5 @@ export class AddWaitColumn1621707690587 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c1" ON "${tablePrefix}execution_entity" ("stoppedAt")`,
 		);
-		await queryRunner.query(`VACUUM;`);
 	}
 }

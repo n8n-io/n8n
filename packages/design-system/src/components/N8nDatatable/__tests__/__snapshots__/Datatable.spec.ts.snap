@@ -1,0 +1,100 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nDatatable > should render correctly 1`] = `
+"<div class=\\"datatable datatableWrapper\\">
+  <table class=\\"datatable\\">
+    <thead class=\\"datatableHeader\\">
+      <tr>
+        <th> ID </th>
+        <th> Name </th>
+        <th> Age </th>
+        <th> Action </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class=\\"datatableRow\\">
+        <td><span>1</span></td>
+        <td><span>Richard Hendricks</span></td>
+        <td><span>29</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 1</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>2</span></td>
+        <td><span>Bertram Gilfoyle</span></td>
+        <td><span>44</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 2</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>3</span></td>
+        <td><span>Dinesh Chugtai</span></td>
+        <td><span>31</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 3</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>4</span></td>
+        <td><span>Jared Dunn </span></td>
+        <td><span>38</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 4</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>5</span></td>
+        <td><span>Richard Hendricks</span></td>
+        <td><span>29</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 5</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>6</span></td>
+        <td><span>Bertram Gilfoyle</span></td>
+        <td><span>44</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 6</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>7</span></td>
+        <td><span>Dinesh Chugtai</span></td>
+        <td><span>31</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 7</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>8</span></td>
+        <td><span>Jared Dunn </span></td>
+        <td><span>38</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 8</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>9</span></td>
+        <td><span>Richard Hendricks</span></td>
+        <td><span>29</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 9</span></button></td>
+      </tr>
+      <tr class=\\"datatableRow\\">
+        <td><span>10</span></td>
+        <td><span>Bertram Gilfoyle</span></td>
+        <td><span>44</span></td>
+        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+            <!----><span>Button 10</span></button></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class=\\"pagination\\">
+    <n8n-pagination-stub pagesize=\\"10\\" total=\\"15\\" pagercount=\\"5\\" currentpage=\\"1\\" layout=\\"prev, pager, next\\" pagesizes=\\"10,20,30,40,50,100\\" background=\\"true\\"></n8n-pagination-stub>
+    <div class=\\"pageSizeSelector\\">
+      <n8n-select-stub value=\\"10\\" size=\\"mini\\" popperappendtobody=\\"true\\">
+        <n8n-option-stub value=\\"10\\" label=\\"10\\"></n8n-option-stub>
+        <n8n-option-stub value=\\"25\\" label=\\"25\\"></n8n-option-stub>
+        <n8n-option-stub value=\\"50\\" label=\\"50\\"></n8n-option-stub>
+        <n8n-option-stub value=\\"100\\" label=\\"100\\"></n8n-option-stub>
+        <n8n-option-stub value=\\"15\\" label=\\"All\\"></n8n-option-stub>
+      </n8n-select-stub>
+    </div>
+  </div>
+</div>"
+`;

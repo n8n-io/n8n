@@ -1,11 +1,11 @@
-import {
-	deepCopy,
+import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import mysql2 from 'mysql2/promise';
 
 /**

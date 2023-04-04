@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
@@ -29,6 +29,9 @@ export class GoogleApi implements ICredentialType {
 			description:
 				'Enter the private key located in the JSON file downloaded from Google Cloud Console',
 			required: true,
+			typeOptions: {
+				password: true,
+			},
 		},
 		{
 			displayName: 'Impersonate a User',

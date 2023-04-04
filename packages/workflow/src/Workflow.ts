@@ -14,7 +14,7 @@
 /* eslint-disable no-continue */
 /* eslint-disable no-restricted-syntax */
 
-import {
+import type {
 	IConnections,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
@@ -49,7 +49,7 @@ import {
 	IRunNodeResponse,
 	NodeParameterValueType,
 } from './Interfaces';
-import { IDeferredPromise } from './DeferredPromise';
+import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
@@ -982,17 +982,8 @@ export class Workflow {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		if (nodeType.webhookMethods === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name] === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name][method] === undefined) {
-			return;
-		}
+		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
+		if (webhookFn === undefined) return;
 
 		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(
 			this,
@@ -1003,8 +994,8 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
-		// eslint-disable-next-line consistent-return
-		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
+
+		return webhookFn.call(thisArgs);
 	}
 
 	/**
@@ -1211,7 +1202,6 @@ export class Workflow {
 
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
-			connectionInputData = connectionInputData.slice(0, 1);
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
 				newInputData[inputName] = inputData[inputName].map((input) => {

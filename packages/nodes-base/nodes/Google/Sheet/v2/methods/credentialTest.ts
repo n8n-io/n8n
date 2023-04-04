@@ -1,10 +1,11 @@
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { getAccessToken, IGoogleAuthCredentials } from '../transport';
+import type { IGoogleAuthCredentials } from '../transport';
+import { getAccessToken } from '../transport';
 
 export async function googleApiCredentialTest(
 	this: ICredentialTestFunctions,

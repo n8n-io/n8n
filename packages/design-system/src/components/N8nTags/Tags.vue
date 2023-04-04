@@ -11,7 +11,7 @@
 			theme="text"
 			underline
 			size="small"
-			@click.stop.prevent="showAll = true"
+			@click.stop.prevent="onExpand"
 		>
 			{{ t('tags.showMore', hiddenTagsLength) }}
 		</n8n-link>
@@ -65,6 +65,12 @@ export default mixins(Locale).extend({
 		},
 		hiddenTagsLength(): number {
 			return this.tags.length - this.truncateAt;
+		},
+	},
+	methods: {
+		onExpand() {
+			this.showAll = true;
+			this.$emit('expand', true);
 		},
 	},
 });

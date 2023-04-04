@@ -11,3 +11,11 @@ Vue.config.devtools = false;
 // [Vue warn]: Failed to mount component: template or render function not defined.
 Vue.component('vue-json-pretty', require('vue-json-pretty').default);
 Vue.use((vue) => I18nPlugin(vue));
+
+window.ResizeObserver =
+	window.ResizeObserver ||
+	vi.fn().mockImplementation(() => ({
+		disconnect: vi.fn(),
+		observe: vi.fn(),
+		unobserve: vi.fn(),
+	}));

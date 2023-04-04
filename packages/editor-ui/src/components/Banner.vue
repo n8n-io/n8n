@@ -16,8 +16,9 @@
 				</div>
 			</div>
 
+			<slot name="button" v-if="$slots.button" />
 			<n8n-button
-				v-if="buttonLabel"
+				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
 				:type="theme"
@@ -85,7 +86,9 @@ export default Vue.extend({
 .icon {
 	position: absolute;
 	left: 14px;
-	top: 18px;
+	top: 0;
+	bottom: 0;
+	margin: auto 0;
 }
 
 .dangerIcon {

@@ -26,7 +26,7 @@ describe('Log Streaming Settings', () => {
 	});
 
 	it('should show the licensed view when the feature is enabled', () => {
-		cy.enableFeature('logStreaming');
+		cy.enableFeature('feat:logStreaming');
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.getters.getActionBoxLicensed().should('be.visible');
 		settingsLogStreamingPage.getters.getAddFirstDestinationButton().should('be.visible');
@@ -63,11 +63,9 @@ describe('Log Streaming Settings', () => {
 		settingsLogStreamingPage.getters.getSelectDestinationType().click();
 		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(0).click();
 		settingsLogStreamingPage.getters.getSelectDestinationButton().click();
-		settingsLogStreamingPage.getters
-			.getDestinationNameInput()
-			.click()
-			.clear()
-			.type('Destination 0');
+		settingsLogStreamingPage.getters.getDestinationNameInput().click()
+
+		settingsLogStreamingPage.getters.getDestinationNameInput().find('input').clear().type('Destination 0');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().click(1, 1);
@@ -86,13 +84,10 @@ describe('Log Streaming Settings', () => {
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
 		settingsLogStreamingPage.getters.getSelectDestinationType().click();
-		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(1).click();
+		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(0).click();
 		settingsLogStreamingPage.getters.getSelectDestinationButton().click();
-		settingsLogStreamingPage.getters
-			.getDestinationNameInput()
-			.click()
-			.clear()
-			.type('Destination 1');
+		settingsLogStreamingPage.getters.getDestinationNameInput().click()
+		settingsLogStreamingPage.getters.getDestinationNameInput().find('input').clear().type('Destination 1');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().should('not.have.attr', 'disabled');
 		settingsLogStreamingPage.getters.getDestinationSaveButton().click();
 		cy.wait(100);

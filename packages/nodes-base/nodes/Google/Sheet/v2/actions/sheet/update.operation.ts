@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
 	ISheetUpdateData,
 	SheetProperties,
 	ValueInputOption,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import { NodeOperationError } from 'n8n-workflow';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
@@ -251,9 +251,14 @@ export async function execute(
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
-			const fields = (
-				(this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]) || []
-			).reduce((acc, entry) => {
+			const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+			if (!valuesToSend?.length) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"At least one value has to be added under 'Values to Send'",
+				);
+			}
+			const fields = valuesToSend.reduce((acc, entry) => {
 				if (entry.column === 'newColumn') {
 					const columnName = entry.columnName as string;
 

@@ -1,4 +1,4 @@
-import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 export const textOperations: INodeProperties[] = [
 	{
@@ -380,6 +380,21 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Frequency Penalty',
+				name: 'frequency_penalty',
+				default: 0,
+				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+				description:
+					"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'frequency_penalty',
+					},
+				},
+			},
+			{
 				displayName: 'Maximum Number of Tokens',
 				name: 'maxTokens',
 				default: 16,
@@ -412,6 +427,21 @@ const sharedOperations: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'n',
+					},
+				},
+			},
+			{
+				displayName: 'Presence Penalty',
+				name: 'presence_penalty',
+				default: 0,
+				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+				description:
+					"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'presence_penalty',
 					},
 				},
 			},

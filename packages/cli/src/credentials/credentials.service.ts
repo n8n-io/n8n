@@ -1,20 +1,19 @@
 /* eslint-disable no-restricted-syntax */
 import { Credentials, UserSettings } from 'n8n-core';
-import {
-	deepCopy,
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
 	INodeProperties,
-	LoggerProxy,
-	NodeHelpers,
 } from 'n8n-workflow';
-import { FindConditions, FindManyOptions, In } from 'typeorm';
+import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -25,14 +24,16 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
+import { Container } from 'typedi';
 
 export class CredentialsService {
 	static async get(
-		credential: Partial<ICredentialsDb>,
+		where: FindOptionsWhere<ICredentialsDb>,
 		options?: { relations: string[] },
-	): Promise<ICredentialsDb | undefined> {
-		return Db.collections.Credentials.findOne(credential, {
+	): Promise<ICredentialsDb | null> {
+		return Db.collections.Credentials.findOne({
 			relations: options?.relations,
+			where,
 		});
 	}
 
@@ -88,8 +89,8 @@ export class CredentialsService {
 		credentialId: string,
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials | undefined> {
-		const where: FindConditions<SharedCredentials> = { credentialsId: credentialId };
+	): Promise<SharedCredentials | null> {
+		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
@@ -204,15 +205,15 @@ export class CredentialsService {
 	static async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
-	): Promise<ICredentialsDb | undefined> {
-		await ExternalHooks().run('credentials.update', [newCredentialData]);
+	): Promise<ICredentialsDb | null> {
+		await Container.get(ExternalHooks).run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOne(credentialId);
+		return Db.collections.Credentials.findOneBy({ id: credentialId });
 	}
 
 	static async save(
@@ -224,9 +225,9 @@ export class CredentialsService {
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await ExternalHooks().run('credentials.create', [encryptedData]);
+		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Db.collections.Role.findOneOrFail({
+		const role = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
 			scope: 'credential',
 		});
@@ -256,7 +257,7 @@ export class CredentialsService {
 	}
 
 	static async delete(credentials: CredentialsEntity): Promise<void> {
-		await ExternalHooks().run('credentials.delete', [credentials.id]);
+		await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 
 		await Db.collections.Credentials.remove(credentials);
 	}
@@ -279,7 +280,7 @@ export class CredentialsService {
 	): ICredentialDataDecryptedObject {
 		const copiedData = deepCopy(data);
 
-		const credTypes = CredentialTypes();
+		const credTypes = Container.get(CredentialTypes);
 		let credType: ICredentialType;
 		try {
 			credType = credTypes.getByName(credential.type);

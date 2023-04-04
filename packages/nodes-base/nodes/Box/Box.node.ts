@@ -1,13 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
 
@@ -114,10 +112,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
 
 						const fileName = responseData.name;
@@ -152,11 +147,11 @@ export class Box implements INodeType {
 
 						items[i] = newItem;
 
-						const data = Buffer.from(responseData.body);
+						const data = Buffer.from(responseData.body as string);
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							data as unknown as Buffer,
-							fileName,
+							fileName as string,
 							mimeType,
 						);
 					}
@@ -280,23 +275,8 @@ export class Box implements INodeType {
 						}
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-							//@ts-ignore
-							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 								i,
 								binaryPropertyName,
@@ -527,7 +507,7 @@ export class Box implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

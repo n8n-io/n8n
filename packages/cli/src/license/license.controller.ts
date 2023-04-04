@@ -5,12 +5,13 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
-import { getLicense } from '@/License';
-import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import { License } from '@/License';
+import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export const licenseController = express.Router();
 
@@ -68,7 +69,7 @@ licenseController.post(
 	'/activate',
 	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
-		const license = getLicense();
+		const license = Container.get(License);
 		try {
 			await license.activate(req.body.activationKey);
 		} catch (e) {
@@ -110,19 +111,19 @@ licenseController.post(
 	'/renew',
 	ResponseHelper.send(async (): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
-		const license = getLicense();
+		const license = Container.get(License);
 		try {
 			await license.renew();
 		} catch (e) {
 			// not awaiting so as not to make the endpoint hang
-			void InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
+			void Container.get(InternalHooks).onLicenseRenewAttempt({ success: false });
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
 			}
 		}
 
 		// not awaiting so as not to make the endpoint hang
-		void InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
+		void Container.get(InternalHooks).onLicenseRenewAttempt({ success: true });
 
 		// Return the read data, plus the management JWT
 		return {

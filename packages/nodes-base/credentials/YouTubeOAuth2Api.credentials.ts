@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://developers.google.com/youtube/v3/guides/auth/client-side-web-apps#identify-access-scopes
 const scopes = [

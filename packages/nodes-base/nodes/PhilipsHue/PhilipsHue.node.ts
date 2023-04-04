@@ -1,7 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -66,11 +65,11 @@ export class PhilipsHue implements INodeType {
 
 				const groups = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/groups`);
 
-				for (const light of Object.keys(lights)) {
+				for (const light of Object.keys(lights as IDataObject)) {
 					let lightName = lights[light].name;
 					const lightId = light;
 
-					for (const groupId of Object.keys(groups)) {
+					for (const groupId of Object.keys(groups as IDataObject)) {
 						if (groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
@@ -88,7 +87,7 @@ export class PhilipsHue implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -157,7 +156,7 @@ export class PhilipsHue implements INodeType {
 
 					const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
 
-					responseData = Object.values(lights);
+					responseData = Object.values(lights as IDataObject);
 
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i);
@@ -176,12 +175,12 @@ export class PhilipsHue implements INodeType {
 					);
 				}
 			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

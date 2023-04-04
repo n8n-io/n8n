@@ -3,13 +3,19 @@
 		<div v-if="!isSharingEnabled">
 			<n8n-action-box
 				:heading="
-					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.title)
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title,
+					)
 				"
 				:description="
-					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.description)
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.description,
+					)
 				"
 				:buttonText="
-					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.button)
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
+					)
 				"
 				@click="goToUpgrade"
 			/>
@@ -55,6 +61,7 @@
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				data-test-id="credential-sharing-modal-users-select"
 				@input="onAddSharee"
 			>
 				<template #prefix>
@@ -62,9 +69,9 @@
 				</template>
 			</n8n-user-select>
 			<n8n-users-list
+				:actions="usersListActions"
 				:users="sharedWithList"
 				:currentUserId="usersStore.currentUser.id"
-				:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
 				:readonly="!credentialPermissions.updateSharing"
 				@delete="onRemoveSharee"
 			/>
@@ -73,7 +80,7 @@
 </template>
 
 <script lang="ts">
-import { IUser, UIState } from '@/Interface';
+import { IUser, IUserListAction, UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
@@ -83,6 +90,7 @@ import { useUIStore } from '@/stores/ui';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useUsageStore } from '@/stores/usage';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(showMessage).extend({
 	name: 'CredentialSharing',
@@ -96,11 +104,16 @@ export default mixins(showMessage).extend({
 	],
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useUsageStore, useUIStore, useSettingsStore),
+		usersListActions(): IUserListAction[] {
+			return [
+				{
+					label: this.$locale.baseText('credentialEdit.credentialSharing.list.delete'),
+					value: 'delete',
+				},
+			];
+		},
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
-		},
-		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
-			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -124,7 +137,7 @@ export default mixins(showMessage).extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 	},
 	methods: {
@@ -168,9 +181,14 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
-			if (linkUrl.includes('subscription')) {
-				linkUrl = this.usageStore.viewPlansUrl;
+			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
+				.upgradeLinkUrl as BaseTextKey;
+			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
+
+			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=credential_sharing`;
+			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+				linkUrl = `${linkUrl}&utm_campaign=upgrade-credentials-sharing`;
 			}
 
 			window.open(linkUrl, '_blank');

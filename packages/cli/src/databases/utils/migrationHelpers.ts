@@ -91,16 +91,7 @@ export async function runInBatches(
 	} while (batchedQueryResults.length === limit);
 }
 
-export const getTablePrefix = () => {
-	const tablePrefix = config.getEnv('database.tablePrefix');
-
-	if (config.getEnv('database.type') === 'postgresdb') {
-		const schema = config.getEnv('database.postgresdb.schema');
-		return [schema, tablePrefix].join('.');
-	}
-
-	return tablePrefix;
-};
+export const getTablePrefix = () => config.getEnv('database.tablePrefix');
 
 export const escapeQuery = (
 	queryRunner: QueryRunner,

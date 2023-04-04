@@ -1,41 +1,47 @@
 import { v4 as uuid } from 'uuid';
-import { INodeTypeData, INodeTypes, SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { ICredentialTypes, INodeTypes, SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import * as testDb from '../integration/shared/testDb';
-import { NodeTypes as MockNodeTypes } from './Helpers';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
 import { UserService } from '@/user/user.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
+
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
 } from '../integration/shared/random';
-
-import { Role } from '@/databases/entities/Role';
+import * as testDb from '../integration/shared/testDb';
+import { mockNodeTypesData } from './Helpers';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { User } from '@/databases/entities/User';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { mockInstance } from '../integration/shared/utils';
 
-let testDbName = '';
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
-beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);
+mockInstance(LoadNodesAndCredentials, {
+	loaded: {
+		nodes: MOCK_NODE_TYPES_DATA,
+		credentials: {},
+	},
+	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
+});
 
-	mockNodeTypes = MockNodeTypes({
-		loaded: {
-			nodes: MOCK_NODE_TYPES_DATA,
-			credentials: {},
-		},
-		known: { nodes: {}, credentials: {} },
-	});
+beforeAll(async () => {
+	await testDb.init();
+
+	mockNodeTypes = Container.get(NodeTypes);
 
 	credentialOwnerRole = await testDb.getCredentialOwnerRole();
 	workflowOwnerRole = await testDb.getWorkflowOwnerRole();
@@ -44,12 +50,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'SharedCredentials'], testDbName);
-	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
+	await testDb.truncate(['SharedWorkflow', 'SharedCredentials', 'Workflow', 'Credentials', 'User']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 describe('PermissionChecker.check()', () => {
@@ -237,7 +242,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 		});
 		await expect(
@@ -259,7 +264,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 		});
 		await expect(
@@ -297,7 +302,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 			settings: {
 				callerPolicy: 'workflowsFromAList',
@@ -323,7 +328,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 		});
 		await expect(
@@ -346,7 +351,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 			settings: {
 				callerPolicy: 'workflowsFromAList',
@@ -372,7 +377,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: MockNodeTypes(),
+			nodeTypes: mockNodeTypes,
 			id: '2',
 			settings: {
 				callerPolicy: 'any',
@@ -383,25 +388,3 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		).resolves.not.toThrow();
 	});
 });
-
-const MOCK_NODE_TYPES_DATA = ['start', 'actionNetwork'].reduce<INodeTypeData>((acc, nodeName) => {
-	return (
-		(acc[`n8n-nodes-base.${nodeName}`] = {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: nodeName,
-					name: nodeName,
-					group: [],
-					description: '',
-					version: 1,
-					defaults: {},
-					inputs: [],
-					outputs: [],
-					properties: [],
-				},
-			},
-		}),
-		acc
-	);
-}, {});

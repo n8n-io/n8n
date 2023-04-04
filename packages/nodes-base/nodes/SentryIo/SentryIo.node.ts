@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,7 +22,7 @@ import { teamFields, teamOperations } from './TeamDescription';
 
 import { sentryApiRequestAllItems, sentryIoApiRequest } from './GenericFunctions';
 
-import { ICommit, IPatchSet, IRef } from './Interface';
+import type { ICommit, IPatchSet, IRef } from './Interface';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -727,7 +726,7 @@ export class SentryIo implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

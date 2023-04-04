@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-description-boolean-without-whether */
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const certificateOperations: INodeProperties[] = [
 	{

@@ -17,6 +17,7 @@
 			@cancelOperation="cancelOperation"
 			@applyOperation="applyOperation"
 			ref="tagsTable"
+			data-test-id="tags-table"
 		/>
 	</div>
 </template>

@@ -88,7 +88,6 @@ export default Vue.extend({
 }
 
 .secondary {
-	background-color: var(--color-secondary-tint-2);
 	color: var(--color-secondary);
 }
 

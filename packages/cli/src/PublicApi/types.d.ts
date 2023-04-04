@@ -1,5 +1,5 @@
-import express from 'express';
-import { IDataObject } from 'n8n-workflow';
+import type express from 'express';
+import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
@@ -7,9 +7,9 @@ import type { Role } from '@db/entities/Role';
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { UserManagementMailer } from '@/UserManagement/email';
 
-export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
+import type { Risk } from '@/audit/types';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -26,10 +26,10 @@ export type AuthenticatedRequest<
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
 	globalMemberRole?: Role;
-	mailer?: UserManagementMailer.UserManagementMailer;
+	mailer?: UserManagementMailer;
 };
 
-export type PaginatatedRequest = AuthenticatedRequest<
+export type PaginatedRequest = AuthenticatedRequest<
 	{},
 	{},
 	{},
@@ -161,4 +161,16 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+// ----------------------------------
+//           /audit
+// ----------------------------------
+
+export declare namespace AuditRequest {
+	type Generate = AuthenticatedRequest<
+		{},
+		{},
+		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
+	>;
 }

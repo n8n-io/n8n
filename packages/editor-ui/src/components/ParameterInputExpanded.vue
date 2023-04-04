@@ -6,6 +6,7 @@
 		:showTooltip="focused"
 		:showOptions="menuExpanded"
 		:data-test-id="parameter.name"
+		:size="label.size"
 	>
 		<template #options>
 			<parameter-options
@@ -60,7 +61,7 @@ import ParameterOptions from './ParameterOptions.vue';
 import Vue, { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from '@/utils';
-import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
+import { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
@@ -83,6 +84,12 @@ export default Vue.extend({
 		},
 		eventSource: {
 			type: String,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	data() {

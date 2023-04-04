@@ -1,6 +1,6 @@
 import * as create from './create.operation';
 import * as deleteSpreadsheet from './delete.operation';
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export { create, deleteSpreadsheet };
 

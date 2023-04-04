@@ -1,13 +1,15 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
+	IHttpRequestOptions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { deepCopy, IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
-
-import { IRequestBody } from './types';
+import type { IRequestBody } from './types';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -32,7 +34,7 @@ export async function awsApiRequest(
 
 	try {
 		return JSON.parse(
-			await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions),
+			(await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions)) as string,
 		);
 	} catch (error) {
 		const errorMessage =
@@ -71,7 +73,7 @@ export async function awsApiRequestAllItems(
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}
-		returnData.push(...responseData.Items);
+		returnData.push(...(responseData.Items as IDataObject[]));
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;
