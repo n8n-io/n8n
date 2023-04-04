@@ -124,6 +124,7 @@ import {
 	faVideo,
 	faTree,
 	faStickyNote as faSolidStickyNote,
+	faUserLock,
 	faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -258,5 +259,6 @@ addIcon(faUserFriends);
 addIcon(faUsers);
 addIcon(faVideo);
 addIcon(faTree);
+addIcon(faUserLock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

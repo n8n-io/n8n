@@ -390,6 +390,8 @@ export enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	SSO_SETTINGS = 'SSoSettings',
+	SAML_ONBOARDING = 'SamlOnboarding',
 	MFA_VIEW = 'MfaView',
 }
 

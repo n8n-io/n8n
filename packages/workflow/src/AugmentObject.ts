@@ -7,6 +7,7 @@ const augmentedObjects = new WeakSet<object>();
 function augment<T>(value: T): T {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if (value instanceof Date) return new Date(value.valueOf()) as T;
+	if (value instanceof Uint8Array) return value.slice() as T;
 
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	if (Array.isArray(value)) return augmentArray(value) as T;
