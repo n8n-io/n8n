@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -7,40 +8,10 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
-
-function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
-	const date = moment(value, fromFormat, true);
-	if (moment(date).isValid()) return date;
-
-	throw new NodeOperationError(
-		this.getNode(),
-		'Date input cannot be parsed. Please recheck the value and the "From Format" field.',
-	);
-}
-
-function getIsoValue(this: IExecuteFunctions, value: string) {
-	try {
-		return new Date(value).toISOString(); // may throw due to unpredictable input
-	} catch (error) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Unrecognized date input. Please specify a format in the "From Format" field.',
-		);
-	}
-}
-
-function parseDateByDefault(this: IExecuteFunctions, value: string) {
-	const isoValue = getIsoValue.call(this, value);
-	if (moment(isoValue).isValid()) return moment(isoValue);
-
-	throw new NodeOperationError(
-		this.getNode(),
-		'Unrecognized date input. Please specify a format in the "From Format" field.',
-	);
-}
+import { CurrentDateDescription } from './CurrentDateDescription';
+import { AddToDateDescription } from './AddToDateDescription';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -57,9 +28,10 @@ export class DateTimeV2 implements INodeType {
 			outputs: ['main'],
 			properties: [
 				{
-					displayName: 'Action',
-					name: 'action',
+					displayName: 'Operation',
+					name: 'operation',
 					type: 'options',
+					noDataExpression: true,
 					options: [
 						{
 							name: 'Add to a Date',
@@ -92,6 +64,8 @@ export class DateTimeV2 implements INodeType {
 					],
 					default: 'getCurrentDate',
 				},
+				...CurrentDateDescription,
+				//	...AddToDateDescription,
 			],
 		};
 	}
@@ -115,5 +89,29 @@ export class DateTimeV2 implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {}
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+		const responseData = [];
+		const operation = this.getNodeParameter('operation', 0);
+		for (let i = 0; i < items.length; i++) {
+			if (operation === 'getCurrentDate') {
+				const includeTime = this.getNodeParameter('includeTime', i) as boolean;
+				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				responseData.push(
+					includeTime
+						? { [outputFieldName]: moment() }
+						: { [outputFieldName]: moment().startOf('day') },
+				);
+			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{
+					itemData: { item: i },
+				},
+			);
+			returnData.push(...executionData);
+		}
+		return this.prepareOutputData(returnData);
+	}
 }
