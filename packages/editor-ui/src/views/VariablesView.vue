@@ -169,15 +169,17 @@ function displayName(resource: EnvironmentVariable) {
 	>
 		<template #add-button>
 			<n8n-tooltip placement="top" :disabled="isFeatureEnabled">
-				<n8n-button
-					size="large"
-					block
-					:disabled="!isFeatureEnabled"
-					@click="addTemporaryVariable"
-					data-test-id="resources-list-add"
-				>
-					{{ $locale.baseText(`variables.add`) }}
-				</n8n-button>
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="!isFeatureEnabled"
+						@click="addTemporaryVariable"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`variables.add`) }}
+					</n8n-button>
+				</div>
 				<template #content>
 					{{ i18n.baseText('variables.add.unavailable') }}
 				</template>
@@ -185,7 +187,7 @@ function displayName(resource: EnvironmentVariable) {
 		</template>
 		<template v-if="!isFeatureEnabled" #preamble>
 			<n8n-action-box
-				class="mb-s"
+				class="mb-m"
 				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
