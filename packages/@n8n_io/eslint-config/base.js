@@ -343,6 +343,8 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
+		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************

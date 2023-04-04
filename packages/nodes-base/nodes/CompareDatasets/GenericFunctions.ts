@@ -22,7 +22,7 @@ type EntryMatches = {
 type CompareFunction = <T, U>(a: T, b: U) => boolean;
 
 const processNullishValueFunction = (version: number) => {
-	if (version === 2) {
+	if (version >= 2) {
 		return <T>(value: T) => (value === undefined ? null : value);
 	}
 	return <T>(value: T) => value || null;
@@ -43,9 +43,16 @@ function compareItems(
 
 	const keys1 = Object.keys(item1.json);
 	const keys2 = Object.keys(item2.json);
-	const intersectionKeys = intersection(keys1, keys2);
+	const allUniqueKeys = union(keys1, keys2);
 
-	const same = intersectionKeys.reduce((acc, key) => {
+	let keysToCompare;
+	if (options.fuzzyCompare && (options.nodeVersion as number) >= 2.1) {
+		keysToCompare = allUniqueKeys;
+	} else {
+		keysToCompare = intersection(keys1, keys2);
+	}
+
+	const same = keysToCompare.reduce((acc, key) => {
 		if (isEntriesEqual(item1.json[key], item2.json[key])) {
 			acc[key] = item1.json[key];
 		}
@@ -53,7 +60,6 @@ function compareItems(
 	}, {} as IDataObject);
 
 	const sameKeys = Object.keys(same);
-	const allUniqueKeys = union(keys1, keys2);
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
@@ -74,7 +80,7 @@ function compareItems(
 				const input2 = processNullishValue(item2.json[key]);
 
 				let [firstInputName, secondInputName] = ['input1', 'input2'];
-				if (options.nodeVersion === 2) {
+				if ((options.nodeVersion as number) >= 2) {
 					[firstInputName, secondInputName] = ['inputA', 'inputB'];
 				}
 
@@ -191,12 +197,10 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
-	let compareVersion = 1;
-	if (options.nodeVersion === 2) {
-		compareVersion = 2;
-	}
-
-	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean, compareVersion);
+	const isEntriesEqual = fuzzyCompare(
+		options.fuzzyCompare as boolean,
+		options.nodeVersion as number,
+	);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());

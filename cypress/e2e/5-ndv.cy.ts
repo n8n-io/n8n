@@ -90,15 +90,25 @@ describe('NDV', () => {
 		});
 	});
 
+	it('should save workflow using keyboard shortcut from NDV', () => {
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		ndv.getters.container().should('be.visible');
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		workflowPage.getters.isWorkflowSaved();
+	})
+
 	describe('test output schema view', () => {
 		const schemaKeys = ['id', 'name', 'email', 'notes', 'country', 'created', 'objectValue', 'prop1', 'prop2'];
-		beforeEach(() => {
+		function setupSchemaWorkflow() {
 			cy.createFixtureWorkflow('Test_workflow_schema_test.json', `NDV test schema view ${uuid()}`);
 			workflowPage.actions.zoomToFit();
 			workflowPage.actions.openNode('Set');
 			ndv.actions.execute();
-		});
+		}
+
 		it('should switch to output schema view and validate it', () => {
+			setupSchemaWorkflow()
 			ndv.getters.outputDisplayMode().children().should('have.length', 3);
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
 			ndv.getters.outputDisplayMode().contains('Schema').click();
@@ -109,11 +119,13 @@ describe('NDV', () => {
 			});
 		});
 		it('should preserve schema view after execution', () => {
+			setupSchemaWorkflow()
 			ndv.getters.outputDisplayMode().contains('Schema').click();
 			ndv.actions.execute();
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 		})
 		it('should collapse and expand nested schema object', () => {
+			setupSchemaWorkflow()
 			const expandedObjectProps = ['prop1', 'prop2'];;
 			const getObjectValueItem = () => ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').filter(':contains("objectValue")');
 			ndv.getters.outputDisplayMode().contains('Schema').click();
@@ -125,6 +137,30 @@ describe('NDV', () => {
 			expandedObjectProps.forEach((key) => {
 				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('not.be.visible');
 			});
+		})
+		it('should not display pagination for schema', () => {
+			setupSchemaWorkflow()
+			ndv.getters.backToCanvas().click();
+			workflowPage.getters.canvasNodeByName('Set').click();
+			workflowPage.actions.addNodeToCanvas('Customer Datastore (n8n training)', true, true, 'Get All People');
+			ndv.actions.execute();
+			ndv.getters.outputPanel().contains('25 items').should('exist');
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
+			ndv.getters.outputDisplayMode().contains('JSON').click();
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
+		})
+		it('should display large schema', () => {
+			cy.createFixtureWorkflow('Test_workflow_schema_test_pinned_data.json', `NDV test schema view ${uuid()}`);
+			workflowPage.actions.zoomToFit();
+			workflowPage.actions.openNode('Set');
+
+			ndv.getters.outputPanel().contains('20 items').should('exist');
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
+			ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item] [data-test-id=run-data-schema-item]').should('have.length', 20);
 		})
 	})
 });

@@ -4,20 +4,35 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Container } from 'typedi';
 import { Router } from 'express';
+import type { Request } from 'express';
 import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { MessageEventBus } from '@/eventbus';
+import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import Container from 'typedi';
+import { License } from '../License';
+import { LICENSE_FEATURES } from '@/constants';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
 	process.exit(1);
 }
+
+const enabledFeatures = {
+	[LICENSE_FEATURES.SHARING]: true, //default to true here instead of setting it in config/index.ts for e2e
+	[LICENSE_FEATURES.LDAP]: false,
+	[LICENSE_FEATURES.SAML]: false,
+	[LICENSE_FEATURES.LOG_STREAMING]: false,
+	[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
+};
+
+type Feature = keyof typeof enabledFeatures;
+
+Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
 const tablesToTruncate = [
 	'auth_identity',
@@ -79,8 +94,7 @@ const setupUserManagement = async () => {
 };
 
 const resetLogStreaming = async () => {
-	config.set('enterprise.features.logStreaming', false);
-	const eventBus = Container.get(MessageEventBus);
+	enabledFeatures[LICENSE_FEATURES.LOG_STREAMING] = false;
 	for (const id in eventBus.destinations) {
 		await eventBus.removeDestination(id);
 	}
@@ -129,7 +143,8 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	res.writeHead(204).end();
 });
 
-e2eController.post('/enable-feature/:feature', async (req, res) => {
-	config.set(`enterprise.features.${req.params.feature}`, true);
+e2eController.post('/enable-feature/:feature', async (req: Request<{ feature: Feature }>, res) => {
+	const { feature } = req.params;
+	enabledFeatures[feature] = true;
 	res.writeHead(204).end();
 });
