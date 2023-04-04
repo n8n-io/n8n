@@ -5,6 +5,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 import type {
+	PgpDatabase,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -92,6 +93,7 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: IDataObject,
+	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	const queries: QueryWithValues[] = [];
 
@@ -131,6 +133,8 @@ export async function execute(
 			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
 			[query, values] = addWhereClauses(
+				this.getNode(),
+				i,
 				'DELETE FROM $1:name.$2:name',
 				whereClauses,
 				values,

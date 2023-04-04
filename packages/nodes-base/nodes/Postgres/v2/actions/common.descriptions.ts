@@ -50,12 +50,11 @@ export const optionsCollection: INodeProperties = {
 					name: 'Transaction',
 					value: 'transaction',
 					description:
-						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back of the run',
+						'Execute all queries in a transaction, if a failure occurs, all changes are rolled back',
 				},
 			],
 			default: 'single',
-			description:
-				'The way queries should be sent to the database. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/">More info.</a>.',
+			description: 'The way queries should be sent to the database',
 		},
 		{
 			displayName: 'Query Parameters',
@@ -216,6 +215,8 @@ export const whereFixedCollection: INodeProperties = {
 					displayName: 'Operator',
 					name: 'condition',
 					type: 'options',
+					description:
+						"The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 					options: [
 						{
@@ -258,36 +259,6 @@ export const whereFixedCollection: INodeProperties = {
 					name: 'value',
 					type: 'string',
 					default: '',
-					placeholder: 'e.g. 1234',
-					displayOptions: {
-						show: {
-							condition: ['equal', '!='],
-						},
-					},
-				},
-				{
-					displayName: 'Value',
-					name: 'value',
-					type: 'string',
-					default: '',
-					placeholder: 'e.g. Jen%',
-					hint: 'Percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character',
-					displayOptions: {
-						show: {
-							condition: ['LIKE'],
-						},
-					},
-				},
-				{
-					displayName: 'Value',
-					name: 'value',
-					type: 'number',
-					default: 0,
-					displayOptions: {
-						show: {
-							condition: ['>', '<', '>=', '<='],
-						},
-					},
 				},
 			],
 		},

@@ -246,7 +246,7 @@ export class GmailTrigger implements INodeType {
 				delete filters.receivedAfter;
 			}
 
-			Object.assign(qs, prepareQuery.call(this, filters), options);
+			Object.assign(qs, prepareQuery.call(this, filters, 0), options);
 
 			responseData = await googleApiRequest.call(
 				this,

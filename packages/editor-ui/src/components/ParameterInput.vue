@@ -306,6 +306,14 @@
 				</n8n-option>
 			</n8n-select>
 
+			<!-- temporary state of booleans while data is mapped -->
+			<n8n-input
+				v-else-if="parameter.type === 'boolean' && droppable"
+				:size="inputSize"
+				:value="JSON.stringify(displayValue)"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+			/>
 			<el-switch
 				v-else-if="parameter.type === 'boolean'"
 				class="switch-input"
@@ -970,7 +978,7 @@ export default mixins(
 			// Set focus on field
 			setTimeout(() => {
 				// @ts-ignore
-				if (this.$refs.inputField && this.$refs.inputField.$el) {
+				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
 					this.$refs.inputField.focus();
 					this.isFocused = true;

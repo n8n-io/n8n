@@ -86,7 +86,7 @@ export async function configurePostgres(
 		const tunnelConfig = await createSshConnectConfig(credentials);
 
 		const localHost = '127.0.0.1';
-		const localPort = 5432;
+		const localPort = credentials.sshPostgresPort as number;
 
 		let proxy: Server | undefined;
 

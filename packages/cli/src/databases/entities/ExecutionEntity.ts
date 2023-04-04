@@ -49,7 +49,7 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	workflowId: string;
 
 	@Column({ type: datetimeColumnType, nullable: true })
-	waitTill: Date;
+	waitTill: Date | null;
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
