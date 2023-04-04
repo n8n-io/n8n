@@ -613,6 +613,9 @@ importers:
       lodash.get:
         specifier: ^4.4.2
         version: 4.4.2
+      lodash.pick:
+        specifier: ^4.4.0
+        version: 4.4.0
       mime-types:
         specifier: ^2.1.27
         version: 2.1.35
@@ -655,6 +658,9 @@ importers:
         version: 4.17.14
       '@types/lodash.get':
         specifier: ^4.4.6
+        version: 4.4.7
+      '@types/lodash.pick':
+        specifier: ^4.4.7
         version: 4.4.7
       '@types/mime-types':
         specifier: ^2.1.0
