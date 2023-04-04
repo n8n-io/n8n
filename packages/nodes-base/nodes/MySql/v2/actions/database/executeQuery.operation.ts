@@ -66,7 +66,7 @@ export async function execute(
 		const options = this.getNodeParameter('options', i, {});
 
 		let values;
-		let queryReplacement = options.queryReplacement;
+		let queryReplacement = options.queryReplacement || [];
 
 		if (typeof queryReplacement === 'string') {
 			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());

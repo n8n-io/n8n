@@ -118,41 +118,45 @@ export async function runQueries(
 
 			let response = (await pool.query(singleQuery))[0] as unknown as IDataObject[][];
 
-			if (!options.showMetadata) {
-				if (response && Array.isArray(response)) {
-					response = response.filter((entry) => Array.isArray(entry));
-				} else {
-					response = [];
-				}
-			}
+			if (!response) return [];
 
-			if (response && Array.isArray(response)) {
+			if (!Array.isArray(response)) response = [response];
+
+			if (options.showMetadata) {
+				const statements = singleQuery.replace(/\n/g, '').split(';');
+
 				response.forEach((entry, index) => {
-					const executionData = this.helpers.constructExecutionMetaData(wrapData(entry), {
+					const item = {
+						sql: statements[index],
+						data: entry,
+					};
+
+					const executionData = this.helpers.constructExecutionMetaData(wrapData(item), {
 						itemData: { item: index },
 					});
 
 					returnData.push(...executionData);
 				});
 			} else {
-				const executionData = this.helpers.constructExecutionMetaData(
-					wrapData(response || { success: true }),
-					{
-						itemData: { item: 0 },
-					},
-				);
+				response
+					.filter((entry) => Array.isArray(entry))
+					.forEach((entry, index) => {
+						const executionData = this.helpers.constructExecutionMetaData(wrapData(entry), {
+							itemData: { item: index },
+						});
 
-				returnData.push(...executionData);
+						returnData.push(...executionData);
+					});
+			}
+
+			if (!returnData.length) {
+				returnData.push({ json: { success: true } });
 			}
 		} catch (err) {
 			const error = parseMySqlError.call(this, err);
 
 			if (!this.continueOnFail()) throw error;
 			returnData.push({ json: { message: error.message, error: { ...error } } });
-		}
-
-		if (!returnData.length) {
-			returnData.push({ json: { success: true } });
 		}
 	} else {
 		if (mode === 'independently') {
