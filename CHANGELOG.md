@@ -1,3 +1,26 @@
+## [0.222.1](https://github.com/n8n-io/n8n/compare/n8n@0.222.0...n8n@0.222.1) (2023-04-04)
+
+
+### Bug Fixes
+
+* **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([f0954b9](https://github.com/n8n-io/n8n/commit/f0954b94e164f0ff3e809849731137cf479670a4))
+* **core:** `augmentObject` should clone Buffer/Uint8Array instead of wrapping them in a proxy ([#5902](https://github.com/n8n-io/n8n/issues/5902)) ([a877b02](https://github.com/n8n-io/n8n/commit/a877b025b8c93a31822e7ccb5b935dca00595439))
+* **core:** `augmentObject` should use existing property descriptors whenever possible ([#5872](https://github.com/n8n-io/n8n/issues/5872)) ([b1ee8f4](https://github.com/n8n-io/n8n/commit/b1ee8f4d991ffc5017894f588e9bd21f652f23c6))
+* **core:** Fix the issue of nodes not loading when run via npx ([#5888](https://github.com/n8n-io/n8n/issues/5888)) ([163446c](https://github.com/n8n-io/n8n/commit/163446c674d07c060eaa0d7ec54a087a4cb671d5))
+* **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([f0a51a0](https://github.com/n8n-io/n8n/commit/f0a51a0b7671945b84e18774483dc7079f559845))
+* **core:** Password reset should pass in the correct values to external hooks ([#5842](https://github.com/n8n-io/n8n/issues/5842)) ([3bf267c](https://github.com/n8n-io/n8n/commit/3bf267c14757fa67dcfa0edf0b4db74ab1b7415c))
+* **core:** Prevent augmentObject from creating infinitely deep proxies ([#5893](https://github.com/n8n-io/n8n/issues/5893)) ([6906b00](https://github.com/n8n-io/n8n/commit/6906b00b0e734dbe59d1a3a91f07ec1007166b72)), closes [#5848](https://github.com/n8n-io/n8n/issues/5848)
+* **core:** Use table-prefixes in queries in import commands ([#5887](https://github.com/n8n-io/n8n/issues/5887)) ([de58fb9](https://github.com/n8n-io/n8n/commit/de58fb9860d37a39a1e8963e304b8fc87f234bf6))
+* **editor:** Fix focused state in Code node editor ([#5869](https://github.com/n8n-io/n8n/issues/5869)) ([3be37e2](https://github.com/n8n-io/n8n/commit/3be37e25a52983b43b4eed3847922e99f2bf07bc))
+* **editor:** Fix loading executions in long execution list ([#5843](https://github.com/n8n-io/n8n/issues/5843)) ([d5d9f58](https://github.com/n8n-io/n8n/commit/d5d9f58f1777040c63a2a0aa3c0d7bf632dc7b26))
+* **editor:** Show correct status on canceled executions ([#5813](https://github.com/n8n-io/n8n/issues/5813)) ([00181cd](https://github.com/n8n-io/n8n/commit/00181cd803f5a0cca50b5fc1ab84d0a26dd618ae))
+* **Gmail Node:** Gmail luxon object support, fix for timestamp ([695fabb](https://github.com/n8n-io/n8n/commit/695fabb28465d01caa85aefb1e873f88720ce304))
+* **HTTP Request Node:** Detect mime-type from streaming responses ([#5896](https://github.com/n8n-io/n8n/issues/5896)) ([0be1292](https://github.com/n8n-io/n8n/commit/0be129254e96c822dceddbfffaf36e0e6b2ef5e8))
+* **HubSpot Trigger Node:** Developer API key is required for webhooks ([918c79c](https://github.com/n8n-io/n8n/commit/918c79c137f781764f11ad3a33ead337efce681a))
+* **Set Node:** Convert string to number ([72eea0d](https://github.com/n8n-io/n8n/commit/72eea0dfb9e679bde95996d99684e23d081db5a7))
+
+
+
 # [0.222.0](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.222.0) (2023-03-30)
 
 
