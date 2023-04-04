@@ -26,6 +26,21 @@ describe('components', () => {
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 
+		it('should add column classes', () => {
+			const wrapper = render(N8nDatatable, {
+				propsData: {
+					columns: columns.map((column) => ({ ...column, classes: ['example'] })),
+					rows,
+					rowsPerPage,
+				},
+				stubs,
+			});
+
+			expect(wrapper.container.querySelectorAll('.example').length).toEqual(
+				columns.length * (rowsPerPage + 1),
+			);
+		});
+
 		it('should render row slot', () => {
 			const wrapper = render(N8nDatatable, {
 				propsData: {

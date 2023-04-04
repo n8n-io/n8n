@@ -8,15 +8,17 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<n8n-button
-					size="large"
-					block
-					:disabled="disabled"
-					@click="$emit('click:add', $event)"
-					data-test-id="resources-list-add"
-				>
-					{{ $locale.baseText(`${resourceKey}.add`) }}
-				</n8n-button>
+				<slot name="add-button">
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="$emit('click:add', $event)"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`${resourceKey}.add`) }}
+					</n8n-button>
+				</slot>
 			</div>
 
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
@@ -113,6 +115,8 @@
 					<div class="pb-xs" />
 				</template>
 
+				<slot name="preamble" />
+
 				<div v-if="filteredAndSortedSubviewResources.length > 0">
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
@@ -160,6 +164,8 @@
 						</span>
 					</template>
 				</n8n-text>
+
+				<slot name="postamble" />
 			</page-view-layout-list>
 		</template>
 	</page-view-layout>
@@ -336,9 +342,9 @@ export default mixins(showMessage, debounceHelper).extend({
 					case 'lastCreated':
 						return new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
 					case 'nameAsc':
-						return this.displayName(a).trim().localeCompare(this.displayName(a).trim());
+						return this.displayName(a).trim().localeCompare(this.displayName(b).trim());
 					case 'nameDesc':
-						return this.displayName(b).localeCompare(this.displayName(a));
+						return this.displayName(b).trim().localeCompare(this.displayName(a).trim());
 					default:
 						return 0;
 				}

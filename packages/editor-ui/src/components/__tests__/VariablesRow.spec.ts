@@ -2,10 +2,25 @@ import VariablesRow from '../VariablesRow.vue';
 import { EnvironmentVariable } from '@/Interface';
 import { fireEvent, render } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
+import { setupServer } from '@/__tests__/server';
+import { afterAll, beforeAll } from 'vitest';
+import { useSettingsStore } from '@/stores';
 
 describe('VariablesRow', () => {
-	beforeEach(() => {
+	let server: ReturnType<typeof setupServer>;
+
+	beforeAll(() => {
+		server = setupServer();
+	});
+
+	beforeEach(async () => {
 		setActivePinia(createPinia());
+
+		await useSettingsStore().getSettings();
+	});
+
+	afterAll(() => {
+		server.shutdown();
 	});
 
 	const stubs = ['n8n-tooltip'];
@@ -61,6 +76,8 @@ describe('VariablesRow', () => {
 		expect(wrapper.getByTestId('variable-row-value-input').querySelector('input')).toHaveValue(
 			environmentVariable.value,
 		);
+
+		expect(wrapper.html()).toMatchSnapshot();
 	});
 
 	it('should show cancel and save buttons in edit mode', async () => {

@@ -4,13 +4,44 @@ exports[`VariablesRow > should render correctly 1`] = `
 "<tr class=\\"variablesRow\\">
   <td><span>key</span></td>
   <td><span>value</span></td>
-  <td>
+  <td class=\\"variables-usage-column\\">
     <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"usageSyntax\\">$vars.key</span></n8n-tooltip-stub>
   </td>
-  <td class=\\"text-right\\">
-    <div class=\\"hoverButtons\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-edit-button\\">
+  <td>
+    <div class=\\"buttons hoverButtons\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-edit-button\\">
         <!----><span> Edit </span></button><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-delete-button\\">
         <!----><span> Delete </span></button></div>
+  </td>
+</tr>"
+`;
+
+exports[`VariablesRow > should show key and value inputs in edit mode 1`] = `
+"<tr class=\\"variablesRow\\">
+  <td>
+    <div class=\\"el-input el-input--large n8n-input\\" data-test-id=\\"variable-row-key-input\\" required=\\"required\\">
+      <!----><input type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Enter a name\\" class=\\"el-input__inner\\">
+      <!---->
+      <!---->
+      <!---->
+      <!---->
+    </div>
+  </td>
+  <td>
+    <div class=\\"el-input el-input--large n8n-input\\" data-test-id=\\"variable-row-value-input\\">
+      <!----><input type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Enter a value\\" class=\\"el-input__inner\\">
+      <!---->
+      <!---->
+      <!---->
+      <!---->
+    </div>
+  </td>
+  <td class=\\"variables-usage-column\\">
+    <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"usageSyntax\\">$vars.key</span></n8n-tooltip-stub>
+  </td>
+  <td>
+    <div class=\\"buttons\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-cancel-button\\">
+        <!----><span> Cancel </span></button><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" data-test-id=\\"variable-row-save-button\\">
+        <!----><span> Save </span></button></div>
   </td>
 </tr>"
 `;
