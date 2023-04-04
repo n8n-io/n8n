@@ -2,10 +2,13 @@
 import { computed, onMounted, PropType, ref } from 'vue';
 import { EnvironmentVariable } from '@/Interface';
 import { useI18n, useToast, useCopyToClipboard } from '@/composables';
+import { EnterpriseEditionFeature } from '@/constants';
+import { useSettingsStore } from '@/stores';
 
 const i18n = useI18n();
 const copyToClipboard = useCopyToClipboard();
 const { showMessage } = useToast();
+const settingsStore = useSettingsStore();
 
 const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
 
@@ -30,6 +33,10 @@ const keyInputRef = ref<HTMLElement>();
 const valueInputRef = ref<HTMLElement>();
 
 const usage = computed(() => `$vars.${props.data.key}`);
+
+const isFeatureEnabled = computed(() =>
+	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+);
 
 onMounted(() => {
 	keyInputRef.value?.focus();
@@ -84,7 +91,7 @@ function onUsageClick() {
 				ref="valueInputRef"
 			/>
 		</td>
-		<td>
+		<td class="variables-usage-column">
 			<n8n-tooltip placement="top">
 				<span v-if="data.key" :class="$style.usageSyntax" @click="onUsageClick">{{ usage }}</span>
 				<template #content>
@@ -92,8 +99,8 @@ function onUsageClick() {
 				</template>
 			</n8n-tooltip>
 		</td>
-		<td class="text-right">
-			<div v-if="editing">
+		<td v-if="isFeatureEnabled">
+			<div v-if="editing" :class="$style.buttons">
 				<n8n-button
 					data-test-id="variable-row-cancel-button"
 					type="tertiary"
@@ -111,7 +118,7 @@ function onUsageClick() {
 					{{ i18n.baseText('variables.row.button.save') }}
 				</n8n-button>
 			</div>
-			<div :class="$style.hoverButtons" v-else>
+			<div v-else :class="[$style.buttons, $style.hoverButtons]">
 				<n8n-button
 					data-test-id="variable-row-edit-button"
 					type="tertiary"
@@ -142,6 +149,12 @@ function onUsageClick() {
 	}
 }
 
+.buttons {
+	display: flex;
+	flex-wrap: nowrap;
+	justify-content: flex-end;
+}
+
 .hoverButtons {
 	opacity: 0;
 	transition: opacity 0.2s ease;
@@ -149,5 +162,9 @@ function onUsageClick() {
 
 .usageSyntax {
 	cursor: pointer;
+	background: var(--color-success-tint-2);
+	color: var(--color-success);
+	font-family: var(--font-family-monospace);
+	font-size: var(--font-size-s);
 }
 </style>

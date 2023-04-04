@@ -102,7 +102,7 @@ export default defineComponent({
 		<table :class="$style.datatable">
 			<thead :class="$style.datatableHeader">
 				<tr>
-					<th v-for="column in columns" :key="column.id">
+					<th v-for="column in columns" :key="column.id" :class="column.classes">
 						{{ column.label }}
 					</th>
 				</tr>
@@ -111,7 +111,7 @@ export default defineComponent({
 				<template v-for="row in visibleRows">
 					<slot name="row" :columns="columns" :row="row" :getTdValue="getTdValue">
 						<tr :key="row.id">
-							<td v-for="column in columns" :key="column.id">
+							<td v-for="column in columns" :key="column.id" :class="column.classes">
 								<component v-if="column.render" :is="column.render" :row="row" :column="column" />
 								<span v-else>{{ getTdValue(row, column) }}</span>
 							</td>

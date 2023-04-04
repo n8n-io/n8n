@@ -12,5 +12,6 @@ export interface DatatableColumn {
 	id: string | number;
 	path: string;
 	label: string;
+	classes?: string[];
 	render?: (row: DatatableRow) => (() => VNode | VNode[]) | DatatableRowDataType;
 }

@@ -29,7 +29,11 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 const allVariables = ref<Array<EnvironmentVariable | TemporaryEnvironmentVariable>>([]);
 const editMode = ref<Record<string, boolean>>({});
 
-const datatableColumns = ref<DatatableColumn[]>([
+const isFeatureEnabled = computed(() =>
+	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+);
+
+const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
 		id: 0,
 		path: 'name',
@@ -44,17 +48,19 @@ const datatableColumns = ref<DatatableColumn[]>([
 		id: 2,
 		path: 'usage',
 		label: i18n.baseText('variables.table.usage'),
+		classes: ['variables-usage-column'],
 	},
-	{
-		id: 3,
-		path: 'actions',
-		label: '',
-	},
+	...(isFeatureEnabled.value
+		? [
+				{
+					id: 3,
+					path: 'actions',
+					label: '',
+				},
+		  ]
+		: []),
 ]);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
-);
 const contextBasedTranslationKeys = computed(() => uiStore.contextBasedTranslationKeys);
 const { upgradeLinkUrl } = useUpgradeLink({
 	default: '&source=variables',
@@ -117,16 +123,16 @@ function cancelEditing(data: EnvironmentVariable | TemporaryEnvironmentVariable)
 }
 
 async function deleteVariable(data: EnvironmentVariable) {
-	const confirmed = await message.confirm(
-		i18n.baseText('variables.modals.deleteConfirm.message'),
-		i18n.baseText('variables.modals.deleteConfirm.title'),
-		{
-			confirmButtonText: i18n.baseText('variables.modals.deleteConfirm.confirmButton'),
-			cancelButtonText: i18n.baseText('variables.modals.deleteConfirm.cancelButton'),
-		},
-	);
-
-	if (!confirmed) {
+	try {
+		await message.confirm(
+			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
+			i18n.baseText('variables.modals.deleteConfirm.title'),
+			{
+				confirmButtonText: i18n.baseText('variables.modals.deleteConfirm.confirmButton'),
+				cancelButtonText: i18n.baseText('variables.modals.deleteConfirm.cancelButton'),
+			},
+		);
+	} catch (e) {
 		return;
 	}
 
@@ -160,8 +166,37 @@ function displayName(resource: EnvironmentVariable) {
 		:showFiltersDropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
-		@click:add="addTemporaryVariable"
 	>
+		<template #add-button>
+			<n8n-tooltip placement="top" :disabled="isFeatureEnabled">
+				<n8n-button
+					size="large"
+					block
+					:disabled="!isFeatureEnabled"
+					@click="addTemporaryVariable"
+					data-test-id="resources-list-add"
+				>
+					{{ $locale.baseText(`variables.add`) }}
+				</n8n-button>
+				<template #content>
+					{{ i18n.baseText('variables.add.unavailable') }}
+				</template>
+			</n8n-tooltip>
+		</template>
+		<template v-if="!isFeatureEnabled" #preamble>
+			<n8n-action-box
+				class="mb-s"
+				data-test-id="unavailable-resources-list"
+				emoji="👋"
+				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
+				:description="
+					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
+				"
+				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				buttonType="secondary"
+				@click="goToUpgrade"
+			/>
+		</template>
 		<template v-if="!isFeatureEnabled" #empty>
 			<n8n-action-box
 				data-test-id="empty-resources-list"
@@ -196,5 +231,13 @@ function displayName(resource: EnvironmentVariable) {
 
 .sidebarContainer ul {
 	padding: 0 !important;
+}
+</style>
+
+<style lang="scss">
+.variables-usage-column {
+	@media screen and (max-width: 767px) {
+		display: none;
+	}
 }
 </style>
