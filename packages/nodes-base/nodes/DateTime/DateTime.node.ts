@@ -5,7 +5,7 @@ import { DateTimeV1 } from './V1/DateTimeV1.node';
 
 import { DateTimeV2 } from './V2/DateTimeV2.node';
 
-export class Slack extends VersionedNodeType {
+export class DateTime extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Date & Time',
