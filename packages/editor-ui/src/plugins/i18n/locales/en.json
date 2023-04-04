@@ -1737,7 +1737,7 @@
 	"settings.sso.settings.test": "Test settings",
 	"settings.sso.settings.save": "Save settings",
 	"settings.sso.actionBox.title": "Available on Enterprise plan",
-	"settings.sso.actionBox.description": "Use Single Sign On to consolidates authentication into a single platform to improve security and agility.",
+	"settings.sso.actionBox.description": "Use Single Sign On to consolidate authentication into a single platform to improve security and agility.",
 	"settings.sso.actionBox.buttonText": "See plans",
 	"sso.login.divider": "or",
 	"sso.login.button": "Continue with SSO"
