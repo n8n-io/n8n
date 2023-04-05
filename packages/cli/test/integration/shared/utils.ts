@@ -173,6 +173,7 @@ export async function initTestServer({
 		const externalHooks = Container.get(ExternalHooks);
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
+		const mfaService = Container.get(MultiFactorAuthService);
 		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
@@ -189,7 +190,7 @@ export async function initTestServer({
 							logger,
 							internalHooks,
 							repositories,
-							mfaService: Container.get(MultiFactorAuthService),
+							mfaService,
 						}),
 					);
 					break;
@@ -223,7 +224,13 @@ export async function initTestServer({
 					registerController(
 						testServer.app,
 						config,
-						new MeController({ logger, externalHooks, internalHooks, repositories, mfaService: Container.get(MultiFactorAuthService), }),
+						new MeController({
+							logger,
+							externalHooks,
+							internalHooks,
+							repositories,
+							mfaService,
+						}),
 					);
 					break;
 				case 'passwordReset':
@@ -237,7 +244,7 @@ export async function initTestServer({
 							internalHooks,
 							mailer,
 							repositories,
-							mfaService: Container.get(MultiFactorAuthService),
+							mfaService,
 						}),
 					);
 					break;
@@ -266,7 +273,7 @@ export async function initTestServer({
 					registerController(
 						testServer.app,
 						config,
-						new MFAController(repositories.User, Container.get(MultiFactorAuthService)),
+						new MFAController(repositories.User, mfaService),
 					);
 			}
 		}
