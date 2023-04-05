@@ -165,7 +165,7 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string }
+		{ currentPassword: string; newPassword: string; token?: string }
 	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
@@ -200,7 +200,7 @@ export declare namespace PasswordResetRequest {
 	export type NewPassword = AuthlessRequest<
 		{},
 		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string }
+		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaToken?: string }
 	>;
 }
 

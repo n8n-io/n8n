@@ -39,6 +39,8 @@ import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 
+const TOKEN_INPUT_MAX_LENGTH = 6;
+
 export default mixins(showMessage).extend({
 	components: { Modal },
 	name: 'ChangePasswordModal',
@@ -61,7 +63,7 @@ export default mixins(showMessage).extend({
 		...mapStores(useUsersStore),
 	},
 	mounted() {
-		this.config = [
+		const form: IFormInputs = [
 			{
 				name: 'currentPassword',
 				properties: {
@@ -102,6 +104,23 @@ export default mixins(showMessage).extend({
 				},
 			},
 		];
+
+		if (this.usersStore.mfaEnabled) {
+			form.push({
+				name: 'token',
+				initialValue: '',
+				properties: {
+					required: true,
+					label: this.$locale.baseText('mfa.code.input.label'),
+					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
+					maxlength: TOKEN_INPUT_MAX_LENGTH,
+					capitalize: true,
+					validateOnBlur: true,
+				},
+			});
+		}
+
+		this.config = form;
 	},
 	methods: {
 		passwordsMatch(value: string | number | boolean | null | undefined) {
@@ -122,7 +141,7 @@ export default mixins(showMessage).extend({
 				this.password = e.value;
 			}
 		},
-		async onSubmit(values: { [key: string]: string }) {
+		async onSubmit(values: { currentPassword: string, password: string, token: string  }) {
 			try {
 				this.loading = true;
 				await this.usersStore.updateCurrentUserPassword(values);

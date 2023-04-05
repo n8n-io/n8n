@@ -18,6 +18,8 @@ import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 
+const TOKEN_INPUT_MAX_LENGTH = 6;
+
 export default mixins(showMessage).extend({
 	name: 'ChangePasswordView',
 	components: {
@@ -34,7 +36,7 @@ export default mixins(showMessage).extend({
 		...mapStores(useUsersStore),
 	},
 	async mounted() {
-		this.config = {
+		const form: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.changePassword'),
 			buttonText: this.$locale.baseText('auth.changePassword'),
 			redirectText: this.$locale.baseText('auth.signin'),
@@ -70,14 +72,30 @@ export default mixins(showMessage).extend({
 				},
 			],
 		};
-		const token =
-			!this.$route.query.token || typeof this.$route.query.token !== 'string'
-				? null
-				: this.$route.query.token;
-		const userId =
-			!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-				? null
-				: this.$route.query.userId;
+
+		const token = this.getToken();
+		const userId = this.getUserId();
+		const mfaEnabled = this.getMfaEnabled();
+
+		console.log('esta mfa enabled', mfaEnabled);
+
+		if (mfaEnabled) {
+			form.inputs.push({
+				name: 'mfaToken',
+				initialValue: '',
+				properties: {
+					required: true,
+					label: this.$locale.baseText('mfa.code.input.label'),
+					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
+					maxlength: TOKEN_INPUT_MAX_LENGTH,
+					capitalize: true,
+					validateOnBlur: true,
+				},
+			});
+		}
+
+		this.config = form;
+
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
@@ -113,20 +131,37 @@ export default mixins(showMessage).extend({
 				this.password = e.value;
 			}
 		},
-		async onSubmit() {
+		getToken() {
+			return !this.$route.query.token || typeof this.$route.query.token !== 'string'
+				? null
+				: this.$route.query.token;
+		},
+		getUserId() {
+			return !this.$route.query.userId || typeof this.$route.query.userId !== 'string'
+				? null
+				: this.$route.query.userId;
+		},
+		getMfaEnabled() {
+			return !this.$route.query.mfaEnabled || typeof this.$route.query.userId !== 'string'
+				? null
+				: !!this.$route.query.mfaEnabled;
+		},
+		async onSubmit(values: { mfaToken: string }) {
 			try {
 				this.loading = true;
-				const token =
-					!this.$route.query.token || typeof this.$route.query.token !== 'string'
-						? null
-						: this.$route.query.token;
-				const userId =
-					!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-						? null
-						: this.$route.query.userId;
+				const token = this.getToken();
+				const userId = this.getUserId();
 
 				if (token && userId) {
-					await this.usersStore.changePassword({ token, userId, password: this.password });
+
+					const changePasswordParameters = {
+						token,
+						userId,
+						password: this.password,
+						...(values.mfaToken && { mfaToken: values.mfaToken })
+					};
+
+					await this.usersStore.changePassword(changePasswordParameters);
 
 					this.$showMessage({
 						type: 'success',

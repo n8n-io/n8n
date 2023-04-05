@@ -3,6 +3,7 @@ import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
+import { AES, enc } from 'crypto-js';
 import {
 	BadRequestError,
 	InternalServerError,
@@ -26,6 +27,8 @@ import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } f
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
+import { UserSettings } from 'n8n-core';
+import type { MultiFactorAuthService } from '@/MultiFactorAuthService';
 
 @RestController()
 export class PasswordResetController {
@@ -41,6 +44,8 @@ export class PasswordResetController {
 
 	private readonly userRepository: Repository<User>;
 
+	private readonly mfaService: MultiFactorAuthService;
+
 	constructor({
 		config,
 		logger,
@@ -48,6 +53,7 @@ export class PasswordResetController {
 		internalHooks,
 		mailer,
 		repositories,
+		mfaService,
 	}: {
 		config: Config;
 		logger: ILogger;
@@ -55,6 +61,7 @@ export class PasswordResetController {
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		mfaService: MultiFactorAuthService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -62,6 +69,7 @@ export class PasswordResetController {
 		this.internalHooks = internalHooks;
 		this.mailer = mailer;
 		this.userRepository = repositories.User;
+		this.mfaService = mfaService;
 	}
 
 	/**
@@ -130,7 +138,7 @@ export class PasswordResetController {
 
 		user.resetPasswordToken = uuid();
 
-		const { id, firstName, lastName, resetPasswordToken } = user;
+		const { id, firstName, lastName, resetPasswordToken, mfaEnabled = false } = user;
 
 		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
@@ -140,6 +148,7 @@ export class PasswordResetController {
 		const url = new URL(`${baseUrl}/change-password`);
 		url.searchParams.append('userId', id);
 		url.searchParams.append('token', resetPasswordToken);
+		url.searchParams.append('mfaEnabled', mfaEnabled.toString());
 
 		try {
 			await this.mailer.passwordReset({
@@ -218,7 +227,7 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, userId, password } = req.body;
+		const { token: resetPasswordToken, userId, password, mfaToken = undefined } = req.body;
 
 		if (!resetPasswordToken || !userId || !password) {
 			this.logger.debug(
@@ -236,6 +245,7 @@ export class PasswordResetController {
 		const currentTimestamp = Math.floor(Date.now() / 1000);
 
 		const user = await this.userRepository.findOne({
+			select: ['id', 'mfaSecret', 'mfaEnabled', 'email', 'password', 'firstName', 'lastName'],
 			where: {
 				id: userId,
 				resetPasswordToken,
@@ -253,6 +263,18 @@ export class PasswordResetController {
 				},
 			);
 			throw new NotFoundError('');
+		}
+
+		if (user.mfaEnabled) {
+			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
+
+			const encryptionKey = await UserSettings.getEncryptionKey();
+
+			const decryptedSecret = AES.decrypt(user.mfaSecret ?? '', encryptionKey).toString(enc.Utf8);
+
+			const validToken = this.mfaService.verifySecret({ secret: decryptedSecret, token: mfaToken });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
 		const passwordHash = await hashPassword(validPassword);

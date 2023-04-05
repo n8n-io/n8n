@@ -82,7 +82,7 @@ export async function validatePasswordToken(
 
 export async function changePassword(
 	context: IRestApiContext,
-	params: { token: string; password: string; userId: string },
+	params: { token: string; password: string; userId: string, mfaToken?: string },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
@@ -96,7 +96,7 @@ export function updateCurrentUser(
 
 export function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string },
+	params: { newPassword: string; currentPassword: string, token: string },
 ): Promise<void> {
 	return makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }

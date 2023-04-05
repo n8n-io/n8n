@@ -231,6 +231,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			token: string;
 			password: string;
 			userId: string;
+			mfaToken?: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
@@ -248,14 +249,17 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async updateCurrentUserPassword({
 			password,
 			currentPassword,
+			token,
 		}: {
 			password: string;
 			currentPassword: string;
+			token: string
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			await updateCurrentUserPassword(rootStore.getRestApiContext, {
 				newPassword: password,
 				currentPassword,
+				token,
 			});
 		},
 		async deleteUser(params: { id: string; transferId?: string }): Promise<void> {

@@ -392,7 +392,7 @@ class Server extends AbstractServer {
 			new EventBusController(),
 			new AuthController({ config, internalHooks, repositories, logger, postHog, mfaService }),
 			new OwnerController({ config, internalHooks, repositories, logger }),
-			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new MeController({ externalHooks, internalHooks, repositories, logger, mfaService }),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
 				config,
@@ -401,6 +401,7 @@ class Server extends AbstractServer {
 				mailer,
 				repositories,
 				logger,
+				mfaService,
 			}),
 			new TagsController({ config, repositories, externalHooks }),
 			new TranslationController(config, this.credentialTypes),

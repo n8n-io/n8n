@@ -23,6 +23,9 @@ import type {
 } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import { UserSettings } from 'n8n-core';
+import type { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { AES, enc } from 'crypto-js';
 
 @RestController('/me')
 export class MeController {
@@ -34,21 +37,26 @@ export class MeController {
 
 	private readonly userRepository: Repository<User>;
 
+	private readonly mfaService: MultiFactorAuthService;
+
 	constructor({
 		logger,
 		externalHooks,
 		internalHooks,
 		repositories,
+		mfaService,
 	}: {
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		mfaService: MultiFactorAuthService;
 	}) {
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
+		this.mfaService = mfaService;
 	}
 
 	/**
@@ -118,7 +126,8 @@ export class MeController {
 	 */
 	@Patch('/password')
 	async updatePassword(req: MeRequest.Password, res: Response) {
-		const { currentPassword, newPassword } = req.body;
+		const { currentPassword, newPassword, token } = req.body;
+		const { mfaEnabled } = req.user;
 
 		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled()) {
@@ -144,6 +153,23 @@ export class MeController {
 		}
 
 		const validPassword = validatePassword(newPassword);
+
+		if (mfaEnabled) {
+			if (!token) throw new BadRequestError('If MFA enabled, token is required.');
+
+			const encryptionKey = await UserSettings.getEncryptionKey();
+
+			const user = await this.userRepository.findOneOrFail({
+				where: { id: req.user.id },
+				select: ['id', 'mfaSecret'],
+			});
+
+			const decryptedSecret = AES.decrypt(user.mfaSecret ?? '', encryptionKey).toString(enc.Utf8);
+
+			const validToken = this.mfaService.verifySecret({ secret: decryptedSecret, token });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
+		}
 
 		req.user.password = await hashPassword(validPassword);
 
