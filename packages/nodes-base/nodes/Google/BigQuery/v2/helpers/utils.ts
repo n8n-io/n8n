@@ -63,6 +63,8 @@ export function prepareOutput(
 ) {
 	let responseData;
 
+	if (response === undefined) return [];
+
 	if (rawOutput) {
 		responseData = response;
 	} else {
