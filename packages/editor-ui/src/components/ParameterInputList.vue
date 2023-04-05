@@ -88,7 +88,7 @@
 				:path="path"
 				inputSize="small"
 				labelSize="small"
-				:dependentParametersValues="''"
+				:dependentParametersValues="getDependentParametersValues(parameter)"
 				:nodeValues="nodeValues"
 			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -112,7 +112,7 @@
 					:displayOptions="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
-					:hideLabel="PARAMETER_TYPES_WITHOUT_LABEL.includes(parameter.type)"
+					:hideLabel="false"
 					:nodeValues="nodeValues"
 					@valueChanged="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
@@ -142,7 +142,7 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
-import { KEEP_AUTH_IN_NDV_FOR_NODES, PARAMETER_TYPES_WITHOUT_LABEL } from '@/constants';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -153,11 +153,6 @@ export default mixins(workflowHelpers).extend({
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		ResourceMapper: () => import('./ResourceMapper/ResourceMapper.vue') as Promise<Component>,
 		ImportParameter,
-	},
-	data() {
-		return {
-			PARAMETER_TYPES_WITHOUT_LABEL,
-		};
 	},
 	props: {
 		nodeValues: {
@@ -415,6 +410,30 @@ export default mixins(workflowHelpers).extend({
 		},
 		shouldShowOptions(parameter: INodeProperties): boolean {
 			return parameter.type !== 'resourceMapper';
+		},
+		getDependentParametersValues(parameter: INodeProperties): string | null {
+			const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn', parameter) as
+				| string[]
+				| undefined;
+
+			if (loadOptionsDependsOn === undefined) {
+				return null;
+			}
+
+			// Get the resolved parameter values of the current node
+			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
+			try {
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+
+				const returnValues: string[] = [];
+				for (const parameterPath of loadOptionsDependsOn) {
+					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+				}
+
+				return returnValues.join('|');
+			} catch (error) {
+				return null;
+			}
 		},
 	},
 	watch: {

@@ -170,7 +170,12 @@ defineExpose({
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
 		<div class="mt-xs">
-			<n8n-input-label label="Values to send" :underline="true" size="small" color="text-dark" />
+			<n8n-input-label
+				:label="$locale.baseText('resourceMapper.valuesToSend.label')"
+				:underline="true"
+				:size="labelSize"
+				color="text-dark"
+			/>
 			<parameter-input-list
 				v-if="showMappingFields"
 				:parameters="fieldsUi"
