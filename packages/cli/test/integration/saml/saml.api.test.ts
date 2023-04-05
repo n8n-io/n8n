@@ -127,7 +127,7 @@ describe('Instance owner', () => {
 				.send({
 					loginEnabled: true,
 				})
-				.expect(200);
+				.expect(500);
 
 			expect(getCurrentAuthenticationMethod()).toBe('ldap');
 		});

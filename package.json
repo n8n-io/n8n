@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.222.0",
+  "version": "0.222.1",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -47,7 +47,7 @@
     "jest": "^29.5.0",
     "jest-environment-jsdom": "^29.5.0",
     "jest-mock": "^29.5.0",
-    "jest-mock-extended": "^3.0.3",
+    "jest-mock-extended": "^3.0.4",
     "nock": "^13.2.9",
     "node-fetch": "^2.6.7",
     "p-limit": "^3.1.0",
@@ -56,7 +56,7 @@
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^1.14.0",
     "supertest": "^6.3.3",
-    "ts-jest": "^29.0.5",
+    "ts-jest": "^29.1.0",
     "tsc-watch": "^6.0.0",
     "typescript": "*",
     "turbo": "1.8.8"
@@ -78,7 +78,7 @@
       "prettier": "^2.8.3",
       "tslib": "^2.5.0",
       "ts-node": "^10.9.1",
-      "typescript": "^5.0.2",
+      "typescript": "^5.0.3",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
     },

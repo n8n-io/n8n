@@ -42,7 +42,6 @@ jobs:
   run-e2e-tests:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
       user: ${{ github.event.inputs.user || 'PR User' }}

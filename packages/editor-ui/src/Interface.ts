@@ -37,6 +37,7 @@ import {
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
+import { PartialBy } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 
@@ -1483,4 +1484,44 @@ export type ExecutionsQueryFilter = {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+};
+
+export type SamlAttributeMapping = {
+	email: string;
+	firstName: string;
+	lastName: string;
+	userPrincipalName: string;
+};
+
+export type SamlLoginBinding = 'post' | 'redirect';
+
+export type SamlSignatureConfig = {
+	prefix: 'ds';
+	location: {
+		reference: '/samlp:Response/saml:Issuer';
+		action: 'after';
+	};
+};
+
+export type SamlPreferencesLoginEnabled = {
+	loginEnabled: boolean;
+};
+
+export type SamlPreferences = {
+	mapping?: SamlAttributeMapping;
+	metadata?: string;
+	metadataUrl?: string;
+	ignoreSSL?: boolean;
+	loginBinding?: SamlLoginBinding;
+	acsBinding?: SamlLoginBinding;
+	authnRequestsSigned?: boolean;
+	loginLabel?: string;
+	wantAssertionsSigned?: boolean;
+	wantMessageSigned?: boolean;
+	signatureConfig?: SamlSignatureConfig;
+} & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
+
+export type SamlPreferencesExtractedData = {
+	entityID: string;
+	returnUrl: string;
 };
