@@ -10,6 +10,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
+import { MultiFactorAuthService } from '@/MultiFactorAuthService';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
@@ -21,6 +22,7 @@ describe('MeController', () => {
 		externalHooks,
 		internalHooks,
 		repositories: { User: userRepository },
+		mfaService: new MultiFactorAuthService(),
 	});
 
 	describe('updateCurrentUser', () => {
@@ -134,7 +136,7 @@ describe('MeController', () => {
 
 		it('should update the password in the DB, and issue a new cookie', async () => {
 			const req = mock<MeRequest.Password>({
-				user: mock({ password: passwordHash }),
+				user: mock({ password: passwordHash, mfaEnabled: false }),
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 			});
 			const res = mock<Response>();
