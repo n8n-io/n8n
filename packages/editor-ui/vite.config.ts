@@ -131,8 +131,10 @@ export default mergeConfig(
 		},
 		build: {
 			assetsInlineLimit: 0,
+			minify: !!release,
 			sourcemap: !!release,
 			rollupOptions: {
+				treeshake: !!release,
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
