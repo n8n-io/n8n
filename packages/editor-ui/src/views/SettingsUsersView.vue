@@ -47,13 +47,6 @@
 				@copyInviteLink="onCopyInviteLink"
 			/>
 		</div>
-		<feature-coming-soon
-			v-for="fakeDoorFeature in fakeDoorFeatures"
-			:key="fakeDoorFeature.id"
-			:featureId="fakeDoorFeature.id"
-			class="pb-3xl"
-			showTitle
-		/>
 	</div>
 </template>
 
@@ -61,8 +54,7 @@
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
-import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
-import { IFakeDoor, IUser, IUserListAction } from '@/Interface';
+import { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
@@ -77,7 +69,6 @@ export default mixins(showMessage, copyPaste).extend({
 	name: 'SettingsUsersView',
 	components: {
 		PageAlert,
-		FeatureComingSoon,
 	},
 	async mounted() {
 		if (!this.usersStore.showUMSetupWarning) {
@@ -106,9 +97,6 @@ export default mixins(showMessage, copyPaste).extend({
 					value: 'delete',
 				},
 			];
-		},
-		fakeDoorFeatures(): IFakeDoor[] {
-			return this.uiStore.getFakeDoorByLocation('settings/users');
 		},
 	},
 	methods: {

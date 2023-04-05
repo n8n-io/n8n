@@ -16,7 +16,7 @@ import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 import { forceParse } from '@/utils/forceParse';
-import { autocompletion } from '@codemirror/autocomplete';
+import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
 
 import type { IVariableItemSelected } from '@/Interface';
 
@@ -44,6 +44,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 			autocompletion(),
 			Prec.highest(
 				keymap.of([
+					{ key: 'Tab', run: acceptCompletion },
 					{
 						any: (_: EditorView, event: KeyboardEvent) => {
 							if (event.key === 'Escape') {
