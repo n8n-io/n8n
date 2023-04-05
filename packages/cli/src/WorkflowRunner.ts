@@ -742,13 +742,21 @@ export class WorkflowRunner {
 				}
 
 				if (message.data.result === undefined) {
-					await Db.collections.Execution.update(message.data.executionId, {
-						status: 'failed',
-						stoppedAt: new Date(),
-					});
+					const noDataError = new WorkflowOperationError('Workflow finished with no result data');
+					const subWorkflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
+						data,
+						message.data.executionId,
+					);
+					await this.processError(
+						noDataError,
+						startedAt,
+						data.executionMode,
+						message.data?.executionId,
+						subWorkflowHooks,
+					);
+				} else {
+					this.activeExecutions.remove(message.data.executionId, message.data.result);
 				}
-				// eslint-disable-next-line @typescript-eslint/await-thenable
-				this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
