@@ -7,11 +7,8 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import packageJSON from './package.json';
-import rootPackageJSON from '../../package.json';
 
 const { coverageReporters } = require('../../jest.config.js');
-
-const sourcemapsEnabled = !!process.env.SENTRY_UPLOAD_SOURCEMAPS;
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -96,8 +93,8 @@ const plugins = [
 	}),
 ];
 
-const sourceMapsEnabled = process.env.SENTRY_UPLOAD_SOURCEMAPS === 'true';
-if (sourceMapsEnabled) {
+const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
+if (release && authToken) {
 	plugins.push(
 		sentryVitePlugin({
 			org: 'n8nio',
@@ -106,9 +103,9 @@ if (sourceMapsEnabled) {
 			include: './dist',
 			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
 			// and needs the `project:releases` and `org:read` scopes
-			authToken: process.env.SENTRY_AUTH_TOKEN,
+			authToken,
 			telemetry: false,
-			release: rootPackageJSON.version,
+			release,
 		}),
 	);
 }
@@ -134,7 +131,7 @@ export default mergeConfig(
 		},
 		build: {
 			assetsInlineLimit: 0,
-			sourcemap: sourceMapsEnabled,
+			sourcemap: !!release,
 			rollupOptions: {
 				output: {
 					manualChunks: {
