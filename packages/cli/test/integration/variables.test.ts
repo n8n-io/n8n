@@ -19,23 +19,11 @@ let licenseLike = {
 	getVariablesLimit: jest.fn().mockReturnValue(-1),
 };
 
-jest.mock('typedi', () => {
-	const original = jest.requireActual('typedi');
-	return {
-		...original,
-		get: jest.fn((cls: ClassLike) => {
-			if (cls === License) {
-				return licenseLike;
-			}
-			return original.get(cls);
-		}),
-	};
-});
-
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['variables'] });
 
 	utils.initConfigFile();
+	utils.mockInstance(License, licenseLike);
 
 	ownerUser = await testDb.createOwner();
 	memberUser = await testDb.createUser();
