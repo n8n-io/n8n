@@ -78,12 +78,13 @@ import mixins from 'vue-typed-mixins';
 import { IFormInputs } from '@/Interface';
 
 import Logo from '../components/Logo.vue';
-import { VIEWS } from '@/constants';
+import {
+	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
+	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+	VIEWS,
+} from '@/constants';
 import { useUsersStore } from '@/stores/users';
 import { mapStores } from 'pinia';
-
-const TOKEN_INPUT_MAX_LENGTH = 6;
-const RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
 export default mixins(showMessage, genericHelpers).extend({
 	name: 'MfaView',
@@ -102,7 +103,7 @@ export default mixins(showMessage, genericHelpers).extend({
 				properties: {
 					label: this.$locale.baseText('mfa.code.input.label'),
 					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-					maxlength: TOKEN_INPUT_MAX_LENGTH,
+					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
 					capitalize: true,
 					validateOnBlur: false,
 				},
@@ -136,7 +137,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					properties: {
 						label: this.$locale.baseText('mfa.recovery.input.label'),
 						placeholder: this.$locale.baseText('mfa.recovery.input.placeholder'),
-						maxlength: RECOVERY_CODE_INPUT_MAX_LENGTH,
+						maxlength: MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 						capitalize: true,
 						validateOnBlur: false,
 					},
@@ -158,7 +159,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					properties: {
 						label: this.$locale.baseText('mfa.code.input.label'),
 						placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-						maxlength: TOKEN_INPUT_MAX_LENGTH,
+						maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
 						capitalize: true,
 					},
 				},
@@ -167,8 +168,8 @@ export default mixins(showMessage, genericHelpers).extend({
 		onInput({ value, name }: { name: string; value: string }) {
 			const isSubmittingMfaToken = name === 'token';
 			const inputValidLength = isSubmittingMfaToken
-				? TOKEN_INPUT_MAX_LENGTH
-				: RECOVERY_CODE_INPUT_MAX_LENGTH;
+				? MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH
+				: MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH;
 
 			if (value.length !== inputValidLength) {
 				this.hasAnyChanges = false;

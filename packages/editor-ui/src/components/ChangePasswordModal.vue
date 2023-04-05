@@ -35,11 +35,9 @@ import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
 import Vue from 'vue';
 import { IFormInputs } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
+import { CHANGE_PASSWORD_MODAL_KEY, MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH } from '../constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
-
-const TOKEN_INPUT_MAX_LENGTH = 6;
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -113,7 +111,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					label: this.$locale.baseText('mfa.code.input.label'),
 					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-					maxlength: TOKEN_INPUT_MAX_LENGTH,
+					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
 					capitalize: true,
 					validateOnBlur: true,
 				},

@@ -14,11 +14,9 @@ import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
-
-const TOKEN_INPUT_MAX_LENGTH = 6;
 
 export default mixins(showMessage).extend({
 	name: 'ChangePasswordView',
@@ -77,8 +75,6 @@ export default mixins(showMessage).extend({
 		const userId = this.getUserId();
 		const mfaEnabled = this.getMfaEnabled();
 
-		console.log('esta mfa enabled', mfaEnabled);
-
 		if (mfaEnabled) {
 			form.inputs.push({
 				name: 'mfaToken',
@@ -87,7 +83,7 @@ export default mixins(showMessage).extend({
 					required: true,
 					label: this.$locale.baseText('mfa.code.input.label'),
 					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
-					maxlength: TOKEN_INPUT_MAX_LENGTH,
+					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
 					capitalize: true,
 					validateOnBlur: true,
 				},

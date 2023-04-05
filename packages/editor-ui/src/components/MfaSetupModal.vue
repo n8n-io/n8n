@@ -136,7 +136,11 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED, MFA_SETUP_MODAL_KEY } from '../constants';
+import {
+	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+	MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED,
+	MFA_SETUP_MODAL_KEY,
+} from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
@@ -147,8 +151,6 @@ import CopyInput from '@/components/CopyInput.vue';
 import { copyPaste } from '@/mixins/copyPaste';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
-
-const TOKEN_INPUT_MAX_LENGTH = 6;
 
 export default mixins(showMessage, copyPaste).extend({
 	name: 'MfaSetupModal',
@@ -182,7 +184,7 @@ export default mixins(showMessage, copyPaste).extend({
 			this.modalBus.$emit('close');
 		},
 		onInput(value: string) {
-			if (value.length !== TOKEN_INPUT_MAX_LENGTH) {
+			if (value.length !== MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH) {
 				this.infoTextErrorMessage = '';
 				return;
 			}
