@@ -115,32 +115,33 @@ export default mergeConfig(
 			},
 		},
 	}),
-	defineVitestConfig({
-		test: {
-			globals: true,
-			environment: 'jsdom',
-			setupFiles: ['./src/__tests__/setup.ts'],
-			coverage: {
-				provider: 'c8',
-				reporter: coverageReporters,
-				include: ['src/**/*.ts'],
-				all: true,
-			},
-			css: {
-				modules: {
-					classNameStrategy: 'non-scoped',
+	NODE_ENV === 'test'
+		? defineVitestConfig({
+				test: {
+					globals: true,
+					environment: 'jsdom',
+					setupFiles: ['./src/__tests__/setup.ts'],
+					coverage: {
+						provider: 'c8',
+						reporter: coverageReporters,
+						include: ['src/**/*.ts'],
+						all: true,
+					},
+					css: {
+						modules: {
+							classNameStrategy: 'non-scoped',
+						},
+					},
 				},
-			},
-		},
-		resolve: {
-			alias: [
-				// https://github.com/vitest-dev/vitest/discussions/1806
-				{
-					find: /^monaco-editor$/,
-					replacement:
-						__dirname + "/node_modules/monaco-editor/esm/vs/editor/editor.api",
+				resolve: {
+					alias: [
+						// https://github.com/vitest-dev/vitest/discussions/1806
+						{
+							find: /^monaco-editor$/,
+							replacement: __dirname + '/node_modules/monaco-editor/esm/vs/editor/editor.api',
+						},
+					],
 				},
-			],
-		},
-	}),
+		  })
+		: {},
 );
