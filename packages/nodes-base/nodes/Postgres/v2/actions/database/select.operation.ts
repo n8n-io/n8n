@@ -75,6 +75,10 @@ export async function execute(
 	nodeOptions: IDataObject,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
+	if (nodeOptions.runOnce) {
+		items = [items[0]];
+	}
+
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];

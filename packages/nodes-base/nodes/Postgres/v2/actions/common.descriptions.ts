@@ -130,6 +130,18 @@ export const optionsCollection: INodeProperties = {
 				},
 			},
 		},
+		{
+			displayName: 'Run Once',
+			name: 'runOnce',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to run query only once, regardless of the number of incoming items',
+			displayOptions: {
+				show: {
+					'/operation': ['select', 'executeQuery'],
+				},
+			},
+		},
 	],
 };
 
