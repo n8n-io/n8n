@@ -31,6 +31,9 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
+      - name: Set release version in env
+        run: echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
+
       - name: Build
         run: pnpm build
 
@@ -38,7 +41,6 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
-          echo "RELEASE=$(node -e 'console.log(require("./package.json").version)')" >> $GITHUB_ENV
 
       - name: Create Release
         uses: ncipollo/release-action@v1
