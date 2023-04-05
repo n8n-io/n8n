@@ -94,7 +94,7 @@ export const AddToDateDescription: INodeProperties[] = [
 		displayName: 'Output Field Name',
 		name: 'outputFieldName',
 		type: 'string',
-		default: 'new_date',
+		default: 'newDate',
 		description: 'Name of the field to put the output in',
 		displayOptions: {
 			show: {

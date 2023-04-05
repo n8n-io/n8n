@@ -29,7 +29,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 		displayName: 'Output Field Name',
 		name: 'outputFieldName',
 		type: 'string',
-		default: 'current_date',
+		default: 'currentDate',
 		description: 'Name of the field to put the output in',
 		displayOptions: {
 			show: {
