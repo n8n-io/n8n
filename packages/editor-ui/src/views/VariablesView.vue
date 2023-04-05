@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, h, ref } from 'vue';
-import { useEnvironmentsStore, useUIStore, useSettingsStore } from '@/stores';
+import { useEnvironmentsStore, useUIStore, useSettingsStore, useUsersStore } from '@/stores';
 import { useI18n, useTelemetry, useToast, useUpgradeLink, useMessage } from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -14,9 +14,11 @@ import {
 	TemporaryEnvironmentVariable,
 } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
+import { getVariablesPermissions } from '@/permissions';
 
 const settingsStore = useSettingsStore();
 const environmentsStore = useEnvironmentsStore();
+const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -29,9 +31,12 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 const allVariables = ref<Array<EnvironmentVariable | TemporaryEnvironmentVariable>>([]);
 const editMode = ref<Record<string, boolean>>({});
 
+const permissions = getVariablesPermissions(usersStore.currentUser);
+
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
 );
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
@@ -168,12 +173,12 @@ function displayName(resource: EnvironmentVariable) {
 		:type-props="{ columns: datatableColumns }"
 	>
 		<template #add-button>
-			<n8n-tooltip placement="top" :disabled="isFeatureEnabled">
+			<n8n-tooltip placement="top" :disabled="canCreateVariables">
 				<div>
 					<n8n-button
 						size="large"
 						block
-						:disabled="!isFeatureEnabled"
+						:disabled="!canCreateVariables"
 						@click="addTemporaryVariable"
 						data-test-id="resources-list-add"
 					>
@@ -181,7 +186,8 @@ function displayName(resource: EnvironmentVariable) {
 					</n8n-button>
 				</div>
 				<template #content>
-					{{ i18n.baseText('variables.add.unavailable') }}
+					<span v-if="!isFeatureEnabled">{{ i18n.baseText('variables.add.unavailable') }}</span>
+					<span v-else>{{ i18n.baseText('variables.add.onlyOwnerCanCreate') }}</span>
 				</template>
 			</n8n-tooltip>
 		</template>

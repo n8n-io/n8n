@@ -3,12 +3,14 @@ import { ComponentPublicInstance, computed, nextTick, onMounted, PropType, ref }
 import { EnvironmentVariable, IValidator, Rule, RuleGroup, Validatable } from '@/Interface';
 import { useI18n, useToast, useCopyToClipboard } from '@/composables';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore, useUsersStore } from '@/stores';
+import { getVariablesPermissions } from '@/permissions';
 
 const i18n = useI18n();
 const copyToClipboard = useCopyToClipboard();
 const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 
 const emit = defineEmits(['save', 'cancel', 'edit', 'delete']);
 
@@ -23,6 +25,7 @@ const props = defineProps({
 	},
 });
 
+const permissions = getVariablesPermissions(usersStore.currentUser);
 const modelValue = ref<EnvironmentVariable>({ ...props.data });
 
 const formValidationStatus = ref<Record<string, boolean>>({
@@ -40,6 +43,10 @@ const usage = computed(() => `$vars.${modelValue.value.key || props.data.key}`);
 
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+);
+
+const showActions = computed(
+	() => isFeatureEnabled.value && (permissions.edit || permissions.delete),
 );
 
 onMounted(() => {
@@ -177,22 +184,38 @@ function focusFirstInput() {
 				</n8n-button>
 			</div>
 			<div v-else :class="[$style.buttons, $style.hoverButtons]">
-				<n8n-button
-					data-test-id="variable-row-edit-button"
-					type="tertiary"
-					class="mr-xs"
-					@click="onEdit"
-				>
-					{{ i18n.baseText('variables.row.button.edit') }}
-				</n8n-button>
-				<n8n-button
-					data-test-id="variable-row-delete-button"
-					type="tertiary"
-					class="mr-xs"
-					@click="onDelete"
-				>
-					{{ i18n.baseText('variables.row.button.delete') }}
-				</n8n-button>
+				<n8n-tooltip :disabled="permissions.edit" placement="top">
+					<div>
+						<n8n-button
+							data-test-id="variable-row-edit-button"
+							type="tertiary"
+							class="mr-xs"
+							:disabled="!permissions.edit"
+							@click="onEdit"
+						>
+							{{ i18n.baseText('variables.row.button.edit') }}
+						</n8n-button>
+					</div>
+					<template #content>
+						{{ i18n.baseText('variables.row.button.edit.onlyOwnerCanSave') }}
+					</template>
+				</n8n-tooltip>
+				<n8n-tooltip :disabled="permissions.delete" placement="top">
+					<div>
+						<n8n-button
+							data-test-id="variable-row-delete-button"
+							type="tertiary"
+							class="mr-xs"
+							:disabled="!permissions.delete"
+							@click="onDelete"
+						>
+							{{ i18n.baseText('variables.row.button.delete') }}
+						</n8n-button>
+					</div>
+					<template #content>
+						{{ i18n.baseText('variables.row.button.delete.onlyOwnerCanDelete') }}
+					</template>
+				</n8n-tooltip>
 			</div>
 		</td>
 	</tr>
