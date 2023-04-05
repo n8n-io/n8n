@@ -746,8 +746,7 @@ export class WorkflowExecute {
 
 			const returnPromise = (async () => {
 				try {
-					const { executionId, restartExecutionId } = this.additionalData;
-					if (restartExecutionId !== executionId) {
+					if (!this.additionalData.restartExecutionId) {
 						await this.executeHook('workflowExecuteBefore', [workflow]);
 					}
 				} catch (error) {
