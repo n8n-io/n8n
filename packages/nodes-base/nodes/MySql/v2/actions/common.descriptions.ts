@@ -183,11 +183,12 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Show Query Metadata',
-			name: 'showMetadata',
+			displayName: 'Output Query Execution Details',
+			name: 'detailedOutput',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to show metadata of the query, or just confirmation of success',
+			description:
+				'Whether to show in output details of the ofexecuted query for each statement, or just confirmation of success',
 		},
 		{
 			displayName: 'Skip on Conflict',

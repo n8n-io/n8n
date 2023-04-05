@@ -1,4 +1,10 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	IPairedItemData,
+	NodeExecutionWithMetadata,
+} from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 import type {
@@ -86,6 +92,51 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 	}));
 }
 
+export function prepareOutput(
+	response: IDataObject[],
+	options: IDataObject,
+	statements: string[],
+	constructExecutionHelper: (
+		inputData: INodeExecutionData[],
+		options: {
+			itemData: IPairedItemData | IPairedItemData[];
+		},
+	) => NodeExecutionWithMetadata[],
+) {
+	const returnData: INodeExecutionData[] = [];
+
+	if (options.detailedOutput) {
+		response.forEach((entry, index) => {
+			const item = {
+				sql: statements[index],
+				data: entry,
+			};
+
+			const executionData = constructExecutionHelper(wrapData(item), {
+				itemData: { item: index },
+			});
+
+			returnData.push(...executionData);
+		});
+	} else {
+		response
+			.filter((entry) => Array.isArray(entry))
+			.forEach((entry, index) => {
+				const executionData = constructExecutionHelper(wrapData(entry), {
+					itemData: { item: index },
+				});
+
+				returnData.push(...executionData);
+			});
+	}
+
+	if (!returnData.length) {
+		returnData.push({ json: { success: true } });
+	}
+
+	return returnData;
+}
+
 export async function runQueries(
 	this: IExecuteFunctions,
 	queries: QueryWithValues[],
@@ -116,42 +167,23 @@ export async function runQueries(
 				singleQuery = formatedQueries[0];
 			}
 
-			let response = (await pool.query(singleQuery))[0] as unknown as IDataObject[][];
+			let response: IDataObject | IDataObject[] = (
+				await pool.query(singleQuery)
+			)[0] as unknown as IDataObject;
 
 			if (!response) return [];
 
-			if (!Array.isArray(response)) response = [response];
+			const statements = singleQuery.replace(/\n/g, '').split(';');
 
-			if (options.showMetadata) {
-				const statements = singleQuery.replace(/\n/g, '').split(';');
-
-				response.forEach((entry, index) => {
-					const item = {
-						sql: statements[index],
-						data: entry,
-					};
-
-					const executionData = this.helpers.constructExecutionMetaData(wrapData(item), {
-						itemData: { item: index },
-					});
-
-					returnData.push(...executionData);
-				});
+			if (Array.isArray(response)) {
+				if (statements.length === 1) response = [response];
 			} else {
-				response
-					.filter((entry) => Array.isArray(entry))
-					.forEach((entry, index) => {
-						const executionData = this.helpers.constructExecutionMetaData(wrapData(entry), {
-							itemData: { item: index },
-						});
-
-						returnData.push(...executionData);
-					});
+				response = [response];
 			}
 
-			if (!returnData.length) {
-				returnData.push({ json: { success: true } });
-			}
+			returnData.push(
+				...prepareOutput(response, options, statements, this.helpers.constructExecutionMetaData),
+			);
 		} catch (err) {
 			const error = parseMySqlError.call(this, err);
 
@@ -166,16 +198,22 @@ export async function runQueries(
 					const formatedQuery = connection.format(query, values);
 					const statements = formatedQuery.split(';').map((q) => q.trim());
 
+					const responses: IDataObject[] = [];
 					for (const statement of statements) {
 						if (statement === '') continue;
 						const response = (await connection.query(statement))[0] as unknown as IDataObject;
 
-						const executionData = this.helpers.constructExecutionMetaData(wrapData(response), {
-							itemData: { item: index },
-						});
-
-						returnData.push(...executionData);
+						responses.push(response);
 					}
+
+					returnData.push(
+						...prepareOutput(
+							responses,
+							options,
+							statements,
+							this.helpers.constructExecutionMetaData,
+						),
+					);
 				} catch (err) {
 					const error = parseMySqlError.call(this, err, index);
 
@@ -197,16 +235,22 @@ export async function runQueries(
 					const formatedQuery = connection.format(query, values);
 					const statements = formatedQuery.split(';').map((q) => q.trim());
 
+					const responses: IDataObject[] = [];
 					for (const statement of statements) {
 						if (statement === '') continue;
 						const response = (await connection.query(statement))[0] as unknown as IDataObject;
 
-						const executionData = this.helpers.constructExecutionMetaData(wrapData(response), {
-							itemData: { item: index },
-						});
-
-						returnData.push(...executionData);
+						responses.push(response);
 					}
+
+					returnData.push(
+						...prepareOutput(
+							responses,
+							options,
+							statements,
+							this.helpers.constructExecutionMetaData,
+						),
+					);
 				} catch (err) {
 					const error = parseMySqlError.call(this, err, index);
 
