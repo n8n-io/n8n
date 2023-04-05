@@ -7,8 +7,8 @@ import LabelItem from './LabelItem.vue';
 import ActionItem from './ActionItem.vue';
 import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
-import { DynamicScroller, RecycleScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
-import { v4 as uuid } from 'uuid';
+// @ts-ignore
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -162,16 +162,5 @@ watch(
 	& > *::-webkit-scrollbar {
 		display: none;
 	}
-	// > *:last-child {
-	// 	margin-bottom: var(--spacing-2xl);
-	// }
 }
-// .action {
-// 	&:last-of-type {
-// 		margin-bottom: var(--spacing-s);
-// 	}
-// }
-// .node + .category {
-// 	margin-top: var(--spacing-s);
-// }
 </style>

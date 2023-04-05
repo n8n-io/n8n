@@ -1,13 +1,7 @@
 <script setup lang="ts">
-import { INodeCreateElement, NodeCreateElement } from '@/Interface';
-import NodeItem from './NodeItem.vue';
-import SubcategoryItem from './SubcategoryItem.vue';
+import { INodeCreateElement } from '@/Interface';
 import CategoryItem from './CategoryItem.vue';
-import LabelItem from './LabelItem.vue';
-import ActionItem from './ActionItem.vue';
-import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
-import { DynamicScroller, RecycleScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import ItemsRenderer from './ItemsRenderer.vue';
 
 export interface Props {

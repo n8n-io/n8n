@@ -1,21 +1,7 @@
-import { getCurrentInstance, computed, onMounted } from 'vue';
-import {
-	CORE_NODES_CATEGORY,
-	WEBHOOK_NODE_TYPE,
-	OTHER_TRIGGER_NODES_SUBCATEGORY,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	REGULAR_NODE_FILTER,
-	TRANSFORM_DATA_SUBCATEGORY,
-	FILES_SUBCATEGORY,
-	FLOWS_CONTROL_SUBCATEGORY,
-	HELPERS_SUBCATEGORY,
-	TRIGGER_NODE_FILTER,
-} from '@/constants';
+import { getCurrentInstance } from 'vue';
+
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { i18n } from '@/plugins/i18n';
-import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
+import { sublimeSearch } from '@/utils';
 import { INodeCreateElement } from '@/Interface';
 
 export const useNodesSearch = () => {

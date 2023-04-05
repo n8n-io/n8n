@@ -1,25 +1,10 @@
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
-import { INodeActionTypeDescription } from 'n8n-workflow';
-import {
-	INodeCreateElement,
-	IActionItemProps,
-	SubcategoryCreateElement,
-	ActionCreateElement,
-	LabelCreateElement,
-} from '@/Interface';
-import {
-	CUSTOM_API_CALL_NAME,
-	SCHEDULE_TRIGGER_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
-	WEBHOOK_NODE_TYPE,
-} from '@/constants';
+import { INodeCreateElement, IActionItemProps, LabelCreateElement } from '@/Interface';
+import { SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRootStore';
-import useMainPanelView from './useMainPanelView';
-import { isEmpty } from '@/utils';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 
 export const useActions = () => {
@@ -30,6 +15,7 @@ export const useActions = () => {
 		getNodeTypeBase,
 		visibleNodesWithActions,
 	} = useNodeCreatorStore();
+
 	const instance = getCurrentInstance();
 	const { baseUrl } = useRootStore();
 	const { $externalHooks } = new externalHooks();
