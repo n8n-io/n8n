@@ -11,9 +11,9 @@ export class CreateVariables1677501636753 implements MigrationInterface {
 		await queryRunner.query(`
 			CREATE TABLE ${tablePrefix}variables (
 				id int(11) auto_increment NOT NULL PRIMARY KEY,
-				\`key\` TEXT NOT NULL,
-				\`type\` TEXT DEFAULT 'string' NOT NULL,
-				value TEXT NULL,
+				\`key\` VARCHAR(50) NOT NULL,
+				\`type\` VARCHAR(50) DEFAULT 'string' NOT NULL,
+				value VARCHAR(255) NULL,
 				UNIQUE (\`key\`)
 			)
 			ENGINE=InnoDB;

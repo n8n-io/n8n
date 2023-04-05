@@ -33,6 +33,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['Variables']);
+	licenseLike.isVariablesEnabled.mockReturnValue(true);
+	licenseLike.getVariablesLimit.mockReturnValue(-1);
 });
 
 afterAll(async () => {
@@ -142,7 +144,7 @@ test('POST /variables should not create a new credential and return it for a mem
 });
 
 test("POST /variables should not create a new credential and return it if the instance doesn't have a license", async () => {
-	licenseLike.isVariablesEnabled.mockReturnValueOnce(false);
+	licenseLike.isVariablesEnabled.mockReturnValue(false);
 	const toCreate = {
 		key: 'create1',
 		value: 'createvalue1',
@@ -169,7 +171,7 @@ test('POST /variables should fail to create a new credential and if one with the
 });
 
 test('POST /variables should not fail if variable limit not reached', async () => {
-	licenseLike.getVariablesLimit.mockReturnValueOnce(5);
+	licenseLike.getVariablesLimit.mockReturnValue(5);
 	let i = 1;
 	let toCreate = {
 		key: `create${i}`,
@@ -190,7 +192,7 @@ test('POST /variables should not fail if variable limit not reached', async () =
 });
 
 test('POST /variables should fail if variable limit reached', async () => {
-	licenseLike.getVariablesLimit.mockReturnValueOnce(5);
+	licenseLike.getVariablesLimit.mockReturnValue(5);
 	let i = 1;
 	let toCreate = {
 		key: `create${i}`,
@@ -204,6 +206,43 @@ test('POST /variables should fail if variable limit reached', async () => {
 			value: `createvalue${i}`,
 		};
 	}
+	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
+	expect(response.statusCode).toBe(400);
+	expect(response.body.data?.key).not.toBe(toCreate.key);
+	expect(response.body.data?.value).not.toBe(toCreate.value);
+});
+
+test('POST /variables should fail if key too long', async () => {
+	const toCreate = {
+		// 51 'a's
+		key: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+		value: 'value',
+	};
+	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
+	expect(response.statusCode).toBe(400);
+	expect(response.body.data?.key).not.toBe(toCreate.key);
+	expect(response.body.data?.value).not.toBe(toCreate.value);
+});
+
+test('POST /variables should fail if value too long', async () => {
+	const toCreate = {
+		key: 'key',
+		// 256 'a's
+		value:
+			'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+	};
+	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
+	expect(response.statusCode).toBe(400);
+	expect(response.body.data?.key).not.toBe(toCreate.key);
+	expect(response.body.data?.value).not.toBe(toCreate.value);
+});
+
+test("POST /variables should fail if key contain's prohibited characters", async () => {
+	const toCreate = {
+		// 51 'a's
+		key: 'te$t',
+		value: 'value',
+	};
 	const response = await authAgent(ownerUser).post('/variables').send(toCreate);
 	expect(response.statusCode).toBe(400);
 	expect(response.body.data?.key).not.toBe(toCreate.key);

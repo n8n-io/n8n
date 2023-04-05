@@ -11,9 +11,9 @@ export class CreateVariables1677501636754 implements MigrationInterface {
 		await queryRunner.query(`
 			CREATE TABLE public.variables (
 				id serial4 NOT NULL PRIMARY KEY,
-				"key" text NOT NULL,
-				"type" text NOT NULL DEFAULT 'string',
-				value text NULL,
+				"key" varchar(50) NOT NULL,
+				"type" varchar(50) NOT NULL DEFAULT 'string',
+				value varchar(255) NULL,
 				UNIQUE ("key")
 			);
 		`);
