@@ -14,6 +14,7 @@ import moment from 'moment-timezone';
 import { CurrentDateDescription } from './CurrentDateDescription';
 import { AddToDateDescription } from './AddToDateDescription';
 import { SubtractFromDateDescription } from './SubtractFromDateDescription';
+import { FormatDateDescription } from './FormatDateDescription';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -69,6 +70,7 @@ export class DateTimeV2 implements INodeType {
 				...CurrentDateDescription,
 				...AddToDateDescription,
 				...SubtractFromDateDescription,
+				...FormatDateDescription,
 			],
 		};
 	}
@@ -135,6 +137,21 @@ export class DateTimeV2 implements INodeType {
 						timeUnit as moment.unitOfTime.DurationConstructor,
 					);
 					responseData.push({ [outputFieldName]: returnedDate });
+				} catch {
+					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				}
+			} else if (operation === 'formatDate') {
+				const date = this.getNodeParameter('date', i) as string;
+				const format = this.getNodeParameter('format', i) as string;
+				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				try {
+					const momentDate = moment.tz(date, workflowTimezone);
+					if (format === 'custom') {
+						const customFormat = this.getNodeParameter('customFormat', i) as string;
+						responseData.push({ [outputFieldName]: momentDate.format(customFormat) });
+					} else {
+						responseData.push({ [outputFieldName]: momentDate.format(format) });
+					}
 				} catch {
 					throw new NodeOperationError(this.getNode(), 'Invalid date format');
 				}
