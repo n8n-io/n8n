@@ -19,21 +19,21 @@ async function upsertWorkflowStatistics(
 	workflowId: string,
 ): Promise<StatisticsUpsertResult> {
 	const dbType = config.getEnv('database.type');
-	const tablePrefix = config.getEnv('database.tablePrefix');
+	const { tableName } = Db.collections.WorkflowStatistics.metadata;
 	try {
 		if (dbType === 'sqlite') {
-			await Db.collections.WorkflowStatistics
-				.query(`INSERT INTO "${tablePrefix}workflow_statistics" ("count", "name", "workflowId", "latestEvent")
-			VALUES (1, "${eventName}", "${workflowId}", CURRENT_TIMESTAMP)
-			ON CONFLICT (workflowId, name) DO UPDATE SET
-				count = count + 1,
-				latestEvent = CURRENT_TIMESTAMP returning count
-		`);
+			await Db.collections.WorkflowStatistics.query(
+				`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
+					VALUES (1, "${eventName}", "${workflowId}", CURRENT_TIMESTAMP)
+					ON CONFLICT (workflowId, name)
+					DO UPDATE SET count = count + 1, latestEvent = CURRENT_TIMESTAMP`,
+			);
 			// SQLite does not offer a reliable way to know whether or not an insert or update happened.
 			// We'll use a naive approach in this case. Query again after and it might cause us to miss the
 			// first production execution sometimes due to concurrency, but it's the only way.
 
 			const counter = await Db.collections.WorkflowStatistics.findOne({
+				select: ['count'],
 				where: {
 					name: eventName,
 					workflowId,
@@ -45,10 +45,13 @@ async function upsertWorkflowStatistics(
 			}
 			return StatisticsUpsertResult.update;
 		} else if (dbType === 'postgresdb') {
-			const queryResult = (await Db.collections.WorkflowStatistics
-				.query(`insert into "${tablePrefix}workflow_statistics" ("count", "name", "workflowId", "latestEvent")
-				values (1, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP) on conflict ("name", "workflowId")
-				do update set "count" = "${tablePrefix}workflow_statistics"."count" + 1, "latestEvent" = CURRENT_TIMESTAMP returning *;`)) as Array<{
+			const queryResult = (await Db.collections.WorkflowStatistics.query(
+				`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
+					VALUES (1, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP)
+					ON CONFLICT ("name", "workflowId")
+					DO UPDATE SET "count" = "${tableName}"."count" + 1, "latestEvent" = CURRENT_TIMESTAMP
+					RETURNING *;`,
+			)) as Array<{
 				count: number;
 			}>;
 			if (queryResult[0].count === 1) {
@@ -56,12 +59,12 @@ async function upsertWorkflowStatistics(
 			}
 			return StatisticsUpsertResult.update;
 		} else {
-			const queryResult = (await Db.collections.WorkflowStatistics
-				.query(`insert into \`${tablePrefix}workflow_statistics\` (count,
-				latestEvent,
-				name,
-				workflowId)
-				values (1, NOW(), "${eventName}", "${workflowId}") ON DUPLICATE KEY UPDATE count = count + 1, latestEvent = NOW();`)) as {
+			const queryResult = (await Db.collections.WorkflowStatistics.query(
+				`INSERT INTO \`${tableName}\` (count, name, workflowId, latestEvent)
+					VALUES (1, "${eventName}", "${workflowId}", NOW())
+					ON DUPLICATE KEY
+					UPDATE count = count + 1, latestEvent = NOW();`,
+			)) as {
 				affectedRows: number;
 			};
 			if (queryResult.affectedRows === 1) {
@@ -71,7 +74,8 @@ async function upsertWorkflowStatistics(
 			return StatisticsUpsertResult.update;
 		}
 	} catch (error) {
-		return StatisticsUpsertResult.failed;
+		if (error instanceof QueryFailedError) return StatisticsUpsertResult.failed;
+		throw error;
 	}
 }
 
