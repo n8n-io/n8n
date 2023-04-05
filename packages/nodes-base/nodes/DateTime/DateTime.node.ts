@@ -415,11 +415,18 @@ export class DateTime implements INodeType {
 				item = items[i];
 
 				if (action === 'format') {
-					let currentDate = this.getNodeParameter('value', i) as string;
+					let currentDate: string | number | LuxonDateTime = this.getNodeParameter(
+						'value',
+						i,
+					) as string;
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
 					const options = this.getNodeParameter('options', i);
 					let newDate;
+
+					if (typeof currentDate === 'number') {
+						currentDate = (currentDate as number).toString();
+					}
 
 					if ((currentDate as unknown as IDataObject) instanceof LuxonDateTime) {
 						currentDate = (currentDate as unknown as LuxonDateTime).toISO();
