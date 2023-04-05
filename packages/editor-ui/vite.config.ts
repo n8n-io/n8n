@@ -43,6 +43,43 @@ const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
 
+const alias = [
+	{ find: '@', replacement: resolve(__dirname, 'src') },
+	{ find: 'stream', replacement: 'stream-browserify' },
+	{
+		find: /^n8n-design-system\//,
+		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
+	},
+	...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
+		find: new RegExp(`^lodash.${name}$`, 'i'),
+		replacement: require.resolve(`lodash-es/${name}`),
+	})),
+	{
+		find: /^lodash\.(.+)$/,
+		replacement: 'lodash-es/$1',
+	},
+	{
+		find: 'vue2-boring-avatars',
+		replacement: require.resolve('vue2-boring-avatars'),
+	},
+	{
+		find: /element-ui\/(packages|lib)\/button$/,
+		replacement: path.resolve(
+			__dirname,
+			'..',
+			'design-system/src/components/N8nButton/overrides/ElButton.ts',
+		),
+	},
+];
+
+// https://github.com/vitest-dev/vitest/discussions/1806
+if (NODE_ENV === 'test') {
+	alias.push({
+		find: /^monaco-editor$/,
+		replacement: __dirname + '/node_modules/monaco-editor/esm/vs/editor/editor.api',
+	});
+}
+
 export default mergeConfig(
 	defineConfig({
 		define: {
@@ -62,36 +99,7 @@ export default mergeConfig(
 					`${root}/${buildOutDir}/assets/monaco-editor`,
 			}),
 		],
-		resolve: {
-			alias: [
-				{ find: '@', replacement: resolve(__dirname, 'src') },
-				{ find: 'stream', replacement: 'stream-browserify' },
-				{
-					find: /^n8n-design-system\//,
-					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
-				},
-				...['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
-					find: new RegExp(`^lodash.${name}$`, 'i'),
-					replacement: require.resolve(`lodash-es/${name}`),
-				})),
-				{
-					find: /^lodash\.(.+)$/,
-					replacement: 'lodash-es/$1',
-				},
-				{
-					find: 'vue2-boring-avatars',
-					replacement: require.resolve('vue2-boring-avatars'),
-				},
-				{
-					find: /element-ui\/(packages|lib)\/button$/,
-					replacement: path.resolve(
-						__dirname,
-						'..',
-						'design-system/src/components/N8nButton/overrides/ElButton.ts',
-					),
-				},
-			],
-		},
+		resolve: { alias },
 		base: publicPath,
 		envPrefix: 'VUE_APP',
 		css: {
