@@ -160,6 +160,7 @@ export default defineComponent({
 	tbody {
 		tr {
 			td {
+				vertical-align: top;
 				color: var(--color-text-base);
 				padding: var(--spacing-s) var(--spacing-2xs);
 			}

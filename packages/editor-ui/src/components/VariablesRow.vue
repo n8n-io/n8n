@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed, onMounted, PropType, ref } from 'vue';
-import { EnvironmentVariable } from '@/Interface';
+import { ComponentPublicInstance, computed, nextTick, onMounted, PropType, ref } from 'vue';
+import { EnvironmentVariable, IValidator, Rule, RuleGroup, Validatable } from '@/Interface';
 import { useI18n, useToast, useCopyToClipboard } from '@/composables';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores';
@@ -25,22 +25,51 @@ const props = defineProps({
 
 const modelValue = ref<EnvironmentVariable>({ ...props.data });
 
+const formValidationStatus = ref<Record<string, boolean>>({
+	key: false,
+	value: false,
+});
 const formValid = computed(() => {
-	return modelValue.value.key !== '';
+	return formValidationStatus.value.key && formValidationStatus.value.value;
 });
 
-const keyInputRef = ref<HTMLElement>();
+const keyInputRef = ref<ComponentPublicInstance & { inputRef?: HTMLElement }>();
 const valueInputRef = ref<HTMLElement>();
 
-const usage = computed(() => `$vars.${props.data.key}`);
+const usage = computed(() => `$vars.${modelValue.value.key || props.data.key}`);
 
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
 );
 
 onMounted(() => {
-	keyInputRef.value?.focus();
+	focusFirstInput();
 });
+
+const keyCustomValidators: Record<string, IValidator> = {
+	JSON_KEY: {
+		validate: (value: Validatable) => {
+			if (!/^[a-zA-Z0-9_]+$/.test(`${value}`)) {
+				return {
+					messageKey: 'variables.editing.key.error.jsonKey',
+				};
+			}
+
+			return false;
+		},
+	},
+};
+
+const keyValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'REQUIRED' },
+	{ name: 'JSON_KEY' },
+	{ name: 'MAX_LENGTH', config: { maximum: 50 } },
+];
+
+const valueValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'REQUIRED' },
+	{ name: 'MAX_LENGTH', config: { maximum: 220 } },
+];
 
 async function onCancel() {
 	modelValue.value = { ...props.data };
@@ -53,10 +82,18 @@ async function onSave() {
 
 async function onEdit() {
 	emit('edit', modelValue.value);
+
+	await nextTick();
+
+	focusFirstInput();
 }
 
 async function onDelete() {
 	emit('delete', modelValue.value);
+}
+
+function onValidate(key: string, value: boolean) {
+	formValidationStatus.value[key] = value;
 }
 
 function onUsageClick() {
@@ -66,38 +103,59 @@ function onUsageClick() {
 		type: 'success',
 	});
 }
+
+function focusFirstInput() {
+	keyInputRef.value?.inputRef?.focus?.();
+}
 </script>
 
 <template>
 	<tr :class="$style.variablesRow">
 		<td>
-			<span v-if="!editing">{{ data.key }}</span>
-			<n8n-input
-				v-else
-				data-test-id="variable-row-key-input"
-				:required="true"
-				:placeholder="i18n.baseText('variables.editing.key.placeholder')"
-				v-model="modelValue.key"
-				ref="keyInputRef"
-			/>
+			<div>
+				<span v-if="!editing">{{ data.key }}</span>
+				<n8n-form-input
+					v-else
+					label
+					name="key"
+					data-test-id="variable-row-key-input"
+					:required="true"
+					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
+					validateOnBlur
+					:validationRules="keyValidationRules"
+					:validators="keyCustomValidators"
+					v-model="modelValue.key"
+					ref="keyInputRef"
+					@validate="(value) => onValidate('key', value)"
+				/>
+			</div>
 		</td>
 		<td>
-			<span v-if="!editing">{{ data.value }}</span>
-			<n8n-input
-				v-else
-				data-test-id="variable-row-value-input"
-				:placeholder="i18n.baseText('variables.editing.value.placeholder')"
-				v-model="modelValue.value"
-				ref="valueInputRef"
-			/>
+			<div>
+				<span v-if="!editing">{{ data.value }}</span>
+				<n8n-form-input
+					v-else
+					label
+					name="value"
+					data-test-id="variable-row-value-input"
+					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
+					validateOnBlur
+					:validationRules="valueValidationRules"
+					v-model="modelValue.value"
+					ref="valueInputRef"
+					@validate="(value) => onValidate('value', value)"
+				/>
+			</div>
 		</td>
 		<td class="variables-usage-column">
-			<n8n-tooltip placement="top">
-				<span v-if="data.key" :class="$style.usageSyntax" @click="onUsageClick">{{ usage }}</span>
-				<template #content>
-					{{ i18n.baseText('variables.row.usage.copyToClipboard') }}
-				</template>
-			</n8n-tooltip>
+			<div>
+				<n8n-tooltip placement="top">
+					<span v-if="data.key" :class="$style.usageSyntax" @click="onUsageClick">{{ usage }}</span>
+					<template #content>
+						{{ i18n.baseText('variables.row.usage.copyToClipboard') }}
+					</template>
+				</n8n-tooltip>
+			</div>
 		</td>
 		<td v-if="isFeatureEnabled">
 			<div v-if="editing" :class="$style.buttons">
@@ -145,6 +203,14 @@ function onUsageClick() {
 	&:hover {
 		.hoverButtons {
 			opacity: 1;
+		}
+	}
+
+	td {
+		> div {
+			display: flex;
+			align-items: center;
+			min-height: 40px;
 		}
 	}
 }

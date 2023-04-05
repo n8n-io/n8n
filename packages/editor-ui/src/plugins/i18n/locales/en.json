@@ -1613,6 +1613,7 @@
 	"variables.table.usage": "Usage Syntax",
 	"variables.editing.key.placeholder": "Enter a name",
 	"variables.editing.value.placeholder": "Enter a value",
+	"variables.editing.key.error.jsonKey": "This field must contain only letters, numbers, and underscores",
 	"variables.row.button.save": "Save",
 	"variables.row.button.cancel": "Cancel",
 	"variables.row.button.edit": "Edit",
