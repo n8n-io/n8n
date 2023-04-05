@@ -9,6 +9,8 @@ import { EEVariablesController } from './variables.controller.ee';
 
 export const variablesController = express.Router();
 
+variablesController.use('/', EEVariablesController);
+
 /**
  * Initialize Logger if needed
  */
