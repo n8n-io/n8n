@@ -18,15 +18,14 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			WorkflowStatistics: mock<WorkflowStatisticsRepository>({
-				findOne: jest.fn(() => ({
-						count: 1,
-				})),
+				metadata: { tableName: 'workflow_statistics' },
 			}),
 		},
 	};
 });
 
 describe('Events', () => {
+	const dbType = config.getEnv('database.type');
 	const fakeUser = Object.assign(new User(), { id: 'abcde-fghij' });
 	const internalHooks = mockInstance(InternalHooks);
 
@@ -48,11 +47,28 @@ describe('Events', () => {
 	});
 
 	beforeEach(() => {
+		if (dbType === 'sqlite') {
+			workflowStatisticsRepository.findOne.mockClear();
+		} else {
+			workflowStatisticsRepository.query.mockClear();
+		}
+
 		internalHooks.onFirstProductionWorkflowSuccess.mockClear();
 		internalHooks.onFirstWorkflowDataLoad.mockClear();
 	});
 
-	afterEach(() => {});
+	const mockDBCall = (count = 1) => {
+		if (dbType === 'sqlite') {
+			workflowStatisticsRepository.findOne.mockResolvedValueOnce(
+				mock<WorkflowStatistics>({ count }),
+			);
+		} else {
+			const result = dbType === 'postgresdb' ? [{ count }] : { affectedRows: count };
+			workflowStatisticsRepository.query.mockImplementationOnce(async (query) =>
+				query.startsWith('INSERT INTO') ? result : null,
+			);
+		}
+	};
 
 	describe('workflowExecutionCompleted', () => {
 		test('should create metrics for production successes', async () => {
@@ -73,6 +89,8 @@ describe('Events', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
+			mockDBCall();
+
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
@@ -105,9 +123,6 @@ describe('Events', () => {
 
 		test('should not send metrics for updated entries', async () => {
 			// Call the function with a fail insert, ensure update is called *and* metrics aren't sent
-			workflowStatisticsRepository.findOne.mockImplementationOnce(() => ({
-				count: 2,
-		}));
 			const workflow = {
 				id: '1',
 				name: '',
@@ -124,6 +139,7 @@ describe('Events', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
+			mockDBCall(2);
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
