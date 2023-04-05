@@ -5,8 +5,11 @@ import { getLogger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
 import { VariablesService } from './variables.service';
+import { EEVariablesController } from './variables.controller.ee';
 
 export const variablesController = express.Router();
+
+variablesController.use('/', EEVariablesController);
 
 /**
  * Initialize Logger if needed
