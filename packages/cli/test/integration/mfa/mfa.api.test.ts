@@ -7,6 +7,7 @@ import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
+import { randomDigit, randomValidPassword, uniqueId } from '../shared/random';
 
 jest.mock('@/telemetry');
 
@@ -16,7 +17,7 @@ let owner: User;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['mfa', 'auth'] });
+	app = await utils.initTestServer({ endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'] });
 
 	authAgent = utils.createAuthAgent(app);
 
@@ -182,6 +183,143 @@ describe('Disable MFA setup', () => {
 		expect(dbUser.mfaEnabled).toBe(false);
 		expect(dbUser.mfaSecret).toBe(null);
 		expect(dbUser.mfaRecoveryCodes.length).toBe(0);
+	});
+});
+
+describe('Change password with MFA enabled', () => {
+	test('PATCH /me/password should fail due to missing MFA token', async () => {
+		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+
+		const newPassword = randomPassword();
+
+		const authAgent = utils.createAuthAgent(app);
+
+		const response = await authAgent(user)
+			.patch('/me/password')
+			.send({ currentPassword: rawPassword, newPassword });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('PATCH /me/password should fail due to invalid MFA token', async () => {
+		const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
+
+		const newPassword = randomValidPassword();
+
+		const authAgent = utils.createAuthAgent(app);
+
+		const response = await authAgent(user)
+			.patch('/me/password')
+			.send({ currentPassword: rawPassword, newPassword, mfaToken: randomDigit() });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('PATCH /me/password should update password', async () => {
+		const { user, rawPassword, rawSecret } = await testDb.createUserWithMfaEnabled();
+
+		const token = testDb.generateMfaOneTimeToken(rawSecret);
+
+		const newPassword = randomValidPassword();
+
+		const authAgent = utils.createAuthAgent(app);
+
+		const response = await authAgent(user)
+			.patch('/me/password')
+			.send({ currentPassword: rawPassword, newPassword, token });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('POST /change-password should fail due to missing MFA token', async () => {
+		const { user } = await testDb.createUserWithMfaEnabled();
+
+		const newPassword = randomValidPassword();
+
+		const authlessAgent = utils.createAgent(app);
+
+		const oneMinuteFromNow = new Date().getTime() / 1000 + 60;
+
+		const resetPasswordToken = uniqueId();
+
+		await Db.collections.User.update(user.id, {
+			resetPasswordToken,
+			resetPasswordTokenExpiration: oneMinuteFromNow,
+		});
+
+		const response = await authlessAgent
+			.post('/change-password')
+			.send({ password: newPassword, userId: user.id, token: resetPasswordToken });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('POST /change-password should fail due to invalid MFA token', async () => {
+		const { user } = await testDb.createUserWithMfaEnabled();
+
+		const newPassword = randomValidPassword();
+
+		const authlessAgent = utils.createAgent(app);
+
+		const oneMinuteFromNow = new Date().getTime() / 1000 + 60;
+
+		const resetPasswordToken = uniqueId();
+
+		await Db.collections.User.update(user.id, {
+			resetPasswordToken,
+			resetPasswordTokenExpiration: oneMinuteFromNow,
+		});
+
+		const response = await authlessAgent.post('/change-password').send({
+			password: newPassword,
+			userId: user.id,
+			token: resetPasswordToken,
+			mfaToken: randomDigit(),
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test.only('POST /change-password should update password', async () => {
+		const { user, rawSecret } = await testDb.createUserWithMfaEnabled();
+
+		const newPassword = randomValidPassword();
+
+		const authlessAgent = utils.createAgent(app);
+
+		const oneMinuteFromNow = new Date().getTime() / 1000 + 60;
+
+		const resetPasswordToken = uniqueId();
+
+		const mfaToken = testDb.generateMfaOneTimeToken(rawSecret);
+
+		await Db.collections.User.update(user.id, {
+			resetPasswordToken,
+			resetPasswordTokenExpiration: oneMinuteFromNow,
+		});
+
+		const response = await authlessAgent.post('/change-password').send({
+			password: newPassword,
+			userId: user.id,
+			token: resetPasswordToken,
+			mfaToken,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const authAgent = utils.createAuthAgent(app);
+
+		const loginResponse = await authAgent(user)
+			.post('/login')
+			.send({
+				email: user.email,
+				password: newPassword,
+				mfaToken: testDb.generateMfaOneTimeToken(rawSecret),
+			});
+
+			expect(loginResponse.statusCode).toBe(200);
+			expect(loginResponse.body).toHaveProperty('data');
+
 	});
 });
 
