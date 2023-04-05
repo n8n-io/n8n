@@ -286,7 +286,7 @@ describe('Change password with MFA enabled', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test.only('POST /change-password should update password', async () => {
+	test('POST /change-password should update password', async () => {
 		const { user, rawSecret } = await testDb.createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
