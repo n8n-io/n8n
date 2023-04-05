@@ -4,7 +4,6 @@
 ### Bug Fixes
 
 * Add droppable state for booleans when mapping ([#5838](https://github.com/n8n-io/n8n/issues/5838)) ([e3884ce](https://github.com/n8n-io/n8n/commit/e3884ce378e488905735fbfdb986aa26f1cf952b))
-* Add optional chaining for 'isArtificalRecoveredEventItem' (no-changelog) ([#5860](https://github.com/n8n-io/n8n/issues/5860)) ([df2ea0f](https://github.com/n8n-io/n8n/commit/df2ea0f5ecc9d748d2cb9d897558c3a5df1cfadb))
 * **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([32c4eef](https://github.com/n8n-io/n8n/commit/32c4eef574a14ed599554382496a99a8240be74b))
 * **Compare Datasets Node:** Fuzzy compare not comparing keys missing in one of inputs ([d1945d9](https://github.com/n8n-io/n8n/commit/d1945d9b72fc11e7201e22a7ae0399acf2ffd5f1))
 * **Compare Datasets Node:** Support for dot notation in skip fields ([83e25c0](https://github.com/n8n-io/n8n/commit/83e25c066a845fc95c3474ae93f36993ca7ce699))
@@ -18,7 +17,6 @@
 * **core:** Handle Date and RegExp correctly in jsonStringify ([#5812](https://github.com/n8n-io/n8n/issues/5812)) ([4f91525](https://github.com/n8n-io/n8n/commit/4f91525022716e7c1745185fae6fc2582a4252fb))
 * **core:** Handle Date and RegExp objects in AugmentObject ([#5809](https://github.com/n8n-io/n8n/issues/5809)) ([6c35ffa](https://github.com/n8n-io/n8n/commit/6c35ffa82c45434dadee0354b75a901d3f3d6e98))
 * **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([a260c05](https://github.com/n8n-io/n8n/commit/a260c05fa859c0bdd90f9abdecac59fd35978c55))
-* **core:** Make WorkflowStatistics tests pass on all databases (no-changelog) ([#5909](https://github.com/n8n-io/n8n/issues/5909)) ([e7aaa94](https://github.com/n8n-io/n8n/commit/e7aaa9425a55494c6564512899c2ffceddfd173a))
 * **core:** Password reset should pass in the correct values to external hooks ([#5842](https://github.com/n8n-io/n8n/issues/5842)) ([5bcab8f](https://github.com/n8n-io/n8n/commit/5bcab8fcbea546cd57ef728131f9e16cc57e675d))
 * **core:** Prevent augmentObject from creating infinitely deep proxies ([#5893](https://github.com/n8n-io/n8n/issues/5893)) ([31cd04c](https://github.com/n8n-io/n8n/commit/31cd04c4769b92c7f19ae8babf5df2deddef1fb3)), closes [#5848](https://github.com/n8n-io/n8n/issues/5848)
 * **core:** Service account private key as a password field ([739b9b0](https://github.com/n8n-io/n8n/commit/739b9b07f0e364f98d3c2d0ce8911cd4f53e8455))
@@ -40,11 +38,8 @@
 * **editor:** Prevent NDV schema view pagination ([#5844](https://github.com/n8n-io/n8n/issues/5844)) ([1eba478](https://github.com/n8n-io/n8n/commit/1eba4788f26d0f5472fa4156b317d8b14d19b927))
 * **editor:** Show correct status on canceled executions ([#5813](https://github.com/n8n-io/n8n/issues/5813)) ([d0788ee](https://github.com/n8n-io/n8n/commit/d0788ee8e150167a65561552494046d8e506f93c))
 * **editor:** Support backspacing with modifier key ([#5845](https://github.com/n8n-io/n8n/issues/5845)) ([11692c5](https://github.com/n8n-io/n8n/commit/11692c55f381f17a7a137262d85dfd6c7fda7ad5))
-* **editor:** Update execution loading parameters after pushing test values (no-changelog) ([#5876](https://github.com/n8n-io/n8n/issues/5876)) ([9ada331](https://github.com/n8n-io/n8n/commit/9ada331212c0f5cd7ab19b9b2a639c4016832be6))
-* Fix parameter inputField ref not yet mounted (no-changelog) ([#5864](https://github.com/n8n-io/n8n/issues/5864)) ([97b35da](https://github.com/n8n-io/n8n/commit/97b35daf0a50322088492500be22af879524dc77))
 * **Gmail Node:** Gmail luxon object support, fix for timestamp ([2b9ca0d](https://github.com/n8n-io/n8n/commit/2b9ca0d240b403a5f12b115956bbc11672f3a04a))
 * **Google Sheets Node:** Fix insertOrUpdate cell update with object ([0625e2e](https://github.com/n8n-io/n8n/commit/0625e2e6bc67092848f719f8fede87af0f3df891))
-* **Google Sheets Node:** Unit tests (no-changelog) ([082c617](https://github.com/n8n-io/n8n/commit/082c61701cc6467cc636c7d046620e3a6b93ef2b))
 * **HTML Extract Node:** Support for dot notation in JSON property ([0da3b96](https://github.com/n8n-io/n8n/commit/0da3b96cfc943bf8036a48df946873fb32f3f5d9))
 * **HTTP Request Node:** Detect mime-type from streaming responses ([#5896](https://github.com/n8n-io/n8n/issues/5896)) ([69efde7](https://github.com/n8n-io/n8n/commit/69efde7a094b0bf3e3ca04b456ba3a792838a0b9))
 * **HTTP Request Node:** Fix AWS credentials to stop removing url params for STS ([#5790](https://github.com/n8n-io/n8n/issues/5790)) ([a1306c6](https://github.com/n8n-io/n8n/commit/a1306c690398828ed9acb72af0161c4ff827b217))
@@ -54,14 +49,12 @@
 * **LinkedIn Node:** Update the version of the API ([#5720](https://github.com/n8n-io/n8n/issues/5720)) ([18d2e7c](https://github.com/n8n-io/n8n/commit/18d2e7cd57745f0969b0df383572b3874fe65f2c))
 * **Redis Node:** Fix issue with hash set not working as expected ([#5832](https://github.com/n8n-io/n8n/issues/5832)) ([db25441](https://github.com/n8n-io/n8n/commit/db2544146f646ec9a2c38787bc94eafc1edb1228))
 * **Set Node:** Convert string to number ([b408550](https://github.com/n8n-io/n8n/commit/b408550e9f486351198f0ce5c10895c42df45835))
-* Upgrade versions in pnpm-lock.yaml (no-changelog) ([fd48b04](https://github.com/n8n-io/n8n/commit/fd48b049e5b3f4b912e0911b4f93638e16466016))
 
 
 ### Features
 
 * **core:** Convert eventBus controller to decorator style and improve permissions ([#5779](https://github.com/n8n-io/n8n/issues/5779)) ([f15f4bd](https://github.com/n8n-io/n8n/commit/f15f4bdcf204fa43a652022babf03e577602b2b5))
 * **core:** Prevent non owners password reset when saml is enabled ([#5788](https://github.com/n8n-io/n8n/issues/5788)) ([2216455](https://github.com/n8n-io/n8n/commit/221645576087e4cd828b34ea33e874e1bff5f34a))
-* **core:** Read ephemeral license from environment and clean up ee flags ([#5797](https://github.com/n8n-io/n8n/issues/5797)) ([a81ca7c](https://github.com/n8n-io/n8n/commit/a81ca7c19cec765aee05ed4cf9fc7a0562468029))
 * **core:** Read ephemeral license from environment and clean up ee flags ([#5808](https://github.com/n8n-io/n8n/issues/5808)) ([83aef17](https://github.com/n8n-io/n8n/commit/83aef1712070c29fea5d0522c95b1208af4cd2e4))
 * **editor:** Allow `tab` to accept completion ([#5855](https://github.com/n8n-io/n8n/issues/5855)) ([1b8c35a](https://github.com/n8n-io/n8n/commit/1b8c35ab87ce7ea24d00d13faddba9daf9f2ab39))
 * **editor:** Enable saving workflow when node details view is open ([#5856](https://github.com/n8n-io/n8n/issues/5856)) ([0a59002](https://github.com/n8n-io/n8n/commit/0a59002ef878ff8836d3ca63956f7a444d329d0b))
@@ -70,16 +63,8 @@
 * **Filter Node:** Show discarded items ([f7f9d91](https://github.com/n8n-io/n8n/commit/f7f9d915b174d5c17efa918032741d4fa6da85e9))
 * **HTTP Request Node:** Follow redirects by default ([#5895](https://github.com/n8n-io/n8n/issues/5895)) ([f7e610b](https://github.com/n8n-io/n8n/commit/f7e610b15c4699880edffd7f10f223e820052784))
 * **Postgres Node:** Overhaul node ([07dc0e4](https://github.com/n8n-io/n8n/commit/07dc0e4b4075f1fac98d5685a99a38187bca741b))
-* **Schedule Trigger Node:** Linking to crontab.guru examples (no-changelog) ([#5834](https://github.com/n8n-io/n8n/issues/5834)) ([6f72091](https://github.com/n8n-io/n8n/commit/6f720919c94ce3f5912698bc2d91430ecbe8318a))
 * **ServiceNow Node:** Add support for work notes when updating an incident ([#5791](https://github.com/n8n-io/n8n/issues/5791)) ([1409f5d](https://github.com/n8n-io/n8n/commit/1409f5d65262b9783e690408f5dabd074c709f22))
 * **SSH Node:** Hide the private key within the ssh credential ([#5871](https://github.com/n8n-io/n8n/issues/5871)) ([d877361](https://github.com/n8n-io/n8n/commit/d87736103d09042d2f74e74b57be429f2ca3550d))
-* Upgrade TypeScript to v5 (no-changelog) ([#5755](https://github.com/n8n-io/n8n/issues/5755)) ([87e979c](https://github.com/n8n-io/n8n/commit/87e979c19aa305bdc91917e2d2cbda6fe00d83ab))
-
-
-### Reverts
-
-* Revert "fix(core): Improve axios error handling in nodes (#5699)" ([aed5674](https://github.com/n8n-io/n8n/commit/aed56745302662cc19a7dd0a563b3c5c22cc5366)), closes [#5699](https://github.com/n8n-io/n8n/issues/5699)
-* Revert "feat(core): Read ephemeral license from environment and cleanup ee flags (#5797)" (#5816) ([be373bb](https://github.com/n8n-io/n8n/commit/be373bb859d476fcbfeb23c877f56b3953b8f76f)), closes [#5797](https://github.com/n8n-io/n8n/issues/5797) [#5816](https://github.com/n8n-io/n8n/issues/5816) [#5797](https://github.com/n8n-io/n8n/issues/5797)
 
 
 
