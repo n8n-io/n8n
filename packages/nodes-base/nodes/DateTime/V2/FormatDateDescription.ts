@@ -89,7 +89,8 @@ export const FormatDateDescription: INodeProperties[] = [
 			},
 		},
 		hint: 'List of special tokens <a target="_blank" href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">More info</a>',
-		default: 'yyyy-MM-dd',
+		default: '',
+		placeholder: 'yyyy-MM-dd',
 	},
 	{
 		displayName: 'Output Field Name',

@@ -15,6 +15,7 @@ import { CurrentDateDescription } from './CurrentDateDescription';
 import { AddToDateDescription } from './AddToDateDescription';
 import { SubtractFromDateDescription } from './SubtractFromDateDescription';
 import { FormatDateDescription } from './FormatDateDescription';
+import { RoundDateDescription } from './RoundDateDescription';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -71,6 +72,7 @@ export class DateTimeV2 implements INodeType {
 				...AddToDateDescription,
 				...SubtractFromDateDescription,
 				...FormatDateDescription,
+				...RoundDateDescription,
 			],
 		};
 	}
@@ -151,6 +153,28 @@ export class DateTimeV2 implements INodeType {
 						responseData.push({ [outputFieldName]: momentDate.format(customFormat) });
 					} else {
 						responseData.push({ [outputFieldName]: momentDate.format(format) });
+					}
+				} catch {
+					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				}
+			} else if (operation === 'roundDate') {
+				const date = this.getNodeParameter('date', i) as string;
+				const mode = this.getNodeParameter('mode', i) as string;
+				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				try {
+					const momentDate = moment.tz(date, workflowTimezone);
+					if (mode === 'roundDown') {
+						const toNearest = this.getNodeParameter('toNearest', i) as string;
+						responseData.push({
+							[outputFieldName]: momentDate.startOf(toNearest as moment.unitOfTime.StartOf),
+						});
+					} else if (mode === 'roundUp') {
+						const to = this.getNodeParameter('to', i) as string;
+						responseData.push({
+							[outputFieldName]: momentDate
+								.add(1, to as moment.unitOfTime.DurationConstructor)
+								.startOf(to as moment.unitOfTime.StartOf),
+						});
 					}
 				} catch {
 					throw new NodeOperationError(this.getNode(), 'Invalid date format');
