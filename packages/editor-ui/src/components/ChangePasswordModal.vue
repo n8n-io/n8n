@@ -141,7 +141,7 @@ export default mixins(showMessage).extend({
 				this.password = e.value;
 			}
 		},
-		async onSubmit(values: { currentPassword: string, password: string, token: string  }) {
+		async onSubmit(values: { currentPassword: string; password: string; token: string }) {
 			try {
 				this.loading = true;
 				await this.usersStore.updateCurrentUserPassword(values);

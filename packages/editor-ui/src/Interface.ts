@@ -805,7 +805,7 @@ export interface IN8nUISettings {
 	license: {
 		environment: 'development' | 'production';
 	};
-	mfa:  {
+	mfa: {
 		enabled: boolean;
 	};
 }

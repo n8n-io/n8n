@@ -672,8 +672,8 @@ export const routes = [
 			},
 		],
 	},
-    {
-	    path: '/mfa',
+	{
+		path: '/mfa',
 		name: VIEWS.MFA_VIEW,
 		components: {
 			default: Mfa,
@@ -681,11 +681,11 @@ export const routes = [
 		meta: {
 			permissions: {
 				allow: {
-				    loginStatus: [LOGIN_STATUS.LoggedOut],
+					loginStatus: [LOGIN_STATUS.LoggedOut],
 				},
 			},
 		},
-    },
+	},
 	{
 		path: '/saml/onboarding',
 		name: VIEWS.SAML_ONBOARDING,

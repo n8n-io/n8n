@@ -153,12 +153,11 @@ export default mixins(showMessage).extend({
 				const userId = this.getUserId();
 
 				if (token && userId) {
-
 					const changePasswordParameters = {
 						token,
 						userId,
 						password: this.password,
-						...(values.mfaToken && { mfaToken: values.mfaToken })
+						...(values.mfaToken && { mfaToken: values.mfaToken }),
 					};
 
 					await this.usersStore.changePassword(changePasswordParameters);

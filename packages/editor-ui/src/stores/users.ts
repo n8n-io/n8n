@@ -253,7 +253,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		}: {
 			password: string;
 			currentPassword: string;
-			token: string
+			token: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			await updateCurrentUserPassword(rootStore.getRestApiContext, {
