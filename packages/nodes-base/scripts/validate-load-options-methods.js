@@ -1,12 +1,12 @@
 let referencedMethods;
-let availableMethods;
+let definedMethods;
 
 try {
 	referencedMethods = require('../dist/methods/referenced.json');
-	availableMethods = require('../dist/methods/defined.json');
+	definedMethods = require('../dist/methods/defined.json');
 } catch (error) {
 	console.error(
-		'Failed to find methods. Please run `npm run n8n-generate-ui-types-with-methods` first.',
+		'Failed to find methods to validate. Please run `npm run n8n-generate-ui-types` first.',
 	);
 	process.exit(1);
 }
@@ -25,19 +25,19 @@ const compareMethods = (base, other) => {
 	return result;
 };
 
-const referencedButUndefined = compareMethods(referencedMethods, availableMethods);
+const referencedButUndefined = compareMethods(referencedMethods, definedMethods);
 
 if (referencedButUndefined.length > 0) {
 	console.error('ERROR: The following load options methods are referenced but undefined.');
-	console.error('Please fix or remove the references or add the methods.');
+	console.error('Please fix or remove the references or define the methods.');
 	console.error(referencedButUndefined);
 	process.exit(1);
 }
 
-const definedButUnused = compareMethods(availableMethods, referencedMethods);
+const definedButUnused = compareMethods(definedMethods, referencedMethods);
 
 if (definedButUnused.length > 0) {
 	console.warn('Warning: The following load options methods are defined but unused.');
-	console.warn('Please consider using or removing them.');
+	console.warn('Please consider using or removing the methods.');
 	console.warn(definedButUnused);
 }

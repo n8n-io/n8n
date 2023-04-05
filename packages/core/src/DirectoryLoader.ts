@@ -44,7 +44,7 @@ export abstract class DirectoryLoader {
 
 	types: Types = { nodes: [], credentials: [] };
 
-	withLoadOptionsMethods = false; // for CI validation only
+	withLoadOptionsMethods = false; // only for validation during build
 
 	constructor(
 		readonly directory: string,
@@ -250,7 +250,6 @@ export abstract class DirectoryLoader {
 
 	private addLoadOptionsMethods(node: INodeType) {
 		if (node?.methods?.loadOptions) {
-			// @ts-expect-error Field used for CI validation only
 			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
 		}
 	}
