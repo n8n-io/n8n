@@ -33,15 +33,6 @@
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
-			<resource-mapper
-				v-else-if="parameter.type === 'resourceMapper'"
-				:parameter="parameter"
-				:node="node"
-				:path="path"
-				:inputSize="inputSize"
-				:labelSize="label.size || 'small'"
-				:dependentParametersValues="dependentParametersValues"
-			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
 				:value="expressionDisplayValue"
@@ -362,7 +353,7 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -375,7 +366,11 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, PARAMETER_TYPES_WITH_CUSTOM_LOADING } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	HTML_NODE_TYPE,
+	PARAMETER_TYPES_WITH_CUSTOM_LOADING,
+} from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -407,7 +402,6 @@ export default mixins(
 		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
-		ResourceMapper,
 		TextEdit,
 		ImportParameter,
 	},

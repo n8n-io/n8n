@@ -13,6 +13,7 @@ import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 import { computed, onMounted, ref, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -21,6 +22,7 @@ export interface Props {
 	inputSize: string;
 	labelSize: string;
 	dependentParametersValues: string | null;
+	nodeValues: INodeParameters | undefined;
 }
 
 const nodeTypesStore = useNodeTypesStore();
@@ -48,15 +50,16 @@ onMounted(async () => {
 	await initFetching();
 });
 
-const fields = computed<string>(() => {
-	if (fieldsToMap.value.length === 0) {
-		return '[Loading...]';
-	}
-	return `[${fieldsToMap.value.map((f) => f.displayName).join(',')}]`;
-});
-
-const prefix = computed<string>(() => {
-	return props.parameter.typeOptions?.resourceMapper?.mode === 'add' ? '+' : '-';
+const fieldsUi = computed<INodeProperties[]>(() => {
+	return fieldsToMap.value.map((f) => {
+		return {
+			displayName: f.displayName,
+			name: f.id,
+			type: 'string',
+			default: '',
+			description: '',
+		};
+	});
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -133,8 +136,12 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 	paramValue.value.matchingColumns = matchingColumns;
 }
 
+function valueChanged(value: ResourceMapperValue): void {
+	paramValue.value.value = value.value;
+}
+
 defineExpose({
-	fields,
+	fieldsUi,
 });
 </script>
 
@@ -162,6 +169,17 @@ defineExpose({
 			:initialValue="preselectedMatchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
-		<n8n-notice v-if="showMappingFields" :content="`${prefix} ${fields}`" />
+		<div class="mt-xs">
+			<n8n-input-label label="Values to send" :underline="true" size="small" color="text-dark" />
+			<parameter-input-list
+				v-if="showMappingFields"
+				:parameters="fieldsUi"
+				:nodeValues="nodeValues"
+				:path="path"
+				:isReadOnly="false"
+				@valueChanged="valueChanged"
+				:hideDelete="true"
+			/>
+		</div>
 	</div>
 </template>

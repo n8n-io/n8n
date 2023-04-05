@@ -53,7 +53,6 @@ import {
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
-	IRunData,
 	isResourceLocatorValue,
 	NodeParameterValue,
 	NodeParameterValueType,

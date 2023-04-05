@@ -81,7 +81,16 @@
 					@valueChanged="valueChanged"
 				/>
 			</div>
-
+			<resource-mapper
+				v-else-if="parameter.type === 'resourceMapper'"
+				:parameter="parameter"
+				:node="node"
+				:path="path"
+				inputSize="small"
+				labelSize="small"
+				:dependentParametersValues="''"
+				:nodeValues="nodeValues"
+			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
 				<div
 					class="delete-option clickable"
@@ -104,6 +113,7 @@
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					:hideLabel="PARAMETER_TYPES_WITHOUT_LABEL.includes(parameter.type)"
+					:nodeValues="nodeValues"
 					@valueChanged="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
@@ -124,7 +134,6 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
-
 import { get, set } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
@@ -142,6 +151,7 @@ export default mixins(workflowHelpers).extend({
 		ParameterInputFull,
 		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
+		ResourceMapper: () => import('./ResourceMapper/ResourceMapper.vue') as Promise<Component>,
 		ImportParameter,
 	},
 	data() {
