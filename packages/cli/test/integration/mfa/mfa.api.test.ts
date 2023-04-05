@@ -437,62 +437,10 @@ describe('Login', () => {
 			expect(data.mfaEnabled).toBe(true);
 			expect(data.hasRecoveryCodesLeft).toBe(true);
 
-			const dbUser = await Db.collections.User.findOneOrFail({ where: { id: user.id }, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
-
-			// Make sure the recovery code used was removed
-			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
-			expect(dbUser.mfaRecoveryCodes.includes(rawRecoveryCodes[0])).toBe(false);
-		});
-
-		test('POST /login with MFA recovery code should update hasRecoveryCodesLeft property', async () => {
-			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled({
-				numberOfRecoveryCodes: 1,
+			const dbUser = await Db.collections.User.findOneOrFail({
+				where: { id: user.id },
+				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
 			});
-
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
-				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
-
-			const data = response.body.data;
-
-			expect(response.statusCode).toBe(200);
-			expect(data.mfaEnabled).toBe(true);
-			expect(data.hasRecoveryCodesLeft).toBe(false);
-		});
-	});
-
-	describe('Login with recovery code', () => {
-		test('POST /login should fail due to invalid MFA recovery code', async () => {
-			const { user, rawPassword } = await testDb.createUserWithMfaEnabled();
-
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
-				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: '' });
-
-			expect(response.statusCode).toBe(401);
-			expect(response.body.code).toBe(998);
-		});
-
-		test('POST /login should succeed with MFA recovery code', async () => {
-			const { user, rawPassword, rawRecoveryCodes } = await testDb.createUserWithMfaEnabled();
-
-			const authlessAgent = utils.createAgent(app);
-
-			const response = await authlessAgent
-				.post('/login')
-				.send({ email: user.email, password: rawPassword, mfaRecoveryCode: rawRecoveryCodes[0] });
-
-			const data = response.body.data;
-
-			expect(response.statusCode).toBe(200);
-			expect(data.mfaEnabled).toBe(true);
-			expect(data.hasRecoveryCodesLeft).toBe(true);
-
-			const dbUser = await Db.collections.User.findOneOrFail({ where: { id: user.id }, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
 
 			// Make sure the recovery code used was removed
 			expect(dbUser.mfaRecoveryCodes.length).toBe(rawRecoveryCodes.length - 1);
