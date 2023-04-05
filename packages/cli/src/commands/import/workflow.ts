@@ -228,8 +228,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			['workflowId', 'userId'],
 		);
 		if (config.getEnv('database.type') === 'postgresdb') {
+			const tablePrefix = config.getEnv('database.tablePrefix');
 			await this.transactionManager.query(
-				"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+				`SELECT setval('${tablePrefix}workflow_entity_id_seq', (SELECT MAX(id) from "${tablePrefix}workflow_entity"))`,
 			);
 		}
 	}
