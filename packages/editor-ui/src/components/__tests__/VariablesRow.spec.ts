@@ -4,7 +4,7 @@ import { fireEvent, render } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore, useUsersStore } from '@/stores';
 
 describe('VariablesRow', () => {
 	let server: ReturnType<typeof setupServer>;
@@ -17,6 +17,7 @@ describe('VariablesRow', () => {
 		setActivePinia(createPinia());
 
 		await useSettingsStore().getSettings();
+		await useUsersStore().loginWithCookie();
 	});
 
 	afterAll(() => {
