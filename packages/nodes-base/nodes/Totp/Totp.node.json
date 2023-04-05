@@ -2,9 +2,9 @@
 	"node": "n8n-nodes-base.totp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"alias": ["time based", "one time password", "otp"],
-	"categories": ["Development", "Core Nodes"],
-	"subcategories": {
-		"Core Nodes": ["Helpers"]
-	}
+	"categories": ["Core Nodes"],
+	"subcategories": ["Helpers"],
+	"details": "Generate a time-based one-time password",
+	"alias": ["2FA", "MFA", "authentication", "Security", "OTP", "password", "multi", "factor"],
+	"resources": {}
 }

@@ -15,7 +15,7 @@ export class Totp implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] }}',
-		description: 'Generate a TOTP code',
+		description: 'Generate a time-based one-time password',
 		defaults: {
 			name: 'TOTP',
 		},
@@ -59,7 +59,7 @@ export class Totp implements INodeType {
 						name: 'algorithm',
 						type: 'options',
 						default: 'SHA1',
-						description: 'HMAC hashing algorithm. Set by the issuer. Defaults to SHA1.',
+						description: 'HMAC hashing algorithm. Defaults to SHA1.',
 						options: [
 							{
 								name: 'SHA1',
@@ -104,8 +104,7 @@ export class Totp implements INodeType {
 						name: 'digits',
 						type: 'number',
 						default: 6,
-						description:
-							'Number of digits in the generated TOTP code. Set by the issuer. Defaults to 6 digits.',
+						description: 'Number of digits in the generated TOTP code. Defaults to 6 digits.',
 					},
 					{
 						displayName: 'Period',
@@ -113,7 +112,7 @@ export class Totp implements INodeType {
 						type: 'number',
 						default: 30,
 						description:
-							'How many seconds the generated TOTP code is valid for. Set by the issuer. Defaults to 30 seconds.',
+							'How many seconds the generated TOTP code is valid for. Defaults to 30 seconds.',
 					},
 				],
 			},
