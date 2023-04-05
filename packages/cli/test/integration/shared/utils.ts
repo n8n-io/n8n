@@ -223,7 +223,7 @@ export async function initTestServer({
 					registerController(
 						testServer.app,
 						config,
-						new MeController({ logger, externalHooks, internalHooks, repositories }),
+						new MeController({ logger, externalHooks, internalHooks, repositories, mfaService: Container.get(MultiFactorAuthService), }),
 					);
 					break;
 				case 'passwordReset':
@@ -237,6 +237,7 @@ export async function initTestServer({
 							internalHooks,
 							mailer,
 							repositories,
+							mfaService: Container.get(MultiFactorAuthService),
 						}),
 					);
 					break;
