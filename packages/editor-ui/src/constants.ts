@@ -388,6 +388,8 @@ export enum VIEWS {
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	SSO_SETTINGS = 'SSoSettings',
+	SAML_ONBOARDING = 'SamlOnboarding',
 }
 
 export enum FAKE_DOOR_FEATURES {
