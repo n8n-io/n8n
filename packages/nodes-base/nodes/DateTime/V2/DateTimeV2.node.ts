@@ -117,11 +117,11 @@ export class DateTimeV2 implements INodeType {
 						duration,
 						timeUnit as moment.unitOfTime.DurationConstructor,
 					);
-					console.log(returnedDate);
 					responseData.push({ [outputFieldName]: returnedDate });
 				} catch {
 					throw new NodeOperationError(this.getNode(), 'Invalid date format');
 				}
+			} else if (true) {
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
