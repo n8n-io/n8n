@@ -8,6 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { CurrentDateDescription } from './CurrentDateDescription';
@@ -95,6 +96,7 @@ export class DateTimeV2 implements INodeType {
 		const responseData = [];
 		const operation = this.getNodeParameter('operation', 0);
 		const workflowTimezone = this.getTimezone();
+
 		for (let i = 0; i < items.length; i++) {
 			if (operation === 'getCurrentDate') {
 				const includeTime = this.getNodeParameter('includeTime', i) as boolean;
@@ -105,6 +107,21 @@ export class DateTimeV2 implements INodeType {
 						: { [outputFieldName]: moment().startOf('day').tz(workflowTimezone) },
 				);
 			} else if (operation === 'addToDate') {
+				const addToDate = this.getNodeParameter('addToDate', i) as string;
+				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
+				const duration = this.getNodeParameter('duration', i) as number;
+				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				try {
+					const dateToAdd = moment.tz(addToDate, workflowTimezone);
+					const returnedDate = moment(dateToAdd).add(
+						duration,
+						timeUnit as moment.unitOfTime.DurationConstructor,
+					);
+					console.log(returnedDate);
+					responseData.push({ [outputFieldName]: returnedDate });
+				} catch {
+					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
