@@ -5,8 +5,17 @@
 		</div>
 		<div :class="$style.title">
 			<slot name="title" />
+			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
 			<div :class="$style.action">
-				<slot name="action" />
+				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+				<n8n-link v-if="mode === 'regular'" @click="$emit('http')">
+					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+				</n8n-link>
+
+				<n8n-link v-if="mode === 'trigger'" @click="$emit('webhook')">
+					{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+				</n8n-link>
+				{{ $locale.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
@@ -36,6 +45,7 @@ import NoResultsIcon from './NoResultsIcon.vue';
 export interface Props {
 	showIcon?: boolean;
 	showRequest?: boolean;
+	mode: 'trigger' | 'regular' | 'action';
 }
 
 defineProps<Props>();

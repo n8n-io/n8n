@@ -1,16 +1,19 @@
-import { INodeCreateElement, SubcategorizedNodeTypes } from '@/Interface';
+import { INodeCreateElement, ActionCreateElement, SubcategorizedNodeTypes } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
+import { v4 as uuidv4 } from 'uuid';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 export function transformNodeType(
 	node: INodeTypeDescription,
 	subcategory?: string,
+	type = 'node',
 ): INodeCreateElement {
 	return {
+		uuid: uuidv4(),
 		key: node.name,
-		properties: node,
 		subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
-		type: 'node',
+		properties: node,
+		type,
 	};
 }
 
@@ -31,4 +34,14 @@ export function subcategorizeItems(items: INodeTypeDescription[]) {
 
 		return acc;
 	}, {});
+}
+
+export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
+	return nodes.sort((a, b) => {
+		if (a.type !== 'node' || b.type !== 'node') return -1;
+		const displayNameA = a.properties.displayName.toLowerCase();
+		const displayNameB = b.properties.displayName.toLowerCase();
+
+		return displayNameA.localeCompare(displayNameB, undefined, { sensitivity: 'base' });
+	});
 }

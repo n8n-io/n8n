@@ -8,13 +8,13 @@ import ActionItem from './ActionItem.vue';
 import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
 import { DynamicScroller, RecycleScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import { v4 as uuid } from 'uuid';
+
 export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
 	disabled?: boolean;
 	lazyRender?: boolean;
-	withActionsGetter?: (element: NodeCreateElement) => boolean;
-	withDescriptionGetter?: (element: NodeCreateElement) => boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -27,10 +27,6 @@ const emit = defineEmits<{
 	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
 }>();
 
-const state = reactive({
-	renderedItems: [] as INodeCreateElement[],
-	renderAnimationRequest: 0,
-});
 const iteratorItems = ref<HTMLElement[]>([]);
 
 function wrappedEmit(
@@ -38,7 +34,6 @@ function wrappedEmit(
 	element: INodeCreateElement,
 	$e?: Event,
 ) {
-	console.log('Click yo');
 	if (props.disabled) return;
 
 	emit((event as 'selected') || 'dragstart' || 'dragend', element, $e);
@@ -71,6 +66,7 @@ watch(
 
 <template>
 	<div
+		v-if="elements.length > 0"
 		:class="$style.itemsRenderer"
 		name="accordion"
 		@before-enter="beforeEnter"
@@ -78,11 +74,11 @@ watch(
 		@before-leave="beforeLeave"
 		@leave="leave"
 	>
-		<DynamicScroller :items="elements" keyField="key" :min-item-size="40" class="scroller">
+		<slot />
+		<DynamicScroller :items="elements" keyField="uuid" :min-item-size="40" class="scroller">
 			<template #default="{ item, index, active }">
 				<DynamicScrollerItem :item="item" :active="active" :data-index="index">
 					<div
-						:key="`${item.key}-${index}`"
 						data-test-id="item-iterator-item"
 						:class="{
 							clickable: !disabled,
@@ -93,99 +89,38 @@ watch(
 						ref="iteratorItems"
 						@click="wrappedEmit('selected', item)"
 					>
-						<!-- <category-item
-							v-if="item.type === 'category'"
-							:item="item.properties"
-							:active="activeIndex === index"
-						/>
-						<label-item v-if="item.type === 'label'" :item="item" /> -->
-
+						<label-item v-if="item.type === 'label'" :item="item" />
 						<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
 						<node-item
 							v-if="item.type === 'node'"
 							:nodeType="item.properties"
 							:subcategory="item.subcategory"
-							:allow-actions="withActionsGetter && withActionsGetter(item)"
-							:allow-description="true"
 						/>
 						<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
 							@dragend="wrappedEmit('dragend', item, $event)"
 							@nodeTypeSelected="$listeners.nodeTypeSelected"
 							@actionsOpen="$listeners.actionsOpen" -->
-
-						<!-- <action-item
-							v-else-if="item.type === 'action'"
+						<action-item
+							v-if="item.type === 'action'"
 							:nodeType="item.properties"
 							:action="item.properties"
-							@dragstart="wrappedEmit('dragstart', item, $event)"
-							@dragend="wrappedEmit('dragend', item, $event)"
-						/> -->
+						/>
+						<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
+							@dragend="wrappedEmit('dragend', item, $event)" -->
 
 						<view-item v-else-if="item.type === 'view'" :view="item.properties" />
 					</div>
 				</DynamicScrollerItem>
 			</template>
 		</DynamicScroller>
-		<!-- <div
-			v-for="(item, index) in elements"
-			:key="`${item.key}-${index}`"
-			data-test-id="item-iterator-item"
-			:class="{
-				clickable: !disabled,
-				[$style[item.type]]: true,
-				[$style.active]: activeIndex === index && !disabled,
-				[$style.iteratorItem]: true,
-			}"
-			ref="iteratorItems"
-			@click="wrappedEmit('selected', item)"
-		>
-			 <category-item
-				v-if="item.type === 'category'"
-				:item="item.properties"
-				:active="activeIndex === index"
-			/>
-			<label-item v-if="item.type === 'label'" :item="item" /> -->
-
-		<!-- <subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
-
-			<node-item
-				v-if="item.type === 'node'"
-				:nodeType="item.properties"
-				:allow-actions="withActionsGetter && withActionsGetter(item)"
-				:allow-description="true"
-			/> -->
-		<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
-				@dragend="wrappedEmit('dragend', item, $event)"
-				@nodeTypeSelected="$listeners.nodeTypeSelected"
-				@actionsOpen="$listeners.actionsOpen" -->
-
-		<!-- <action-item
-				v-else-if="item.type === 'action'"
-				:nodeType="item.properties"
-				:action="item.properties"
-				@dragstart="wrappedEmit('dragstart', item, $event)"
-				@dragend="wrappedEmit('dragend', item, $event)"
-			/> -->
-
-		<!-- <view-item v-else-if="item.type === 'view'" :view="item.properties" />
-		</div> -->
-		<!-- <aside
-			v-for="item in elements.length"
-			v-show="elements.length < item"
-			:key="item"
-			:class="$style.loadingItem"
-		>
-			<n8n-loading :loading="true" :rows="1" variant="p" />
-		</aside> -->
+	</div>
+	<div :class="$style.empty" v-else>
+		<slot name="empty" />
 	</div>
 </template>
 
 <style lang="scss" module>
-// .loadingItem {
-// 	height: 48px;
-// 	margin: 0 var(--search-margin, var(--spacing-s));
-// }
 .iteratorItem {
 	// Make sure border is fully visible
 	margin-left: 1px;
@@ -212,6 +147,11 @@ watch(
 }
 .label {
 	pointer-events: none;
+}
+.empty {
+	:global([role='alert']) {
+		margin: var(--spacing-s) var(--spacing-s) var(--spacing-3xs);
+	}
 }
 .itemsRenderer {
 	display: flex;

@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
+import { computed, ref, getCurrentInstance } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
@@ -69,14 +69,10 @@ const emit = defineEmits<{
 }>();
 
 const instance = getCurrentInstance();
-const state = reactive({
-	dragging: false,
-	draggablePosition: {
-		x: -100,
-		y: -100,
-	},
-	draggableDataTransfer: null as Element | null,
-});
+const dragging = ref(false);
+const draggablePosition = ref({ x: -100, y: -100 });
+const draggableDataTransfer = ref(null as Element | null);
+
 const description = computed<string>(() => {
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType.value}.description`,
@@ -85,15 +81,16 @@ const description = computed<string>(() => {
 });
 const showActionArrow = computed(() => hasActions.value);
 
-const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
+const hasActions = computed(() => (props.nodeType.actions?.length || 0) > 0);
+// console.log('🚀 ~ file: NodeItem.vue:89 ~ hasActions:', hasActions);
 
 const shortNodeType = computed<string>(
 	() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '',
 );
 
 const draggableStyle = computed<{ top: string; left: string }>(() => ({
-	top: `${state.draggablePosition.y}px`,
-	left: `${state.draggablePosition.x}px`,
+	top: `${draggablePosition.value.y}px`,
+	left: `${draggablePosition.value.x}px`,
 }));
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
@@ -111,14 +108,14 @@ const displayName = computed<any>(() => {
 	});
 });
 
-const isTriggerNode = computed<boolean>(() =>
-	props.nodeType.displayName.toLowerCase().includes('trigger'),
-);
+// const isTriggerNode = computed<boolean>(() =>
+// 	props.nodeType.displayName.toLowerCase().includes('trigger'),
+// );
 
-function onClick() {
-	if (hasActions.value && props.allowActions) emit('actionsOpen', props.nodeType);
-	else emit('nodeTypeSelected', [props.nodeType.name]);
-}
+// function onClick() {
+// 	if (hasActions && props.allowActions) emit('actionsOpen', props.nodeType);
+// 	else emit('nodeTypeSelected', [props.nodeType.name]);
+// }
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
@@ -132,26 +129,26 @@ function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
 		event.dataTransfer.dropEffect = 'copy';
-		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
+		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
 			'nodeTypeName',
 			useNodeCreatorStore().getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
 		);
 	}
 
-	state.dragging = true;
-	state.draggablePosition = { x, y };
+	dragging.value = true;
+	draggablePosition.value = { x, y };
 	emit('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
-	if (!state.dragging || (event.pageX === 0 && event.pageY === 0)) {
+	if (!dragging.value || (event.pageX === 0 && event.pageY === 0)) {
 		return;
 	}
 
 	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
 
-	state.draggablePosition = { x, y };
+	draggablePosition.value = { x, y };
 }
 
 function onDragEnd(event: DragEvent): void {
@@ -159,9 +156,9 @@ function onDragEnd(event: DragEvent): void {
 
 	emit('dragend', event);
 
-	state.dragging = false;
+	dragging.value = false;
 	setTimeout(() => {
-		state.draggablePosition = { x: -100, y: -100 };
+		draggablePosition.value = { x: -100, y: -100 };
 	}, 300);
 }
 
@@ -170,11 +167,6 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		instance?.proxy.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
 	}
 }
-
-defineExpose({
-	onClick,
-});
-const { dragging, draggableDataTransfer } = toRefs(state);
 </script>
 <style lang="scss" module>
 .nodeItem {

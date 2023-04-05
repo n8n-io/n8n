@@ -2,33 +2,31 @@
 import { getCurrentInstance, ref, computed, watch } from 'vue';
 import NodesListPanel from './NodesListPanel.vue';
 import { TriggerView } from './RootViews';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
 import ItemsRenderer from './ItemsRenderer.vue';
-import { CORE_NODES_CATEGORY } from '@/constants';
-import { SubcategorizedNodeTypes } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { SubcategoryCreateElement } from '@/Interface';
-import { INodeCreateElement } from '@/Interface';
+import { INodeCreateElement, LabelCreateElement } from '@/Interface';
 import { useViewStacks } from './composables/useViewStacks';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
+import { sortNodeCreateElements, transformNodeType } from './utils';
+import NoResults from './NoResults.vue';
+import ActionsRenderer from './ActionsRenderer.vue';
 
 const instance = getCurrentInstance();
-const nodeTypesStore = useNodeTypesStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const {
-	pushViewStack,
 	activeViewStack,
 	viewStacks,
 	globalSearchItemsDiff,
+	activeViewStackMode,
+	pushViewStack,
 	popViewStack,
 	updateViewStack,
 } = useViewStacks();
 
-// const search = ref('');
+const view = TriggerView();
 
 function onSearchInput(value: string) {
-	// search.value = value;
 	if (activeViewStack.value.uuid) {
 		updateViewStack(activeViewStack.value.uuid, { search: value });
 	}
@@ -39,16 +37,29 @@ function isTriggerNode(nodeType: INodeTypeDescription) {
 }
 
 function onSelected(item: INodeCreateElement) {
-	console.log('🚀 ~ file: TriggerMode.vue:42 ~ onSelected ~ item:', item);
 	if (item.type === 'subcategory') {
-		console.log('🚀 ~ file: TriggerMode.vue:70 ~ onSelected ~ item:', item);
 		pushViewStack({
 			subcategory: item.key,
 			title: item.properties.title,
 			hasHeaderBg: true,
+			mode: 'trigger',
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
+		});
+	}
+
+	if (item.type === 'node') {
+		const transformedActions = item.properties.actions?.map((a) =>
+			transformNodeType(a, item.properties.displayName, 'action'),
+		);
+
+		pushViewStack({
+			subcategory: item.properties.displayName,
+			title: item.properties.displayName,
+			hasHeaderBg: true,
+			mode: 'action',
+			items: transformedActions,
 		});
 	}
 }
@@ -72,9 +83,8 @@ function baseSubcategoriesFilter(item: INodeCreateElement) {
 
 	return hasActions || hasTriggerGroup;
 }
-// Mode displays list of subcategories or nodes or categories. It aggregates only from regular nodes.
-const view = TriggerView();
 
+// Initial view stack
 pushViewStack({
 	title: view.title,
 	subtitle: view.subtitle,
@@ -95,30 +105,47 @@ pushViewStack({
 		@back="popViewStack"
 		@searchInput="onSearchInput"
 	>
-		<div :class="$style.items">
-			<ItemsRenderer
-				:elements="activeViewStack.items"
-				@selected="onSelected"
-				:class="$style.stackItems"
+		<span>
+			<!-- Actions Mode -->
+			<ActionsRenderer
+				v-if="activeViewStackMode === 'action' && activeViewStack.items"
+				:rootView="'trigger'"
+				:actions="activeViewStack.items"
+				:subcategory="activeViewStack.subcategory"
 			/>
-			<CategorizedItemsRenderer
-				v-if="globalSearchItemsDiff.length > 0"
-				:elements="globalSearchItemsDiff"
-				:category="'Results in other categories'"
-				@selected="onSelected"
-				:class="$style.stackItems"
-			/>
-		</div>
+
+			<!-- Nodes Mode -->
+			<template v-else>
+				<!-- Main Node Items -->
+				<ItemsRenderer
+					:elements="activeViewStack.items"
+					:class="$style.stackItems"
+					@selected="onSelected"
+				>
+					<template
+						#empty
+						v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
+					>
+						<NoResults :mode="activeViewStackMode || 'trigger'" showIcon showRequest />
+					</template>
+				</ItemsRenderer>
+				<!-- Results in other categories -->
+				<CategorizedItemsRenderer
+					v-if="globalSearchItemsDiff.length > 0"
+					:elements="globalSearchItemsDiff"
+					:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+					@selected="onSelected"
+					:class="$style.stackItems"
+				>
+				</CategorizedItemsRenderer>
+			</template>
+		</span>
 	</NodesListPanel>
 </template>
 
 <style lang="scss" module>
-// .stackItems {
-// 	height: 100%;
-// 	flex: 1;
-// }
-// .searchDiff {
-// 	height: 100%;
-// 	flex: 1;
-// }
+.items {
+	// height: 100%;
+	// color: red;
+}
 </style>

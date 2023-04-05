@@ -847,7 +847,17 @@ export interface NodeItemProps {
 
 export interface IActionItemProps {
 	subcategory: string;
-	nodeType: INodeActionTypeDescription;
+	nodeType: ActionTypeDescription;
+}
+
+export interface ActionTypeDescription extends INodeTypeDescription {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
+	codex: {
+		label: string;
+		categories: string[];
+	};
 }
 
 export interface CategoryItemProps {
@@ -856,14 +866,12 @@ export interface CategoryItemProps {
 }
 
 export interface CreateElementBase {
+	uuid?: string;
 	key: string;
-	includedByTrigger?: boolean;
-	includedByRegular?: boolean;
 }
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
-	category?: string;
 	subcategory: string;
 	properties: INodeTypeDescription;
 }
@@ -885,16 +893,14 @@ export interface ViewCreateElement extends CreateElementBase {
 
 export interface LabelCreateElement extends CreateElementBase {
 	type: 'label';
-	category: string;
 	subcategory: string;
 	properties: LabelItemProps;
 }
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
-	category: string;
 	subcategory: string;
-	properties: IActionItemProps;
+	properties: ActionTypeDescription;
 }
 
 export type INodeCreateElement =

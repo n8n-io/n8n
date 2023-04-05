@@ -15,6 +15,7 @@ export interface Props {
 	category: string;
 	disabled?: boolean;
 	activeIndex?: number;
+	isTriggerCategory?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -23,27 +24,41 @@ const props = withDefaults(defineProps<Props>(), {
 
 const expanded = ref(true);
 function onClick() {
-	console.log(
-		'🚀 ~ file: CategorizedItemsRenderer.vue:27 ~ onClick ~ 	expanded.value:',
-		expanded.value,
-	);
 	expanded.value = !expanded.value;
 }
 </script>
 
 <template>
-	<div class="categorizedItemsRenderer">
+	<div :class="$style.categorizedItemsRenderer" :data-category-collapsed="!expanded">
 		<CategoryItem
 			:name="category"
 			:disabled="disabled"
 			:active="activeIndex === 0"
 			:count="elements.length"
 			:expanded="expanded"
+			:isTrigger="isTriggerCategory || false"
 			@click="onClick"
 		/>
-		<!-- Pass all listeners to ItemsRenderer -->
-		<ItemsRenderer :elements="elements" v-on="$listeners" v-if="expanded" />
+		<div :class="$style.contentSlot" v-if="expanded && elements.length > 0 && $slots.default">
+			<slot />
+		</div>
+		<!-- Pass through listeners & empty slot to ItemsRenderer -->
+		<ItemsRenderer
+			v-if="expanded"
+			:elements="elements"
+			v-on="$listeners"
+			:isTrigger="isTriggerCategory || false"
+		>
+			<template #default> </template>
+			<template #empty>
+				<slot name="empty" v-bind="{ elements }" />
+			</template>
+		</ItemsRenderer>
 	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.contentSlot {
+	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
+}
+</style>

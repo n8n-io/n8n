@@ -67,12 +67,12 @@ export default Vue.extend({
 .callout {
 	display: flex;
 	justify-content: space-between;
-	font-size: var(--font-size-2xs);
+	font-size: var(--callout-font-size, var(--font-size-2xs));
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
 	border-radius: var(--border-radius-base);
 	align-items: center;
-	line-height: var(--font-line-height-loose);
+	line-height: var(--callout-line-height, var(--font-line-height-loose));
 }
 
 .message-section {

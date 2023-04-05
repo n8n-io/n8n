@@ -1,4 +1,13 @@
-import { getCurrentInstance, computed, ref, ComputedRef, nextTick, watchEffect, set } from 'vue';
+import {
+	getCurrentInstance,
+	computed,
+	ref,
+	ComputedRef,
+	nextTick,
+	watchEffect,
+	set,
+	del,
+} from 'vue';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
@@ -6,7 +15,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { INodeCreateElement, SubcategorizedNodeTypes } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { useNodesSearch } from './useNodesSearch';
-import { transformNodeType, subcategorizeItems } from '../utils';
+import { transformNodeType, subcategorizeItems, sortNodeCreateElements } from '../utils';
 
 interface ViewStack {
 	title?: string;
@@ -21,7 +30,7 @@ interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: INodeTypeDescription[];
 	forceIncludeNodes?: string[];
-	mode?: 'regular' | 'trigger';
+	mode?: 'regular' | 'trigger' | 'action';
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 }
@@ -53,11 +62,12 @@ export const useViewStacks = () => {
 
 		return {
 			...stack,
-			items: activeStackItems.value,
+			items: extendItemsWithUUID(activeStackItems.value),
 			hasSearch: (stack.baselineItems || []).length > 3 || stack?.hasSearch,
 		};
 	});
 
+	const activeViewStackMode = computed(() => activeViewStack.value.mode || 'trigger');
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
 		const stack = stacks.value[stacks.value.length - 1];
 
@@ -71,7 +81,7 @@ export const useViewStacks = () => {
 		if (!stack || !stack.search) return [];
 
 		const allNodes = nodeCreatorStore.mergedAppNodes.map((item) => transformNodeType(item));
-		const globalSearchResult = searchNodes(stack.search || '', allNodes);
+		const globalSearchResult = extendItemsWithUUID(searchNodes(stack.search || '', allNodes));
 
 		return globalSearchResult.filter((item) => {
 			return !activeStackItems.value.find((activeItem) => activeItem.key === item.key);
@@ -106,18 +116,17 @@ export const useViewStacks = () => {
 
 		// Sort only if non-root view
 		if (!isRootView.value) {
-			stackItems.sort((a, b) => {
-				if (a.type !== 'node' || b.type !== 'node') return -1;
-				const displayNameA = a.properties.displayName.toLowerCase();
-				const displayNameB = b.properties.displayName.toLowerCase();
-
-				return displayNameA.localeCompare(displayNameB, undefined, { sensitivity: 'base' });
-			});
+			sortNodeCreateElements(stackItems);
 		}
 
 		updateViewStack(activeViewStack.value.uuid, { baselineItems: stackItems });
 	}
-
+	function extendItemsWithUUID(items: INodeCreateElement[]) {
+		return items.map((item) => ({
+			...item,
+			uuid: `${item.key}-${uuid()}`,
+		}));
+	}
 	function pushViewStack(stack: ViewStack) {
 		const newStackUuid = uuid();
 		stacks.value.push({
@@ -131,7 +140,9 @@ export const useViewStacks = () => {
 	function popViewStack() {
 		if (activeViewStack.value.uuid) {
 			updateViewStack(activeViewStack.value.uuid, { transitionDirection: 'out' });
-			nextTick(() => stacks.value.pop());
+			nextTick(() => {
+				stacks.value.pop();
+			});
 		}
 	}
 
@@ -148,6 +159,7 @@ export const useViewStacks = () => {
 	return {
 		viewStacks,
 		activeViewStack,
+		activeViewStackMode,
 		globalSearchItemsDiff,
 		updateViewStack,
 		pushViewStack,

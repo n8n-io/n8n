@@ -19,7 +19,7 @@ defineProps<Props>();
 	margin-right: var(--spacing-s);
 	margin-bottom: var(--spacing-4xs);
 	letter-spacing: 1px;
-	padding-top: var(--spacing-l);
+	padding-top: var(--spacing-s);
 	font-style: normal;
 	font-weight: 700;
 	font-size: 10px;

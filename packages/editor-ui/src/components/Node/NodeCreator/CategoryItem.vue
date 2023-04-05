@@ -1,7 +1,10 @@
 <template>
 	<div :class="$style.categoryWrapper" v-on="$listeners">
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
-			<span :class="$style.name" v-text="categoryName" />
+			<span :class="$style.name">
+				<span v-text="categoryName" />
+				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
+			</span>
 			<font-awesome-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
 			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 		</div>
@@ -16,6 +19,7 @@ export interface Props {
 	active?: boolean;
 	count?: number;
 	name: string;
+	isTrigger?: boolean;
 }
 const props = withDefaults(defineProps<Props>(), {
 	expanded: true,
@@ -28,6 +32,10 @@ const categoryName = computed(() => {
 </script>
 
 <style lang="scss" module>
+.triggerIcon {
+	color: var(--color-primary);
+	margin-left: var(--spacing-3xs);
+}
 .category {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);

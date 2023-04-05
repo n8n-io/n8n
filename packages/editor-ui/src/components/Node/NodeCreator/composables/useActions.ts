@@ -5,8 +5,14 @@ import {
 	IActionItemProps,
 	SubcategoryCreateElement,
 	ActionCreateElement,
+	LabelCreateElement,
 } from '@/Interface';
-import { CUSTOM_API_CALL_NAME, TRIGGER_NODE_FILTER } from '@/constants';
+import {
+	CUSTOM_API_CALL_NAME,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	TRIGGER_NODE_FILTER,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -14,8 +20,9 @@ import { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRootStore';
 import useMainPanelView from './useMainPanelView';
 import { isEmpty } from '@/utils';
+import { sortNodeCreateElements, transformNodeType } from '../utils';
 
-export default () => {
+export const useActions = () => {
 	const {
 		getActionData,
 		getNodeTypesWithManualTrigger,
@@ -28,175 +35,157 @@ export default () => {
 	const { $externalHooks } = new externalHooks();
 	const telemetry = instance?.proxy.$telemetry;
 
-	const state = reactive({
-		activeNodeActions: null as INodeActionTypeDescription | null,
-	});
+	// const { transformCreateElements, isRoot } = useMainPanelView();
 
-	const { transformCreateElements, isRoot } = useMainPanelView();
+	// const containsAPIAction = computed(
+	// 	() =>
+	// 		activeNodeActions.value?.properties.some((p) =>
+	// 			p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
+	// 		) === true,
+	// );
 
-	const activeNodeActions = computed(() => state.activeNodeActions || null);
-
-	const containsAPIAction = computed(
-		() =>
-			activeNodeActions.value?.properties.some((p) =>
-				p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
-			) === true,
-	);
-
-	const selectedView = computed(() => useNodeCreatorStore().selectedView);
-
-	const placeholderTriggerActions = computed(() => {
-		const nodes = [
-			{
-				name: 'n8n-nodes-base.webhook',
-				displayName: 'On Webhook Call',
-			},
-			{
-				name: 'n8n-nodes-base.scheduleTrigger',
-				displayName: 'On a Schedule',
-			},
-		];
-		console.log('🚀 ~ file: useActions.ts:76 ~ placeholderTriggerActions ~ nodes:', nodes);
+	function getPlaceholderTriggerActions(subcategory: string) {
+		const nodes = [WEBHOOK_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE];
 
 		const matchedNodeTypes = visibleNodesWithActions
-			.filter((node) => nodes.some((n) => n.name === node.name))
+			.filter((node) => nodes.some((n) => n === node.name))
 			.map((node) => {
-				const [transformed] = transformCreateElements(
-					[node],
-					'action',
-					nodeAppActionsSubcategory.value,
-					'Triggers',
-					'PLACEHOLDER',
-				) as ActionCreateElement[];
+				const transformed = transformNodeType(node, subcategory, 'action');
 
-				const overwriteNode = nodes.find((n) => n.name === node.name);
-				const newObj = Object.assign(transformed.properties.nodeType, overwriteNode);
-				console.log('🚀 ~ file: useActions.ts:91 ~ .map ~ newObj:', newObj);
+				if (transformed.type === 'action') {
+					const nameBase = node.name.replace('n8n-nodes-base.', '');
+					const localeKey = `nodeCreator.actionsPlaceholderNode.${nameBase}` as BaseTextKey;
+					const overwriteLocale = instance?.proxy.$locale.baseText(localeKey) as string;
+
+					// If the locale key is not the same as the node name, it means it contain a translation
+					// and we should use it
+					if (overwriteLocale !== localeKey) {
+						transformed.properties.displayName = overwriteLocale;
+					}
+				}
 				return transformed;
 			});
-		console.log(
-			'🚀 ~ file: useActions.ts:80 ~ matchedNodeTypes ~ matchedNodeTypes:',
-			matchedNodeTypes,
-		);
 
 		return matchedNodeTypes;
-	});
-	const categoriesWithActions = computed(() => {
-		const actions = getCategoriesWithNodes(
-			selectedNodeActions.value,
-			activeNodeActions.value?.displayName,
-			['Actions', 'Triggers'],
-		);
-		console.log('🚀 ~ file: useActions.ts:95 ~ categoriesWithActions ~ actions:', actions);
+	}
 
-		if (isEmpty(actions['Triggers'])) {
-			actions['Triggers'][nodeAppActionsSubcategory.value?.properties.subcategory] = {
-				nodes: [...placeholderTriggerActions.value],
-				regularCount: 0,
-				triggerCount: placeholderTriggerActions.value.length,
-			};
-		}
-		console.log('🚀 ~ file: useActions.ts:64 ~ categoriesWithActions ~ actions:', actions);
-
-		return actions;
-	});
-
-	const categorizedActions = computed(() => {
-
-		return sortActions(
-			getCategorizedList(categoriesWithActions.value, true, ['Actions', 'Triggers']),
-		);
-	});
-
-	const selectedNodeActions = computed<INodeActionTypeDescription[]>(
-		() => activeNodeActions.value?.actions ?? [],
-	);
-
-	const isActionsActive = computed(() => activeNodeActions.value !== null);
-
-	const searchableActions = computed<INodeCreateElement[]>(() => {
-		return transformCreateElements(selectedNodeActions.value, 'action');
-	});
-
-	const actionsSearchPlaceholder = computed(() => {
-		const nodeNameTitle = activeNodeActions.value?.displayName?.trim() as string;
-		return instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
-			interpolate: { nodeNameTitle },
-		});
-	});
-
-	const nodeAppActionsSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
-		if (!activeNodeActions.value) return undefined;
-
-		const icon = activeNodeActions.value.iconUrl
-			? `${baseUrl}${activeNodeActions.value.iconUrl}`
-			: activeNodeActions.value.icon?.split(':')[1];
-
+	const actionsCategoryLocales = computed(() => {
 		return {
-			type: 'subcategory',
-			key: activeNodeActions.value.name,
-			properties: {
-				subcategory: activeNodeActions.value.displayName,
-				description: '',
-				iconType: activeNodeActions.value.iconUrl ? 'file' : 'icon',
-				icon,
-				color: activeNodeActions.value.defaults.color,
-			},
+			actions: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.actions') ?? '',
+			triggers: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.triggers') ?? '',
 		};
 	});
 
-	// If the user is in the root view, we want to show trigger nodes first
-	// otherwise we want to show them last
-	function sortActions(nodeCreateElements: INodeCreateElement[]): INodeCreateElement[] {
-		const elements = {
-			trigger: [] as INodeCreateElement[],
-			regular: [] as INodeCreateElement[],
-		};
+	function filterActionsCategory(items: INodeCreateElement[], category: string) {
+		return items.filter(
+			(item) => item.type === 'action' && item.properties.codex.categories.includes(category),
+		);
+	}
 
-		nodeCreateElements.forEach((el) => {
-			const isTriggersCategory = el.type === 'category' && el.key === 'Triggers';
-			const isTriggerAction = el.type === 'action' && el.category === 'Triggers';
+	function injectActionsLabels(items: INodeCreateElement[]): INodeCreateElement[] {
+		const extendedActions = sortNodeCreateElements([...items]);
+		const labelsSet = new Set<string>();
 
-			elements[isTriggersCategory || isTriggerAction ? 'trigger' : 'regular'].push(el);
-		});
-
-		if (selectedView.value === TRIGGER_NODE_FILTER) {
-			return [...elements.trigger, ...elements.regular];
+		// Collect unique labels
+		for (const action of extendedActions) {
+			if (action.type !== 'action') continue;
+			const label = action.properties.codex.label;
+			labelsSet.add(label);
 		}
 
-		return [...elements.regular, ...elements.trigger];
+		if (labelsSet.size <= 1) return extendedActions;
+
+		// Create a map to store the first index of each label
+		const firstIndexMap = new Map<string, number>();
+
+		// Iterate through the extendedActions to find the first index of each label
+		for (let i = 0; i < extendedActions.length; i++) {
+			const action = extendedActions[i];
+			if (action.type !== 'action') continue;
+			const label = action.properties.codex.label;
+			if (!firstIndexMap.has(label)) {
+				firstIndexMap.set(label, i);
+			}
+		}
+
+		// Keep track of the number of inserted labels
+		let insertedLabels = 0;
+
+		// Create and insert new label objects at the first index of each label
+		for (const label of labelsSet) {
+			const newLabel: LabelCreateElement = {
+				uuid: label,
+				type: 'label',
+				key: label,
+				subcategory: extendedActions[0].key,
+				properties: {
+					key: label,
+				},
+			};
+
+			const insertIndex = firstIndexMap.get(label)! + insertedLabels;
+			extendedActions.splice(insertIndex, 0, newLabel);
+			insertedLabels++;
+		}
+
+		return extendedActions;
 	}
 
-	function getCustomAPICallHintLocale(key: string) {
-		if (!isActionsActive.value) return '';
-
-		const nodeNameTitle = activeNodeActions.value?.displayName || '';
-		return instance?.proxy.$locale.baseText(`nodeCreator.actionsList.${key}` as BaseTextKey, {
-			interpolate: { nodeNameTitle },
-		});
+	function parseCategoryActions(actions: INodeCreateElement[], category: string) {
+		return injectActionsLabels(filterActionsCategory(actions, category));
 	}
 
-	function setActiveActions(nodeType: INodeActionTypeDescription | null) {
-		state.activeNodeActions = nodeType;
+	// const actionsSearchPlaceholder = computed(() => {
+	// 	const nodeNameTitle = activeNodeActions.value?.displayName?.trim() as string;
+	// 	return instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
+	// 		interpolate: { nodeNameTitle },
+	// 	});
+	// });
 
-		if (nodeType) trackActionsView();
-	}
+	// const nodeAppActionsSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
+	// 	if (!activeNodeActions.value) return undefined;
 
-	function trackActionsView() {
-		const trigger_action_count = selectedNodeActions.value.filter((action) =>
-			action.name.toLowerCase().includes('trigger'),
-		).length;
+	// 	const icon = activeNodeActions.value.iconUrl
+	// 		? `${baseUrl}${activeNodeActions.value.iconUrl}`
+	// 		: activeNodeActions.value.icon?.split(':')[1];
 
-		const trackingPayload = {
-			app_identifier: activeNodeActions.value?.name,
-			actions: selectedNodeActions.value.map((action) => action.displayName),
-			regular_action_count: selectedNodeActions.value.length - trigger_action_count,
-			trigger_action_count,
-		};
+	// 	return {
+	// 		type: 'subcategory',
+	// 		key: activeNodeActions.value.name,
+	// 		properties: {
+	// 			subcategory: activeNodeActions.value.displayName,
+	// 			description: '',
+	// 			iconType: activeNodeActions.value.iconUrl ? 'file' : 'icon',
+	// 			icon,
+	// 			color: activeNodeActions.value.defaults.color,
+	// 		},
+	// 	};
+	// });
 
-		$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-		telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
-	}
+	// function getCustomAPICallHintLocale(key: string) {
+	// 	if (!isActionsActive.value) return '';
+
+	// 	const nodeNameTitle = activeNodeActions.value?.displayName || '';
+	// 	return instance?.proxy.$locale.baseText(`nodeCreator.actionsList.${key}` as BaseTextKey, {
+	// 		interpolate: { nodeNameTitle },
+	// 	});
+	// }
+
+	// function trackActionsView() {
+	// 	const trigger_action_count = selectedNodeActions.value.filter((action) =>
+	// 		action.name.toLowerCase().includes('trigger'),
+	// 	).length;
+
+	// 	const trackingPayload = {
+	// 		app_identifier: activeNodeActions.value?.name,
+	// 		actions: selectedNodeActions.value.map((action) => action.displayName),
+	// 		regular_action_count: selectedNodeActions.value.length - trigger_action_count,
+	// 		trigger_action_count,
+	// 	};
+
+	// 	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	// 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+	// }
 
 	function onActionSelected(actionCreateElement: INodeCreateElement) {
 		const action = (actionCreateElement.properties as IActionItemProps).nodeType;
@@ -205,25 +194,9 @@ export default () => {
 		setAddedNodeActionParameters(actionUpdateData, telemetry);
 	}
 
-	function shouldShowNodeActions(node: INodeCreateElement) {
-		if (!isRoot.value && useNodeCreatorStore().itemsFilter === '') return false;
-
-		return true;
-	}
-
 	return {
-		containsAPIAction,
-		categoriesWithActions,
-		categorizedActions,
-		searchableActions,
-		selectedNodeActions,
-		isActionsActive,
-		actionsSearchPlaceholder,
-		nodeAppActionsSubcategory,
-		getCustomAPICallHintLocale,
-		trackActionsView,
-		setActiveActions,
-		onActionSelected,
-		shouldShowNodeActions,
+		actionsCategoryLocales,
+		getPlaceholderTriggerActions,
+		parseCategoryActions,
 	};
 };

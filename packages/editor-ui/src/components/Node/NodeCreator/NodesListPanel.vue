@@ -13,6 +13,7 @@ export interface Props {
 	hasBackButton?: boolean;
 	hasSearch?: boolean;
 	subtitle?: string;
+	search?: string;
 	searchPlaceholder?: string;
 	hasHeaderBg?: boolean;
 	transitionDirection?: 'in' | 'out';
@@ -35,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const state = reactive({
-	search: '',
+	search: props.search,
 });
 
 function onBackButton() {
@@ -44,6 +45,7 @@ function onBackButton() {
 }
 
 function onSearch(e: string) {
+	state.search = e;
 	emit('searchInput', e);
 	console.log('Search input changed');
 }
@@ -134,8 +136,6 @@ function onSearch(e: string) {
 	--node-icon-size: 16px;
 	margin-right: var(--spacing-s);
 }
-.categorizedItems {
-}
 .renderedItems {
 	overflow: auto;
 	height: 100%;
@@ -188,9 +188,7 @@ function onSearch(e: string) {
 
 	&.hasBg {
 		border-bottom: $node-creator-border-color solid 1px;
-		// height: 50px;
 		background-color: $node-creator-subcategory-panel-header-bacground-color;
-		// padding: var(--spacing-s) var(--spacing-s);
 	}
 }
 .title {

@@ -1,10 +1,7 @@
 <template>
 	<div>
 		<aside :class="{ 'node-creator-scrim': true, active: nodeCreatorStore.showScrim }" />
-		<div class="newPanel">
-			<TriggerMode />
-		</div>
-		<!-- <slide-transition>
+		<slide-transition>
 			<div
 				v-if="active"
 				class="node-creator"
@@ -16,17 +13,15 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<TriggerMode @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
-		</slide-transition> -->
+		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { watch, reactive, toRefs } from 'vue';
-// import SlideTransition from '@/components/transitions/SlideTransition.vue';
-
-// import MainPanel from './MainPanel.vue';
+import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import TriggerMode from './TriggerMode.vue';
 

@@ -28,6 +28,7 @@ import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export interface Props {
 	nodeType: INodeTypeDescription;
@@ -63,7 +64,8 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 const actionData = computed(() => getActionData(props.action));
 
 const isTriggerAction = (action: INodeActionTypeDescription) =>
-	action.name?.toLowerCase().includes('trigger');
+	action.name?.toLowerCase().includes('trigger') || action.name === WEBHOOK_NODE_TYPE;
+
 function onActionClick(actionItem: INodeActionTypeDescription) {
 	emit('actionSelected', getActionData(actionItem));
 }

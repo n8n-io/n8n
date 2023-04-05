@@ -841,8 +841,8 @@ importers:
         specifier: ^5.15.3
         version: 5.15.4
       '@fortawesome/vue-fontawesome':
-        specifier: ^2.0.2
-        version: 2.0.8(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14)
+        specifier: ^2.0.10
+        version: 2.0.10(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14)
       '@jsplumb/browser-ui':
         specifier: ^5.13.2
         version: 5.13.2
@@ -3689,8 +3689,8 @@ packages:
     dependencies:
       '@fortawesome/fontawesome-common-types': 0.2.36
 
-  /@fortawesome/vue-fontawesome@2.0.8(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14):
-    resolution: {integrity: sha512-SRmP0q9Ox4zq8ydDR/hrH+23TVU1bdwYVnugLVaAIwklOHbf56gx6JUGlwES7zjuNYqzKgl8e39iYf6ph8qSQw==}
+  /@fortawesome/vue-fontawesome@2.0.10(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14):
+    resolution: {integrity: sha512-OTETSXz+3ygD2OK2/vy82cmUBpuJqeOAg4gfnnv+f2Rir1tDIhQg026Q3NQxznq83ZLz8iNqGG9XJm26inpDeg==}
     peerDependencies:
       '@fortawesome/fontawesome-svg-core': ~1 || ~6
       vue: ~2
