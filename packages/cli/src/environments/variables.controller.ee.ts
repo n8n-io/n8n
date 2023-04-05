@@ -3,7 +3,11 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
-import { VariablesLicenseError, EEVariablesService } from './variables.service.ee';
+import {
+	VariablesLicenseError,
+	EEVariablesService,
+	VariablesValidationError,
+} from './variables.service.ee';
 import { isVariablesEnabled } from './enviromentHelpers';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -37,6 +41,8 @@ EEVariablesController.post(
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
 				throw new ResponseHelper.BadRequestError(error.message);
+			} else if (error instanceof VariablesValidationError) {
+				throw new ResponseHelper.BadRequestError(error.message);
 			}
 			throw error;
 		}
@@ -59,6 +65,15 @@ EEVariablesController.patch(
 		}
 		const variable = req.body;
 		delete variable.id;
-		return EEVariablesService.update(id, variable);
+		try {
+			return await EEVariablesService.update(id, variable);
+		} catch (error) {
+			if (error instanceof VariablesLicenseError) {
+				throw new ResponseHelper.BadRequestError(error.message);
+			} else if (error instanceof VariablesValidationError) {
+				throw new ResponseHelper.BadRequestError(error.message);
+			}
+			throw error;
+		}
 	}),
 );
