@@ -27,12 +27,11 @@ export const FormatDateDescription: INodeProperties[] = [
 	},
 	{
 		displayName: 'Format',
-		name: 'Format',
+		name: 'format',
 		type: 'options',
 		displayOptions: {
 			show: {
-				action: ['format'],
-				custom: [false],
+				operation: ['formatDate'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
