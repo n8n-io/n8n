@@ -159,7 +159,10 @@ describe('Enable MFA setup', () => {
 
 			expect(statusCode).toBe(200);
 
-			const user = await Db.collections.User.findOneOrFail({ where: {}, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
+			const user = await Db.collections.User.findOneOrFail({
+				where: {},
+				select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
+			});
 
 			expect(user.mfaEnabled).toBe(true);
 			expect(user.mfaRecoveryCodes).toBeDefined();
@@ -178,7 +181,10 @@ describe('Disable MFA setup', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const dbUser = await Db.collections.User.findOneOrFail({ where: { id: user.id }, select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'] });
+		const dbUser = await Db.collections.User.findOneOrFail({
+			where: { id: user.id },
+			select: ['mfaEnabled', 'mfaRecoveryCodes', 'mfaSecret'],
+		});
 
 		expect(dbUser.mfaEnabled).toBe(false);
 		expect(dbUser.mfaSecret).toBe(null);
