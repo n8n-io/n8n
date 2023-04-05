@@ -17,6 +17,7 @@ const instance = getCurrentInstance();
 
 const props = defineProps<Props>();
 
+// Mapping mode options: Labels here use field words defined in parameter type options
 const mappingModeOptions = [
 	{
 		name: instance?.proxy.$locale.baseText('resourceMapper.mappingMode.defineBelow.name'),
@@ -58,6 +59,7 @@ const selected = ref(props.initialValue);
 
 const errorMessage = computed<string>(() => {
 	if (selected.value === 'defineBelow' && instance) {
+		// Loading error message
 		if (props.loadingError) {
 			return instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.errorMessage', {
 				interpolate: {
@@ -67,8 +69,10 @@ const errorMessage = computed<string>(() => {
 				},
 			});
 		}
+		// No data error message
 		if (props.fieldsToMap.length === 0) {
 			return (
+				// Use custom error message if defined
 				props.typeOptions?.noFieldsError ||
 				instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
 					interpolate: {

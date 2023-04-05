@@ -2,9 +2,15 @@
 import { ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { INode, INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import {
+	INode,
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	ResourceMapperValue,
+} from 'n8n-workflow';
 import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 
@@ -14,25 +20,29 @@ export interface Props {
 	path: string;
 	inputSize: string;
 	labelSize: string;
+	dependentParametersValues: string | null;
 }
 
 const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
 
-// TODO: Extract this to constants
 const paramValue = ref({
 	mappingMode: props.parameter.mode || 'defineBelow',
 	value: {},
 	matchingColumns: [],
-} as {
-	mappingMode: string;
-	value: Object;
-	matchingColumns: string[];
-});
+} as ResourceMapperValue);
 const fieldsToMap = ref([] as ResourceMapperFields['fields']);
 const loading = ref(false);
 const loadingError = ref(false);
+
+// Reload fields to map when dependent parameters change
+watch(
+	() => props.dependentParametersValues,
+	async () => {
+		await initFetching();
+	},
+);
 
 onMounted(async () => {
 	await initFetching();

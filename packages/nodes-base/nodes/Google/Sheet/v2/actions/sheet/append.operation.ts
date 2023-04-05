@@ -114,6 +114,7 @@ export const description: SheetProperties = [
 		},
 		required: true,
 		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
 				mode: 'add',

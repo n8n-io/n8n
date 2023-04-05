@@ -1946,3 +1946,9 @@ export interface ResourceMapperFields {
 }
 
 export type ResourceMapperFieldType = 'string' | 'number' | 'datetime' | 'boolean';
+
+export type ResourceMapperValue = {
+	mappingMode: string;
+	value: object;
+	matchingColumns: string[];
+};

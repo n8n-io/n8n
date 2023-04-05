@@ -15,6 +15,7 @@ const instance = getCurrentInstance();
 
 const props = defineProps<Props>();
 
+// Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
 const selected = ref([] as string[] | string);
 
 watchEffect(() => {
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 	(event: 'matchingColumnsChanged', value: string[]): void;
 }>();
 
+// Field label and description: Labels here use field words defined in parameter type options
 const fieldLabel = computed<string>(() => {
 	if (instance) {
 		const pluralFieldWord =

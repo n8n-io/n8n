@@ -40,6 +40,7 @@
 				:path="path"
 				:inputSize="inputSize"
 				:labelSize="label.size || 'small'"
+				:dependentParametersValues="dependentParametersValues"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
@@ -374,7 +375,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, PARAMETER_TYPES_WITH_CUSTOM_LOADING } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -516,9 +517,11 @@ export default mixins(
 	},
 	watch: {
 		dependentParametersValues() {
-			// Reload the remote parameters whenever a parameter
-			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			if (!PARAMETER_TYPES_WITH_CUSTOM_LOADING.includes(this.parameter.type)) {
+				// Reload the remote parameters whenever a parameter
+				// on which the current field depends on changes
+				this.loadRemoteParameterOptions();
+			}
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
