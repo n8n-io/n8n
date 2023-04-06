@@ -21,7 +21,8 @@
 <script lang="ts">
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
+import { EventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'ModalDrawer',
@@ -33,7 +34,7 @@ export default Vue.extend({
 			type: Function,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		direction: {
 			type: String,
@@ -54,7 +55,7 @@ export default Vue.extend({
 		window.addEventListener('keydown', this.onWindowKeydown);
 
 		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
+			this.$props.eventBus.on('close', () => {
 				this.close();
 			});
 		}

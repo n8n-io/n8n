@@ -5,12 +5,16 @@ import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useNodeTypesStore } from './nodeTypes';
 
-const { VUE_APP_URL_BASE_API, VUE_APP_ENDPOINT_REST } = import.meta.env;
+const { VUE_APP_URL_BASE_API } = import.meta.env;
 
 export const useRootStore = defineStore(STORES.ROOT, {
 	state: (): RootState => ({
 		baseUrl:
 			VUE_APP_URL_BASE_API ?? (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
+		restEndpoint:
+			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
+				? 'rest'
+				: window.REST_ENDPOINT,
 		defaultLocale: 'en',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
@@ -41,20 +45,12 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		},
 
 		getRestUrl(): string {
-			let endpoint = 'rest';
-			if (VUE_APP_ENDPOINT_REST) {
-				endpoint = VUE_APP_ENDPOINT_REST;
-			}
-			return `${this.baseUrl}${endpoint}`;
+			return `${this.baseUrl}${this.restEndpoint}`;
 		},
 
 		getRestApiContext(): IRestApiContext {
-			let endpoint = 'rest';
-			if (VUE_APP_ENDPOINT_REST) {
-				endpoint = VUE_APP_ENDPOINT_REST;
-			}
 			return {
-				baseUrl: `${this.baseUrl}${endpoint}`,
+				baseUrl: this.getRestUrl,
 				sessionId: this.sessionId,
 			};
 		},
