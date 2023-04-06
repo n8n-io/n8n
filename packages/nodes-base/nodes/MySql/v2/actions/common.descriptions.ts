@@ -239,6 +239,8 @@ export const selectRowsFixedCollection: INodeProperties = {
 					displayName: 'Operator',
 					name: 'condition',
 					type: 'options',
+					description:
+						"The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 					options: [
 						{
@@ -281,36 +283,6 @@ export const selectRowsFixedCollection: INodeProperties = {
 					name: 'value',
 					type: 'string',
 					default: '',
-					placeholder: 'e.g. 1234',
-					displayOptions: {
-						show: {
-							condition: ['equal', '!='],
-						},
-					},
-				},
-				{
-					displayName: 'Value',
-					name: 'value',
-					type: 'string',
-					default: '',
-					placeholder: 'e.g. Jen%',
-					hint: 'Percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character',
-					displayOptions: {
-						show: {
-							condition: ['LIKE'],
-						},
-					},
-				},
-				{
-					displayName: 'Value',
-					name: 'value',
-					type: 'number',
-					default: 0,
-					displayOptions: {
-						show: {
-							condition: ['>', '<', '>=', '<='],
-						},
-					},
 				},
 			],
 		},

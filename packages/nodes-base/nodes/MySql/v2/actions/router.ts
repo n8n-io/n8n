@@ -4,14 +4,18 @@ import type { IExecuteFunctions } from 'n8n-core';
 
 import { Client } from 'ssh2';
 
+import type { MySqlType } from './node.type';
+import type { QueryRunner } from '../helpers/interfaces';
+
 import * as database from './database/Database.resource';
-import type { MySQLType } from './node.type';
+
 import { createPool } from '../transport';
+import { configureQueryRunner } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
 
-	const resource = this.getNodeParameter<MySQLType>('resource', 0);
+	const resource = this.getNodeParameter<MySqlType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 	const nodeOptions = this.getNodeParameter('options', 0);
 
@@ -24,15 +28,21 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	}
 	const pool = await createPool(credentials, nodeOptions, sshClient);
 
+	const runQueries: QueryRunner = configureQueryRunner.call(this, nodeOptions, pool);
+
 	const mysqlNodeData = {
 		resource,
 		operation,
-	} as MySQLType;
+	} as MySqlType;
 
 	try {
 		switch (mysqlNodeData.resource) {
 			case 'database':
-				returnData = await database[mysqlNodeData.operation].execute.call(this, pool, nodeOptions);
+				returnData = await database[mysqlNodeData.operation].execute.call(
+					this,
+					runQueries,
+					nodeOptions,
+				);
 				break;
 			default:
 				throw new NodeOperationError(

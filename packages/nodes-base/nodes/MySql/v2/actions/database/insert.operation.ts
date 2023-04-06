@@ -1,11 +1,16 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-import type { Mysql2Pool, QueryMode, QueryValues, QueryWithValues } from '../../helpers/interfaces';
+import type {
+	QueryMode,
+	QueryRunner,
+	QueryValues,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import { copyInputItems, replaceEmptyStringsByNulls, runQueries } from '../../helpers/utils';
+import { copyInputItems, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection, tableRLC } from '../common.descriptions';
 
@@ -101,7 +106,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	pool: Mysql2Pool,
+	runQueries: QueryRunner,
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
@@ -214,7 +219,7 @@ export async function execute(
 		}
 	}
 
-	returnData = await runQueries.call(this, queries, nodeOptions, pool);
+	returnData = await runQueries(queries);
 
 	return returnData;
 }

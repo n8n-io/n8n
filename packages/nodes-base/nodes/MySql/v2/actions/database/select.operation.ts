@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import type {
-	Mysql2Pool,
+	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 	SortRule,
@@ -11,7 +11,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import { addSortRules, addWhereClauses, runQueries } from '../../helpers/utils';
+import { addSortRules, addWhereClauses } from '../../helpers/utils';
 
 import {
 	optionsCollection,
@@ -68,8 +68,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	pool: Mysql2Pool,
-	nodeOptions: IDataObject,
+	runQueries: QueryRunner,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
 
@@ -102,7 +101,14 @@ export async function execute(
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
-		[query, values] = addWhereClauses(query, whereClauses, values, combineConditions);
+		[query, values] = addWhereClauses(
+			this.getNode(),
+			i,
+			query,
+			whereClauses,
+			values,
+			combineConditions,
+		);
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
@@ -119,7 +125,7 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	returnData = await runQueries.call(this, queries, nodeOptions, pool);
+	returnData = await runQueries(queries);
 
 	return returnData;
 }

@@ -4,6 +4,6 @@ type MySQLMap = {
 	database: 'deleteTable' | 'executeQuery' | 'insert' | 'select' | 'update' | 'upsert';
 };
 
-export type MySQLType = AllEntities<MySQLMap>;
+export type MySqlType = AllEntities<MySQLMap>;
 
 export type MySQLDatabaseType = Entity<MySQLMap, 'database'>;

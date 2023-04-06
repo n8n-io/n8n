@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	IPairedItemData,
 	NodeExecutionWithMetadata,
@@ -137,146 +138,151 @@ export function prepareOutput(
 	return returnData;
 }
 
-export async function runQueries(
+export function configureQueryRunner(
 	this: IExecuteFunctions,
-	queries: QueryWithValues[],
 	options: IDataObject,
 	pool: Mysql2Pool,
 ) {
-	if (queries.length === 0) {
-		return [];
-	}
+	return async (queries: QueryWithValues[]) => {
+		if (queries.length === 0) {
+			return [];
+		}
 
-	const returnData: INodeExecutionData[] = [];
-	const mode = (options.queryBatching as QueryMode) || 'single';
+		const returnData: INodeExecutionData[] = [];
+		const mode = (options.queryBatching as QueryMode) || 'single';
 
-	const connection = await pool.getConnection();
+		const connection = await pool.getConnection();
 
-	if (mode === 'single') {
-		try {
-			const formatedQueries = queries.map(({ query, values }) => connection.format(query, values));
+		if (mode === 'single') {
+			try {
+				const formatedQueries = queries.map(({ query, values }) =>
+					connection.format(query, values),
+				);
 
-			//releasing connection after formating queries, otherwise pool.query() will fail with timeout
+				//releasing connection after formating queries, otherwise pool.query() will fail with timeout
+				connection.release();
+
+				let singleQuery = '';
+
+				if (formatedQueries.length > 1) {
+					singleQuery = formatedQueries.map((query) => query.trim().replace(/;$/, '')).join(';');
+				} else {
+					singleQuery = formatedQueries[0];
+				}
+
+				let response: IDataObject | IDataObject[] = (
+					await pool.query(singleQuery)
+				)[0] as unknown as IDataObject;
+
+				if (!response) return [];
+
+				const statements = singleQuery.replace(/\n/g, '').split(';');
+
+				if (Array.isArray(response)) {
+					if (statements.length === 1) response = [response];
+				} else {
+					response = [response];
+				}
+
+				returnData.push(
+					...prepareOutput(response, options, statements, this.helpers.constructExecutionMetaData),
+				);
+			} catch (err) {
+				const error = parseMySqlError.call(this, err);
+
+				if (!this.continueOnFail()) throw error;
+				returnData.push({ json: { message: error.message, error: { ...error } } });
+			}
+		} else {
+			if (mode === 'independently') {
+				for (const [index, queryWithValues] of queries.entries()) {
+					try {
+						const { query, values } = queryWithValues;
+						const formatedQuery = connection.format(query, values);
+						const statements = formatedQuery.split(';').map((q) => q.trim());
+
+						const responses: IDataObject[] = [];
+						for (const statement of statements) {
+							if (statement === '') continue;
+							const response = (await connection.query(statement))[0] as unknown as IDataObject;
+
+							responses.push(response);
+						}
+
+						returnData.push(
+							...prepareOutput(
+								responses,
+								options,
+								statements,
+								this.helpers.constructExecutionMetaData,
+							),
+						);
+					} catch (err) {
+						const error = parseMySqlError.call(this, err, index);
+
+						if (!this.continueOnFail()) {
+							connection.release();
+							throw error;
+						}
+						returnData.push(prepareErrorItem(queries[index], error as Error, index));
+					}
+				}
+			}
+
+			if (mode === 'transaction') {
+				await connection.beginTransaction();
+
+				for (const [index, queryWithValues] of queries.entries()) {
+					try {
+						const { query, values } = queryWithValues;
+						const formatedQuery = connection.format(query, values);
+						const statements = formatedQuery.split(';').map((q) => q.trim());
+
+						const responses: IDataObject[] = [];
+						for (const statement of statements) {
+							if (statement === '') continue;
+							const response = (await connection.query(statement))[0] as unknown as IDataObject;
+
+							responses.push(response);
+						}
+
+						returnData.push(
+							...prepareOutput(
+								responses,
+								options,
+								statements,
+								this.helpers.constructExecutionMetaData,
+							),
+						);
+					} catch (err) {
+						const error = parseMySqlError.call(this, err, index);
+
+						if (connection) {
+							await connection.rollback();
+							connection.release();
+						}
+
+						if (!this.continueOnFail()) throw error;
+						returnData.push(prepareErrorItem(queries[index], error as Error, index));
+
+						// Return here because we already rolled back the transaction
+						return returnData;
+					}
+				}
+
+				await connection.commit();
+			}
+
 			connection.release();
-
-			let singleQuery = '';
-
-			if (formatedQueries.length > 1) {
-				singleQuery = formatedQueries.map((query) => query.trim().replace(/;$/, '')).join(';');
-			} else {
-				singleQuery = formatedQueries[0];
-			}
-
-			let response: IDataObject | IDataObject[] = (
-				await pool.query(singleQuery)
-			)[0] as unknown as IDataObject;
-
-			if (!response) return [];
-
-			const statements = singleQuery.replace(/\n/g, '').split(';');
-
-			if (Array.isArray(response)) {
-				if (statements.length === 1) response = [response];
-			} else {
-				response = [response];
-			}
-
-			returnData.push(
-				...prepareOutput(response, options, statements, this.helpers.constructExecutionMetaData),
-			);
-		} catch (err) {
-			const error = parseMySqlError.call(this, err);
-
-			if (!this.continueOnFail()) throw error;
-			returnData.push({ json: { message: error.message, error: { ...error } } });
-		}
-	} else {
-		if (mode === 'independently') {
-			for (const [index, queryWithValues] of queries.entries()) {
-				try {
-					const { query, values } = queryWithValues;
-					const formatedQuery = connection.format(query, values);
-					const statements = formatedQuery.split(';').map((q) => q.trim());
-
-					const responses: IDataObject[] = [];
-					for (const statement of statements) {
-						if (statement === '') continue;
-						const response = (await connection.query(statement))[0] as unknown as IDataObject;
-
-						responses.push(response);
-					}
-
-					returnData.push(
-						...prepareOutput(
-							responses,
-							options,
-							statements,
-							this.helpers.constructExecutionMetaData,
-						),
-					);
-				} catch (err) {
-					const error = parseMySqlError.call(this, err, index);
-
-					if (!this.continueOnFail()) {
-						connection.release();
-						throw error;
-					}
-					returnData.push(prepareErrorItem(queries[index], error as Error, index));
-				}
-			}
 		}
 
-		if (mode === 'transaction') {
-			await connection.beginTransaction();
-
-			for (const [index, queryWithValues] of queries.entries()) {
-				try {
-					const { query, values } = queryWithValues;
-					const formatedQuery = connection.format(query, values);
-					const statements = formatedQuery.split(';').map((q) => q.trim());
-
-					const responses: IDataObject[] = [];
-					for (const statement of statements) {
-						if (statement === '') continue;
-						const response = (await connection.query(statement))[0] as unknown as IDataObject;
-
-						responses.push(response);
-					}
-
-					returnData.push(
-						...prepareOutput(
-							responses,
-							options,
-							statements,
-							this.helpers.constructExecutionMetaData,
-						),
-					);
-				} catch (err) {
-					const error = parseMySqlError.call(this, err, index);
-
-					if (connection) {
-						await connection.rollback();
-						connection.release();
-					}
-
-					if (!this.continueOnFail()) throw error;
-					returnData.push(prepareErrorItem(queries[index], error as Error, index));
-
-					// Return here because we already rolled back the transaction
-					return returnData;
-				}
-			}
-
-			await connection.commit();
-		}
-
-		connection.release();
-	}
-
-	return returnData;
+		return returnData;
+	};
 }
 
 export function addWhereClauses(
+	node: INode,
+	itemIndex: number,
 	query: string,
 	clauses: WhereClause[],
 	replacements: QueryValues,
@@ -291,11 +297,29 @@ export function addWhereClauses(
 	}
 
 	let whereQuery = ' WHERE';
-	const values: string[] = [];
+	const values: QueryValues = [];
 
 	clauses.forEach((clause, index) => {
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
+		}
+
+		if (['>', '<', '>=', '<='].includes(clause.condition)) {
+			const value = Number(clause.value);
+
+			if (Number.isNaN(value)) {
+				throw new NodeOperationError(
+					node,
+					`Operator in entry ${index + 1} of 'Select Rows' works with numbers, but value ${
+						clause.value
+					} is not a number`,
+					{
+						itemIndex,
+					},
+				);
+			}
+
+			clause.value = value;
 		}
 
 		let valueReplacement = ' ';

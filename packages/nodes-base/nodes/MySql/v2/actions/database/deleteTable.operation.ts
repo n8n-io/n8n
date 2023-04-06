@@ -3,7 +3,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
-	Mysql2Pool,
+	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 	WhereClause,
@@ -11,7 +11,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-import { addWhereClauses, runQueries } from '../../helpers/utils';
+import { addWhereClauses } from '../../helpers/utils';
 
 import {
 	optionsCollection,
@@ -76,8 +76,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	pool: Mysql2Pool,
-	nodeOptions: IDataObject,
+	runQueries: QueryRunner,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
 
@@ -110,6 +109,8 @@ export async function execute(
 			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
 			[query, values] = addWhereClauses(
+				this.getNode(),
+				i,
 				`DELETE FROM \`${table}\``,
 				whereClauses,
 				values,
@@ -130,7 +131,7 @@ export async function execute(
 		queries.push(queryWithValues);
 	}
 
-	returnData = await runQueries.call(this, queries, nodeOptions, pool);
+	returnData = await runQueries(queries);
 
 	return returnData;
 }
