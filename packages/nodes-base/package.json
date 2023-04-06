@@ -24,7 +24,7 @@
     "lint": "eslint --quiet nodes credentials",
     "lintfix": "eslint nodes credentials --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"pnpm n8n-generate-ui-types\"",
-    "test": "jest packages/nodes-base/nodes/Totp/test/Totp.node.test.ts"
+    "test": "jest"
   },
   "files": [
     "dist"
