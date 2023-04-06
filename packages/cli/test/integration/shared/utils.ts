@@ -74,7 +74,6 @@ import { v4 as uuid } from 'uuid';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
-import { MultiFactorAuthService } from '@/Mfa/MultiFactorAuthService';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
