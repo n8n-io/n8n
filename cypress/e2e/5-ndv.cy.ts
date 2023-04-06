@@ -364,9 +364,73 @@ describe('NDV', () => {
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 	});
 
+	it('can link and unlink run selectors between input and output', () => {
+		cy.fixture('Test_workflow_5.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Set3');
+
+		ndv.getters.inputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
+		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.inputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+		ndv.getters.inputTbodyCell(1, 0).should('have.text', '1');
+		ndv.getters.outputTbodyCell(1, 0).should('have.text', '1');
+
+		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		// unlink
+		ndv.actions.toggleOutputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.inputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		// link again
+		ndv.actions.toggleOutputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.getters.inputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+		
+		// unlink again
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+
+		// link again
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+	});
+
 	// todos
-	// it('can link and unlink run selectors between input and output', () => {});
 	// it('can pair items between input and output across branches', () => {});
 	// it('can pair items between input and output across pages', () => {});
 	// it('shows only connected input branches of parent nodes', () => {});
+	// it('avoids linking when runs don't match')
 });
