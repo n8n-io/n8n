@@ -744,8 +744,22 @@ export class WorkflowRunner {
 					childExecutionIds.splice(executionIdIndex, 1);
 				}
 
-				// eslint-disable-next-line @typescript-eslint/await-thenable
-				this.activeExecutions.remove(message.data.executionId, message.data.result);
+				if (message.data.result === undefined) {
+					const noDataError = new WorkflowOperationError('Workflow finished with no result data');
+					const subWorkflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
+						data,
+						message.data.executionId,
+					);
+					await this.processError(
+						noDataError,
+						startedAt,
+						data.executionMode,
+						message.data?.executionId,
+						subWorkflowHooks,
+					);
+				} else {
+					this.activeExecutions.remove(message.data.executionId, message.data.result);
+				}
 			}
 		});
 
