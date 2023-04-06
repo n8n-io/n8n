@@ -6,9 +6,7 @@ import CategoryItem from './CategoryItem.vue';
 import LabelItem from './LabelItem.vue';
 import ActionItem from './ActionItem.vue';
 import ViewItem from './ViewItem.vue';
-import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
-// @ts-ignore
-import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+import { reactive, toRefs, onMounted, watch, onUnmounted, ref, watchEffect } from 'vue';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -19,6 +17,7 @@ export interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
+	lazyRender: true,
 });
 
 const emit = defineEmits<{
@@ -27,7 +26,25 @@ const emit = defineEmits<{
 	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
 }>();
 
-const iteratorItems = ref<HTMLElement[]>([]);
+// const iteratorItems = ref<HTMLElement[]>([]);
+const renderedItems = ref<INodeCreateElement[]>([]);
+const renderAnimationRequest = ref<number>(0);
+
+// Lazy render large items lists to prevent the browser from freezing
+// when loading many items.
+function renderItems() {
+	if (props.elements.length <= 20 || props.lazyRender === false) {
+		renderedItems.value = props.elements;
+		return;
+	}
+
+	if (renderedItems.value.length < props.elements.length) {
+		renderedItems.value.push(
+			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 5),
+		);
+		renderAnimationRequest.value = window.requestAnimationFrame(renderItems);
+	}
+}
 
 function wrappedEmit(
 	event: 'selected' | 'dragstart' | 'dragend',
@@ -55,11 +72,31 @@ function leave(el: HTMLElement) {
 	el.style.height = '0';
 }
 
+onMounted(() => {
+	renderItems();
+});
+
+onUnmounted(() => {
+	window.cancelAnimationFrame(renderAnimationRequest.value);
+	renderedItems.value = [];
+});
+
+// Make sure the active item is always visible
+// scroll if needed
+watch(
+	() => props.elements,
+	() => {
+		window.cancelAnimationFrame(renderAnimationRequest.value);
+		renderedItems.value = [];
+		renderItems();
+	},
+);
+
 watch(
 	() => props.activeIndex,
 	async () => {
 		if (props.activeIndex === undefined) return;
-		iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
+		// iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
 	},
 );
 </script>
@@ -75,45 +112,36 @@ watch(
 		@leave="leave"
 	>
 		<slot />
-		<DynamicScroller :items="elements" keyField="uuid" :min-item-size="40" class="scroller">
-			<template #default="{ item, index, active }">
-				<DynamicScrollerItem :item="item" :active="active" :data-index="index">
-					<div
-						data-test-id="item-iterator-item"
-						:class="{
-							clickable: !disabled,
-							[$style[item.type]]: true,
-							[$style.active]: activeIndex === index && !disabled,
-							[$style.iteratorItem]: true,
-						}"
-						ref="iteratorItems"
-						@click="wrappedEmit('selected', item)"
-					>
-						<label-item v-if="item.type === 'label'" :item="item" />
-						<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+		<div
+			v-for="(item, index) in renderedItems"
+			:key="item.uuid"
+			data-test-id="item-iterator-item"
+			:class="{
+				clickable: !disabled,
+				[$style[item.type]]: true,
+				[$style.active]: activeIndex === index && !disabled,
+				[$style.iteratorItem]: true,
+			}"
+			ref="iteratorItems"
+			@click="wrappedEmit('selected', item)"
+		>
+			<label-item v-if="item.type === 'label'" :item="item" />
+			<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
-						<node-item
-							v-if="item.type === 'node'"
-							:nodeType="item.properties"
-							:subcategory="item.subcategory"
-						/>
-						<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
-								@dragend="wrappedEmit('dragend', item, $event)"
-								@nodeTypeSelected="$listeners.nodeTypeSelected"
-								@actionsOpen="$listeners.actionsOpen" -->
-						<action-item
-							v-if="item.type === 'action'"
-							:nodeType="item.properties"
-							:action="item.properties"
-						/>
-						<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
-								@dragend="wrappedEmit('dragend', item, $event)" -->
+			<node-item
+				v-if="item.type === 'node'"
+				:nodeType="item.properties"
+				:subcategory="item.subcategory"
+			/>
 
-						<view-item v-else-if="item.type === 'view'" :view="item.properties" />
-					</div>
-				</DynamicScrollerItem>
-			</template>
-		</DynamicScroller>
+			<action-item
+				v-if="item.type === 'action'"
+				:nodeType="item.properties"
+				:action="item.properties"
+			/>
+
+			<view-item v-else-if="item.type === 'view'" :view="item.properties" />
+		</div>
 	</div>
 	<div :class="$style.empty" v-else>
 		<slot name="empty" />
@@ -156,9 +184,8 @@ watch(
 .itemsRenderer {
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
-	height: 100%;
 
+	// height: 100%;
 	scrollbar-width: none; /* Firefox 64 */
 	& > *::-webkit-scrollbar {
 		display: none;

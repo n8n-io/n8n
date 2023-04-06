@@ -3,31 +3,36 @@ import ItemsRenderer from './ItemsRenderer.vue';
 import { INodeCreateElement, LabelCreateElement } from '@/Interface';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 import { useActions } from './composables/useActions';
+import { computed } from 'vue';
 
 export interface Props {
 	actions: INodeCreateElement[];
 	rootView: 'trigger' | 'action';
-	search?: string;
+	search: string;
 	subcategory: string;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	search: '',
+});
 
 const { getPlaceholderTriggerActions, parseCategoryActions, actionsCategoryLocales } = useActions();
 const placeholderTriggerActions = getPlaceholderTriggerActions(props.subcategory);
-const parsedTriggerActions = parseCategoryActions(
-	props.actions,
-	actionsCategoryLocales.value.triggers,
+
+// We only inject labels if search is empty
+const parsedTriggerActions = computed(() =>
+	parseCategoryActions(props.actions, actionsCategoryLocales.value.triggers, !props.search),
 );
-const parsedActionActions = parseCategoryActions(
-	props.actions,
-	actionsCategoryLocales.value.actions,
+const parsedActionActions = computed(() =>
+	parseCategoryActions(props.actions, actionsCategoryLocales.value.actions, !props.search),
 );
 
 // Because the placeholder items are inserted into the slots, we need to
 // add the placeholder count to the category name manually
-const triggerCategoryName = parsedTriggerActions.length
-	? actionsCategoryLocales.value.triggers
-	: `${actionsCategoryLocales.value.triggers} (${placeholderTriggerActions.length})`;
+const triggerCategoryName = computed(() =>
+	parsedTriggerActions.value.length || props.search
+		? actionsCategoryLocales.value.triggers
+		: `${actionsCategoryLocales.value.triggers} (${placeholderTriggerActions.length})`,
+);
 </script>
 
 <template>

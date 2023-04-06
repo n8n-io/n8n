@@ -12,9 +12,11 @@ import { sortNodeCreateElements, transformNodeType } from './utils';
 import NoResults from './NoResults.vue';
 import ActionsRenderer from './ActionsRenderer.vue';
 import { useActions } from './composables/useActions';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 const instance = getCurrentInstance();
-const nodeCreatorStore = useNodeCreatorStore();
+const { mergedNodes, actions, subscribeToEvent } = useNodeCreatorStore();
+const { baseUrl } = useRootStore();
 
 const {
 	activeViewStack,
@@ -34,10 +36,6 @@ function onSearchInput(value: string) {
 	}
 }
 
-function isTriggerNode(nodeType: INodeTypeDescription) {
-	return nodeType.group.includes('trigger');
-}
-
 function onSelected(item: INodeCreateElement) {
 	if (item.type === 'subcategory') {
 		pushViewStack({
@@ -52,7 +50,14 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
-		const nodeActions = nodeCreatorStore.actions?.[item.key] || [];
+		console.log('🚀 ~ file: TriggerMode.vue:51 ~ onSelected ~ item:', item);
+		const nodeActions = actions?.[item.key] || [];
+		if (nodeActions.length <= 1) return;
+
+		const icon = item.properties.iconUrl
+			? `${baseUrl}${item.properties.iconUrl}`
+			: item.properties.icon?.split(':')[1];
+
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
 		);
@@ -60,7 +65,13 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
+			nodeIcon: {
+				color: item.properties.defaults?.color || '',
+				icon,
+				iconType: item.properties.iconUrl ? 'file' : 'icon',
+			},
 			hasHeaderBg: true,
+			hasSearch: true,
 			mode: 'action',
 			items: transformedActions,
 		});
@@ -70,7 +81,7 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const nodeActions = nodeCreatorStore.actions?.[item.key] || [];
+	const nodeActions = actions?.[item.key] || [];
 	const hasActions = nodeActions.length > 0;
 
 	if (hasTriggerGroup && hasActions) {
@@ -82,8 +93,8 @@ function subcategoriesMapper(item: INodeCreateElement) {
 function baseSubcategoriesFilter(item: INodeCreateElement) {
 	if (item.type !== 'node') return false;
 
-	const hasTriggerGroup = isTriggerNode(item.properties);
-	const nodeActions = nodeCreatorStore.actions?.[item.key] || [];
+	const hasTriggerGroup = item.properties.group.includes('trigger');
+	const nodeActions = actions?.[item.key] || [];
 	const hasActions = nodeActions.length > 0;
 
 	return hasActions || hasTriggerGroup;
@@ -98,7 +109,7 @@ pushViewStack({
 	hasSearch: true,
 	mode: 'trigger',
 	// Root search should include all nodes
-	searchItems: nodeCreatorStore.mergedNodes,
+	searchItems: mergedNodes,
 });
 </script>
 
@@ -112,20 +123,19 @@ pushViewStack({
 	>
 		<!-- Actions Mode -->
 		<ActionsRenderer
-			v-if="activeViewStackMode === 'action' && activeViewStack.items"
+			v-if="
+				activeViewStackMode === 'action' && activeViewStack.items && activeViewStack.subcategory
+			"
 			:rootView="'trigger'"
 			:actions="activeViewStack.items"
+			:search="activeViewStack.search"
 			:subcategory="activeViewStack.subcategory"
 		/>
 
 		<!-- Nodes Mode -->
 		<template v-else>
 			<!-- Main Node Items -->
-			<ItemsRenderer
-				:elements="activeViewStack.items"
-				:class="$style.stackItems"
-				@selected="onSelected"
-			>
+			<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected">
 				<template
 					#empty
 					v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
@@ -139,16 +149,8 @@ pushViewStack({
 				:elements="globalSearchItemsDiff"
 				:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
 				@selected="onSelected"
-				:class="$style.stackItems"
 			>
 			</CategorizedItemsRenderer>
 		</template>
 	</NodesListPanel>
 </template>
-
-<style lang="scss" module>
-.items {
-	// height: 100%;
-	// color: red;
-}
-</style>

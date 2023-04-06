@@ -1,6 +1,7 @@
 <template>
 	<div>
-		<aside :class="{ 'node-creator-scrim': true, active: nodeCreatorStore.showScrim }" />
+		<aside :class="{ 'node-creator-scrim': true, active: showScrim }" />
+		Scrim {{ showScrim }}
 		<slide-transition>
 			<div
 				v-if="active"
@@ -13,35 +14,50 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<TriggerMode @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<TriggerMode />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs } from 'vue';
+import { watch, reactive, toRefs, getCurrentInstance, computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import TriggerMode from './TriggerMode.vue';
 
+import { IUpdateInformation } from '@/Interface';
 export interface Props {
 	active?: boolean;
 }
 
 const props = defineProps<Props>();
+const instance = getCurrentInstance();
 
 const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void;
+	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
 
-const nodeCreatorStore = useNodeCreatorStore();
+const {
+	subscribeToEvent,
+	getNodeTypesWithManualTrigger,
+	setAddedNodeActionParameters,
+	setShowScrim,
+} = useNodeCreatorStore();
+
+subscribeToEvent('actionSelected', (action) => {
+	const actionUpdateData = action as IUpdateInformation;
+	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
+	setAddedNodeActionParameters(actionUpdateData, instance?.proxy.$telemetry);
+});
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
 });
 
+const showScrim = computed(() => useNodeCreatorStore().showScrim);
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator
 	// and try to drag undraggable element. In that case the click event would
@@ -92,7 +108,7 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) nodeCreatorStore.setShowScrim(false);
+		if (isActive === false) setShowScrim(false);
 	},
 );
 

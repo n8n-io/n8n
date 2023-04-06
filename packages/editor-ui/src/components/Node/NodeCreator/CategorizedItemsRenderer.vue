@@ -20,6 +20,12 @@ const expanded = ref(true);
 function onClick() {
 	expanded.value = !expanded.value;
 }
+watch(
+	() => props.elements,
+	(elements) => {
+		expanded.value = elements.length > 0;
+	},
+);
 </script>
 
 <template>
@@ -55,4 +61,8 @@ function onClick() {
 .contentSlot {
 	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
 }
+// .categorizedItemsRenderer {
+// 	display: flex;
+// 	flex-direction: column;
+// }
 </style>

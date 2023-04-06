@@ -1,5 +1,6 @@
 import { startCase } from 'lodash-es';
 import { defineStore } from 'pinia';
+import { v4 as uuidv4 } from 'uuid';
 import {
 	INodePropertyCollection,
 	INodePropertyOptions,
@@ -21,14 +22,18 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
 import {
+	ActionCreateElement,
 	ActionTypeDescription,
 	INodeCreatorState,
 	INodeFilterType,
 	IUpdateInformation,
+	NodeCreatorOpenSource,
+	SimplifiedNodeType,
 } from '@/Interface';
 import { BaseTextKey, i18n } from '@/plugins/i18n';
 import { externalHooks } from '@/mixins/externalHooks';
 import { Telemetry } from '@/plugins/telemetry';
+import { ref, watch, computed } from 'vue';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -43,11 +48,7 @@ const customNodeActionsParsers: {
 
 		return (collection?.values[0]?.options as INodePropertyOptions[])?.map(
 			(categoryItem): ActionTypeDescription => ({
-				...getNodeTypeBase(
-					nodeTypeDescription,
-					i18n.baseText('nodeCreator.actionsCategory.triggers'),
-					i18n.baseText('nodeCreator.actionsCategory.triggers'),
-				),
+				...getNodeTypeBase(nodeTypeDescription),
 				actionKey: categoryItem.value as string,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
 					interpolate: { event: startCase(categoryItem.name) },
@@ -74,30 +75,21 @@ function filterActions(actions: ActionTypeDescription[]) {
 	);
 }
 
-function getNodeTypeBase(
-	nodeTypeDescription: INodeTypeDescription,
-	label: string,
-	category: string,
-) {
+function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: string) {
+	const isTrigger = nodeTypeDescription.group.includes('trigger');
+	const category = isTrigger
+		? i18n.baseText('nodeCreator.actionsCategory.triggers')
+		: i18n.baseText('nodeCreator.actionsCategory.actions');
 	return {
 		name: nodeTypeDescription.name,
-		group: ['trigger'],
+		group: nodeTypeDescription.group,
 		codex: {
-			label,
+			label: label || '',
 			categories: [category],
-			subcategories: {
-				[nodeTypeDescription.displayName]: [category],
-			},
 		},
 		iconUrl: nodeTypeDescription.iconUrl,
 		icon: nodeTypeDescription.icon,
-		version: [1],
-		defaults: {
-			...nodeTypeDescription.defaults,
-		},
-		inputs: [],
-		outputs: [],
-		properties: [],
+		defaults: nodeTypeDescription.defaults,
 	};
 }
 
@@ -115,11 +107,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 	);
 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
-		...getNodeTypeBase(
-			nodeTypeDescription,
-			i18n.baseText('nodeCreator.actionsCategory.actions'),
-			i18n.baseText('nodeCreator.actionsCategory.actions'),
-		),
+		...getNodeTypeBase(nodeTypeDescription),
 		actionKey: item.value as string,
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
@@ -149,11 +137,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 	if (!matchedProperty || !matchedProperty.options) {
 		return [
 			{
-				...getNodeTypeBase(
-					nodeTypeDescription,
-					i18n.baseText('nodeCreator.actionsCategory.triggers'),
-					i18n.baseText('nodeCreator.actionsCategory.triggers'),
-				),
+				...getNodeTypeBase(nodeTypeDescription),
 				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
 					interpolate: { event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd() },
@@ -175,11 +159,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 	const items =
 		customParsedItem ??
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
-			...getNodeTypeBase(
-				nodeTypeDescription,
-				i18n.baseText('nodeCreator.actionsCategory.triggers'),
-				i18n.baseText('nodeCreator.actionsCategory.triggers'),
-			),
+			...getNodeTypeBase(nodeTypeDescription),
 			actionKey: categoryItem.value as string,
 			displayName:
 				categoryItem.action ??
@@ -234,7 +214,6 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 							...getNodeTypeBase(
 								nodeTypeDescription,
 								`${resourceOption.name} ${i18n.baseText('nodeCreator.actionsCategory.actions')}`,
-								i18n.baseText('nodeCreator.actionsCategory.actions'),
 							),
 							actionKey: operationOption.value as string,
 							description: operationOption?.description ?? '',
@@ -258,185 +237,234 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 	return transformedNodes;
 }
 
-export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
-	state: (): INodeCreatorState => ({
-		itemsFilter: '',
-		showScrim: false,
-		selectedView: TRIGGER_NODE_FILTER,
-		rootViewHistory: [],
-		openSource: '',
-		actions: {},
-		mergedNodes: [],
-	}),
-	actions: {
-		getNodeTypeBase,
-		setShowScrim(isVisible: boolean) {
-			this.showScrim = isVisible;
-		},
-		setSelectedView(selectedNodeType: INodeFilterType) {
-			this.selectedView = selectedNodeType;
-			if (!this.rootViewHistory.includes(selectedNodeType)) {
-				this.rootViewHistory.push(selectedNodeType);
-			}
-		},
-		closeCurrentView() {
-			this.rootViewHistory.pop();
-			this.selectedView = this.rootViewHistory[this.rootViewHistory.length - 1];
-		},
-		resetRootViewHistory() {
-			this.rootViewHistory = [];
-		},
-		setFilter(search: string) {
-			this.itemsFilter = search;
-		},
-		setAddedNodeActionParameters(action: IUpdateInformation, telemetry?: Telemetry, track = true) {
-			const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-			const storeWatcher = onWorkflowStoreAction(
-				({ name, after, store: { setLastNodeParameters }, args }) => {
-					if (name !== 'addNode' || args[0].type !== action.key) return;
-					after(() => {
-						setLastNodeParameters(action);
-						if (track) this.trackActionSelected(action, telemetry);
-						storeWatcher();
-					});
-				},
-			);
+type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
+type ActionsRecord<T extends SimplifiedNodeType[]> = {
+	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
+};
+interface EventSubscriber {
+	eventKey: string;
+	callback: (e: unknown) => void;
+	uuid: string;
+}
+interface EventQueueItem {
+	eventKey: string;
+	payload: unknown;
+}
 
-			return storeWatcher;
-		},
-		trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
-			const { $externalHooks } = new externalHooks();
+export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
+	const mergedNodes = ref<SimplifiedNodeType[]>([]);
+	const actions = ref<ActionsRecord<typeof mergedNodes.value>>({});
+	const showScrim = ref(false);
+	const openSource = ref<NodeCreatorOpenSource>('');
+	const eventsQueue = ref<EventQueueItem[]>([]);
+	const eventsSubscribers = ref<EventSubscriber[]>([]);
 
-			const payload = {
-				node_type: action.key,
-				action: action.name,
-				resource: (action.value as INodeParameters).resource || '',
-			};
-			$externalHooks().run('nodeCreateList.addAction', payload);
-			telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
-		},
-		categorizeActions() {
-			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
-			const nodesWithActions = nodes.map((node) => {
-				node.actions = [
-					...triggersCategory(node),
-					...operationsCategory(node),
-					...resourceCategories(node),
-				];
+	// We need to create a computed prop so we could watch for changes
+	// in the eventsQueue
+	const queueLength = computed(() => eventsQueue.value.length);
+	function setAddedNodeActionParameters(
+		action: IUpdateInformation,
+		telemetry?: Telemetry,
+		track = true,
+	) {
+		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
+		const storeWatcher = onWorkflowStoreAction(
+			({ name, after, store: { setLastNodeParameters }, args }) => {
+				if (name !== 'addNode' || args[0].type !== action.key) return;
+				after(() => {
+					setLastNodeParameters(action);
+					if (track) trackActionSelected(action, telemetry);
+					storeWatcher();
+				});
+			},
+		);
 
-				return node;
+		return storeWatcher;
+	}
+
+	function trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
+		const { $externalHooks } = new externalHooks();
+
+		const payload = {
+			node_type: action.key,
+			action: action.name,
+			resource: (action.value as INodeParameters).resource || '',
+		};
+		$externalHooks().run('nodeCreateList.addAction', payload);
+		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+	}
+
+	function generateNodeActions(node: INodeTypeDescription | undefined) {
+		if (!node) return [];
+		return [...triggersCategory(node), ...operationsCategory(node), ...resourceCategories(node)];
+	}
+	function filterActions(actions: ActionTypeDescription[]) {
+		// Do not show single action nodes
+		if (actions.length <= 1) return [];
+		return actions.filter(
+			(action: ActionTypeDescription, _: number, arr: ActionTypeDescription[]) => {
+				const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
+				if (isApiCall) return false;
+
+				const isPlaceholderTriggerAction = action.actionKey === 'placeholder_recommended';
+				return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
+			},
+		);
+	}
+
+	function getSimplifiedNodeType(node: INodeTypeDescription): SimplifiedNodeType {
+		const { displayName, defaults, description, name, group, icon, iconUrl, codex } = node;
+
+		return {
+			displayName,
+			defaults,
+			description,
+			name,
+			group,
+			icon,
+			iconUrl,
+			codex,
+		};
+	}
+
+	function generateActions() {
+		const visibleNodeTypes = deepCopy(useNodeTypesStore().visibleNodeTypes);
+
+		visibleNodeTypes
+			.filter((node) => !node.group.includes('trigger'))
+			.forEach((app) => {
+				const appActions = generateNodeActions(app);
+				actions.value[app.name] = appActions;
+
+				mergedNodes.value.push(getSimplifiedNodeType(app));
 			});
 
-			return nodesWithActions;
-		},
-		filterActions(actions: ActionTypeDescription[]) {
-			// Do not show single action nodes
-			if (actions.length <= 1) return [];
-			return actions.filter(
-				(action: ActionTypeDescription, _: number, arr: ActionTypeDescription[]) => {
-					const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
-					if (isApiCall) return false;
+		visibleNodeTypes
+			.filter((node) => node.group.includes('trigger'))
+			.forEach((trigger) => {
+				const normalizedName = trigger.name.replace('Trigger', '');
+				const triggerActions = generateNodeActions(trigger);
+				const appActions = actions.value?.[normalizedName] || [];
+				const app = mergedNodes.value.find((node) => node.name === normalizedName);
 
-					const isPlaceholderTriggerAction = action.actionKey === 'placeholder_recommended';
-					return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
-				},
-			);
-		},
-
-		generateActions() {
-			const nodesWithActions = this.categorizeActions();
-
-			const triggers = nodesWithActions.filter((node) => node.group.includes('trigger'));
-			const apps = nodesWithActions
-				.filter((node) => !node.group.includes('trigger'))
-				.map((node) => {
-					const newNode = node;
-					newNode.actions = newNode.actions || [];
-					return newNode;
-				});
-
-			triggers.forEach((node) => {
-				const normalizedName = node.name.toLowerCase().replace('trigger', '');
-				const app = apps.find((node) => node.name.toLowerCase() === normalizedName);
-				const newNode = node;
-				if (app && app.actions?.length) {
+				if (app && appActions?.length > 0) {
 					// merge triggers into regular nodes that match
-					app?.actions?.push(...(newNode.actions || []));
-					app.description = newNode.description; // default to trigger description
+					const mergedActions = filterActions([...appActions, ...triggerActions]);
+					actions.value[normalizedName] = mergedActions;
+
+					app.description = trigger.description; // default to trigger description
 				} else {
-					newNode.actions = newNode.actions || [];
-					apps.push(newNode);
+					actions.value[trigger.name] = filterActions(triggerActions);
+					mergedNodes.value.push(getSimplifiedNodeType(trigger));
 				}
 			});
+	}
 
-			apps.forEach((node) => {
-				const { displayName, description, actions, name, group, icon, iconUrl, codex } = node;
+	function setShowScrim(isVisible: boolean) {
+		console.log('🚀 ~ file: nodeCreator.ts:351 ~ setShowScrim ~ isVisible:', isVisible);
+		showScrim.value = isVisible;
+	}
 
-				this.mergedNodes.push({ displayName, description, name, group, icon, iconUrl, codex });
-				this.actions[node.name] = filterActions(actions || []);
-			});
-			console.log(
-				'🚀 ~ file: nodeCreator.ts:377 ~ apps.forEach ~ this.mergedNodes:',
-				this.mergedNodes,
+	function addEventToQueue(eventKey: string, payload?: unknown) {
+		eventsQueue.value.push({
+			eventKey,
+			payload,
+		});
+	}
+
+	function getActionData(actionItem: ActionTypeDescription): IUpdateInformation {
+		const displayOptions = actionItem.displayOptions;
+
+		const displayConditions = Object.keys(displayOptions?.show || {}).reduce(
+			(acc: IDataObject, showCondition: string) => {
+				acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
+				return acc;
+			},
+			{},
+		);
+
+		return {
+			name: actionItem.displayName,
+			key: actionItem.name as string,
+			value: { ...actionItem.values, ...displayConditions } as INodeParameters,
+		};
+	}
+
+	function getNodeTypesWithManualTrigger(nodeType?: string): string[] {
+		if (!nodeType) return [];
+
+		const { workflowTriggerNodes } = useWorkflowsStore();
+		const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
+		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
+		// const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
+		const isStickyNode = nodeType === STICKY_NODE_TYPE;
+		const singleNodeOpenSources = [
+			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+		];
+
+		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
+		// then we do not want to append the manual trigger
+		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource.value);
+
+		const shouldAppendManualTrigger =
+			!isSingleNodeOpenSource &&
+			!isTrigger &&
+			!workflowContainsTrigger &&
+			// isTriggerPanel &&
+			!isStickyNode;
+
+		const nodeTypes = shouldAppendManualTrigger ? [MANUAL_TRIGGER_NODE_TYPE, nodeType] : [nodeType];
+
+		return nodeTypes;
+	}
+
+	function subscribeToEvent(eventKey: string, callback: (payload?: unknown) => void) {
+		const uuid = uuidv4();
+		eventsSubscribers.value.push({
+			uuid,
+			eventKey,
+			callback,
+		});
+
+		return () => unsubscribeFromEvent(uuid);
+	}
+
+	function unsubscribeFromEvent(uuid: string) {
+		eventsSubscribers.value = eventsSubscribers.value.filter(
+			(subscriber) => subscriber.uuid !== uuid,
+		);
+	}
+
+	function processEventQueue() {
+		// Create a separate array for the items to be processed in this cycle
+		const itemsToProcess = [...eventsQueue.value];
+		// Clear the queue
+		eventsQueue.value = [];
+
+		// Process items
+		itemsToProcess.forEach(({ eventKey, payload }) => {
+			const matchingSubscribers = eventsSubscribers.value.filter(
+				(subscriber) => subscriber.eventKey === eventKey,
 			);
-			console.log('🚀 ~ file: nodeCreator.ts:376 ~ apps.forEach ~ this.actions:', this.actions);
-		},
-	},
-	getters: {
-		getNodeTypesWithManualTrigger:
-			() =>
-			(nodeType?: string): string[] => {
-				if (!nodeType) return [];
 
-				const { workflowTriggerNodes } = useWorkflowsStore();
-				const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
-				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-				const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
-				const isStickyNode = nodeType === STICKY_NODE_TYPE;
-				const singleNodeOpenSources = [
-					NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-					NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-				];
+			matchingSubscribers.forEach((subscriber) => subscriber.callback(payload));
+		});
+	}
 
-				// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
-				// then we do not want to append the manual trigger
-				const isSingleNodeOpenSource = singleNodeOpenSources.includes(
-					useNodeCreatorStore().openSource,
-				);
+	watch(queueLength, () => processEventQueue());
 
-				const shouldAppendManualTrigger =
-					!isSingleNodeOpenSource &&
-					!isTrigger &&
-					!workflowContainsTrigger &&
-					isTriggerPanel &&
-					!isStickyNode;
-
-				const nodeTypes = shouldAppendManualTrigger
-					? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
-					: [nodeType];
-
-				return nodeTypes;
-			},
-
-		getActionData:
-			() =>
-			(actionItem: ActionTypeDescription): IUpdateInformation => {
-				const displayOptions = actionItem.displayOptions;
-
-				const displayConditions = Object.keys(displayOptions?.show || {}).reduce(
-					(acc: IDataObject, showCondition: string) => {
-						acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
-						return acc;
-					},
-					{},
-				);
-
-				return {
-					name: actionItem.displayName,
-					key: actionItem.name as string,
-					value: { ...actionItem.values, ...displayConditions } as INodeParameters,
-				};
-			},
-	},
+	return {
+		getActionData,
+		generateActions,
+		setShowScrim,
+		addEventToQueue,
+		subscribeToEvent,
+		getNodeTypesWithManualTrigger,
+		setAddedNodeActionParameters,
+		showScrim,
+		mergedNodes,
+		actions,
+	};
 });

@@ -4,6 +4,7 @@
 		:draggable="!showActionArrow"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
+		@click="onClick"
 		:class="$style.nodeItem"
 		:description="subcategory !== '*' ? description : ''"
 		:title="displayName"
@@ -38,39 +39,35 @@
 
 <script setup lang="ts">
 import { computed, ref, getCurrentInstance } from 'vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { SimplifiedNodeType } from '@/Interface';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { isCommunityPackageName } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { useActions } from './composables/useActions';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 
 export interface Props {
-	nodeType: INodeTypeDescription;
+	nodeType: SimplifiedNodeType;
 	subcategory?: string;
 	active?: boolean;
-	allowActions?: boolean;
-	allowDescription?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	active: false,
-	allowActions: false,
-	allowDescription: false,
 });
 
 const emit = defineEmits<{
+	(event: 'click', $e: MouseEvent): void;
 	(event: 'dragstart', $e: DragEvent): void;
 	(event: 'dragend', $e: DragEvent): void;
 	(event: 'nodeTypeSelected', value: string[]): void;
-	(event: 'actionsOpen', value: INodeTypeDescription): void;
+	(event: 'actionsOpen', value: SimplifiedNodeType): void;
 }>();
-const nodeCreatorStore = useNodeCreatorStore();
+const { getNodeTypesWithManualTrigger, actions, addEventToQueue } = useNodeCreatorStore();
 const instance = getCurrentInstance();
-const { generatedActions, mergedNodes, generateActions } = useActions();
+
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
@@ -88,10 +85,9 @@ const hasActions = computed(() => {
 });
 
 const nodeActions = computed(() => {
-	const nodeActions = nodeCreatorStore.actions[props.nodeType.name] || [];
+	const nodeActions = actions[props.nodeType.name] || [];
 	return nodeActions;
 });
-// console.log('🚀 ~ file: NodeItem.vue:89 ~ hasActions:', hasActions);
 
 const shortNodeType = computed<string>(
 	() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '',
@@ -110,10 +106,7 @@ const displayName = computed<any>(() => {
 
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType}.displayName`,
-		fallback:
-			props.allowActions && nodeActions.value.length
-				? displayName.replace('Trigger', '')
-				: displayName,
+		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
 });
 
@@ -121,10 +114,10 @@ const displayName = computed<any>(() => {
 // 	props.nodeType.displayName.toLowerCase().includes('trigger'),
 // );
 
-// function onClick() {
-// 	if (hasActions && props.allowActions) emit('actionsOpen', props.nodeType);
-// 	else emit('nodeTypeSelected', [props.nodeType.name]);
-// }
+function onClick(e: MouseEvent) {
+	if (hasActions.value) emit('click', e);
+	else addEventToQueue('actionsOpen', props.nodeType);
+}
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
@@ -141,13 +134,13 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
 			'nodeTypeName',
-			useNodeCreatorStore().getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+			getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
 		);
 	}
 
 	dragging.value = true;
 	draggablePosition.value = { x, y };
-	emit('dragstart', event);
+	addEventToQueue('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
@@ -163,7 +156,7 @@ function onDragOver(event: DragEvent): void {
 function onDragEnd(event: DragEvent): void {
 	document.body.removeEventListener('dragover', onDragOver);
 
-	emit('dragend', event);
+	addEventToQueue('dragend', event);
 
 	dragging.value = false;
 	setTimeout(() => {

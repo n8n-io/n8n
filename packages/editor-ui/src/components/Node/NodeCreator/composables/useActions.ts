@@ -1,9 +1,9 @@
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
 import {
 	INodeCreateElement,
-	IActionItemProps,
 	LabelCreateElement,
 	ActionTypeDescription,
+	ActionCreateElement,
 } from '@/Interface';
 import { CUSTOM_API_CALL_KEY, SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
@@ -116,8 +116,14 @@ export const useActions = () => {
 		return extendedActions;
 	}
 
-	function parseCategoryActions(actions: INodeCreateElement[], category: string) {
-		return injectActionsLabels(filterActionsCategory(actions, category));
+	function parseCategoryActions(
+		actions: INodeCreateElement[],
+		category: string,
+		withLabels = true,
+	) {
+		const filteredActions = filterActionsCategory(actions, category);
+		if (withLabels) return injectActionsLabels(filteredActions);
+		return filteredActions;
 	}
 
 	// const actionsSearchPlaceholder = computed(() => {
@@ -173,7 +179,7 @@ export const useActions = () => {
 	// }
 
 	// function onActionSelected(actionCreateElement: INodeCreateElement) {
-	// 	const action = (actionCreateElement.properties as IActionItemProps).nodeType;
+	// 	const action = (actionCreateElement.properties as ActionItemProps).nodeType;
 	// 	const actionUpdateData = getActionData(action);
 	// 	instance?.proxy.$emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
 	// 	setAddedNodeActionParameters(actionUpdateData, telemetry);

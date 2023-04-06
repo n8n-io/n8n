@@ -23,23 +23,26 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import { INodeTypeDescription, INodeActionTypeDescription } from 'n8n-workflow';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
-import { IUpdateInformation } from '@/Interface';
+import { ActionTypeDescription, IUpdateInformation, SimplifiedNodeType } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 export interface Props {
-	nodeType: INodeTypeDescription;
-	action: INodeActionTypeDescription;
+	nodeType: SimplifiedNodeType;
+	action: ActionTypeDescription;
 }
 
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
-const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
-	useNodeCreatorStore();
+const {
+	getActionData,
+	getNodeTypesWithManualTrigger,
+	setAddedNodeActionParameters,
+	addEventToQueue,
+} = useNodeCreatorStore();
 
 const state = reactive({
 	dragging: false,
@@ -63,11 +66,11 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const actionData = computed(() => getActionData(props.action));
 
-const isTriggerAction = (action: INodeActionTypeDescription) =>
+const isTriggerAction = (action: ActionTypeDescription) =>
 	action.name?.toLowerCase().includes('trigger') || action.name === WEBHOOK_NODE_TYPE;
 
-function onActionClick(actionItem: INodeActionTypeDescription) {
-	emit('actionSelected', getActionData(actionItem));
+function onActionClick(actionItem: ActionTypeDescription) {
+	addEventToQueue('actionSelected', getActionData(actionItem));
 }
 
 function onDragStart(event: DragEvent): void {
@@ -93,7 +96,7 @@ function onDragStart(event: DragEvent): void {
 
 	state.dragging = true;
 	state.draggablePosition = { x, y };
-	emit('dragstart', event);
+	addEventToQueue('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
@@ -111,7 +114,7 @@ function onDragEnd(event: DragEvent): void {
 	document.body.removeEventListener('dragend', onDragEnd);
 	document.body.removeEventListener('dragover', onDragOver);
 
-	emit('dragend', event);
+	addEventToQueue('dragend', event);
 
 	state.dragging = false;
 	setTimeout(() => {

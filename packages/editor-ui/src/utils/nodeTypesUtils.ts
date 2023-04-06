@@ -21,7 +21,7 @@ import {
 	ICategoriesWithNodes,
 	INodeUi,
 	ITemplatesNode,
-	INodeItemProps,
+	ActionTypeDescription,
 	NodeAuthenticationOption,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
@@ -51,7 +51,7 @@ const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 const addNodeToCategory = (
 	accu: ICategoriesWithNodes,
-	nodeType: INodeTypeDescription | INodeActionTypeDescription,
+	nodeType: INodeTypeDescription | ActionTypeDescription,
 	category: string,
 	subcategory: string,
 ) => {
@@ -309,14 +309,6 @@ const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean =
 	return nodeType.codex.alias.reduce((accu: boolean, alias: string) => {
 		return accu || alias.toLowerCase().indexOf(filter) > -1;
 	}, false);
-};
-
-export const matchesNodeType = (el: INodeCreateElement, filter: string) => {
-	const nodeType = (el.properties as INodeItemProps).nodeType;
-
-	return (
-		nodeType.displayName.toLowerCase().indexOf(filter) !== -1 || matchesAlias(nodeType, filter)
-	);
 };
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {

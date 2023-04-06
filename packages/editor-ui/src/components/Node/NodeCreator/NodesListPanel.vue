@@ -41,13 +41,11 @@ const state = reactive({
 
 function onBackButton() {
 	emit('back');
-	console.log('Back button clicked');
 }
 
 function onSearch(e: string) {
 	state.search = e;
 	emit('searchInput', e);
-	console.log('Search input changed');
 }
 </script>
 
@@ -56,6 +54,9 @@ function onSearch(e: string) {
 		<aside :class="$style.nodesListPanel" @keydown.capture.stop>
 			<header :class="{ [$style.header]: true, [$style.hasBg]: hasHeaderBg }">
 				<div :class="$style.top">
+					<button :class="$style.backButton" @click="onBackButton" v-if="hasBackButton">
+						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
+					</button>
 					<n8n-node-icon
 						:class="$style.nodeIcon"
 						v-if="nodeIcon"
@@ -67,9 +68,6 @@ function onSearch(e: string) {
 						:showTooltip="false"
 						:size="16"
 					/>
-					<button :class="$style.backButton" @click="onBackButton" v-if="hasBackButton">
-						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
-					</button>
 					<p :class="$style.title" v-text="title" />
 				</div>
 				<p

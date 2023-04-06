@@ -738,7 +738,7 @@
 	"nodeCreator.categoryNames.sales": "Sales",
 	"nodeCreator.categoryNames.suggestedNodes": "Suggested Nodes ✨",
 	"nodeCreator.categoryNames.utility": "Utility",
-	"nodeCreator.categoryNames.otherCategories": "Utility",
+	"nodeCreator.categoryNames.otherCategories": "Results in other categories",
 	"nodeCreator.mainPanel.all": "All",
 	"nodeCreator.mainPanel.regular": "Regular",
 	"nodeCreator.mainPanel.trigger": "Trigger",

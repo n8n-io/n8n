@@ -774,7 +774,7 @@ export default mixins(
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
-			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
+			// this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
@@ -3758,9 +3758,9 @@ export default mixins(
 			if (createNodeActive === this.createNodeActive) return;
 
 			// Default to the trigger tab in node creator if there's no trigger node yet
-			this.nodeCreatorStore.setSelectedView(
-				this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
-			);
+			// this.nodeCreatorStore.setSelectedView(
+			// 	this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
+			// );
 
 			this.createNodeActive = createNodeActive;
 

@@ -26,7 +26,6 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
-	INodeActionTypeDescription,
 	IDisplayOptions,
 	IExecutionsSummary,
 	IAbstractEventMessage,
@@ -822,6 +821,11 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
+export interface SimplifiedNodeType
+	extends Pick<
+		INodeTypeDescription,
+		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+	> {}
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
@@ -839,18 +843,12 @@ export interface ViewItemProps {
 export interface LabelItemProps {
 	key: string;
 }
-
-export interface NodeItemProps {
-	subcategory: string;
-	nodeType: INodeTypeDescription;
-}
-
-export interface IActionItemProps {
+export interface ActionItemProps {
 	subcategory: string;
 	nodeType: ActionTypeDescription;
 }
 
-export interface ActionTypeDescription extends INodeTypeDescription {
+export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
 	actionKey: string;
@@ -873,7 +871,7 @@ export interface CreateElementBase {
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
 	subcategory: string;
-	properties: INodeTypeDescription;
+	properties: SimplifiedNodeType;
 }
 
 export interface CategoryCreateElement extends CreateElementBase {
