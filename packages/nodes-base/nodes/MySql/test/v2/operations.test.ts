@@ -29,7 +29,7 @@ const fakeConnection = {
 	format(query: string, values: any[]) {
 		return mysql2.format(query, values);
 	},
-	query: jest.fn(async () => Promise.resolve([{}])),
+	query: jest.fn(async (_query = ''): Promise<any> => Promise.resolve([{}])),
 	release: jest.fn(),
 	beginTransaction: jest.fn(),
 	commit: jest.fn(),
@@ -67,7 +67,7 @@ describe('Test MySql V2, operations', () => {
 		expect(upsert.description).toBeDefined();
 	});
 
-	it('deleteCommand: delete, should call runQueries with', async () => {
+	it('deleteTable: drop, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'deleteTable',
 			table: {
@@ -84,6 +84,8 @@ describe('Test MySql V2, operations', () => {
 
 		const pool = createFakePool(fakeConnection);
 
+		const poolQuerySpy = jest.spyOn(pool, 'query');
+
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
@@ -95,5 +97,163 @@ describe('Test MySql V2, operations', () => {
 		const result = await deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
 
 		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }]);
+
+		expect(poolQuerySpy).toBeCalledTimes(1);
+		expect(poolQuerySpy).toBeCalledWith('DROP TABLE IF EXISTS `test_table`');
+	});
+
+	it('deleteTable: truncate, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'deleteTable',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			deleteCommand: 'truncate',
+			options: {},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const poolQuerySpy = jest.spyOn(pool, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }]);
+
+		expect(poolQuerySpy).toBeCalledTimes(1);
+		expect(poolQuerySpy).toBeCalledWith('TRUNCATE TABLE `test_table`');
+	});
+
+	it('deleteTable: delete, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'deleteTable',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			deleteCommand: 'delete',
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: 'equal',
+						value: '1',
+					},
+					{
+						column: 'name',
+						condition: 'LIKE',
+						value: 'some%',
+					},
+				],
+			},
+			options: {},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const poolQuerySpy = jest.spyOn(pool, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }]);
+
+		expect(poolQuerySpy).toBeCalledTimes(1);
+		expect(poolQuerySpy).toBeCalledWith(
+			"DELETE FROM `test_table` WHERE `id` = '1' AND `name` LIKE 'some%'",
+		);
+	});
+
+	it('executeQuery, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query:
+				"DROP TABLE IF EXISTS $1:name;\ncreate table $1:name (id INT, name TEXT);\ninsert into $1:name (id, name) values (1, 'test 1');\nselect * from $1:name;\n",
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: 'test_table',
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			const result = [];
+			console.log(query);
+			if (query?.toLowerCase().includes('select')) {
+				result.push([{ id: 1, name: 'test 1' }]);
+			} else {
+				result.push({});
+			}
+			return Promise.resolve(result);
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([
+			{
+				json: {
+					id: 1,
+					name: 'test 1',
+				},
+				pairedItem: {
+					item: 0,
+				},
+			},
+		]);
+
+		expect(connectionQuerySpy).toBeCalledTimes(4);
+		expect(connectionQuerySpy).toBeCalledWith('DROP TABLE IF EXISTS `test_table`');
+		expect(connectionQuerySpy).toBeCalledWith('create table `test_table` (id INT, name TEXT)');
+		expect(connectionQuerySpy).toBeCalledWith(
+			"insert into `test_table` (id, name) values (1, 'test 1')",
+		);
+		expect(connectionQuerySpy).toBeCalledWith('select * from `test_table`');
 	});
 });
