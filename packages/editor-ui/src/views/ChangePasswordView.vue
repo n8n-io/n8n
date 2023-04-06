@@ -138,9 +138,9 @@ export default mixins(showMessage).extend({
 				: this.$route.query.userId;
 		},
 		getMfaEnabled() {
-			return !this.$route.query.mfaEnabled || typeof this.$route.query.userId !== 'string'
-				? null
-				: !!this.$route.query.mfaEnabled;
+			if (!this.$route.query.mfaEnabled || typeof this.$route.query.userId !== 'string')
+				return null;
+			return this.$route.query.mfaEnabled === 'true' ? true : false;
 		},
 		async onSubmit(values: { mfaToken: string }) {
 			try {
