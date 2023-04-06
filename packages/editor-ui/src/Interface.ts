@@ -985,6 +985,7 @@ export interface WorkflowsState {
 
 export interface RootState {
 	baseUrl: string;
+	restEndpoint: string;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
