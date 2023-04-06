@@ -4,6 +4,7 @@ import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import packageJSON from './package.json';
 
@@ -80,6 +81,35 @@ if (NODE_ENV === 'test') {
 	});
 }
 
+const plugins = [
+	vue(),
+	legacy({
+		targets: ['defaults', 'not IE 11'],
+	}),
+	monacoEditorPlugin({
+		publicPath: 'assets/monaco-editor',
+		customDistPath: (root: string, buildOutDir: string, base: string) =>
+			`${root}/${buildOutDir}/assets/monaco-editor`,
+	}),
+];
+
+const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
+if (release && authToken) {
+	plugins.push(
+		sentryVitePlugin({
+			org: 'n8nio',
+			project: 'instance-frontend',
+			// Specify the directory containing build artifacts
+			include: './dist',
+			// Auth tokens can be obtained from https://sentry.io/settings/account/api/auth-tokens/
+			// and needs the `project:releases` and `org:read` scopes
+			authToken,
+			telemetry: false,
+			release,
+		}),
+	);
+}
+
 export default mergeConfig(
 	defineConfig({
 		define: {
@@ -88,17 +118,7 @@ export default mergeConfig(
 			...(NODE_ENV === 'development' ? { process: { env: {} } } : {}),
 			BASE_PATH: `'${publicPath}'`,
 		},
-		plugins: [
-			vue(),
-			legacy({
-				targets: ['defaults', 'not IE 11'],
-			}),
-			monacoEditorPlugin({
-				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) =>
-					`${root}/${buildOutDir}/assets/monaco-editor`,
-			}),
-		],
+		plugins,
 		resolve: { alias },
 		base: publicPath,
 		envPrefix: 'VUE_APP',
@@ -111,8 +131,10 @@ export default mergeConfig(
 		},
 		build: {
 			assetsInlineLimit: 0,
-			sourcemap: false,
+			minify: !!release,
+			sourcemap: !!release,
 			rollupOptions: {
+				treeshake: !!release,
 				output: {
 					manualChunks: {
 						vendor: vendorChunks,
