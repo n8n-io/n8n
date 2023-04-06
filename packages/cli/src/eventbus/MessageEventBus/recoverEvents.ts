@@ -155,9 +155,10 @@ export async function recoverExecutionDataFromEventLogMessages(
 		}
 
 		if (applyToDb) {
+			const newStatus = executionEntry.status === 'failed' ? 'failed' : 'crashed';
 			await Db.collections.Execution.update(executionId, {
 				data: stringify(executionData),
-				status: 'crashed',
+				status: newStatus,
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 			});
 			await Container.get(InternalHooks).onWorkflowPostExecute(
@@ -170,7 +171,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 					waitTill: executionEntry.waitTill ?? undefined,
 					startedAt: executionEntry.startedAt,
 					stoppedAt: lastNodeRunTimestamp?.toJSDate(),
-					status: 'crashed',
+					status: newStatus,
 				},
 			);
 			const iRunData: IRun = {
@@ -180,7 +181,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 				waitTill: executionEntry.waitTill ?? undefined,
 				startedAt: executionEntry.startedAt,
 				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
-				status: 'crashed',
+				status: newStatus,
 			};
 			const workflowHooks = getWorkflowHooksMain(
 				{
