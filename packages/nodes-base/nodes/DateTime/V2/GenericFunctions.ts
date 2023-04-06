@@ -7,12 +7,10 @@ export function parseDate(this: IExecuteFunctions, date: string | DateTime, time
 	let parsedDate;
 
 	if (date instanceof DateTime) {
-		console.log('date is a DateTime object');
 		parsedDate = date;
 	} else {
 		parsedDate = DateTime.fromISO(moment.tz(date, timezone).toISOString());
 		if (parsedDate.invalidReason === 'unparsable') {
-			console.log(parsedDate.invalidReason);
 			throw new NodeOperationError(this.getNode(), 'Invalid date format');
 		}
 	}

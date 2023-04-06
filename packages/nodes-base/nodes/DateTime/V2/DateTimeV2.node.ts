@@ -122,11 +122,11 @@ export class DateTimeV2 implements INodeType {
 				if (format === 'custom') {
 					const customFormat = this.getNodeParameter('customFormat', i) as string;
 					responseData.push({
-						[outputFieldName]: DateTime.fromFormat(dateLuxon.toISO(), customFormat),
+						[outputFieldName]: dateLuxon.toFormat(customFormat),
 					});
 				} else {
 					responseData.push({
-						[outputFieldName]: DateTime.fromFormat(dateLuxon.toISO(), format),
+						[outputFieldName]: dateLuxon.toFormat(format),
 					});
 				}
 			} else if (operation === 'roundDate') {
