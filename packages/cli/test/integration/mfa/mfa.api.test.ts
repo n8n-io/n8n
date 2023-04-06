@@ -21,8 +21,6 @@ beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['mfa', 'auth', 'me', 'passwordReset'] });
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initConfigFile();
 });
 
 beforeEach(async () => {

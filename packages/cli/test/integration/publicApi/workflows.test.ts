@@ -40,7 +40,6 @@ beforeAll(async () => {
 		apiKey: randomApiKey(),
 	});
 
-	utils.initConfigFile();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });

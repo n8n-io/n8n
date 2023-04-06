@@ -114,7 +114,7 @@ export async function initTestServer({
 		externalHooks: {},
 	};
 
-	initConfigFile();
+	await initConfigFile();
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
@@ -672,12 +672,12 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export function initConfigFile() {
+export async function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		UserSettings.writeUserSettings(userSettings, settingsPath);
+		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
 }
 

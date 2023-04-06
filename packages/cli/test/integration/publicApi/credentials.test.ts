@@ -25,8 +25,6 @@ beforeAll(async () => {
 		enablePublicAPI: true,
 	});
 
-	utils.initConfigFile();
-
 	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
 		await testDb.getAllRoles();
 
