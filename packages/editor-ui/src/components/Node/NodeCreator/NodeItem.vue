@@ -44,6 +44,7 @@ import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { isCommunityPackageName } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useActions } from './composables/useActions';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 
@@ -67,8 +68,9 @@ const emit = defineEmits<{
 	(event: 'nodeTypeSelected', value: string[]): void;
 	(event: 'actionsOpen', value: INodeTypeDescription): void;
 }>();
-
+const nodeCreatorStore = useNodeCreatorStore();
 const instance = getCurrentInstance();
+const { generatedActions, mergedNodes, generateActions } = useActions();
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
@@ -81,7 +83,14 @@ const description = computed<string>(() => {
 });
 const showActionArrow = computed(() => hasActions.value);
 
-const hasActions = computed(() => (props.nodeType.actions?.length || 0) > 0);
+const hasActions = computed(() => {
+	return nodeActions.value.length > 1;
+});
+
+const nodeActions = computed(() => {
+	const nodeActions = nodeCreatorStore.actions[props.nodeType.name] || [];
+	return nodeActions;
+});
 // console.log('🚀 ~ file: NodeItem.vue:89 ~ hasActions:', hasActions);
 
 const shortNodeType = computed<string>(
@@ -102,7 +111,7 @@ const displayName = computed<any>(() => {
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType}.displayName`,
 		fallback:
-			props.allowActions && props.nodeType.actions?.length
+			props.allowActions && nodeActions.value.length
 				? displayName.replace('Trigger', '')
 				: displayName,
 	});

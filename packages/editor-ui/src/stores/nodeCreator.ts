@@ -8,7 +8,6 @@ import {
 	INodeTypeDescription,
 	deepCopy,
 	INodeParameters,
-	INodeActionTypeDescription,
 } from 'n8n-workflow';
 import {
 	STORES,
@@ -21,7 +20,12 @@ import {
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
-import { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
+import {
+	ActionTypeDescription,
+	INodeCreatorState,
+	INodeFilterType,
+	IUpdateInformation,
+} from '@/Interface';
 import { BaseTextKey, i18n } from '@/plugins/i18n';
 import { externalHooks } from '@/mixins/externalHooks';
 import { Telemetry } from '@/plugins/telemetry';
@@ -32,13 +36,13 @@ const customNodeActionsParsers: {
 	[key: string]: (
 		matchedProperty: INodeProperties,
 		nodeTypeDescription: INodeTypeDescription,
-	) => INodeActionTypeDescription[] | undefined;
+	) => ActionTypeDescription[] | undefined;
 } = {
 	['n8n-nodes-base.hubspotTrigger']: (matchedProperty, nodeTypeDescription) => {
 		const collection = matchedProperty?.options?.[0] as INodePropertyCollection;
 
 		return (collection?.values[0]?.options as INodePropertyOptions[])?.map(
-			(categoryItem): INodeActionTypeDescription => ({
+			(categoryItem): ActionTypeDescription => ({
 				...getNodeTypeBase(
 					nodeTypeDescription,
 					i18n.baseText('nodeCreator.actionsCategory.triggers'),
@@ -56,11 +60,11 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterActions(actions: INodeActionTypeDescription[]) {
+function filterActions(actions: ActionTypeDescription[]) {
 	// Do not show single action nodes
 	if (actions.length <= 1) return [];
 	return actions.filter(
-		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
+		(action: ActionTypeDescription, _: number, arr: ActionTypeDescription[]) => {
 			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
 			if (isApiCall) return false;
 
@@ -97,9 +101,7 @@ function getNodeTypeBase(
 	};
 }
 
-function operationsCategory(
-	nodeTypeDescription: INodeTypeDescription,
-): INodeActionTypeDescription[] {
+function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
 
 	const matchedProperty = nodeTypeDescription.properties.find(
@@ -133,7 +135,7 @@ function operationsCategory(
 	return items;
 }
 
-function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
+function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
 	const matchingKeys = ['event', 'events', 'trigger on'];
 	const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 	const matchedProperty = nodeTypeDescription.properties.find((property) =>
@@ -195,10 +197,8 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActio
 	return items;
 }
 
-function resourceCategories(
-	nodeTypeDescription: INodeTypeDescription,
-): INodeActionTypeDescription[] {
-	const transformedNodes: INodeActionTypeDescription[] = [];
+function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription[] {
+	const transformedNodes: ActionTypeDescription[] = [];
 	const matchedProperties = nodeTypeDescription.properties.filter(
 		(property) => property.displayName?.toLowerCase() === 'resource',
 	);
@@ -265,6 +265,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		selectedView: TRIGGER_NODE_FILTER,
 		rootViewHistory: [],
 		openSource: '',
+		actions: {},
+		mergedNodes: [],
 	}),
 	actions: {
 		getNodeTypeBase,
@@ -313,9 +315,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			$externalHooks().run('nodeCreateList.addAction', payload);
 			telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 		},
-	},
-	getters: {
-		visibleNodesWithActions(): INodeTypeDescription[] {
+		categorizeActions() {
 			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
 			const nodesWithActions = nodes.map((node) => {
 				node.actions = [
@@ -326,16 +326,31 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 				return node;
 			});
+
 			return nodesWithActions;
 		},
-		mergedAppNodes(): INodeTypeDescription[] {
-			const triggers = this.visibleNodesWithActions.filter((node) =>
-				node.group.includes('trigger'),
+		filterActions(actions: ActionTypeDescription[]) {
+			// Do not show single action nodes
+			if (actions.length <= 1) return [];
+			return actions.filter(
+				(action: ActionTypeDescription, _: number, arr: ActionTypeDescription[]) => {
+					const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
+					if (isApiCall) return false;
+
+					const isPlaceholderTriggerAction = action.actionKey === 'placeholder_recommended';
+					return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
+				},
 			);
-			const apps = this.visibleNodesWithActions
+		},
+
+		generateActions() {
+			const nodesWithActions = this.categorizeActions();
+
+			const triggers = nodesWithActions.filter((node) => node.group.includes('trigger'));
+			const apps = nodesWithActions
 				.filter((node) => !node.group.includes('trigger'))
 				.map((node) => {
-					const newNode = deepCopy(node);
+					const newNode = node;
 					newNode.actions = newNode.actions || [];
 					return newNode;
 				});
@@ -343,7 +358,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			triggers.forEach((node) => {
 				const normalizedName = node.name.toLowerCase().replace('trigger', '');
 				const app = apps.find((node) => node.name.toLowerCase() === normalizedName);
-				const newNode = deepCopy(node);
+				const newNode = node;
 				if (app && app.actions?.length) {
 					// merge triggers into regular nodes that match
 					app?.actions?.push(...(newNode.actions || []));
@@ -354,13 +369,20 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				}
 			});
 
-			const filteredNodes = apps.map((node) => ({
-				...node,
-				actions: filterActions(node.actions || []),
-			}));
+			apps.forEach((node) => {
+				const { displayName, description, actions, name, group, icon, iconUrl, codex } = node;
 
-			return filteredNodes;
+				this.mergedNodes.push({ displayName, description, name, group, icon, iconUrl, codex });
+				this.actions[node.name] = filterActions(actions || []);
+			});
+			console.log(
+				'🚀 ~ file: nodeCreator.ts:377 ~ apps.forEach ~ this.mergedNodes:',
+				this.mergedNodes,
+			);
+			console.log('🚀 ~ file: nodeCreator.ts:376 ~ apps.forEach ~ this.actions:', this.actions);
 		},
+	},
+	getters: {
 		getNodeTypesWithManualTrigger:
 			() =>
 			(nodeType?: string): string[] => {
@@ -399,7 +421,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 		getActionData:
 			() =>
-			(actionItem: INodeActionTypeDescription): IUpdateInformation => {
+			(actionItem: ActionTypeDescription): IUpdateInformation => {
 				const displayOptions = actionItem.displayOptions;
 
 				const displayConditions = Object.keys(displayOptions?.show || {}).reduce(

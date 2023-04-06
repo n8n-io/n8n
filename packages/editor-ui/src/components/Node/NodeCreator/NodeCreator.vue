@@ -36,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const nodeCreatorStore = useNodeCreatorStore();
+
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,

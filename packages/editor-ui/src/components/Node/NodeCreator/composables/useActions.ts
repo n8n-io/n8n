@@ -1,6 +1,11 @@
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
-import { INodeCreateElement, IActionItemProps, LabelCreateElement } from '@/Interface';
-import { SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import {
+	INodeCreateElement,
+	IActionItemProps,
+	LabelCreateElement,
+	ActionTypeDescription,
+} from '@/Interface';
+import { CUSTOM_API_CALL_KEY, SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { externalHooks } from '@/mixins/externalHooks';
 import { BaseTextKey } from '@/plugins/i18n';
@@ -8,14 +13,8 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 
 export const useActions = () => {
-	const {
-		getActionData,
-		getNodeTypesWithManualTrigger,
-		setAddedNodeActionParameters,
-		getNodeTypeBase,
-		visibleNodesWithActions,
-	} = useNodeCreatorStore();
-
+	const nodeCreatorStore = useNodeCreatorStore();
+	const useNodeTypesStore = useNodeCreatorStore();
 	const instance = getCurrentInstance();
 	const { baseUrl } = useRootStore();
 	const { $externalHooks } = new externalHooks();
@@ -33,7 +32,7 @@ export const useActions = () => {
 	function getPlaceholderTriggerActions(subcategory: string) {
 		const nodes = [WEBHOOK_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE];
 
-		const matchedNodeTypes = visibleNodesWithActions
+		const matchedNodeTypes = nodeCreatorStore.mergedNodes
 			.filter((node) => nodes.some((n) => n === node.name))
 			.map((node) => {
 				const transformed = transformNodeType(node, subcategory, 'action');
@@ -173,12 +172,12 @@ export const useActions = () => {
 	// 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 	// }
 
-	function onActionSelected(actionCreateElement: INodeCreateElement) {
-		const action = (actionCreateElement.properties as IActionItemProps).nodeType;
-		const actionUpdateData = getActionData(action);
-		instance?.proxy.$emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
-		setAddedNodeActionParameters(actionUpdateData, telemetry);
-	}
+	// function onActionSelected(actionCreateElement: INodeCreateElement) {
+	// 	const action = (actionCreateElement.properties as IActionItemProps).nodeType;
+	// 	const actionUpdateData = getActionData(action);
+	// 	instance?.proxy.$emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
+	// 	setAddedNodeActionParameters(actionUpdateData, telemetry);
+	// }
 
 	return {
 		actionsCategoryLocales,

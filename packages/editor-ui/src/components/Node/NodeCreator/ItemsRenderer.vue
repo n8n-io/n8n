@@ -98,16 +98,16 @@ watch(
 							:subcategory="item.subcategory"
 						/>
 						<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
-							@dragend="wrappedEmit('dragend', item, $event)"
-							@nodeTypeSelected="$listeners.nodeTypeSelected"
-							@actionsOpen="$listeners.actionsOpen" -->
+								@dragend="wrappedEmit('dragend', item, $event)"
+								@nodeTypeSelected="$listeners.nodeTypeSelected"
+								@actionsOpen="$listeners.actionsOpen" -->
 						<action-item
 							v-if="item.type === 'action'"
 							:nodeType="item.properties"
 							:action="item.properties"
 						/>
 						<!-- @dragstart="wrappedEmit('dragstart', item, $event)"
-							@dragend="wrappedEmit('dragend', item, $event)" -->
+								@dragend="wrappedEmit('dragend', item, $event)" -->
 
 						<view-item v-else-if="item.type === 'view'" :view="item.properties" />
 					</div>
@@ -156,7 +156,8 @@ watch(
 .itemsRenderer {
 	display: flex;
 	flex-direction: column;
-	overflow: auto;
+	overflow: hidden;
+	height: 100%;
 
 	scrollbar-width: none; /* Firefox 64 */
 	& > *::-webkit-scrollbar {

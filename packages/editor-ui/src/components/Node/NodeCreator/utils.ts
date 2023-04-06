@@ -8,11 +8,21 @@ export function transformNodeType(
 	subcategory?: string,
 	type = 'node',
 ): INodeCreateElement {
+	const { displayName, description, actions, name, group, icon, iconUrl, codex } = node;
 	return {
 		uuid: uuidv4(),
 		key: node.name,
-		subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
-		properties: node,
+		subcategory: subcategory ?? codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
+		properties: {
+			displayName,
+			description,
+			actions: actions?.filter((_, i) => i <= 2),
+			name,
+			group,
+			icon,
+			iconUrl,
+			codex,
+		},
 		type,
 	};
 }

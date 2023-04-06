@@ -11,9 +11,11 @@ import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 import { sortNodeCreateElements, transformNodeType } from './utils';
 import NoResults from './NoResults.vue';
 import ActionsRenderer from './ActionsRenderer.vue';
+import { useActions } from './composables/useActions';
 
 const instance = getCurrentInstance();
 const nodeCreatorStore = useNodeCreatorStore();
+
 const {
 	activeViewStack,
 	viewStacks,
@@ -50,7 +52,8 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
-		const transformedActions = item.properties.actions?.map((a) =>
+		const nodeActions = nodeCreatorStore.actions?.[item.key] || [];
+		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
 		);
 
@@ -67,7 +70,8 @@ function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
 	const hasTriggerGroup = item.properties.group.includes('trigger');
-	const hasActions = (item.properties.actions ?? []).length > 0;
+	const nodeActions = nodeCreatorStore.actions?.[item.key] || [];
+	const hasActions = nodeActions.length > 0;
 
 	if (hasTriggerGroup && hasActions) {
 		item.properties.displayName = item.properties.displayName.replace(' Trigger', '');
@@ -79,7 +83,8 @@ function baseSubcategoriesFilter(item: INodeCreateElement) {
 	if (item.type !== 'node') return false;
 
 	const hasTriggerGroup = isTriggerNode(item.properties);
-	const hasActions = (item.properties.actions ?? []).length > 0;
+	const nodeActions = nodeCreatorStore.actions?.[item.key] || [];
+	const hasActions = nodeActions.length > 0;
 
 	return hasActions || hasTriggerGroup;
 }
@@ -93,7 +98,7 @@ pushViewStack({
 	hasSearch: true,
 	mode: 'trigger',
 	// Root search should include all nodes
-	searchItems: nodeCreatorStore.mergedAppNodes,
+	searchItems: nodeCreatorStore.mergedNodes,
 });
 </script>
 
@@ -105,41 +110,39 @@ pushViewStack({
 		@back="popViewStack"
 		@searchInput="onSearchInput"
 	>
-		<span>
-			<!-- Actions Mode -->
-			<ActionsRenderer
-				v-if="activeViewStackMode === 'action' && activeViewStack.items"
-				:rootView="'trigger'"
-				:actions="activeViewStack.items"
-				:subcategory="activeViewStack.subcategory"
-			/>
+		<!-- Actions Mode -->
+		<ActionsRenderer
+			v-if="activeViewStackMode === 'action' && activeViewStack.items"
+			:rootView="'trigger'"
+			:actions="activeViewStack.items"
+			:subcategory="activeViewStack.subcategory"
+		/>
 
-			<!-- Nodes Mode -->
-			<template v-else>
-				<!-- Main Node Items -->
-				<ItemsRenderer
-					:elements="activeViewStack.items"
-					:class="$style.stackItems"
-					@selected="onSelected"
+		<!-- Nodes Mode -->
+		<template v-else>
+			<!-- Main Node Items -->
+			<ItemsRenderer
+				:elements="activeViewStack.items"
+				:class="$style.stackItems"
+				@selected="onSelected"
+			>
+				<template
+					#empty
+					v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
 				>
-					<template
-						#empty
-						v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
-					>
-						<NoResults :mode="activeViewStackMode || 'trigger'" showIcon showRequest />
-					</template>
-				</ItemsRenderer>
-				<!-- Results in other categories -->
-				<CategorizedItemsRenderer
-					v-if="globalSearchItemsDiff.length > 0"
-					:elements="globalSearchItemsDiff"
-					:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
-					@selected="onSelected"
-					:class="$style.stackItems"
-				>
-				</CategorizedItemsRenderer>
-			</template>
-		</span>
+					<NoResults :mode="activeViewStackMode || 'trigger'" showIcon showRequest />
+				</template>
+			</ItemsRenderer>
+			<!-- Results in other categories -->
+			<CategorizedItemsRenderer
+				v-if="globalSearchItemsDiff.length > 0"
+				:elements="globalSearchItemsDiff"
+				:category="$locale.baseText('nodeCreator.categoryNames.otherCategories')"
+				@selected="onSelected"
+				:class="$style.stackItems"
+			>
+			</CategorizedItemsRenderer>
+		</template>
 	</NodesListPanel>
 </template>
 

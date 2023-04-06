@@ -38,6 +38,7 @@ interface ViewStack {
 export const useViewStacks = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { searchNodes } = useNodesSearch();
+
 	const stacks = ref<ViewStack[]>([]);
 	const viewStacks = computed<ViewStack[]>(() => stacks.value);
 
@@ -80,7 +81,7 @@ export const useViewStacks = () => {
 		const stack = stacks.value[stacks.value.length - 1];
 		if (!stack || !stack.search) return [];
 
-		const allNodes = nodeCreatorStore.mergedAppNodes.map((item) => transformNodeType(item));
+		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
 		const globalSearchResult = extendItemsWithUUID(searchNodes(stack.search || '', allNodes));
 
 		return globalSearchResult.filter((item) => {
@@ -90,7 +91,7 @@ export const useViewStacks = () => {
 
 	function setStackBaselineItems() {
 		const stack = stacks.value[stacks.value.length - 1];
-		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedAppNodes);
+		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedNodes);
 		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? '*'] ?? [];
 
 		if (!stack || !activeViewStack.value.uuid) return;
@@ -99,7 +100,7 @@ export const useViewStacks = () => {
 		// This is done to ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched
 		if ((stack.forceIncludeNodes ?? []).length > 0) {
-			const matchedNodes = nodeCreatorStore.mergedAppNodes
+			const matchedNodes = nodeCreatorStore.mergedNodes
 				.filter((item) => stack.forceIncludeNodes?.includes(item.name))
 				.map((item) => transformNodeType(item, stack.subcategory));
 
