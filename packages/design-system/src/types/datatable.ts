@@ -13,5 +13,6 @@ export interface DatatableColumn {
 	path: string;
 	label: string;
 	classes?: string[];
+	width?: string;
 	render?: (row: DatatableRow) => (() => VNode | VNode[]) | DatatableRowDataType;
 }

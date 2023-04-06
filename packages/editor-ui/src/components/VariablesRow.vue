@@ -118,7 +118,7 @@ function focusFirstInput() {
 
 <template>
 	<tr :class="$style.variablesRow">
-		<td>
+		<td class="variables-key-column">
 			<div>
 				<span v-if="!editing">{{ data.key }}</span>
 				<n8n-form-input
@@ -137,7 +137,7 @@ function focusFirstInput() {
 				/>
 			</div>
 		</td>
-		<td>
+		<td class="variables-value-column">
 			<div>
 				<span v-if="!editing">{{ data.value }}</span>
 				<n8n-form-input

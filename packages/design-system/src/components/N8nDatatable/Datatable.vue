@@ -80,6 +80,12 @@ export default defineComponent({
 			return getValueByPath<DatatableRowDataType>(row, column.path);
 		}
 
+		function getThStyle(column: DatatableColumn) {
+			return {
+				...(column.width ? { width: column.width } : {}),
+			};
+		}
+
 		return {
 			t,
 			classes,
@@ -91,6 +97,7 @@ export default defineComponent({
 			rowsPerPageOptions,
 			getTdValue,
 			getTrClass,
+			getThStyle,
 			onRowsPerPageChange,
 		};
 	},
@@ -102,7 +109,12 @@ export default defineComponent({
 		<table :class="$style.datatable">
 			<thead :class="$style.datatableHeader">
 				<tr>
-					<th v-for="column in columns" :key="column.id" :class="column.classes">
+					<th
+						v-for="column in columns"
+						:key="column.id"
+						:class="column.classes"
+						:style="getThStyle(column)"
+					>
 						{{ column.label }}
 					</th>
 				</tr>

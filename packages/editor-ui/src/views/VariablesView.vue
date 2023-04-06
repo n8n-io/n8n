@@ -43,11 +43,13 @@ const datatableColumns = computed<DatatableColumn[]>(() => [
 		id: 0,
 		path: 'name',
 		label: i18n.baseText('variables.table.key'),
+		classes: ['variables-key-column'],
 	},
 	{
 		id: 1,
 		path: 'value',
 		label: i18n.baseText('variables.table.value'),
+		classes: ['variables-value-column'],
 	},
 	{
 		id: 2,
@@ -242,10 +244,44 @@ function displayName(resource: EnvironmentVariable) {
 }
 </style>
 
-<style lang="scss">
-.variables-usage-column {
-	@media screen and (max-width: 767px) {
-		display: none;
+<style lang="scss" scoped>
+:deep(.datatable) {
+	table {
+		table-layout: fixed;
+	}
+
+	th,
+	td {
+		width: 25%;
+
+		@media screen and (max-width: 979px) {
+			width: 33.33%;
+		}
+
+		&.variables-value-column,
+		&.variables-key-column,
+		&.variables-usage-column {
+			> div {
+				width: 100%;
+
+				> span {
+					max-width: 100%;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+
+				> div {
+					width: 100%;
+				}
+			}
+		}
+	}
+
+	.variables-usage-column {
+		@media screen and (max-width: 979px) {
+			display: none;
+		}
 	}
 }
 </style>
