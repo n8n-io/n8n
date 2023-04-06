@@ -16,8 +16,10 @@ import { AddToDateDescription } from './AddToDateDescription';
 import { SubtractFromDateDescription } from './SubtractFromDateDescription';
 import { FormatDateDescription } from './FormatDateDescription';
 import { RoundDateDescription } from './RoundDateDescription';
-import { GetTimeBetweenDates } from './GetTimeBetweenDates';
-import { DateTime, DurationUnit } from 'luxon';
+import { GetTimeBetweenDatesDescription } from './GetTimeBetweenDates';
+import type { DurationUnit } from 'luxon';
+import { DateTime } from 'luxon';
+import { ExtractDateDescription } from './ExtractDateDescription';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -75,7 +77,8 @@ export class DateTimeV2 implements INodeType {
 				...SubtractFromDateDescription,
 				...FormatDateDescription,
 				...RoundDateDescription,
-				...GetTimeBetweenDates,
+				...GetTimeBetweenDatesDescription,
+				...ExtractDateDescription,
 			],
 		};
 	}
@@ -198,6 +201,24 @@ export class DateTimeV2 implements INodeType {
 				}
 				const duration = luxonEndDate.diff(luxonStartDate, unit);
 				responseData.push({ [outputFieldName]: duration.toObject() });
+			} else if (operation === 'extractDate') {
+				const date = this.getNodeParameter('date', i);
+				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				const part = this.getNodeParameter('part', i) as keyof DateTime;
+				let parsedDate;
+				let selectedPart;
+				try {
+					console.log(date);
+					parsedDate = DateTime.isDateTime(date)
+						? date
+						: moment.tz(date, workflowTimezone).toISOString();
+					selectedPart = DateTime.isDateTime(date)
+						? date.get(part)
+						: DateTime.fromISO(parsedDate as string).get(part);
+				} catch {
+					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				}
+				responseData.push({ [outputFieldName]: selectedPart });
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject[]),

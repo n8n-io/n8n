@@ -1,32 +1,34 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const GetTimeBetweenDatesDescription: INodeProperties[] = [
+export const ExtractDateDescription: INodeProperties[] = [
 	{
-		displayName: 'Start Date',
-		name: 'startDate',
-		type: 'string',
+		displayName:
+			'You can also do this using an expression, e.g. <code>{{ your_date.extract("month") }}}</code>. <a target="_blank" href="https://docs.n8n.io/code-examples/expressions/luxon/>More info</a>"',
+		name: 'notice',
+		type: 'notice',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['getTimeBetweenDates'],
+				operation: ['extractDate'],
 			},
 		},
 	},
 	{
-		displayName: 'End Date',
-		name: 'endDate',
+		displayName: 'Date',
+		name: 'date',
 		type: 'string',
+		description: 'The date that you want to round',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['getTimeBetweenDates'],
+				operation: ['extractDate'],
 			},
 		},
 	},
 	{
-		displayName: 'Units',
-		name: 'units',
-		type: 'multiOptions',
+		displayName: 'Part',
+		name: 'part',
+		type: 'options',
 		options: [
 			{
 				name: 'Day',
@@ -35,10 +37,6 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 			{
 				name: 'Hour',
 				value: 'hour',
-			},
-			{
-				name: 'Millisecond',
-				value: 'millisecond',
 			},
 			{
 				name: 'Minute',
@@ -61,22 +59,22 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 				value: 'year',
 			},
 		],
+		default: 'month',
 		displayOptions: {
 			show: {
-				operation: ['getTimeBetweenDates'],
+				operation: ['extractDate'],
 			},
 		},
-		default: [],
 	},
 	{
 		displayName: 'Output Field Name',
 		name: 'outputFieldName',
 		type: 'string',
-		default: 'timeDifference',
+		default: 'datePart',
 		description: 'Name of the field to put the output in',
 		displayOptions: {
 			show: {
-				operation: ['getTimeBetweenDates'],
+				operation: ['extractDate'],
 			},
 		},
 	},
