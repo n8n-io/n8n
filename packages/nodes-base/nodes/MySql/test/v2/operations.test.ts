@@ -256,4 +256,256 @@ describe('Test MySql V2, operations', () => {
 		);
 		expect(connectionQuerySpy).toBeCalledWith('select * from `test_table`');
 	});
+
+	it('select, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			limit: 2,
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '>',
+						value: '1',
+					},
+					{
+						column: 'name',
+						value: 'test',
+					},
+				],
+			},
+			combineConditions: 'OR',
+			sort: {
+				values: [
+					{
+						column: 'id',
+						direction: 'DESC',
+					},
+				],
+			},
+			options: {
+				queryBatching: 'transaction',
+				detailedOutput: false,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await select.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }]);
+
+		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
+		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
+
+		expect(connectionBeginTransactionSpy).toBeCalledTimes(1);
+
+		expect(connectionQuerySpy).toBeCalledTimes(1);
+		expect(connectionQuerySpy).toBeCalledWith(
+			"SELECT * FROM `test_table` WHERE `id` > 1 OR `name` undefined 'test' ORDER BY `id` DESC LIMIT 2",
+		);
+
+		expect(connectionCommitSpy).toBeCalledTimes(1);
+	});
+
+	it('insert, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			dataMode: 'defineBelow',
+			valuesToSend: {
+				values: [
+					{
+						column: 'id',
+						value: '2',
+					},
+					{
+						column: 'name',
+						value: 'name 2',
+					},
+				],
+			},
+			options: {
+				queryBatching: 'independently',
+				priority: 'HIGH_PRIORITY',
+				detailedOutput: false,
+				skipOnConflict: true,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await insert.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }]);
+
+		expect(connectionQuerySpy).toBeCalledTimes(1);
+		expect(connectionQuerySpy).toBeCalledWith(
+			"INSERT HIGH_PRIORITY IGNORE INTO `test_table` (`id`, `name`) VALUES ('2','name 2')",
+		);
+	});
+
+	it('update, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'update',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			dataMode: 'autoMapInputData',
+			columnToMatchOn: 'id',
+			options: {
+				queryBatching: 'independently',
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnection, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const inputItems = [
+			{
+				json: {
+					id: 42,
+					name: 'test 4',
+				},
+			},
+			{
+				json: {
+					id: 88,
+					name: 'test 88',
+				},
+			},
+		];
+
+		const result = await update.execute.call(
+			fakeExecuteFunction,
+			inputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }, { json: { success: true } }]);
+
+		expect(connectionQuerySpy).toBeCalledTimes(2);
+		expect(connectionQuerySpy).toBeCalledWith(
+			"UPDATE `test_table` SET `name` = 'test 4' WHERE `id` = 42",
+		);
+		expect(connectionQuerySpy).toBeCalledWith(
+			"UPDATE `test_table` SET `name` = 'test 88' WHERE `id` = 88",
+		);
+	});
+
+	it('upsert, should call runQueries with', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'upsert',
+			table: {
+				__rl: true,
+				value: 'test_table',
+				mode: 'list',
+				cachedResultName: 'test_table',
+			},
+			columnToMatchOn: 'id',
+			dataMode: 'autoMapInputData',
+			options: {},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const pool = createFakePool(fakeConnection);
+
+		const poolQuerySpy = jest.spyOn(pool, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const inputItems = [
+			{
+				json: {
+					id: 42,
+					name: 'test 4',
+				},
+			},
+			{
+				json: {
+					id: 88,
+					name: 'test 88',
+				},
+			},
+		];
+
+		const result = await upsert.execute.call(
+			fakeExecuteFunction,
+			inputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([{ json: { success: true } }]);
+
+		expect(poolQuerySpy).toBeCalledTimes(1);
+		expect(poolQuerySpy).toBeCalledWith(
+			"INSERT INTO `test_table`(`id`, `name`) VALUES(42,'test 4') ON DUPLICATE KEY UPDATE `name` = 'test 4';INSERT INTO `test_table`(`id`, `name`) VALUES(88,'test 88') ON DUPLICATE KEY UPDATE `name` = 'test 88'",
+		);
+	});
 });
