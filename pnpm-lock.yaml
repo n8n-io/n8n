@@ -949,8 +949,8 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0
       vue-fragment:
-        specifier: 1.6.0
-        version: 1.6.0(vue@2.7.14)
+        specifier: 1.5.1
+        version: 1.5.1(vue@2.7.14)
       vue-i18n:
         specifier: ^8.26.7
         version: 8.27.2(vue@2.7.14)
@@ -21522,8 +21522,8 @@ packages:
       - supports-color
     dev: true
 
-  /vue-fragment@1.6.0(vue@2.7.14):
-    resolution: {integrity: sha512-a5T8ZZZK/EQzgVShEl374HbobUJ0a7v12BzOzS6Z/wd/5EE/5SffcyHC+7bf9hP3L7Yc0hhY/GhMdwFQ25O/8A==}
+  /vue-fragment@1.5.1(vue@2.7.14):
+    resolution: {integrity: sha512-ig6eES6TcMBbANW71ylB+AJgRN+Zksb3f50AxjGpAk6hMzqmeuD80qeh4LJP0jVw2dMBMjgRUfIkrvxygoRgtQ==}
     peerDependencies:
       vue: ^2.5.16
     dependencies:
