@@ -1,39 +1,37 @@
-import * as speakeasy from 'speakeasy';
+import { TOTP, Secret } from 'otpauth';
 
 export class TOTPService {
-	createQrUrlFromSecret(data: { secret: string; label?: string; issuer?: string }) {
-		return speakeasy.otpauthURL({
-			secret: data.secret,
-			label: data.label ?? '',
-			issuer: data.issuer ?? '',
-			encoding: 'base32',
-		});
+	generateSecret(): string {
+		return new Secret().base32;
 	}
 
-	generateSecret(data: { label?: string }) {
-		const { base32, otpauth_url } = speakeasy.generateSecret({
-			name: data.label ?? '',
-			otpauth_url: true,
-		});
-		return {
-			secret: base32,
-			url: otpauth_url,
-		};
+	generateTOTPUri({
+		issuer = 'n8n',
+		secret,
+		label,
+	}: {
+		secret: string;
+		label: string;
+		issuer: string;
+	}) {
+		return new TOTP({
+			secret: Secret.fromBase32(secret),
+			issuer,
+			label,
+		}).toString();
 	}
 
-	verifySecret({ secret, token, window = 0 }: { secret: string; token: string; window?: number }) {
-		return speakeasy.totp.verify({
-			secret,
-			token,
-			encoding: 'base32',
-			window,
-		});
+	verifySecret({ secret, token, window = 1 }: { secret: string; token: string; window?: number }) {
+		return new TOTP({
+			secret: Secret.fromBase32(secret),
+		}).validate({ secret, token, window }) === null
+			? false
+			: true;
 	}
 
-	generateMfaOneTimeToken(secret: string) {
-		return speakeasy.totp({
-			secret,
-			encoding: 'base32',
+	generateTOTP(secret: string) {
+		return TOTP.generate({
+			secret: Secret.fromBase32(secret),
 		});
 	}
 }

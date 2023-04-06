@@ -3,8 +3,6 @@ import { AuthenticatedRequest, MFA } from '@/requests';
 import { BadRequestError } from '@/ResponseHelper';
 import { MfaService } from '@/Mfa/mfa.service';
 
-const issuer = 'n8n';
-
 @RestController('/mfa')
 export class MFAController {
 	constructor(private mfaService: MfaService) {}
@@ -22,10 +20,9 @@ export class MFAController {
 			await this.mfaService.getRawSecretAndRecoveryCodes(id);
 
 		if (secret && recoveryCodes.length) {
-			const qrCode = this.mfaService.totp.createQrUrlFromSecret({
-				issuer,
+			const qrCode = this.mfaService.totp.generateTOTPUri({
 				secret,
-				label: `${issuer}:${email}`,
+				label: email,
 			});
 
 			return {
@@ -37,15 +34,15 @@ export class MFAController {
 
 		const newRecoveryCodes = this.mfaService.generateRawRecoveryCodes();
 
-		const { secret: newSecret, url } = this.mfaService.totp.generateSecret({
-			label: `${issuer}:${email}`,
-		});
+		const newSecret = this.mfaService.totp.generateSecret();
+
+		const qrCode = this.mfaService.totp.generateTOTPUri({ secret: newSecret, label: email });
 
 		await this.mfaService.saveSecretAndRecoveryCodes(id, newSecret, newRecoveryCodes);
 
 		return {
 			secret: newSecret,
-			qrCode: `${url}&issuer=${issuer}`,
+			qrCode,
 			recoveryCodes: newRecoveryCodes,
 		};
 	}

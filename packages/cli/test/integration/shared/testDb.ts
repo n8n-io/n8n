@@ -199,7 +199,7 @@ export async function createUserWithMfaEnabled(
 
 	const toptService = new TOTPService();
 
-	const { secret } = toptService.generateSecret({ label: email });
+	const secret = toptService.generateSecret();
 
 	const codes = Array.from(Array(data.numberOfRecoveryCodes)).map(() => uuid());
 

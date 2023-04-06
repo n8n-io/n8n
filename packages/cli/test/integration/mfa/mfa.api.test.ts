@@ -110,7 +110,7 @@ describe('Enable MFA setup', () => {
 
 			const { secret } = response.body.data;
 
-			const token = new TOTPService().generateMfaOneTimeToken(secret);
+			const token = new TOTPService().generateTOTP(secret);
 
 			const { statusCode } = await authAgent(owner).post('/mfa/verify').send({ token });
 
@@ -152,7 +152,7 @@ describe('Enable MFA setup', () => {
 
 			const { secret } = response.body.data;
 
-			const token = new TOTPService().generateMfaOneTimeToken(secret);
+			const token = new TOTPService().generateTOTP(secret);
 
 			await authAgent(owner).post('/mfa/verify').send({ token });
 
@@ -225,7 +225,7 @@ describe('Change password with MFA enabled', () => {
 	test('PATCH /me/password should update password', async () => {
 		const { user, rawPassword, rawSecret } = await testDb.createUserWithMfaEnabled();
 
-		const token = new TOTPService().generateMfaOneTimeToken(rawSecret);
+		const token = new TOTPService().generateTOTP(rawSecret);
 
 		const newPassword = randomValidPassword();
 
@@ -298,7 +298,7 @@ describe('Change password with MFA enabled', () => {
 
 		const resetPasswordToken = uniqueId();
 
-		const mfaToken = new TOTPService().generateMfaOneTimeToken(rawSecret);
+		const mfaToken = new TOTPService().generateTOTP(rawSecret);
 
 		await Db.collections.User.update(user.id, {
 			resetPasswordToken,
@@ -321,7 +321,7 @@ describe('Change password with MFA enabled', () => {
 			.send({
 				email: user.email,
 				password: newPassword,
-				mfaToken: new TOTPService().generateMfaOneTimeToken(rawSecret),
+				mfaToken: new TOTPService().generateTOTP(rawSecret),
 			});
 
 			expect(loginResponse.statusCode).toBe(200);
@@ -396,7 +396,7 @@ describe('Login', () => {
 
 			const authlessAgent = utils.createAgent(app);
 
-			const token = new TOTPService().generateMfaOneTimeToken(rawSecret);
+			const token = new TOTPService().generateTOTP(rawSecret);
 
 			const response = await authlessAgent
 				.post('/login')
