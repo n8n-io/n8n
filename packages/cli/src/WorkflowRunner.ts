@@ -271,6 +271,7 @@ export class WorkflowRunner {
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		additionalData.restartExecutionId = restartExecutionId;
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
@@ -643,6 +644,8 @@ export class WorkflowRunner {
 		if (loadStaticData === true && workflowId) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
+
+		data.restartExecutionId = restartExecutionId;
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
