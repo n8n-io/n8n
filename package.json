@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.222.1",
+  "version": "0.223.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -58,8 +58,8 @@
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.0",
     "tsc-watch": "^6.0.0",
-    "typescript": "*",
-    "turbo": "1.8.8"
+    "turbo": "1.8.8",
+    "typescript": "*"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -84,7 +84,8 @@
     },
     "patchedDependencies": {
       "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
-      "typedi@0.10.0": "patches/typedi@0.10.0.patch"
+      "typedi@0.10.0": "patches/typedi@0.10.0.patch",
+      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch"
     }
   }
 }
