@@ -38,8 +38,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	try {
 		switch (mysqlNodeData.resource) {
 			case 'database':
+				const items = this.getInputData();
+
 				returnData = await database[mysqlNodeData.operation].execute.call(
 					this,
+					items,
 					runQueries,
 					nodeOptions,
 				);

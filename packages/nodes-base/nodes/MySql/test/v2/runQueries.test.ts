@@ -1,13 +1,14 @@
-import { constructExecutionMetaData } from 'n8n-core';
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
 
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { BATCH_MODE } from '../../v2/helpers/interfaces';
 
+import type { IDataObject, INode } from 'n8n-workflow';
+
 import mysql2 from 'mysql2/promise';
 
-const node: INode = {
+const mySqlMockNode: INode = {
 	id: '1',
 	name: 'MySQL node',
 	typeVersion: 2,
@@ -29,26 +30,14 @@ const fakeConnection = {
 	rollback: jest.fn(),
 };
 
-const createFakePool = () => {
+const createFakePool = (connection: IDataObject) => {
 	return {
 		getConnection() {
-			return fakeConnection;
+			return connection;
 		},
 		query: jest.fn(async () => Promise.resolve([{}])),
 	} as unknown as Mysql2Pool;
 };
-
-const fakeExecuteFunction = {
-	getNode() {
-		return node;
-	},
-	continueOnFail() {
-		return false;
-	},
-	helpers: {
-		constructExecutionMetaData,
-	},
-} as unknown as IExecuteFunctions;
 
 describe('Test MySql V2, runQueries', () => {
 	afterEach(() => {
@@ -58,7 +47,8 @@ describe('Test MySql V2, runQueries', () => {
 	it('should execute in "Single" mode, should return success true', async () => {
 		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE };
 
-		const pool = createFakePool();
+		const pool = createFakePool(fakeConnection);
+		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,
@@ -93,7 +83,9 @@ describe('Test MySql V2, runQueries', () => {
 	it('should execute in "independently" mode, should return success true', async () => {
 		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.INDEPENDENTLY };
 
-		const pool = createFakePool();
+		const pool = createFakePool(fakeConnection);
+
+		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,
@@ -136,7 +128,9 @@ describe('Test MySql V2, runQueries', () => {
 	it('should execute in "transaction" mode, should return success true', async () => {
 		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.TRANSACTION };
 
-		const pool = createFakePool();
+		const pool = createFakePool(fakeConnection);
+
+		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,

@@ -1,5 +1,6 @@
 import type { INode } from 'n8n-workflow';
 import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
+
 import {
 	prepareQueryAndReplacements,
 	wrapData,
@@ -8,7 +9,7 @@ import {
 	replaceEmptyStringsByNulls,
 } from '../../v2/helpers/utils';
 
-const node: INode = {
+const mySqlMockNode: INode = {
 	id: '1',
 	name: 'MySQL node',
 	typeVersion: 2,
@@ -80,7 +81,13 @@ describe('Test MySql V2, addWhereClauses', () => {
 			{ column: 'species', condition: 'equal', value: 'dog' },
 			{ column: 'name', condition: 'equal', value: 'Hunter' },
 		];
-		const [query, values] = addWhereClauses(node, 0, 'SELECT * FROM `pet`', whereClauses, []);
+		const [query, values] = addWhereClauses(
+			mySqlMockNode,
+			0,
+			'SELECT * FROM `pet`',
+			whereClauses,
+			[],
+		);
 		expect(query).toEqual('SELECT * FROM `pet` WHERE `species` = ? AND `name` = ?');
 		expect(values.length).toEqual(2);
 		expect(values[0]).toEqual('dog');
@@ -91,7 +98,14 @@ describe('Test MySql V2, addWhereClauses', () => {
 			{ column: 'species', condition: 'equal', value: 'dog' },
 			{ column: 'name', condition: 'equal', value: 'Hunter' },
 		];
-		const [query, values] = addWhereClauses(node, 0, 'SELECT * FROM `pet`', whereClauses, [], 'OR');
+		const [query, values] = addWhereClauses(
+			mySqlMockNode,
+			0,
+			'SELECT * FROM `pet`',
+			whereClauses,
+			[],
+			'OR',
+		);
 		expect(query).toEqual('SELECT * FROM `pet` WHERE `species` = ? OR `name` = ?');
 		expect(values.length).toEqual(2);
 		expect(values[0]).toEqual('dog');

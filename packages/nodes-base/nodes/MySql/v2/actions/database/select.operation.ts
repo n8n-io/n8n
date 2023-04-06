@@ -68,15 +68,14 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
+	inputItems: INodeExecutionData[],
 	runQueries: QueryRunner,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
 
-	const items = this.getInputData();
-
 	const queries: QueryWithValues[] = [];
 
-	for (let i = 0; i < items.length; i++) {
+	for (let i = 0; i < inputItems.length; i++) {
 		const table = this.getNodeParameter('table', i, undefined, {
 			extractValue: true,
 		}) as string;

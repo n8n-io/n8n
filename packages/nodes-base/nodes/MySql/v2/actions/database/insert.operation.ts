@@ -108,14 +108,12 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
+	inputItems: INodeExecutionData[],
 	runQueries: QueryRunner,
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
-	const items = replaceEmptyStringsByNulls(
-		this.getInputData(),
-		nodeOptions.replaceEmptyStrings as boolean,
-	);
+	const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings as boolean);
 
 	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 
