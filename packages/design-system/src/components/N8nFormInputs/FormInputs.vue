@@ -37,10 +37,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
+import { EventBus } from '@/utils';
 
 export default Vue.extend({
 	name: 'n8n-form-inputs',
@@ -56,7 +57,7 @@ export default Vue.extend({
 			},
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		columnView: {
 			type: Boolean,
@@ -83,7 +84,7 @@ export default Vue.extend({
 		});
 
 		if (this.eventBus) {
-			this.eventBus.$on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
+			this.eventBus.on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
 		}
 	},
 	computed: {

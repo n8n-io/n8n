@@ -63,10 +63,10 @@ import ModalDrawer from './ModalDrawer.vue';
 
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { createEventBus } from '@/event-bus';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
 const GREAT_FEEDBACK_TITLE =
@@ -114,7 +114,7 @@ export default mixins(workflowHelpers).extend({
 			},
 			showButtons: true,
 			VALUE_SURVEY_MODAL_KEY,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	methods: {
@@ -178,7 +178,7 @@ export default mixins(workflowHelpers).extend({
 					this.form.email = '';
 					this.showButtons = true;
 				}, 1000);
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			}
 		},
 	},
