@@ -24,6 +24,7 @@ import type {
 	IExecutionsSummary,
 	FeatureFlags,
 	WorkflowSettings,
+	AuthenticationMethod,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -559,6 +560,7 @@ export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+	authenticationMethod: AuthenticationMethod;
 }
 export interface IActiveDirectorySettings {
 	enabled: boolean;
@@ -733,6 +735,7 @@ export interface IProcessMessageDataHook {
 
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
+	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;

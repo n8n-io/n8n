@@ -57,4 +57,8 @@ export class SamlPreferences {
 			action: 'after',
 		},
 	};
+
+	@IsString()
+	@IsOptional()
+	relayState?: string = '';
 }
