@@ -1,5 +1,16 @@
 <template>
-	<div ref="codeNodeEditor" class="ph-no-capture"></div>
+	<div :class="$style['code-node-editor-container']">
+		<div ref="codeNodeEditor" class="ph-no-capture"></div>
+		<n8n-button
+			v-if="isCloud && isEditorFocused"
+			size="small"
+			type="tertiary"
+			:class="$style['ask-ai-button']"
+			@click="onAskAiButtonClick"
+		>
+			✨ Ask AI
+		</n8n-button>
+	</div>
 </template>
 
 <script lang="ts">
@@ -15,13 +26,16 @@ import { completerExtension } from './completer';
 import { CODE_NODE_EDITOR_THEME } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
-import { CODE_NODE_TYPE } from '@/constants';
+import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
+import Modal from '../Modal.vue';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
+	components: { Modal },
 	props: {
 		mode: {
 			type: String,
@@ -40,6 +54,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		return {
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
+			isEditorFocused: false,
 		};
 	},
 	watch: {
@@ -50,6 +65,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	},
 	computed: {
 		...mapStores(useRootStore),
+		isCloud() {
+			return useSettingsStore().deploymentType === 'cloud';
+		},
 		content(): string {
 			if (!this.editor) return '';
 
@@ -69,6 +87,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	methods: {
+		onAskAiButtonClick() {
+			this.uiStore.openModal(ASK_AI_MODAL_KEY);
+		},
 		reloadLinter() {
 			if (!this.editor) return;
 
@@ -141,6 +162,14 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		const stateBasedExtensions = [
 			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({
+				focus: () => {
+					this.isEditorFocused = true;
+				},
+				blur: () => {
+					setTimeout(() => (this.isEditorFocused = false), 100); // allow modal to open
+				},
+			}),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
 
@@ -174,4 +203,14 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 });
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" module>
+.code-node-editor-container {
+	position: relative;
+}
+
+.ask-ai-button {
+	position: absolute;
+	top: var(--spacing-2xs);
+	right: var(--spacing-2xs);
+}
+</style>

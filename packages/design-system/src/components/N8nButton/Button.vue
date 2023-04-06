@@ -194,7 +194,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .tertiary {
-	font-weight: var(--font-weight-regular) !important;
+	font-weight: var(--font-weight-bold) !important;
 
 	--button-background-color: var(--color-background-xlight);
 	--button-color: var(--color-text-dark);
