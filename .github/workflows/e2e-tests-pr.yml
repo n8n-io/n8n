@@ -44,7 +44,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            **:white_check_mark: All Cypress E2E specs passed **
+            :white_check_mark: All Cypress E2E specs passed
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: E2E fail comment
@@ -53,5 +53,5 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            **:warning: Some Cypress E2E specs are failing, please fix them before merging**
+            :warning: Some Cypress E2E specs are failing, please fix them before merging
           token: ${{ secrets.GITHUB_TOKEN }}
