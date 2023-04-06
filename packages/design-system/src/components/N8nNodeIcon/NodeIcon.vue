@@ -78,12 +78,13 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		iconStyleData(): object {
+		iconStyleData(): Record<string, string> {
 			if (!this.size) {
 				return {
 					color: this.color || '',
 				};
 			}
+
 			return {
 				color: this.color || '',
 				width: `${this.size}px`,
@@ -92,7 +93,11 @@ export default defineComponent({
 				'line-height': `${this.size}px`,
 			};
 		},
-		fontStyleData(): object {
+		fontStyleData(): Record<string, string> {
+			if (!this.size) {
+				return {};
+			}
+
 			return {
 				'max-width': `${this.size}px`,
 			};

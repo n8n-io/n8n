@@ -52,9 +52,7 @@ export default defineComponent({
 	props: {
 		inputs: {
 			type: Array,
-			default() {
-				return [[]];
-			},
+			default: () => [[]],
 		},
 		eventBus: {
 			type: Object as PropType<EventBus>,

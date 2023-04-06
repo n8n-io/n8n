@@ -30,12 +30,13 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable vue/no-unused-components */
 import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-user-select',
@@ -57,10 +58,8 @@ export default defineComponent({
 			default: '',
 		},
 		ignoreIds: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<string[]>,
+			default: () => [],
 			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
 		},
 		currentUserId: {
@@ -87,7 +86,7 @@ export default defineComponent({
 					return false;
 				}
 
-				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+				if ((this.ignoreIds as string[])?.includes(user.id)) {
 					return false;
 				}
 

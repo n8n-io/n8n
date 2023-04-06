@@ -19,13 +19,13 @@
 
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
-import Markdown from 'markdown-it';
+import Markdown, { PluginSimple } from 'markdown-it';
 
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import markdownTasklists from 'markdown-it-task-lists';
+
+import { defineComponent, PropType } from 'vue';
 
 import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';
@@ -60,8 +60,6 @@ interface Options {
 	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
 }
 
-import { defineComponent, PropType } from 'vue';
-
 export default defineComponent({
 	components: {
 		N8nLoading,
@@ -70,15 +68,19 @@ export default defineComponent({
 	props: {
 		content: {
 			type: String,
+			default: '',
 		},
 		withMultiBreaks: {
 			type: Boolean,
+			default: false,
 		},
 		images: {
-			type: Array<IImage>,
+			type: Array as PropType<IImage[]>,
+			default: () => [],
 		},
 		loading: {
 			type: Boolean,
+			default: false,
 		},
 		loadingBlocks: {
 			type: Number,
@@ -86,7 +88,7 @@ export default defineComponent({
 		},
 		loadingRows: {
 			type: Number,
-			default: () => 3,
+			default: 3,
 		},
 		theme: {
 			type: String,
@@ -94,14 +96,20 @@ export default defineComponent({
 		},
 		options: {
 			type: Object as PropType<Options>,
-			default() {
-				return {
-					markdown: DEFAULT_OPTIONS_MARKDOWN,
-					linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
-					tasklists: DEFAULT_OPTIONS_TASKLISTS,
-				};
-			},
+			default: (): Options => ({
+				markdown: DEFAULT_OPTIONS_MARKDOWN,
+				linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
+				tasklists: DEFAULT_OPTIONS_TASKLISTS,
+			}),
 		},
+	},
+	data(): { md: Markdown } {
+		return {
+			md: new Markdown(this.options.markdown)
+				.use(markdownLink, this.options.linkAttributes)
+				.use(markdownEmoji)
+				.use(markdownTasklists as PluginSimple, this.options.tasklists),
+		};
 	},
 	computed: {
 		htmlContent(): string {
@@ -154,16 +162,8 @@ export default defineComponent({
 			return safeHtml;
 		},
 	},
-	data() {
-		return {
-			md: new Markdown(this.options.markdown) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-				.use(markdownLink, this.options.linkAttributes) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-				.use(markdownEmoji)
-				.use(markdownTasklists, this.options.tasklists), // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-		};
-	},
 	methods: {
-		onClick(event: MouseEvent) {
+		onClick(event: MouseEvent): void {
 			let clickedLink = null;
 
 			if (event.target instanceof HTMLAnchorElement) {

@@ -25,12 +25,13 @@ export default defineComponent({
 	},
 	computed: {
 		useRouterLink() {
-			if (this.newWindow === true) {
+			if (this.newWindow) {
 				// router-link does not support click events and opening in new window
 				return false;
 			}
+
 			if (typeof this.to === 'string') {
-				return (this.to as string).startsWith('/');
+				return this.to.startsWith('/');
 			}
 
 			return this.to !== undefined;
@@ -39,8 +40,9 @@ export default defineComponent({
 			if (this.newWindow !== undefined) {
 				return this.newWindow;
 			}
+
 			if (typeof this.to === 'string') {
-				return !(this.to as string).startsWith('/');
+				return !this.to.startsWith('/');
 			}
 			return true;
 		},

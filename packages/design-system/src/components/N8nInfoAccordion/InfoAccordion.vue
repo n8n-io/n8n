@@ -64,9 +64,7 @@ export default defineComponent({
 		},
 		items: {
 			type: Array as PropType<IAccordionItem[]>,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		initiallyExpanded: {
 			type: Boolean,
@@ -92,7 +90,7 @@ export default defineComponent({
 		toggle() {
 			this.expanded = !this.expanded;
 		},
-		onClick(e) {
+		onClick(e: MouseEvent) {
 			this.$emit('click', e);
 		},
 		onTooltipClick(item: string, event: MouseEvent) {
