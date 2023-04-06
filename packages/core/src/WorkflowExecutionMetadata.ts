@@ -2,6 +2,18 @@ import type { IRunExecutionData } from 'n8n-workflow';
 
 export const KV_LIMIT = 10;
 
+export class WorkflowMetadataValidationError extends Error {
+	constructor(
+		public type: 'key' | 'value',
+		key: unknown,
+		message?: string,
+		options?: ErrorOptions,
+	) {
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+		super(`Custom data ${type}s must be a string (key "${key}")`, options);
+	}
+}
+
 export function setWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,
 	key: string,
@@ -17,16 +29,30 @@ export function setWorkflowExecutionMetadata(
 	) {
 		return;
 	}
-	executionData.resultData.metadata[String(key).slice(0, 50)] = String(value).slice(0, 255);
+	if (typeof key !== 'string') {
+		throw new WorkflowMetadataValidationError('key', key);
+	}
+	if (typeof value !== 'string') {
+		throw new WorkflowMetadataValidationError('value', key);
+	}
+	executionData.resultData.metadata[key.slice(0, 50)] = value.slice(0, 255);
 }
 
 export function setAllWorkflowExecutionMetadata(
 	executionData: IRunExecutionData,
 	obj: Record<string, string>,
 ) {
-	Object.entries(obj).forEach(([key, value]) =>
-		setWorkflowExecutionMetadata(executionData, key, value),
-	);
+	const errors: Error[] = [];
+	Object.entries(obj).forEach(([key, value]) => {
+		try {
+			setWorkflowExecutionMetadata(executionData, key, value);
+		} catch (e) {
+			errors.push(e as Error);
+		}
+	});
+	if (errors.length) {
+		throw errors[0];
+	}
 }
 
 export function getAllWorkflowExecutionMetadata(
