@@ -1516,8 +1516,8 @@ export class HubspotV2 implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.propertiesCollection) {
 								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
@@ -1538,8 +1538,8 @@ export class HubspotV2 implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.propertiesCollection) {
 								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
@@ -1573,8 +1573,8 @@ export class HubspotV2 implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.propertiesCollection) {
 								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore

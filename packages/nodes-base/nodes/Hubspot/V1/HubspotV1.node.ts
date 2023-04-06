@@ -1324,8 +1324,8 @@ export class HubspotV1 implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.properties) {
 								qs.property = additionalFields.properties as string[];
@@ -1343,8 +1343,8 @@ export class HubspotV1 implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.properties) {
 								qs.property = additionalFields.properties as string[];
@@ -1375,8 +1375,8 @@ export class HubspotV1 implements INodeType {
 							if (filters.formSubmissionMode) {
 								qs.formSubmissionMode = filters.formSubmissionMode as string;
 							}
-							if (filters.listMerberships) {
-								qs.showListMemberships = filters.listMerberships as boolean;
+							if (filters.listMemberships) {
+								qs.showListMemberships = filters.listMemberships as boolean;
 							}
 							if (filters.properties) {
 								qs.property = filters.properties as string[];
