@@ -1,23 +1,20 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
 import { CurrentDateDescription } from './CurrentDateDescription';
 import { AddToDateDescription } from './AddToDateDescription';
 import { SubtractFromDateDescription } from './SubtractFromDateDescription';
 import { FormatDateDescription } from './FormatDateDescription';
 import { RoundDateDescription } from './RoundDateDescription';
 import { GetTimeBetweenDatesDescription } from './GetTimeBetweenDates';
-import type { DateTime, DateTimeUnit, DurationUnit } from 'luxon';
+import type { DateTimeUnit, DurationUnit } from 'luxon';
+import { DateTime } from 'luxon';
 import { ExtractDateDescription } from './ExtractDateDescription';
 import { parseDate } from './GenericFunctions';
 
@@ -83,25 +80,6 @@ export class DateTimeV2 implements INodeType {
 		};
 	}
 
-	methods = {
-		loadOptions: {
-			// Get all the timezones to display them to user so that he can
-			// select them easily
-			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				for (const timezone of moment.tz.names()) {
-					const timezoneName = timezone;
-					const timezoneId = timezone;
-					returnData.push({
-						name: timezoneName,
-						value: timezoneId,
-					});
-				}
-				return returnData;
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -115,53 +93,41 @@ export class DateTimeV2 implements INodeType {
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				responseData.push(
 					includeTime
-						? { [outputFieldName]: moment.tz(workflowTimezone) }
-						: { [outputFieldName]: moment().startOf('day').tz(workflowTimezone) },
+						? { [outputFieldName]: DateTime.now().setZone(workflowTimezone) }
+						: {
+								[outputFieldName]: DateTime.now().setZone(workflowTimezone).startOf('day'),
+						  },
 				);
 			} else if (operation === 'addToDate') {
 				const addToDate = this.getNodeParameter('addToDate', i) as string;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
 				const duration = this.getNodeParameter('duration', i) as number;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				try {
-					const dateToAdd = moment.tz(addToDate, workflowTimezone);
-					const returnedDate = moment(dateToAdd).add(
-						duration,
-						timeUnit as moment.unitOfTime.DurationConstructor,
-					);
-					responseData.push({ [outputFieldName]: returnedDate });
-				} catch {
-					throw new NodeOperationError(this.getNode(), 'Invalid date format');
-				}
+				const dateToAdd = parseDate.call(this, addToDate, workflowTimezone);
+				const returnedDate = dateToAdd.plus({ [timeUnit]: duration });
+				responseData.push({ [outputFieldName]: returnedDate });
 			} else if (operation === 'subtractFromDate') {
 				const subtractFromDate = this.getNodeParameter('subtractFromDate', i) as string;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
 				const duration = this.getNodeParameter('duration', i) as number;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				try {
-					const dateToAdd = moment.tz(subtractFromDate, workflowTimezone);
-					const returnedDate = moment(dateToAdd).subtract(
-						duration,
-						timeUnit as moment.unitOfTime.DurationConstructor,
-					);
-					responseData.push({ [outputFieldName]: returnedDate });
-				} catch {
-					throw new NodeOperationError(this.getNode(), 'Invalid date format');
-				}
+				const dateToAdd = parseDate.call(this, subtractFromDate, workflowTimezone);
+				const returnedDate = dateToAdd.minus({ [timeUnit]: duration });
+				responseData.push({ [outputFieldName]: returnedDate });
 			} else if (operation === 'formatDate') {
 				const date = this.getNodeParameter('date', i) as string;
 				const format = this.getNodeParameter('format', i) as string;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				try {
-					const momentDate = moment.tz(date, workflowTimezone);
-					if (format === 'custom') {
-						const customFormat = this.getNodeParameter('customFormat', i) as string;
-						responseData.push({ [outputFieldName]: momentDate.format(customFormat) });
-					} else {
-						responseData.push({ [outputFieldName]: momentDate.format(format) });
-					}
-				} catch {
-					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				const dateLuxon = parseDate.call(this, date, workflowTimezone);
+				if (format === 'custom') {
+					const customFormat = this.getNodeParameter('customFormat', i) as string;
+					responseData.push({
+						[outputFieldName]: DateTime.fromFormat(dateLuxon.toISO(), customFormat),
+					});
+				} else {
+					responseData.push({
+						[outputFieldName]: DateTime.fromFormat(dateLuxon.toISO(), format),
+					});
 				}
 			} else if (operation === 'roundDate') {
 				const date = this.getNodeParameter('date', i) as string;
