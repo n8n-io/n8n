@@ -8,10 +8,10 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	NodePropertyTypes,
+	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, onMounted, ref, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -26,16 +26,18 @@ export interface Props {
 	nodeValues: INodeParameters | undefined;
 }
 
+const instance = getCurrentInstance();
 const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
 
 const paramValue = ref({
+	// TODO: Check this
 	mappingMode: props.parameter.mode || 'defineBelow',
 	value: {},
 	matchingColumns: [],
 } as ResourceMapperValue);
-const fieldsToMap = ref([] as ResourceMapperFields['fields']);
+const fieldsToMap = ref([] as ResourceMapperField[]);
 const loading = ref(false);
 const loadingError = ref(false);
 
@@ -52,14 +54,22 @@ onMounted(async () => {
 });
 
 const fieldsUi = computed<INodeProperties[]>(() => {
-	return fieldsToMap.value.map((field) => {
+	const fields = fieldsToMap.value.map((field) => {
 		return {
-			displayName: field.displayName,
+			displayName: getFieldLabel(field),
 			name: field.id,
 			type: (field.type as NodePropertyTypes) || 'string',
 			default: '',
 		};
 	});
+	// Sort so that matching columns are first
+	fields.forEach((field, i) => {
+		if (paramValue.value.matchingColumns.includes(field.name)) {
+			fields.splice(i, 1);
+			fields.unshift(field);
+		}
+	});
+	return fields;
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -126,6 +136,14 @@ async function loadFieldsToMap(): Promise<void> {
 	if (fetchedFields !== null) {
 		fieldsToMap.value = fetchedFields.fields.filter((field) => field.display !== false);
 	}
+}
+
+function getFieldLabel(field: ResourceMapperField): string {
+	if (paramValue.value.matchingColumns.includes(field.id)) {
+		const suffix = instance?.proxy.$locale.baseText('resourceMapper.usingToMatch') || '';
+		return `${field.displayName} ${suffix}`;
+	}
+	return field.displayName;
 }
 
 function onModeChanged(mode: string): void {

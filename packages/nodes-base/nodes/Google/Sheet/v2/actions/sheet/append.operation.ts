@@ -122,7 +122,7 @@ export const description: SheetProperties = [
 					singular: 'column',
 					plural: 'columns',
 				},
-				addAllFields: true,
+				addAllFields: false,
 				noFieldsError: 'No columns found in sheet.',
 				multiKeyMatch: true,
 				supportAutoMap: false,

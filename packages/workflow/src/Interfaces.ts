@@ -1935,15 +1935,17 @@ export interface IExceutionSummaryNodeExecutionResult {
 }
 
 export interface ResourceMapperFields {
-	fields: Array<{
-		id: string;
-		displayName: string;
-		match: boolean;
-		defaultMatch: boolean;
-		required: boolean;
-		display: boolean;
-		type?: ResourceMapperFieldType;
-	}>;
+	fields: ResourceMapperField[];
+}
+
+export interface ResourceMapperField {
+	id: string;
+	displayName: string;
+	match: boolean;
+	defaultMatch: boolean;
+	required: boolean;
+	display: boolean;
+	type?: ResourceMapperFieldType;
 }
 
 export type ResourceMapperFieldType = 'string' | 'number' | 'datetime' | 'boolean';

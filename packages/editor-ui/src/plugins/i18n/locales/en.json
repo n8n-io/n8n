@@ -1065,6 +1065,7 @@
 	"resourceMapper.columnsToMatchOn.label": "{fieldWord} to match on",
 	"resourceMapper.columnsToMatchOn.description": "The {fieldWord} that identify the row(s) to modify",
 	"resourceMapper.valuesToSend.label": "Values to send",
+	"resourceMapper.usingToMatch": "(using to match)",
 	"runData.emptyItemHint": "This is an item, but it's empty.",
 	"runData.emptyArray": "[empty array]",
 	"runData.emptyString": "[empty]",
