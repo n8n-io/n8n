@@ -160,6 +160,7 @@ import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 import { useUsageStore } from '@/stores/usage';
 import { BaseTextKey } from '@/plugins/i18n';
+import { createEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -187,7 +188,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			isTagsEditEnabled: false,
 			isNameEditEnabled: false,
 			appliedTagIds: [],
-			tagsEditBus: new Vue(),
+			tagsEditBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
 			EnterpriseEditionFeature,
@@ -328,7 +329,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			setTimeout(() => {
 				// allow name update to occur before disabling name edit
 				this.$data.isNameEditEnabled = false;
-				this.$data.tagsEditBus.$emit('focus');
+				this.$data.tagsEditBus.emit('focus');
 			}, 0);
 		},
 		async onTagsUpdate(tags: string[]) {

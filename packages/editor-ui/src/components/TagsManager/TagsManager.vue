@@ -40,6 +40,7 @@ import Modal from '@/components/Modal.vue';
 import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'TagsManager',
@@ -51,7 +52,7 @@ export default mixins(showMessage).extend({
 		return {
 			tagIds,
 			isCreating: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			TAGS_MANAGER_MODAL_KEY,
 		};
 	},
@@ -176,7 +177,7 @@ export default mixins(showMessage).extend({
 			} else if (!this.hasTags) {
 				this.onEnableCreate();
 			} else {
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			}
 		},
 	},

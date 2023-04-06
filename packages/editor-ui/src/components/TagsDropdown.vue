@@ -64,13 +64,22 @@ import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useTagsStore } from '@/stores/tags';
+import { EventBus } from '@/event-bus';
+import { PropType } from 'vue';
 
 const MANAGE_KEY = '__manage';
 const CREATE_KEY = '__create';
 
 export default mixins(showMessage).extend({
 	name: 'TagsDropdown',
-	props: ['placeholder', 'currentTagIds', 'createEnabled', 'eventBus'],
+	props: {
+		placeholder: {},
+		currentTagIds: {},
+		createEnabled: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
+	},
 	data() {
 		return {
 			filter: '',
@@ -109,7 +118,7 @@ export default mixins(showMessage).extend({
 		}
 
 		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
+			this.$props.eventBus.on('focus', () => {
 				this.focusOnInput();
 				this.focusOnTopOption();
 			});
