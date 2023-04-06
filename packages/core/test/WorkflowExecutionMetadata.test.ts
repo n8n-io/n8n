@@ -83,6 +83,23 @@ describe('Execution Metadata functions', () => {
 		});
 	});
 
+	test('setWorkflowExecutionMetadata should validate key characters', () => {
+		const metadata = {};
+		const executionData = {
+			resultData: {
+				metadata,
+			},
+		} as IRunExecutionData;
+
+		expect(() => setWorkflowExecutionMetadata(executionData, 'te$t1$', 1234)).toThrow(
+			WorkflowMetadataValidationError,
+		);
+
+		expect(metadata).not.toEqual({
+			test1: '1234',
+		});
+	});
+
 	test('setWorkflowExecutionMetadata should limit the number of metadata entries', () => {
 		const metadata = {};
 		const executionData = {

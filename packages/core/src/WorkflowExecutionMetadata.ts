@@ -10,7 +10,7 @@ export class WorkflowMetadataValidationError extends Error {
 		options?: ErrorOptions,
 	) {
 		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-		super(`Custom data ${type}s must be a string (key "${key}")`, options);
+		super(message ?? `Custom data ${type}s must be a string (key "${key}")`, options);
 	}
 }
 
@@ -31,6 +31,13 @@ export function setWorkflowExecutionMetadata(
 	}
 	if (typeof key !== 'string') {
 		throw new WorkflowMetadataValidationError('key', key);
+	}
+	if (key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
+		throw new WorkflowMetadataValidationError(
+			'key',
+			key,
+			`Custom date key can only contain characters "A-Za-z0-9_" (key "${key}")`,
+		);
 	}
 	if (typeof value !== 'string') {
 		throw new WorkflowMetadataValidationError('value', key);
