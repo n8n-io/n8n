@@ -4,6 +4,7 @@ import {
 	KV_LIMIT,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
+	WorkflowMetadataValidationError,
 } from '@/WorkflowExecutionMetadata';
 import type { IRunExecutionData } from 'n8n-workflow';
 
@@ -42,7 +43,7 @@ describe('Execution Metadata functions', () => {
 		});
 	});
 
-	test('setWorkflowExecutionMetadata should convert values to strings', () => {
+	test('setWorkflowExecutionMetadata should not convert values to strings', () => {
 		const metadata = {};
 		const executionData = {
 			resultData: {
@@ -50,10 +51,35 @@ describe('Execution Metadata functions', () => {
 			},
 		} as IRunExecutionData;
 
-		setWorkflowExecutionMetadata(executionData, 'test1', 1234);
+		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).toThrow(
+			WorkflowMetadataValidationError,
+		);
+
+		expect(metadata).not.toEqual({
+			test1: '1234',
+		});
+	});
+
+	test('setAllWorkflowExecutionMetadata should not convert values to strings and should set other values correctly', () => {
+		const metadata = {};
+		const executionData = {
+			resultData: {
+				metadata,
+			},
+		} as IRunExecutionData;
+
+		expect(() =>
+			setAllWorkflowExecutionMetadata(executionData, {
+				test1: 1234 as unknown as string,
+				test2: [] as unknown as string,
+				test3: 'value3',
+				test4: 'value4',
+			}),
+		).toThrow(WorkflowMetadataValidationError);
 
 		expect(metadata).toEqual({
-			test1: '1234',
+			test3: 'value3',
+			test4: 'value4',
 		});
 	});
 
