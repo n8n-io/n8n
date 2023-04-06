@@ -18,9 +18,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'sizes',
 	data() {
 		return {
@@ -44,7 +44,7 @@ export default Vue.extend({
 				const rem = style.getPropertyValue(variable);
 				const px = parseFloat(rem.replace('rem', '')) * 16;
 
-				Vue.set(this.sizes, variable, { rem, px });
+				this.$set(this.sizes, variable, { rem, px });
 			});
 		};
 

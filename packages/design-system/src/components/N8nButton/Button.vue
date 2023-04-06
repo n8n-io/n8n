@@ -18,11 +18,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-button',
 	props: {
 		label: {

@@ -38,7 +38,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import {
 	Dropdown as ElDropdown,
 	DropdownMenu as ElDropdownMenu,
@@ -53,7 +53,7 @@ interface Action {
 	type?: 'external-link';
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-toggle',
 	components: {
 		ElDropdown,

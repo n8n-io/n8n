@@ -30,16 +30,16 @@
 </template>
 
 <script lang="ts">
-import 'vue';
-import mixins from 'vue-typed-mixins';
 import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-user-select',
+	mixins: [Locale],
 	components: {
 		N8nUserInfo,
 		ElSelect,

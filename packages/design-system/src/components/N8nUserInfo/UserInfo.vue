@@ -31,15 +31,15 @@
 </template>
 
 <script lang="ts">
-import 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-users-info',
+	mixins: [Locale],
 	components: {
 		N8nAvatar,
 		N8nText,

@@ -37,13 +37,13 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 import { EventBus } from '@/utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
@@ -79,7 +79,7 @@ export default Vue.extend({
 	mounted() {
 		(this.inputs as IFormInput[]).forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
-				Vue.set(this.values, input.name, input.initialValue);
+				this.$set(this.values, input.name, input.initialValue);
 			}
 		});
 
@@ -112,7 +112,7 @@ export default Vue.extend({
 			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		},
 		onValidate(name: string, valid: boolean) {
-			Vue.set(this.validity, name, valid);
+			this.$set(this.validity, name, valid);
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;

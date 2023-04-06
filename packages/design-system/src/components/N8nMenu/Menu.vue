@@ -55,10 +55,10 @@
 import { Menu as ElMenu } from 'element-ui';
 import N8nMenuItem from '../N8nMenuItem';
 
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import { IMenuItem } from '../../types';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu',
 	components: {
 		ElMenu,

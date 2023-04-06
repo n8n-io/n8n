@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-node-icon',
 	components: {
 		N8nTooltip,

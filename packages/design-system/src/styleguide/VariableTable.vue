@@ -16,9 +16,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'variable-table',
 	data() {
 		return {
@@ -41,7 +41,7 @@ export default Vue.extend({
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 
-				Vue.set(this.values, variable, value);
+				this.$set(this.values, variable, value);
 			});
 		};
 
