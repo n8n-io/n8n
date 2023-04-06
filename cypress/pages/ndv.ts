@@ -49,6 +49,8 @@ export class NDV extends BasePage {
 		outputRunSelector: () => this.getters.outputPanel().findChildByTestId('run-selector'),
 		outputHoveringItem: () => this.getters.outputPanel().findChildByTestId('hovering-item'),
 		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
+		outputBranches: () => this.getters.outputPanel().findChildByTestId('branches'),
+		inputBranches: () => this.getters.inputPanel().findChildByTestId('branches'),
 	};
 
 	actions = {
@@ -140,6 +142,12 @@ export class NDV extends BasePage {
 		},
 		toggleInputRunLinking: () => {
 			this.getters.inputRunSelector().find('button').click();
+		},
+		switchOutputBranch: (name: string) => {
+			this.getters.outputBranches().get('span').contains(name).click();
+		},
+		switchIntputBranch: (name: string) => {
+			this.getters.inputBranches().get('span').contains(name).click();
 		},
 	};
 }
