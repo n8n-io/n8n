@@ -1,8 +1,9 @@
-import type {
+import {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import OTPAuth from 'otpauth';
@@ -125,6 +126,11 @@ export class Totp implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0);
 		const credentials = (await this.getCredentials('totpApi')) as { label: string; secret: string };
+
+		if (!credentials.label.includes(':')) {
+			throw new NodeOperationError(this.getNode(), 'Malformed label - expected `issuer:username`');
+		}
+
 		const additionalOptions = this.getNodeParameter('additionalOptions', 0) as {
 			algorithm: string;
 			digits: number;
