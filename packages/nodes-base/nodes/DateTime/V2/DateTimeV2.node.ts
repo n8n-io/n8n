@@ -16,6 +16,8 @@ import { AddToDateDescription } from './AddToDateDescription';
 import { SubtractFromDateDescription } from './SubtractFromDateDescription';
 import { FormatDateDescription } from './FormatDateDescription';
 import { RoundDateDescription } from './RoundDateDescription';
+import { GetTimeBetweenDates } from './GetTimeBetweenDates';
+import { DateTime, DurationUnit } from 'luxon';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -73,6 +75,7 @@ export class DateTimeV2 implements INodeType {
 				...SubtractFromDateDescription,
 				...FormatDateDescription,
 				...RoundDateDescription,
+				...GetTimeBetweenDates,
 			],
 		};
 	}
@@ -179,6 +182,22 @@ export class DateTimeV2 implements INodeType {
 				} catch {
 					throw new NodeOperationError(this.getNode(), 'Invalid date format');
 				}
+			} else if (operation === 'getTimeBetweenDates') {
+				const startDate = this.getNodeParameter('startDate', i) as string;
+				const endDate = this.getNodeParameter('endDate', i) as string;
+				const unit = this.getNodeParameter('units', i) as DurationUnit[];
+				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				let luxonStartDate;
+				let luxonEndDate;
+
+				try {
+					luxonStartDate = DateTime.fromISO(moment.tz(startDate, workflowTimezone).toISOString());
+					luxonEndDate = DateTime.fromISO(moment.tz(endDate, workflowTimezone).toISOString());
+				} catch {
+					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				}
+				const duration = luxonEndDate.diff(luxonStartDate, unit);
+				responseData.push({ [outputFieldName]: duration.toObject() });
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
