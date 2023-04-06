@@ -2,10 +2,10 @@
 
 exports[`VariablesRow > should render correctly 1`] = `
 "<tr class=\\"variablesRow\\">
-  <td>
+  <td class=\\"variables-key-column\\">
     <div><span>key</span></div>
   </td>
-  <td>
+  <td class=\\"variables-value-column\\">
     <div><span>value</span></div>
   </td>
   <td class=\\"variables-usage-column\\">
@@ -30,7 +30,7 @@ exports[`VariablesRow > should render correctly 1`] = `
 
 exports[`VariablesRow > should show key and value inputs in edit mode 1`] = `
 "<tr class=\\"variablesRow\\">
-  <td>
+  <td class=\\"variables-key-column\\">
     <div>
       <div class=\\"container\\" data-test-id=\\"variable-row-key-input\\">
         <!---->
@@ -47,7 +47,7 @@ exports[`VariablesRow > should show key and value inputs in edit mode 1`] = `
       </div>
     </div>
   </td>
-  <td>
+  <td class=\\"variables-value-column\\">
     <div>
       <div class=\\"container\\" data-test-id=\\"variable-row-value-input\\">
         <!---->
