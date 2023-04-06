@@ -1,8 +1,9 @@
 import type { IRunExecutionData } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export const KV_LIMIT = 10;
 
-export class WorkflowMetadataValidationError extends Error {
+export class ExecutionMetadataValidationError extends Error {
 	constructor(
 		public type: 'key' | 'value',
 		key: unknown,
@@ -30,17 +31,23 @@ export function setWorkflowExecutionMetadata(
 		return;
 	}
 	if (typeof key !== 'string') {
-		throw new WorkflowMetadataValidationError('key', key);
+		throw new ExecutionMetadataValidationError('key', key);
 	}
 	if (key.replace(/[A-Za-z0-9_]/g, '').length !== 0) {
-		throw new WorkflowMetadataValidationError(
+		throw new ExecutionMetadataValidationError(
 			'key',
 			key,
 			`Custom date key can only contain characters "A-Za-z0-9_" (key "${key}")`,
 		);
 	}
 	if (typeof value !== 'string') {
-		throw new WorkflowMetadataValidationError('value', key);
+		throw new ExecutionMetadataValidationError('value', key);
+	}
+	if (key.length > 50) {
+		Logger.error('Custom data key over 50 characters long. Truncating to 50 characters.');
+	}
+	if (value.length > 255) {
+		Logger.error('Custom data value over 255 characters long. Truncating to 255 characters.');
 	}
 	executionData.resultData.metadata[key.slice(0, 50)] = value.slice(0, 255);
 }

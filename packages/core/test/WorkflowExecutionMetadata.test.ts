@@ -4,7 +4,7 @@ import {
 	KV_LIMIT,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
-	WorkflowMetadataValidationError,
+	ExecutionMetadataValidationError,
 } from '@/WorkflowExecutionMetadata';
 import type { IRunExecutionData } from 'n8n-workflow';
 
@@ -52,7 +52,7 @@ describe('Execution Metadata functions', () => {
 		} as IRunExecutionData;
 
 		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).toThrow(
-			WorkflowMetadataValidationError,
+			ExecutionMetadataValidationError,
 		);
 
 		expect(metadata).not.toEqual({
@@ -75,7 +75,7 @@ describe('Execution Metadata functions', () => {
 				test3: 'value3',
 				test4: 'value4',
 			}),
-		).toThrow(WorkflowMetadataValidationError);
+		).toThrow(ExecutionMetadataValidationError);
 
 		expect(metadata).toEqual({
 			test3: 'value3',
@@ -92,7 +92,7 @@ describe('Execution Metadata functions', () => {
 		} as IRunExecutionData;
 
 		expect(() => setWorkflowExecutionMetadata(executionData, 'te$t1$', 1234)).toThrow(
-			WorkflowMetadataValidationError,
+			ExecutionMetadataValidationError,
 		);
 
 		expect(metadata).not.toEqual({
