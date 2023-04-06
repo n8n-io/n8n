@@ -20,6 +20,7 @@ import { GetTimeBetweenDatesDescription } from './GetTimeBetweenDates';
 import type { DurationUnit } from 'luxon';
 import { DateTime } from 'luxon';
 import { ExtractDateDescription } from './ExtractDateDescription';
+import { parseDate } from './GenericFunctions';
 
 export class DateTimeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -202,22 +203,17 @@ export class DateTimeV2 implements INodeType {
 				const duration = luxonEndDate.diff(luxonStartDate, unit);
 				responseData.push({ [outputFieldName]: duration.toObject() });
 			} else if (operation === 'extractDate') {
-				const date = this.getNodeParameter('date', i);
+				const date = this.getNodeParameter('date', i) as string | DateTime;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const part = this.getNodeParameter('part', i) as keyof DateTime;
 				let parsedDate;
-				let selectedPart;
 				try {
-					console.log(date);
-					parsedDate = DateTime.isDateTime(date)
-						? date
-						: moment.tz(date, workflowTimezone).toISOString();
-					selectedPart = DateTime.isDateTime(date)
-						? date.get(part)
-						: DateTime.fromISO(parsedDate as string).get(part);
+					parsedDate = parseDate.call(this, date, workflowTimezone);
 				} catch {
 					throw new NodeOperationError(this.getNode(), 'Invalid date format');
 				}
+
+				const selectedPart = parsedDate.get(part);
 				responseData.push({ [outputFieldName]: selectedPart });
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
