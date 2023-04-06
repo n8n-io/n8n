@@ -28,7 +28,7 @@ export async function getMappingColumns(
 		fields: columns.map((col) => ({
 			id: col,
 			displayName: col,
-			match: fieldsToMatch.includes(col),
+			match: false, //fieldsToMatch.includes(col),
 			required: false,
 			defaultMatch: col === 'id',
 			// TODO: Check with product about this condition before releasing

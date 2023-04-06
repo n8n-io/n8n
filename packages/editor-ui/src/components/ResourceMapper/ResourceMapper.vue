@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ResourceMapperReqParams } from '@/Interface';
+import { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import {
@@ -15,6 +15,7 @@ import { computed, getCurrentInstance, onMounted, ref, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
+import { isResourceMapperValue } from '@/utils';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -30,6 +31,10 @@ const instance = getCurrentInstance();
 const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	(event: 'valueChanged', value: IUpdateInformation): void;
+}>();
 
 const paramValue = ref({
 	// TODO: Check this
@@ -51,6 +56,16 @@ watch(
 
 onMounted(async () => {
 	await initFetching();
+	if (props.nodeValues && props.nodeValues.parameters) {
+		const params = props.nodeValues.parameters as INodeParameters;
+		if ('columns' in params) {
+			try {
+				paramValue.value = JSON.parse(params.columns as string);
+			} catch (error) {
+				// Ignore
+			}
+		}
+	}
 });
 
 const fieldsUi = computed<INodeProperties[]>(() => {
@@ -60,6 +75,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 			name: field.id,
 			type: (field.type as NodePropertyTypes) || 'string',
 			default: '',
+			required: field.required,
 		};
 	});
 	// Sort so that matching columns are first
@@ -159,8 +175,19 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 	paramValue.value.matchingColumns = matchingColumns;
 }
 
-function valueChanged(value: ResourceMapperValue): void {
-	paramValue.value.value = value.value;
+function fieldValueChanged(value: IUpdateInformation): void {
+	if (isResourceMapperValue(value.value)) {
+		paramValue.value.value[value.name] = value.value;
+		emitValueChanged();
+	}
+}
+
+function emitValueChanged(): void {
+	emit('valueChanged', {
+		name: `${props.path}.columns`,
+		value: paramValue.value,
+		node: props.node?.name,
+	});
 }
 
 defineExpose({
@@ -204,9 +231,8 @@ defineExpose({
 				v-if="showMappingFields"
 				:parameters="fieldsUi"
 				:nodeValues="nodeValues"
-				:path="path"
 				:isReadOnly="false"
-				@valueChanged="valueChanged"
+				@valueChanged="fieldValueChanged"
 				:hideDelete="true"
 			/>
 		</div>

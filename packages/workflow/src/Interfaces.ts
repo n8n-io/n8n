@@ -1952,6 +1952,6 @@ export type ResourceMapperFieldType = 'string' | 'number' | 'datetime' | 'boolea
 
 export type ResourceMapperValue = {
 	mappingMode: string;
-	value: object;
+	value: { [key: string]: string | number | boolean };
 	matchingColumns: string[];
 };

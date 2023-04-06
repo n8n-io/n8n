@@ -90,6 +90,7 @@
 				labelSize="small"
 				:dependentParametersValues="getDependentParametersValues(parameter)"
 				:nodeValues="nodeValues"
+				@valueChanged="valueChanged"
 			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
 				<div
