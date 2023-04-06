@@ -16,6 +16,7 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+import { BATCH_MODE } from './interfaces';
 
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
@@ -149,11 +150,11 @@ export function configureQueryRunner(
 		}
 
 		const returnData: INodeExecutionData[] = [];
-		const mode = (options.queryBatching as QueryMode) || 'single';
+		const mode = (options.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
 
 		const connection = await pool.getConnection();
 
-		if (mode === 'single') {
+		if (mode === BATCH_MODE.SINGLE) {
 			try {
 				const formatedQueries = queries.map(({ query, values }) =>
 					connection.format(query, values),
@@ -194,7 +195,7 @@ export function configureQueryRunner(
 				returnData.push({ json: { message: error.message, error: { ...error } } });
 			}
 		} else {
-			if (mode === 'independently') {
+			if (mode === BATCH_MODE.INDEPENDENTLY) {
 				for (const [index, queryWithValues] of queries.entries()) {
 					try {
 						const { query, values } = queryWithValues;
@@ -229,7 +230,7 @@ export function configureQueryRunner(
 				}
 			}
 
-			if (mode === 'transaction') {
+			if (mode === BATCH_MODE.TRANSACTION) {
 				await connection.beginTransaction();
 
 				for (const [index, queryWithValues] of queries.entries()) {

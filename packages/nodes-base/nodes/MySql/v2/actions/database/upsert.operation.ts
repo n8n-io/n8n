@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
+import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -18,16 +19,16 @@ const properties: INodeProperties[] = [
 		options: [
 			{
 				name: 'Auto-Map Input Data to Columns',
-				value: 'autoMapInputData',
+				value: DATA_MODE.AUTO_MAP,
 				description: 'Use when node input properties names exactly match the table column names',
 			},
 			{
 				name: 'Map Each Column Below',
-				value: 'defineBelow',
+				value: DATA_MODE.MANUAL,
 				description: 'Set the value for each destination column manually',
 			},
 		],
-		default: 'autoMapInputData',
+		default: AUTO_MAP,
 		description:
 			'Whether to map node input properties and the table data automatically or manually',
 	},
@@ -40,7 +41,7 @@ const properties: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				dataMode: ['autoMapInputData'],
+				dataMode: [DATA_MODE.AUTO_MAP],
 			},
 		},
 	},
@@ -68,7 +69,7 @@ const properties: INodeProperties[] = [
 			'Rows with a value in the specified "Column to Match On" that corresponds to the value in this field will be updated. New rows will be created for non-matching items.',
 		displayOptions: {
 			show: {
-				dataMode: ['defineBelow'],
+				dataMode: [DATA_MODE.MANUAL],
 			},
 		},
 	},
@@ -83,7 +84,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				dataMode: ['defineBelow'],
+				dataMode: [DATA_MODE.MANUAL],
 			},
 		},
 		default: {},
@@ -152,11 +153,11 @@ export async function execute(
 
 		let item: IDataObject = {};
 
-		if (dataMode === 'autoMapInputData') {
+		if (dataMode === DATA_MODE.AUTO_MAP) {
 			item = items[i].json;
 		}
 
-		if (dataMode === 'defineBelow') {
+		if (dataMode === DATA_MODE.MANUAL) {
 			const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
 				.values as IDataObject[];
 

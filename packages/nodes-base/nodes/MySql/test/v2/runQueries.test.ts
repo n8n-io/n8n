@@ -3,6 +3,7 @@ import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
+import { BATCH_MODE } from '../../v2/helpers/interfaces';
 
 import mysql2 from 'mysql2/promise';
 
@@ -55,7 +56,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "Single" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: 'single' };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE };
 
 		const pool = createFakePool();
 
@@ -90,7 +91,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "independently" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: 'independently' };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.INDEPENDENTLY };
 
 		const pool = createFakePool();
 
@@ -133,7 +134,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "transaction" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: 'transaction' };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.TRANSACTION };
 
 		const pool = createFakePool();
 
