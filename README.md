@@ -30,13 +30,14 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
 
 ## Usage
 
+
 - :books: Learn
   [how to **use** it from the command line](https://docs.n8n.io/reference/cli-commands/)
 - :whale: Learn
   [how to run n8n in **Docker**](https://docs.n8n.io/hosting/installation/docker/)
 
 ## Start
-You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed. 
+You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed.
 From the terminal, run:
 
 `npx n8n`
