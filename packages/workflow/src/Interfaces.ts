@@ -1054,6 +1054,7 @@ export interface ResourceMapperTypeOptions {
 	addAllFields?: boolean;
 	noFieldsError?: string;
 	multiKeyMatch?: boolean;
+	supportAutoMap?: boolean;
 }
 
 export interface IDisplayOptions {

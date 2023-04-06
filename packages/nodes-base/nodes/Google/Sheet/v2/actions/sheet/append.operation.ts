@@ -125,6 +125,7 @@ export const description: SheetProperties = [
 				addAllFields: true,
 				noFieldsError: 'No columns found in sheet.',
 				multiKeyMatch: true,
+				supportAutoMap: false,
 			},
 		},
 		displayOptions: {

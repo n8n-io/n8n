@@ -7,6 +7,7 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodePropertyTypes,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
@@ -51,13 +52,12 @@ onMounted(async () => {
 });
 
 const fieldsUi = computed<INodeProperties[]>(() => {
-	return fieldsToMap.value.map((f) => {
+	return fieldsToMap.value.map((field) => {
 		return {
-			displayName: f.displayName,
-			name: f.id,
-			type: 'string',
+			displayName: field.displayName,
+			name: field.id,
+			type: (field.type as NodePropertyTypes) || 'string',
 			default: '',
-			description: '',
 		};
 	});
 });
@@ -83,12 +83,17 @@ const showMatchingColumnsSelector = computed<boolean>(() => {
 });
 
 const preselectedMatchingColumns = computed<string[]>(() => {
-	return fieldsToMap.value.reduce((acc, field) => {
-		if (field.defaultMatch) {
-			acc.push(field.id);
-		}
-		return acc;
-	}, [] as string[]);
+	if (!showMatchingColumnsSelector) {
+		return [];
+	}
+	return fieldsToMap.value.length === 1
+		? [fieldsToMap.value[0].id]
+		: fieldsToMap.value.reduce((acc, field) => {
+				if (field.defaultMatch) {
+					acc.push(field.id);
+				}
+				return acc;
+		  }, [] as string[]);
 });
 
 async function initFetching(): Promise<void> {
@@ -119,7 +124,7 @@ async function loadFieldsToMap(): Promise<void> {
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	if (fetchedFields !== null) {
-		fieldsToMap.value = fetchedFields.fields;
+		fieldsToMap.value = fetchedFields.fields.filter((field) => field.display !== false);
 	}
 }
 
@@ -148,6 +153,7 @@ defineExpose({
 <template>
 	<div class="mt-4xs">
 		<mapping-mode-select
+			v-if="props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false"
 			:inputSize="inputSize"
 			:labelSize="labelSize"
 			:initialValue="props.parameter.mode || 'defineBelow'"

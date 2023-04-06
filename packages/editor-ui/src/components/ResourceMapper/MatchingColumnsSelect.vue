@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
-import { Ref, computed, getCurrentInstance, reactive, ref, toRef, watchEffect } from 'vue';
+import { computed, getCurrentInstance, ref, watch } from 'vue';
 
 export interface Props {
 	initialValue: string[];
@@ -18,10 +18,14 @@ const props = defineProps<Props>();
 // Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
 const selected = ref([] as string[] | string);
 
-watchEffect(() => {
-	selected.value =
-		props.typeOptions?.multiKeyMatch === true ? props.initialValue : props.initialValue[0];
-});
+watch(
+	() => props.initialValue,
+	() => {
+		selected.value =
+			props.typeOptions?.multiKeyMatch === true ? props.initialValue : props.initialValue[0];
+		emitValueChanged();
+	},
+);
 
 const emit = defineEmits<{
 	(event: 'matchingColumnsChanged', value: string[]): void;
@@ -67,6 +71,10 @@ function onSelectionChange(value: string | string[]) {
 	} else {
 		selected.value = value as string;
 	}
+	emitValueChanged();
+}
+
+function emitValueChanged() {
 	emit('matchingColumnsChanged', Array.isArray(selected.value) ? selected.value : [selected.value]);
 }
 
