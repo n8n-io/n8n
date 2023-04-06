@@ -157,10 +157,11 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { MultiFactorAuthService } from './MultiFactorAuthService';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import { MfaService } from './Mfa/mfa.service';
+import { TOTPService } from './Mfa/totp.service';
 
 const exec = promisify(callbackExec);
 
@@ -376,17 +377,19 @@ class Server extends AbstractServer {
 		return this.frontendSettings;
 	}
 
-	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
 		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
+
+		const encryptionKey = await UserSettings.getEncryptionKey();
 
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
-		const mfaService = Container.get(MultiFactorAuthService);
 		const samlService = Container.get(SamlService);
+		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -430,7 +433,7 @@ class Server extends AbstractServer {
 		}
 
 		if (isMfaFeatureEnabled()) {
-			controllers.push(new MFAController(repositories.User, mfaService));
+			controllers.push(new MFAController(mfaService));
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -516,7 +519,7 @@ class Server extends AbstractServer {
 
 		await handleMfaDisable();
 
-		this.registerControllers(ignoredEndpoints);
+		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 

@@ -1,76 +1,52 @@
-import { Repository } from 'typeorm';
-import { v4 as uuid } from 'uuid';
 import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
-import type { User } from '@db/entities/User';
 import { BadRequestError } from '@/ResponseHelper';
-import { MultiFactorAuthService } from '@/MultiFactorAuthService';
-import { UserSettings } from 'n8n-core';
-import { AES, enc } from 'crypto-js';
+import { MfaService } from '@/Mfa/mfa.service';
 
 const issuer = 'n8n';
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(
-		private userRepository: Repository<User>,
-		private mfaService: MultiFactorAuthService,
-	) {}
+	constructor(private mfaService: MfaService) {}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {
 		const { email, id, mfaEnabled } = req.user;
-
-		const { mfaSecret, mfaRecoveryCodes } = await this.getSecretAndRecoveryCodes(id);
 
 		if (mfaEnabled)
 			throw new BadRequestError(
 				'MFA already enabled. Disable it to generate new secret and recovery codes',
 			);
 
-		if (mfaSecret && mfaRecoveryCodes.length) {
-			const encryptionKey = await UserSettings.getEncryptionKey();
+		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
+			await this.mfaService.getRawSecretAndRecoveryCodes(id);
 
-			const decryptedSecret = AES.decrypt(mfaSecret, encryptionKey).toString(enc.Utf8);
-
-			const decryptedRecoveryCodes = mfaRecoveryCodes.map((code) =>
-				AES.decrypt(code, encryptionKey).toString(enc.Utf8),
-			);
-
-			const qrCode = this.mfaService.createQrUrlFromSecret({
+		if (secret && recoveryCodes.length) {
+			const qrCode = this.mfaService.totp.createQrUrlFromSecret({
 				issuer,
-				secret: decryptedSecret,
+				secret,
 				label: `${issuer}:${email}`,
 			});
 
 			return {
-				secret: decryptedSecret,
-				recoveryCodes: decryptedRecoveryCodes,
+				secret,
+				recoveryCodes,
 				qrCode,
 			};
 		}
 
-		const codes = Array.from(Array(10)).map(() => uuid());
+		const newRecoveryCodes = this.mfaService.generateRawRecoveryCodes();
 
-		const { secret, url } = this.mfaService.generateSecret({
+		const { secret: newSecret, url } = this.mfaService.totp.generateSecret({
 			label: `${issuer}:${email}`,
 		});
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const encryptedSecret = AES.encrypt(secret, encryptionKey).toString();
-
-		const encryptedRecoveryCodes = codes.map((code) => AES.encrypt(code, encryptionKey).toString());
-
-		await this.userRepository.update(id, {
-			mfaSecret: encryptedSecret,
-			mfaRecoveryCodes: encryptedRecoveryCodes,
-		});
+		await this.mfaService.saveSecretAndRecoveryCodes(id, newSecret, newRecoveryCodes);
 
 		return {
-			secret,
+			secret: newSecret,
 			qrCode: `${url}&issuer=${issuer}`,
-			recoveryCodes: codes,
+			recoveryCodes: newRecoveryCodes,
 		};
 	}
 
@@ -79,36 +55,29 @@ export class MFAController {
 		const { token = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
-		const { mfaSecret, mfaRecoveryCodes } = await this.getSecretAndRecoveryCodes(id);
+		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
+			await this.mfaService.getRawSecretAndRecoveryCodes(id);
 
 		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
 		if (mfaEnabled) throw new BadRequestError('MFA already enabled');
 
-		if (!mfaSecret || !mfaRecoveryCodes.length) {
+		if (!secret || !recoveryCodes.length) {
 			throw new BadRequestError('Cannot enable MFA without generating secret and recovery codes');
 		}
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const decryptedSecret = AES.decrypt(mfaSecret, encryptionKey).toString(enc.Utf8);
-
-		const verified = this.mfaService.verifySecret({ secret: decryptedSecret, token, window: 10 });
+		const verified = this.mfaService.totp.verifySecret({ secret, token, window: 10 });
 
 		if (!verified)
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
-		await this.userRepository.update(id, { mfaEnabled: true });
+		await this.mfaService.enableMfa(id);
 	}
 
 	@Delete('/disable')
 	async disableMFA(req: AuthenticatedRequest) {
 		const { id } = req.user;
-		await this.userRepository.update(id, {
-			mfaEnabled: false,
-			mfaSecret: null,
-			mfaRecoveryCodes: [],
-		});
+		await this.mfaService.disableMfa(id);
 	}
 
 	@Post('/verify')
@@ -116,25 +85,14 @@ export class MFAController {
 		const { id } = req.user;
 		const { token } = req.body;
 
-		const { mfaSecret: secret } = await this.getSecretAndRecoveryCodes(id);
+		const { decryptedSecret: secret } = await this.mfaService.getRawSecretAndRecoveryCodes(id);
 
 		if (!token) throw new BadRequestError('Token is required to enable MFA feature');
 
 		if (!secret) throw new BadRequestError('No MFA secret se for this user');
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const decryptedSecret = AES.decrypt(secret, encryptionKey).toString(enc.Utf8);
-
-		const verified = this.mfaService.verifySecret({ secret: decryptedSecret, token });
+		const verified = this.mfaService.totp.verifySecret({ secret, token });
 
 		if (!verified) throw new BadRequestError('MFA secret could not be verified');
-	}
-
-	private async getSecretAndRecoveryCodes(userId: string) {
-		return this.userRepository.findOneOrFail({
-			where: { id: userId },
-			select: ['id', 'mfaSecret', 'mfaRecoveryCodes'],
-		});
 	}
 }

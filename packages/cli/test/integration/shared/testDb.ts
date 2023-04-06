@@ -23,7 +23,6 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ICredentialsDb } from '@/Interfaces';
-import * as speakeasy from 'speakeasy';
 import { AES } from 'crypto-js';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
@@ -37,8 +36,7 @@ import type {
 
 import { v4 as uuid } from 'uuid';
 import { randomPassword } from '@/Ldap/helpers';
-import Container from 'typedi';
-import { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { TOTPService } from '@/Mfa/totp.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -191,11 +189,6 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 	return user;
 }
 
-export function generateMfaOneTimeToken(secret: string) {
-	const mfaService = Container.get(MultiFactorAuthService);
-	return mfaService.generateMfaOneTimeToken({ secret });
-}
-
 export async function createUserWithMfaEnabled(
 	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
 ) {
@@ -204,9 +197,9 @@ export async function createUserWithMfaEnabled(
 	const email = randomEmail();
 	const password = randomPassword();
 
-	const mfaService = Container.get(MultiFactorAuthService);
+	const toptService = new TOTPService();
 
-	const { secret } = mfaService.generateSecret({ label: email });
+	const { secret } = toptService.generateSecret({ label: email });
 
 	const codes = Array.from(Array(data.numberOfRecoveryCodes)).map(() => uuid());
 

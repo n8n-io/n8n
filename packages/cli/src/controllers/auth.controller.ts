@@ -23,9 +23,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { UserSettings } from 'n8n-core';
-import { AES, enc } from 'crypto-js';
-import type { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import type { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class AuthController {
@@ -39,7 +37,7 @@ export class AuthController {
 
 	private readonly postHog?: PostHogClient;
 
-	private readonly mfaService: MultiFactorAuthService;
+	private readonly mfaService: MfaService;
 
 	constructor({
 		config,
@@ -54,7 +52,7 @@ export class AuthController {
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
 		postHog?: PostHogClient;
-		mfaService: MultiFactorAuthService;
+		mfaService: MfaService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -93,19 +91,15 @@ export class AuthController {
 
 		if (user) {
 			if (user.mfaEnabled) {
-				const encryptionKey = await UserSettings.getEncryptionKey();
+				const { decryptedRecoveryCodes, decryptedSecret } =
+					await this.mfaService.getRawSecretAndRecoveryCodes(user.id);
 
-				const { mfaSecret = '', mfaRecoveryCodes = [] } = await this.userRepository.findOneOrFail({
-					where: { id: user.id },
-					select: ['mfaSecret', 'mfaRecoveryCodes'],
-				});
-
-				user.mfaSecret = mfaSecret;
-				user.mfaRecoveryCodes = mfaRecoveryCodes;
+				user.mfaSecret = decryptedSecret;
+				user.mfaRecoveryCodes = decryptedRecoveryCodes;
 
 				const isMFATokenValid =
-					(await this.validateMfaToken(user, mfaToken, encryptionKey)) ||
-					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode, encryptionKey));
+					(await this.validateMfaToken(user, mfaToken)) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
 
 				if (!isMFATokenValid) throw new AuthError('MFA Error', 998);
 			}
@@ -231,25 +225,15 @@ export class AuthController {
 		return { loggedOut: true };
 	}
 
-	private async validateMfaToken(user: User, mfaToken: string, encryptionKey: string) {
-		const decryptedSecret = AES.decrypt(user.mfaSecret ?? '', encryptionKey).toString(enc.Utf8);
-
-		return this.mfaService.verifySecret({
-			secret: decryptedSecret ?? '',
-			token: mfaToken,
+	private async validateMfaToken(user: User, token: string) {
+		return this.mfaService.totp.verifySecret({
+			secret: user.mfaSecret ?? '',
+			token,
 		});
 	}
 
-	private async validateMfaRecoveryCode(
-		user: User,
-		mfaRecoveryCode: string,
-		encryptionKey: string,
-	) {
-		const decryptedRecoveryCodes = user.mfaRecoveryCodes.map((code) =>
-			AES.decrypt(code, encryptionKey).toString(enc.Utf8),
-		);
-
-		const index = decryptedRecoveryCodes.indexOf(mfaRecoveryCode);
+	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode: string) {
+		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
 		if (index === -1) return false;
 
 		// remove used recovery code

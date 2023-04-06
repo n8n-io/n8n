@@ -10,7 +10,8 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
-import { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/Mfa/totp.service';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
@@ -22,7 +23,7 @@ describe('MeController', () => {
 		externalHooks,
 		internalHooks,
 		repositories: { User: userRepository },
-		mfaService: new MultiFactorAuthService(),
+		mfaService: new MfaService(userRepository, new TOTPService(), ''),
 	});
 
 	describe('updateCurrentUser', () => {

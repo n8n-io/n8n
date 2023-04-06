@@ -8,6 +8,7 @@ import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
 import { randomDigit, randomValidPassword, uniqueId } from '../shared/random';
+import { TOTPService } from '@/Mfa/totp.service';
 
 jest.mock('@/telemetry');
 
@@ -109,7 +110,7 @@ describe('Enable MFA setup', () => {
 
 			const { secret } = response.body.data;
 
-			const token = testDb.generateMfaOneTimeToken(secret);
+			const token = new TOTPService().generateMfaOneTimeToken(secret);
 
 			const { statusCode } = await authAgent(owner).post('/mfa/verify').send({ token });
 
@@ -151,7 +152,7 @@ describe('Enable MFA setup', () => {
 
 			const { secret } = response.body.data;
 
-			const token = testDb.generateMfaOneTimeToken(secret);
+			const token = new TOTPService().generateMfaOneTimeToken(secret);
 
 			await authAgent(owner).post('/mfa/verify').send({ token });
 
@@ -224,7 +225,7 @@ describe('Change password with MFA enabled', () => {
 	test('PATCH /me/password should update password', async () => {
 		const { user, rawPassword, rawSecret } = await testDb.createUserWithMfaEnabled();
 
-		const token = testDb.generateMfaOneTimeToken(rawSecret);
+		const token = new TOTPService().generateMfaOneTimeToken(rawSecret);
 
 		const newPassword = randomValidPassword();
 
@@ -297,7 +298,7 @@ describe('Change password with MFA enabled', () => {
 
 		const resetPasswordToken = uniqueId();
 
-		const mfaToken = testDb.generateMfaOneTimeToken(rawSecret);
+		const mfaToken = new TOTPService().generateMfaOneTimeToken(rawSecret);
 
 		await Db.collections.User.update(user.id, {
 			resetPasswordToken,
@@ -320,7 +321,7 @@ describe('Change password with MFA enabled', () => {
 			.send({
 				email: user.email,
 				password: newPassword,
-				mfaToken: testDb.generateMfaOneTimeToken(rawSecret),
+				mfaToken: new TOTPService().generateMfaOneTimeToken(rawSecret),
 			});
 
 			expect(loginResponse.statusCode).toBe(200);
@@ -395,7 +396,7 @@ describe('Login', () => {
 
 			const authlessAgent = utils.createAgent(app);
 
-			const token = testDb.generateMfaOneTimeToken(rawSecret);
+			const token = new TOTPService().generateMfaOneTimeToken(rawSecret);
 
 			const response = await authlessAgent
 				.post('/login')

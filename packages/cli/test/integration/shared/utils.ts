@@ -74,7 +74,7 @@ import { v4 as uuid } from 'uuid';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
-import { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import { MultiFactorAuthService } from '@/Mfa/MultiFactorAuthService';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
@@ -83,6 +83,8 @@ import { SamlService } from '@/sso/saml/saml.service.ee';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { License } from '@/License';
+import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/Mfa/totp.service';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -112,6 +114,8 @@ export async function initTestServer({
 		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
 		externalHooks: {},
 	};
+
+	const encryptionKey = await UserSettings.getEncryptionKey();
 
 	const logger = getLogger();
 	LoggerProxy.init(logger);
@@ -173,7 +177,7 @@ export async function initTestServer({
 		const externalHooks = Container.get(ExternalHooks);
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
-		const mfaService = Container.get(MultiFactorAuthService);
+		const mfaService = new MfaService(Db.collections.User, new TOTPService(), encryptionKey);
 		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
@@ -273,7 +277,7 @@ export async function initTestServer({
 					registerController(
 						testServer.app,
 						config,
-						new MFAController(repositories.User, mfaService),
+						new MFAController(mfaService),
 					);
 			}
 		}

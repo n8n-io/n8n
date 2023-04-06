@@ -1,8 +1,6 @@
-import { Service } from 'typedi';
 import * as speakeasy from 'speakeasy';
 
-@Service()
-export class MultiFactorAuthService {
+export class TOTPService {
 	createQrUrlFromSecret(data: { secret: string; label?: string; issuer?: string }) {
 		return speakeasy.otpauthURL({
 			secret: data.secret,
@@ -32,9 +30,9 @@ export class MultiFactorAuthService {
 		});
 	}
 
-	generateMfaOneTimeToken(data: { secret: string }) {
+	generateMfaOneTimeToken(secret: string) {
 		return speakeasy.totp({
-			secret: data.secret,
+			secret,
 			encoding: 'base32',
 		});
 	}

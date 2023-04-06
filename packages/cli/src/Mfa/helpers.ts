@@ -1,7 +1,6 @@
 import config from '@/config';
 import * as Db from '@/Db';
-
-const MFA_FEATURE_ENABLED = 'mfa.enabled';
+import { MFA_FEATURE_ENABLED } from './constants';
 
 export const isMfaFeatureEnabled = () => config.get(MFA_FEATURE_ENABLED);
 

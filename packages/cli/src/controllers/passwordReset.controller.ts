@@ -3,7 +3,6 @@ import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
-import { AES, enc } from 'crypto-js';
 import {
 	BadRequestError,
 	InternalServerError,
@@ -27,8 +26,7 @@ import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } f
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
-import { UserSettings } from 'n8n-core';
-import type { MultiFactorAuthService } from '@/MultiFactorAuthService';
+import type { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class PasswordResetController {
@@ -44,7 +42,7 @@ export class PasswordResetController {
 
 	private readonly userRepository: Repository<User>;
 
-	private readonly mfaService: MultiFactorAuthService;
+	private readonly mfaService: MfaService;
 
 	constructor({
 		config,
@@ -61,7 +59,7 @@ export class PasswordResetController {
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
 		repositories: Pick<IDatabaseCollections, 'User'>;
-		mfaService: MultiFactorAuthService;
+		mfaService: MfaService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -268,11 +266,11 @@ export class PasswordResetController {
 		if (user.mfaEnabled) {
 			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
 
-			const encryptionKey = await UserSettings.getEncryptionKey();
+			const { decryptedSecret: secret } = await this.mfaService.getRawSecretAndRecoveryCodes(
+				userId,
+			);
 
-			const decryptedSecret = AES.decrypt(user.mfaSecret ?? '', encryptionKey).toString(enc.Utf8);
-
-			const validToken = this.mfaService.verifySecret({ secret: decryptedSecret, token: mfaToken });
+			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
 
 			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
