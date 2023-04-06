@@ -17,8 +17,7 @@ import { SubtractFromDateDescription } from './SubtractFromDateDescription';
 import { FormatDateDescription } from './FormatDateDescription';
 import { RoundDateDescription } from './RoundDateDescription';
 import { GetTimeBetweenDatesDescription } from './GetTimeBetweenDates';
-import type { DurationUnit } from 'luxon';
-import { DateTime } from 'luxon';
+import type { DateTime, DateTimeUnit, DurationUnit } from 'luxon';
 import { ExtractDateDescription } from './ExtractDateDescription';
 import { parseDate } from './GenericFunctions';
 
@@ -168,51 +167,32 @@ export class DateTimeV2 implements INodeType {
 				const date = this.getNodeParameter('date', i) as string;
 				const mode = this.getNodeParameter('mode', i) as string;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				try {
-					const momentDate = moment.tz(date, workflowTimezone);
-					if (mode === 'roundDown') {
-						const toNearest = this.getNodeParameter('toNearest', i) as string;
-						responseData.push({
-							[outputFieldName]: momentDate.startOf(toNearest as moment.unitOfTime.StartOf),
-						});
-					} else if (mode === 'roundUp') {
-						const to = this.getNodeParameter('to', i) as string;
-						responseData.push({
-							[outputFieldName]: momentDate
-								.add(1, to as moment.unitOfTime.DurationConstructor)
-								.startOf(to as moment.unitOfTime.StartOf),
-						});
-					}
-				} catch {
-					throw new NodeOperationError(this.getNode(), 'Invalid date format');
+				const dateLuxon = parseDate.call(this, date, workflowTimezone);
+				if (mode === 'roundDown') {
+					const toNearest = this.getNodeParameter('toNearest', i) as string;
+					responseData.push({
+						[outputFieldName]: dateLuxon.startOf(toNearest as DateTimeUnit),
+					});
+				} else if (mode === 'roundUp') {
+					const to = this.getNodeParameter('to', i) as string;
+					responseData.push({
+						[outputFieldName]: dateLuxon.plus({ [to]: 1 }).startOf(to as DateTimeUnit),
+					});
 				}
 			} else if (operation === 'getTimeBetweenDates') {
 				const startDate = this.getNodeParameter('startDate', i) as string;
 				const endDate = this.getNodeParameter('endDate', i) as string;
 				const unit = this.getNodeParameter('units', i) as DurationUnit[];
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				let luxonStartDate;
-				let luxonEndDate;
-
-				try {
-					luxonStartDate = DateTime.fromISO(moment.tz(startDate, workflowTimezone).toISOString());
-					luxonEndDate = DateTime.fromISO(moment.tz(endDate, workflowTimezone).toISOString());
-				} catch {
-					throw new NodeOperationError(this.getNode(), 'Invalid date format');
-				}
+				const luxonStartDate = parseDate.call(this, startDate, workflowTimezone);
+				const luxonEndDate = parseDate.call(this, endDate, workflowTimezone);
 				const duration = luxonEndDate.diff(luxonStartDate, unit);
 				responseData.push({ [outputFieldName]: duration.toObject() });
 			} else if (operation === 'extractDate') {
 				const date = this.getNodeParameter('date', i) as string | DateTime;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const part = this.getNodeParameter('part', i) as keyof DateTime;
-				let parsedDate;
-				try {
-					parsedDate = parseDate.call(this, date, workflowTimezone);
-				} catch {
-					throw new NodeOperationError(this.getNode(), 'Invalid date format');
-				}
-
+				const parsedDate = parseDate.call(this, date, workflowTimezone);
 				const selectedPart = parsedDate.get(part);
 				responseData.push({ [outputFieldName]: selectedPart });
 			}
