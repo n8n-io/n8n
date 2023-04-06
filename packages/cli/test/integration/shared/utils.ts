@@ -114,6 +114,8 @@ export async function initTestServer({
 		externalHooks: {},
 	};
 
+	initConfigFile();
+
 	const encryptionKey = await UserSettings.getEncryptionKey();
 
 	const logger = getLogger();
