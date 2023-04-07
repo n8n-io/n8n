@@ -6,6 +6,7 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
+
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 import type {
@@ -16,6 +17,7 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+
 import { BATCH_MODE } from './interfaces';
 
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
@@ -70,9 +72,41 @@ export function prepareErrorItem(
 	} as INodeExecutionData;
 }
 
-export function parseMySqlError(this: IExecuteFunctions, error: any, itemIndex?: number) {
-	let message = error.message;
+export function parseMySqlError(
+	this: IExecuteFunctions,
+	error: any,
+	itemIndex = 0,
+	queries?: string[],
+) {
+	let message: string = error.message;
 	const description = `sql: ${error.sql}, code: ${error.code}`;
+
+	if (
+		queries?.length &&
+		(message || '').toLowerCase().includes('you have an error in your sql syntax')
+	) {
+		let queryIndex = itemIndex;
+		const failedStatement = ((message.split("near '")[1] || '').split("' at")[0] || '').split(
+			';',
+		)[0];
+
+		if (failedStatement) {
+			if (queryIndex === 0 && queries.length > 1) {
+				const failedQueryIndex = queries.findIndex((query) => query.includes(failedStatement));
+				if (failedQueryIndex !== -1) {
+					queryIndex = failedQueryIndex;
+				}
+			}
+			const lines = queries[queryIndex].split('\n');
+
+			const failedLine = lines.findIndex((line) => line.includes(failedStatement));
+			if (failedLine !== -1) {
+				message = `You have an error in your SQL syntax on line ${
+					failedLine + 1
+				} near '${failedStatement}'`;
+			}
+		}
+	}
 
 	if ((error?.message as string).includes('ECONNREFUSED')) {
 		message = 'Connection refused';
@@ -155,16 +189,12 @@ export function configureQueryRunner(
 		const connection = await pool.getConnection();
 
 		if (mode === BATCH_MODE.SINGLE) {
+			const formatedQueries = queries.map(({ query, values }) => connection.format(query, values));
 			try {
-				const formatedQueries = queries.map(({ query, values }) =>
-					connection.format(query, values),
-				);
-
 				//releasing connection after formating queries, otherwise pool.query() will fail with timeout
 				connection.release();
 
 				let singleQuery = '';
-
 				if (formatedQueries.length > 1) {
 					singleQuery = formatedQueries.map((query) => query.trim().replace(/;$/, '')).join(';');
 				} else {
@@ -189,17 +219,18 @@ export function configureQueryRunner(
 					...prepareOutput(response, options, statements, this.helpers.constructExecutionMetaData),
 				);
 			} catch (err) {
-				const error = parseMySqlError.call(this, err);
+				const error = parseMySqlError.call(this, err, 0, formatedQueries);
 
 				if (!this.continueOnFail()) throw error;
 				returnData.push({ json: { message: error.message, error: { ...error } } });
 			}
 		} else {
 			if (mode === BATCH_MODE.INDEPENDENTLY) {
+				let formatedQuery = '';
 				for (const [index, queryWithValues] of queries.entries()) {
 					try {
 						const { query, values } = queryWithValues;
-						const formatedQuery = connection.format(query, values);
+						formatedQuery = connection.format(query, values);
 						const statements = formatedQuery.split(';').map((q) => q.trim());
 
 						const responses: IDataObject[] = [];
@@ -219,7 +250,7 @@ export function configureQueryRunner(
 							),
 						);
 					} catch (err) {
-						const error = parseMySqlError.call(this, err, index);
+						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
 
 						if (!this.continueOnFail()) {
 							connection.release();
@@ -233,10 +264,11 @@ export function configureQueryRunner(
 			if (mode === BATCH_MODE.TRANSACTION) {
 				await connection.beginTransaction();
 
+				let formatedQuery = '';
 				for (const [index, queryWithValues] of queries.entries()) {
 					try {
 						const { query, values } = queryWithValues;
-						const formatedQuery = connection.format(query, values);
+						formatedQuery = connection.format(query, values);
 						const statements = formatedQuery.split(';').map((q) => q.trim());
 
 						const responses: IDataObject[] = [];
@@ -256,7 +288,7 @@ export function configureQueryRunner(
 							),
 						);
 					} catch (err) {
-						const error = parseMySqlError.call(this, err, index);
+						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
 
 						if (connection) {
 							await connection.rollback();
