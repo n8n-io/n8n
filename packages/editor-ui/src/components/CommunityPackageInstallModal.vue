@@ -88,7 +88,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -100,6 +99,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'CommunityPackageInstallModal',
@@ -111,7 +111,7 @@ export default mixins(showMessage).extend({
 			loading: false,
 			packageName: '',
 			userAgreed: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			checkboxWarning: false,
 			infoTextErrorMessage: '',
 			COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -143,7 +143,7 @@ export default mixins(showMessage).extend({
 					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
 					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
-					this.modalBus.$emit('close');
+					this.modalBus.emit('close');
 					this.$showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
