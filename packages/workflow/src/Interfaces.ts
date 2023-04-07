@@ -1853,7 +1853,7 @@ export interface IConnectedNode {
 	depth: number;
 }
 
-export enum OAuth2GrantType {
+export const enum OAuth2GrantType {
 	authorizationCode = 'authorizationCode',
 	clientCredentials = 'clientCredentials',
 }
