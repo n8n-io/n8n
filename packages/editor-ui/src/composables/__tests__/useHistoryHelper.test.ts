@@ -1,6 +1,7 @@
 import { vi, describe, it, expect } from 'vitest';
 import { MAIN_HEADER_TABS } from '@/constants';
 import { render } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from '../useHistoryHelper';
 import { defineComponent } from 'vue';
 import { Route } from 'vue-router';
@@ -10,35 +11,34 @@ const redoMock = vi.fn();
 vi.mock('@/stores/ndv', () => ({
 	useNDVStore: () => ({
 		activeNodeName: null,
-		activeNode: {}
+		activeNode: {},
 	}),
 }));
 vi.mock('@/stores/history', () => {
 	return {
 		useHistoryStore: () => ({
 			popUndoableToUndo: undoMock,
-			popUndoableToRedo: redoMock
-		})
-	}
+			popUndoableToRedo: redoMock,
+		}),
+	};
 });
 vi.mock('@/stores/ui');
 vi.mock('vue-router/composables', () => ({
-	useRoute: () => ({})
+	useRoute: () => ({}),
 }));
-
 
 const TestComponent = defineComponent({
 	props: {
 		route: {
 			type: Object,
-		}
+		},
 	},
-  setup(props) {
-    useHistoryHelper(props.route as Route);
+	setup(props) {
+		useHistoryHelper(props.route as Route);
 
-    return {};
-  },
-  template: `<div />`,
+		return {};
+	},
+	template: '<div />',
 });
 
 describe('useHistoryHelper', () => {
@@ -46,48 +46,49 @@ describe('useHistoryHelper', () => {
 		undoMock.mockClear();
 		redoMock.mockClear();
 	});
-  it('should call undo when Ctrl+Z is pressed', () => {
+	it('should call undo when Ctrl+Z is pressed', async () => {
 		// @ts-ignore
-    render(TestComponent, { props: {
-			route: {
-				name: MAIN_HEADER_TABS.WORKFLOW,
-				meta: {
-					nodeView: true
-				}
-			}
-		}});
+		render(TestComponent, {
+			props: {
+				route: {
+					name: MAIN_HEADER_TABS.WORKFLOW,
+					meta: {
+						nodeView: true,
+					},
+				},
+			},
+		});
 
-    const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true });
-    document.dispatchEvent(event);
-    document.dispatchEvent(event);
+		await userEvent.keyboard('{Control>}z');
+		await userEvent.keyboard('{Control>}z');
 
 		expect(undoMock).toHaveBeenCalledTimes(2);
-  });
-	it('should call redo when Ctrl+Shift+Z is pressed', () => {
+	});
+	it('should call redo when Ctrl+Shift+Z is pressed', async () => {
 		// @ts-ignore
-    render(TestComponent, { props: {
-			route: {
-				name: MAIN_HEADER_TABS.WORKFLOW,
-				meta: {
-					nodeView: true
-				}
-			}
-		}});
+		render(TestComponent, {
+			props: {
+				route: {
+					name: MAIN_HEADER_TABS.WORKFLOW,
+					meta: {
+						nodeView: true,
+					},
+				},
+			},
+		});
 
-    const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true });
-    document.dispatchEvent(event);
-    document.dispatchEvent(event);
+		await userEvent.keyboard('{Control>}{Shift>}z');
+		await userEvent.keyboard('{Control>}{Shift>}z');
 
 		expect(redoMock).toHaveBeenCalledTimes(2);
-  });
-	it('should not call undo when Ctrl+Z if not on NodeView', () => {
+	});
+	it('should not call undo when Ctrl+Z if not on NodeView', async () => {
 		// @ts-ignore
-    render(TestComponent, { props: { route: {}}});
+		render(TestComponent, { props: { route: {} } });
 
-    const event = new KeyboardEvent('keydown', { key: 'z', ctrlKey: true });
-    document.dispatchEvent(event);
-    document.dispatchEvent(event);
+		await userEvent.keyboard('{Control>}z');
+		await userEvent.keyboard('{Control>}z');
 
 		expect(undoMock).toHaveBeenCalledTimes(0);
-  });
+	});
 });
