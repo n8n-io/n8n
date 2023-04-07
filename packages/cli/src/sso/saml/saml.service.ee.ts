@@ -1,4 +1,5 @@
 import type express from 'express';
+import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type { User } from '@/databases/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
@@ -19,16 +20,16 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '../../databases/entities/Settings';
+import type { Settings } from '@/databases/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
+@Service()
 export class SamlService {
-	private static instance: SamlService;
-
 	private identityProviderInstance: IdentityProviderInstance | undefined;
 
 	private _samlPreferences: SamlPreferences = {
@@ -48,6 +49,14 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
+		relayState: getInstanceBaseUrl(),
+		signatureConfig: {
+			prefix: 'ds',
+			location: {
+				reference: '/samlp:Response/saml:Issuer',
+				action: 'after',
+			},
+		},
 	};
 
 	public get samlPreferences(): SamlPreferences {
@@ -56,13 +65,6 @@ export class SamlService {
 			loginEnabled: isSamlLoginEnabled(),
 			loginLabel: getSamlLoginLabel(),
 		};
-	}
-
-	static getInstance(): SamlService {
-		if (!SamlService.instance) {
-			SamlService.instance = new SamlService();
-		}
-		return SamlService.instance;
 	}
 
 	async init(): Promise<void> {
@@ -92,7 +94,10 @@ export class SamlService {
 		return getServiceProviderInstance(this._samlPreferences);
 	}
 
-	getLoginRequestUrl(binding?: SamlLoginBinding): {
+	getLoginRequestUrl(
+		relayState?: string,
+		binding?: SamlLoginBinding,
+	): {
 		binding: SamlLoginBinding;
 		context: BindingContext | PostBindingContext;
 	} {
@@ -100,28 +105,29 @@ export class SamlService {
 		if (binding === 'post') {
 			return {
 				binding,
-				context: this.getPostLoginRequestUrl(),
+				context: this.getPostLoginRequestUrl(relayState),
 			};
 		} else {
 			return {
 				binding,
-				context: this.getRedirectLoginRequestUrl(),
+				context: this.getRedirectLoginRequestUrl(relayState),
 			};
 		}
 	}
 
-	private getRedirectLoginRequestUrl(): BindingContext {
-		const loginRequest = this.getServiceProviderInstance().createLoginRequest(
-			this.getIdentityProviderInstance(),
-			'redirect',
-		);
+	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
+		const sp = this.getServiceProviderInstance();
+		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
 		//TODO:SAML: debug logging
 		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
-	private getPostLoginRequestUrl(): PostBindingContext {
-		const loginRequest = this.getServiceProviderInstance().createLoginRequest(
+	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
+		const sp = this.getServiceProviderInstance();
+		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		const loginRequest = sp.createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'post',
 		) as PostBindingContext;
@@ -189,6 +195,8 @@ export class SamlService {
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
+		this._samlPreferences.signatureConfig =
+			prefs.signatureConfig ?? this._samlPreferences.signatureConfig;
 		this._samlPreferences.authnRequestsSigned =
 			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
 		this._samlPreferences.wantAssertionsSigned =
@@ -208,7 +216,7 @@ export class SamlService {
 			}
 			this._samlPreferences.metadata = prefs.metadata;
 		}
-		setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 		this.getIdentityProviderInstance(true);
 		const result = await this.saveSamlPreferencesToDb();

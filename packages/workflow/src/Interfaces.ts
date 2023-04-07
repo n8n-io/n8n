@@ -657,7 +657,11 @@ export interface ICredentialTestFunctions {
 	};
 }
 
-export interface JsonHelperFunctions {
+interface BaseHelperFunctions {
+	createDeferredPromise: <T = void>() => Promise<IDeferredPromise<T>>;
+}
+
+interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
@@ -672,10 +676,14 @@ export interface BinaryHelperFunctions {
 		mimeType?: string,
 	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
 	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+}
+
+export interface NodeHelperFunctions {
+	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
 export interface RequestHelperFunctions {
@@ -709,6 +717,7 @@ export interface RequestHelperFunctions {
 }
 
 export interface FunctionsBase {
+	logger: ILogger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
@@ -748,7 +757,9 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
+		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
+			BaseHelperFunctions &
 			BinaryHelperFunctions &
 			FileSystemHelperFunctions &
 			JsonHelperFunctions & {
@@ -772,6 +783,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 	): NodeParameterValueType | object;
 
 	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
 		BinaryHelperFunctions & {
 			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
 			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
@@ -812,7 +824,10 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface ITriggerFunctions
@@ -828,7 +843,10 @@ export interface ITriggerFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface IHookFunctions
@@ -862,7 +880,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
+	nodeHelpers: NodeHelperFunctions;
+	helpers: RequestHelperFunctions &
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		JsonHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -1163,6 +1185,8 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
+export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(
@@ -1172,9 +1196,6 @@ export interface INodeType {
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
-	hooks?: {
-		[key: string]: (this: IHookFunctions) => Promise<boolean>;
-	};
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
@@ -1192,7 +1213,9 @@ export interface INodeType {
 		};
 	};
 	webhookMethods?: {
-		[key: string]: IWebhookSetupMethods;
+		[name in IWebhookDescription['name']]?: {
+			[method in WebhookSetupMethodNames]: (this: IHookFunctions) => Promise<boolean>;
+		};
 	};
 }
 
@@ -1211,15 +1234,6 @@ export interface INodeCredentialTestResult {
 
 export interface INodeCredentialTestRequest {
 	credentials: ICredentialsDecrypted;
-}
-
-export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
-
-export interface IWebhookSetupMethods {
-	[key: string]: ((this: IHookFunctions) => Promise<boolean>) | undefined;
-	checkExists?: (this: IHookFunctions) => Promise<boolean>;
-	create?: (this: IHookFunctions) => Promise<boolean>;
-	delete?: (this: IHookFunctions) => Promise<boolean>;
 }
 
 export interface INodeCredentialDescription {
@@ -1436,7 +1450,7 @@ export interface IWebhookDescription {
 	[key: string]: WebhookHttpMethod | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: WebhookHttpMethod | string;
 	isFullPath?: boolean;
-	name: string;
+	name: 'default' | 'setup';
 	path: string;
 	responseBinaryPropertyName?: string;
 	responseContentType?: string;
@@ -1533,7 +1547,7 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	waitTill?: Date;
+	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
@@ -1552,6 +1566,7 @@ export interface IRunExecutionData {
 		runData: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
+		metadata?: Record<string, string>;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -1662,6 +1677,7 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
+	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -1694,8 +1710,21 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
+export namespace WorkflowSettings {
+	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
+	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+}
+
 export interface IWorkflowSettings {
-	[key: string]: IDataObject | string | number | boolean | undefined;
+	timezone?: 'DEFAULT' | string;
+	errorWorkflow?: string;
+	callerIds?: string;
+	callerPolicy?: WorkflowSettings.CallerPolicy;
+	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution?: WorkflowSettings.SaveDataExecution;
+	saveManualExecutions?: 'DEFAULT' | boolean;
+	saveExecutionProgress?: 'DEFAULT' | boolean;
+	executionTimeout?: number;
 }
 
 export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';

@@ -7,6 +7,7 @@ import {
 	STORES,
 } from '@/constants';
 import {
+	ExecutionsQueryFilter,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	INewWorkflowData,
@@ -56,12 +57,13 @@ import {
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
 	getPairedItemsMapping,
 	stringSizeInBytes,
 	isObjectLiteral,
+	isEmpty,
 } from '@/utils';
 import { useNDVStore } from './ndv';
 import { useNodeTypesStore } from './nodeTypes';
@@ -460,7 +462,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowPinData(pinData: IPinData): void {
 			Vue.set(this.workflow, 'pinData', pinData || {});
-			dataPinningEventBus.$emit('pin-data', pinData || {});
+			dataPinningEventBus.emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(tags: string[]): void {
@@ -521,7 +523,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
+			dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 
 		unpinData(payload: { node: INodeUi }): void {
@@ -535,7 +537,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+			dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
 		addConnection(data: { connection: IConnection[] }): void {
@@ -936,7 +938,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(this, 'activeExecutions', newActiveExecutions);
 		},
 
-		async loadCurrentWorkflowExecutions(requestFilter: IDataObject): Promise<IExecutionsSummary[]> {
+		async loadCurrentWorkflowExecutions(
+			requestFilter: ExecutionsQueryFilter,
+		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
 			let finishedExecutions = [];
 
@@ -945,7 +949,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			try {
 				const rootStore = useRootStore();
-				if (!requestFilter.status || !requestFilter.finished) {
+				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
 					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});

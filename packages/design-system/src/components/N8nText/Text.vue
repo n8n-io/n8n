@@ -6,7 +6,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-
 export default Vue.extend({
 	name: 'n8n-text',
 	props: {
@@ -67,7 +66,7 @@ export default Vue.extend({
 
 			applied.push(this.bold ? 'bold' : 'regular');
 
-			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
+			return applied.map((c) => this.$style[c]);
 		},
 	},
 });
