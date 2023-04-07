@@ -578,12 +578,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								const ssoStore = useSSOStore();
-								return (
-									!ssoStore.isEnterpriseSamlEnabled ||
-									settingsStore.isCloudDeployment ||
-									settingsStore.isDesktopDeployment
-								);
+								return settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment;
 							},
 						},
 					},
