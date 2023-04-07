@@ -3,12 +3,20 @@
 		<div>
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
 			<div :class="$style.buttonContainer" v-if="!usersStore.showUMSetupWarning">
-				<n8n-button
-					:label="$locale.baseText('settings.users.invite')"
-					@click="onInvite"
-					size="large"
-					data-test-id="settings-users-invite-button"
-				/>
+				<n8n-tooltip :disabled="!ssoStore.isSamlLoginEnabled">
+					<template #content>
+						<span> {{ $locale.baseText('settings.users.invite.tooltip') }} </span>
+					</template>
+					<div>
+						<n8n-button
+							:disabled="ssoStore.isSamlLoginEnabled"
+							:label="$locale.baseText('settings.users.invite')"
+							@click="onInvite"
+							size="large"
+							data-test-id="settings-users-invite-button"
+						/>
+					</div>
+				</n8n-tooltip>
 			</div>
 		</div>
 		<div v-if="!settingsStore.isUserManagementEnabled" :class="$style.setupInfoContainer">
@@ -64,6 +72,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { BaseTextKey } from '@/plugins/i18n';
 import { useUsageStore } from '@/stores/usage';
+import { useSSOStore } from '@/stores/sso';
 
 export default mixins(showMessage, copyPaste).extend({
 	name: 'SettingsUsersView',
@@ -76,7 +85,7 @@ export default mixins(showMessage, copyPaste).extend({
 		}
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
