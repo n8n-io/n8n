@@ -28,6 +28,7 @@ import type {
 } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import { UserService } from '@/user/user.service';
 
 @RestController('/me')
 export class MeController {
@@ -246,13 +247,13 @@ export class MeController {
 	@Patch('/settings')
 	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
-		const { settings: currentSettings, id: userId } = req.user;
+		const { id } = req.user;
 
-		await this.userRepository.update(userId, { settings: { ...currentSettings, ...payload } });
+		await UserService.updateUserSettings(id, payload);
 
 		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
-			where: { id: userId },
+			where: { id },
 		});
 
 		return user.settings;

@@ -2,14 +2,12 @@ import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import {
-	getWorkflowOwner,
-	setFirstSuccessfulWorkflow,
-} from '@/UserManagement/UserManagementHelper';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { QueryFailedError } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import config from '@/config';
+import { UserService } from '@/user/user.service';
 
 enum StatisticsUpsertResult {
 	insert = 'insert',
@@ -115,8 +113,14 @@ export async function workflowExecutionCompleted(
 				user_id: owner.id,
 				workflow_id: workflowId,
 			};
-            
-            await setFirstSuccessfulWorkflow(owner, workflowId);
+
+			if (!owner.settings?.firstSuccessfulWorkflowId) {
+				await UserService.updateUserSettings(owner.id, {
+					firstSuccessfulWorkflowId: workflowId,
+					userActivated: true,
+					showUserActivationSurvey: true,
+				});
+			}
 
 			// Send the metrics
 			await Container.get(InternalHooks).onFirstProductionWorkflowSuccess(metrics);
