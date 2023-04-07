@@ -4,6 +4,7 @@
 		<n8n-icon
 			icon="external-link-alt"
 			size="xsmall"
+			v-if="!hideFullscreenButton"
 			:class="$style['expression-editor-modal-opener']"
 			@click="$emit('codeOpenerClick')"
 			data-test-id="expander"
@@ -33,6 +34,10 @@ import { useRootStore } from '@/stores/n8nRootStore';
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
 	props: {
+		hideFullscreenButton: {
+			type: Boolean,
+			default: false,
+		},
 		mode: {
 			type: String,
 			validator: (value: string): boolean =>

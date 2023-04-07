@@ -17,6 +17,7 @@
 				:defaultValue="defaultValue"
 				:isReadOnly="readonly"
 				:maxHeight="true"
+				:hideFullscreenButton="true"
 				@valueChanged="valueChanged"
 			/>
 		</div>
