@@ -87,8 +87,7 @@ export default Vue.extend({
 		},
 		isHeaderDisabled(): boolean {
 			return (
-				this.isLoading ||
-				!!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
+				this.isLoading || !!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
 			);
 		},
 
