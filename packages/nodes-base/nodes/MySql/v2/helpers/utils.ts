@@ -207,7 +207,10 @@ export function configureQueryRunner(
 
 				if (!response) return [];
 
-				const statements = singleQuery.replace(/\n/g, '').split(';');
+				const statements = singleQuery
+					.replace(/\n/g, '')
+					.split(';')
+					.filter((statement) => statement !== '');
 
 				if (Array.isArray(response)) {
 					if (statements.length === 1) response = [response];
