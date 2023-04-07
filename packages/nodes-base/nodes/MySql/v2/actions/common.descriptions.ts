@@ -87,9 +87,10 @@ export const optionsCollection: INodeProperties = {
 			name: 'queryReplacement',
 			type: 'string',
 			default: '',
-			placeholder: 'Add Query Parameter',
+			placeholder: 'e.g. value1,value2,value3',
 			description:
-				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. More info.',
+				'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/">More info</a>',
+			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
 			displayOptions: {
 				show: { '/operation': ['executeQuery'] },
 			},

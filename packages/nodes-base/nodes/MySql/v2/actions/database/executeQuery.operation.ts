@@ -16,16 +16,18 @@ const properties: INodeProperties[] = [
 		name: 'query',
 		type: 'string',
 		default: '',
-		placeholder: 'SELECT id, name FROM product WHERE id < 40',
+		placeholder: 'e.g. SELECT id, name FROM product WHERE id < 40',
 		required: true,
-		description: 'The SQL query to execute',
+		description:
+			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
 			rows: 3,
 		},
+		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
 	},
 	{
 		displayName: `
-		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters">More info</a>.
+		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a target="_blank" href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/">More info</a>.
 		`,
 		name: 'notice',
 		type: 'notice',
