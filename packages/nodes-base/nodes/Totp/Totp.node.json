@@ -6,5 +6,11 @@
 	"subcategories": ["Helpers"],
 	"details": "Generate a time-based one-time password",
 	"alias": ["2FA", "MFA", "authentication", "Security", "OTP", "password", "multi", "factor"],
-	"resources": {}
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.totp/"
+			}
+		]
+	}
 }

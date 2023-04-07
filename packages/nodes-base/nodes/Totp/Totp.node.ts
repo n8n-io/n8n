@@ -1,10 +1,11 @@
-import {
+import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+
+import { NodeOperationError } from 'n8n-workflow';
 
 import OTPAuth from 'otpauth';
 
@@ -152,8 +153,8 @@ export class Totp implements INodeType {
 
 		const secondsRemaining = (30 * (1 - ((Date.now() / 1000 / 30) % 1))) | 0;
 
-		for (let i = 0; i < items.length; i++) {
-			if (operation === 'generateSecret') {
+		if (operation === 'generateSecret') {
+			for (let i = 0; i < items.length; i++) {
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray({ token, secondsRemaining }),
 					{ itemData: { item: i } },

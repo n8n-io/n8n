@@ -30,6 +30,7 @@ describe('Execute TOTP node', () => {
 	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
+		// eslint-disable-next-line @typescript-eslint/no-loop-func
 		test(testData.description, async () => {
 			const { result } = await executeWorkflow(testData, nodeTypes);
 
