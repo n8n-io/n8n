@@ -2,10 +2,14 @@
 import { computed, ref, onBeforeMount } from 'vue';
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
-import { i18n as locale } from '@/plugins/i18n';
+import { useUsageStore } from '@/stores/usage';
+import { useUIStore } from '@/stores/ui';
+import { BaseTextKey, i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();
+const usageStore = useUsageStore();
+const uiStore = useUIStore();
 
 const ssoActivatedLabel = computed(() =>
 	ssoStore.isSamlLoginEnabled
@@ -51,7 +55,18 @@ const onTest = async () => {
 	}
 };
 
-const onSeePlansClick = () => {};
+const goToUpgrade = () => {
+	const linkUrlTranslationKey = uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey;
+	let linkUrl = locale.baseText(linkUrlTranslationKey);
+
+	if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
+		linkUrl = `${usageStore.viewPlansUrl}&source=sso`;
+	} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+		linkUrl = `${linkUrl}&utm_campaign=upgrade-sso`;
+	}
+
+	window.open(linkUrl, '_blank');
+};
 
 onBeforeMount(async () => {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
@@ -91,7 +106,7 @@ onBeforeMount(async () => {
 		<n8n-info-tip>
 			<i18n :class="$style.count" path="settings.sso.info">
 				<template #link>
-					<a href="https://docs.n8n.io/user-management/sso/" target="_blank">
+					<a href="https://docs.n8n.io/user-management/saml/" target="_blank">
 						{{ locale.baseText('settings.sso.info.link') }}
 					</a>
 				</template>
@@ -137,7 +152,7 @@ onBeforeMount(async () => {
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sso.actionBox.description')"
 			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"
-			@click="onSeePlansClick"
+			@click="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.sso.actionBox.title') }}</span>
