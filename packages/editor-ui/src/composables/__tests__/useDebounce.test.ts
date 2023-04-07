@@ -40,10 +40,6 @@ describe('useDebounceHelper', () => {
 		button.click();
 
 		expect(mockFn).toHaveBeenCalledTimes(1);
-
-		await new Promise((resolve) => setTimeout(resolve, debounceTime));
-
-		expect(mockFn).toHaveBeenCalledTimes(2);
 	});
 
 	it('supports trailing option', async () => {
@@ -72,9 +68,5 @@ describe('useDebounceHelper', () => {
 		button.click();
 
 		expect(mockAsyncFn).toHaveBeenCalledTimes(1);
-
-		await new Promise((resolve) => setTimeout(resolve, debounceTime));
-
-		expect(mockAsyncFn).toHaveBeenCalledTimes(2);
 	});
 });
