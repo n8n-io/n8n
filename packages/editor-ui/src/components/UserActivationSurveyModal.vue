@@ -62,7 +62,6 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import Vue from 'vue';
 import Modal from '@/components/Modal.vue';
 import { USER_ACTIVATION_SURVEY_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users';
@@ -72,6 +71,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { createEventBus } from '@/event-bus';
 
 const FEEDBACK_MAX_LENGTH = 300;
 
@@ -80,7 +80,7 @@ const workflowStore = useWorkflowsStore();
 
 const hasAnyChanges = ref(false);
 const feedback = ref('');
-const modalBus = new Vue();
+const modalBus = createEventBus();
 const workflowName = ref('');
 
 onMounted(async () => {
@@ -97,7 +97,7 @@ onMounted(async () => {
 const onShareFeedback = () => {
 	telemetry.track('User responded to activation modal', { response: getFeedback() });
 	showSharedFeedbackSuccess();
-	modalBus.$emit('close');
+	modalBus.emit('close');
 };
 
 const getCurrentSettings = () => {
