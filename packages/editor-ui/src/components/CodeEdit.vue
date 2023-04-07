@@ -17,7 +17,7 @@
 				:defaultValue="defaultValue"
 				:isReadOnly="readonly"
 				:maxHeight="true"
-				@valueChanged="$emit('valueChanged', $event)"
+				@valueChanged="valueChanged"
 			/>
 		</div>
 	</el-dialog>
@@ -28,17 +28,6 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { IExecutionResponse, INodeUi } from '@/Interface';
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	IRunExecutionData,
-	IWorkflowDataProxyAdditionalKeys,
-	WorkflowDataProxy,
-} from 'n8n-workflow';
-
-import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -54,13 +43,25 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 	computed: {
 		...mapStores(useNDVStore, useRootStore, useWorkflowsStore),
 	},
+	data() {
+		return {
+			code: '',
+		};
+	},
 	methods: {
+		valueChanged(value: string) {
+			this.code = value;
+		},
 		closeDialog() {
 			// Handle the close externally as the visible parameter is an external prop
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
+			this.$emit('valueChanged', this.code);
 			return false;
 		},
+	},
+	mounted() {
+		this.code = this.value;
 	},
 });
 </script>

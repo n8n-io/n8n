@@ -1,5 +1,14 @@
 <template>
-	<div ref="codeNodeEditor" :class="{ [$style['max-height']]: true }" class="ph-no-capture"></div>
+	<div>
+		<div ref="codeNodeEditor" :class="{ [$style['max-height']]: true }" class="ph-no-capture"></div>
+		<n8n-icon
+			icon="external-link-alt"
+			size="xsmall"
+			:class="$style['expression-editor-modal-opener']"
+			@click="$emit('codeOpenerClick')"
+			data-test-id="expander"
+		/>
+	</div>
 </template>
 
 <script lang="ts">
@@ -63,6 +72,11 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 		language() {
 			this.refreshPlaceholder();
+		},
+		value() {
+			this.editor?.dispatch({
+				changes: { from: 0, to: this.content.length, insert: this.value },
+			});
 		},
 	},
 	computed: {
@@ -212,5 +226,28 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 <style lang="scss" module>
 .max-height {
 	height: 100%;
+}
+
+.expression-editor-modal-opener {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	background-color: white;
+	padding: 3px;
+	line-height: 9px;
+	border: var(--border-base);
+	border-top-left-radius: var(--border-radius-base);
+	border-bottom-right-radius: var(--border-radius-base);
+	cursor: pointer;
+
+	svg {
+		width: 9px !important;
+		height: 9px;
+		transform: rotate(270deg);
+
+		&:hover {
+			color: var(--color-primary);
+		}
+	}
 }
 </style>

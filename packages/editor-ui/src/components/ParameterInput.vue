@@ -80,6 +80,7 @@
 					:defaultValue="parameter.default"
 					:language="getArgument('editorLanguage')"
 					:isReadOnly="isReadOnly"
+					@codeOpenerClick="displayEditDialog()"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -714,7 +715,10 @@ export default mixins(
 			return [];
 		},
 		isEditor(): boolean {
-			return ['code', 'json'].includes(this.editorType);
+			return (
+				['code', 'json'].includes(this.editorType) ||
+				this.getArgument('editor') === 'codeNodeEditor'
+			);
 		},
 		editorType(): string {
 			return this.getArgument('editor') as string;
