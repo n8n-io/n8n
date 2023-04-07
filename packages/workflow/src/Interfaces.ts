@@ -1013,7 +1013,7 @@ export type NodePropertyTypes =
 	| 'resourceLocator'
 	| 'curlImport';
 
-export type CodeAutocompleteTypes = 'function' | 'functionItem';
+export type CodeAutocompleteTypes = 'runOnceForAllItems' | 'runOnceForEachItem';
 
 export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
 export type EditorLanguageTypes = 'javaScript' | 'python';

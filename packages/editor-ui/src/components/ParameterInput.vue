@@ -370,6 +370,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
+import { CodeAutocompleteTypes } from 'n8n-workflow/src/Interfaces';
 
 export default mixins(
 	externalHooks,
@@ -524,8 +525,15 @@ export default mixins(
 		isValueExpression(): boolean {
 			return isValueExpression(this.parameter, this.value);
 		},
-		codeAutocomplete(): string | undefined {
-			return this.getArgument('codeAutocomplete') as string | undefined;
+		codeAutocomplete(): CodeAutocompleteTypes | undefined {
+			let codeAutocomplete = this.getArgument('codeAutocomplete') as
+				| CodeAutocompleteTypes
+				| undefined;
+			if (!codeAutocomplete && this.node) {
+				codeAutocomplete = this.node.parameters.mode as CodeAutocompleteTypes | undefined;
+			}
+
+			return codeAutocomplete;
 		},
 		dependentParametersValues(): string | null {
 			const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;

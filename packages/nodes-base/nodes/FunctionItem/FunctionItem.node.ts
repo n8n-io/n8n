@@ -38,7 +38,7 @@ export class FunctionItem implements INodeType {
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
-					codeAutocomplete: 'functionItem',
+					codeAutocomplete: 'runOnceForEachItem',
 					editor: 'code',
 					rows: 10,
 				},

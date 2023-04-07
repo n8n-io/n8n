@@ -12,7 +12,7 @@
 		<div class="ignore-key-press">
 			<code-node-editor
 				class="text-editor-wrapper"
-				:mode="codeAutocomplete === 'function' ? 'runOnceForAllItems' : 'runOnceForEachItem'"
+				:mode="codeAutocomplete"
 				:value="value"
 				:defaultValue="defaultValue"
 				:isReadOnly="readonly"
