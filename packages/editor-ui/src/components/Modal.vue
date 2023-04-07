@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:visible="uiStore.isModalOpen(this.$props.name)"
+		:visible="uiStore.isModalOpen(this.name)"
 		:before-close="closeDialog"
 		:class="{ 'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable }"
 		:width="width"
@@ -10,7 +10,7 @@
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		append-to-body
-		:data-test-id="`${this.$props.name}-modal`"
+		:data-test-id="`${this.name}-modal`"
 	>
 		<template #title v-if="$scopedSlots.header">
 			<slot name="header" v-if="!loading" />
@@ -43,9 +43,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
+import { EventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'Modal',
@@ -60,7 +61,7 @@ export default Vue.extend({
 			type: String,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		showClose: {
 			type: Boolean,
@@ -120,12 +121,12 @@ export default Vue.extend({
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
+		if (this.eventBus) {
+			this.eventBus.on('close', () => {
 				this.closeDialog();
 			});
 
-			this.$props.eventBus.$on('closeAll', () => {
+			this.eventBus.on('closeAll', () => {
 				this.uiStore.closeAllModals();
 			});
 		}
@@ -162,7 +163,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.$props.name)) {
+			if (!this.uiStore.isModalActive(this.name)) {
 				return;
 			}
 
@@ -171,7 +172,7 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.$props.name)) {
+			if (this.uiStore.isModalActive(this.name)) {
 				this.$emit('enter');
 			}
 		},
@@ -183,12 +184,12 @@ export default Vue.extend({
 					return;
 				}
 			}
-			this.uiStore.closeModal(this.$props.name);
+			this.uiStore.closeModal(this.name);
 		},
 		getCustomClass() {
-			let classes = this.$props.customClass || '';
+			let classes = this.customClass || '';
 
-			if (this.$props.classic) {
+			if (this.classic) {
 				classes = `${classes} classic`;
 			}
 
