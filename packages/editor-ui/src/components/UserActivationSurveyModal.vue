@@ -63,8 +63,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import Vue from 'vue';
-import Modal from './Modal.vue';
-import { USER_ACTIVATION_SURVEY_MODAL } from '../constants';
+import Modal from '@/components/Modal.vue';
+import { USER_ACTIVATION_SURVEY_MODAL } from '@/constants';
 import { useUsersStore } from '@/stores/users';
 
 import confetti from 'canvas-confetti';
