@@ -8,7 +8,7 @@ import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import config from '@/config';
 
-enum StatisticsUpsertResult {
+const enum StatisticsUpsertResult {
 	insert = 'insert',
 	update = 'update',
 	failed = 'failed',

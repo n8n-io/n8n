@@ -27,7 +27,8 @@ module.exports = {
 			'error',
 			{
 				selector: 'TSEnumDeclaration:not([const=true])',
-				message: "Don't declare non-const enums",
+				message:
+					'Do not declare raw enums as it lead to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-',
 			},
 		],
 	},
