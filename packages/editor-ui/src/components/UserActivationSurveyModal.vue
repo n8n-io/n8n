@@ -39,7 +39,6 @@
 							:rows="3"
 							v-model="feedback"
 							@input="onInput"
-							ref="input"
 							data-test-id="activation-feedback-input"
 						/>
 					</n8n-input-label>
