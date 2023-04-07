@@ -23,5 +23,12 @@ module.exports = {
 		'import/order': 'off',
 		'import/extensions': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'no-restricted-syntax': [
+			'error',
+			{
+				selector: 'TSEnumDeclaration:not([const=true])',
+				message: "Don't declare non-const enums",
+			},
+		],
 	},
 };

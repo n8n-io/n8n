@@ -12,6 +12,13 @@ module.exports = {
 
 	rules: {
 		'@typescript-eslint/consistent-type-imports': 'error',
+		// 'no-restricted-syntax': [
+		// 	'error',
+		// 	{
+		// 		selector: 'TSEnumDeclaration:not([const=true])',
+		// 		message: "Don't declare non-const enums",
+		// 	},
+		// ],
 
 		// TODO: remove all the following rules
 		eqeqeq: 'off',

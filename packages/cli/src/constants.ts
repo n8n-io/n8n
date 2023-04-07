@@ -68,7 +68,7 @@ export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
-export enum LICENSE_FEATURES {
+export const enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
 	LDAP = 'feat:ldap',
 	SAML = 'feat:saml',
