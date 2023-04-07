@@ -49,7 +49,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
@@ -64,6 +63,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { IWorkflowDataUpdate } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
@@ -76,8 +76,8 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			name: '',
 			currentTagIds,
 			isSaving: false,
-			modalBus: new Vue(),
-			dropdownBus: new Vue(),
+			modalBus: createEventBus(),
+			dropdownBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			prevTagIds: currentTagIds,
 		};
@@ -112,7 +112,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 	},
 	methods: {
 		focusOnSelect() {
-			this.dropdownBus.$emit('focus');
+			this.dropdownBus.emit('focus');
 		},
 		focusOnNameInput() {
 			const input = this.$refs.nameInput as HTMLElement;
@@ -195,7 +195,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			}
 		},
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 	},
 });

@@ -11,6 +11,7 @@ import Vue from 'vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import Modal from '@/components/Modal.vue';
 import { EXECUTIONS_MODAL_KEY } from '@/constants';
+import { createEventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'ExecutionsModal',
@@ -20,13 +21,13 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			EXECUTIONS_MODAL_KEY,
 		};
 	},
 	methods: {
 		onCloseModal() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 	},
 });
