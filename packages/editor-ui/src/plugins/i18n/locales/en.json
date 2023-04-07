@@ -1173,6 +1173,7 @@
 	"settings.users.inviteLink.copy": "Copy Invite Link",
 	"settings.users.inviteLink.error": "Could not retrieve invite link",
 	"settings.users.invite": "Invite",
+	"settings.users.invite.tooltip": "SAML login is activated. Users should be created in the IdP and will be provisioned in n8n on their first sign on.",
 	"settings.users.inviteNewUsers": "Invite new users",
 	"settings.users.copyInviteUrls": "You can now send the invitation links directly to your users",
 	"settings.users.inviteResent": "Invite resent",
