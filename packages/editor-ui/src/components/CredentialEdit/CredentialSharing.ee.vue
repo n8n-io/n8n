@@ -178,7 +178,7 @@ export default mixins(showMessage).extend({
 		},
 		goToUsersSettings() {
 			this.$router.push({ name: VIEWS.USERS_SETTINGS });
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
 			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys

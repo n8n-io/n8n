@@ -1,4 +1,4 @@
-name: PR E2E (skip with label skip-e2e)
+name: PR E2E
 
 on:
   pull_request_review:
@@ -24,7 +24,7 @@ jobs:
   run-e2e-tests:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
-    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+    if: ${{ github.event.review.state == 'approved' }}
     with:
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
@@ -32,3 +32,26 @@ jobs:
       run-env: base:16.18.1
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+
+  post-e2e-tests:
+    runs-on: ubuntu-latest
+    name: E2E [Electron/Node 16] - Checks
+    needs: [run-e2e-tests]
+    steps:
+      - name: E2E success comment
+        if: success()
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            :white_check_mark: All Cypress E2E specs passed
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: E2E fail comment
+        if: failure()
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            :warning: Some Cypress E2E specs are failing, please fix them before merging
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,12 @@
+diff --git a/js/helper.js b/js/helper.js
+index a4a7a61f0e226d7cb45f8d5db34c35cc9e62cf96..38fd3ec2214970b1c5dd22fdff902ff3b5eeddde 100644
+--- a/js/helper.js
++++ b/js/helper.js
+@@ -15,6 +15,7 @@ function getBinaryPath() {
+   const parts = [];
+   parts.push(__dirname);
+   parts.push('..');
++  parts.push('bin');
+   parts.push(`sentry-cli${process.platform === 'win32' ? '.exe' : ''}`);
+   return path.resolve(...parts);
+ }

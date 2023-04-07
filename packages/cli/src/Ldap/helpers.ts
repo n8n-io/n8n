@@ -26,10 +26,12 @@ import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
+	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
+import { InternalServerError } from '../ResponseHelper';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -54,25 +56,21 @@ export const setLdapLoginLabel = (value: string): void => {
 /**
  * Set the LDAP login enabled to the configuration object
  */
-export const setLdapLoginEnabled = async (value: boolean): Promise<void> => {
-	if (config.get(LDAP_LOGIN_ENABLED) === value) {
-		return;
-	}
-	// only one auth method can be active at a time, with email being the default
-	if (value && isEmailCurrentAuthenticationMethod()) {
-		// enable ldap login and disable email login, but only if email is the current auth method
-		config.set(LDAP_LOGIN_ENABLED, true);
-		await setCurrentAuthenticationMethod('ldap');
-	} else if (!value && isLdapCurrentAuthenticationMethod()) {
-		// disable ldap login, but only if ldap is the current auth method
-		config.set(LDAP_LOGIN_ENABLED, false);
-		await setCurrentAuthenticationMethod('email');
+export async function setLdapLoginEnabled(enabled: boolean): Promise<void> {
+	if (isEmailCurrentAuthenticationMethod() || isLdapCurrentAuthenticationMethod()) {
+		if (enabled) {
+			config.set(LDAP_LOGIN_ENABLED, true);
+			await setCurrentAuthenticationMethod('ldap');
+		} else if (!enabled) {
+			config.set(LDAP_LOGIN_ENABLED, false);
+			await setCurrentAuthenticationMethod('email');
+		}
 	} else {
-		Logger.warn(
-			'Cannot switch LDAP login enabled state when an authentication method other than email is active',
+		throw new InternalServerError(
+			`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 		);
 	}
-};
+}
 
 /**
  * Retrieve the LDAP login label from the configuration object
@@ -217,7 +215,15 @@ export const handleLdapInit = async (): Promise<void> => {
 
 	const ldapConfig = await getLdapConfig();
 
-	await setGlobalLdapConfigVariables(ldapConfig);
+	try {
+		await setGlobalLdapConfigVariables(ldapConfig);
+	} catch (error) {
+		Logger.error(
+			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			error,
+		);
+	}
 
 	// init LDAP manager with the current
 	// configuration
