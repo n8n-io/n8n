@@ -35,6 +35,7 @@ export class TodoistService implements Service {
 	};
 }
 
+// eslint-disable-next-line no-restricted-syntax
 export enum OperationType {
 	create = 'create',
 	close = 'close',

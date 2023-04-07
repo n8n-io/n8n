@@ -64,6 +64,7 @@ export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
 
 export type ResourceLocator = 'id' | 'url' | 'list';
 
+// eslint-disable-next-line no-restricted-syntax
 export enum ResourceLocatorUiNames {
 	id = 'By ID',
 	url = 'By URL',

@@ -12,13 +12,6 @@ module.exports = {
 
 	rules: {
 		'@typescript-eslint/consistent-type-imports': 'error',
-		// 'no-restricted-syntax': [
-		// 	'error',
-		// 	{
-		// 		selector: 'TSEnumDeclaration:not([const=true])',
-		// 		message: "Don't declare non-const enums",
-		// 	},
-		// ],
 
 		// TODO: remove all the following rules
 		eqeqeq: 'off',
@@ -31,7 +24,6 @@ module.exports = {
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
 		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		// '@typescript-eslint/no-unsafe-argument': 'off', //1538 errors, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-assignment': 'off', //7084 problems, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-call': 'off', //541 errors, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
@@ -41,6 +33,14 @@ module.exports = {
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
+		'no-restricted-syntax': [
+			'error',
+			{
+				selector: 'TSEnumDeclaration:not([const=true])',
+				message:
+					'Do not declare raw enums as it lead to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-',
+			},
+		],
 	},
 
 	overrides: [
