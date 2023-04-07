@@ -349,13 +349,7 @@ export class WorkflowRunner {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, { executionId });
 				// Execute all nodes
 
-				let startNode;
-				if (
-					data.startNodes?.length === 1 &&
-					Object.keys(data.pinData ?? {}).includes(data.startNodes[0])
-				) {
-					startNode = workflow.getNode(data.startNodes[0]) ?? undefined;
-				}
+				const startNode = WorkflowHelpers.getStartNode(data, workflow);
 
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
