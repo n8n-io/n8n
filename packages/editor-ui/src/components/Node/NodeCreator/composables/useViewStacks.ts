@@ -18,6 +18,7 @@ import { useNodesSearch } from './useNodesSearch';
 import { transformNodeType, subcategorizeItems, sortNodeCreateElements } from '../utils';
 
 interface ViewStack {
+	uuid?: string;
 	title?: string;
 	subtitle?: string;
 	search?: string;
@@ -65,6 +66,8 @@ export const useViewStacks = () => {
 
 	const activeViewStack = computed<ViewStack>(() => {
 		const stack = stacks.value[stacks.value.length - 1];
+
+		if (!stack) return {};
 
 		return {
 			...stack,

@@ -140,6 +140,7 @@ function onSearch(e: string) {
 	display: flex;
 	flex-direction: column;
 	scrollbar-width: none; /* Firefox 64 */
+	padding-bottom: var(--spacing-xl);
 	&::-webkit-scrollbar {
 		display: none;
 	}
@@ -154,6 +155,7 @@ function onSearch(e: string) {
 	width: 385px;
 	display: flex;
 	flex-direction: column;
+
 	&:before {
 		box-sizing: border-box;
 		content: '';

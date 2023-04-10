@@ -74,7 +74,7 @@ export const useActions = () => {
 		// Collect unique labels
 		for (const action of extendedActions) {
 			if (action.type !== 'action') continue;
-			const label = action.properties.codex.label;
+			const label = action.properties?.codex?.label;
 			labelsSet.add(label);
 		}
 
@@ -87,7 +87,7 @@ export const useActions = () => {
 		for (let i = 0; i < extendedActions.length; i++) {
 			const action = extendedActions[i];
 			if (action.type !== 'action') continue;
-			const label = action.properties.codex.label;
+			const label = action.properties?.codex?.label;
 			if (!firstIndexMap.has(label)) {
 				firstIndexMap.set(label, i);
 			}

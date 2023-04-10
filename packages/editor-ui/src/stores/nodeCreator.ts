@@ -420,7 +420,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		return nodeTypes;
 	}
 
-	function subscribeToEvent(eventKey: string, callback: (payload?: unknown) => void) {
+	function subscribeToEvent(eventKey: string, callback: (payload?: any) => void) {
 		const uuid = uuidv4();
 		eventsSubscribers.value.push({
 			uuid,
