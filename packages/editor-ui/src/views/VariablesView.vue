@@ -74,6 +74,41 @@ const { upgradeLinkUrl } = useUpgradeLink({
 	desktop: '&utm_campaign=upgrade-variables',
 });
 
+const newlyAddedVariableIds = ref<number[]>([]);
+
+const nameSortFn = (a: EnvironmentVariable, b: EnvironmentVariable, direction: 'asc' | 'desc') => {
+	if (`${a.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+		return -1;
+	} else if (`${b.id}`.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+		return 1;
+	} else if (
+		newlyAddedVariableIds.value.includes(a.id) &&
+		newlyAddedVariableIds.value.includes(b.id)
+	) {
+		return newlyAddedVariableIds.value.indexOf(a.id) - newlyAddedVariableIds.value.indexOf(b.id);
+	} else if (newlyAddedVariableIds.value.includes(a.id)) {
+		return -1;
+	} else if (newlyAddedVariableIds.value.includes(b.id)) {
+		return 1;
+	}
+
+	return direction === 'asc'
+		? displayName(a).trim().localeCompare(displayName(b).trim())
+		: displayName(b).trim().localeCompare(displayName(a).trim());
+};
+const sortFns = {
+	nameAsc: (a: EnvironmentVariable, b: EnvironmentVariable) => {
+		return nameSortFn(a, b, 'asc');
+	},
+	nameDesc: (a: EnvironmentVariable, b: EnvironmentVariable) => {
+		return nameSortFn(a, b, 'desc');
+	},
+};
+
+function resetNewVariablesList() {
+	newlyAddedVariableIds.value = [];
+}
+
 async function initialize() {
 	await environmentsStore.fetchAllVariables();
 
@@ -102,6 +137,7 @@ async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVari
 			updatedVariable = await environmentsStore.createVariable(rest);
 			allVariables.value.unshift(updatedVariable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
 			updatedVariable = await environmentsStore.updateVariable(data as EnvironmentVariable);
 			allVariables.value = allVariables.value.map((variable) =>
@@ -169,10 +205,13 @@ function displayName(resource: EnvironmentVariable) {
 		:initialize="initialize"
 		:shareable="false"
 		:displayName="displayName"
+		:sortFns="sortFns"
 		:sortOptions="['nameAsc', 'nameDesc']"
 		:showFiltersDropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
+		@click:add="addTemporaryVariable"
+		@sort="resetNewVariablesList"
 	>
 		<template #add-button>
 			<n8n-tooltip placement="top" :disabled="canCreateVariables">
