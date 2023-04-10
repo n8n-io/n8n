@@ -51,7 +51,7 @@ export default Vue.extend({
 				return;
 			}
 
-			this.$data.newValue = this.$props.value;
+			this.$data.newValue = this.value;
 			this.$emit('toggle');
 		},
 		onBlur() {

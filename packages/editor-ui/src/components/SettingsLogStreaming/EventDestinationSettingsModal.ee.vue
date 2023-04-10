@@ -236,9 +236,9 @@ export default mixins(showMessage).extend({
 	},
 	data() {
 		return {
-			unchanged: !this.$props.isNew,
+			unchanged: !this.isNew,
 			activeTab: 'settings',
-			hasOnceBeenSaved: !this.$props.isNew,
+			hasOnceBeenSaved: !this.isNew,
 			isSaving: false,
 			isDeleting: false,
 			loading: false,
@@ -250,7 +250,7 @@ export default mixins(showMessage).extend({
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
 			modalBus: createEventBus(),
-			headerLabel: this.$props.destination.label,
+			headerLabel: this.destination.label,
 			testMessageSent: false,
 			testMessageResult: false,
 			isInstanceOwner: false,
@@ -451,7 +451,7 @@ export default mixins(showMessage).extend({
 			if (deleteConfirmed === false) {
 				return;
 			} else {
-				this.$props.eventBus.emit('remove', this.destination.id);
+				this.eventBus.emit('remove', this.destination.id);
 				this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
 				this.uiStore.stateIsDirty = false;
 			}
@@ -462,7 +462,7 @@ export default mixins(showMessage).extend({
 				this.logStreamingStore.removeDestination(this.nodeParameters.id!);
 			}
 			this.ndvStore.activeNodeName = null;
-			this.$props.eventBus.emit('closing', this.destination.id);
+			this.eventBus.emit('closing', this.destination.id);
 			this.uiStore.stateIsDirty = false;
 		},
 		async saveDestination() {
@@ -474,7 +474,7 @@ export default mixins(showMessage).extend({
 				this.hasOnceBeenSaved = true;
 				this.testMessageSent = false;
 				this.unchanged = true;
-				this.$props.eventBus.emit('destinationWasSaved', this.destination.id);
+				this.eventBus.emit('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
 			}
 		},
