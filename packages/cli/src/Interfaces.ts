@@ -868,3 +868,5 @@ export interface N8nApp {
 	externalHooks: IExternalHooksClass;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
+
+export type userSettings = Pick<User, 'id' | 'settings'>;
