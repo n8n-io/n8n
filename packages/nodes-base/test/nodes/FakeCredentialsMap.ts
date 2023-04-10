@@ -8,10 +8,15 @@ export const FAKE_CREDENTIALS_DATA: IDataObject = {
 	[JSON.stringify({ id: '20', name: 'Airtable account' })]: {
 		apiKey: 'key456',
 	},
+
 	airtableApi: {
 		apiKey: 'key123',
 	},
-	n8nApi: {
+
+	[JSON.stringify({
+		id: '7',
+		name: 'n8n account',
+	})]: {
 		apiKey: 'key123',
 		baseUrl: 'https://test.app.n8n.cloud/api/v1',
 	},

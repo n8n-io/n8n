@@ -1,25 +1,22 @@
-/* eslint-disable @typescript-eslint/no-loop-func */
 import { setup, workflowToTests, getWorkflowFilenames } from '../../../../test/nodes/Helpers';
 
 import nock from 'nock';
 import { executeWorkflow } from '../../../../test/nodes/ExecuteWorkflow';
 
-describe('Test n8nTEST Node', () => {
+import type { WorkflowTestData } from '../../../../test/nodes/types';
+
+import type { INodeTypes } from 'n8n-workflow';
+
+describe('Test N8n Node, expect base_url to be received from credentials', () => {
 	const workflows = getWorkflowFilenames(__dirname);
 	const tests = workflowToTests(workflows);
-
-	const baseUrl = 'https://test.n8n.cloud/api/v1';
 
 	beforeAll(() => {
 		nock.disableNetConnect();
 
-		//GET
-		nock(baseUrl).get('/workflows').reply(200, {
-			id: 1,
-			todo: 'Do something nice for someone I care about',
-			completed: true,
-			userId: 26,
-		});
+		//base url is set in fake credentials map packages/nodes-base/test/nodes/FakeCredentialsMap.ts
+		const baseUrl = 'https://test.app.n8n.cloud/api/v1';
+		nock(baseUrl).get('/workflows?tags=n8n-test').reply(200, {});
 	});
 
 	afterAll(() => {
@@ -28,17 +25,13 @@ describe('Test n8nTEST Node', () => {
 
 	const nodeTypes = setup(tests);
 
+	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
+		const { result } = await executeWorkflow(testData, types);
+
+		expect(result.finished).toEqual(true);
+	};
+
 	for (const testData of tests) {
-		test(testData.description, async () => {
-			const { result } = await executeWorkflow(testData, nodeTypes);
-
-			// const resultNodeData = getResultNodeData(result, testData);
-			// console.log(JSON.stringify(await executeWorkflow(testData, nodeTypes), null, 2));
-			// resultNodeData.forEach(({ nodeName, resultData }) => {
-			// 	expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-			// });
-
-			expect(result.finished).toBeUndefined();
-		});
+		test(testData.description, async () => testNode(testData, nodeTypes));
 	}
 });
