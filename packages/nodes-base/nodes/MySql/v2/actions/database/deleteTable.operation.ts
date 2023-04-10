@@ -15,13 +15,11 @@ import { addWhereClauses } from '../../helpers/utils';
 
 import {
 	optionsCollection,
-	tableRLC,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	tableRLC,
 	{
 		displayName: 'Command',
 		name: 'deleteCommand',
@@ -69,6 +67,9 @@ const displayOptions = {
 	show: {
 		resource: ['database'],
 		operation: ['deleteTable'],
+	},
+	hide: {
+		table: [''],
 	},
 };
 

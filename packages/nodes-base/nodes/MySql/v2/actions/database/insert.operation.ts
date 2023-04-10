@@ -14,10 +14,9 @@ import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 import { copyInputItems, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
-import { optionsCollection, tableRLC } from '../common.descriptions';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	tableRLC,
 	{
 		displayName: 'Data Mode',
 		name: 'dataMode',
@@ -101,6 +100,9 @@ const displayOptions = {
 	show: {
 		resource: ['database'],
 		operation: ['insert'],
+	},
+	hide: {
+		table: [''],
 	},
 };
 

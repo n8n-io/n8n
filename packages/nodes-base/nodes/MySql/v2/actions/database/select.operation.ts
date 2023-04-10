@@ -16,13 +16,11 @@ import { addSortRules, addWhereClauses } from '../../helpers/utils';
 import {
 	optionsCollection,
 	sortFixedCollection,
-	tableRLC,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	tableRLC,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -61,6 +59,9 @@ const displayOptions = {
 	show: {
 		resource: ['database'],
 		operation: ['select'],
+	},
+	hide: {
+		table: [''],
 	},
 };
 
