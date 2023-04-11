@@ -1,7 +1,7 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="uiStore.isModalOpen(this.$props.name)"
+		:visible="uiStore.isModalOpen(this.name)"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
@@ -21,7 +21,8 @@
 <script lang="ts">
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
+import { EventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'ModalDrawer',
@@ -33,7 +34,7 @@ export default Vue.extend({
 			type: Function,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		direction: {
 			type: String,
@@ -53,8 +54,8 @@ export default Vue.extend({
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
+		if (this.eventBus) {
+			this.eventBus.on('close', () => {
 				this.close();
 			});
 		}
@@ -72,7 +73,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.$props.name)) {
+			if (!this.uiStore.isModalActive(this.name)) {
 				return;
 			}
 
@@ -81,7 +82,7 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.$props.name)) {
+			if (this.uiStore.isModalActive(this.name)) {
 				this.$emit('enter');
 			}
 		},
@@ -93,7 +94,7 @@ export default Vue.extend({
 					return;
 				}
 			}
-			this.uiStore.closeModal(this.$props.name);
+			this.uiStore.closeModal(this.name);
 		},
 	},
 });

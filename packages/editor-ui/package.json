@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.188.1",
+  "version": "0.189.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -85,6 +85,7 @@
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
     "@pinia/testing": "^0.0.14",
+    "@sentry/vite-plugin": "^0.4.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/user-event": "^14.4.3",
     "@testing-library/vue": "^5.8.3",
@@ -99,9 +100,9 @@
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "^8.3.2",
-    "@vitest/coverage-c8": "^0.28.5",
     "@vitejs/plugin-legacy": "^3.0.1",
     "@vitejs/plugin-vue2": "^2.2.0",
+    "@vitest/coverage-c8": "^0.28.5",
     "c8": "^7.12.0",
     "jshint": "^2.9.7",
     "miragejs": "^0.1.47",
