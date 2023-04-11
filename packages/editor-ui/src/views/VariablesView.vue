@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, h, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useEnvironmentsStore, useUIStore, useSettingsStore, useUsersStore } from '@/stores';
 import { useI18n, useTelemetry, useToast, useUpgradeLink, useMessage } from '@/composables';
 
@@ -7,12 +7,7 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature } from '@/constants';
-import {
-	DatatableColumn,
-	DatatableRow,
-	EnvironmentVariable,
-	TemporaryEnvironmentVariable,
-} from '@/Interface';
+import { DatatableColumn, EnvironmentVariable, TemporaryEnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
 import { getVariablesPermissions } from '@/permissions';
 
@@ -23,6 +18,8 @@ const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const message = useMessage();
+
+const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
 
 const { showError } = useToast();
 
@@ -125,6 +122,8 @@ function addTemporaryVariable() {
 	allVariables.value.unshift(temporaryVariable);
 	editMode.value[temporaryVariable.id] = true;
 
+	layoutRef.value?.setCurrentPage(1);
+
 	telemetry.track('User clicked add variable button');
 }
 
@@ -198,7 +197,7 @@ function displayName(resource: EnvironmentVariable) {
 
 <template>
 	<ResourcesListLayout
-		ref="layout"
+		ref="layoutRef"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="allVariables"
@@ -210,8 +209,8 @@ function displayName(resource: EnvironmentVariable) {
 		:showFiltersDropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
-		@click:add="addTemporaryVariable"
 		@sort="resetNewVariablesList"
+		@click:add="addTemporaryVariable"
 	>
 		<template #add-button>
 			<n8n-tooltip placement="top" :disabled="canCreateVariables">
@@ -308,6 +307,7 @@ function displayName(resource: EnvironmentVariable) {
 					overflow: hidden;
 					text-overflow: ellipsis;
 					white-space: nowrap;
+					height: 18px;
 				}
 
 				> div {

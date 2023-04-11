@@ -74,7 +74,6 @@ const keyValidationRules: Array<Rule | RuleGroup> = [
 ];
 
 const valueValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'REQUIRED' },
 	{ name: 'MAX_LENGTH', config: { maximum: 220 } },
 ];
 

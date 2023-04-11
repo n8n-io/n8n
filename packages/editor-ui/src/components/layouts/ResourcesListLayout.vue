@@ -133,8 +133,11 @@
 					<n8n-datatable
 						v-if="typeProps.columns"
 						data-test-id="resources-table"
+						:class="$style.datatable"
 						:columns="typeProps.columns"
 						:rows="filteredAndSortedSubviewResources"
+						:currentPage="currentPage"
+						@update:currentPage="setCurrentPage"
 					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
@@ -284,6 +287,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			isOwnerSubview: false,
 			sortBy: this.sortOptions[0],
 			hasFilters: false,
+			currentPage: 1,
 			resettingFilters: false,
 			EnterpriseEditionFeature,
 		};
@@ -377,6 +381,9 @@ export default mixins(showMessage, debounceHelper).extend({
 
 			this.loading = false;
 			this.$nextTick(this.focusSearchInput);
+		},
+		setCurrentPage(page: number) {
+			this.currentPage = page;
 		},
 		resetFilters() {
 			Object.keys(this.filters).forEach((key) => {
@@ -509,5 +516,9 @@ export default mixins(showMessage, debounceHelper).extend({
 
 .card-loading {
 	height: 69px;
+}
+
+.datatable {
+	padding-bottom: var(--spacing-s);
 }
 </style>

@@ -14,6 +14,7 @@ export default defineComponent({
 		N8nOption,
 		N8nPagination,
 	},
+	emits: ['update:currentPage'],
 	props: {
 		columns: {
 			type: Array as PropType<DatatableColumn[]>,
@@ -22,6 +23,10 @@ export default defineComponent({
 		rows: {
 			type: Array as PropType<DatatableRow[]>,
 			required: true,
+		},
+		currentPage: {
+			type: Number,
+			default: 1,
 		},
 		pagination: {
 			type: Boolean,
@@ -32,12 +37,11 @@ export default defineComponent({
 			default: 10,
 		},
 	},
-	setup(props) {
+	setup(props, { emit }) {
 		const { t } = useI18n();
 		const rowsPerPageOptions = ref([10, 25, 50, 100]);
 
 		const style = useCssModule();
-		const currentPage = ref(1);
 		const currentRowsPerPage = ref(props.rowsPerPage);
 
 		const totalPages = computed(() => {
@@ -49,7 +53,7 @@ export default defineComponent({
 		});
 
 		const visibleRows = computed(() => {
-			const start = (currentPage.value - 1) * currentRowsPerPage.value;
+			const start = (props.currentPage - 1) * currentRowsPerPage.value;
 			const end = start + currentRowsPerPage.value;
 
 			return props.rows.slice(start, end);
@@ -67,12 +71,16 @@ export default defineComponent({
 			};
 		}
 
+		function onUpdateCurrentPage(value: number) {
+			emit('update:currentPage', value);
+		}
+
 		function onRowsPerPageChange(value: number) {
 			currentRowsPerPage.value = value;
 
 			const maxPage = Math.ceil(totalRows.value / currentRowsPerPage.value);
-			if (maxPage < currentPage.value) {
-				currentPage.value = maxPage;
+			if (maxPage < props.currentPage) {
+				onUpdateCurrentPage(maxPage);
 			}
 		}
 
@@ -89,7 +97,6 @@ export default defineComponent({
 		return {
 			t,
 			classes,
-			currentPage,
 			totalPages,
 			totalRows,
 			visibleRows,
@@ -98,6 +105,7 @@ export default defineComponent({
 			getTdValue,
 			getTrClass,
 			getThStyle,
+			onUpdateCurrentPage,
 			onRowsPerPageChange,
 		};
 	},
@@ -137,11 +145,12 @@ export default defineComponent({
 			<n8n-pagination
 				v-if="totalPages > 1"
 				background
-				:current-page.sync="currentPage"
 				:pager-count="5"
 				:page-size="currentRowsPerPage"
 				layout="prev, pager, next"
 				:total="totalRows"
+				:currentPage="currentPage"
+				@update:currentPage="onUpdateCurrentPage"
 			/>
 
 			<div :class="$style.pageSizeSelector">
