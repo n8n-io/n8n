@@ -990,7 +990,8 @@ export type NodeParameterValueType =
 	| INodeParameterResourceLocator
 	| NodeParameterValue[]
 	| INodeParameters[]
-	| INodeParameterResourceLocator[];
+	| INodeParameterResourceLocator[]
+	| ResourceMapperValue[];
 
 export interface INodeParameters {
 	[key: string]: NodeParameterValueType;

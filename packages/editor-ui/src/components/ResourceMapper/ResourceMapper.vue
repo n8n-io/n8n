@@ -72,7 +72,8 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 	const fields = fieldsToMap.value.map((field) => {
 		return {
 			displayName: getFieldLabel(field),
-			name: field.id,
+			// Set part of the path to each param name so value can be fetched properly by input parameter list component
+			name: `value["${field.id}"]`,
 			type: (field.type as NodePropertyTypes) || 'string',
 			default: '',
 			required: field.required,
@@ -175,16 +176,26 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 	paramValue.value.matchingColumns = matchingColumns;
 }
 
-function fieldValueChanged(value: IUpdateInformation): void {
-	if (isResourceMapperValue(value.value)) {
-		paramValue.value.value[value.name] = value.value;
-		emitValueChanged();
+function fieldValueChanged(updateInfo: IUpdateInformation): void {
+	if (isResourceMapperValue(updateInfo.value)) {
+		// Extract the name from the path
+		const match = updateInfo.name.match(/.value\[\"(.+)\"\]/);
+		if (match) {
+			const name = match.pop();
+			if (name) {
+				paramValue.value.value = {
+					...paramValue.value.value,
+					[name]: updateInfo.value,
+				};
+				emitValueChanged();
+			}
+		}
 	}
 }
 
 function emitValueChanged(): void {
 	emit('valueChanged', {
-		name: `${props.path}.columns`,
+		name: `${props.path}`,
 		value: paramValue.value,
 		node: props.node?.name,
 	});
@@ -234,6 +245,7 @@ defineExpose({
 				:isReadOnly="false"
 				@valueChanged="fieldValueChanged"
 				:hideDelete="true"
+				:path="`${props.path}`"
 			/>
 		</div>
 	</div>

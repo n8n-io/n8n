@@ -85,7 +85,7 @@
 				v-else-if="parameter.type === 'resourceMapper'"
 				:parameter="parameter"
 				:node="node"
-				:path="path"
+				:path="getPath(parameter.name)"
 				inputSize="small"
 				labelSize="small"
 				:dependentParametersValues="getDependentParametersValues(parameter)"
