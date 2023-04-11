@@ -44,10 +44,10 @@ export class Reset extends BaseCommand {
 		await Db.collections.User.save(Object.assign(owner, defaultUserProps));
 
 		const danglingCredentials: CredentialsEntity[] =
-			(await Db.collections.Credentials.createQueryBuilder('credentials')
+			await Db.collections.Credentials.createQueryBuilder('credentials')
 				.leftJoinAndSelect('credentials.shared', 'shared')
 				.where('shared.credentialsId is null')
-				.getMany()) as CredentialsEntity[];
+				.getMany();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Db.collections.SharedCredentials.create({
 				credentials,

@@ -23,7 +23,6 @@ import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
-import type { Role } from '@db/entities/Role';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -36,6 +35,12 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { PostHogClient } from '@/posthog';
 import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import type {
+	RoleRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@/databases/repositories';
 
 @RestController('/users')
 export class UsersController {
@@ -47,13 +52,13 @@ export class UsersController {
 
 	private internalHooks: IInternalHooksClass;
 
-	private userRepository: Repository<User>;
+	private userRepository: UserRepository;
 
-	private roleRepository: Repository<Role>;
+	private roleRepository: RoleRepository;
 
-	private sharedCredentialsRepository: Repository<SharedCredentials>;
+	private sharedCredentialsRepository: SharedCredentialsRepository;
 
-	private sharedWorkflowRepository: Repository<SharedWorkflow>;
+	private sharedWorkflowRepository: SharedWorkflowRepository;
 
 	private activeWorkflowRunner: ActiveWorkflowRunner;
 

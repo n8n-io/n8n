@@ -112,7 +112,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	Container.reset();
 	await testDb.terminate();
 	await eventBus.close();
 });

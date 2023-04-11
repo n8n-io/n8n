@@ -83,7 +83,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	Container.reset();
 	await testDb.terminate();
 });
 

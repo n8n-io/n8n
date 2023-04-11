@@ -104,8 +104,7 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		const repository: Repository<any> = Db.collections[collection];
-		await repository.delete({});
+		await Db.collections[collection].clear();
 	}
 }
 
