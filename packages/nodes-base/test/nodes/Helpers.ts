@@ -30,6 +30,24 @@ import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
 
+import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
+
+const getFakeDecryptedCredentials = (
+	nodeCredentials: INodeCredentialsDetails,
+	type: string,
+	fakeCredentialsMap: IDataObject,
+) => {
+	if (nodeCredentials && fakeCredentialsMap[JSON.stringify(nodeCredentials)]) {
+		return fakeCredentialsMap[JSON.stringify(nodeCredentials)] as ICredentialDataDecryptedObject;
+	}
+
+	if (type && fakeCredentialsMap[type]) {
+		return fakeCredentialsMap[type] as ICredentialDataDecryptedObject;
+	}
+
+	return {};
+};
+
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
@@ -57,7 +75,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return {};
+		return getFakeDecryptedCredentials(nodeCredentials, type, FAKE_CREDENTIALS_DATA);
 	}
 
 	async getCredentials(
