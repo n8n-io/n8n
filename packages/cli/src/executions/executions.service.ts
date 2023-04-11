@@ -304,7 +304,7 @@ export class ExecutionsService {
 			});
 		}
 
-		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		// Omit `data` from the Execution since it is the largest and not necessary for the list.
 		let query = Db.collections.Execution.createQueryBuilder('execution')
 			.select([
 				'execution.id',
