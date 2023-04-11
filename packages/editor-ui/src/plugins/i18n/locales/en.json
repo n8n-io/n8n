@@ -1740,6 +1740,14 @@
 	"settings.sso.actionBox.title": "Available on Enterprise plan",
 	"settings.sso.actionBox.description": "Use Single Sign On to consolidate authentication into a single platform to improve security and agility.",
 	"settings.sso.actionBox.buttonText": "See plans",
+	"userActivationSurveyModal.title": "Congrats! Your workflow ran automatically 👏",
+	"userActivationSurveyModal.description.workflowRan": "{workflow} {ranSuccessfully} {savedTime}",
+	"userActivationSurveyModal.description.workflowRanSuccessfully": "ran successfully",
+	"userActivationSurveyModal.description.savedTime": "for the first time. Looks like n8n just saved you some time! Can you help us make n8n even better and answer the following question?",
+	"userActivationSurveyModal.form.label": "What almost stopped you from creating this workflow?",
+	"userActivationSurveyModal.form.button.shareFeedback": "Share feedback",
+	"userActivationSurveyModal.sharedFeedback.success": "Thanks for your feedback",
+	"userActivationSurveyModal.sharedFeedback.error": "Problem sharing feedback, try again",
 	"sso.login.divider": "or",
 	"sso.login.button": "Continue with SSO"
 }

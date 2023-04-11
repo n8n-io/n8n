@@ -179,7 +179,6 @@ export async function withFeatureFlags(
 
 	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
 		user.featureFlags = await postHog.getFeatureFlags(user);
-
 		resolve(user);
 	});
 
