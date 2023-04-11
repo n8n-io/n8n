@@ -4,6 +4,7 @@ import {
 	getCurrentInstance,
 	VNode,
 	PropType,
+	onMounted,
 	defineComponent,
 } from 'vue';
 import ItemsRenderer from './ItemsRenderer.vue';
@@ -107,6 +108,22 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	setAddedNodeActionParameters(actionData, telemetry);
 }
 
+function trackActionsView() {
+		const trigger_action_count = (activeViewStack.baselineItems || [])?.filter((action) =>
+			action.key.toLowerCase().includes('trigger'),
+		).length;
+
+		const trackingPayload = {
+			app_identifier: activeViewStack.subcategory,
+			actions: (activeViewStack.baselineItems || [])?.map((action) => (action as ActionCreateElement).properties.displayName),
+			regular_action_count: (activeViewStack.baselineItems || [])?.length - trigger_action_count,
+			trigger_action_count,
+		};
+
+		$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+		telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+	}
+
 function resetSearch() {
 	updateCurrentViewStack({ search: '' });
 }
@@ -146,6 +163,10 @@ const OrderSwitcher = defineComponent({
 		);
 	},
 });
+
+onMounted(() => {
+	trackActionsView()
+})
 </script>
 
 <template>

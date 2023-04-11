@@ -1,5 +1,6 @@
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
 import {
+ActionCreateElement,
 	INodeCreateElement,
 	LabelCreateElement,
 } from '@/Interface';
@@ -114,65 +115,6 @@ export const useActions = () => {
 		if (withLabels) return injectActionsLabels(filteredActions);
 		return filteredActions;
 	}
-
-	// const actionsSearchPlaceholder = computed(() => {
-	// 	const nodeNameTitle = activeNodeActions.value?.displayName?.trim() as string;
-	// 	return instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
-	// 		interpolate: { nodeNameTitle },
-	// 	});
-	// });
-
-	// const nodeAppActionsSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
-	// 	if (!activeNodeActions.value) return undefined;
-
-	// 	const icon = activeNodeActions.value.iconUrl
-	// 		? `${baseUrl}${activeNodeActions.value.iconUrl}`
-	// 		: activeNodeActions.value.icon?.split(':')[1];
-
-	// 	return {
-	// 		type: 'subcategory',
-	// 		key: activeNodeActions.value.name,
-	// 		properties: {
-	// 			subcategory: activeNodeActions.value.displayName,
-	// 			description: '',
-	// 			iconType: activeNodeActions.value.iconUrl ? 'file' : 'icon',
-	// 			icon,
-	// 			color: activeNodeActions.value.defaults.color,
-	// 		},
-	// 	};
-	// });
-
-	// function getCustomAPICallHintLocale(key: string) {
-	// 	if (!isActionsActive.value) return '';
-
-	// 	const nodeNameTitle = activeNodeActions.value?.displayName || '';
-	// 	return instance?.proxy.$locale.baseText(`nodeCreator.actionsList.${key}` as BaseTextKey, {
-	// 		interpolate: { nodeNameTitle },
-	// 	});
-	// }
-
-	// function trackActionsView() {
-	// 	const trigger_action_count = selectedNodeActions.value.filter((action) =>
-	// 		action.name.toLowerCase().includes('trigger'),
-	// 	).length;
-
-	// 	const trackingPayload = {
-	// 		app_identifier: activeNodeActions.value?.name,
-	// 		actions: selectedNodeActions.value.map((action) => action.displayName),
-	// 		regular_action_count: selectedNodeActions.value.length - trigger_action_count,
-	// 		trigger_action_count,
-	// 	};
-
-	// 	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-	// 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
-	// }
-
-	// function onActionSelected(actionCreateElement: INodeCreateElement) {
-	// 	const action = (actionCreateElement.properties as ActionItemProps).nodeType;
-	// 	const actionUpdateData = getActionData(action);
-	// 	instance?.proxy.$emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
-	// 	setAddedNodeActionParameters(actionUpdateData, telemetry);
-	// }
 
 	return {
 		actionsCategoryLocales,

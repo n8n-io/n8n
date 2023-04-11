@@ -1,13 +1,7 @@
-import { getCurrentInstance } from 'vue';
-
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { sublimeSearch } from '@/utils';
 import { INodeCreateElement } from '@/Interface';
 
 export const useNodesSearch = () => {
-	const instance = getCurrentInstance();
-	const nodeCreatorStore = useNodeCreatorStore();
-
 	function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 		// In order to support the old search we need to remove the 'trigger' part
 		const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '');
