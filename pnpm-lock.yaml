@@ -1404,8 +1404,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       vm2:
-        specifier: ~3.9.5
-        version: 3.9.11
+        specifier: ~3.9.15
+        version: 3.9.15
       xlsx:
         specifier: ^0.17.0
         version: 0.17.5
@@ -7646,17 +7646,10 @@ packages:
     hasBin: true
     dev: true
 
-  /acorn@8.8.0:
-    resolution: {integrity: sha512-QOxyigPVrpZ2GXT+PFyZTl6TtOFc5egxHIP9IlQ+RbupQuX4RkT/Bee4/kQuC02Xkzg84JcT7oLYtDIQxp+v7w==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-    dev: false
-
   /acorn@8.8.1:
     resolution: {integrity: sha512-7zFpHzhnqYKrkYdUjF1HI1bzd0VygEGX8lFk4k5zVMqHEoES+P+7TKI+EvLO9WVMJ8eekdO0aDEK044xTXwPPA==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-    dev: true
 
   /address@1.2.1:
     resolution: {integrity: sha512-B+6bi5D34+fDYENiH5qOlA0cV2rAGKuWZ9LeyUUehbXy8e0VS9e498yO0Jeeh+iM+6KbfudHTFjXw2MmJD4QRA==}
@@ -10366,7 +10359,7 @@ packages:
       ast-types: 0.13.4
       escodegen: 1.14.3
       esprima: 4.0.1
-      vm2: 3.9.11
+      vm2: 3.9.15
     dev: false
 
   /del@6.1.1:
@@ -21416,12 +21409,12 @@ packages:
       - terser
     dev: true
 
-  /vm2@3.9.11:
-    resolution: {integrity: sha512-PFG8iJRSjvvBdisowQ7iVF580DXb1uCIiGaXgm7tynMR1uTBlv7UJlB1zdv5KJ+Tmq1f0Upnj3fayoEOPpCBKg==}
+  /vm2@3.9.15:
+    resolution: {integrity: sha512-XqNqknHGw2avJo13gbIwLNZUumvrSHc9mLqoadFZTpo3KaNEJoe1I0lqTFhRXmXD7WkLyG01aaraXdXT0pa4ag==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:
-      acorn: 8.8.0
+      acorn: 8.8.1
       acorn-walk: 8.2.0
     dev: false
 
