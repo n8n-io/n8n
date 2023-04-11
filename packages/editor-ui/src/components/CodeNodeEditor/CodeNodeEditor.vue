@@ -6,7 +6,7 @@
 			size="small"
 			type="tertiary"
 			:class="$style['ask-ai-button']"
-			@click="onAskAiButtonClick"
+			@mousedown="onAskAiButtonClick"
 		>
 			✨ Ask AI
 		</n8n-button>
@@ -167,7 +167,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					this.isEditorFocused = true;
 				},
 				blur: () => {
-					setTimeout(() => (this.isEditorFocused = false), 100); // allow modal to open
+					this.isEditorFocused = false;
 				},
 			}),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
