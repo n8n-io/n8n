@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { computed, onMounted, getCurrentInstance } from 'vue';
 import ItemsRenderer from './ItemsRenderer.vue';
-import { INodeCreateElement, LabelCreateElement } from '@/Interface';
+import { INodeCreateElement, ActionTypeDescription } from '@/Interface';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 import { useActions } from './composables/useActions';
-import { computed } from 'vue';
-
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { useViewStacks } from './composables/useViewStacks';
 export interface Props {
 	actions: INodeCreateElement[];
 	rootView: 'trigger' | 'action';
@@ -15,6 +17,16 @@ const props = withDefaults(defineProps<Props>(), {
 	search: '',
 });
 
+const emit = defineEmits({
+	nodeTypeSelected: (nodeTypes: string[]) => true,
+});
+const instance = getCurrentInstance();
+const telemetry = instance?.proxy.$telemetry;
+
+const { popViewStack } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
+const { getNodeTypesWithManualTrigger, setAddedNodeActionParameters, getActionData } =
+	useNodeCreatorStore();
 const { getPlaceholderTriggerActions, parseCategoryActions, actionsCategoryLocales } = useActions();
 const placeholderTriggerActions = getPlaceholderTriggerActions(props.subcategory);
 
@@ -33,6 +45,34 @@ const triggerCategoryName = computed(() =>
 		? actionsCategoryLocales.value.triggers
 		: `${actionsCategoryLocales.value.triggers} (${placeholderTriggerActions.length})`,
 );
+
+registerKeyHook('ActionsKeyRight', {
+	keyboardKey: 'ArrowRight',
+	condition: ({ type, activeItemId }) => type === 'action',
+	handler: arrowRight,
+});
+
+registerKeyHook('ActionsKeyLeft', {
+	keyboardKey: 'ArrowLeft',
+	condition: ({ type, activeItemId }) => type === 'action',
+	handler: arrowLeft,
+});
+
+function arrowLeft() {
+	popViewStack();
+}
+
+function arrowRight({ activeItemId }) {
+	const mergedActions = [...props.actions, ...placeholderTriggerActions];
+	const activeAction = mergedActions.find((a) => a.uuid === activeItemId);
+	if (activeAction) onSelected(activeAction);
+}
+
+function onSelected(actionCreateElement: INodeCreateElement) {
+	const actionData = getActionData(actionCreateElement.properties as ActionTypeDescription);
+	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
+	setAddedNodeActionParameters(actionData, telemetry);
+}
 </script>
 
 <template>
@@ -42,7 +82,7 @@ const triggerCategoryName = computed(() =>
 			:elements="parsedTriggerActions"
 			:category="triggerCategoryName"
 			isTriggerCategory
-			v-on="$listeners"
+			@selected="onSelected"
 		>
 			<!-- Permanent slot callout -->
 			<template>
@@ -61,7 +101,7 @@ const triggerCategoryName = computed(() =>
 						"
 					/>
 				</n8n-callout>
-				<ItemsRenderer :elements="placeholderTriggerActions" v-on="$listeners" />
+				<ItemsRenderer @selected="onSelected" :elements="placeholderTriggerActions" />
 			</template>
 		</CategorizedItemsRenderer>
 
@@ -69,7 +109,7 @@ const triggerCategoryName = computed(() =>
 		<CategorizedItemsRenderer
 			:elements="parsedActionActions"
 			:category="actionsCategoryLocales.actions"
-			v-on="$listeners"
+			@selected="onSelected"
 		>
 			<!-- Empty state -->
 			<template #empty v-if="!search">

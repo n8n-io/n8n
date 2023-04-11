@@ -14,42 +14,40 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<TriggerMode />
+				<TriggerMode @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs, getCurrentInstance, computed } from 'vue';
+import { watch, reactive, toRefs, computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import TriggerMode from './TriggerMode.vue';
-
-import { IUpdateInformation } from '@/Interface';
+import { useViewStacks } from './composables/useViewStacks';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 export interface Props {
 	active?: boolean;
 }
 
 const props = defineProps<Props>();
-const instance = getCurrentInstance();
-
+const { resetViewStacks } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void;
 	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
 
-const {
-	subscribeToEvent,
-	getNodeTypesWithManualTrigger,
-	setAddedNodeActionParameters,
-	setShowScrim,
-} = useNodeCreatorStore();
+const { setShowScrim } = useNodeCreatorStore();
 
-subscribeToEvent('actionSelected', (action) => {
-	const actionUpdateData = action as IUpdateInformation;
-	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
-	setAddedNodeActionParameters(actionUpdateData, instance?.proxy.$telemetry);
+registerKeyHook('NodeCreatorCloseEscape', {
+	keyboardKey: 'Escape',
+	handler: () => emit('closeNodeCreator'),
+});
+registerKeyHook('NodeCreatorCloseTab', {
+	keyboardKey: 'Tab',
+	handler: () => emit('closeNodeCreator'),
 });
 
 const state = reactive({
@@ -58,9 +56,10 @@ const state = reactive({
 });
 
 const showScrim = computed(() => useNodeCreatorStore().showScrim);
+
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator
-	// and try to drag undraggable element. In that case the click event would
+	// and try to drag non-draggable element. In that case the click event would
 	// be fired and the node creator would be closed. So we stop that if we detect
 	// that the click event originated from inside the node creator. And fire click even on the
 	// original target.
@@ -108,10 +107,19 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) setShowScrim(false);
+		if (isActive === false) {
+			setShowScrim(false);
+			resetViewStacks();
+		}
 	},
 );
 
+// Close node creator when the last view stacks is closed
+watch(useViewStacks().viewStacks, (viewStacks) => {
+	if (viewStacks.length === 0) {
+		emit('closeNodeCreator');
+	}
+});
 const { nodeCreator } = toRefs(state);
 </script>
 

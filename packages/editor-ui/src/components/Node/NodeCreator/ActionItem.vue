@@ -1,13 +1,13 @@
 <template>
 	<n8n-node-creator-node
 		:key="`${action.actionKey}_${action.displayName}`"
-		@click="onActionClick(action)"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		draggable
 		:class="$style.action"
 		:title="action.displayName"
 		:isTrigger="isTriggerAction(action)"
+		data-keyboard-nav="true"
 	>
 		<template #dragContent>
 			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
+import { reactive, computed, toRefs, getCurrentInstance, onMounted } from 'vue';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { ActionTypeDescription, IUpdateInformation, SimplifiedNodeType } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -37,12 +37,8 @@ export interface Props {
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
-const {
-	getActionData,
-	getNodeTypesWithManualTrigger,
-	setAddedNodeActionParameters,
-	addEventToQueue,
-} = useNodeCreatorStore();
+const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
+	useNodeCreatorStore();
 
 const state = reactive({
 	dragging: false,
@@ -53,11 +49,6 @@ const state = reactive({
 	storeWatcher: null as Function | null,
 	draggableDataTransfer: null as Element | null,
 });
-const emit = defineEmits<{
-	(event: 'actionSelected', action: IUpdateInformation): void;
-	(event: 'dragstart', $e: DragEvent): void;
-	(event: 'dragend', $e: DragEvent): void;
-}>();
 
 const draggableStyle = computed<{ top: string; left: string }>(() => ({
 	top: `${state.draggablePosition.y}px`,
@@ -68,10 +59,6 @@ const actionData = computed(() => getActionData(props.action));
 
 const isTriggerAction = (action: ActionTypeDescription) =>
 	action.name?.toLowerCase().includes('trigger') || action.name === WEBHOOK_NODE_TYPE;
-
-function onActionClick(actionItem: ActionTypeDescription) {
-	addEventToQueue('actionSelected', getActionData(actionItem));
-}
 
 function onDragStart(event: DragEvent): void {
 	/**
@@ -96,7 +83,6 @@ function onDragStart(event: DragEvent): void {
 
 	state.dragging = true;
 	state.draggablePosition = { x, y };
-	addEventToQueue('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
@@ -113,8 +99,6 @@ function onDragEnd(event: DragEvent): void {
 	if (state.storeWatcher) state.storeWatcher();
 	document.body.removeEventListener('dragend', onDragEnd);
 	document.body.removeEventListener('dragover', onDragOver);
-
-	addEventToQueue('dragend', event);
 
 	state.dragging = false;
 	setTimeout(() => {

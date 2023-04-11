@@ -13,23 +13,12 @@ export function transformNodeType(
 	subcategory?: string,
 	type: 'node' | 'action' = 'node',
 ): NodeCreateElement | ActionCreateElement {
-	const { displayName, description, name, group, icon, iconUrl, codex, defaults } = node;
-	console.log('🚀 ~ file: utils.ts:17 ~ defaults:', defaults);
-
-	const createElement: NodeCreateElement | ActionCreateElement = {
+	const createElement = {
 		uuid: uuidv4(),
 		key: node.name,
-		subcategory: subcategory ?? codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
+		subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
 		properties: {
-			// ...node,
-			defaults,
-			displayName,
-			description,
-			name,
-			group,
-			icon,
-			iconUrl,
-			codex,
+			...node,
 		},
 		type,
 	};
@@ -38,6 +27,7 @@ export function transformNodeType(
 		? (createElement as ActionCreateElement)
 		: (createElement as NodeCreateElement);
 }
+
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
 		// Only Core Nodes subcategories are valid, others are uncategorized

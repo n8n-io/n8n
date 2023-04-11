@@ -8,6 +8,7 @@ import {
 	set,
 	del,
 } from 'vue';
+import { defineStore } from 'pinia';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
@@ -41,14 +42,14 @@ interface ViewStack {
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 }
 
-export const useViewStacks = () => {
+export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { searchNodes } = useNodesSearch();
 
 	const stacks = ref<ViewStack[]>([]);
 	const viewStacks = computed<ViewStack[]>(() => stacks.value);
 
-	const isRootView = computed(() => stacks.value.length === 1);
+	const isRootView = computed(() => stacks.value.length <= 1);
 
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
 		const stack = stacks.value[stacks.value.length - 1];
@@ -165,13 +166,19 @@ export const useViewStacks = () => {
 		});
 	}
 
+	function resetViewStacks() {
+		stacks.value = [];
+	}
+
 	return {
 		viewStacks,
 		activeViewStack,
 		activeViewStackMode,
 		globalSearchItemsDiff,
+		isRootView,
+		resetViewStacks,
 		updateViewStack,
 		pushViewStack,
 		popViewStack,
 	};
-};
+});

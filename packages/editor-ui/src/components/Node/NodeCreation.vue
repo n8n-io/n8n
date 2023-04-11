@@ -123,6 +123,7 @@ export default Vue.extend({
 			]);
 		},
 		closeNodeCreator() {
+			console.log('Close node creator');
 			this.$emit('toggleNodeCreator', { createNodeActive: false });
 		},
 		nodeTypeSelected(nodeTypeNames: string[]) {

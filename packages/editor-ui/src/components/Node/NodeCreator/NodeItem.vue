@@ -4,7 +4,6 @@
 		:draggable="!showActionArrow"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		@click="onClick"
 		:class="$style.nodeItem"
 		:description="subcategory !== '*' ? description : ''"
 		:title="displayName"
@@ -58,13 +57,6 @@ const props = withDefaults(defineProps<Props>(), {
 	active: false,
 });
 
-const emit = defineEmits<{
-	(event: 'click', $e: MouseEvent): void;
-	(event: 'dragstart', $e: DragEvent): void;
-	(event: 'dragend', $e: DragEvent): void;
-	(event: 'nodeTypeSelected', value: string[]): void;
-	(event: 'actionsOpen', value: SimplifiedNodeType): void;
-}>();
 const { getNodeTypesWithManualTrigger, actions, addEventToQueue } = useNodeCreatorStore();
 const instance = getCurrentInstance();
 
@@ -110,14 +102,6 @@ const displayName = computed<any>(() => {
 	});
 });
 
-// const isTriggerNode = computed<boolean>(() =>
-// 	props.nodeType.displayName.toLowerCase().includes('trigger'),
-// );
-
-function onClick(e: MouseEvent) {
-	if (hasActions.value) emit('click', e);
-	else addEventToQueue('actionsOpen', props.nodeType);
-}
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
@@ -140,7 +124,6 @@ function onDragStart(event: DragEvent): void {
 
 	dragging.value = true;
 	draggablePosition.value = { x, y };
-	addEventToQueue('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
@@ -155,8 +138,6 @@ function onDragOver(event: DragEvent): void {
 
 function onDragEnd(event: DragEvent): void {
 	document.body.removeEventListener('dragover', onDragOver);
-
-	addEventToQueue('dragend', event);
 
 	dragging.value = false;
 	setTimeout(() => {

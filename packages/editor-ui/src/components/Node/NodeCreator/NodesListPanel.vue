@@ -5,7 +5,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { reactive, computed, watch } from 'vue';
+import { reactive, computed, watch, onMounted, nextTick } from 'vue';
 import SearchBar from './SearchBar.vue';
 
 export interface Props {
@@ -26,6 +26,7 @@ export interface Props {
 
 const emit = defineEmits<{
 	(event: 'back'): void;
+	(event: 'transitionEnd'): void;
 	(event: 'searchInput', value: string): void;
 }>();
 
@@ -50,7 +51,7 @@ function onSearch(e: string) {
 </script>
 
 <template>
-	<transition :name="`panel-slide-${transitionDirection}`">
+	<transition :name="`panel-slide-${transitionDirection}`" @afterLeave="$listeners.transitionEnd">
 		<aside :class="$style.nodesListPanel" @keydown.capture.stop>
 			<header :class="{ [$style.header]: true, [$style.hasBg]: hasHeaderBg }">
 				<div :class="$style.top">

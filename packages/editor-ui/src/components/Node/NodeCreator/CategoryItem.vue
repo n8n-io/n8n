@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.categoryWrapper" v-on="$listeners">
+	<div :class="$style.categoryWrapper" v-on="$listeners" data-keyboard-nav="true">
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
 			<span :class="$style.name">
 				<span v-text="categoryName" />
@@ -12,7 +12,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 
 export interface Props {
 	expanded?: boolean;

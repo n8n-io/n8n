@@ -6,7 +6,8 @@ import CategoryItem from './CategoryItem.vue';
 import LabelItem from './LabelItem.vue';
 import ActionItem from './ActionItem.vue';
 import ViewItem from './ViewItem.vue';
-import { reactive, toRefs, onMounted, watch, onUnmounted, ref, watchEffect } from 'vue';
+import { reactive, toRefs, onMounted, watch, onUnmounted, ref, computed, nextTick } from 'vue';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -20,16 +21,17 @@ const props = withDefaults(defineProps<Props>(), {
 	lazyRender: true,
 });
 
+// const { } = useKeyboardNavigation();
 const emit = defineEmits<{
 	(event: 'selected', element: INodeCreateElement, $e?: Event): void;
 	(event: 'dragstart', element: INodeCreateElement, $e: Event): void;
 	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
 }>();
 
-// const iteratorItems = ref<HTMLElement[]>([]);
 const renderedItems = ref<INodeCreateElement[]>([]);
 const renderAnimationRequest = ref<number>(0);
 
+const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
@@ -92,13 +94,6 @@ watch(
 	},
 );
 
-watch(
-	() => props.activeIndex,
-	async () => {
-		if (props.activeIndex === undefined) return;
-		// iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
-	},
-);
 </script>
 
 <template>
@@ -119,18 +114,22 @@ watch(
 			:class="{
 				clickable: !disabled,
 				[$style[item.type]]: true,
-				[$style.active]: activeIndex === index && !disabled,
+				[$style.active]: activeItemId === item.uuid,
 				[$style.iteratorItem]: true,
 			}"
 			ref="iteratorItems"
+			:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
+			:data-keyboard-nav-id="item.uuid"
 			@click="wrappedEmit('selected', item)"
 		>
+			<!-- <span style="position: absolute">{{ activeItemId }}</span> -->
 			<label-item v-if="item.type === 'label'" :item="item" />
 			<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
 			<node-item
 				v-if="item.type === 'node'"
 				:nodeType="item.properties"
+				:active="true"
 				:subcategory="item.subcategory"
 			/>
 
@@ -138,6 +137,7 @@ watch(
 				v-if="item.type === 'action'"
 				:nodeType="item.properties"
 				:action="item.properties"
+				:active="true"
 			/>
 
 			<view-item v-else-if="item.type === 'view'" :view="item.properties" />
@@ -165,9 +165,9 @@ watch(
 		border-color: $node-creator-item-hover-border-color;
 	}
 
-	// &.active:not(.category)::before {
-	// 	border-color: $color-primary !important;
-	// }
+	&.active:not(.category)::before {
+		border-color: $color-primary !important;
+	}
 
 	// &.category.singleCategory {
 	// 	display: none;
@@ -185,7 +185,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 
-	// height: 100%;
 	scrollbar-width: none; /* Firefox 64 */
 	& > *::-webkit-scrollbar {
 		display: none;

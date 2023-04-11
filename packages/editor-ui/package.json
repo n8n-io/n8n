@@ -103,6 +103,7 @@
     "@vitejs/plugin-legacy": "^3.0.1",
     "@vitejs/plugin-vue2": "^2.2.0",
     "@vitest/coverage-c8": "^0.28.5",
+    "@volar-plugins/eslint": "^0.0.4",
     "c8": "^7.12.0",
     "jshint": "^2.9.7",
     "miragejs": "^0.1.47",

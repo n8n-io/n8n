@@ -365,13 +365,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		showScrim.value = isVisible;
 	}
 
-	function addEventToQueue(eventKey: string, payload?: unknown) {
-		eventsQueue.value.push({
-			eventKey,
-			payload,
-		});
-	}
-
 	function getActionData(actionItem: ActionTypeDescription): IUpdateInformation {
 		const displayOptions = actionItem.displayOptions;
 
@@ -420,47 +413,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		return nodeTypes;
 	}
 
-	function subscribeToEvent(eventKey: string, callback: (payload?: any) => void) {
-		const uuid = uuidv4();
-		eventsSubscribers.value.push({
-			uuid,
-			eventKey,
-			callback,
-		});
-
-		return () => unsubscribeFromEvent(uuid);
-	}
-
-	function unsubscribeFromEvent(uuid: string) {
-		eventsSubscribers.value = eventsSubscribers.value.filter(
-			(subscriber) => subscriber.uuid !== uuid,
-		);
-	}
-
-	function processEventQueue() {
-		// Create a separate array for the items to be processed in this cycle
-		const itemsToProcess = [...eventsQueue.value];
-		// Clear the queue
-		eventsQueue.value = [];
-
-		// Process items
-		itemsToProcess.forEach(({ eventKey, payload }) => {
-			const matchingSubscribers = eventsSubscribers.value.filter(
-				(subscriber) => subscriber.eventKey === eventKey,
-			);
-
-			matchingSubscribers.forEach((subscriber) => subscriber.callback(payload));
-		});
-	}
-
-	watch(queueLength, () => processEventQueue());
-
 	return {
 		getActionData,
 		generateActions,
 		setShowScrim,
-		addEventToQueue,
-		subscribeToEvent,
 		getNodeTypesWithManualTrigger,
 		setAddedNodeActionParameters,
 		showScrim,

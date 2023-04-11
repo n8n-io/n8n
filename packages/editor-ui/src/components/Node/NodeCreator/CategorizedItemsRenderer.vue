@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
 import CategoryItem from './CategoryItem.vue';
-import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
+import { reactive, computed, onMounted, watch, onUnmounted, ref } from 'vue';
 import ItemsRenderer from './ItemsRenderer.vue';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { useViewStacks } from './composables/useViewStacks';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -12,20 +15,55 @@ export interface Props {
 	isTriggerCategory?: boolean;
 }
 
+const { popViewStack } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
 
+const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const expanded = ref(true);
 function onClick() {
-	expanded.value = !expanded.value;
+	setExpanded(!expanded.value);
 }
+
+function setExpanded(isExpanded: boolean) {
+	expanded.value = isExpanded;
+}
+
 watch(
 	() => props.elements,
 	(elements) => {
-		expanded.value = elements.length > 0;
+		setExpanded(elements.length > 0);
 	},
 );
+
+registerKeyHook(`CategoryRight_${props.category}`, {
+	keyboardKey: 'ArrowRight',
+	condition: ({ type, activeItemId }) => type === 'category' && props.category === activeItemId,
+	handler: arrowRight,
+});
+
+registerKeyHook(`CategoryLeft_${props.category}`, {
+	keyboardKey: 'ArrowLeft',
+	condition: ({ type, activeItemId }) => type === 'category' && props.category === activeItemId,
+	handler: arrowLeft,
+});
+
+function arrowRight() {
+	console.log('ArrowRight');
+	if (expanded.value) return;
+
+	expanded.value = true;
+}
+function arrowLeft() {
+	if (!expanded.value) {
+		popViewStack();
+		return;
+	}
+
+	expanded.value = false;
+}
 </script>
 
 <template>
@@ -33,10 +71,12 @@ watch(
 		<CategoryItem
 			:name="category"
 			:disabled="disabled"
-			:active="activeIndex === 0"
+			:active="activeItemId === category"
 			:count="elements.length"
 			:expanded="expanded"
-			:isTrigger="isTriggerCategory || false"
+			:isTrigger="isTriggerCategory"
+			data-keyboard-nav-type="category"
+			:data-keyboard-nav-id="category"
 			@click="onClick"
 		/>
 		<div :class="$style.contentSlot" v-if="expanded && elements.length > 0 && $slots.default">
@@ -47,7 +87,7 @@ watch(
 			v-if="expanded"
 			:elements="elements"
 			v-on="$listeners"
-			:isTrigger="isTriggerCategory || false"
+			:isTrigger="isTriggerCategory"
 		>
 			<template #default> </template>
 			<template #empty>
@@ -61,8 +101,4 @@ watch(
 .contentSlot {
 	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
 }
-// .categorizedItemsRenderer {
-// 	display: flex;
-// 	flex-direction: column;
-// }
 </style>
