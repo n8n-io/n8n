@@ -361,7 +361,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function setShowScrim(isVisible: boolean) {
-		console.log('🚀 ~ file: nodeCreator.ts:351 ~ setShowScrim ~ isVisible:', isVisible);
 		showScrim.value = isVisible;
 	}
 

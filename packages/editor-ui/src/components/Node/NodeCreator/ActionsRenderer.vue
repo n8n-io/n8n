@@ -47,14 +47,14 @@ const triggerCategoryName = computed(() =>
 );
 
 registerKeyHook('ActionsKeyRight', {
-	keyboardKey: 'ArrowRight',
-	condition: ({ type, activeItemId }) => type === 'action',
-	handler: arrowRight,
+	keyboardKeys: ['ArrowRight', 'Enter'],
+	condition: (type) => type === 'action',
+	handler: onKeySelect,
 });
 
 registerKeyHook('ActionsKeyLeft', {
-	keyboardKey: 'ArrowLeft',
-	condition: ({ type, activeItemId }) => type === 'action',
+	keyboardKeys: ['ArrowLeft'],
+	condition: (type) => type === 'action',
 	handler: arrowLeft,
 });
 
@@ -62,14 +62,16 @@ function arrowLeft() {
 	popViewStack();
 }
 
-function arrowRight({ activeItemId }) {
+function onKeySelect(activeItemId: string) {
 	const mergedActions = [...props.actions, ...placeholderTriggerActions];
 	const activeAction = mergedActions.find((a) => a.uuid === activeItemId);
+
 	if (activeAction) onSelected(activeAction);
 }
 
 function onSelected(actionCreateElement: INodeCreateElement) {
 	const actionData = getActionData(actionCreateElement.properties as ActionTypeDescription);
+
 	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
 	setAddedNodeActionParameters(actionData, telemetry);
 }
@@ -81,6 +83,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		<CategorizedItemsRenderer
 			:elements="parsedTriggerActions"
 			:category="triggerCategoryName"
+			:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
 			isTriggerCategory
 			@selected="onSelected"
 		>
@@ -91,7 +94,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 				</n8n-callout>
 			</template>
 			<!-- Empty state -->
-			<template #empty v-if="!search">
+			<template #empty>
 				<n8n-callout theme="warning" iconless>
 					<p
 						v-html="
@@ -109,6 +112,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		<CategorizedItemsRenderer
 			:elements="parsedActionActions"
 			:category="actionsCategoryLocales.actions"
+			:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.actionsPerformStep')"
 			@selected="onSelected"
 		>
 			<!-- Empty state -->
@@ -131,15 +135,15 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: var(--spacing-xl);
 	&.reversed {
 		flex-direction: column-reverse;
 		& > [data-category-collapsed='true'] {
-			margin-bottom: calc(-1 * var(--spacing-l));
+			margin-bottom: calc(-1 * var(--spacing-xl));
 		}
 	}
 	& > [data-category-collapsed='true']:nth-child(1) {
-		margin-bottom: calc(-1 * var(--spacing-l));
+		margin-bottom: calc(-1 * var(--spacing-xl));
 	}
 }
 </style>

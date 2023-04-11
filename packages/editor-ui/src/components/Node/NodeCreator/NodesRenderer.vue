@@ -38,21 +38,21 @@ const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDi
 const viewStacks = computed(() => useViewStacks().viewStacks);
 
 registerKeyHook('MainViewArrowRight', {
-	keyboardKey: 'ArrowRight',
-	condition: ({ type }) => ['subcategory', 'node'].includes(type),
-	handler: arrowRight,
+	keyboardKeys: ['ArrowRight', 'Enter'],
+	condition: (type) => ['subcategory', 'node'].includes(type),
+	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
-	keyboardKey: 'ArrowLeft',
-	condition: ({ type }) => ['subcategory', 'node'].includes(type),
+	keyboardKeys: ['ArrowLeft'],
+	condition: (type) => ['subcategory', 'node'].includes(type),
 	handler: arrowLeft,
 });
 
 function arrowLeft() {
 	popViewStack();
 }
-function arrowRight({ activeItemId }: { activeItemId: string }) {
+function onKeySelect(activeItemId: string) {
 	const mergedItems = [
 		...(activeViewStack.value.items || []),
 		...(globalSearchItemsDiff.value || []),

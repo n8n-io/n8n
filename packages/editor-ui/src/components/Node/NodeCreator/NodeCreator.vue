@@ -1,11 +1,10 @@
 <template>
 	<div>
-		<aside :class="{ 'node-creator-scrim': true, active: showScrim }" />
-		Scrim {{ showScrim }}
+		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
 		<slide-transition>
 			<div
 				v-if="active"
-				class="node-creator"
+				:class="$style.nodeCreator"
 				ref="nodeCreator"
 				v-click-outside="onClickOutside"
 				@dragover="onDragOver"
@@ -42,11 +41,11 @@ const emit = defineEmits<{
 const { setShowScrim } = useNodeCreatorStore();
 
 registerKeyHook('NodeCreatorCloseEscape', {
-	keyboardKey: 'Escape',
+	keyboardKeys: ['Escape'],
 	handler: () => emit('closeNodeCreator'),
 });
 registerKeyHook('NodeCreatorCloseTab', {
-	keyboardKey: 'Tab',
+	keyboardKeys: ['Tab'],
 	handler: () => emit('closeNodeCreator'),
 });
 
@@ -56,6 +55,8 @@ const state = reactive({
 });
 
 const showScrim = computed(() => useNodeCreatorStore().showScrim);
+
+const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator
@@ -115,22 +116,17 @@ watch(
 );
 
 // Close node creator when the last view stacks is closed
-watch(useViewStacks().viewStacks, (viewStacks) => {
-	if (viewStacks.length === 0) {
+watch(viewStacksLength, (viewStacksLength) => {
+	if (viewStacksLength === 0) {
 		emit('closeNodeCreator');
+		setShowScrim(false);
 	}
 });
 const { nodeCreator } = toRefs(state);
 </script>
 
-<style scoped lang="scss">
-::v-deep *,
-*:before,
-*:after {
-	box-sizing: border-box;
-}
-
-.node-creator {
+<style module lang="scss">
+.nodeCreator {
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -140,7 +136,7 @@ const { nodeCreator } = toRefs(state);
 	color: $node-creator-text-color;
 }
 
-.node-creator-scrim {
+.nodeCreatorScrim {
 	position: fixed;
 	top: $header-height;
 	right: 0;

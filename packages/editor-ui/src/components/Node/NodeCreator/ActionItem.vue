@@ -1,6 +1,5 @@
 <template>
 	<n8n-node-creator-node
-		:key="`${action.actionKey}_${action.displayName}`"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		draggable
@@ -22,9 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance, onMounted } from 'vue';
+import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
-import { ActionTypeDescription, IUpdateInformation, SimplifiedNodeType } from '@/Interface';
+import { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { WEBHOOK_NODE_TYPE } from '@/constants';

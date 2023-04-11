@@ -4,6 +4,7 @@
 			<span :class="$style.name">
 				<span v-text="categoryName" />
 				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
+				<slot />
 			</span>
 			<font-awesome-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
 			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
@@ -49,7 +50,7 @@ const categoryName = computed(() => {
 	&::before {
 		content: '';
 		position: absolute;
-		left: -1px;
+		left: 0;
 		top: 0;
 		bottom: 0;
 		border-left: 2px solid transparent;
@@ -60,9 +61,6 @@ const categoryName = computed(() => {
 	&.active::before {
 		border-color: $color-primary;
 	}
-}
-.categoryWrapper {
-	outline: 0;
 }
 
 .callout {

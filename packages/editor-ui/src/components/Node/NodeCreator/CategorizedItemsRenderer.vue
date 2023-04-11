@@ -13,6 +13,7 @@ export interface Props {
 	disabled?: boolean;
 	activeIndex?: number;
 	isTriggerCategory?: boolean;
+	mouseOverTooltip?: string;
 }
 
 const { popViewStack } = useViewStacks();
@@ -23,7 +24,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const expanded = ref(true);
-function onClick() {
+
+function toggleExpanded() {
 	setExpanded(!expanded.value);
 }
 
@@ -34,30 +36,34 @@ function setExpanded(isExpanded: boolean) {
 watch(
 	() => props.elements,
 	(elements) => {
-		setExpanded(elements.length > 0);
+		setExpanded(true);
 	},
 );
 
 registerKeyHook(`CategoryRight_${props.category}`, {
-	keyboardKey: 'ArrowRight',
-	condition: ({ type, activeItemId }) => type === 'category' && props.category === activeItemId,
-	handler: arrowRight,
+	keyboardKeys: ['ArrowRight'],
+	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
+	handler: arrowRight
+});
+registerKeyHook(`CategoryToggle_${props.category}`, {
+	keyboardKeys: ['Enter'],
+	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
+	handler: toggleExpanded
 });
 
 registerKeyHook(`CategoryLeft_${props.category}`, {
-	keyboardKey: 'ArrowLeft',
-	condition: ({ type, activeItemId }) => type === 'category' && props.category === activeItemId,
-	handler: arrowLeft,
+	keyboardKeys: ['ArrowLeft'],
+	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
+	handler: arrowLeft
 });
 
 function arrowRight() {
-	console.log('ArrowRight');
-	if (expanded.value) return;
+	if(expanded.value) return;
 
 	expanded.value = true;
 }
 function arrowLeft() {
-	if (!expanded.value) {
+	if(!expanded.value) {
 		popViewStack();
 		return;
 	}
@@ -65,6 +71,8 @@ function arrowLeft() {
 	expanded.value = false;
 }
 </script>
+
+
 
 <template>
 	<div :class="$style.categorizedItemsRenderer" :data-category-collapsed="!expanded">
@@ -77,8 +85,17 @@ function arrowLeft() {
 			:isTrigger="isTriggerCategory"
 			data-keyboard-nav-type="category"
 			:data-keyboard-nav-id="category"
-			@click="onClick"
-		/>
+			@click="toggleExpanded"
+		>
+			<span :class="$style.mouseOverTooltip">
+				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+					<n8n-icon icon="question-circle" size="small" />
+					<template #content>
+						<div v-html="mouseOverTooltip" />
+					</template>
+				</n8n-tooltip>
+			</span>
+		</CategoryItem>
 		<div :class="$style.contentSlot" v-if="expanded && elements.length > 0 && $slots.default">
 			<slot />
 		</div>
@@ -98,6 +115,20 @@ function arrowLeft() {
 </template>
 
 <style lang="scss" module>
+.mouseOverTooltip {
+	opacity: 0;
+	margin-left: var(--spacing-3xs);
+	&:hover {
+		color: var(--color-primary);
+	}
+
+	.categorizedItemsRenderer:hover & {
+		opacity: 1;
+	}
+}
+:root .tooltipPopper {
+	max-width: 260px;
+}
 .contentSlot {
 	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
 }

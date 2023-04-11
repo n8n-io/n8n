@@ -1,23 +1,15 @@
 import {
-	getCurrentInstance,
 	computed,
 	ref,
-	ComputedRef,
-	nextTick,
-	watchEffect,
 	set,
-	del,
 } from 'vue';
 import { defineStore } from 'pinia';
-import { CORE_NODES_CATEGORY } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { INodeCreateElement, SimplifiedNodeType, SubcategorizedNodeTypes } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { INodeCreateElement, SimplifiedNodeType } from '@/Interface';
 import { useNodesSearch } from './useNodesSearch';
 import { transformNodeType, subcategorizeItems, sortNodeCreateElements } from '../utils';
-
+import { useKeyboardNavigation } from './useKeyboardNavigation';
 interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -30,6 +22,7 @@ interface ViewStack {
 		color?: string;
 	};
 	iconUrl?: string;
+	activeIndex?: number;
 	hasHeaderBg?: boolean;
 	transitionDirection?: 'in' | 'out';
 	hasSearch?: boolean;
@@ -45,14 +38,14 @@ interface ViewStack {
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const { searchNodes } = useNodesSearch();
+	const { getActiveItemIndex } = useKeyboardNavigation();
 
-	const stacks = ref<ViewStack[]>([]);
-	const viewStacks = computed<ViewStack[]>(() => stacks.value);
+	const viewStacks = ref<ViewStack[]>([]);
 
-	const isRootView = computed(() => stacks.value.length <= 1);
+	const isRootView = computed(() => viewStacks.value.length <= 1);
 
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
-		const stack = stacks.value[stacks.value.length - 1];
+		const stack = viewStacks.value[viewStacks.value.length - 1];
 
 		if (!stack || !stack.baselineItems) return [];
 
@@ -66,7 +59,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
-		const stack = stacks.value[stacks.value.length - 1];
+		const stack = viewStacks.value[viewStacks.value.length - 1];
 
 		if (!stack) return {};
 
@@ -78,8 +71,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	const activeViewStackMode = computed(() => activeViewStack.value.mode || 'trigger');
+
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
-		const stack = stacks.value[stacks.value.length - 1];
+		const stack = viewStacks.value[viewStacks.value.length - 1];
 
 		if (!stack || !stack.searchItems) return [];
 
@@ -87,7 +81,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
-		const stack = stacks.value[stacks.value.length - 1];
+		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack || !stack.search) return [];
 
 		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
@@ -99,7 +93,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	function setStackBaselineItems() {
-		const stack = stacks.value[stacks.value.length - 1];
+		const stack = viewStacks.value[viewStacks.value.length - 1];
 		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedNodes);
 		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? '*'] ?? [];
 
@@ -137,12 +131,17 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			uuid: `${item.key}-${uuid()}`,
 		}));
 	}
-	function pushViewStack(stack: ViewStack) {
+	function pushViewStack(stack: Partial<ViewStack>) {
+		if(activeViewStack.value.uuid) {
+			updateViewStack(activeViewStack.value.uuid, { activeIndex: getActiveItemIndex() });
+		}
+
 		const newStackUuid = uuid();
-		stacks.value.push({
+		viewStacks.value.push({
 			...stack,
 			uuid: newStackUuid,
 			transitionDirection: 'in',
+			activeIndex: 0,
 		});
 		setStackBaselineItems();
 	}
@@ -150,24 +149,24 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	function popViewStack() {
 		if (activeViewStack.value.uuid) {
 			updateViewStack(activeViewStack.value.uuid, { transitionDirection: 'out' });
-			nextTick(() => {
-				stacks.value.pop();
-			});
+			viewStacks.value.pop();
 		}
 	}
 
-	function updateViewStack(uuid: string, stack: ViewStack) {
-		const matchedIndex = stacks.value.findIndex((s) => s.uuid === uuid);
-		const matchedStack = stacks.value[matchedIndex];
+	function updateViewStack(uuid: string, stack: Partial<ViewStack>) {
+		const matchedIndex = viewStacks.value.findIndex((s) => s.uuid === uuid);
+		const matchedStack = viewStacks.value[matchedIndex];
 
 		// For each key in the stack, update the matched stack
 		Object.keys(stack).forEach((key) => {
-			set(matchedStack, key, stack[key]);
+			const typedKey = key as keyof ViewStack;
+			set(matchedStack, typedKey, stack[typedKey]);
 		});
 	}
 
+
 	function resetViewStacks() {
-		stacks.value = [];
+		viewStacks.value = [];
 	}
 
 	return {

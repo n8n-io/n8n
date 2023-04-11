@@ -3,6 +3,7 @@ import {
 	ActionCreateElement,
 	SubcategorizedNodeTypes,
 	SimplifiedNodeType,
+INodeCreateElement,
 } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
@@ -47,7 +48,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 	}, {});
 }
 
-export function sortNodeCreateElements(nodes: NodeCreateElement[]) {
+export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	return nodes.sort((a, b) => {
 		if (a.type !== 'node' || b.type !== 'node') return -1;
 		const displayNameA = a.properties.displayName.toLowerCase();

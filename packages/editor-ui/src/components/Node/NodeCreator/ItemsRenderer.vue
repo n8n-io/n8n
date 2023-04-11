@@ -42,7 +42,7 @@ function renderItems() {
 
 	if (renderedItems.value.length < props.elements.length) {
 		renderedItems.value.push(
-			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 5),
+			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 20),
 		);
 		renderAnimationRequest.value = window.requestAnimationFrame(renderItems);
 	}
@@ -108,12 +108,11 @@ watch(
 	>
 		<slot />
 		<div
-			v-for="(item, index) in renderedItems"
+			v-for="item in elements"
 			:key="item.uuid"
 			data-test-id="item-iterator-item"
 			:class="{
 				clickable: !disabled,
-				[$style[item.type]]: true,
 				[$style.active]: activeItemId === item.uuid,
 				[$style.iteratorItem]: true,
 			}"
@@ -122,25 +121,28 @@ watch(
 			:data-keyboard-nav-id="item.uuid"
 			@click="wrappedEmit('selected', item)"
 		>
-			<!-- <span style="position: absolute">{{ activeItemId }}</span> -->
-			<label-item v-if="item.type === 'label'" :item="item" />
-			<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+			<template v-if="renderedItems.includes(item)">
+				<label-item v-if="item.type === 'label'" :item="item" />
+				<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
-			<node-item
-				v-if="item.type === 'node'"
-				:nodeType="item.properties"
-				:active="true"
-				:subcategory="item.subcategory"
-			/>
+				<node-item
+					v-if="item.type === 'node'"
+					:nodeType="item.properties"
+					:active="true"
+					:subcategory="item.subcategory"
+				/>
 
-			<action-item
-				v-if="item.type === 'action'"
-				:nodeType="item.properties"
-				:action="item.properties"
-				:active="true"
-			/>
+				<action-item
+					v-if="item.type === 'action'"
+					:nodeType="item.properties"
+					:action="item.properties"
+					:active="true"
+				/>
 
-			<view-item v-else-if="item.type === 'view'" :view="item.properties" />
+				<view-item v-else-if="item.type === 'view'" :view="item.properties" />
+			</template>
+
+			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
 		</div>
 	</div>
 	<div :class="$style.empty" v-else>
@@ -149,6 +151,9 @@ watch(
 </template>
 
 <style lang="scss" module>
+.itemSkeleton {
+	height: 50px;
+}
 .iteratorItem {
 	// Make sure border is fully visible
 	margin-left: 1px;
@@ -168,13 +173,6 @@ watch(
 	&.active:not(.category)::before {
 		border-color: $color-primary !important;
 	}
-
-	// &.category.singleCategory {
-	// 	display: none;
-	// }
-}
-.label {
-	pointer-events: none;
 }
 .empty {
 	:global([role='alert']) {
