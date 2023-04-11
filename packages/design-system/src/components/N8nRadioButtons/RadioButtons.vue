@@ -10,7 +10,7 @@
 			:active="value === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click="(e) => onClick(option, e)"
+			@click="() => onClick(option)"
 		/>
 	</div>
 </template>
@@ -18,7 +18,13 @@
 <script lang="ts">
 import RadioButton from './RadioButton.vue';
 
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
+
+export interface IRadioOption {
+	label: string;
+	value: string;
+	disabled?: boolean;
+}
 
 export default defineComponent({
 	name: 'n8n-radio-buttons',
@@ -26,7 +32,10 @@ export default defineComponent({
 		value: {
 			type: String,
 		},
-		options: {},
+		options: {
+			type: Array as PropType<IRadioOption[]>,
+			default: (): IRadioOption[] => [],
+		},
 		size: {
 			type: String,
 		},

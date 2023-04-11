@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 export default defineComponent({
 	name: 'variable-table',
@@ -28,16 +28,17 @@ export default defineComponent({
 	},
 	props: {
 		variables: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 		attr: {
 			type: String,
+			default: '',
 		},
 	},
 	created() {
 		const setValues = () => {
-			(this.variables as string[]).forEach((variable: string) => {
+			this.variables.forEach((variable: string) => {
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 

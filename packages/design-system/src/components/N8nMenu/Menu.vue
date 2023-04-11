@@ -56,7 +56,7 @@ import { Menu as ElMenu } from 'element-ui';
 import N8nMenuItem from '../N8nMenuItem';
 
 import { defineComponent, PropType } from 'vue';
-import { IMenuItem } from '../../types';
+import { IMenuItem, RouteObject } from '../../types';
 
 export default defineComponent({
 	name: 'n8n-menu',
@@ -93,6 +93,7 @@ export default defineComponent({
 		},
 		items: {
 			type: Array as PropType<IMenuItem[]>,
+			default: (): IMenuItem[] => [],
 		},
 		value: {
 			type: String,
@@ -104,9 +105,9 @@ export default defineComponent({
 			const found = this.items.find((item) => {
 				return (
 					(Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name || '')) ||
+						item.activateOnRouteNames.includes(this.currentRoute.name || '')) ||
 					(Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.$route.path))
+						item.activateOnRoutePaths.includes(this.currentRoute.path))
 				);
 			});
 			this.activeTab = found ? found.id : '';
@@ -125,6 +126,14 @@ export default defineComponent({
 		lowerMenuItems(): IMenuItem[] {
 			return this.items.filter(
 				(item: IMenuItem) => item.position === 'bottom' && item.available !== false,
+			);
+		},
+		currentRoute(): RouteObject {
+			return (
+				(this as typeof this & { $route: RouteObject }).$route || {
+					name: '',
+					path: '',
+				}
 			);
 		},
 	},

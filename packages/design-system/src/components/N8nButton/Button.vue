@@ -81,11 +81,11 @@ export default defineComponent({
 		N8nIcon,
 	},
 	computed: {
-		ariaBusy(): string {
-			return this.loading ? 'true' : 'false';
+		ariaBusy(): 'true' | undefined {
+			return this.loading ? 'true' : undefined;
 		},
-		ariaDisabled(): string {
-			return this.disabled ? 'true' : 'false';
+		ariaDisabled(): 'true' | undefined {
+			return this.disabled ? 'true' : undefined;
 		},
 		classes(): string {
 			return (

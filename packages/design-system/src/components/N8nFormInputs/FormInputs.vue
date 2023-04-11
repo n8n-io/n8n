@@ -82,7 +82,7 @@ export default defineComponent({
 		});
 
 		if (this.eventBus) {
-			this.eventBus.on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
+			this.eventBus.on('submit', this.onSubmit);
 		}
 	},
 	computed: {
@@ -105,9 +105,9 @@ export default defineComponent({
 		onInput(name: string, value: unknown) {
 			this.values = {
 				...this.values,
-				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+				[name]: value,
 			};
-			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+			this.$emit('input', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
 			this.$set(this.validity, name, valid);

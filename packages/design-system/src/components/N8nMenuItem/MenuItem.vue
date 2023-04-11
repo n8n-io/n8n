@@ -32,7 +32,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="child.id"
-				@click="onItemClick(child)"
+				@click="onItemClick(child, $event)"
 			>
 				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
 				<span :class="$style.label">{{ child.label }}</span>
@@ -56,7 +56,7 @@
 				}"
 				data-test-id="menu-item"
 				:index="item.id"
-				@click="onItemClick(item)"
+				@click="onItemClick(item, $event)"
 			>
 				<n8n-icon
 					v-if="item.icon"
@@ -74,7 +74,7 @@
 import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
-import { IMenuItem } from '../../types';
+import { IMenuItem, RouteObject } from '../../types';
 import { defineComponent, PropType } from 'vue';
 
 export default defineComponent({
@@ -117,6 +117,14 @@ export default defineComponent({
 				? this.item.children.filter((child) => child.available !== false)
 				: [];
 		},
+		currentRoute(): RouteObject {
+			return (
+				(this as typeof this & { $route: RouteObject }).$route || {
+					name: '',
+					path: '',
+				}
+			);
+		},
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
@@ -130,12 +138,12 @@ export default defineComponent({
 				if (item.activateOnRoutePaths) {
 					return (
 						Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.$route.path)
+						item.activateOnRoutePaths.includes(this.currentRoute.path)
 					);
 				} else if (item.activateOnRouteNames) {
 					return (
 						Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name || '')
+						item.activateOnRouteNames.includes(this.currentRoute.name || '')
 					);
 				}
 				return false;

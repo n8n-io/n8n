@@ -43,10 +43,12 @@ import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 import { defineComponent, PropType } from 'vue';
 
-interface IAccordionItem {
+export interface IAccordionItem {
 	id: string;
 	label: string;
 	icon: string;
+	iconColor?: string;
+	tooltip?: string;
 }
 
 export default defineComponent({

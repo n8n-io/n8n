@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 function hslToHex(h: number, s: number, l: number): string {
 	l /= 100;
@@ -46,13 +46,13 @@ export default defineComponent({
 	},
 	props: {
 		colors: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 	},
 	created() {
 		const setColors = () => {
-			(this.colors as string[]).forEach((color: string) => {
+			this.colors.forEach((color: string) => {
 				const style = getComputedStyle(document.body);
 
 				this.$set(this.hsl, color, style.getPropertyValue(color));

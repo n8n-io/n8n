@@ -49,7 +49,7 @@ import {
 } from 'element-ui';
 import N8nIcon from '../N8nIcon';
 
-interface IActionDropdownItem {
+export interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;

@@ -9,7 +9,7 @@
 			@visible-change="onVisibleChange"
 		>
 			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-				<component :is="$options.components.N8nIcon" icon="ellipsis-v" :size="iconSize" />
+				<n8n-icon icon="ellipsis-v" :size="iconSize" />
 			</span>
 
 			<template #dropdown>
@@ -22,9 +22,8 @@
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
-							<component
+							<n8n-icon
 								v-if="action.type === 'external-link'"
-								:is="$options.components.N8nIcon"
 								icon="external-link-alt"
 								size="xsmall"
 								color="text-base"
@@ -46,7 +45,7 @@ import {
 } from 'element-ui';
 import N8nIcon from '../N8nIcon';
 
-interface Action {
+export interface Action {
 	label: string;
 	value: string;
 	disabled: boolean;

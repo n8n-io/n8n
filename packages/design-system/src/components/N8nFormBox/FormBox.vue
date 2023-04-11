@@ -56,6 +56,7 @@ export default defineComponent({
 	props: {
 		title: {
 			type: String,
+			default: '',
 		},
 		inputs: {
 			type: Array,
@@ -75,9 +76,11 @@ export default defineComponent({
 		},
 		redirectText: {
 			type: String,
+			default: '',
 		},
 		redirectLink: {
 			type: String,
+			default: '',
 		},
 	},
 	data() {

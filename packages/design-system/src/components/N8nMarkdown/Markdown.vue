@@ -49,12 +49,12 @@ const DEFAULT_OPTIONS_TASKLISTS = {
 	labelAfter: true,
 } as const;
 
-interface IImage {
+export interface IImage {
 	id: string;
 	url: string;
 }
 
-interface Options {
+export interface Options {
 	markdown: typeof DEFAULT_OPTIONS_MARKDOWN;
 	linkAttributes: typeof DEFAULT_OPTIONS_LINK_ATTRIBUTES;
 	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
@@ -163,7 +163,7 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onClick(event: MouseEvent): void {
+		onClick(event: MouseEvent) {
 			let clickedLink = null;
 
 			if (event.target instanceof HTMLAnchorElement) {

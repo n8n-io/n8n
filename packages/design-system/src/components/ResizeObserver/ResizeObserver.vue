@@ -62,7 +62,7 @@ export default defineComponent({
 			});
 		});
 
-		this.$data.observer = observer;
+		this.observer = observer;
 
 		if (this.$refs.root) {
 			observer.observe(this.$refs.root as HTMLDivElement);
@@ -70,7 +70,7 @@ export default defineComponent({
 	},
 	beforeDestroy() {
 		if (this.enabled) {
-			this.$data.observer.disconnect(); // eslint-disable-line
+			this.observer?.disconnect(); // eslint-disable-line
 		}
 	},
 });

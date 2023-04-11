@@ -24,7 +24,7 @@ import N8nLink from '../N8nLink';
 import Locale from '../../mixins/locale';
 import { defineComponent, PropType } from 'vue';
 
-interface ITag {
+export interface ITag {
 	id: string;
 	name: string;
 }

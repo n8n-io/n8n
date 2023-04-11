@@ -5,7 +5,7 @@
 		:class="{
 			'n8n-radio-button': true,
 			[$style.container]: true,
-			[$style.hoverable]: !this.disabled,
+			[$style.hoverable]: !disabled,
 		}"
 		aria-checked="true"
 	>

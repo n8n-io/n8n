@@ -1,10 +1,6 @@
 <template>
 	<div class="n8n-tree">
-		<div
-			v-for="(label, i) in Object.keys(value || {})"
-			:key="i"
-			:class="{ [nodeClass]: !!nodeClass, [$style.indent]: depth > 0 }"
-		>
+		<div v-for="(label, i) in Object.keys(value || {})" :key="i" :class="classes">
 			<div :class="$style.simple" v-if="isSimple(value[label])">
 				<slot
 					v-if="$scopedSlots.label"
@@ -58,6 +54,12 @@ export default defineComponent({
 		},
 		nodeClass: {
 			type: String,
+			default: '',
+		},
+	},
+	computed: {
+		classes(): Record<string, boolean> {
+			return { [this.nodeClass]: !!this.nodeClass, [this.$style.indent]: this.depth > 0 };
 		},
 	},
 	methods: {
