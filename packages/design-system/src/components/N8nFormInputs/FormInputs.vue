@@ -5,7 +5,7 @@
 				<div
 					v-for="(input, index) in filteredInputs"
 					:key="input.name"
-					:class="{ [`mt-${verticalSpacing}`]: index > 0 }"
+					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
 					<n8n-text
 						color="text-base"
@@ -41,7 +41,7 @@ import { defineComponent, PropType } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
-import { EventBus } from '@/utils';
+import { createEventBus, EventBus } from '../../utils';
 
 export default defineComponent({
 	name: 'n8n-form-inputs',
@@ -51,11 +51,12 @@ export default defineComponent({
 	},
 	props: {
 		inputs: {
-			type: Array,
-			default: () => [[]],
+			type: Array as PropType<IFormInput[]>,
+			default: (): IFormInput[] => [],
 		},
 		eventBus: {
 			type: Object as PropType<EventBus>,
+			default: (): EventBus => createEventBus(),
 		},
 		columnView: {
 			type: Boolean,
@@ -63,8 +64,8 @@ export default defineComponent({
 		},
 		verticalSpacing: {
 			type: String,
-			required: false,
-			validator: (value: string): boolean => ['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
+			default: '',
+			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
 	},
 	data() {
@@ -75,19 +76,19 @@ export default defineComponent({
 		};
 	},
 	mounted() {
-		(this.inputs as IFormInput[]).forEach((input) => {
+		this.inputs.forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
 				this.$set(this.values, input.name, input.initialValue);
 			}
 		});
 
 		if (this.eventBus) {
-			this.eventBus.on('submit', this.onSubmit);
+			this.eventBus.on('submit', () => this.onSubmit());
 		}
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			return (this.inputs as IFormInput[]).filter((input) =>
+			return this.inputs.filter((input) =>
 				typeof input.shouldDisplay === 'function' ? input.shouldDisplay(this.values) : true,
 			);
 		},
@@ -114,6 +115,7 @@ export default defineComponent({
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;
+
 			if (this.isReadyToSubmit) {
 				const toSubmit = this.filteredInputs.reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {

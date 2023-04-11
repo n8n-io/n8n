@@ -40,7 +40,7 @@ export default defineComponent({
 	},
 	created() {
 		const setSizes = () => {
-			(this.variables as string[]).forEach((variable: string) => {
+			this.variables.forEach((variable: string) => {
 				const style = getComputedStyle(document.body);
 				const rem = style.getPropertyValue(variable);
 				const px = parseFloat(rem.replace('rem', '')) * 16;
