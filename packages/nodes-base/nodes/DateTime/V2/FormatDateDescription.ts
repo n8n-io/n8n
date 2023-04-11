@@ -42,27 +42,27 @@ export const FormatDateDescription: INodeProperties[] = [
 			},
 			{
 				name: 'MM/DD/YYYY',
-				value: 'MM/DD/YYYY',
+				value: 'MM/dd/yyyy',
 				description: 'Example: 09/04/1986',
 			},
 			{
 				name: 'YYYY/MM/DD',
-				value: 'YYYY/MM/DD',
+				value: 'yyyy/MM/dd',
 				description: 'Example: 1986/04/09',
 			},
 			{
 				name: 'MMMM DD YYYY',
-				value: 'MMMM DD YYYY',
+				value: 'MMMM dd yyyy',
 				description: 'Example: April 09 1986',
 			},
 			{
 				name: 'MM-DD-YYYY',
-				value: 'MM-DD-YYYY',
+				value: 'MM-dd-yyyy',
 				description: 'Example: 09-04-1986',
 			},
 			{
 				name: 'YYYY-MM-DD',
-				value: 'YYYY-MM-DD',
+				value: 'yyyy-MM-dd',
 				description: 'Example: 1986-04-09',
 			},
 			{
@@ -76,7 +76,7 @@ export const FormatDateDescription: INodeProperties[] = [
 				description: 'Example: 513388800',
 			},
 		],
-		default: 'MM/DD/YYYY',
+		default: 'mm/dd/yyyy',
 		description: 'The format to convert the date to',
 	},
 	{
