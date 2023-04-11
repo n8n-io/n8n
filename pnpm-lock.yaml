@@ -14,6 +14,7 @@ overrides:
   prettier: ^2.8.3
   ts-node: ^10.9.1
   typescript: ^4.9.5
+  xml2js: ^0.5.0
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
 
@@ -832,7 +833,7 @@ importers:
       '@types/ssh2-sftp-client': ^5.1.0
       '@types/tmp': ^0.2.0
       '@types/uuid': ^8.3.2
-      '@types/xml2js': ^0.4.3
+      '@types/xml2js': ^0.4.11
       amqplib: ^0.10.3
       aws4: ^1.8.0
       basic-auth: ^2.0.1
@@ -928,7 +929,7 @@ importers:
       uuid: ^8.3.2
       vm2: ~3.9.15
       xlsx: ^0.17.0
-      xml2js: ^0.4.23
+      xml2js: ^0.5.0
     dependencies:
       '@kafkajs/confluent-schema-registry': 1.0.6
       amqplib: 0.10.3
@@ -1023,7 +1024,7 @@ importers:
       uuid: 8.3.2
       vm2: 3.9.16
       xlsx: 0.17.5
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     devDependencies:
       '@types/amqplib': 0.10.1
       '@types/aws4': 1.11.2
@@ -1110,7 +1111,7 @@ importers:
       '@types/lodash.merge': ^4.6.6
       '@types/lodash.set': ^4.3.6
       '@types/luxon': ^2.0.9
-      '@types/xml2js': ^0.4.3
+      '@types/xml2js': ^0.4.11
       ast-types: 0.15.2
       crypto-js: ^4.1.1
       deep-equal: ^2.2.0
@@ -1125,7 +1126,7 @@ importers:
       recast: ^0.21.5
       title-case: ^3.0.3
       transliteration: ^2.3.5
-      xml2js: ^0.4.23
+      xml2js: ^0.5.0
     dependencies:
       '@n8n_io/riot-tmpl': 3.0.0
       ast-types: 0.15.2
@@ -1142,7 +1143,7 @@ importers:
       recast: 0.21.5
       title-case: 3.0.3
       transliteration: 2.3.5
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     devDependencies:
       '@types/crypto-js': 4.1.1
       '@types/deep-equal': 1.0.1
@@ -1304,7 +1305,7 @@ packages:
       tslib: 2.5.0
       tunnel: 0.0.6
       uuid: 8.3.2
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -7694,7 +7695,7 @@ packages:
       url: 0.10.3
       util: 0.12.4
       uuid: 8.0.0
-      xml2js: 0.4.19
+      xml2js: 0.5.0
     dev: false
 
   /aws-sign2/0.7.0:
@@ -8025,7 +8026,7 @@ packages:
     resolution: {integrity: sha512-tWvcAbh8QPd/lj+yfGZBMY/roof/e2iSXrJbYXYjxVhHQ88D2CF3AxDTdwhb9wcNdHVNbCttaWipchJPEs5r0g==}
     engines: {node: '>=10'}
     dependencies:
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     dev: false
 
   /body-parser/1.20.1:
@@ -18158,7 +18159,7 @@ packages:
     resolution: {integrity: sha512-aqD3E8iavcCdkhVxNDIdg1nkBI17jgqF+9OqPS1orwNaOgySdpvq6B+DoONLhzjzwV8mWg37sb60e4bmLK117A==}
     dependencies:
       entities: 2.2.0
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     dev: false
 
   /run-async/2.4.1:
@@ -20307,7 +20308,7 @@ packages:
       sqlite3: 5.1.4
       tslib: 2.5.0
       uuid: 9.0.0
-      xml2js: 0.4.23
+      xml2js: 0.5.0
       yargs: 17.6.2
     transitivePeerDependencies:
       - supports-color
@@ -21873,15 +21874,8 @@ packages:
     resolution: {integrity: sha512-huCv9IH9Tcf95zuYCsQraZtWnJvBtLVE0QHMOs8bWyZAFZNDcYjsPq1nEx8jKA9y+Beo9v+7OBPRisQTjinQMw==}
     dev: false
 
-  /xml2js/0.4.19:
-    resolution: {integrity: sha512-esZnJZJOiJR9wWKMyuvSE1y6Dq5LCuJanqhxslH2bxM6duahNZ+HMpCLhBQGZkbX6xRf8x1Y2eJlgt2q3qo49Q==}
-    dependencies:
-      sax: 1.2.4
-      xmlbuilder: 9.0.7
-    dev: false
-
-  /xml2js/0.4.23:
-    resolution: {integrity: sha512-ySPiMjM0+pLDftHgXY4By0uswI3SPKLDw/i3UXbnO8M/p28zqexCUoPmQFrYD+/1BzhGJSs2i1ERWKJAtiLrug==}
+  /xml2js/0.5.0:
+    resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
     engines: {node: '>=4.0.0'}
     dependencies:
       sax: 1.2.4
@@ -21890,11 +21884,6 @@ packages:
 
   /xmlbuilder/11.0.1:
     resolution: {integrity: sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA==}
-    engines: {node: '>=4.0'}
-    dev: false
-
-  /xmlbuilder/9.0.7:
-    resolution: {integrity: sha512-7YXTQc3P2l9+0rjaUbLwMKRhtmwg1M1eDf6nag7urC7pIPYLD9W/jmzQ4ptRSUbodw5S0jfoGTflLemQibSpeQ==}
     engines: {node: '>=4.0'}
     dev: false
 
