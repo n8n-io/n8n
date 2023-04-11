@@ -56,7 +56,7 @@ describe('Execution Metadata functions', () => {
 		});
 	});
 
-	test('setWorkflowExecutionMetadata should not convert values to strings', () => {
+	test('setWorkflowExecutionMetadata should only convert numbers to strings', () => {
 		const metadata = {};
 		const executionData = {
 			resultData: {
@@ -64,12 +64,21 @@ describe('Execution Metadata functions', () => {
 			},
 		} as IRunExecutionData;
 
-		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).toThrow(
+		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).not.toThrow(
+			ExecutionMetadataValidationError,
+		);
+
+		expect(metadata).toEqual({
+			test1: '1234',
+		});
+
+		expect(() => setWorkflowExecutionMetadata(executionData, 'test2', {})).toThrow(
 			ExecutionMetadataValidationError,
 		);
 
 		expect(metadata).not.toEqual({
 			test1: '1234',
+			test2: {},
 		});
 	});
 
@@ -83,7 +92,7 @@ describe('Execution Metadata functions', () => {
 
 		expect(() =>
 			setAllWorkflowExecutionMetadata(executionData, {
-				test1: 1234 as unknown as string,
+				test1: {} as unknown as string,
 				test2: [] as unknown as string,
 				test3: 'value3',
 				test4: 'value4',

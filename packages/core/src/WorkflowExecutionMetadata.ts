@@ -40,16 +40,17 @@ export function setWorkflowExecutionMetadata(
 			`Custom date key can only contain characters "A-Za-z0-9_" (key "${key}")`,
 		);
 	}
-	if (typeof value !== 'string') {
+	if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'bigint') {
 		throw new ExecutionMetadataValidationError('value', key);
 	}
+	const val = String(value);
 	if (key.length > 50) {
 		Logger.error('Custom data key over 50 characters long. Truncating to 50 characters.');
 	}
-	if (value.length > 255) {
+	if (val.length > 255) {
 		Logger.error('Custom data value over 255 characters long. Truncating to 255 characters.');
 	}
-	executionData.resultData.metadata[key.slice(0, 50)] = value.slice(0, 255);
+	executionData.resultData.metadata[key.slice(0, 50)] = val.slice(0, 255);
 }
 
 export function setAllWorkflowExecutionMetadata(
