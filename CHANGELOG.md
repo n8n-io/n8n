@@ -1,3 +1,13 @@
+## [0.221.3](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.221.3) (2023-04-11)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-29017 ([#5947](https://github.com/n8n-io/n8n/issues/5947)) ([4127e3f](https://github.com/n8n-io/n8n/commit/4127e3ff9d1d1ef8b76c557bf3b4799ab7aba7f7))
+* **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([cf7a4b6](https://github.com/n8n-io/n8n/commit/cf7a4b65d3d828fbacd027de9c2bf2481883efa7))
+
+
+
 ## [0.221.2](https://github.com/n8n-io/n8n/compare/n8n@0.221.1...n8n@0.221.2) (2023-03-24)
 
 
