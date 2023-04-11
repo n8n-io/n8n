@@ -74,10 +74,10 @@ import mixins from 'vue-typed-mixins';
 
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import Vue from 'vue';
 import { IUser } from '../Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	components: {
@@ -94,7 +94,7 @@ export default mixins(showMessage).extend({
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			loading: false,
 			operation: '',
 			deleteConfirmText: '',
@@ -175,7 +175,7 @@ export default mixins(showMessage).extend({
 					message,
 				});
 
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.users.userDeletedError'));
 			}

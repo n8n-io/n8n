@@ -89,9 +89,21 @@ export async function changePassword(
 
 export function updateCurrentUser(
 	context: IRestApiContext,
-	params: { id: string; firstName: string; lastName: string; email: string },
+	params: {
+		id?: string;
+		firstName?: string;
+		lastName?: string;
+		email: string;
+	},
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
+}
+
+export function updateCurrentUserSettings(
+	context: IRestApiContext,
+	settings: IUserResponse['settings'],
+): Promise<IUserResponse['settings']> {
+	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
 
 export function updateCurrentUserPassword(

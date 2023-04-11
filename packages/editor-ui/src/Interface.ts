@@ -594,6 +594,12 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
+	settings?: {
+		isOnboarded?: boolean;
+		showUserActivationSurvey?: boolean;
+		firstSuccessfulWorkflowId?: string;
+		userActivated?: boolean;
+	};
 }
 
 export interface CurrentUserResponse extends IUserResponse {
@@ -752,6 +758,7 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	personalizationSurveyEnabled: boolean;
+	userActivationSurveyEnabled: boolean;
 	telemetry: ITelemetrySettings;
 	userManagement: IUserManagementConfig;
 	defaultLocale: string;
@@ -991,6 +998,7 @@ export interface WorkflowsState {
 
 export interface RootState {
 	baseUrl: string;
+	restEndpoint: string;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;

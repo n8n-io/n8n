@@ -87,6 +87,10 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
+		<ModalRoot :name="USER_ACTIVATION_SURVEY_MODAL">
+			<WorkflowSuccessModal />
+		</ModalRoot>
+
 		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
 			<MfaSetupModal />
 		</ModalRoot>
@@ -138,6 +142,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
 	MFA_SETUP_MODAL_KEY,
 } from '@/constants';
 
@@ -163,6 +168,7 @@ import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
+import WorkflowSuccessModal from './UserActivationSurveyModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 
 export default Vue.extend({
@@ -190,6 +196,7 @@ export default Vue.extend({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
+		WorkflowSuccessModal,
 		MfaSetupModal,
 	},
 	data: () => ({
@@ -214,6 +221,7 @@ export default Vue.extend({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
+		USER_ACTIVATION_SURVEY_MODAL,
 		MFA_SETUP_MODAL_KEY,
 	}),
 });

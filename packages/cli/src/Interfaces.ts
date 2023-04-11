@@ -489,6 +489,7 @@ export interface IN8nUISettings {
 		debug: boolean;
 	};
 	personalizationSurveyEnabled: boolean;
+	userActivationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
@@ -550,6 +551,9 @@ export interface IPersonalizationSurveyAnswers {
 
 export interface IUserSettings {
 	isOnboarded?: boolean;
+	showUserActivationSurvey?: boolean;
+	firstSuccessfulWorkflowId?: string;
+	userActivated?: boolean;
 }
 
 export interface IUserManagementSettings {
@@ -731,6 +735,7 @@ export interface IProcessMessageDataHook {
 
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
+	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
@@ -858,6 +863,7 @@ export interface PublicUser {
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
+	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
 }
 
