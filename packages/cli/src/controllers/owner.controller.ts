@@ -18,7 +18,7 @@ import type {
 	SettingsRepository,
 	UserRepository,
 	WorkflowRepository,
-} from '@/databases/repositories';
+} from '@db/repositories';
 
 @RestController('/owner')
 export class OwnerController {

@@ -1,5 +1,4 @@
 import validator from 'validator';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
@@ -40,7 +39,7 @@ import type {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
-} from '@/databases/repositories';
+} from '@db/repositories';
 
 @RestController('/users')
 export class UsersController {
@@ -152,7 +151,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findOneBy({ scope: 'global', name: 'member' });
+		const role = await this.roleRepository.findGlobalMemberRole();
 
 		if (!role) {
 			this.logger.error(
@@ -401,8 +400,8 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'workflow' }),
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'credential' }),
+			this.roleRepository.findWorkflowOwnerRole(),
+			this.roleRepository.findCredentialOwnerRole(),
 		]);
 
 		if (transferId) {

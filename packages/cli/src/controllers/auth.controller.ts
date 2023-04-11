@@ -22,7 +22,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import type { UserRepository } from '@/databases/repositories';
+import type { UserRepository } from '@db/repositories';
 
 @RestController()
 export class AuthController {

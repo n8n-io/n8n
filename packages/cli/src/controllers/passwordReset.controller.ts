@@ -19,12 +19,12 @@ import type { UserManagementMailer } from '@/UserManagement/email';
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
+import type { UserRepository } from '@db/repositories';
 import { PasswordResetRequest } from '@/requests';
 import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
-import type { UserRepository } from '@/databases/repositories';
 
 @RestController()
 export class PasswordResetController {

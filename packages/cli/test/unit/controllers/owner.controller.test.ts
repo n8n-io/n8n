@@ -4,18 +4,18 @@ import type { ILogger } from 'n8n-workflow';
 import jwt from 'jsonwebtoken';
 import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
+import type {
+	CredentialsRepository,
+	SettingsRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@db/repositories';
 import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type {
-	CredentialsRepository,
-	SettingsRepository,
-	UserRepository,
-	WorkflowRepository,
-} from '@/databases/repositories';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();

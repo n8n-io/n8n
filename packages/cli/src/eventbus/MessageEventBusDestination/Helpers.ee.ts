@@ -1,4 +1,4 @@
-import type { EventDestinations } from '@/databases/entities/EventDestinations';
+import type { EventDestinations } from '@db/entities/EventDestinations';
 import { promClient } from '@/metrics';
 import {
 	EventMessageTypeNames,

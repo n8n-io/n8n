@@ -17,7 +17,7 @@ import {
 	isUserManagementEnabled,
 } from '@/UserManagement/UserManagementHelper';
 import { SamlUrls } from '@/sso/saml/constants';
-import type { UserRepository } from '@/databases/repositories';
+import type { UserRepository } from '@db/repositories';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

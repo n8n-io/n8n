@@ -5,12 +5,12 @@ import { mock, anyObject, captor } from 'jest-mock-extended';
 import type { ILogger } from 'n8n-workflow';
 import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories';
 import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
-import { UserRepository } from '@/databases/repositories';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();

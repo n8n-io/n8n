@@ -3,10 +3,10 @@ import type { Config } from '@/config';
 import { Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
 import { TagEntity } from '@db/entities/TagEntity';
+import type { TagRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
-import type { TagRepository } from '@/databases/repositories';
 
 @RestController('/tags')
 export class TagsController {

@@ -6,6 +6,7 @@ import config from '@/config';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 import { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import { WorkflowStatisticsRepository } from '@db/repositories';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { getLogger } from '@/Logger';
@@ -13,7 +14,6 @@ import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../integration/shared/utils';
 import { UserService } from '@/user/user.service';
-import { WorkflowStatisticsRepository } from '@/databases/repositories';
 
 jest.mock('@/Db', () => {
 	return {
