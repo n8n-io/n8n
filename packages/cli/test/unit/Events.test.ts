@@ -12,6 +12,7 @@ import { getLogger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../integration/shared/utils';
+import { UserService } from '@/user/user.service';
 
 type WorkflowStatisticsRepository = Repository<WorkflowStatistics>;
 jest.mock('@/Db', () => {
@@ -23,6 +24,8 @@ jest.mock('@/Db', () => {
 		},
 	};
 });
+
+jest.spyOn(UserService, 'updateUserSettings').mockImplementation();
 
 describe('Events', () => {
 	const dbType = config.getEnv('database.type');
