@@ -24,6 +24,7 @@ import type {
 	IExecutionsSummary,
 	FeatureFlags,
 	WorkflowSettings,
+	AuthenticationMethod,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -488,6 +489,7 @@ export interface IN8nUISettings {
 		debug: boolean;
 	};
 	personalizationSurveyEnabled: boolean;
+	userActivationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
@@ -546,12 +548,16 @@ export interface IPersonalizationSurveyAnswers {
 
 export interface IUserSettings {
 	isOnboarded?: boolean;
+	showUserActivationSurvey?: boolean;
+	firstSuccessfulWorkflowId?: string;
+	userActivated?: boolean;
 }
 
 export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+	authenticationMethod: AuthenticationMethod;
 }
 export interface IActiveDirectorySettings {
 	enabled: boolean;
@@ -726,6 +732,7 @@ export interface IProcessMessageDataHook {
 
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
+	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
@@ -852,6 +859,7 @@ export interface PublicUser {
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
+	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
 }
 

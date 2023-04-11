@@ -20,12 +20,13 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '../../databases/entities/Settings';
+import type { Settings } from '@/databases/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
 @Service()
 export class SamlService {
@@ -48,6 +49,7 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
+		relayState: getInstanceBaseUrl(),
 		signatureConfig: {
 			prefix: 'ds',
 			location: {
@@ -92,7 +94,10 @@ export class SamlService {
 		return getServiceProviderInstance(this._samlPreferences);
 	}
 
-	getLoginRequestUrl(binding?: SamlLoginBinding): {
+	getLoginRequestUrl(
+		relayState?: string,
+		binding?: SamlLoginBinding,
+	): {
 		binding: SamlLoginBinding;
 		context: BindingContext | PostBindingContext;
 	} {
@@ -100,28 +105,29 @@ export class SamlService {
 		if (binding === 'post') {
 			return {
 				binding,
-				context: this.getPostLoginRequestUrl(),
+				context: this.getPostLoginRequestUrl(relayState),
 			};
 		} else {
 			return {
 				binding,
-				context: this.getRedirectLoginRequestUrl(),
+				context: this.getRedirectLoginRequestUrl(relayState),
 			};
 		}
 	}
 
-	private getRedirectLoginRequestUrl(): BindingContext {
-		const loginRequest = this.getServiceProviderInstance().createLoginRequest(
-			this.getIdentityProviderInstance(),
-			'redirect',
-		);
+	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
+		const sp = this.getServiceProviderInstance();
+		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
 		//TODO:SAML: debug logging
 		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
-	private getPostLoginRequestUrl(): PostBindingContext {
-		const loginRequest = this.getServiceProviderInstance().createLoginRequest(
+	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
+		const sp = this.getServiceProviderInstance();
+		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		const loginRequest = sp.createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'post',
 		) as PostBindingContext;

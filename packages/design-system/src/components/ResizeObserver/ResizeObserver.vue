@@ -34,7 +34,7 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
@@ -69,7 +69,7 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
-		if (this.$props.enabled) {
+		if (this.enabled) {
 			this.$data.observer.disconnect(); // eslint-disable-line
 		}
 	},
