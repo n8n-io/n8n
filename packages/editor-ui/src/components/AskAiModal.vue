@@ -15,7 +15,7 @@
 				<n8n-button
 					float="right"
 					:label="$locale.baseText('askAi.dialog.signup')"
-					@click="closeDialog"
+					@click="onAskAiWaitlistClick"
 				/>
 			</n8n-link>
 		</template>
@@ -41,7 +41,8 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		closeDialog() {
+		onAskAiWaitlistClick() {
+			this.$telemetry.track('User clicked join waitlist', { source: 'ask-ai-code' });
 			this.modalBus.emit('close');
 		},
 	},

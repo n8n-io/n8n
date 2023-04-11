@@ -88,6 +88,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	},
 	methods: {
 		onAskAiButtonClick() {
+			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
+
 			this.uiStore.openModal(ASK_AI_MODAL_KEY);
 		},
 		reloadLinter() {
