@@ -38,7 +38,7 @@ export default defineComponent({
 	},
 	created() {
 		const setValues = () => {
-			this.variables.forEach((variable: string) => {
+			this.variables.forEach((variable) => {
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 

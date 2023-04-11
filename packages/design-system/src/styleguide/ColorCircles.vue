@@ -52,7 +52,7 @@ export default defineComponent({
 	},
 	created() {
 		const setColors = () => {
-			this.colors.forEach((color: string) => {
+			this.colors.forEach((color) => {
 				const style = getComputedStyle(document.body);
 
 				this.$set(this.hsl, color, style.getPropertyValue(color));

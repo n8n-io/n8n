@@ -20,7 +20,7 @@ import RadioButton from './RadioButton.vue';
 
 import { defineComponent, PropType } from 'vue';
 
-export interface IRadioOption {
+export interface RadioOption {
 	label: string;
 	value: string;
 	disabled?: boolean;
@@ -33,8 +33,8 @@ export default defineComponent({
 			type: String,
 		},
 		options: {
-			type: Array as PropType<IRadioOption[]>,
-			default: (): IRadioOption[] => [],
+			type: Array as PropType<RadioOption[]>,
+			default: (): RadioOption[] => [],
 		},
 		size: {
 			type: String,
