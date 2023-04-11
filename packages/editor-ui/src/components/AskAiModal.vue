@@ -26,6 +26,7 @@
 import Vue from 'vue';
 import Modal from './Modal.vue';
 import { ASK_AI_MODAL_KEY, ASK_AI_WAITLIST_URL } from '../constants';
+import { createEventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'AskAI',
@@ -36,12 +37,12 @@ export default Vue.extend({
 		return {
 			ASK_AI_WAITLIST_URL,
 			ASK_AI_MODAL_KEY,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	methods: {
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 	},
 });
