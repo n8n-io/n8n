@@ -34,6 +34,7 @@ import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
+import { UserService } from './user/user.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -429,7 +430,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 
 	// user is above threshold --> set flag in settings
 	if (!belowThreshold) {
-		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+		void UserService.updateUserSettings(user.id, { isOnboarded: true });
 	}
 
 	return belowThreshold;
