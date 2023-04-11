@@ -30,9 +30,9 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable vue/no-unused-components */
-import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
 import { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
@@ -43,15 +43,13 @@ export default defineComponent({
 	mixins: [Locale],
 	components: {
 		N8nUserInfo,
-		ElSelect,
-		ElOption,
+		N8nSelect,
+		N8nOption,
 	},
 	props: {
 		users: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<IUser[]>,
+			default: () => [],
 		},
 		value: {
 			type: String,
@@ -64,6 +62,7 @@ export default defineComponent({
 		},
 		currentUserId: {
 			type: String,
+			default: '',
 		},
 		placeholder: {
 			type: String,
@@ -71,6 +70,7 @@ export default defineComponent({
 		},
 		size: {
 			type: String,
+			default: '',
 			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
@@ -81,12 +81,12 @@ export default defineComponent({
 	},
 	computed: {
 		filteredUsers(): IUser[] {
-			return (this.users as IUser[]).filter((user) => {
+			return this.users.filter((user) => {
 				if (user.isPendingUser || !user.email) {
 					return false;
 				}
 
-				if ((this.ignoreIds as string[])?.includes(user.id)) {
+				if (this.ignoreIds.includes(user.id)) {
 					return false;
 				}
 

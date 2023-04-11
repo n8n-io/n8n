@@ -60,9 +60,7 @@ export default defineComponent({
 		},
 		inputs: {
 			type: Array,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		buttonText: {
 			type: String,

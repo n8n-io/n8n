@@ -1,4 +1,4 @@
-import { PluginObject } from 'vue';
+import type { PluginObject } from 'vue';
 import N8nActionBox from '../components/N8nActionBox';
 import N8nActionDropdown from '../components/N8nActionDropdown';
 import N8nActionToggle from '../components/N8nActionToggle';
@@ -47,7 +47,7 @@ import N8nUsersList from '../components/N8nUsersList';
 import N8nResizeWrapper from '../components/N8nResizeWrapper';
 import N8nRecycleScroller from '../components/N8nRecycleScroller';
 
-export default {
+const n8nComponentsPlugin: PluginObject<{}> = {
 	install: (app) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
@@ -97,4 +97,6 @@ export default {
 		app.component('n8n-resize-wrapper', N8nResizeWrapper);
 		app.component('n8n-recycle-scroller', N8nRecycleScroller);
 	},
-} as PluginObject<{}>;
+};
+
+export default n8nComponentsPlugin;
