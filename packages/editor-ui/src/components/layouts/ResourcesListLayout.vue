@@ -58,7 +58,7 @@
 					/>
 				</slot>
 			</div>
-			<page-view-layout-list v-else>
+			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
@@ -117,7 +117,7 @@
 
 				<slot name="preamble" />
 
-				<div v-if="filteredAndSortedSubviewResources.length > 0">
+				<div v-if="filteredAndSortedSubviewResources.length > 0" :class="$style.listWrapper">
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
@@ -490,6 +490,10 @@ export default mixins(showMessage, debounceHelper).extend({
 .list {
 	//display: flex;
 	//flex-direction: column;
+}
+
+.listWrapper {
+	height: 100%;
 }
 
 .sort-and-filter {
