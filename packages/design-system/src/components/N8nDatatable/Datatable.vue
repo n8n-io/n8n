@@ -1,6 +1,7 @@
 <script lang="ts">
-import { computed, defineComponent, PropType, ref, useCssModule } from 'vue';
-import {
+import type { PropType } from 'vue';
+import { computed, defineComponent, ref, useCssModule } from 'vue';
+import type {
 	DatatableColumn,
 	DatatableRow,
 	DatatableRowDataType,

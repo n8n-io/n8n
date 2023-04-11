@@ -37,11 +37,12 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
-import { EventBus } from '@/utils';
+import type { EventBus } from '@/utils';
 
 export default Vue.extend({
 	name: 'n8n-form-inputs',

@@ -34,7 +34,7 @@ import 'vue';
 import mixins from 'vue-typed-mixins';
 import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
-import { IUser } from '../../types';
+import type { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
 

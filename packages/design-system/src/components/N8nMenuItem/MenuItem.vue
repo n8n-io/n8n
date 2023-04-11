@@ -74,8 +74,9 @@
 import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
-import { IMenuItem } from '../../types';
-import Vue, { PropType } from 'vue';
+import type { IMenuItem } from '../../types';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-menu-item',

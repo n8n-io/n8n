@@ -1,16 +1,8 @@
 <script lang="ts">
 /* eslint-disable @typescript-eslint/no-use-before-define */
 
-import {
-	computed,
-	defineComponent,
-	onMounted,
-	onBeforeMount,
-	ref,
-	PropType,
-	nextTick,
-	watch,
-} from 'vue';
+import type { PropType } from 'vue';
+import { computed, defineComponent, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-recycle-scroller',

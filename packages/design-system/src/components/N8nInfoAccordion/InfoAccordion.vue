@@ -41,7 +41,8 @@
 <script lang="ts">
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 
 interface IAccordionItem {
 	id: string;
