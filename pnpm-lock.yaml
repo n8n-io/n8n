@@ -1355,6 +1355,9 @@ importers:
       nodemailer:
         specifier: ^6.7.1
         version: 6.8.0
+      otpauth:
+        specifier: ^9.1.1
+        version: 9.1.1
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.1
@@ -14691,6 +14694,10 @@ packages:
       verror: 1.10.0
     dev: true
 
+  /jssha@3.3.0:
+    resolution: {integrity: sha512-w9OtT4ALL+fbbwG3gw7erAO0jvS5nfvrukGPMWIAoea359B26ALXGpzy4YJSp9yGnpUvuvOw1nSjSoHDfWSr1w==}
+    dev: false
+
   /jstransformer@1.0.0:
     resolution: {integrity: sha512-C9YK3Rf8q6VAPDCCU9fnqo3mAfOH6vUGnMcP4AQAYIEpWtfGLpwOTmZ+igtdK5y+VvI2n3CyYSzy4Qh34eq24A==}
     dependencies:
@@ -16738,6 +16745,12 @@ packages:
     hasBin: true
     dependencies:
       minimist: 1.2.7
+    dev: false
+
+  /otpauth@9.1.1:
+    resolution: {integrity: sha512-XhimxmkREwf6GJvV4svS9OVMFJ/qRGz+QBEGwtW5OMf9jZlx9yw25RZMXdrO6r7DHgfIaETJb1lucZXZtn3jgw==}
+    dependencies:
+      jssha: 3.3.0
     dev: false
 
   /p-cancelable@2.1.1:
