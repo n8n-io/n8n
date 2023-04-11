@@ -45,8 +45,8 @@ export class Totp implements INodeType {
 				default: 'generateSecret',
 			},
 			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
 				displayOptions: {
 					show: {
@@ -132,11 +132,15 @@ export class Totp implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'Malformed label - expected `issuer:username`');
 		}
 
-		const additionalOptions = this.getNodeParameter('additionalOptions', 0) as {
-			algorithm: string;
-			digits: number;
-			period: number;
+		const options = this.getNodeParameter('options', 0) as {
+			algorithm?: string;
+			digits?: number;
+			period?: number;
 		};
+
+		if (!options.algorithm) options.algorithm = 'SHA1';
+		if (!options.digits) options.digits = 6;
+		if (!options.period) options.period = 30;
 
 		const [issuer] = credentials.label.split(':');
 
@@ -144,14 +148,15 @@ export class Totp implements INodeType {
 			issuer,
 			label: credentials.label,
 			secret: credentials.secret,
-			algorithm: additionalOptions.algorithm,
-			digits: additionalOptions.digits,
-			period: additionalOptions.period,
+			algorithm: options.algorithm,
+			digits: options.digits,
+			period: options.period,
 		});
 
 		const token = totp.generate();
 
-		const secondsRemaining = (30 * (1 - ((Date.now() / 1000 / 30) % 1))) | 0;
+		const secondsRemaining =
+			(options.period * (1 - ((Date.now() / 1000 / options.period) % 1))) | 0;
 
 		if (operation === 'generateSecret') {
 			for (let i = 0; i < items.length; i++) {
