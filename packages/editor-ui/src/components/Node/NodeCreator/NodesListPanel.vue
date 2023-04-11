@@ -5,7 +5,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { reactive, computed, watch, onMounted, nextTick } from 'vue';
+// import { reactive, computed, watch, onMounted, nextTick } from 'vue';
 import SearchBar from './SearchBar.vue';
 
 export interface Props {
@@ -30,14 +30,8 @@ const emit = defineEmits<{
 	(event: 'searchInput', value: string): void;
 }>();
 
-const props = withDefaults(defineProps<Props>(), {
-	title: '',
-	subtitle: '',
+withDefaults(defineProps<Props>(), {
 	transitionDirection: 'in',
-});
-
-const state = reactive({
-	search: props.search,
 });
 
 function onBackButton() {
@@ -45,7 +39,7 @@ function onBackButton() {
 }
 
 function onSearch(e: string) {
-	state.search = e;
+	// state.search = e;
 	emit('searchInput', e);
 }
 </script>
@@ -59,8 +53,8 @@ function onSearch(e: string) {
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
 					</button>
 					<n8n-node-icon
-						:class="$style.nodeIcon"
 						v-if="nodeIcon"
+						:class="$style.nodeIcon"
 						:type="nodeIcon.iconType || 'unknown'"
 						:src="nodeIcon.icon"
 						:name="nodeIcon.icon"
@@ -69,7 +63,7 @@ function onSearch(e: string) {
 						:showTooltip="false"
 						:size="16"
 					/>
-					<p :class="$style.title" v-text="title" />
+					<p :class="$style.title" v-text="title" v-if="title" />
 				</div>
 				<p
 					v-if="subtitle && !hasHeaderBg"
@@ -86,7 +80,7 @@ function onSearch(e: string) {
 						: $locale.baseText('nodeCreator.searchBar.searchNodes')
 				"
 				@input="onSearch"
-				:value="state.search"
+				:value="search"
 			/>
 			<div :class="$style.renderedItems">
 				<slot />

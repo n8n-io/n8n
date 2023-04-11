@@ -13,7 +13,7 @@ import { ACTIONS_NODE_CREATOR_MODE, TRIGGER_NODE_CREATOR_MODE } from '@/constant
 const instance = getCurrentInstance();
 const { mergedNodes } = useNodeCreatorStore();
 
-const { pushViewStack, popViewStack, updateViewStack } = useViewStacks();
+const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
 
 const { setActiveItemIndex, attachKeydownEvent, detachKeydownEvent, registerKeyHook } =
 	useKeyboardNavigation();
@@ -36,7 +36,7 @@ const searchPlaceholder = computed(() =>
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 function onSearchInput(value: string) {
 	if (activeViewStack.value.uuid) {
-		updateViewStack(activeViewStack.value.uuid, { search: value });
+		updateCurrentViewStack({ search: value });
 		setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
 	}
 }

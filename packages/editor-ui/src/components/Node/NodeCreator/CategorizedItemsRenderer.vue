@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
 import CategoryItem from './CategoryItem.vue';
-import { reactive, computed, onMounted, watch, onUnmounted, ref } from 'vue';
+import { computed, watch, ref } from 'vue';
 import ItemsRenderer from './ItemsRenderer.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useViewStacks } from './composables/useViewStacks';
 
@@ -14,6 +13,7 @@ export interface Props {
 	activeIndex?: number;
 	isTriggerCategory?: boolean;
 	mouseOverTooltip?: string;
+	expanded?: boolean;
 }
 
 const { popViewStack } = useViewStacks();
@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
-const expanded = ref(true);
+const expanded = ref(props.expanded ?? false);
 
 function toggleExpanded() {
 	setExpanded(!expanded.value);
@@ -35,7 +35,7 @@ function setExpanded(isExpanded: boolean) {
 
 watch(
 	() => props.elements,
-	(elements) => {
+	() => {
 		setExpanded(true);
 	},
 );
@@ -124,13 +124,13 @@ function arrowLeft() {
 		opacity: 1;
 	}
 }
-:root .tooltipPopper {
+.tooltipPopper {
 	max-width: 260px;
 }
 .contentSlot {
 	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
 }
 .categorizedItemsRenderer {
-	padding-bottom: var(--spacing-m);
+	padding-bottom: var(--spacing-l);
 }
 </style>

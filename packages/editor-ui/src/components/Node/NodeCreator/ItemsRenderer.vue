@@ -42,7 +42,7 @@ function renderItems() {
 
 	if (renderedItems.value.length < props.elements.length) {
 		renderedItems.value.push(
-			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 10),
+			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 5),
 		);
 		renderAnimationRequest.value = window.requestAnimationFrame(renderItems);
 	}

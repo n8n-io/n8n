@@ -6,7 +6,7 @@ import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interf
 import { useNodesSearch } from './useNodesSearch';
 import { transformNodeType, subcategorizeItems, sortNodeCreateElements } from '../utils';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
-import { ACTIONS_NODE_CREATOR_MODE, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -123,7 +123,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			sortNodeCreateElements(stackItems);
 		}
 
-		updateViewStack(activeViewStack.value.uuid, { baselineItems: stackItems });
+		updateCurrentViewStack({ baselineItems: stackItems });
 	}
 	function extendItemsWithUUID(items: INodeCreateElement[]) {
 		return items.map((item) => ({
@@ -133,7 +133,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 	function pushViewStack(stack: ViewStack) {
 		if (activeViewStack.value.uuid) {
-			updateViewStack(activeViewStack.value.uuid, { activeIndex: getActiveItemIndex() });
+			updateCurrentViewStack({ activeIndex: getActiveItemIndex() });
 		}
 
 		const newStackUuid = uuid();
@@ -148,21 +148,19 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	function popViewStack() {
 		if (activeViewStack.value.uuid) {
-			updateViewStack(activeViewStack.value.uuid, { transitionDirection: 'out' });
-			nextTick(() => {
-				viewStacks.value.pop();
-			});
+			updateCurrentViewStack({ transitionDirection: 'out' });
+			nextTick(() => viewStacks.value.pop());
 		}
 	}
 
-	function updateViewStack(uuid: string, stack: Partial<ViewStack>) {
-		const matchedIndex = viewStacks.value.findIndex((s) => s.uuid === uuid);
-		const matchedStack = viewStacks.value[matchedIndex];
+	function updateCurrentViewStack(stack: Partial<ViewStack>) {
+		const currentStack = viewStacks.value[viewStacks.value.length - 1];
+		const matchedIndex = viewStacks.value.findIndex((s) => s.uuid === currentStack.uuid);
 
 		// For each key in the stack, update the matched stack
 		Object.keys(stack).forEach((key) => {
 			const typedKey = key as keyof ViewStack;
-			set(matchedStack, typedKey, stack[typedKey]);
+			set(viewStacks.value[matchedIndex], key, stack[typedKey]);
 		});
 	}
 
@@ -176,7 +174,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		activeViewStackMode,
 		globalSearchItemsDiff,
 		resetViewStacks,
-		updateViewStack,
+		updateCurrentViewStack,
 		pushViewStack,
 		popViewStack,
 	};

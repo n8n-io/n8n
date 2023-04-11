@@ -2,10 +2,8 @@ import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from
 import {
 	INodeCreateElement,
 	LabelCreateElement,
-	ActionTypeDescription,
-	ActionCreateElement,
 } from '@/Interface';
-import { CUSTOM_API_CALL_KEY, SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { externalHooks } from '@/mixins/externalHooks';
 import { BaseTextKey } from '@/plugins/i18n';
@@ -19,15 +17,6 @@ export const useActions = () => {
 	const { baseUrl } = useRootStore();
 	const { $externalHooks } = new externalHooks();
 	const telemetry = instance?.proxy.$telemetry;
-
-	// const { transformCreateElements, isRoot } = useMainPanelView();
-
-	// const containsAPIAction = computed(
-	// 	() =>
-	// 		activeNodeActions.value?.properties.some((p) =>
-	// 			p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME),
-	// 		) === true,
-	// );
 
 	function getPlaceholderTriggerActions(subcategory: string) {
 		const nodes = [WEBHOOK_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE];

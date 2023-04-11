@@ -13,7 +13,7 @@ import ActionsRenderer from './ActionsRenderer.vue';
 import { useActions } from './composables/useActions';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
-import { ACTIONS_NODE_CREATOR_MODE, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { ACTIONS_NODE_CREATOR_MODE, CUSTOM_API_CALL_KEY, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 import { camelCase } from 'lodash-es';
 import { BaseTextKey } from '@/plugins/i18n';
 import { TriggerView, RegularView } from './RootViews';
