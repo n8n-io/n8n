@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { googleApiRequest } from './GenericFunctions';
+import { googleApiRequest } from '../transport';
 
 interface GoogleDriveFilesItem {
 	id: string;

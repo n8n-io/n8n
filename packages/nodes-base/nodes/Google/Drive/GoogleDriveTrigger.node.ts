@@ -1,7 +1,7 @@
 import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
 import { VersionedNodeType } from 'n8n-workflow';
 
-import { GoogleDriveV1 } from './v1/GoogleDriveV1.node';
+import { GoogleDriveTriggerV1 } from './v1/GoogleDriveTriggerV1.node';
 
 export class GoogleDriveTrigger extends VersionedNodeType {
 	constructor() {
@@ -16,7 +16,7 @@ export class GoogleDriveTrigger extends VersionedNodeType {
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new GoogleDriveV1(baseDescription),
+			1: new GoogleDriveTriggerV1(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,6 +5,8 @@ import type {
 	IDataObject,
 	IPollFunctions,
 	JsonObject,
+	IHttpRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -58,27 +58,26 @@ async function getAccessToken(
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method: 'POST',
-		form: {
+		body: {
 			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 			assertion: signature,
 		},
-		uri: 'https://oauth2.googleapis.com/token',
+		url: 'https://oauth2.googleapis.com/token',
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return this.helpers.httpRequest(options);
 }
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -90,14 +89,14 @@ export async function googleApiRequest(
 		'serviceAccount',
 	) as string;
 
-	let options: OptionsWithUri = {
+	let options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://www.googleapis.com${resource}`,
+		url: uri || `https://www.googleapis.com${resource}`,
 		json: true,
 	};
 
@@ -117,7 +116,7 @@ export async function googleApiRequest(
 			);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			return await this.helpers.request(options);
+			return await this.helpers.httpRequest(options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
 		}
@@ -133,7 +132,7 @@ export async function googleApiRequest(
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -151,18 +150,4 @@ export async function googleApiRequestAllItems(
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
-}
-
-export function extractId(url: string): string {
-	if (url.includes('/d/')) {
-		//https://docs.google.com/document/d/1TUJGUf5HUv9e6MJBzcOsPruxXDeGMnGYTBWfkMagcg4/edit
-		const data = url.match(/[-\w]{25,}/);
-		if (Array.isArray(data)) {
-			return data[0];
-		}
-	} else if (url.includes('/folders/')) {
-		//https://drive.google.com/drive/u/0/folders/19MqnruIXju5sAWYD3J71im1d2CBJkZzy
-		return url.split('/folders/')[1];
-	}
-	return url;
 }

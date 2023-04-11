@@ -53,6 +53,12 @@ const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
+			displayName: 'Version 1',
+			name: 'version',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
