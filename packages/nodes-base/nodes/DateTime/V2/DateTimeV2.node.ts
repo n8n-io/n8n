@@ -6,6 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { CurrentDateDescription } from './CurrentDateDescription';
 import { AddToDateDescription } from './AddToDateDescription';
@@ -91,11 +92,21 @@ export class DateTimeV2 implements INodeType {
 			if (operation === 'getCurrentDate') {
 				const includeTime = this.getNodeParameter('includeTime', i) as boolean;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				const { timezone } = this.getNodeParameter('additionalFields', i) as {
+					timezone: string;
+				};
+				const newLocal = timezone ? timezone : workflowTimezone;
+				if (DateTime.now().setZone(newLocal).invalidReason === 'unsupported zone') {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The timezone ${newLocal} is not valid. Please check the timezone.`,
+					);
+				}
 				responseData.push(
 					includeTime
-						? { [outputFieldName]: DateTime.now().setZone(workflowTimezone) }
+						? { [outputFieldName]: DateTime.now().setZone(newLocal) }
 						: {
-								[outputFieldName]: DateTime.now().setZone(workflowTimezone).startOf('day'),
+								[outputFieldName]: DateTime.now().setZone(newLocal).startOf('day'),
 						  },
 				);
 			} else if (operation === 'addToDate') {
