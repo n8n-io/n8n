@@ -1,6 +1,6 @@
-import { INodeUi } from '@/Interface';
-import { IConnection } from 'n8n-workflow';
-import { XYPosition } from '../Interface';
+import type { INodeUi } from '@/Interface';
+import type { IConnection } from 'n8n-workflow';
+import type { XYPosition } from '../Interface';
 import { createEventBus } from '@/event-bus';
 
 // Command names don't serve any particular purpose in the app

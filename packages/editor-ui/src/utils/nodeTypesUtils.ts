@@ -1,7 +1,7 @@
 import { MAIN_AUTH_FIELD_NAME, NODE_RESOURCE_FIELD_NAME } from './../constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from './../stores/nodeTypes';
-import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
+import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
@@ -16,7 +16,7 @@ import {
 	ALL_NODE_FILTER,
 	MAPPING_PARAMS,
 } from '@/constants';
-import {
+import type {
 	INodeCreateElement,
 	ICategoriesWithNodes,
 	INodeUi,
@@ -25,7 +25,7 @@ import {
 	NodeAuthenticationOption,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,

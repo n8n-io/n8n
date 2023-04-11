@@ -41,7 +41,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';

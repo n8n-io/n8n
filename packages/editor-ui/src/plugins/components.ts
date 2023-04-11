@@ -9,7 +9,7 @@ import 'regenerator-runtime/runtime';
 import ElementUI from 'element-ui';
 import { Loading, MessageBox, Message, Notification } from 'element-ui';
 import { designSystemComponents } from 'n8n-design-system';
-import { ElMessageBoxOptions } from 'element-ui/types/message-box';
+import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 
 Vue.use(Fragment.Plugin);

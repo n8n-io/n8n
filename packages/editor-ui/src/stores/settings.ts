@@ -8,13 +8,9 @@ import {
 } from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	EnterpriseEditionFeature,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-} from '@/constants';
-import {
+import type { EnterpriseEditionFeature } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import type {
 	ILdapConfig,
 	ILogLevel,
 	IN8nPromptResponse,
@@ -22,10 +18,10 @@ import {
 	IN8nUISettings,
 	IN8nValueSurveyData,
 	ISettingsState,
-	UserManagementAuthenticationMethod,
 	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
-import { IDataObject, ITelemetrySettings } from 'n8n-workflow';
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import type { IDataObject, ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';

@@ -149,7 +149,7 @@
 <script lang="ts">
 import { convertToDisplayDate } from '@/utils';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ILdapConfig,
 	ILdapSyncData,
 	ILdapSyncTable,
@@ -157,7 +157,7 @@ import {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import Vue from 'vue';
+import type Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import humanizeDuration from 'humanize-duration';

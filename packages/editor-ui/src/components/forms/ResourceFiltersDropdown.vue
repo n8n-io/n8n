@@ -63,9 +63,10 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 

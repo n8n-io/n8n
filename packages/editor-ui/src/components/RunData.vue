@@ -450,10 +450,10 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
-import {
+import type {
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -463,7 +463,7 @@ import {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
-import {
+import type {
 	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,

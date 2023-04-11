@@ -43,10 +43,11 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
-import { EventBus } from '@/event-bus';
+import type { EventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'Modal',

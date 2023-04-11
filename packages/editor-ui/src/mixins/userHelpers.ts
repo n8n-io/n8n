@@ -1,8 +1,9 @@
-import { IPermissions, IUser } from '@/Interface';
+import type { IPermissions } from '@/Interface';
+import { IUser } from '@/Interface';
 import { isAuthorized } from '@/utils';
 import { useUsersStore } from '@/stores/users';
 import Vue from 'vue';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 
 export const userHelpers = Vue.extend({
 	methods: {

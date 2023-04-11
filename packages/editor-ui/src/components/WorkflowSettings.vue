@@ -330,7 +330,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ITimeoutHMS,
 	IUser,
 	IWorkflowDataUpdate,

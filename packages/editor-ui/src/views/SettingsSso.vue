@@ -4,7 +4,8 @@ import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { useUsageStore } from '@/stores/usage';
 import { useUIStore } from '@/stores/ui';
-import { BaseTextKey, i18n as locale } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();

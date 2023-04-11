@@ -91,7 +91,7 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';

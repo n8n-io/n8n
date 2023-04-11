@@ -3,7 +3,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { isAuthorized } from '@/utils';
 import { useSettingsStore } from '@/stores/settings';
 import { useSSOStore } from '@/stores/sso';
-import { IN8nUISettings, IUser, UserManagementAuthenticationMethod } from '@/Interface';
+import type { IN8nUISettings, IUser } from '@/Interface';
+import { UserManagementAuthenticationMethod } from '@/Interface';
 import { routes } from '@/router';
 import { VIEWS } from '@/constants';
 

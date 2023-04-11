@@ -71,7 +71,7 @@
 import Vue from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'CredentialInfo',

@@ -8,7 +8,7 @@ import {
 	EnterpriseEditionFeature,
 } from '@/constants';
 
-import {
+import type {
 	IConnections,
 	IDataObject,
 	INode,
@@ -24,15 +24,13 @@ import {
 	IRunExecutionData,
 	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-	NodeHelpers,
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	deepCopy,
 } from 'n8n-workflow';
+import { Workflow, NodeHelpers, deepCopy } from 'n8n-workflow';
 
-import {
+import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
@@ -57,14 +55,15 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import { ICredentialsResponse } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import type { ICredentialsResponse } from '@/Interface';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;

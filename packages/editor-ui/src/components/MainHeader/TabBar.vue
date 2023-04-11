@@ -12,8 +12,9 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { ITabBarItem } from '@/Interface';
+import type { PropType } from 'vue';
+import Vue from 'vue';
+import type { ITabBarItem } from '@/Interface';
 import { MAIN_HEADER_TABS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
