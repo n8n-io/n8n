@@ -373,7 +373,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
-import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
+import { htmlEditorEventBus } from '@/event-bus';
 
 export default mixins(
 	externalHooks,
@@ -1106,7 +1106,7 @@ export default mixins(
 				}
 				this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
-				htmlEditorEventBus.$emit('format-html');
+				htmlEditorEventBus.emit('format-html');
 			}
 
 			if (this.node && (command === 'addExpression' || command === 'removeExpression')) {

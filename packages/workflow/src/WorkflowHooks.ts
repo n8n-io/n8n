@@ -33,7 +33,8 @@ export class WorkflowHooks {
 		this.executionId = executionId;
 		this.workflowData = workflowData;
 		this.sessionId = optionalParameters.sessionId;
-		this.retryOf = optionalParameters.retryOf;
+		// retryOf might be `null` from TypeORM
+		this.retryOf = optionalParameters.retryOf ?? undefined;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any

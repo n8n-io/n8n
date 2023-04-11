@@ -25,8 +25,8 @@ import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { CODE_NODE_EDITOR_THEME } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -154,10 +154,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	destroyed() {
-		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
+		codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {
-		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
+		codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		const stateBasedExtensions = [
 			this.linterCompartment.of(this.linterExtension()),

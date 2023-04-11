@@ -102,16 +102,16 @@ export default Vue.extend({
 	computed: {
 		...mapStores(useWorkflowsStore),
 		showRequiredErrors(): boolean {
-			if (!this.$props.parameter.required) {
+			if (!this.parameter.required) {
 				return false;
 			}
 
 			if (this.blurredEver || this.showValidationWarnings) {
-				if (this.$props.parameter.type === 'string') {
+				if (this.parameter.type === 'string') {
 					return !this.value;
 				}
 
-				if (this.$props.parameter.type === 'number') {
+				if (this.parameter.type === 'number') {
 					return typeof this.value !== 'number';
 				}
 			}
