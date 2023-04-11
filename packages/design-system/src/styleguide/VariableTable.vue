@@ -23,7 +23,7 @@ export default defineComponent({
 	data() {
 		return {
 			observer: null as null | MutationObserver,
-			values: {},
+			values: {} as Record<string, string>,
 		};
 	},
 	props: {

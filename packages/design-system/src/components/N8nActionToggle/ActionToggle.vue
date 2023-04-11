@@ -37,20 +37,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import {
 	Dropdown as ElDropdown,
 	DropdownMenu as ElDropdownMenu,
 	DropdownItem as ElDropdownItem,
 } from 'element-ui';
 import N8nIcon from '../N8nIcon';
-
-export interface Action {
-	label: string;
-	value: string;
-	disabled: boolean;
-	type?: 'external-link';
-}
+import type { UserAction } from '@/types';
 
 export default defineComponent({
 	name: 'n8n-action-toggle',
@@ -62,7 +56,7 @@ export default defineComponent({
 	},
 	props: {
 		actions: {
-			type: Array<Action>,
+			type: Array as PropType<UserAction[]>,
 			default: () => [],
 		},
 		placement: {

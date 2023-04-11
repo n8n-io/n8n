@@ -12,7 +12,7 @@
 			<div>
 				<n8n-text :bold="true" color="text-dark">
 					{{ firstName }} {{ lastName }}
-					{{ isCurrentUser ? this.t('nds.userInfo.you') : '' }}
+					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
 				</n8n-text>
 				<span v-if="disabled" :class="$style.pendingBadge">
 					<n8n-badge :bold="true">Disabled</n8n-badge>

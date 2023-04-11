@@ -18,14 +18,7 @@
 						:disabled="item.disabled"
 						:divided="item.divided"
 					>
-						<div
-							:class="{
-								[$style.itemContainer]: true,
-								[$style.hasCustomStyling]: item.customClass !== undefined,
-								[item.customClass]: item.customClass !== undefined,
-							}"
-							:data-test-id="`workflow-menu-item-${item.id}`"
-						>
+						<div :class="getItemClasses(item)" :data-test-id="`workflow-menu-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
 								<n8n-icon :icon="item.icon" :size="iconSize" />
 							</span>
@@ -99,6 +92,13 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
+			return {
+				[this.$style.itemContainer]: true,
+				[this.$style.hasCustomStyling]: item.customClass !== undefined,
+				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+			};
+		},
 		onSelect(action: string): void {
 			this.$emit('select', action);
 		},

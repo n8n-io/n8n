@@ -13,7 +13,7 @@
 			size="small"
 			@click.stop.prevent="onExpand"
 		>
-			{{ t('tags.showMore', hiddenTagsLength) }}
+			{{ t('tags.showMore', `${hiddenTagsLength}`) }}
 		</n8n-link>
 	</div>
 </template>

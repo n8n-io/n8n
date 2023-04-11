@@ -18,23 +18,24 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 export default defineComponent({
 	name: 'sizes',
 	data() {
 		return {
 			observer: null as null | MutationObserver,
-			sizes: {},
+			sizes: {} as Record<string, { rem: string; px: number }>,
 		};
 	},
 	props: {
 		variables: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 		attr: {
 			type: String,
+			default: '',
 		},
 	},
 	created() {

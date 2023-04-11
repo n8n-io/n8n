@@ -32,7 +32,7 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction } from '../../types';
+import type { IUser, UserAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
@@ -63,7 +63,7 @@ export default defineComponent({
 			type: String,
 		},
 		actions: {
-			type: Array as PropType<IUserListAction[]>,
+			type: Array as PropType<UserAction[]>,
 			default: () => [],
 		},
 	},
@@ -107,7 +107,7 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		getActions(user: IUser): IUserListAction[] {
+		getActions(user: IUser): UserAction[] {
 			if (user.isOwner) {
 				return [];
 			}
