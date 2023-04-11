@@ -104,9 +104,9 @@ export class DateTimeV2 implements INodeType {
 				}
 				responseData.push(
 					includeTime
-						? { [outputFieldName]: DateTime.now().setZone(newLocal) }
+						? { [outputFieldName]: DateTime.now().setZone(newLocal).toString() }
 						: {
-								[outputFieldName]: DateTime.now().setZone(newLocal).startOf('day'),
+								[outputFieldName]: DateTime.now().setZone(newLocal).startOf('day').toString(),
 						  },
 				);
 			} else if (operation === 'addToDate') {
@@ -116,7 +116,7 @@ export class DateTimeV2 implements INodeType {
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const dateToAdd = parseDate.call(this, addToDate, workflowTimezone);
 				const returnedDate = dateToAdd.plus({ [timeUnit]: duration });
-				responseData.push({ [outputFieldName]: returnedDate });
+				responseData.push({ [outputFieldName]: returnedDate.toString() });
 			} else if (operation === 'subtractFromDate') {
 				const subtractFromDate = this.getNodeParameter('subtractFromDate', i) as string;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
@@ -124,7 +124,7 @@ export class DateTimeV2 implements INodeType {
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const dateToAdd = parseDate.call(this, subtractFromDate, workflowTimezone);
 				const returnedDate = dateToAdd.minus({ [timeUnit]: duration });
-				responseData.push({ [outputFieldName]: returnedDate });
+				responseData.push({ [outputFieldName]: returnedDate.toString() });
 			} else if (operation === 'formatDate') {
 				const date = this.getNodeParameter('date', i) as string;
 				const format = this.getNodeParameter('format', i) as string;
@@ -148,12 +148,15 @@ export class DateTimeV2 implements INodeType {
 				if (mode === 'roundDown') {
 					const toNearest = this.getNodeParameter('toNearest', i) as string;
 					responseData.push({
-						[outputFieldName]: dateLuxon.startOf(toNearest as DateTimeUnit),
+						[outputFieldName]: dateLuxon.startOf(toNearest as DateTimeUnit).toString(),
 					});
 				} else if (mode === 'roundUp') {
 					const to = this.getNodeParameter('to', i) as string;
 					responseData.push({
-						[outputFieldName]: dateLuxon.plus({ [to]: 1 }).startOf(to as DateTimeUnit),
+						[outputFieldName]: dateLuxon
+							.plus({ [to]: 1 })
+							.startOf(to as DateTimeUnit)
+							.toString(),
 					});
 				}
 			} else if (operation === 'getTimeBetweenDates') {

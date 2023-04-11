@@ -77,6 +77,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
+	workflowTestData?: WorkflowTestData,
 ): IWorkflowExecuteAdditionalData {
 	const hookFunctions = {
 		nodeExecuteAfter: [
@@ -99,7 +100,6 @@ export function WorkflowExecuteAdditionalData(
 		nodes: [],
 		connections: {},
 	};
-
 	return {
 		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
@@ -107,7 +107,7 @@ export function WorkflowExecuteAdditionalData(
 		sendMessageToUI: (message: string) => {},
 		restApiUrl: '',
 		encryptionKey: 'test',
-		timezone: 'America/New_York',
+		timezone: workflowTestData?.input.workflowData.settings?.timezone || 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
@@ -265,7 +265,6 @@ const preparePinData = (pinData: IDataObject) => {
 	);
 	return returnData;
 };
-
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
