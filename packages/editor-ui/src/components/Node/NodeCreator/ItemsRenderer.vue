@@ -42,7 +42,7 @@ function renderItems() {
 
 	if (renderedItems.value.length < props.elements.length) {
 		renderedItems.value.push(
-			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 20),
+			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 10),
 		);
 		renderAnimationRequest.value = window.requestAnimationFrame(renderItems);
 	}
@@ -93,7 +93,6 @@ watch(
 		renderItems();
 	},
 );
-
 </script>
 
 <template>
@@ -115,6 +114,7 @@ watch(
 				clickable: !disabled,
 				[$style.active]: activeItemId === item.uuid,
 				[$style.iteratorItem]: true,
+				[$style[item.type]]: true,
 			}"
 			ref="iteratorItems"
 			:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
@@ -139,7 +139,11 @@ watch(
 					:active="true"
 				/>
 
-				<view-item v-else-if="item.type === 'view'" :view="item.properties" />
+				<view-item
+					v-else-if="item.type === 'view'"
+					:view="item.properties"
+					:class="$style.viewItem"
+				/>
 			</template>
 
 			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
@@ -171,7 +175,7 @@ watch(
 	}
 
 	&.active:not(.category)::before {
-		border-color: $color-primary !important;
+		border-color: $color-primary;
 	}
 }
 .empty {
@@ -187,5 +191,10 @@ watch(
 	& > *::-webkit-scrollbar {
 		display: none;
 	}
+}
+.view {
+	border-top: 1px solid var(--color-foreground-base);
+	margin-top: var(--spacing-s);
+	padding-top: var(--spacing-xs);
 }
 </style>

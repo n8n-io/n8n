@@ -1,4 +1,4 @@
-import { ref, set} from 'vue';
+import { ref, set } from 'vue';
 import { defineStore } from 'pinia';
 
 type KeyboardKey = (typeof WATCHED_KEYS)[number];
@@ -20,7 +20,7 @@ export const WATCHED_KEYS = [
 ];
 
 export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation', () => {
-	const selectableItems = ref<WeakRef<Element>[]>([]);
+	const selectableItems = ref<Array<WeakRef<Element>>>([]);
 
 	const activeItemId = ref<string | null>(null);
 	// Array of objects that contains key code and handler
@@ -38,9 +38,9 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 			setTimeout(() => {
 				cleanupSelectableItems();
 
-				selectableItems.value = Array
-					.from(document.querySelectorAll('[data-keyboard-nav-type]'))
-					.map(el => new WeakRef(el));
+				selectableItems.value = Array.from(
+					document.querySelectorAll('[data-keyboard-nav-type]'),
+				).map((el) => new WeakRef(el));
 
 				resolve();
 			}, 0);
@@ -52,7 +52,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 		const hooks = flatHooks.filter((hook) => hook.keyboardKeys.includes(keyboardKey));
 
 		hooks.forEach((hook) => {
-			if(!activeItemId.value) return;
+			if (!activeItemId.value) return;
 
 			const conditionPassed =
 				hook.condition === undefined ||
@@ -79,13 +79,11 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 		const isArrowDown = pressedKey === 'ArrowDown';
 		const isArrowUp = pressedKey === 'ArrowUp';
 
-
-		if(!activeItem) return;
+		if (!activeItem) return;
 
 		if (isArrowDown) {
 			const nextItemIndex =
 				activeItemIndex < selectableItems.value.length - 1 ? activeItemIndex + 1 : 0;
-
 
 			setActiveItem(selectableItems.value[nextItemIndex]?.deref());
 		}
@@ -100,7 +98,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 
 	function setActiveItem(item?: Element) {
 		const itemId = getElementId(item);
-		if(!itemId) return;
+		if (!itemId) return;
 
 		activeItemId.value = itemId;
 		item?.scrollIntoView({ block: 'center' });
@@ -128,7 +126,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 			} else {
 				throw new Error(`Key ${keyboardKey} is not supported`);
 			}
-		})
+		});
 	}
 
 	function cleanupSelectableItems() {

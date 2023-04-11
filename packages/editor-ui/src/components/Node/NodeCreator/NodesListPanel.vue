@@ -72,7 +72,7 @@ function onSearch(e: string) {
 					<p :class="$style.title" v-text="title" />
 				</div>
 				<p
-					v-if="!hasHeaderBg"
+					v-if="subtitle && !hasHeaderBg"
 					:class="{ [$style.subtitle]: true, [$style.offsetSubtitle]: hasBackButton }"
 					v-text="subtitle"
 				/>

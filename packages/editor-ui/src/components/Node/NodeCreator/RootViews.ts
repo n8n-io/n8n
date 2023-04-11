@@ -1,4 +1,3 @@
-import { getCurrentInstance } from 'vue';
 import {
 	CORE_NODES_CATEGORY,
 	WEBHOOK_NODE_TYPE,
@@ -6,23 +5,20 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	REGULAR_NODE_FILTER,
+	REGULAR_NODE_CREATOR_MODE,
 	TRANSFORM_DATA_SUBCATEGORY,
 	FILES_SUBCATEGORY,
 	FLOWS_CONTROL_SUBCATEGORY,
 	HELPERS_SUBCATEGORY,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_CREATOR_MODE,
 	EMAIL_IMAP_NODE_TYPE,
 } from '@/constants';
 
-export function TriggerView() {
-	const instance = getCurrentInstance();
+export function TriggerView($locale: any) {
 	return {
-		value: TRIGGER_NODE_FILTER,
-		title: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
-		subtitle: instance?.proxy.$locale.baseText(
-			'nodeCreator.triggerHelperPanel.selectATriggerDescription',
-		),
+		value: TRIGGER_NODE_CREATOR_MODE,
+		title: $locale.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
+		subtitle: $locale.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
 			{
 				key: '*',
@@ -40,10 +36,10 @@ export function TriggerView() {
 				properties: {
 					group: [],
 					name: SCHEDULE_TRIGGER_NODE_TYPE,
-					displayName: instance?.proxy.$locale.baseText(
+					displayName: $locale.baseText(
 						'nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName',
 					),
-					description: instance?.proxy.$locale.baseText(
+					description: $locale.baseText(
 						'nodeCreator.triggerHelperPanel.scheduleTriggerDescription',
 					),
 					icon: 'fa:clock',
@@ -56,12 +52,8 @@ export function TriggerView() {
 				properties: {
 					group: [],
 					name: WEBHOOK_NODE_TYPE,
-					displayName: instance?.proxy.$locale.baseText(
-						'nodeCreator.triggerHelperPanel.webhookTriggerDisplayName',
-					),
-					description: instance?.proxy.$locale.baseText(
-						'nodeCreator.triggerHelperPanel.webhookTriggerDescription',
-					),
+					displayName: $locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
+					description: $locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
 					iconData: {
 						type: 'file',
 						icon: 'webhook',
@@ -76,12 +68,8 @@ export function TriggerView() {
 				properties: {
 					group: [],
 					name: MANUAL_TRIGGER_NODE_TYPE,
-					displayName: instance?.proxy.$locale.baseText(
-						'nodeCreator.triggerHelperPanel.manualTriggerDisplayName',
-					),
-					description: instance?.proxy.$locale.baseText(
-						'nodeCreator.triggerHelperPanel.manualTriggerDescription',
-					),
+					displayName: $locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
+					description: $locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
 					icon: 'fa:mouse-pointer',
 				},
 			},
@@ -92,10 +80,10 @@ export function TriggerView() {
 				properties: {
 					group: [],
 					name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-					displayName: instance?.proxy.$locale.baseText(
+					displayName: $locale.baseText(
 						'nodeCreator.triggerHelperPanel.workflowTriggerDisplayName',
 					),
-					description: instance?.proxy.$locale.baseText(
+					description: $locale.baseText(
 						'nodeCreator.triggerHelperPanel.workflowTriggerDescription',
 					),
 					icon: 'fa:sign-out-alt',
@@ -114,11 +102,10 @@ export function TriggerView() {
 	};
 }
 
-export function RegularView() {
-	const instance = getCurrentInstance();
+export function RegularView($locale: any) {
 	return {
-		value: REGULAR_NODE_FILTER,
-		title: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
+		value: REGULAR_NODE_CREATOR_MODE,
+		title: $locale.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
 			{
 				key: '*',
@@ -165,15 +152,13 @@ export function RegularView() {
 				},
 			},
 			{
-				key: TRIGGER_NODE_FILTER,
+				key: TRIGGER_NODE_CREATOR_MODE,
 				type: 'view',
 				properties: {
-					title: instance?.proxy.$locale.baseText(
-						'nodeCreator.triggerHelperPanel.addAnotherTrigger',
-					),
+					title: $locale.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
 					icon: 'bolt',
 					withTopBorder: true,
-					description: instance?.proxy.$locale.baseText(
+					description: $locale.baseText(
 						'nodeCreator.triggerHelperPanel.addAnotherTriggerDescription',
 					),
 				},

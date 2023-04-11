@@ -194,10 +194,10 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_CREATOR_MODE,
 	EnterpriseEditionFeature,
 	ASSUMPTION_EXPERIMENT,
-	REGULAR_NODE_FILTER,
+	REGULAR_NODE_CREATOR_MODE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
@@ -774,7 +774,7 @@ export default mixins(
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
-			// this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
+			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_MODE);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
@@ -3758,14 +3758,14 @@ export default mixins(
 			if (createNodeActive === this.createNodeActive) return;
 
 			// Default to the trigger tab in node creator if there's no trigger node yet
-			// this.nodeCreatorStore.setSelectedView(
-			// 	this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
-			// );
+			this.nodeCreatorStore.setSelectedView(
+				this.containsTrigger ? REGULAR_NODE_CREATOR_MODE : TRIGGER_NODE_CREATOR_MODE,
+			);
 
 			this.createNodeActive = createNodeActive;
 
 			const mode =
-				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
+				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_MODE ? 'trigger' : 'regular';
 
 			this.nodeCreatorStore.openSource = source || '';
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {

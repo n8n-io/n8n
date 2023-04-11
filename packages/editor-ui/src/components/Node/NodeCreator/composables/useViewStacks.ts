@@ -1,15 +1,12 @@
-import {
-	computed,
-	ref,
-	set,
-} from 'vue';
+import { computed, nextTick, ref, set } from 'vue';
 import { defineStore } from 'pinia';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
-import { INodeCreateElement, SimplifiedNodeType } from '@/Interface';
+import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { useNodesSearch } from './useNodesSearch';
 import { transformNodeType, subcategorizeItems, sortNodeCreateElements } from '../utils';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
+import { ACTIONS_NODE_CREATOR_MODE, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -22,6 +19,7 @@ interface ViewStack {
 		color?: string;
 	};
 	iconUrl?: string;
+	rootView?: NodeFilterType;
 	activeIndex?: number;
 	hasHeaderBg?: boolean;
 	transitionDirection?: 'in' | 'out';
@@ -30,7 +28,7 @@ interface ViewStack {
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
 	forceIncludeNodes?: string[];
-	mode?: 'regular' | 'trigger' | 'action';
+	mode?: 'actions' | 'nodes';
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 }
@@ -42,20 +40,20 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const viewStacks = ref<ViewStack[]>([]);
 
-	const isRootView = computed(() => viewStacks.value.length <= 1);
-
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 
-		if (!stack || !stack.baselineItems) return [];
+		if (!stack?.baselineItems) {
+			return stack.items ? extendItemsWithUUID(stack.items) : [];
+		}
 
 		if (stack.search && searchBaseItems.value) {
 			const searchBase =
 				searchBaseItems.value.length > 0 ? searchBaseItems.value : stack.baselineItems;
 
-			return searchNodes(stack.search || '', searchBase);
+			return extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 		}
-		return stack.baselineItems;
+		return extendItemsWithUUID(stack.baselineItems);
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -65,12 +63,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		return {
 			...stack,
-			items: extendItemsWithUUID(activeStackItems.value),
+			items: activeStackItems.value,
 			hasSearch: (stack.baselineItems || []).length > 3 || stack?.hasSearch,
 		};
 	});
 
-	const activeViewStackMode = computed(() => activeViewStack.value.mode || 'trigger');
+	const activeViewStackMode = computed(
+		() => activeViewStack.value.mode || TRIGGER_NODE_CREATOR_MODE,
+	);
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
@@ -119,7 +119,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		}
 
 		// Sort only if non-root view
-		if (!isRootView.value) {
+		if (!stack.items) {
 			sortNodeCreateElements(stackItems);
 		}
 
@@ -131,8 +131,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			uuid: `${item.key}-${uuid()}`,
 		}));
 	}
-	function pushViewStack(stack: Partial<ViewStack>) {
-		if(activeViewStack.value.uuid) {
+	function pushViewStack(stack: ViewStack) {
+		if (activeViewStack.value.uuid) {
 			updateViewStack(activeViewStack.value.uuid, { activeIndex: getActiveItemIndex() });
 		}
 
@@ -149,7 +149,9 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	function popViewStack() {
 		if (activeViewStack.value.uuid) {
 			updateViewStack(activeViewStack.value.uuid, { transitionDirection: 'out' });
-			viewStacks.value.pop();
+			nextTick(() => {
+				viewStacks.value.pop();
+			});
 		}
 	}
 
@@ -164,7 +166,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 	}
 
-
 	function resetViewStacks() {
 		viewStacks.value = [];
 	}
@@ -174,7 +175,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		activeViewStack,
 		activeViewStackMode,
 		globalSearchItemsDiff,
-		isRootView,
 		resetViewStacks,
 		updateViewStack,
 		pushViewStack,

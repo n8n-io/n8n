@@ -14,7 +14,7 @@ import {
 	STORES,
 	MANUAL_TRIGGER_NODE_TYPE,
 	CORE_NODES_CATEGORY,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_CREATOR_MODE,
 	STICKY_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
@@ -25,7 +25,7 @@ import {
 	ActionCreateElement,
 	ActionTypeDescription,
 	INodeCreatorState,
-	INodeFilterType,
+	NodeFilterType,
 	IUpdateInformation,
 	NodeCreatorOpenSource,
 	SimplifiedNodeType,
@@ -241,27 +241,14 @@ type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 type ActionsRecord<T extends SimplifiedNodeType[]> = {
 	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
 };
-interface EventSubscriber {
-	eventKey: string;
-	callback: (e: unknown) => void;
-	uuid: string;
-}
-interface EventQueueItem {
-	eventKey: string;
-	payload: unknown;
-}
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
+	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_MODE);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
 	const actions = ref<ActionsRecord<typeof mergedNodes.value>>({});
 	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
-	const eventsQueue = ref<EventQueueItem[]>([]);
-	const eventsSubscribers = ref<EventSubscriber[]>([]);
 
-	// We need to create a computed prop so we could watch for changes
-	// in the eventsQueue
-	const queueLength = computed(() => eventsQueue.value.length);
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
 		telemetry?: Telemetry,
@@ -388,7 +375,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		const { workflowTriggerNodes } = useWorkflowsStore();
 		const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
 		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-		// const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
+		const isTriggerPanel = selectedView.value === TRIGGER_NODE_CREATOR_MODE;
 		const isStickyNode = nodeType === STICKY_NODE_TYPE;
 		const singleNodeOpenSources = [
 			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
@@ -404,12 +391,16 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			!isSingleNodeOpenSource &&
 			!isTrigger &&
 			!workflowContainsTrigger &&
-			// isTriggerPanel &&
+			isTriggerPanel &&
 			!isStickyNode;
 
 		const nodeTypes = shouldAppendManualTrigger ? [MANUAL_TRIGGER_NODE_TYPE, nodeType] : [nodeType];
 
 		return nodeTypes;
+	}
+
+	function setSelectedView(view: NodeFilterType) {
+		selectedView.value = view;
 	}
 
 	return {
@@ -418,6 +409,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		setShowScrim,
 		getNodeTypesWithManualTrigger,
 		setAddedNodeActionParameters,
+		setSelectedView,
+		selectedView,
 		showScrim,
 		mergedNodes,
 		actions,

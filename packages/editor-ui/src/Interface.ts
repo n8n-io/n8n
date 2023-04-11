@@ -1,4 +1,4 @@
-import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import { ACTIONS_NODE_CREATOR_MODE, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
@@ -34,7 +34,11 @@ import {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
-import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
+import {
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_MODE,
+	REGULAR_NODE_CREATOR_MODE,
+} from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
@@ -1208,7 +1212,7 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
+export type NodeFilterType = typeof REGULAR_NODE_CREATOR_MODE | typeof TRIGGER_NODE_CREATOR_MODE;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1223,8 +1227,8 @@ export type NodeCreatorOpenSource =
 export interface INodeCreatorState {
 	itemsFilter: string;
 	showScrim: boolean;
-	rootViewHistory: INodeFilterType[];
-	selectedView: INodeFilterType;
+	rootViewHistory: NodeFilterType[];
+	selectedView: NodeFilterType;
 	openSource: NodeCreatorOpenSource;
 }
 

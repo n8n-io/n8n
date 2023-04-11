@@ -2,7 +2,6 @@
 	<n8n-node-creator-node
 		:class="{
 			[$style.view]: true,
-			[$style.withTopBorder]: view.withTopBorder,
 		}"
 		:title="view.title"
 		:isTrigger="false"
@@ -33,13 +32,13 @@ defineProps<Props>();
 <style lang="scss" module>
 .view {
 	--action-arrow-color: var(--color-text-light);
-	margin-left: 15px;
-	margin-right: 12px;
-	padding: 11px 4px 11px 0;
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-xs);
+	// padding: 11px 4px 11px 0;
 }
 .withTopBorder {
 	border-top: 1px solid var(--color-foreground-base);
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing-s);
 	padding-top: var(--spacing-l);
 }
 </style>

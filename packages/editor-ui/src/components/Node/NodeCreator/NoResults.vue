@@ -8,11 +8,11 @@
 			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
 			<div :class="$style.action">
 				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<n8n-link v-if="mode === 'regular'" @click="$emit('http')">
+				<n8n-link v-if="rootView === 'regular'" @click="$emit('http')">
 					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 				</n8n-link>
 
-				<n8n-link v-if="mode === 'trigger'" @click="$emit('webhook')">
+				<n8n-link v-if="rootView === 'trigger'" @click="$emit('webhook')">
 					{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 				</n8n-link>
 				{{ $locale.baseText('nodeCreator.noResults.node') }}
@@ -41,11 +41,12 @@
 <script setup lang="ts">
 import { REQUEST_NODE_FORM_URL } from '@/constants';
 import NoResultsIcon from './NoResultsIcon.vue';
+import { NodeFilterType } from '@/Interface';
 
 export interface Props {
 	showIcon?: boolean;
 	showRequest?: boolean;
-	mode: 'trigger' | 'regular' | 'action';
+	rootView: NodeFilterType;
 }
 
 defineProps<Props>();

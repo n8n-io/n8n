@@ -43,27 +43,27 @@ watch(
 registerKeyHook(`CategoryRight_${props.category}`, {
 	keyboardKeys: ['ArrowRight'],
 	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
-	handler: arrowRight
+	handler: arrowRight,
 });
 registerKeyHook(`CategoryToggle_${props.category}`, {
 	keyboardKeys: ['Enter'],
 	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
-	handler: toggleExpanded
+	handler: toggleExpanded,
 });
 
 registerKeyHook(`CategoryLeft_${props.category}`, {
 	keyboardKeys: ['ArrowLeft'],
 	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
-	handler: arrowLeft
+	handler: arrowLeft,
 });
 
 function arrowRight() {
-	if(expanded.value) return;
+	if (expanded.value) return;
 
 	expanded.value = true;
 }
 function arrowLeft() {
-	if(!expanded.value) {
+	if (!expanded.value) {
 		popViewStack();
 		return;
 	}
@@ -71,8 +71,6 @@ function arrowLeft() {
 	expanded.value = false;
 }
 </script>
-
-
 
 <template>
 	<div :class="$style.categorizedItemsRenderer" :data-category-collapsed="!expanded">
@@ -131,5 +129,8 @@ function arrowLeft() {
 }
 .contentSlot {
 	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
+}
+.categorizedItemsRenderer {
+	padding-bottom: var(--spacing-m);
 }
 </style>
