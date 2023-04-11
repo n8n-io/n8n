@@ -195,6 +195,11 @@ const config = (module.exports = {
 		'@typescript-eslint/consistent-type-assertions': 'error',
 
 		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
+		 */
+		'@typescript-eslint/consistent-type-imports': 'error',
+
+		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 		 */
 		'@typescript-eslint/member-delimiter-style': [

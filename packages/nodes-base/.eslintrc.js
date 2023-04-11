@@ -11,8 +11,6 @@ module.exports = {
 	ignorePatterns: ['index.js'],
 
 	rules: {
-		'@typescript-eslint/consistent-type-imports': 'error',
-
 		// TODO: remove all the following rules
 		eqeqeq: 'off',
 		'id-denylist': 'off',
