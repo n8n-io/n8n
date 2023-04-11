@@ -96,7 +96,7 @@ export abstract class BaseCommand extends Command {
 		if (inTest || this.id === 'start') return;
 		if (Db.isInitialized) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.connection.destroy();
+			await Db.getConnection().destroy();
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

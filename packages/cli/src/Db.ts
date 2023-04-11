@@ -43,7 +43,7 @@ import {
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-export let connection: Connection;
+let connection: Connection;
 
 export const getConnection = () => connection!;
 

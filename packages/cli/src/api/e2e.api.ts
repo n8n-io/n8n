@@ -56,7 +56,7 @@ const tablesToTruncate = [
 ];
 
 const truncateAll = async () => {
-	const { connection } = Db;
+	const connection = Db.getConnection();
 	for (const table of tablesToTruncate) {
 		await connection.query(
 			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
@@ -65,7 +65,7 @@ const truncateAll = async () => {
 };
 
 const setupUserManagement = async () => {
-	const { connection } = Db;
+	const connection = Db.getConnection();
 	await connection.query('INSERT INTO role (name, scope) VALUES ("owner", "global");');
 	const instanceOwnerRole = (await connection.query(
 		'SELECT last_insert_rowid() as insertId',
