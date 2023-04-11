@@ -8,7 +8,7 @@
 			:class="$style['ask-ai-button']"
 			@mousedown="onAskAiButtonClick"
 		>
-			✨ Ask AI
+			{{ $locale.baseText('codeNodeEditor.askAi') }}
 		</n8n-button>
 	</div>
 </template>

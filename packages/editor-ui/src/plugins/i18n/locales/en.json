@@ -113,6 +113,7 @@
 	"binaryDataDisplay.noDataFoundToDisplay": "No data found to display",
 	"binaryDataDisplay.yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version.",
 	"codeEdit.edit": "Edit",
+	"codeNodeEditor.askAi": "✨ Ask AI",
 	"codeNodeEditor.completer.$()": "Output data of the {nodeName} node",
 	"codeNodeEditor.completer.$execution": "Information about the current execution",
 	"codeNodeEditor.completer.$execution.id": "The ID of the current execution",
