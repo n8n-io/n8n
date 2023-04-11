@@ -75,7 +75,9 @@ import {
 	ExpressionError,
 } from 'n8n-workflow';
 
+import pick from 'lodash.pick';
 import { Agent } from 'https';
+import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -675,49 +677,46 @@ async function proxyRequestToAxios(
 			return body;
 		}
 	} catch (error) {
-		const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
-		if (configObject.simple === false && response) {
-			if (configObject.resolveWithFullResponse) {
-				return {
-					body: response.data,
-					headers: response.headers,
-					statusCode: response.status,
-					statusMessage: response.statusText,
-				};
-			} else {
-				return response.data;
-			}
-		}
+		const { config, response } = error;
 
 		// Axios hydrates the original error with more data. We extract them.
 		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
 		// Note: `code` is ignored as it's an expected part of the errorData.
-		if (response) {
-			Logger.debug('Request proxied to Axios failed', { status: response.status });
-			let responseData = response.data;
+		if (error.isAxiosError) {
+			if (response) {
+				Logger.debug('Request proxied to Axios failed', { status: response.status });
+				let responseData = response.data;
 
-			if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-				responseData = await binaryToBuffer(responseData).then((buffer) =>
-					buffer.toString('utf-8'),
-				);
+				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
+					responseData = await binaryToBuffer(responseData).then((buffer) =>
+						buffer.toString('utf-8'),
+					);
+				}
+
+				if (configObject.simple === false) {
+					if (configObject.resolveWithFullResponse) {
+						return {
+							body: responseData,
+							headers: response.headers,
+							statusCode: response.status,
+							statusMessage: response.statusText,
+						};
+					} else {
+						return responseData;
+					}
+				}
+
+				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+				throw Object.assign(new Error(message, { cause: error }), {
+					statusCode: response.status,
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
+			} else {
+				throw Object.assign(new Error(error.message, { cause: error }), {
+					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+				});
 			}
-			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 		}
-
-		error.cause = errorData;
-		error.error = error.response?.data || errorData;
-		error.statusCode = error.response?.status;
-		error.options = config || {};
-
-		// Remove not needed data and so also remove circular references
-		error.request = undefined;
-		error.config = undefined;
-		error.options.adapter = undefined;
-		error.options.httpsAgent = undefined;
-		error.options.paramsSerializer = undefined;
-		error.options.transformRequest = undefined;
-		error.options.transformResponse = undefined;
-		error.options.validateStatus = undefined;
 
 		throw error;
 	}
@@ -934,13 +933,15 @@ export async function copyBinaryFile(
 				fileExtension = fileTypeData.ext;
 			}
 		}
+	}
 
-		if (!mimeType) {
-			// Fall back to text
-			mimeType = 'text/plain';
-		}
-	} else if (!fileExtension) {
+	if (!fileExtension && mimeType) {
 		fileExtension = extension(mimeType) || undefined;
+	}
+
+	if (!mimeType) {
+		// Fall back to text
+		mimeType = 'text/plain';
 	}
 
 	const returnData: IBinaryData = {
@@ -981,22 +982,29 @@ async function prepareBinaryData(
 			}
 		}
 
-		// TODO: detect filetype from streams
-		if (!mimeType && Buffer.isBuffer(binaryData)) {
-			// Use buffer to guess mime type
-			const fileTypeData = await FileType.fromBuffer(binaryData);
-			if (fileTypeData) {
-				mimeType = fileTypeData.mime;
-				fileExtension = fileTypeData.ext;
+		if (!mimeType) {
+			if (Buffer.isBuffer(binaryData)) {
+				// Use buffer to guess mime type
+				const fileTypeData = await FileType.fromBuffer(binaryData);
+				if (fileTypeData) {
+					mimeType = fileTypeData.mime;
+					fileExtension = fileTypeData.ext;
+				}
+			} else if (binaryData instanceof IncomingMessage) {
+				mimeType = binaryData.headers['content-type'];
+			} else {
+				// TODO: detect filetype from other kind of streams
 			}
 		}
+	}
 
-		if (!mimeType) {
-			// Fall back to text
-			mimeType = 'text/plain';
-		}
-	} else if (!fileExtension) {
+	if (!fileExtension && mimeType) {
 		fileExtension = extension(mimeType) || undefined;
+	}
+
+	if (!mimeType) {
+		// Fall back to text
+		mimeType = 'text/plain';
 	}
 
 	const returnData: IBinaryData = {
@@ -1109,7 +1117,6 @@ export async function requestOAuth2(
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
-
 	if (isN8nRequest) {
 		return this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (error.response?.status === 401) {
@@ -1171,85 +1178,95 @@ export async function requestOAuth2(
 			throw error;
 		});
 	}
-
-	return this.helpers.request(newRequestOptions).catch(async (error: IResponseError) => {
-		const statusCodeReturned =
-			oAuth2Options?.tokenExpiredStatusCode === undefined
-				? 401
-				: oAuth2Options?.tokenExpiredStatusCode;
-
-		if (error.statusCode === statusCodeReturned) {
-			// Token is probably not valid anymore. So try refresh it.
-
-			const tokenRefreshOptions: IDataObject = {};
-
-			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-				const body: IDataObject = {
-					client_id: credentials.clientId,
-					client_secret: credentials.clientSecret,
-				};
-				tokenRefreshOptions.body = body;
-				// Override authorization property so the credentials are not included in it
-				tokenRefreshOptions.headers = {
-					Authorization: '',
-				};
+	return this.helpers
+		.request(newRequestOptions)
+		.then((response) => {
+			const requestOptions = newRequestOptions as any;
+			if (
+				requestOptions.resolveWithFullResponse === true &&
+				requestOptions.simple === false &&
+				response.statusCode ===
+					(oAuth2Options?.tokenExpiredStatusCode === undefined
+						? 401
+						: oAuth2Options?.tokenExpiredStatusCode)
+			) {
+				throw response;
 			}
-
-			Logger.debug(
-				`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
-			);
-
-			let newToken;
-
-			// if it's OAuth2 with client credentials grant type, get a new token
-			// instead of refreshing it.
-			if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-				newToken = await getClientCredentialsToken(token.client, credentials);
-			} else {
-				newToken = await token.refresh(tokenRefreshOptions);
-			}
-
-			Logger.debug(
-				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-			);
-
-			credentials.oauthTokenData = newToken.data;
-
-			// Find the credentials
-			if (!node.credentials?.[credentialsType]) {
-				throw new Error(
-					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+			return response;
+		})
+		.catch(async (error: IResponseError) => {
+			const statusCodeReturned =
+				oAuth2Options?.tokenExpiredStatusCode === undefined
+					? 401
+					: oAuth2Options?.tokenExpiredStatusCode;
+			if (error.statusCode === statusCodeReturned) {
+				// Token is probably not valid anymore. So try refresh it.
+				const tokenRefreshOptions: IDataObject = {};
+				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+					const body: IDataObject = {
+						client_id: credentials.clientId,
+						client_secret: credentials.clientSecret,
+					};
+					tokenRefreshOptions.body = body;
+					// Override authorization property so the credentials are not included in it
+					tokenRefreshOptions.headers = {
+						Authorization: '',
+					};
+				}
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 				);
+
+				let newToken;
+
+				// if it's OAuth2 with client credentials grant type, get a new token
+				// instead of refreshing it.
+				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+					newToken = await getClientCredentialsToken(token.client, credentials);
+				} else {
+					newToken = await token.refresh(tokenRefreshOptions);
+				}
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+				);
+
+				credentials.oauthTokenData = newToken.data;
+
+				// Find the credentials
+				if (!node.credentials?.[credentialsType]) {
+					throw new Error(
+						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+					);
+				}
+				const nodeCredentials = node.credentials[credentialsType];
+
+				// Save the refreshed token
+				await additionalData.credentialsHelper.updateCredentials(
+					nodeCredentials,
+					credentialsType,
+					credentials as unknown as ICredentialDataDecryptedObject,
+				);
+
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
+				);
+
+				// Make the request again with the new token
+				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+				newRequestOptions.headers = newRequestOptions.headers ?? {};
+
+				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+					Object.assign(newRequestOptions.headers, {
+						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+					});
+				}
+
+				return this.helpers.request(newRequestOptions);
 			}
-			const nodeCredentials = node.credentials[credentialsType];
 
-			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(
-				nodeCredentials,
-				credentialsType,
-				credentials as unknown as ICredentialDataDecryptedObject,
-			);
-
-			Logger.debug(
-				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
-			);
-
-			// Make the request again with the new token
-			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-			newRequestOptions.headers = newRequestOptions.headers ?? {};
-
-			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-				Object.assign(newRequestOptions.headers, {
-					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-				});
-			}
-
-			return this.helpers.request(newRequestOptions);
-		}
-
-		// Unknown error so simply throw it
-		throw error;
-	});
+			// Unknown error so simply throw it
+			throw error;
+		});
 }
 
 /**

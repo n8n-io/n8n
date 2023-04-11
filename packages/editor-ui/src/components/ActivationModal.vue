@@ -49,6 +49,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { createEventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -60,7 +61,7 @@ export default Vue.extend({
 		return {
 			WORKFLOW_ACTIVE_MODAL_KEY,
 			checked: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	methods: {
