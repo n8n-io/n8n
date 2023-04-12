@@ -104,7 +104,7 @@ const showMappingFields = computed<boolean>(() => {
 });
 
 const showMatchingColumnsSelector = computed<boolean>(() => {
-	return props.parameter.typeOptions?.resourceMapper?.mode !== 'add';
+	return !state.loading && props.parameter.typeOptions?.resourceMapper?.mode !== 'add';
 });
 
 const matchingColumns = computed<string[]>(() => {

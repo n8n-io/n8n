@@ -157,7 +157,7 @@ const properties: INodeProperties[] = [
 					plural: 'columns',
 				},
 				addAllFields: true,
-				multiKeyMatch: false,
+				multiKeyMatch: true,
 			},
 		},
 		displayOptions: {

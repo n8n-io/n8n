@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
-import { computed, getCurrentInstance, ref, watch } from 'vue';
+import { computed, getCurrentInstance, reactive, watch } from 'vue';
 
 export interface Props {
 	initialValue: string[];
@@ -16,14 +16,15 @@ const instance = getCurrentInstance();
 const props = defineProps<Props>();
 
 // Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
-const selected = ref([] as string[] | string);
+const state = reactive({
+	selected: props.initialValue as string[] | string,
+});
 
 watch(
 	() => props.initialValue,
 	() => {
-		selected.value =
+		state.selected =
 			props.typeOptions?.multiKeyMatch === true ? props.initialValue : props.initialValue[0];
-		emitValueChanged();
 	},
 );
 
@@ -67,19 +68,19 @@ const fieldDescription = computed<string>(() => {
 
 function onSelectionChange(value: string | string[]) {
 	if (props.typeOptions?.multiKeyMatch === true) {
-		selected.value = value as string[];
+		state.selected = value as string[];
 	} else {
-		selected.value = value as string;
+		state.selected = value as string;
 	}
 	emitValueChanged();
 }
 
 function emitValueChanged() {
-	emit('matchingColumnsChanged', Array.isArray(selected.value) ? selected.value : [selected.value]);
+	emit('matchingColumnsChanged', Array.isArray(state.selected) ? state.selected : [state.selected]);
 }
 
 defineExpose({
-	selected,
+	state,
 });
 </script>
 
@@ -94,7 +95,7 @@ defineExpose({
 		>
 			<n8n-select
 				:multiple="typeOptions?.multiKeyMatch === true"
-				:value="selected"
+				:value="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
 				@change="onSelectionChange"
