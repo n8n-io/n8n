@@ -11,7 +11,7 @@ import {
 	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { computed, getCurrentInstance, onMounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, onMounted, reactive, ref, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -36,15 +36,17 @@ const emit = defineEmits<{
 	(event: 'valueChanged', value: IUpdateInformation): void;
 }>();
 
-const paramValue = ref({
-	// TODO: Check this
-	mappingMode: props.parameter.mode || 'defineBelow',
-	value: {},
-	matchingColumns: [],
-} as ResourceMapperValue);
-const fieldsToMap = ref([] as ResourceMapperField[]);
-const loading = ref(false);
-const loadingError = ref(false);
+const state = reactive({
+	paramValue: {
+		// TODO: Check this
+		mappingMode: props.parameter.mode || 'defineBelow',
+		value: {},
+		matchingColumns: [],
+	} as ResourceMapperValue,
+	fieldsToMap: [] as ResourceMapperField[],
+	loading: false,
+	loadingError: false,
+});
 
 // Reload fields to map when dependent parameters change
 watch(
@@ -59,17 +61,13 @@ onMounted(async () => {
 	if (props.nodeValues && props.nodeValues.parameters) {
 		const params = props.nodeValues.parameters as INodeParameters;
 		if ('columns' in params) {
-			try {
-				paramValue.value = JSON.parse(params.columns as string);
-			} catch (error) {
-				// Ignore
-			}
+			state.paramValue = params.columns as ResourceMapperValue;
 		}
 	}
 });
 
 const fieldsUi = computed<INodeProperties[]>(() => {
-	const fields = fieldsToMap.value.map((field) => {
+	const fields = state.fieldsToMap.map((field) => {
 		return {
 			displayName: getFieldLabel(field),
 			// Set part of the path to each param name so value can be fetched properly by input parameter list component
@@ -81,7 +79,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 	});
 	// Sort so that matching columns are first
 	fields.forEach((field, i) => {
-		if (paramValue.value.matchingColumns.includes(field.name)) {
+		if (state.paramValue.matchingColumns.includes(field.name)) {
 			fields.splice(i, 1);
 			fields.unshift(field);
 		}
@@ -98,10 +96,10 @@ const nodeType = computed<INodeTypeDescription | null>(() => {
 
 const showMappingFields = computed<boolean>(() => {
 	return (
-		paramValue.value.mappingMode === 'defineBelow' &&
-		!loading.value &&
-		!loadingError.value &&
-		fieldsToMap.value.length > 0
+		state.paramValue.mappingMode === 'defineBelow' &&
+		!state.loading &&
+		!state.loadingError &&
+		state.fieldsToMap.length > 0
 	);
 });
 
@@ -109,13 +107,20 @@ const showMatchingColumnsSelector = computed<boolean>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.mode !== 'add';
 });
 
-const preselectedMatchingColumns = computed<string[]>(() => {
+const matchingColumns = computed<string[]>(() => {
 	if (!showMatchingColumnsSelector) {
 		return [];
 	}
-	return fieldsToMap.value.length === 1
-		? [fieldsToMap.value[0].id]
-		: fieldsToMap.value.reduce((acc, field) => {
+	if (state.paramValue.matchingColumns.length > 0) {
+		return state.paramValue.matchingColumns;
+	}
+	return defaultSelectedColumns.value;
+});
+
+const defaultSelectedColumns = computed<string[]>(() => {
+	return state.fieldsToMap.length === 1
+		? [state.fieldsToMap[0].id]
+		: state.fieldsToMap.reduce((acc, field) => {
 				if (field.defaultMatch) {
 					acc.push(field.id);
 				}
@@ -124,14 +129,14 @@ const preselectedMatchingColumns = computed<string[]>(() => {
 });
 
 async function initFetching(): Promise<void> {
-	loading.value = true;
-	loadingError.value = false;
+	state.loading = true;
+	state.loadingError = false;
 	try {
 		await loadFieldsToMap();
 	} catch (error) {
-		loadingError.value = true;
+		state.loadingError = true;
 	} finally {
-		loading.value = false;
+		state.loading = false;
 	}
 }
 
@@ -151,29 +156,33 @@ async function loadFieldsToMap(): Promise<void> {
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	if (fetchedFields !== null) {
-		fieldsToMap.value = fetchedFields.fields.filter((field) => field.display !== false);
+		state.fieldsToMap = fetchedFields.fields.filter((field) => field.display !== false);
 	}
 }
 
 function getFieldLabel(field: ResourceMapperField): string {
-	if (paramValue.value.matchingColumns.includes(field.id)) {
+	if (state.paramValue.matchingColumns.includes(field.id)) {
 		const suffix = instance?.proxy.$locale.baseText('resourceMapper.usingToMatch') || '';
 		return `${field.displayName} ${suffix}`;
 	}
 	return field.displayName;
 }
 
-function onModeChanged(mode: string): void {
-	paramValue.value.mappingMode = mode;
+async function onModeChanged(mode: string): Promise<void> {
+	state.paramValue.mappingMode = mode;
 	if (mode === 'defineBelow') {
-		initFetching();
+		await initFetching();
 	} else {
-		loadingError.value = false;
+		state.loadingError = false;
 	}
+	emitValueChanged();
 }
 
 function onMatchingColumnsChanged(matchingColumns: string[]): void {
-	paramValue.value.matchingColumns = matchingColumns;
+	state.paramValue.matchingColumns = matchingColumns;
+	if (!state.loading) {
+		emitValueChanged();
+	}
 }
 
 function fieldValueChanged(updateInfo: IUpdateInformation): void {
@@ -183,10 +192,7 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 		if (match) {
 			const name = match.pop();
 			if (name) {
-				paramValue.value.value = {
-					...paramValue.value.value,
-					[name]: updateInfo.value,
-				};
+				state.paramValue.value[name] = updateInfo.value;
 				emitValueChanged();
 			}
 		}
@@ -196,13 +202,14 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 function emitValueChanged(): void {
 	emit('valueChanged', {
 		name: `${props.path}`,
-		value: paramValue.value,
+		value: state.paramValue,
 		node: props.node?.name,
 	});
 }
 
 defineExpose({
 	fieldsUi,
+	state,
 });
 </script>
 
@@ -215,20 +222,20 @@ defineExpose({
 			:initialValue="props.parameter.mode || 'defineBelow'"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:serviceName="nodeType?.displayName || ''"
-			:loading="loading"
-			:loadingError="loadingError"
-			:fieldsToMap="fieldsToMap"
+			:loading="state.loading"
+			:loadingError="state.loadingError"
+			:fieldsToMap="state.fieldsToMap"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
 		/>
 		<matching-columns-select
 			v-if="showMatchingColumnsSelector"
 			:label-size="labelSize"
-			:fieldsToMap="fieldsToMap"
+			:fieldsToMap="state.fieldsToMap"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:inputSize="inputSize"
-			:loading="loading"
-			:initialValue="preselectedMatchingColumns"
+			:loading="state.loading"
+			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
 		<div class="mt-xs">
