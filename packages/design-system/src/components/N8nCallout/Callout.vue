@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 
@@ -27,7 +27,7 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	danger: 'times-circle',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-callout',
 	components: {
 		N8nText,

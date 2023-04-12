@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.221.0",
+  "version": "0.222.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -21,7 +21,7 @@
     "build:translations": "gulp build:translations",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --quiet nodes credentials",
+    "lint": "eslint --quiet nodes credentials; node ./scripts/validate-load-options-methods.js",
     "lintfix": "eslint nodes credentials --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"pnpm n8n-generate-ui-types\"",
     "test": "jest"

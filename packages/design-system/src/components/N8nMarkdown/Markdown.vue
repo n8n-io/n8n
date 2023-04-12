@@ -19,13 +19,13 @@
 
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
-import Markdown from 'markdown-it';
+import Markdown, { PluginSimple } from 'markdown-it';
 
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import markdownTasklists from 'markdown-it-task-lists';
+
+import { defineComponent, PropType } from 'vue';
 
 import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';
@@ -49,20 +49,18 @@ const DEFAULT_OPTIONS_TASKLISTS = {
 	labelAfter: true,
 } as const;
 
-interface IImage {
+export interface IImage {
 	id: string;
 	url: string;
 }
 
-interface Options {
+export interface Options {
 	markdown: typeof DEFAULT_OPTIONS_MARKDOWN;
 	linkAttributes: typeof DEFAULT_OPTIONS_LINK_ATTRIBUTES;
 	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
 }
 
-import Vue, { PropType } from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		N8nLoading,
 	},
@@ -70,15 +68,19 @@ export default Vue.extend({
 	props: {
 		content: {
 			type: String,
+			default: '',
 		},
 		withMultiBreaks: {
 			type: Boolean,
+			default: false,
 		},
 		images: {
-			type: Array<IImage>,
+			type: Array as PropType<IImage[]>,
+			default: () => [],
 		},
 		loading: {
 			type: Boolean,
+			default: false,
 		},
 		loadingBlocks: {
 			type: Number,
@@ -86,7 +88,7 @@ export default Vue.extend({
 		},
 		loadingRows: {
 			type: Number,
-			default: () => 3,
+			default: 3,
 		},
 		theme: {
 			type: String,
@@ -94,14 +96,20 @@ export default Vue.extend({
 		},
 		options: {
 			type: Object as PropType<Options>,
-			default() {
-				return {
-					markdown: DEFAULT_OPTIONS_MARKDOWN,
-					linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
-					tasklists: DEFAULT_OPTIONS_TASKLISTS,
-				};
-			},
+			default: (): Options => ({
+				markdown: DEFAULT_OPTIONS_MARKDOWN,
+				linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
+				tasklists: DEFAULT_OPTIONS_TASKLISTS,
+			}),
 		},
+	},
+	data(): { md: Markdown } {
+		return {
+			md: new Markdown(this.options.markdown)
+				.use(markdownLink, this.options.linkAttributes)
+				.use(markdownEmoji)
+				.use(markdownTasklists as PluginSimple, this.options.tasklists),
+		};
 	},
 	computed: {
 		htmlContent(): string {
@@ -153,14 +161,6 @@ export default Vue.extend({
 
 			return safeHtml;
 		},
-	},
-	data() {
-		return {
-			md: new Markdown(this.options.markdown) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-				.use(markdownLink, this.options.linkAttributes) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-				.use(markdownEmoji)
-				.use(markdownTasklists, this.options.tasklists), // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-		};
 	},
 	methods: {
 		onClick(event: MouseEvent) {
