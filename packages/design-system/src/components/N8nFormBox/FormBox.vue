@@ -33,6 +33,7 @@
 				{{ redirectText }}
 			</n8n-link>
 		</div>
+		<slot></slot>
 	</div>
 </template>
 
@@ -42,6 +43,7 @@ import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
+import { createEventBus } from '../../utils';
 
 export default Vue.extend({
 	name: 'n8n-form-box',
@@ -80,7 +82,7 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			formBus: new Vue(),
+			formBus: createEventBus(),
 		};
 	},
 	methods: {
@@ -91,7 +93,7 @@ export default Vue.extend({
 			this.$emit('submit', e);
 		},
 		onButtonClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		onSecondaryButtonClick(event: Event) {
 			this.$emit('secondaryClick', event);

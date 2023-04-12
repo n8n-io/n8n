@@ -11,15 +11,16 @@ Great that you are here and you want to contribute to n8n
   - [Development setup](#development-setup)
     - [Requirements](#requirements)
       - [Node.js](#nodejs)
+      - [pnpm](#pnpm)
+        - [pnpm workspaces](#pnpm-workspaces)
+      - [corepack](#corepack)
       - [Build tools](#build-tools)
-      - [pnpm workspaces](#pnpm-workspaces)
     - [Actual n8n setup](#actual-n8n-setup)
     - [Start](#start)
   - [Development cycle](#development-cycle)
     - [Test suite](#test-suite)
+  - [Releasing](#releasing)
   - [Create custom nodes](#create-custom-nodes)
-  - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
-  - [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
   - [Extend documentation](#extend-documentation)
   - [Contributor License Agreement](#contributor-license-agreement)
 
@@ -194,6 +195,22 @@ pnpm test
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
+
+## Releasing
+
+To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then
+
+1. Bump versions of packages that have changed or have dependencies that have changed
+2. Update the Changelog
+3. Create a new branch called `release/${VERSION}`, and
+4. Create a new pull-request to track any further changes that need to be included in this release
+
+Once ready to release, simply merge the pull-request.
+This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will
+
+1. Build and publish the packages that have a new version in this release
+2. Create a new tag, and GitHub release from squashed release commit
+3. Merge the squashed release commit back into `master`
 
 ## Create custom nodes
 

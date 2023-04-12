@@ -10,14 +10,14 @@ import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { LessThanOrEqual } from 'typeorm';
+import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as ActiveExecutions from '@/ActiveExecutions';
 import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
@@ -26,9 +26,8 @@ import type {
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
-export class WaitTrackerClass {
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
-
+@Service()
+export class WaitTracker {
 	private waitingExecutions: {
 		[key: string]: {
 			executionId: string;
@@ -39,8 +38,6 @@ export class WaitTrackerClass {
 	mainTimer: NodeJS.Timeout;
 
 	constructor() {
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			this.getWaitingExecutions();
@@ -57,6 +54,7 @@ export class WaitTrackerClass {
 			select: ['id', 'waitTill'],
 			where: {
 				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				status: Not('crashed'),
 			},
 			order: {
 				waitTill: 'ASC',
@@ -126,11 +124,14 @@ export class WaitTrackerClass {
 		};
 
 		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.waitTill = undefined;
+		fullExecutionData.waitTill = null;
+		fullExecutionData.status = 'canceled';
 
 		await Db.collections.Execution.update(
 			executionId,
-			ResponseHelper.flattenExecutionData(fullExecutionData),
+			ResponseHelper.flattenExecutionData({
+				...fullExecutionData,
+			}) as IExecutionFlattedDb,
 		);
 
 		return {
@@ -138,6 +139,7 @@ export class WaitTrackerClass {
 			startedAt: new Date(fullExecutionData.startedAt),
 			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
 			finished: fullExecutionData.finished,
+			status: fullExecutionData.status,
 		};
 	}
 
@@ -184,14 +186,4 @@ export class WaitTrackerClass {
 			);
 		});
 	}
-}
-
-let waitTrackerInstance: WaitTrackerClass | undefined;
-
-export function WaitTracker(): WaitTrackerClass {
-	if (waitTrackerInstance === undefined) {
-		waitTrackerInstance = new WaitTrackerClass();
-	}
-
-	return waitTrackerInstance;
 }

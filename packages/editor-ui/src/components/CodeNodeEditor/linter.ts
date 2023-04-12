@@ -35,7 +35,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 
 					// optional chaining operators currently unsupported by esprima-next
 					if (['?.', ']?'].some((operator) => lineAtError.includes(operator))) return [];
-				} catch (_) {
+				} catch {
 					return [];
 				}
 
@@ -50,7 +50,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							message: this.$locale.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
 						},
 					];
-				} catch (_) {
+				} catch {
 					/**
 					 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
 					 */
@@ -133,7 +133,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `.item` unavailable in `runOnceForAllItems` mode
+			 * Lint for `.item` unavailable in `$input` in `runOnceForAllItems` mode
 			 *
 			 * $input.item -> <removed>
 			 */
@@ -141,13 +141,15 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & { property: RangeNode };
 
-				const isUnavailableItemAccess = (node: Node) =>
+				const isUnavailableInputItemAccess = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
 					node.property.name === 'item';
 
-				walk<TargetNode>(ast, isUnavailableItemAccess).forEach((node) => {
+				walk<TargetNode>(ast, isUnavailableInputItemAccess).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
 					lintings.push({

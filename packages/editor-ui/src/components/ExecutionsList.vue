@@ -1,50 +1,45 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
-			<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
-			<div :class="$style.filters">
-				<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
-				<n8n-select
-					:class="$style.filterItem"
-					v-model="filter.workflowId"
-					:placeholder="$locale.baseText('executionsList.selectWorkflow')"
-					size="medium"
-					filterable
-					@change="handleFilterChanged"
-				>
-					<div class="ph-no-capture">
-						<n8n-option
-							v-for="item in workflows"
-							:key="item.id"
-							:label="item.name"
-							:value="item.id"
-						/>
-					</div>
-				</n8n-select>
-				<n8n-select
-					:class="$style.filterItem"
-					v-model="filter.status"
-					:placeholder="$locale.baseText('executionsList.selectStatus')"
-					size="medium"
-					filterable
-					@change="handleFilterChanged"
-				>
-					<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id" />
-				</n8n-select>
-				<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
-					{{ $locale.baseText('executionsList.autoRefresh') }}
-				</el-checkbox>
+			<div :class="$style.execListHeader">
+				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
+				<div :class="$style.execListHeaderControls">
+					<el-checkbox
+						class="mr-xl"
+						v-model="autoRefresh"
+						@change="handleAutoRefreshToggle"
+						data-testid="execution-auto-refresh-checkbox"
+					>
+						{{ $locale.baseText('executionsList.autoRefresh') }}
+					</el-checkbox>
+					<execution-filter :workflows="workflows" @filterChanged="onFilterChanged" />
+				</div>
 			</div>
+
+			<el-checkbox
+				v-if="allVisibleSelected && finishedExecutionsCount > 0"
+				:class="$style.selectAll"
+				:label="
+					$locale.baseText('executionsList.selectAll', {
+						adjustToNumber: finishedExecutionsCount,
+						interpolate: { executionNum: finishedExecutionsCount },
+					})
+				"
+				:value="allExistingSelected"
+				@change="handleCheckAllExistingChange"
+				data-testid="select-all-executions-checkbox"
+			/>
 
 			<table :class="$style.execTable">
 				<thead>
 					<tr>
 						<th>
 							<el-checkbox
-								:indeterminate="isIndeterminate"
-								v-model="checkAll"
-								@change="handleCheckAllChange"
+								:value="allVisibleSelected"
+								@change="handleCheckAllVisibleChange"
+								:disabled="finishedExecutionsCount < 1"
 								label=""
+								data-testid="select-visible-executions-checkbox"
 							/>
 						</th>
 						<th>{{ $locale.baseText('executionsList.name') }}</th>
@@ -66,13 +61,14 @@
 						<td>
 							<el-checkbox
 								v-if="execution.stoppedAt !== undefined && execution.id"
-								:value="selectedItems[execution.id.toString()] || checkAll"
+								:value="selectedItems[execution.id] || allExistingSelected"
 								@change="handleCheckboxChanged(execution.id)"
 								label=""
+								data-testid="select-execution-checkbox"
 							/>
 						</td>
 						<td>
-							<span>{{
+							<span class="ph-no-capture">{{
 								execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
 							}}</span>
 						</td>
@@ -214,8 +210,15 @@
 			</table>
 
 			<div
+				v-if="!combinedExecutions.length"
+				:class="$style.loadedAll"
+				data-testid="execution-list-empty"
+			>
+				{{ $locale.baseText('executionsList.empty') }}
+			</div>
+			<div
 				:class="$style.loadMore"
-				v-if="
+				v-else-if="
 					finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated
 				"
 			>
@@ -225,23 +228,37 @@
 					:label="$locale.baseText('executionsList.loadMore')"
 					@click="loadMore()"
 					:loading="isDataLoading"
+					data-testid="load-more-button"
 				/>
 			</div>
-			<div v-else :class="$style.loadedAll">{{ $locale.baseText('executionsList.loadedAll') }}</div>
+			<div v-else :class="$style.loadedAll" data-testid="execution-all-loaded">
+				{{ $locale.baseText('executionsList.loadedAll') }}
+			</div>
 		</div>
-		<div v-if="checkAll === true || isIndeterminate === true" :class="$style.selectionOptions">
+		<div
+			v-if="numSelected > 0"
+			:class="$style.selectionOptions"
+			data-testid="selected-executions-info"
+		>
 			<span>
-				{{ $locale.baseText('executionsList.selected', { interpolate: { numSelected } }) }}
+				{{
+					$locale.baseText('executionsList.selected', {
+						adjustToNumber: numSelected,
+						interpolate: { numSelected },
+					})
+				}}
 			</span>
 			<n8n-button
 				:label="$locale.baseText('generic.delete')"
 				type="tertiary"
 				@click="handleDeleteSelected"
+				data-testid="delete-selected-button"
 			/>
 			<n8n-button
 				:label="$locale.baseText('executionsList.clearSelection')"
 				type="tertiary"
 				@click="handleClearSelection"
+				data-testid="clear-selection-button"
 			/>
 		</div>
 	</div>
@@ -251,6 +268,7 @@
 import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { restApi } from '@/mixins/restApi';
@@ -261,18 +279,18 @@ import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
-	IExecutionsSummary,
 	IWorkflowShortResponse,
+	ExecutionFilterType,
+	ExecutionsQueryFilter,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
-import { range as _range } from 'lodash';
+import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
+import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { setPageTitle } from '@/utils';
-
-type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
+import { isEmpty, setPageTitle } from '@/utils';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -280,6 +298,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		components: {
 			ExecutionTime,
 			WorkflowActivator,
+			ExecutionFilter,
 		},
 		data() {
 			return {
@@ -287,14 +306,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				finishedExecutionsCount: 0,
 				finishedExecutionsCountEstimated: false,
 
-				checkAll: false,
+				allVisibleSelected: false,
+				allExistingSelected: false,
 				autoRefresh: true,
 				autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 
-				filter: {
-					status: 'ALL',
-					workflowId: 'ALL',
-				},
+				filter: {} as ExecutionFilterType,
 
 				isDataLoading: false,
 
@@ -311,7 +328,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		},
 		async created() {
 			await this.loadWorkflows();
-			await this.refreshData();
+			//await this.refreshData();
 			this.handleAutoRefreshToggle();
 
 			this.$externalHooks().run('executionsList.openDialog');
@@ -327,80 +344,40 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		},
 		computed: {
 			...mapStores(useUIStore, useWorkflowsStore),
-			statuses() {
-				return [
-					{
-						id: 'ALL',
-						name: this.$locale.baseText('executionsList.anyStatus'),
-					},
-					{
-						id: 'error',
-						name: this.$locale.baseText('executionsList.error'),
-					},
-					{
-						id: 'running',
-						name: this.$locale.baseText('executionsList.running'),
-					},
-					{
-						id: 'success',
-						name: this.$locale.baseText('executionsList.success'),
-					},
-					{
-						id: 'waiting',
-						name: this.$locale.baseText('executionsList.waiting'),
-					},
-				];
-			},
 			activeExecutions(): IExecutionsCurrentSummaryExtended[] {
 				return this.workflowsStore.activeExecutions;
 			},
 			combinedExecutions(): IExecutionsSummary[] {
 				const returnData: IExecutionsSummary[] = [];
 
-				if (['ALL', 'running'].includes(this.filter.status)) {
+				if (['all', 'running'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
 				}
-				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
+				if (['all', 'error', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
 
-				return returnData;
-			},
-			combinedExecutionsCount(): number {
-				return 0 + this.activeExecutions.length + this.finishedExecutionsCount;
+				return returnData.filter(
+					(execution) =>
+						this.filter.workflowId === 'all' || execution.workflowId === this.filter.workflowId,
+				);
 			},
 			numSelected(): number {
-				if (this.checkAll) {
+				if (this.allExistingSelected) {
 					return this.finishedExecutionsCount;
 				}
 
 				return Object.keys(this.selectedItems).length;
 			},
-			isIndeterminate(): boolean {
-				if (this.checkAll) {
-					return false;
-				}
-
-				return this.numSelected > 0;
-			},
-			workflowFilterCurrent(): IDataObject {
-				const filter: IDataObject = {};
-				if (this.filter.workflowId !== 'ALL') {
+			workflowFilterCurrent(): ExecutionsQueryFilter {
+				const filter: ExecutionsQueryFilter = {};
+				if (this.filter.workflowId !== 'all') {
 					filter.workflowId = this.filter.workflowId;
 				}
 				return filter;
 			},
-			workflowFilterPast(): IDataObject {
-				const filter: IDataObject = {};
-				if (this.filter.workflowId !== 'ALL') {
-					filter.workflowId = this.filter.workflowId;
-				}
-				if (this.filter.status === 'waiting') {
-					filter.waitTill = true;
-				} else if (['error', 'success'].includes(this.filter.status)) {
-					filter.finished = this.filter.status === 'success';
-				}
-				return filter;
+			workflowFilterPast(): ExecutionsQueryFilter {
+				return executionFilterToQueryFilter(this.filter);
 			},
 			pageTitle() {
 				return this.$locale.baseText('executionsList.workflowExecutions');
@@ -428,9 +405,18 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 				}
 			},
-			handleCheckAllChange() {
-				if (!this.checkAll) {
+			handleCheckAllExistingChange() {
+				this.allExistingSelected = !this.allExistingSelected;
+				this.allVisibleSelected = !this.allExistingSelected;
+				this.handleCheckAllVisibleChange();
+			},
+			handleCheckAllVisibleChange() {
+				this.allVisibleSelected = !this.allVisibleSelected;
+				if (!this.allVisibleSelected) {
+					this.allExistingSelected = false;
 					Vue.set(this, 'selectedItems', {});
+				} else {
+					this.selectAllVisibleExecutions();
 				}
 			},
 			handleCheckboxChanged(executionId: string) {
@@ -439,6 +425,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				} else {
 					Vue.set(this.selectedItems, executionId, true);
 				}
+				this.allVisibleSelected =
+					Object.keys(this.selectedItems).length === this.combinedExecutions.length;
+				this.allExistingSelected =
+					Object.keys(this.selectedItems).length === this.finishedExecutionsCount;
 			},
 			async handleDeleteSelected() {
 				const deleteExecutions = await this.confirmMessage(
@@ -458,7 +448,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = true;
 
 				const sendData: IExecutionDeleteFilter = {};
-				if (this.checkAll) {
+				if (this.allExistingSelected) {
 					sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
 				} else {
 					sendData.ids = Object.keys(this.selectedItems);
@@ -468,45 +458,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				try {
 					await this.restApi().deleteExecutions(sendData);
-					let removedCurrentlyLoadedExecution = false;
-					let removedActiveExecution = false;
-					const currentWorkflow: string = this.workflowsStore.workflowId;
-					const activeExecution: IExecutionsSummary | null =
-						this.workflowsStore.activeWorkflowExecution;
-					// Also update current workflow executions view if needed
-					for (const selectedId of Object.keys(this.selectedItems)) {
-						const execution: IExecutionsSummary | undefined =
-							this.workflowsStore.getExecutionDataById(selectedId);
-						if (execution && execution.workflowId === currentWorkflow) {
-							this.workflowsStore.deleteExecution(execution);
-							removedCurrentlyLoadedExecution = true;
-						}
-						if (
-							execution !== undefined &&
-							activeExecution !== null &&
-							execution.id === activeExecution.id
-						) {
-							removedActiveExecution = true;
-						}
-					}
-					// Also update route if needed
-					if (removedCurrentlyLoadedExecution) {
-						const currentWorkflowExecutions: IExecutionsSummary[] =
-							this.workflowsStore.currentWorkflowExecutions;
-						if (currentWorkflowExecutions.length === 0) {
-							this.workflowsStore.activeWorkflowExecution = null;
-
-							this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
-						} else if (removedActiveExecution) {
-							this.workflowsStore.activeWorkflowExecution = currentWorkflowExecutions[0];
-							this.$router
-								.push({
-									name: VIEWS.EXECUTION_PREVIEW,
-									params: { name: currentWorkflow, executionId: currentWorkflowExecutions[0].id },
-								})
-								.catch(() => {});
-						}
-					}
 				} catch (error) {
 					this.isDataLoading = false;
 					this.$showError(
@@ -523,17 +474,18 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					type: 'success',
 				});
 
+				this.handleClearSelection();
+				this.refreshData();
+			},
+			handleClearSelection(): void {
+				this.allVisibleSelected = false;
+				this.allExistingSelected = false;
 				Vue.set(this, 'selectedItems', {});
-				this.checkAll = false;
-
-				this.refreshData();
 			},
-			handleClearSelection() {
-				this.checkAll = false;
-				this.handleCheckAllChange();
-			},
-			handleFilterChanged() {
+			onFilterChanged(filter: ExecutionFilterType) {
+				this.filter = filter;
 				this.refreshData();
+				this.handleClearSelection();
 			},
 			handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 				if (['currentlySaved', 'original'].includes(commandData.command)) {
@@ -558,14 +510,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return this.workflows.find((data) => data.id === workflowId)?.name;
 			},
 			async loadActiveExecutions(): Promise<void> {
-				const activeExecutions = await this.restApi().getCurrentExecutions(
-					this.workflowFilterCurrent,
-				);
+				const activeExecutions = isEmpty(this.workflowFilterCurrent.metadata)
+					? await this.restApi().getCurrentExecutions(this.workflowFilterCurrent)
+					: [];
 				for (const activeExecution of activeExecutions) {
-					if (
-						activeExecution.workflowId !== undefined &&
-						activeExecution.workflowName === undefined
-					) {
+					if (activeExecution.workflowId && !activeExecution.workflowName) {
 						activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
 					}
 				}
@@ -574,7 +523,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.workflowsStore.addToCurrentExecutions(activeExecutions);
 			},
 			async loadAutoRefresh(): Promise<void> {
-				const filter = this.workflowFilterPast;
+				const filter: ExecutionsQueryFilter = this.workflowFilterPast;
 				// We cannot use firstId here as some executions finish out of order. Let's say
 				// You have execution ids 500 to 505 running.
 				// Suppose 504 finishes before 500, 501, 502 and 503.
@@ -582,8 +531,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				// ever get ids 500, 501, 502 and 503 when they finish
 				const pastExecutionsPromise: Promise<IExecutionsListResponse> =
 					this.restApi().getPastExecutions(filter, this.requestItemsPerRequest);
-				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> =
-					this.restApi().getCurrentExecutions({});
+				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = isEmpty(
+					filter.metadata,
+				)
+					? this.restApi().getCurrentExecutions({})
+					: Promise.resolve([]);
 
 				const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
 
@@ -662,6 +614,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
 				this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
+
+				this.adjustSelectionAfterMoreItemsLoaded();
 			},
 			async loadFinishedExecutions(): Promise<void> {
 				if (this.filter.status === 'running') {
@@ -679,6 +633,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.finishedExecutionsCountEstimated = data.estimated;
 
 				this.workflowsStore.addToCurrentExecutions(data.results);
+
+				if (this.finishedExecutions.length === 0) {
+					this.handleClearSelection();
+				}
 			},
 			async loadMore() {
 				if (this.filter.status === 'running') {
@@ -720,6 +678,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 
 				this.workflowsStore.addToCurrentExecutions(data.results);
+
+				this.adjustSelectionAfterMoreItemsLoaded();
 			},
 			async loadWorkflows() {
 				try {
@@ -736,7 +696,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 					// @ts-ignore
 					workflows.unshift({
-						id: 'ALL',
+						id: 'all',
 						name: this.$locale.baseText('executionsList.allWorkflows'),
 					});
 
@@ -780,9 +740,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = true;
 
 				try {
-					const activeExecutionsPromise = this.loadActiveExecutions();
-					const finishedExecutionsPromise = this.loadFinishedExecutions();
-					await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
+					await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
 				} catch (error) {
 					this.$showError(
 						error,
@@ -793,19 +751,24 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 			},
 			getStatus(execution: IExecutionsSummary): ExecutionStatus {
-				let status: ExecutionStatus = 'unknown';
-				if (execution.waitTill) {
-					status = 'waiting';
-				} else if (execution.stoppedAt === undefined) {
-					status = 'running';
-				} else if (execution.finished) {
-					status = 'success';
-				} else if (execution.stoppedAt !== null) {
-					status = 'failed';
+				if (execution.status) {
+					return execution.status;
 				} else {
-					status = 'unknown';
+					// this should not happen but just in case
+					let status: ExecutionStatus = 'unknown';
+					if (execution.waitTill) {
+						status = 'waiting';
+					} else if (execution.stoppedAt === undefined) {
+						status = 'running';
+					} else if (execution.finished) {
+						status = 'success';
+					} else if (execution.stoppedAt !== null) {
+						status = 'failed';
+					} else {
+						status = 'unknown';
+					}
+					return status;
 				}
-				return status;
 			},
 			getRowClass(execution: IExecutionsSummary): string {
 				return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
@@ -816,6 +779,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
+				} else if (status === 'canceled') {
+					text = this.$locale.baseText('executionsList.canceled');
+				} else if (status === 'crashed') {
+					text = this.$locale.baseText('executionsList.error');
+				} else if (status === 'new') {
+					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'success') {
@@ -834,6 +803,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
+				} else if (status === 'canceled') {
+					path = 'executionsList.statusCanceled';
+				} else if (status === 'crashed') {
+					path = 'executionsList.statusText';
+				} else if (status === 'new') {
+					path = 'executionsList.statusRunning';
 				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
 				} else if (status === 'success') {
@@ -900,6 +875,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				try {
 					await this.restApi().deleteExecutions({ ids: [execution.id] });
 					await this.refreshData();
+
+					if (this.allVisibleSelected) {
+						Vue.set(this, 'selectedItems', {});
+						this.selectAllVisibleExecutions();
+					}
 				} catch (error) {
 					this.$showError(
 						error,
@@ -916,6 +896,17 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			},
 			isRunning(execution: IExecutionsSummary): boolean {
 				return this.getStatus(execution) === 'running';
+			},
+			selectAllVisibleExecutions() {
+				this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+					Vue.set(this.selectedItems, execution.id, true);
+				});
+			},
+			adjustSelectionAfterMoreItemsLoaded() {
+				if (this.allExistingSelected) {
+					this.allVisibleSelected = true;
+					this.selectAllVisibleExecutions();
+				}
 			},
 		},
 	},
@@ -942,6 +933,19 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	}
 }
 
+.execListHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--spacing-s);
+}
+
+.execListHeaderControls {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
+
 .selectionOptions {
 	display: flex;
 	align-items: center;
@@ -950,7 +954,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	z-index: 2;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-xl);
+	bottom: var(--spacing-3xl);
 	background: var(--color-background-dark);
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-xlight);
@@ -959,16 +963,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	button {
 		margin-left: var(--spacing-2xs);
 	}
-}
-
-.filters {
-	display: flex;
-	line-height: 2em;
-	margin: var(--spacing-l) 0;
-}
-
-.filterItem {
-	margin: 0 var(--spacing-3xl) 0 0;
 }
 
 .statusColumn {
@@ -986,6 +980,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 
+	.crashed &,
 	.failed & {
 		color: var(--color-danger);
 	}
@@ -998,6 +993,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		font-weight: var(--font-weight-normal);
 	}
 
+	.new &,
 	.running & {
 		color: var(--color-warning);
 	}
@@ -1095,30 +1091,32 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			background: var(--color-primary-tint-3);
 		}
 
+		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: var(--color-danger);
+			background: hsl(var(--color-danger-h), 94%, 80%);
 		}
 
 		&.success td:first-child::before {
-			background: var(--color-success);
+			background: hsl(var(--color-success-h), 60%, 70%);
 		}
 
+		&.new td:first-child::before,
 		&.running td:first-child::before {
-			background: var(--color-warning);
+			background: hsl(var(--color-warning-h), 94%, 80%);
 		}
 
 		&.waiting td:first-child::before {
-			background: var(--color-secondary);
+			background: hsl(var(--color-secondary-h), 94%, 80%);
 		}
 
 		&.unknown td:first-child::before {
-			background: var(--color-background-dark);
+			background: var(--color-text-light);
 		}
 	}
 }
 
 .loadMore {
-	margin: var(--spacing-l) 0;
+	margin: var(--spacing-m) 0;
 	width: 100%;
 	text-align: center;
 }
@@ -1135,5 +1133,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 .retryAction + .deleteAction {
 	border-top: 1px solid var(--color-foreground-light);
+}
+
+.selectAll {
+	display: inline-block;
+	margin: 0 0 var(--spacing-s) var(--spacing-s);
+	color: var(--color-danger);
 }
 </style>

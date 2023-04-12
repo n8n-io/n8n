@@ -20,18 +20,15 @@
 			ref="iteratorItems"
 			@click="wrappedEmit('selected', item)"
 		>
-			<category-item
-				v-if="item.type === 'category'"
-				:item="item"
-				:count="enableGlobalCategoriesCounter ? getCategoryCount(item) : undefined"
-			/>
+			<category-item v-if="item.type === 'category'" :item="item.properties" />
 
-			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item" />
+			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item.properties" />
 
 			<node-item
 				v-else-if="item.type === 'node'"
 				:nodeType="item.properties.nodeType"
 				:allow-actions="withActionsGetter && withActionsGetter(item)"
+				:allow-description="withDescriptionGetter && withDescriptionGetter(item)"
 				@dragstart="wrappedEmit('dragstart', item, $event)"
 				@dragend="wrappedEmit('dragend', item, $event)"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
@@ -45,6 +42,8 @@
 				@dragstart="wrappedEmit('dragstart', item, $event)"
 				@dragend="wrappedEmit('dragend', item, $event)"
 			/>
+
+			<view-item v-else-if="item.type === 'view'" :view="item.properties" />
 		</div>
 		<aside
 			v-for="item in elements.length"
@@ -58,15 +57,13 @@
 </template>
 
 <script setup lang="ts">
-import { INodeCreateElement, CategoryCreateElement, NodeCreateElement } from '@/Interface';
+import { INodeCreateElement, NodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
 import ActionItem from './ActionItem.vue';
+import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -74,6 +71,7 @@ export interface Props {
 	disabled?: boolean;
 	lazyRender?: boolean;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
+	withDescriptionGetter?: (element: NodeCreateElement) => boolean;
 	enableGlobalCategoriesCounter?: boolean;
 }
 
@@ -101,25 +99,6 @@ function wrappedEmit(
 	if (props.disabled) return;
 
 	emit((event as 'selected') || 'dragstart' || 'dragend', element, $e);
-}
-function getCategoryCount(item: CategoryCreateElement) {
-	const { categoriesWithNodes } = useNodeTypesStore();
-
-	const currentCategory = categoriesWithNodes[item.category];
-	const subcategories = Object.keys(currentCategory);
-
-	// We need to sum subcategories count for the curent nodeType view
-	// to get the total count of category
-	const count = subcategories.reduce((accu: number, subcategory: string) => {
-		const countKeys = NODE_TYPE_COUNT_MAPPER[useNodeCreatorStore().selectedType];
-
-		for (const countKey of countKeys) {
-			accu += currentCategory[subcategory][countKey as 'triggerCount' | 'regularCount'];
-		}
-
-		return accu;
-	}, 0);
-	return count;
 }
 
 // Lazy render large items lists to prevent the browser from freezing

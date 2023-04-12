@@ -13,8 +13,9 @@ import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 async function createApiRouter(
 	version: string,
@@ -100,7 +101,7 @@ async function createApiRouter(
 
 						if (!user) return false;
 
-						void InternalHooksManager.getInstance().onUserInvokedApi({
+						void Container.get(InternalHooks).onUserInvokedApi({
 							user_id: user.id,
 							path: req.path,
 							method: req.method,

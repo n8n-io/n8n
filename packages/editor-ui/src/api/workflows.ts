@@ -1,5 +1,11 @@
-import { IRestApiContext } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import { IExecutionsCurrentSummaryExtended, IRestApiContext } from '@/Interface';
+import {
+	ExecutionFilters,
+	ExecutionOptions,
+	ExecutionStatus,
+	IDataObject,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 
 export async function getNewWorkflow(context: IRestApiContext, name?: string) {
@@ -30,8 +36,12 @@ export async function getCurrentExecutions(context: IRestApiContext, filter: IDa
 	return await makeRestApiRequest(context, 'GET', '/executions-current', { filter });
 }
 
-export async function getFinishedExecutions(context: IRestApiContext, filter: IDataObject) {
-	return await makeRestApiRequest(context, 'GET', '/executions', { filter });
+export async function getExecutions(
+	context: IRestApiContext,
+	filter?: ExecutionFilters,
+	options?: ExecutionOptions,
+): Promise<{ count: number; results: IExecutionsCurrentSummaryExtended[]; estimated: boolean }> {
+	return await makeRestApiRequest(context, 'GET', '/executions', { filter, ...options });
 }
 
 export async function getExecutionData(context: IRestApiContext, executionId: string) {

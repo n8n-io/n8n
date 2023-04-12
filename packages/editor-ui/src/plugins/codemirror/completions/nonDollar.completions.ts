@@ -4,14 +4,13 @@ import { prefixMatch } from './utils';
 
 /**
  * Completions offered at the initial position for any char other than `$`.
- *
- * Currently only `D...` for `DateTime` and `M...` for `Math`
  */
 export function nonDollarCompletions(context: CompletionContext): CompletionResult | null {
 	const dateTime = /(\s+)D[ateTim]*/;
 	const math = /(\s+)M[ath]*/;
+	const object = /(\s+)O[bject]*/;
 
-	const combinedRegex = new RegExp([dateTime.source, math.source].join('|'));
+	const combinedRegex = new RegExp([dateTime.source, math.source, object.source].join('|'));
 
 	const word = context.matchBefore(combinedRegex);
 
@@ -30,7 +29,10 @@ export function nonDollarCompletions(context: CompletionContext): CompletionResu
 		{
 			label: 'Math',
 			type: 'keyword',
-			info: i18n.rootVars.DateTime,
+		},
+		{
+			label: 'Object',
+			type: 'keyword',
 		},
 	];
 

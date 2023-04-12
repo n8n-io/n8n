@@ -1,17 +1,20 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 import moment from 'moment-timezone';
+
+import { DateTime as LuxonDateTime } from 'luxon';
 
 function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
@@ -60,6 +63,13 @@ export class DateTime implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName:
+					"More powerful date functionality is available in <a href='https://docs.n8n.io/code-examples/expressions/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
+				name: 'noticeDateTime',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Action',
 				name: 'action',
@@ -405,11 +415,15 @@ export class DateTime implements INodeType {
 				item = items[i];
 
 				if (action === 'format') {
-					const currentDate = this.getNodeParameter('value', i) as string;
+					let currentDate = this.getNodeParameter('value', i) as string;
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
 					const options = this.getNodeParameter('options', i);
 					let newDate;
+
+					if ((currentDate as unknown as IDataObject) instanceof LuxonDateTime) {
+						currentDate = (currentDate as unknown as LuxonDateTime).toISO();
+					}
 
 					if (currentDate === undefined) {
 						continue;

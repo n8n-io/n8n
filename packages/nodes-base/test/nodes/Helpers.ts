@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync } from 'fs';
-import { Credentials, loadClassInIsolation } from 'n8n-core';
+import { readFileSync, readdirSync, mkdtempSync } from 'fs';
+import { BinaryDataManager, Credentials } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -27,6 +27,26 @@ import {
 import { executeWorkflow } from './ExecuteWorkflow';
 import { WorkflowTestData } from './types';
 import path from 'path';
+import { tmpdir } from 'os';
+import { isEmpty } from 'lodash';
+
+import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
+
+const getFakeDecryptedCredentials = (
+	nodeCredentials: INodeCredentialsDetails,
+	type: string,
+	fakeCredentialsMap: IDataObject,
+) => {
+	if (nodeCredentials && fakeCredentialsMap[JSON.stringify(nodeCredentials)]) {
+		return fakeCredentialsMap[JSON.stringify(nodeCredentials)] as ICredentialDataDecryptedObject;
+	}
+
+	if (type && fakeCredentialsMap[type]) {
+		return fakeCredentialsMap[type] as ICredentialDataDecryptedObject;
+	}
+
+	return {};
+};
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -55,7 +75,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return {};
+		return getFakeDecryptedCredentials(nodeCredentials, type, FAKE_CREDENTIALS_DATA);
 	}
 
 	async getCredentials(
@@ -156,6 +176,22 @@ const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	return knownNodes!;
 };
 
+export function createTemporaryDir(prefix: string = 'n8n') {
+	return mkdtempSync(path.join(tmpdir(), prefix));
+}
+
+export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
+	const temporaryDir = createTemporaryDir();
+	await BinaryDataManager.init({
+		mode,
+		availableModes: mode,
+		localStoragePath: temporaryDir,
+		binaryDataTTL: 1,
+		persistedBinaryDataTTL: 1,
+	});
+	return temporaryDir;
+}
+
 export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
 		testData = [testData];
@@ -176,10 +212,9 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 		if (!loadInfo) {
 			throw new Error(`Unknown node type: ${nodeName}`);
 		}
-		const node = loadClassInIsolation(
-			path.join(process.cwd(), loadInfo.sourcePath),
-			loadInfo.className,
-		) as INodeType;
+		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+		const nodeSourcePath = path.join(process.cwd(), sourcePath);
+		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
 		nodeTypes.addNode(nodeName, node);
 	}
 
@@ -204,7 +239,11 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 			if (nodeData.data === undefined) {
 				return null;
 			}
-			return nodeData.data.main[0]!.map((entry) => entry.json);
+			return nodeData.data.main[0]!.map((entry) => {
+				if (entry.binary && isEmpty(entry.binary)) delete entry.binary;
+				delete entry.pairedItem;
+				return entry;
+			});
 		});
 		return {
 			nodeName,
@@ -231,6 +270,20 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	expect(result.finished).toEqual(true);
 };
 
+const preparePinData = (pinData: IDataObject) => {
+	const returnData = Object.keys(pinData).reduce(
+		(acc, key) => {
+			const data = pinData[key] as IDataObject[];
+			acc[key] = [data as IDataObject[]];
+			return acc;
+		},
+		{} as {
+			[key: string]: IDataObject[][];
+		},
+	);
+	return returnData;
+};
+
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
@@ -239,16 +292,8 @@ export const workflowToTests = (workflowFiles: string[]) => {
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
-		const nodeData = Object.keys(workflowData.pinData).reduce(
-			(acc, key) => {
-				const data = (workflowData.pinData[key] as IDataObject[]).map((item) => item.json);
-				acc[key] = [data as IDataObject[]];
-				return acc;
-			},
-			{} as {
-				[key: string]: IDataObject[][];
-			},
-		);
+
+		const nodeData = preparePinData(workflowData.pinData);
 
 		delete workflowData.pinData;
 

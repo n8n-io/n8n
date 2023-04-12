@@ -24,13 +24,14 @@
 </template>
 
 <script setup lang="ts">
-import Vue, { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
+import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
+import { EventBus } from '@/event-bus';
 
 export interface Props {
 	placeholder: string;
 	value: string;
-	eventBus?: Vue;
+	eventBus?: EventBus;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -80,7 +81,7 @@ defineExpose({
 .searchContainer {
 	display: flex;
 	height: 40px;
-	padding: var(--spacing-s) var(--spacing-xs);
+	padding: 0 var(--spacing-xs);
 	align-items: center;
 	margin: var(--search-margin, var(--spacing-s));
 	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));

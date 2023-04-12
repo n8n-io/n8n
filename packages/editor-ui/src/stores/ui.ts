@@ -29,6 +29,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
 import {
 	CurlToJSONResponse,
@@ -124,6 +125,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				activeId: null,
 				showAuthSelector: false,
 			},
+			[USER_ACTIVATION_SURVEY_MODAL]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -204,6 +208,15 @@ export const useUIStore = defineStore(STORES.UI, {
 							},
 							action: `contextual.workflows.sharing.unavailable.action${contextKey}`,
 							button: `contextual.workflows.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+				users: {
+					settings: {
+						unavailable: {
+							title: `contextual.users.settings.unavailable.title${contextKey}`,
+							description: `contextual.users.settings.unavailable.description${contextKey}`,
+							button: `contextual.users.settings.unavailable.button${contextKey}`,
 						},
 					},
 				},

@@ -3,7 +3,7 @@
 /* eslint-disable no-param-reassign */
 import type { INode, WebhookHttpMethod } from 'n8n-workflow';
 import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
-
+import { Service } from 'typedi';
 import type express from 'express';
 
 import * as Db from '@/Db';
@@ -14,7 +14,10 @@ import type { IExecutionResponse, IResponseCallbackData, IWorkflowDb } from '@/I
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
+@Service()
 export class WaitingWebhooks {
+	constructor(private nodeTypes: NodeTypes) {}
+
 	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
 		fullPath: string,
@@ -78,14 +81,13 @@ export class WaitingWebhooks {
 
 		const { workflowData } = fullExecutionData;
 
-		const nodeTypes = NodeTypes();
 		const workflow = new Workflow({
 			id: workflowData.id!.toString(),
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: workflowData.active,
-			nodeTypes,
+			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
 		});

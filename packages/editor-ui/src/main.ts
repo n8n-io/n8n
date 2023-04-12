@@ -10,6 +10,7 @@ import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
+import './styles/autocomplete-theme.scss';
 
 import '@fontsource/open-sans/latin-400.css';
 import '@fontsource/open-sans/latin-600.css';
@@ -25,6 +26,9 @@ import { I18nPlugin, i18nInstance } from './plugins/i18n';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
 import { useWebhooksStore } from './stores/webhooks';
+import { useUsersStore } from './stores/users';
+import { VIEWS } from '@/constants';
+import { useUIStore } from './stores/ui';
 
 Vue.config.productionTip = false;
 
@@ -43,6 +47,12 @@ new Vue({
 
 router.afterEach((to, from) => {
 	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	const userStore = useUsersStore();
+	if (userStore.currentUser && to.name && to.name !== VIEWS.SIGNOUT && !to.name.includes('Modal')) {
+		setTimeout(() => {
+			userStore.showUserActivationSurveyModal();
+		}, 500);
+	}
 });
 
 if (!import.meta.env.PROD) {

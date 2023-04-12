@@ -10,10 +10,36 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
+import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { UserManagementMailer } from '@/UserManagement/email';
+
+export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
+	@IsEmail()
+	email: string;
+
+	@NoXss()
+	@IsString({ message: 'First name must be of type string.' })
+	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
+	firstName: string;
+
+	@NoXss()
+	@IsString({ message: 'Last name must be of type string.' })
+	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
+	lastName: string;
+}
+export class UserSettingsUpdatePayload {
+	@IsBoolean({ message: 'showUserActivationSurvey should be a boolean' })
+	@IsOptional()
+	showUserActivationSurvey: boolean;
+
+	@IsBoolean({ message: 'userActivated should be a boolean' })
+	@IsOptional()
+	userActivated: boolean;
+}
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -27,9 +53,9 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+> = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
 	user: User;
-	mailer?: UserManagementMailer.UserManagementMailer;
+	mailer?: UserManagementMailer;
 	globalMemberRole?: Role;
 };
 
@@ -144,11 +170,8 @@ export declare namespace ExecutionRequest {
 // ----------------------------------
 
 export declare namespace MeRequest {
-	export type Settings = AuthenticatedRequest<
-		{},
-		{},
-		Pick<PublicUser, 'email' | 'firstName' | 'lastName'>
-	>;
+	export type UserSettingsUpdate = AuthenticatedRequest<{}, {}, UserSettingsUpdatePayload>;
+	export type UserUpdate = AuthenticatedRequest<{}, {}, UserUpdatePayload>;
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
@@ -317,6 +340,9 @@ export type NodeListSearchRequest = AuthenticatedRequest<
 // ----------------------------------
 
 export declare namespace TagsRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
+	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
 	type Delete = AuthenticatedRequest<{ id: string }>;
 }
 

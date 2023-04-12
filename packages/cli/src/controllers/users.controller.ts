@@ -1,5 +1,4 @@
 import validator from 'validator';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
@@ -13,9 +12,9 @@ import {
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	isUserManagementDisabled,
 	sanitizeUser,
 	validatePassword,
+	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
@@ -23,7 +22,6 @@ import { Response } from 'express';
 import type { Config } from '@/config';
 import { UserRequest } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
-import type { Role } from '@db/entities/Role';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -33,6 +31,15 @@ import type {
 } from '@/Interfaces';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
+import type { PostHogClient } from '@/posthog';
+import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
+import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import type {
+	RoleRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+} from '@db/repositories';
 
 @RestController('/users')
 export class UsersController {
@@ -44,17 +51,19 @@ export class UsersController {
 
 	private internalHooks: IInternalHooksClass;
 
-	private userRepository: Repository<User>;
+	private userRepository: UserRepository;
 
-	private roleRepository: Repository<Role>;
+	private roleRepository: RoleRepository;
 
-	private sharedCredentialsRepository: Repository<SharedCredentials>;
+	private sharedCredentialsRepository: SharedCredentialsRepository;
 
-	private sharedWorkflowRepository: Repository<SharedWorkflow>;
+	private sharedWorkflowRepository: SharedWorkflowRepository;
 
 	private activeWorkflowRunner: ActiveWorkflowRunner;
 
 	private mailer: UserManagementMailer;
+
+	private postHog?: PostHogClient;
 
 	constructor({
 		config,
@@ -64,6 +73,7 @@ export class UsersController {
 		repositories,
 		activeWorkflowRunner,
 		mailer,
+		postHog,
 	}: {
 		config: Config;
 		logger: ILogger;
@@ -75,6 +85,7 @@ export class UsersController {
 		>;
 		activeWorkflowRunner: ActiveWorkflowRunner;
 		mailer: UserManagementMailer;
+		postHog?: PostHogClient;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -86,19 +97,21 @@ export class UsersController {
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
 		this.mailer = mailer;
+		this.postHog = postHog;
 	}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post('/')
+	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
 	async sendEmailInvites(req: UserRequest.Invite) {
-		// TODO: this should be checked in the middleware rather than here
-		if (isUserManagementDisabled()) {
+		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
-				'Request to send email invite(s) to user(s) failed because user management is disabled',
+				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
-			throw new BadRequestError('User management is disabled');
+			throw new BadRequestError(
+				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+			);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -138,7 +151,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findOneBy({ scope: 'global', name: 'member' });
+		const role = await this.roleRepository.findGlobalMemberRole();
 
 		if (!role) {
 			this.logger.error(
@@ -327,7 +340,7 @@ export class UsersController {
 		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return sanitizeUser(updatedUser);
+		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
 	}
 
 	@Get('/')
@@ -387,8 +400,8 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'workflow' }),
-			this.roleRepository.findOneBy({ name: 'owner', scope: 'credential' }),
+			this.roleRepository.findWorkflowOwnerRole(),
+			this.roleRepository.findCredentialOwnerRole(),
 		]);
 
 		if (transferId) {

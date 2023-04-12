@@ -7,9 +7,9 @@ import {
 	STORES,
 } from '@/constants';
 import {
+	ExecutionsQueryFilter,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IExecutionsSummary,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -28,6 +28,7 @@ import {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IExecutionsSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -36,7 +37,9 @@ import {
 	INodeIssueData,
 	INodeParameters,
 	IPinData,
+	IRun,
 	IRunData,
+	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
 	NodeHelpers,
@@ -48,18 +51,19 @@ import {
 	getActiveWorkflows,
 	getCurrentExecutions,
 	getExecutionData,
-	getFinishedExecutions,
+	getExecutions,
 	getNewWorkflow,
 	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
 	getPairedItemsMapping,
 	stringSizeInBytes,
 	isObjectLiteral,
+	isEmpty,
 } from '@/utils';
 import { useNDVStore } from './ndv';
 import { useNodeTypesStore } from './nodeTypes';
@@ -448,13 +452,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
+		setWorkflowExecutionRunData(workflowResultData: IRunExecutionData): void {
+			if (this.workflowExecutionData) this.workflowExecutionData.data = workflowResultData;
+		},
+
 		setWorkflowSettings(workflowSettings: IWorkflowSettings): void {
 			Vue.set(this.workflow, 'settings', workflowSettings);
 		},
 
 		setWorkflowPinData(pinData: IPinData): void {
 			Vue.set(this.workflow, 'pinData', pinData || {});
-			dataPinningEventBus.$emit('pin-data', pinData || {});
+			dataPinningEventBus.emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(tags: string[]): void {
@@ -515,7 +523,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
+			dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 
 		unpinData(payload: { node: INodeUi }): void {
@@ -529,7 +537,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+			dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
 		addConnection(data: { connection: IConnection[] }): void {
@@ -921,39 +929,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
+			if (finishedActiveExecution.data && (finishedActiveExecution.data as IRun).data) {
+				this.setWorkflowExecutionRunData((finishedActiveExecution.data as IRun).data);
+			}
 		},
 
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
 			Vue.set(this, 'activeExecutions', newActiveExecutions);
 		},
 
-		async loadCurrentWorkflowExecutions(filter: {
-			finished: boolean;
-			status: string;
-		}): Promise<IExecutionsSummary[]> {
+		async loadCurrentWorkflowExecutions(
+			requestFilter: ExecutionsQueryFilter,
+		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
-			let finishedExecutions = [];
-			const requestFilter: IDataObject = { workflowId: this.workflowId };
 
-			if (!this.workflowId) {
+			if (!requestFilter.workflowId) {
 				return [];
 			}
 			try {
 				const rootStore = useRootStore();
-				if (filter.status === '' || !filter.finished) {
-					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, requestFilter);
+				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
+					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
+						workflowId: requestFilter.workflowId,
+					});
 				}
-				if (filter.status === '' || filter.finished) {
-					if (filter.status === 'waiting') {
-						requestFilter.waitTill = true;
-					} else if (filter.status !== '') {
-						requestFilter.finished = filter.status === 'success';
-					}
-					finishedExecutions = await getFinishedExecutions(
-						rootStore.getRestApiContext,
-						requestFilter,
-					);
-				}
+				const finishedExecutions = await getExecutions(rootStore.getRestApiContext, requestFilter);
 				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {

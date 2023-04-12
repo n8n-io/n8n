@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
-import { Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
 import {
 	hashPassword,
@@ -9,13 +9,16 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
-import type { Settings } from '@db/entities/Settings';
-import type { User } from '@db/entities/User';
+import type {
+	CredentialsRepository,
+	SettingsRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@db/repositories';
 
 @RestController('/owner')
 export class OwnerController {
@@ -25,9 +28,13 @@ export class OwnerController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
-	private readonly settingsRepository: Repository<Settings>;
+	private readonly settingsRepository: SettingsRepository;
+
+	private readonly credentialsRepository: CredentialsRepository;
+
+	private readonly workflowsRepository: WorkflowRepository;
 
 	constructor({
 		config,
@@ -38,23 +45,38 @@ export class OwnerController {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
+		repositories: Pick<IDatabaseCollections, 'User' | 'Settings' | 'Credentials' | 'Workflow'>;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
 		this.settingsRepository = repositories.Settings;
+		this.credentialsRepository = repositories.Credentials;
+		this.workflowsRepository = repositories.Workflow;
+	}
+
+	@Get('/pre-setup')
+	async preSetup(): Promise<{ credentials: number; workflows: number }> {
+		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+			throw new BadRequestError('Instance owner already setup');
+		}
+
+		const [credentials, workflows] = await Promise.all([
+			this.credentialsRepository.countBy({}),
+			this.workflowsRepository.countBy({}),
+		]);
+		return { credentials, workflows };
 	}
 
 	/**
 	 * Promote a shell into the owner of the n8n instance,
 	 * and enable `isInstanceOwnerSetUp` setting.
 	 */
-	@Post('/')
-	async promoteOwner(req: OwnerRequest.Post, res: Response) {
+	@Post('/setup')
+	async setupOwner(req: OwnerRequest.Post, res: Response) {
 		const { email, firstName, lastName, password } = req.body;
-		const { id: userId } = req.user;
+		const { id: userId, globalRole } = req.user;
 
 		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
@@ -63,7 +85,7 @@ export class OwnerController {
 					userId,
 				},
 			);
-			throw new BadRequestError('Invalid request');
+			throw new BadRequestError('Instance owner already setup');
 		}
 
 		if (!email || !validator.isEmail(email)) {
@@ -84,12 +106,8 @@ export class OwnerController {
 			throw new BadRequestError('First and last names are mandatory');
 		}
 
-		let owner = await this.userRepository.findOne({
-			relations: ['globalRole'],
-			where: { id: userId },
-		});
-
-		if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {
+		// TODO: This check should be in a middleware outside this class
+		if (globalRole.scope === 'global' && globalRole.name !== 'owner') {
 			this.logger.debug(
 				'Request to claim instance ownership failed because user shell does not exist or has wrong role!',
 				{
@@ -98,6 +116,8 @@ export class OwnerController {
 			);
 			throw new BadRequestError('Invalid request');
 		}
+
+		let owner = req.user;
 
 		Object.assign(owner, {
 			email,
@@ -110,7 +130,7 @@ export class OwnerController {
 
 		owner = await this.userRepository.save(owner);
 
-		this.logger.info('Owner was set up successfully', { userId: req.user.id });
+		this.logger.info('Owner was set up successfully', { userId });
 
 		await this.settingsRepository.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
@@ -119,7 +139,7 @@ export class OwnerController {
 
 		this.config.set('userManagement.isInstanceOwnerSetUp', true);
 
-		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId: req.user.id });
+		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId });
 
 		await issueCookie(res, owner);
 

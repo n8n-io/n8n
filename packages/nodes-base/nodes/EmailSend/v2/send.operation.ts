@@ -223,11 +223,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					});
 
 				for (const propertyName of attachmentProperties) {
-					if (!item.binary.hasOwnProperty(propertyName)) {
-						continue;
-					}
+					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 					attachments.push({
-						filename: item.binary[propertyName].fileName || 'unknown',
+						filename: binaryData.fileName || 'unknown',
 						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 					});
 				}
