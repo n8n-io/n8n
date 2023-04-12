@@ -34,7 +34,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					);
 					break;
 				case 'fileFolder':
-					returnData.push(...(await fileFolder[googleDrive.operation].execute.call(this)));
+					returnData.push(
+						...(await fileFolder[googleDrive.operation].execute.call(this, i, options)),
+					);
 					break;
 				case 'folder':
 					returnData.push(...(await folder[googleDrive.operation].execute.call(this, i, options)));

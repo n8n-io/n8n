@@ -1,8 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { driveRLC, folderRLC } from '../common.descriptions';
+import { googleApiRequest } from '../../transport';
+import { prepareQueryString } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -343,8 +345,31 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	options: IDataObject,
+): Promise<INodeExecutionData[]> {
+	const queryFields = prepareQueryString(options.fields as string[]);
 
-	return returnData;
+	const pageSize = this.getNodeParameter('limit', i);
+
+	const qs = {
+		pageSize,
+		orderBy: 'modifiedTime',
+		fields: `nextPageToken, files(${queryFields})`,
+		spaces: '',
+		q: '',
+	};
+
+	const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+
+	const files = response.files;
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(files as IDataObject[]),
+		{ itemData: { item: i } },
+	);
+
+	return executionData;
 }

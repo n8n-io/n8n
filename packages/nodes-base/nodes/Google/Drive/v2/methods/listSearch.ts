@@ -1,4 +1,8 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+} from 'n8n-workflow';
 import { googleApiRequest } from '../transport';
 
 interface GoogleDriveFilesItem {
@@ -55,12 +59,24 @@ export async function folderSearch(
 		fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 		orderBy: 'name_natural',
 	});
-	return {
-		results: res.files.map((i: GoogleDriveFilesItem) => ({
+
+	const results: INodeListSearchItems[] = [
+		{
+			name: '/',
+			value: 'root',
+		},
+	];
+
+	res.files.forEach((i: GoogleDriveFilesItem) => {
+		results.push({
 			name: i.name,
 			value: i.id,
 			url: i.webViewLink,
-		})),
+		});
+	});
+
+	return {
+		results,
 		paginationToken: res.nextPageToken,
 	};
 }
@@ -70,15 +86,29 @@ export async function driveSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
+	let res = { drives: [], nextPageToken: undefined };
+
+	res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
 		q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
 		pageToken: paginationToken,
 	});
-	return {
-		results: res.drives.map((i: GoogleDriveDriveItem) => ({
+
+	const results: INodeListSearchItems[] = [
+		{
+			name: 'My Drive',
+			value: 'root',
+		},
+	];
+
+	res.drives.forEach((i: GoogleDriveDriveItem) => {
+		results.push({
 			name: i.name,
 			value: i.id,
-		})),
+		});
+	});
+
+	return {
+		results,
 		paginationToken: res.nextPageToken,
 	};
 }
