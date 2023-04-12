@@ -185,7 +185,7 @@ function isUrl(value: string) {
 	let url: URL;
 	try {
 		url = new URL(value);
-	} catch (_error) {
+	} catch {
 		return false;
 	}
 

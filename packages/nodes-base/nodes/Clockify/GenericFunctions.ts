@@ -54,7 +54,8 @@ export async function clockifyApiRequestAllItems(
 
 		returnData.push.apply(returnData, responseData as IDataObject[]);
 
-		if (query.limit && returnData.length >= query.limit) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 

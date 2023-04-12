@@ -28,7 +28,13 @@
 			</div>
 		</n8n-tooltip>
 
-		<div class="data-display" v-if="activeNode">
+		<div
+			v-if="activeNode"
+			class="data-display"
+			ref="container"
+			@keydown.capture="onKeyDown"
+			tabindex="0"
+		>
 			<div @click="close" :class="$style.modalBackground"></div>
 			<NDVDraggablePanels
 				:isTriggerNode="isTriggerNode"
@@ -136,7 +142,6 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
 import mixins from 'vue-typed-mixins';
-import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -149,13 +154,14 @@ import {
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { createEventBus, dataPinningEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import useDeviceSupport from '@/composables/useDeviceSupport';
 
 export default mixins(
 	externalHooks,
@@ -184,9 +190,14 @@ export default mixins(
 			default: false,
 		},
 	},
+	setup() {
+		return {
+			...useDeviceSupport(),
+		};
+	},
 	data() {
 		return {
-			settingsEventBus: new Vue(),
+			settingsEventBus: createEventBus(),
 			runInputIndex: -1,
 			runOutputIndex: -1,
 			isLinkingEnabled: true,
@@ -200,7 +211,7 @@ export default mixins(
 		};
 	},
 	mounted() {
-		dataPinningEventBus.$on(
+		dataPinningEventBus.on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
 				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
@@ -208,7 +219,7 @@ export default mixins(
 		);
 	},
 	destroyed() {
-		dataPinningEventBus.$off('data-pinning-discovery');
+		dataPinningEventBus.off('data-pinning-discovery');
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
@@ -469,6 +480,16 @@ export default mixins(
 		},
 	},
 	methods: {
+		onKeyDown(e: KeyboardEvent) {
+			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				if (this.readOnly) return;
+
+				this.$emit('saveKeyboardShortcut', e);
+			}
+		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (!this.inputNodeName) {
 				return;
@@ -574,7 +595,7 @@ export default mixins(
 			}, 1000);
 		},
 		openSettings() {
-			this.settingsEventBus.$emit('openSettings');
+			this.settingsEventBus.emit('openSettings');
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
@@ -600,7 +621,7 @@ export default mixins(
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'data-too-large',
 							source: 'on-ndv-close-modal',
 						});
@@ -608,7 +629,7 @@ export default mixins(
 					}
 
 					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.$emit('data-pinning-error', {
+						dataPinningEventBus.emit('data-pinning-error', {
 							errorType: 'invalid-json',
 							source: 'on-ndv-close-modal',
 						});

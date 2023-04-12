@@ -10,14 +10,17 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+
 import { BINARY_ENCODING, jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request-promise-native';
 
-import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
+import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
+
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
+	prepareRequestBody,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -35,7 +38,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: 3,
+			version: [3, 4],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#2200DD',
@@ -745,9 +748,7 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {
-								redirect: {},
-							},
+							default: { redirect: {} },
 							options: [
 								{
 									displayName: 'Redirect',
@@ -776,6 +777,56 @@ export class HttpRequestV3 implements INodeType {
 									],
 								},
 							],
+							displayOptions: {
+								show: {
+									'@version': [1, 2, 3],
+								},
+							},
+						},
+						{
+							displayName: 'Redirects',
+							name: 'redirect',
+							placeholder: 'Add Redirect',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {
+								redirect: {},
+							},
+							options: [
+								{
+									displayName: 'Redirect',
+									name: 'redirect',
+									values: [
+										{
+											displayName: 'Follow Redirects',
+											name: 'followRedirects',
+											type: 'boolean',
+											default: true,
+											noDataExpression: true,
+											description: 'Whether to follow all redirects',
+										},
+										{
+											displayName: 'Max Redirects',
+											name: 'maxRedirects',
+											type: 'number',
+											displayOptions: {
+												show: {
+													followRedirects: [true],
+												},
+											},
+											default: 21,
+											description: 'Max number of redirects to follow',
+										},
+									],
+								},
+							],
+							displayOptions: {
+								hide: {
+									'@version': [1, 2, 3],
+								},
+							},
 						},
 						{
 							displayName: 'Response',
@@ -879,6 +930,7 @@ export class HttpRequestV3 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const nodeVersion = this.getNode().typeVersion;
 
 		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
@@ -960,9 +1012,11 @@ export class HttpRequestV3 implements INodeType {
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
 			const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
-			const bodyParameters = this.getNodeParameter('bodyParameters.parameters', itemIndex, []) as [
-				{ name: string; value: string },
-			];
+			const bodyParameters = this.getNodeParameter(
+				'bodyParameters.parameters',
+				itemIndex,
+				[],
+			) as BodyParameter[];
 			const jsonBodyParameter = this.getNodeParameter('jsonBody', itemIndex, '') as string;
 			const body = this.getNodeParameter('body', itemIndex, '') as string;
 
@@ -978,7 +1032,6 @@ export class HttpRequestV3 implements INodeType {
 				'keypair',
 			) as string;
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
-
 			const {
 				redirect,
 				batching,
@@ -1032,13 +1085,14 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || fullResponse) {
 				requestOptions.resolveWithFullResponse = true;
 			}
+			const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
 
-			if (redirect?.redirect?.followRedirects) {
+			if (redirect?.redirect?.followRedirects || defaultRedirect) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects) {
+			if (redirect?.redirect?.maxRedirects || defaultRedirect) {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
@@ -1094,7 +1148,12 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.body = bodyParameters.reduce(parametersToKeyValue, {});
+					requestOptions.body = prepareRequestBody(
+						bodyParameters,
+						bodyContentType,
+						nodeVersion,
+						parametersToKeyValue,
+					);
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {

@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import type { Repository } from 'typeorm';
 import type { Config } from '@/config';
 import { Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
 import { TagEntity } from '@db/entities/TagEntity';
-import { getTagsWithCountDb } from '@/TagHelpers';
+import type { TagRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
@@ -15,7 +14,7 @@ export class TagsController {
 
 	private externalHooks: IExternalHooksClass;
 
-	private tagsRepository: Repository<TagEntity>;
+	private tagsRepository: TagRepository;
 
 	constructor({
 		config,
@@ -44,8 +43,17 @@ export class TagsController {
 	async getAll(req: TagsRequest.GetAll): Promise<TagEntity[] | ITagWithCountDb[]> {
 		const { withUsageCount } = req.query;
 		if (withUsageCount === 'true') {
-			const tablePrefix = this.config.getEnv('database.tablePrefix');
-			return getTagsWithCountDb(tablePrefix);
+			return this.tagsRepository
+				.find({
+					select: ['id', 'name', 'createdAt', 'updatedAt'],
+					relations: ['workflowMappings'],
+				})
+				.then((tags) =>
+					tags.map(({ workflowMappings, ...rest }) => ({
+						...rest,
+						usageCount: workflowMappings.length,
+					})),
+				);
 		}
 
 		return this.tagsRepository.find({ select: ['id', 'name', 'createdAt', 'updatedAt'] });

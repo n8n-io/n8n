@@ -520,5 +520,13 @@ describe('AugmentObject', () => {
 
 			expect(timeAugmented).toBeLessThan(timeCopied);
 		});
+
+		test('should ignore non-enumerable keys', () => {
+			const originalObject = { a: 1, b: 2 };
+			Object.defineProperty(originalObject, '__hiddenProp', { enumerable: false });
+
+			const augmentedObject = augmentObject(originalObject);
+			expect(Object.keys(augmentedObject)).toEqual(['a', 'b']);
+		});
 	});
 });

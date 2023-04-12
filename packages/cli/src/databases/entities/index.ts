@@ -2,7 +2,7 @@
 import { AuthIdentity } from './AuthIdentity';
 import { AuthProviderSyncHistory } from './AuthProviderSyncHistory';
 import { CredentialsEntity } from './CredentialsEntity';
-import { EventDestinations } from './MessageEventBusDestinationEntity';
+import { EventDestinations } from './EventDestinations';
 import { ExecutionEntity } from './ExecutionEntity';
 import { InstalledNodes } from './InstalledNodes';
 import { InstalledPackages } from './InstalledPackages';
@@ -14,6 +14,7 @@ import { TagEntity } from './TagEntity';
 import { User } from './User';
 import { WebhookEntity } from './WebhookEntity';
 import { WorkflowEntity } from './WorkflowEntity';
+import { WorkflowTagMapping } from './WorkflowTagMapping';
 import { WorkflowStatistics } from './WorkflowStatistics';
 import { ExecutionMetadata } from './ExecutionMetadata';
 
@@ -33,6 +34,7 @@ export const entities = {
 	User,
 	WebhookEntity,
 	WorkflowEntity,
+	WorkflowTagMapping,
 	WorkflowStatistics,
 	ExecutionMetadata,
 };
