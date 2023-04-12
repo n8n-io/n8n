@@ -22,7 +22,7 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 							ON u.id = sw.userId
 			WHERE ws.name = 'production_success'
 						AND r.name = 'owner'
-						AND r.scope = "workflow"`,
+						AND r.scope = 'workflow'`,
 		);
 
 		const updatedUsers = activatedUsers.map((user) =>
@@ -33,11 +33,17 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 
 		await Promise.all(updatedUsers);
 
-		const activatedUserIds = activatedUsers.map((user) => `'${user.id}'`).join(',');
+		if (!activatedUsers.length) {
+			await queryRunner.query(
+				`UPDATE ${tablePrefix}user SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivated', false)`,
+			);
+		} else {
+			const activatedUserIds = activatedUsers.map((user) => `'${user.id}'`).join(',');
 
-		await queryRunner.query(
-			`UPDATE ${tablePrefix}user SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivated', false) WHERE id NOT IN (${activatedUserIds})`,
-		);
+			await queryRunner.query(
+				`UPDATE ${tablePrefix}user SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivated', false) WHERE id NOT IN (${activatedUserIds})`,
+			);
+		}
 
 		logMigrationEnd(this.name);
 	}

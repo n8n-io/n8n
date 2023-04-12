@@ -27,17 +27,25 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 
 		const updatedUsers = activatedUsers.map((user) =>
 			queryRunner.query(
-				`UPDATE "${tablePrefix}user" SET settings = '${JSON.stringify(user.settings)}' WHERE id = '${user.id}' `,
+				`UPDATE "${tablePrefix}user" SET settings = '${JSON.stringify(
+					user.settings,
+				)}' WHERE id = '${user.id}' `,
 			),
 		);
 
 		await Promise.all(updatedUsers);
 
-		const activatedUserIds = activatedUsers.map((user) => `'${user.id}'`).join(',');
+		if (!activatedUsers.length) {
+			await queryRunner.query(
+				`UPDATE "${tablePrefix}user" SET settings = JSONB_SET(COALESCE(settings::jsonb, '{}'), '{userActivated}', 'false', true)`,
+			);
+		} else {
+			const activatedUserIds = activatedUsers.map((user) => `'${user.id}'`).join(',');
 
-		await queryRunner.query(
-			`UPDATE "${tablePrefix}user" SET settings = JSONB_SET(COALESCE(settings::jsonb, '{}'), '{userActivated}', 'false', true) WHERE id NOT IN (${activatedUserIds})`,
-		);
+			await queryRunner.query(
+				`UPDATE "${tablePrefix}user" SET settings = JSONB_SET(COALESCE(settings::jsonb, '{}'), '{userActivated}', 'false', true) WHERE id NOT IN (${activatedUserIds})`,
+			);
+		}
 
 		logMigrationEnd(this.name);
 	}

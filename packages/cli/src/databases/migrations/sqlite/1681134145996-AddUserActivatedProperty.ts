@@ -33,11 +33,16 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 
 		await Promise.all(updatedUsers);
 
-		const activatedUserIds = activatedUsers.map((user) => `'${user.id}'`).join(',');
-
-		await queryRunner.query(
-			`UPDATE ${tablePrefix}user SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivated', JSON('false')) WHERE id NOT IN (${activatedUserIds})`,
-		);
+		if (!activatedUsers.length) {
+			await queryRunner.query(
+				`UPDATE ${tablePrefix}user SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivated', JSON('false'))`,
+			);
+		} else {
+			const activatedUserIds = activatedUsers.map((user) => `'${user.id}'`).join(',');
+			await queryRunner.query(
+				`UPDATE ${tablePrefix}user SET settings = JSON_SET(COALESCE(settings, '{}'), '$.userActivated', JSON('false')) WHERE id NOT IN (${activatedUserIds})`,
+			);
+		}
 
 		logMigrationEnd(this.name);
 	}
