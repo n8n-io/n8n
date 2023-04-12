@@ -138,7 +138,7 @@ export class WorkflowPage extends BasePage {
 					if(action) {
 						cy.contains(action).click()
 					} else {
-						cy.getByTestId('item-iterator-item').eq(1).click()
+						cy.getByTestId('item-iterator-item').click()
 					}
 				}
 			})
