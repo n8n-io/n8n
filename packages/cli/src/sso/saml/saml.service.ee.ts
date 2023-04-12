@@ -1,7 +1,7 @@
 import type express from 'express';
 import { Service } from 'typedi';
 import * as Db from '@/Db';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
@@ -20,7 +20,7 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '@/databases/entities/Settings';
+import type { Settings } from '@db/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';

@@ -30,6 +30,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
@@ -389,17 +390,11 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRoleId = await Db.collections.Role.findOne({
-		select: ['id'],
-		where: {
-			name: 'owner',
-			scope: 'workflow',
-		},
-	}).then((role) => role?.id);
+	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		where: {
 			userId: user.id,
-			roleId: workflowOwnerRoleId,
+			roleId: workflowOwnerRole?.id,
 		},
 		select: ['workflowId'],
 	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));

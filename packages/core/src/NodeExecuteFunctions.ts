@@ -1653,10 +1653,24 @@ export function getAdditionalKeys(
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
-							setWorkflowExecutionMetadata(runExecutionData, key, value);
+							try {
+								setWorkflowExecutionMetadata(runExecutionData, key, value);
+							} catch (e) {
+								if (mode === 'manual') {
+									throw e;
+								}
+								Logger.verbose(e.message);
+							}
 						},
 						setAll(obj: Record<string, string>): void {
-							setAllWorkflowExecutionMetadata(runExecutionData, obj);
+							try {
+								setAllWorkflowExecutionMetadata(runExecutionData, obj);
+							} catch (e) {
+								if (mode === 'manual') {
+									throw e;
+								}
+								Logger.verbose(e.message);
+							}
 						},
 						get(key: string): string {
 							return getWorkflowExecutionMetadata(runExecutionData, key);
