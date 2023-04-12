@@ -8,11 +8,11 @@ import {
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
-import type { User } from '@db/entities/User';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
+import type { User } from '@db/entities/User';
+import type { UserRepository } from '@db/repositories';
 import { Response } from 'express';
-import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import {
 	AuthenticatedRequest,
@@ -38,7 +38,7 @@ export class MeController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	constructor({
 		logger,

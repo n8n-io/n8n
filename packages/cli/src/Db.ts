@@ -3,14 +3,8 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
-import type {
-	DataSourceOptions as ConnectionOptions,
-	EntityManager,
-	EntityTarget,
-	LoggerOptions,
-	ObjectLiteral,
-	Repository,
-} from 'typeorm';
+import { Container } from 'typedi';
+import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
 import type { DatabaseType, IDatabaseCollections } from '@/Interfaces';
@@ -25,22 +19,36 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
+import {
+	AuthIdentityRepository,
+	AuthProviderSyncHistoryRepository,
+	CredentialsRepository,
+	EventDestinationsRepository,
+	ExecutionMetadataRepository,
+	ExecutionRepository,
+	InstalledNodesRepository,
+	InstalledPackagesRepository,
+	RoleRepository,
+	SettingsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	UserRepository,
+	WebhookRepository,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+	WorkflowTagMappingRepository,
+} from '@db/repositories';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-export let connection: Connection;
+let connection: Connection;
 
 export const getConnection = () => connection!;
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
-}
-
-export function linkRepository<Entity extends ObjectLiteral>(
-	entityClass: EntityTarget<Entity>,
-): Repository<Entity> {
-	return connection.getRepository(entityClass);
 }
 
 export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
@@ -114,6 +122,7 @@ export async function init(
 	});
 
 	connection = new Connection(connectionOptions);
+	Container.set(Connection, connection);
 	await connection.initialize();
 
 	if (dbType === 'postgresdb') {
@@ -148,31 +157,31 @@ export async function init(
 		if (migrations.length === 0) {
 			await connection.destroy();
 			connection = new Connection(connectionOptions);
+			Container.set(Connection, connection);
 			await connection.initialize();
 		}
 	} else {
 		await connection.runMigrations({ transaction: 'each' });
 	}
 
-	collections.Credentials = linkRepository(entities.CredentialsEntity);
-	collections.Execution = linkRepository(entities.ExecutionEntity);
-	collections.Workflow = linkRepository(entities.WorkflowEntity);
-	collections.Webhook = linkRepository(entities.WebhookEntity);
-	collections.Tag = linkRepository(entities.TagEntity);
-	collections.WorkflowTagMapping = linkRepository(entities.WorkflowTagMapping);
-	collections.Role = linkRepository(entities.Role);
-	collections.User = linkRepository(entities.User);
-	collections.AuthIdentity = linkRepository(entities.AuthIdentity);
-	collections.AuthProviderSyncHistory = linkRepository(entities.AuthProviderSyncHistory);
-	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
-	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
-	collections.Settings = linkRepository(entities.Settings);
-	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
-	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
-	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
-	collections.ExecutionMetadata = linkRepository(entities.ExecutionMetadata);
-
-	collections.EventDestinations = linkRepository(entities.EventDestinations);
+	collections.AuthIdentity = Container.get(AuthIdentityRepository);
+	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
+	collections.Credentials = Container.get(CredentialsRepository);
+	collections.EventDestinations = Container.get(EventDestinationsRepository);
+	collections.Execution = Container.get(ExecutionRepository);
+	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
+	collections.InstalledNodes = Container.get(InstalledNodesRepository);
+	collections.InstalledPackages = Container.get(InstalledPackagesRepository);
+	collections.Role = Container.get(RoleRepository);
+	collections.Settings = Container.get(SettingsRepository);
+	collections.SharedCredentials = Container.get(SharedCredentialsRepository);
+	collections.SharedWorkflow = Container.get(SharedWorkflowRepository);
+	collections.Tag = Container.get(TagRepository);
+	collections.User = Container.get(UserRepository);
+	collections.Webhook = Container.get(WebhookRepository);
+	collections.Workflow = Container.get(WorkflowRepository);
+	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
+	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
 
 	isInitialized = true;
 
