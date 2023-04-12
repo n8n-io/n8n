@@ -58,7 +58,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
-		nodeCreatorFeature.getters.getCategoryItem('Results in other categories (1)').should('exist');
+		nodeCreatorFeature.getters.getCategoryItem('Results in other categories').should('exist');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
 		nodeCreatorFeature.getters.getCreatorItem('Edit Image').should('exist');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image123123');
@@ -181,5 +181,97 @@ describe('Node Creator', () => {
 			WorkflowPage.actions.addNodeBetweenNodes('n8n', 'n8n1', 'Item Lists')
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		})
+
+		it('should have "Actions" section collapsed when opening actions view from Trigger root view', () => {
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('Action Network');
+			nodeCreatorFeature.getters.getCreatorItem('Action Network').click();
+			nodeCreatorFeature.getters.getCategoryItem('Actions').should('exist');
+			nodeCreatorFeature.getters.getCategoryItem('Triggers (2)').should('exist');
+
+			nodeCreatorFeature.getters.getCategoryItem('Triggers (2)').parent().should('not.have.attr', 'data-category-collapsed');
+			nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('have.attr', 'data-category-collapsed', 'true');
+			nodeCreatorFeature.getters.getCategoryItem('Actions').click()
+			nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('not.have.attr', 'data-category-collapsed');
+		});
+
+		it('should have "Triggers" section collapsed when opening actions view from Regular root view', () => {
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.getCreatorItem('Manually').click();
+
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
+			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+
+			nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('not.have.attr', 'data-category-collapsed');
+			nodeCreatorFeature.getters.getCategoryItem('Actions').click()
+			nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('have.attr', 'data-category-collapsed');
+			nodeCreatorFeature.getters.getCategoryItem('Triggers').parent().should('have.attr', 'data-category-collapsed');
+			nodeCreatorFeature.getters.getCategoryItem('Triggers').click()
+			nodeCreatorFeature.getters.getCategoryItem('Triggers').parent().should('not.have.attr', 'data-category-collapsed');
+		});
+
+		it('should show callout and two suggested nodes if node has no trigger actions', () => {
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+			nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+			cy.getByTestId('actions-panel-no-triggers-callout').should('be.visible');
+			nodeCreatorFeature.getters.getCreatorItem('On a Schedule').should('be.visible');
+			nodeCreatorFeature.getters.getCreatorItem('On a Webhook call').should('be.visible');
+		});
+
+		it('should show intro callout if user has not made a production execution', () => {
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.getCreatorItem('On a schedule').click();
+
+			// Setup 1s interval execution
+			cy.getByTestId('parameter-input-field').click();
+			cy.getByTestId('parameter-input-field')
+				.find('.el-select-dropdown')
+				.find('.option-headline')
+				.contains('Seconds')
+				.click();
+			cy.getByTestId('parameter-input-secondsInterval').clear().type('1');
+
+			NDVModal.actions.close();
+
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+			nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+			cy.getByTestId('actions-panel-activation-callout').should('be.visible');
+			nodeCreatorFeature.getters.getCategoryItem('Triggers (2)').parent().should('have.attr', 'data-category-collapsed');
+
+			WorkflowPage.actions.saveWorkflowOnButtonClick();
+			WorkflowPage.actions.activateWorkflow();
+			WorkflowPage.getters.activatorSwitch().should('have.class', 'is-checked');
+
+			// Wait for schedule 1s execution to mark user as having made a production execution
+			cy.wait(1500);
+			cy.reload()
+
+			// Action callout should not be visible after user has made a production execution
+			nodeCreatorFeature.actions.openNodeCreator();
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+			nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+			cy.getByTestId('actions-panel-activation-callout').should('not.exist');
+		});
+
+		it('should show Trigger and Actions sections during search', () => {
+			nodeCreatorFeature.actions.openNodeCreator();
+
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+			nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+			nodeCreatorFeature.getters.searchBar().find('input').clear().type('Non existent action name');
+
+			nodeCreatorFeature.getters.getCategoryItem('Triggers').should('be.visible');
+			nodeCreatorFeature.getters.getCategoryItem('Actions').should('be.visible');
+			cy.getByTestId('actions-panel-no-triggers-callout').should('be.visible');
+			nodeCreatorFeature.getters.getCreatorItem('On a Schedule').should('be.visible');
+			nodeCreatorFeature.getters.getCreatorItem('On a Webhook call').should('be.visible');
+		});
 	});
 });

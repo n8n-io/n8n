@@ -7,8 +7,7 @@ export class NodeCreator extends BasePage {
 		plusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasAddButton: () => cy.getByTestId('canvas-add-button'),
 		searchBar: () => cy.getByTestId('search-bar'),
-		getCategoryItem: (label: string) =>
-			this.getters.categoryItem().contains(label).parents('[data-test-id="node-creator-category-item"]'),
+		getCategoryItem: (label: string) => cy.get(`[data-keyboard-nav-id="${label}"]`),
 		getCreatorItem: (label: string) =>
 			this.getters.creatorItem().contains(label).parents('[data-test-id="item-iterator-item"]'),
 		getNthCreatorItem: (n: number) => this.getters.creatorItem().eq(n),

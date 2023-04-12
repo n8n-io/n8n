@@ -187,7 +187,7 @@ onMounted(() => {
 					<!-- Empty state -->
 					<template #empty>
 						<template v-if="hasNoTriggerActions">
-							<n8n-callout theme="info" iconless slim>
+							<n8n-callout theme="info" iconless slim data-test-id="actions-panel-no-triggers-callout">
 								<span
 									v-html="
 										$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
@@ -215,7 +215,7 @@ onMounted(() => {
 					@selected="onSelected"
 				>
 					<template>
-						<n8n-callout theme="info" iconless v-if="!userActivated" slim>
+						<n8n-callout theme="info" iconless v-if="!userActivated" slim  data-test-id="actions-panel-activation-callout">
 							<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
 						</n8n-callout>
 					</template>
@@ -231,7 +231,7 @@ onMounted(() => {
 							/>
 						</n8n-info-tip>
 						<template v-else>
-							<span :class="$style.resetSearch" v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')" @click="resetSearch" />
+							<span :class="$style.resetSearch" v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')" @click="resetSearch" data-test-id="actions-panel-no-matching-actions" />
 						</template>
 					</template>
 				</CategorizedItemsRenderer>
@@ -261,7 +261,7 @@ onMounted(() => {
 	font-size: var(--font-size-2xs);
 	padding: 0 var(--spacing-s) 0;
 	color: var(--color-text-base);
-	// margin-top: var(--spacing-s);
+
 	i {
 		font-weight: var(--font-weight-bold);
 		font-style: normal;
