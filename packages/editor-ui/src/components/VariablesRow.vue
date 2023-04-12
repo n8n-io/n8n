@@ -125,8 +125,8 @@ function focusFirstInput() {
 					label
 					name="key"
 					data-test-id="variable-row-key-input"
-					:required="true"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
+					required
 					validateOnBlur
 					:validationRules="keyValidationRules"
 					:validators="keyCustomValidators"

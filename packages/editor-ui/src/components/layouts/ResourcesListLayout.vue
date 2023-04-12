@@ -117,7 +117,11 @@
 
 				<slot name="preamble" />
 
-				<div v-if="filteredAndSortedSubviewResources.length > 0" :class="$style.listWrapper">
+				<div
+					v-if="filteredAndSortedSubviewResources.length > 0"
+					:class="$style.listWrapper"
+					ref="listWrapperRef"
+				>
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"

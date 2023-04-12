@@ -122,7 +122,17 @@ function addTemporaryVariable() {
 	allVariables.value.unshift(temporaryVariable);
 	editMode.value[temporaryVariable.id] = true;
 
-	layoutRef.value?.setCurrentPage(1);
+	if (layoutRef.value) {
+		// Reset scroll position
+		if (layoutRef.value.$refs.listWrapperRef) {
+			layoutRef.value.$refs.listWrapperRef.scrollTop = 0;
+		}
+
+		// Reset pagination
+		if (layoutRef.value.currentPage !== 1) {
+			layoutRef.value.setCurrentPage(1);
+		}
+	}
 
 	telemetry.track('User clicked add variable button');
 }
@@ -283,6 +293,8 @@ function displayName(resource: EnvironmentVariable) {
 </style>
 
 <style lang="scss" scoped>
+@use 'n8n-design-system/css/common/var.scss';
+
 :deep(.datatable) {
 	table {
 		table-layout: fixed;
@@ -292,7 +304,7 @@ function displayName(resource: EnvironmentVariable) {
 	td {
 		width: 25%;
 
-		@media screen and (max-width: 979px) {
+		@media screen and (max-width: var.$md) {
 			width: 33.33%;
 		}
 
@@ -318,7 +330,7 @@ function displayName(resource: EnvironmentVariable) {
 	}
 
 	.variables-usage-column {
-		@media screen and (max-width: 979px) {
+		@media screen and (max-width: var.$md) {
 			display: none;
 		}
 	}

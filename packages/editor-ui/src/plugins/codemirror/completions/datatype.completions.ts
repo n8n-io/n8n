@@ -41,14 +41,10 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = luxonStaticOptions().map(stripExcessParens(context));
 	} else if (base === 'Object') {
 		options = objectGlobalOptions().map(stripExcessParens(context));
+	} else if (base === '$vars') {
+		options = variablesOptions();
 	} else {
 		let resolved: Resolved;
-
-		if (base === '$vars') {
-			const environmentsStore = useEnvironmentsStore();
-			const variables = environmentsStore.variablesAsObject;
-			base = JSON.stringify(variables);
-		}
 
 		try {
 			resolved = resolveParameter(`={{ ${base} }}`);
@@ -338,6 +334,22 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 		throw new Error('Cannot generate options', { cause: error });
 	}
 }
+
+export const variablesOptions = () => {
+	const environmentsStore = useEnvironmentsStore();
+	const variables = environmentsStore.variables;
+
+	return variables.map((variable) =>
+		createCompletionOption('Object', variable.key, 'keyword', {
+			doc: {
+				name: variable.key,
+				returnType: 'string',
+				description: i18n.baseText('codeNodeEditor.completer.variables.description'),
+				docURL: 'https://docs.n8n.io/environments/variables/',
+			},
+		}),
+	);
+};
 
 /**
  * Methods and fields defined on a Luxon `DateTime` class instance.
