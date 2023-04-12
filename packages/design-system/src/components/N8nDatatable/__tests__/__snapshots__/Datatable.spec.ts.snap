@@ -16,70 +16,70 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
         <td><span>1</span></td>
         <td><span>Richard Hendricks</span></td>
         <td><span>29</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 1</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>2</span></td>
         <td><span>Bertram Gilfoyle</span></td>
         <td><span>44</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 2</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>3</span></td>
         <td><span>Dinesh Chugtai</span></td>
         <td><span>31</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 3</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>4</span></td>
         <td><span>Jared Dunn </span></td>
         <td><span>38</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 4</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>5</span></td>
         <td><span>Richard Hendricks</span></td>
         <td><span>29</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 5</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>6</span></td>
         <td><span>Bertram Gilfoyle</span></td>
         <td><span>44</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 6</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>7</span></td>
         <td><span>Dinesh Chugtai</span></td>
         <td><span>31</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 7</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>8</span></td>
         <td><span>Jared Dunn </span></td>
         <td><span>38</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 8</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>9</span></td>
         <td><span>Richard Hendricks</span></td>
         <td><span>29</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 9</span></button></td>
       </tr>
       <tr class=\\"datatableRow\\">
         <td><span>10</span></td>
         <td><span>Bertram Gilfoyle</span></td>
         <td><span>44</span></td>
-        <td><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
+        <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 10</span></button></td>
       </tr>
     </tbody>

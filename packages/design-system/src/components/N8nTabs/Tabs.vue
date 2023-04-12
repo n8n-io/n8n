@@ -47,10 +47,19 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 import N8nIcon from '../N8nIcon';
 
-export default Vue.extend({
+export interface N8nTabOptions {
+	value: string;
+	label?: string;
+	icon?: string;
+	href?: string;
+	tooltip?: string;
+	align?: 'left' | 'right';
+}
+
+export default defineComponent({
 	name: 'N8nTabs',
 	components: {
 		N8nIcon,
@@ -92,7 +101,10 @@ export default Vue.extend({
 	},
 	props: {
 		value: {},
-		options: {},
+		options: {
+			type: Array as PropType<N8nTabOptions[]>,
+			default: (): N8nTabOptions[] => [],
+		},
 	},
 	methods: {
 		handleTooltipClick(tab: string, event: MouseEvent) {

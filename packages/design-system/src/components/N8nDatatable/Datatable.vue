@@ -112,7 +112,7 @@ export default defineComponent({
 				</tr>
 			</thead>
 			<tbody>
-				<tr v-for="row in visibleRows" :key="row.id" :class="getTrClass(row)">
+				<tr v-for="row in visibleRows" :key="row.id" :class="getTrClass()">
 					<td v-for="column in columns" :key="column.id">
 						<component v-if="column.render" :is="column.render" :row="row" :column="column" />
 						<span v-else>{{ getTdValue(row, column) }}</span>
