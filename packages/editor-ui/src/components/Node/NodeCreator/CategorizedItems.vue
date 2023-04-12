@@ -99,7 +99,8 @@ import { camelCase } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
-import type SearchBar from './SearchBar.vue';
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import SearchBar from './SearchBar.vue';
 import type {
 	INodeCreateElement,
 	ISubcategoryItemProps,
