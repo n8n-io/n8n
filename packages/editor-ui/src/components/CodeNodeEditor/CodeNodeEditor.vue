@@ -1,8 +1,13 @@
 <template>
-	<div :class="$style['code-node-editor-container']">
+	<div
+		:class="$style['code-node-editor-container']"
+		@mouseover="onMouseOver"
+		@mouseout="onMouseOut"
+		ref="codeNodeEditorContainer"
+	>
 		<div ref="codeNodeEditor" class="ph-no-capture"></div>
 		<n8n-button
-			v-if="isCloud && isEditorFocused"
+			v-if="isCloud && isEditorHovered"
 			size="small"
 			type="tertiary"
 			:class="$style['ask-ai-button']"
@@ -54,7 +59,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		return {
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
-			isEditorFocused: false,
+			isEditorHovered: false,
 		};
 	},
 	watch: {
@@ -87,6 +92,18 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	methods: {
+		onMouseOver(event: MouseEvent) {
+			const fromElement = event.relatedTarget as HTMLElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+
+			if (!ref.contains(fromElement)) this.isEditorHovered = true;
+		},
+		onMouseOut(event: MouseEvent) {
+			const fromElement = event.relatedTarget as HTMLElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+
+			if (!ref.contains(fromElement)) this.isEditorHovered = false;
+		},
 		onAskAiButtonClick() {
 			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
 
@@ -164,14 +181,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		const stateBasedExtensions = [
 			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.isEditorFocused = true;
-				},
-				blur: () => {
-					this.isEditorFocused = false;
-				},
-			}),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
 
