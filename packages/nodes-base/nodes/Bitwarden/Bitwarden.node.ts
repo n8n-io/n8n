@@ -407,12 +407,17 @@ export class Bitwarden implements INodeType {
 				// *********************************************************************
 				//       member
 				// *********************************************************************
-
+				
+				// set defaults `accessAll`, required by Bitwarden but can be undefined if 'off' in n8n
 				if (operation === 'create') {
 					// ----------------------------------
 					//       member: create
 					// ----------------------------------
-
+					
+					if (accessAll === undefined) {
+						accessAll = false;
+					}
+					
 					const body = {
 						email: this.getNodeParameter('email', i),
 						type: this.getNodeParameter('type', i),
