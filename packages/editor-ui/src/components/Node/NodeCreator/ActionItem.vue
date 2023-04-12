@@ -111,7 +111,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 
 <style lang="scss" module>
 .action {
-	--node-creator-name-size: var(--font-size-xs);
+	--node-creator-name-size: var(--font-size-2xs);
 	--node-creator-name-weight: var(--font-weight-normal);
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};

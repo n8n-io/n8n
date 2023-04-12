@@ -270,10 +270,8 @@ onMounted(() => {
 }
 .actionsEmpty {
 	padding: var(--spacing-4xs) var(--spacing-xs) var(--spacing-s);
+	font-weight: var(--font-weight-regular);
 
-	p {
-		font-weight: var(--font-weight-regular);
-	}
 	strong {
 		font-weight: var(--font-weight-bold);
 	}
