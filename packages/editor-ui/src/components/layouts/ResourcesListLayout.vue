@@ -229,7 +229,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		displayName: {
 			type: Function as PropType<(resource: IResource) => string>,
-			default: () => (resource: IResource) => resource.name,
+			default: (resource: IResource) => resource.name,
 		},
 		resources: {
 			type: Array,
