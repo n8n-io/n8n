@@ -75,6 +75,7 @@ function arrowLeft() {
 <template>
 	<div :class="$style.categorizedItemsRenderer" :data-category-collapsed="!expanded">
 		<CategoryItem
+			:class="$style.categoryItem"
 			:name="category"
 			:disabled="disabled"
 			:active="activeItemId === category"
@@ -113,6 +114,9 @@ function arrowLeft() {
 </template>
 
 <style lang="scss" module>
+.categoryItem {
+	margin-bottom: var(--spacing-2xs);
+}
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
@@ -128,9 +132,10 @@ function arrowLeft() {
 	max-width: 260px;
 }
 .contentSlot {
-	padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs);
+	padding: 0 var(--spacing-s) var(--spacing-3xs);
+	margin-top: var(--spacing-xs);
 }
 .categorizedItemsRenderer {
-	padding-bottom: var(--spacing-l);
+	padding-bottom: var(--spacing-s);
 }
 </style>

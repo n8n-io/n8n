@@ -108,16 +108,12 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 </script>
 
 <style lang="scss" module>
-:global(.action .n8n-node-icon) {
-	min-width: 18px;
-	max-width: 18px;
-}
 .action {
-	--node-creator-name-size: var(--font-size-2xs);
-	--node-creator-name-weight: 400;
+	--node-creator-name-size: var(--font-size-xs);
+	--node-creator-name-weight: var(--font-weight-normal);
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
-	--node-icon-size: 18px;
+	--node-icon-size: 20px;
 	--node-icon-margin-right: var(--spacing-xs);
 
 	margin-left: var(--spacing-s);
@@ -126,17 +122,6 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 }
 .nodeIcon {
 	margin-right: var(--spacing-xs);
-}
-
-.apiHint {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	padding-top: var(--spacing-s);
-	line-height: var(--font-line-height-regular);
-	border-top: 1px solid #dbdfe7;
-	z-index: 1;
-	// Prevent double borders when the last category is collapsed
-	margin-top: -1px;
 }
 
 .draggable {
@@ -156,9 +141,5 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 .draggableDataTransfer {
 	width: 1px;
 	height: 1px;
-}
-
-:global([class*='_iteratorItem'][class*='_category_'] + [class*='_action_'] [class*='_action']) {
-	margin-top: var(--spacing-2xs);
 }
 </style>

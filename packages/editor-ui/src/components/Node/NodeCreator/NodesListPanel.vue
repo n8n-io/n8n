@@ -197,7 +197,7 @@ function onSearch(e: string) {
 	}
 }
 .subtitle {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing-4xs);
 	font-size: 14px;
 	line-height: 19px;
 	color: var(--color-text-base);

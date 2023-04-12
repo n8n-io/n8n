@@ -126,7 +126,11 @@ const { nodeCreator } = toRefs(state);
 </script>
 
 <style module lang="scss">
+:global(strong) {
+	font-weight: var(--font-weight-bold);
+}
 .nodeCreator {
+	--node-icon-color: var(--color-text-base);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;

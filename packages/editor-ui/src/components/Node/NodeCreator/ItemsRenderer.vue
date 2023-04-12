@@ -180,7 +180,7 @@ watch(
 }
 .empty {
 	:global([role='alert']) {
-		margin: var(--spacing-s) var(--spacing-s) var(--spacing-3xs);
+		margin: var(--spacing-xs) var(--spacing-s);
 	}
 }
 .itemsRenderer {
@@ -193,8 +193,19 @@ watch(
 	}
 }
 .view {
-	border-top: 1px solid var(--color-foreground-base);
 	margin-top: var(--spacing-s);
 	padding-top: var(--spacing-xs);
+	position: relative;
+
+	&::after {
+		content: '';
+		position: absolute;
+		left: var(--spacing-s);
+		right: var(--spacing-s);
+		top: 0;
+		margin: auto;
+		bottom: 0;
+		border-top: 1px solid var(--color-foreground-base);
+	}
 }
 </style>

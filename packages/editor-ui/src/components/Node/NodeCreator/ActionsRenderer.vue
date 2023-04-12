@@ -185,8 +185,8 @@ onMounted(() => {
 					<!-- Empty state -->
 					<template #empty>
 						<template v-if="hasNoTriggerActions">
-							<n8n-callout theme="warning" iconless >
-								<p
+							<n8n-callout theme="info" iconless slim>
+								<span
 									v-html="
 										$locale.baseText('nodeCreator.actionsCallout.noTriggerItems', {
 											interpolate: { nodeName: subcategory },
@@ -213,30 +213,30 @@ onMounted(() => {
 					@selected="onSelected"
 				>
 					<template>
-						<n8n-callout theme="warning" iconless v-if="!userActivated">
-							<p v-html="$locale.baseText('nodeCreator.actionsCallout.wfStartedAction')" />
+						<n8n-callout theme="info" iconless v-if="!userActivated" slim>
+							<span v-html="$locale.baseText('nodeCreator.actionsCallout.triggersStartWorkflow')" />
 						</n8n-callout>
 					</template>
 					<!-- Empty state -->
 					<template #empty>
-						<n8n-callout theme="custom" v-if="!search">
-							<p
+						<n8n-info-tip theme="info" type="note" v-if="!search" :class="$style.actionsEmpty">
+							<span
 								v-html="
 									$locale.baseText('nodeCreator.actionsCallout.noActionItems', {
 										interpolate: { nodeName: subcategory },
 									})
 								"
 							/>
-						</n8n-callout>
+						</n8n-info-tip>
 						<template v-else>
-							<p :class="$style.resetSearch" v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')" @click="resetSearch" />
+							<span :class="$style.resetSearch" v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')" @click="resetSearch" />
 						</template>
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
 		</OrderSwitcher>
 		<div :class="$style.apiHint" v-if="containsAPIAction">
-			<p @click.prevent="addHttpNode" v-html="$locale.baseText('nodeCreator.actionsList.apiCall', {
+			<span @click.prevent="addHttpNode" v-html="$locale.baseText('nodeCreator.actionsList.apiCall', {
 				interpolate: { node: subcategory }
 			})" />
 		</div>
@@ -248,7 +248,6 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	// gap: var(--spacing-xl);
 	& > [data-category-collapsed='true']:nth-child(1) {
 		margin-bottom: calc(-1 * var(--spacing-xl));
 	}
@@ -258,28 +257,30 @@ onMounted(() => {
 	cursor: pointer;
 	font-weight: var(--font-weight-regular);
 	font-size: var(--font-size-2xs);
-	padding: var(--spacing-s) var(--spacing-s) 0;
+	padding: 0 var(--spacing-s) 0;
 	color: var(--color-text-base);
-
+	// margin-top: var(--spacing-s);
 	i {
-		font-weight: bold;
+		font-weight: var(--font-weight-bold);
 		font-style: normal;
 		text-decoration: underline;
 	}
 }
+.actionsEmpty {
+	padding: var(--spacing-4xs) var(--spacing-xs) var(--spacing-s);
 
+	p {
+		font-weight: var(--font-weight-regular);
+	}
+	strong {
+		font-weight: var(--font-weight-bold);
+	}
+}
 .apiHint {
-	padding: 0 var(--spacing-s) 0;
+	padding: 0 var(--spacing-s) var(--spacing-xl);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
 	line-height: var(--font-line-height-regular);
 	z-index: 1;
-	// border-top: 1px solid var(--color-foreground-base);
-	padding-top: var(--spacing-s);
-	// margin-top: calc(-1 * var(--spacing-m));
-
-	// margin-top: auto;
-	// Prevent double borders when the last category is collapsed
-	// margin-top: -1px;
 }
 </style>

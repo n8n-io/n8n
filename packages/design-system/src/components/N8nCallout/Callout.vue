@@ -1,6 +1,6 @@
 <template>
 	<div :class="classes" role="alert">
-		<div :class="$style['message-section']">
+		<div :class="$style.messageSection">
 			<div :class="$style.icon" v-if="!iconless">
 				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
 			</div>
@@ -47,10 +47,13 @@ export default Vue.extend({
 		iconless: {
 			type: Boolean,
 		},
+		slim: {
+			type: Boolean,
+		},
 	},
 	computed: {
 		classes(): string[] {
-			return ['n8n-callout', this.$style.callout, this.$style[this.theme]];
+			return ['n8n-callout', this.$style.callout, this.$style[this.theme],  this.slim ? this.$style.slim : ''];
 		},
 		getIcon(): string {
 			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
@@ -73,9 +76,14 @@ export default Vue.extend({
 	border-radius: var(--border-radius-base);
 	align-items: center;
 	line-height: var(--callout-line-height, var(--font-line-height-loose));
+
+	&.slim {
+		line-height: var(--font-line-height-loose);
+		padding: var(--spacing-3xs) var(--spacing-2xs);
+	}
 }
 
-.message-section {
+.messageSection {
 	display: flex;
 	align-items: center;
 }
