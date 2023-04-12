@@ -375,7 +375,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
 		// then we do not want to append the manual trigger
 		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource.value);
-
 		const shouldAppendManualTrigger =
 			!isSingleNodeOpenSource &&
 			!isTrigger &&
@@ -392,6 +391,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		selectedView.value = view;
 	}
 
+	function setOpenSource(view: NodeCreatorOpenSource) {
+		openSource.value = view;
+	}
+
 	return {
 		getActionData,
 		generateActions,
@@ -399,6 +402,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		getNodeTypesWithManualTrigger,
 		setAddedNodeActionParameters,
 		setSelectedView,
+		setOpenSource,
 		selectedView,
 		showScrim,
 		mergedNodes,

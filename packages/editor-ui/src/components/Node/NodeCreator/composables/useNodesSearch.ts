@@ -4,7 +4,7 @@ import { INodeCreateElement } from '@/Interface';
 export const useNodesSearch = () => {
 	function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 		// In order to support the old search we need to remove the 'trigger' part
-		const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '');
+		const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 		const result = (
 			sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
 				{ key: 'properties.displayName', weight: 2 },

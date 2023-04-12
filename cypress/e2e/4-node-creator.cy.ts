@@ -58,8 +58,8 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
-		nodeCreatorFeature.getters.getCreatorItem('Results in other categories (1)').should('exist');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
+		nodeCreatorFeature.getters.getCategoryItem('Results in other categories (1)').should('exist');
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
 		nodeCreatorFeature.getters.getCreatorItem('Edit Image').should('exist');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image123123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
@@ -90,6 +90,8 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type(editImageNode);
 		nodeCreatorFeature.getters.getCreatorItem(editImageNode).click();
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', editImageNode);
+		// Actions are collapsed when coming from trigger root view
+		nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 		nodeCreatorFeature.getters.getCreatorItem('Crop Image').click();
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Crop');
 	});
@@ -101,7 +103,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'FTP');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('file');
 		// Navigate to rename action which should be the 4th item
-		nodeCreatorFeature.getters.searchBar().find('input').type('{downarrow} {downarrow} {downarrow} {rightarrow}');
+		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{uparrow}{rightarrow}');
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Rename');
 	})
 
@@ -127,7 +129,8 @@ describe('Node Creator', () => {
 		})
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type(doubleActionNode);
 		nodeCreatorFeature.getters.getCreatorItem(doubleActionNode).click();
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
+		nodeCreatorFeature.getters.getCategoryItem('Actions').click();
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 4);
 	})
 
 	describe('should correctly append manual trigger for regular actions', () => {
@@ -152,6 +155,7 @@ describe('Node Creator', () => {
 				source.handler()
 				nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 				nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+				nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 				nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 				NDVModal.actions.close();
 				WorkflowPage.getters.canvasNodes().should('have.length', 2);
@@ -162,12 +166,14 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.canvasAddButton().click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.actions.deleteNode('When clicking "Execute Workflow"')
 			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click()
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);

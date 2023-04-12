@@ -47,7 +47,7 @@ function onSearch(e: string) {
 <template>
 	<transition :name="`panel-slide-${transitionDirection}`" @afterLeave="$listeners.transitionEnd">
 		<aside :class="$style.nodesListPanel" @keydown.capture.stop>
-			<header :class="{ [$style.header]: true, [$style.hasBg]: hasHeaderBg }">
+			<header :class="{ [$style.header]: true, [$style.hasBg]: hasHeaderBg }" data-test-id="nodes-list-header">
 				<div :class="$style.top">
 					<button :class="$style.backButton" @click="onBackButton" v-if="hasBackButton">
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />

@@ -1,5 +1,5 @@
 <template>
-	<div :class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }">
+	<div :class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }" data-test-id="node-creator-no-results">
 		<div :class="$style.icon" v-if="showIcon">
 			<no-results-icon />
 		</div>
