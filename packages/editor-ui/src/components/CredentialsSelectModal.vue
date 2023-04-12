@@ -58,7 +58,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
@@ -67,6 +66,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useCredentialsStore } from '@/stores/credentials';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
@@ -88,7 +88,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			selected: '',
 			loading: true,
 			CREDENTIAL_SELECT_MODAL_KEY,
@@ -102,7 +102,7 @@ export default mixins(externalHooks).extend({
 			this.selected = type;
 		},
 		openCredentialType() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 			this.uiStore.openNewCredential(this.selected);
 
 			const telemetryPayload = {

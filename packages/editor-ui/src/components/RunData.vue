@@ -162,7 +162,9 @@
 		</div>
 
 		<div
-			v-else-if="hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificalRecoveredEventItem"
+			v-else-if="
+				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
 		>
@@ -216,7 +218,7 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && isArtificalRecoveredEventItem" :class="$style.center">
+			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
 				<slot name="recovered-artifical-output-data"></slot>
 			</div>
 
@@ -227,9 +229,6 @@
 							interpolate: { nodeName: node.name },
 						})
 					}}
-					<n8n-link @click="goToErroredNode">
-						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
-					</n8n-link>
 				</n8n-text>
 				<NodeErrorView
 					v-else
@@ -322,7 +321,7 @@
 			/>
 
 			<run-data-schema
-				v-else-if="hasNodeRun && displayMode === 'schema'"
+				v-else-if="hasNodeRun && isSchemaView"
 				:data="jsonData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
@@ -422,7 +421,7 @@
 		</div>
 		<div
 			:class="$style.pagination"
-			v-if="hasNodeRun && !hasRunError && dataCount > pageSize"
+			v-if="hasNodeRun && !hasRunError && dataCount > pageSize && !isSchemaView"
 			v-show="!editMode.enabled"
 		>
 			<el-pagination
@@ -476,6 +475,7 @@ import {
 import {
 	DATA_PINNING_DOCS_URL,
 	DATA_EDITING_DOCS_URL,
+	NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
@@ -493,7 +493,7 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
 import { CodeEditor } from '@/components/forms';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
 import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -595,8 +595,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		this.init();
 
 		if (!this.isPaneTypeInput) {
-			this.eventBus.$on('data-pinning-error', this.onDataPinningError);
-			this.eventBus.$on('data-unpinning', this.onDataUnpinning);
+			this.eventBus.on('data-pinning-error', this.onDataPinningError);
+			this.eventBus.on('data-unpinning', this.onDataUnpinning);
 
 			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
@@ -609,8 +609,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	},
 	destroyed() {
 		this.hidePinDataDiscoveryTooltip();
-		this.eventBus.$off('data-pinning-error', this.onDataPinningError);
-		this.eventBus.$off('data-unpinning', this.onDataUnpinning);
+		this.eventBus.off('data-pinning-error', this.onDataPinningError);
+		this.eventBus.off('data-unpinning', this.onDataUnpinning);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -634,6 +634,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
+		},
+		isSchemaView(): boolean {
+			return this.displayMode === 'schema';
 		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
@@ -680,8 +683,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 						this.hasPinData),
 			);
 		},
-		isArtificalRecoveredEventItem(): boolean {
-			return this.inputData?.[0]?.json?.isArtificalRecoveredEventItem !== undefined ?? false;
+		isArtificialRecoveredEventItem(): boolean {
+			return this.inputData?.[0]?.json?.isArtificialRecoveredEventItem !== undefined ?? false;
 		},
 		subworkflowExecutionError(): Error | null {
 			return this.workflowsStore.subWorkflowExecutionError;
@@ -789,6 +792,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 					  ];
 			}
 
+			// We don't want to paginate the schema view
+			if (this.isSchemaView) {
+				return inputData;
+			}
+
 			const offset = this.pageSize * (this.currentPage - 1);
 			inputData = inputData.slice(offset, offset + this.pageSize);
 
@@ -826,6 +834,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
 			}
 			const branches: ITab[] = [];
+
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
 				if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
 					continue;
@@ -836,9 +845,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
-					outputName = capitalize(
-						`${this.getOutputName(i)} ${this.$locale.baseText('ndv.output.branch')}`,
-					);
+					const appendBranchWord = NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND.includes(
+						this.node?.type,
+					)
+						? ''
+						: ` ${this.$locale.baseText('ndv.output.branch')}`;
+					outputName = capitalize(`${this.getOutputName(i)}${appendBranchWord}`);
 				}
 				branches.push({
 					label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
@@ -896,7 +908,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				setTimeout(() => {
 					this.isControlledPinDataTooltip = true;
 					this.pinDataDiscoveryTooltipVisible = true;
-					this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: true });
+					this.eventBus.emit('data-pinning-discovery', { isTooltipVisible: true });
 				}, 500); // Wait for NDV to open
 			}
 		},
@@ -904,7 +916,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			if (this.pinDataDiscoveryTooltipVisible) {
 				this.isControlledPinDataTooltip = false;
 				this.pinDataDiscoveryTooltipVisible = false;
-				this.eventBus.$emit('data-pinning-discovery', { isTooltipVisible: false });
+				this.eventBus.emit('data-pinning-discovery', { isTooltipVisible: false });
 			}
 		},
 		pinDataDiscoveryComplete() {
@@ -1293,11 +1305,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				} as INodeUpdatePropertiesInformation;
 
 				this.workflowsStore.updateNodeProperties(updateInformation);
-			}
-		},
-		goToErroredNode() {
-			if (this.node) {
-				this.ndvStore.activeNodeName = this.node.name;
 			}
 		},
 		setDisplayMode() {

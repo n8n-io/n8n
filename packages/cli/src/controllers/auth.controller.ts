@@ -8,7 +8,6 @@ import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type {
@@ -23,6 +22,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
+import type { UserRepository } from '@db/repositories';
 
 @RestController()
 export class AuthController {
@@ -32,7 +32,7 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	private readonly postHog?: PostHogClient;
 

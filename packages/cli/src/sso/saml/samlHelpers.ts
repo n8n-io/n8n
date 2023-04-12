@@ -3,20 +3,21 @@ import config from '@/config';
 import * as Db from '@/Db';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import { License } from '@/License';
-import { AuthError } from '@/ResponseHelper';
+import { AuthError, InternalServerError } from '@/ResponseHelper';
 import { hashPassword, isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
 import type { SamlAttributeMapping } from './types/samlAttributeMapping';
-import { SAML_ENTERPRISE_FEATURE_ENABLED, SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
+import { SAML_LOGIN_ENABLED, SAML_LOGIN_LABEL } from './constants';
 import {
+	getCurrentAuthenticationMethod,
 	isEmailCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../ssoHelpers';
-import { LoggerProxy } from 'n8n-workflow';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -30,18 +31,17 @@ export function getSamlLoginLabel(): string {
 
 // can only toggle between email and saml, not directly to e.g. ldap
 export async function setSamlLoginEnabled(enabled: boolean): Promise<void> {
-	if (config.get(SAML_LOGIN_ENABLED) === enabled) {
-		return;
-	}
-	if (enabled && isEmailCurrentAuthenticationMethod()) {
-		config.set(SAML_LOGIN_ENABLED, true);
-		await setCurrentAuthenticationMethod('saml');
-	} else if (!enabled && isSamlCurrentAuthenticationMethod()) {
-		config.set(SAML_LOGIN_ENABLED, false);
-		await setCurrentAuthenticationMethod('email');
+	if (isEmailCurrentAuthenticationMethod() || isSamlCurrentAuthenticationMethod()) {
+		if (enabled) {
+			config.set(SAML_LOGIN_ENABLED, true);
+			await setCurrentAuthenticationMethod('saml');
+		} else if (!enabled) {
+			config.set(SAML_LOGIN_ENABLED, false);
+			await setCurrentAuthenticationMethod('email');
+		}
 	} else {
-		LoggerProxy.warn(
-			'Cannot switch SAML login enabled state when an authentication method other than email is active',
+		throw new InternalServerError(
+			`Cannot switch SAML login enabled state when an authentication method other than email or saml is active (current: ${getCurrentAuthenticationMethod()})`,
 		);
 	}
 }
@@ -52,10 +52,7 @@ export function setSamlLoginLabel(label: string): void {
 
 export function isSamlLicensed(): boolean {
 	const license = Container.get(License);
-	return (
-		isUserManagementEnabled() &&
-		(license.isSamlEnabled() || config.getEnv(SAML_ENTERPRISE_FEATURE_ENABLED))
-	);
+	return isUserManagementEnabled() && license.isSamlEnabled();
 }
 
 export function isSamlLicensedAndEnabled(): boolean {
@@ -102,9 +99,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.email = attributes.email;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Db.collections.Role.findOneOrFail({
-		where: { name: 'member', scope: 'global' },
-	});
+	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();
 	// generates a password that is not used or known to the user
 	user.password = await hashPassword(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;

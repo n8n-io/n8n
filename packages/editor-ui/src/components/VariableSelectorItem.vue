@@ -59,7 +59,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import mixins from 'vue-typed-mixins';
