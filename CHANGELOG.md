@@ -8,21 +8,36 @@
 * **core:** Do not execute `workflowExecuteBefore` hook when resuming executions from a waiting state ([#5727](https://github.com/n8n-io/n8n/issues/5727)) ([6689451](https://github.com/n8n-io/n8n/commit/6689451e8c939bb2714c42ada83acdc0a9af62b7))
 * **core:** Fix issue where sub workflows would display as running forever after failure to start ([#5905](https://github.com/n8n-io/n8n/issues/5905)) ([3e382ef](https://github.com/n8n-io/n8n/commit/3e382ef85e966419dc71744b772d80c648583c5c))
 * **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([3085ed9](https://github.com/n8n-io/n8n/commit/3085ed9beee603cdb496fc7fb39357f15e0710d0))
-* **core:** Validate customData keys and values ([#5920](https://github.com/n8n-io/n8n/issues/5920)) (no-changelog) ([323e26a](https://github.com/n8n-io/n8n/commit/323e26acfd0fe07b754c95d765a62481593472f5))
 * **editor:** Drop mergeDeep in favor of lodash merge ([#5943](https://github.com/n8n-io/n8n/issues/5943)) ([0570514](https://github.com/n8n-io/n8n/commit/0570514b789c9fa020e96533b7c65bf45614c4d0))
-* **editor:** Update vite legacy-plugin browser target (no-changelog) ([#5952](https://github.com/n8n-io/n8n/issues/5952)) ([7119bde](https://github.com/n8n-io/n8n/commit/7119bde02980c75dcdaf522ec0193a78ec732cc1))
 * **HTTP Request Node:** Show detailed error message in the UI again ([#5959](https://github.com/n8n-io/n8n/issues/5959)) ([e79679c](https://github.com/n8n-io/n8n/commit/e79679c023d127458227d904dbdb4824a755b956))
-* Make sure retryOf does not take null value (no-changelog) ([#5915](https://github.com/n8n-io/n8n/issues/5915)) ([89c12fc](https://github.com/n8n-io/n8n/commit/89c12fc1a7dba0a1c939e4b245c0cb08fb55d1e8))
 
 
 ### Features
 
-* Add Sentry sourcemap uploading for editor-ui (no-changelog) ([#5870](https://github.com/n8n-io/n8n/issues/5870)) ([dba5be3](https://github.com/n8n-io/n8n/commit/dba5be37ae9cc9db6648000ffe82d0812bc1ac85))
 * Create TOTP node ([#5901](https://github.com/n8n-io/n8n/issues/5901)) ([6cf74e4](https://github.com/n8n-io/n8n/commit/6cf74e412a87ccb255efea950cb458712554391d))
 * **editor:** Add user activation survey ([#5677](https://github.com/n8n-io/n8n/issues/5677)) ([725393d](https://github.com/n8n-io/n8n/commit/725393dae625285ed91a7e4662eec1a425cf53f1))
 * **editor:** SAML login disables Invite button ([#5922](https://github.com/n8n-io/n8n/issues/5922)) ([3fdc441](https://github.com/n8n-io/n8n/commit/3fdc4413c20f1fd345a5864d9a237b30e20813f0))
 * **editor:** SAML paywall state ([#5906](https://github.com/n8n-io/n8n/issues/5906)) ([d40e86a](https://github.com/n8n-io/n8n/commit/d40e86aabc8c66a17b04cfe669ac27b4b281762a))
-* Replace new Vue() with custom event bus (no-changelog) ([#5780](https://github.com/n8n-io/n8n/issues/5780)) ([5651a52](https://github.com/n8n-io/n8n/commit/5651a52364ae327ab369f0da72b0ac678e04701a))
+
+
+
+## [0.222.2](https://github.com/n8n-io/n8n/compare/n8n@0.222.1...n8n@0.222.2) (2023-04-11)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-29017 ([#5947](https://github.com/n8n-io/n8n/issues/5947)) ([fc1fb28](https://github.com/n8n-io/n8n/commit/fc1fb2863f6df697ca4a098054f9638cf2bc97bc))
+* **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([e903d61](https://github.com/n8n-io/n8n/commit/e903d6107112fca64b54dec76019720c9df6a66a))
+
+
+
+## [0.221.3](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.221.3) (2023-04-11)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-29017 ([#5947](https://github.com/n8n-io/n8n/issues/5947)) ([4127e3f](https://github.com/n8n-io/n8n/commit/4127e3ff9d1d1ef8b76c557bf3b4799ab7aba7f7))
+* **core:** Update xml2js to address CVE-2023-0842 ([#5948](https://github.com/n8n-io/n8n/issues/5948)) ([cf7a4b6](https://github.com/n8n-io/n8n/commit/cf7a4b65d3d828fbacd027de9c2bf2481883efa7))
 
 
 
