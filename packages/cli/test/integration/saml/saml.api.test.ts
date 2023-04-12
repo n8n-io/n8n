@@ -1,14 +1,13 @@
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { License } from '@/License';
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
 import { sampleConfig } from './sampleMetadata';
-import Container from 'typedi';
-import { License } from '../../../src/License';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -25,7 +24,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	Container.reset();
 	await testDb.terminate();
 });
 
@@ -128,7 +126,7 @@ describe('Instance owner', () => {
 				.send({
 					loginEnabled: true,
 				})
-				.expect(200);
+				.expect(500);
 
 			expect(getCurrentAuthenticationMethod()).toBe('ldap');
 		});

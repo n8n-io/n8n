@@ -1,3 +1,145 @@
+# [0.223.0](https://github.com/n8n-io/n8n/compare/n8n@0.222.1...n8n@0.223.0) (2023-04-05)
+
+
+### Bug Fixes
+
+* Add droppable state for booleans when mapping ([#5838](https://github.com/n8n-io/n8n/issues/5838)) ([e3884ce](https://github.com/n8n-io/n8n/commit/e3884ce378e488905735fbfdb986aa26f1cf952b))
+* **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([32c4eef](https://github.com/n8n-io/n8n/commit/32c4eef574a14ed599554382496a99a8240be74b))
+* **Compare Datasets Node:** Fuzzy compare not comparing keys missing in one of inputs ([d1945d9](https://github.com/n8n-io/n8n/commit/d1945d9b72fc11e7201e22a7ae0399acf2ffd5f1))
+* **Compare Datasets Node:** Support for dot notation in skip fields ([83e25c0](https://github.com/n8n-io/n8n/commit/83e25c066a845fc95c3474ae93f36993ca7ce699))
+* **core:** `augmentObject` should clone Buffer/Uint8Array instead of wrapping them in a proxy ([#5902](https://github.com/n8n-io/n8n/issues/5902)) ([a721734](https://github.com/n8n-io/n8n/commit/a72173414d9d31ab1824f87713709818955b8956))
+* **core:** `augmentObject` should use existing property descriptors whenever possible ([#5872](https://github.com/n8n-io/n8n/issues/5872)) ([6a1b7c3](https://github.com/n8n-io/n8n/commit/6a1b7c306bc9b7c469c5299af6beaf5af568b6b6))
+* **core:** Deactivate active workflows during import ([#5840](https://github.com/n8n-io/n8n/issues/5840)) ([fa5bc81](https://github.com/n8n-io/n8n/commit/fa5bc814b04273cff817d4a94b1d1ec6685807e0))
+* **core:** Do not mark duplicates as circular references in `jsonStringify` ([#5789](https://github.com/n8n-io/n8n/issues/5789)) ([18efaf3](https://github.com/n8n-io/n8n/commit/18efaf397a6bab8bd5dba881bbdfeceef8dbafb0))
+* **core:** Do not user `util.types.isProxy` for tracking of augmented objects ([#5836](https://github.com/n8n-io/n8n/issues/5836)) ([aacbb54](https://github.com/n8n-io/n8n/commit/aacbb54bef0743a1c5c5e2467dd7e00e50e325de))
+* **core:** Fix curl import error when no data ([085660d](https://github.com/n8n-io/n8n/commit/085660d7d7faf475b695724cabb6387c46adcc5f))
+* **core:** Fix the issue of nodes not loading when run via npx ([#5888](https://github.com/n8n-io/n8n/issues/5888)) ([e47190b](https://github.com/n8n-io/n8n/commit/e47190b5607dfd1284a1d2c3b8f678e8032627de))
+* **core:** Handle Date and RegExp correctly in jsonStringify ([#5812](https://github.com/n8n-io/n8n/issues/5812)) ([4f91525](https://github.com/n8n-io/n8n/commit/4f91525022716e7c1745185fae6fc2582a4252fb))
+* **core:** Handle Date and RegExp objects in AugmentObject ([#5809](https://github.com/n8n-io/n8n/issues/5809)) ([6c35ffa](https://github.com/n8n-io/n8n/commit/6c35ffa82c45434dadee0354b75a901d3f3d6e98))
+* **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([a260c05](https://github.com/n8n-io/n8n/commit/a260c05fa859c0bdd90f9abdecac59fd35978c55))
+* **core:** Password reset should pass in the correct values to external hooks ([#5842](https://github.com/n8n-io/n8n/issues/5842)) ([5bcab8f](https://github.com/n8n-io/n8n/commit/5bcab8fcbea546cd57ef728131f9e16cc57e675d))
+* **core:** Prevent augmentObject from creating infinitely deep proxies ([#5893](https://github.com/n8n-io/n8n/issues/5893)) ([31cd04c](https://github.com/n8n-io/n8n/commit/31cd04c4769b92c7f19ae8babf5df2deddef1fb3)), closes [#5848](https://github.com/n8n-io/n8n/issues/5848)
+* **core:** Service account private key as a password field ([739b9b0](https://github.com/n8n-io/n8n/commit/739b9b07f0e364f98d3c2d0ce8911cd4f53e8455))
+* **core:** Update lock file ([#5801](https://github.com/n8n-io/n8n/issues/5801)) ([06d7a46](https://github.com/n8n-io/n8n/commit/06d7a46bdcd2173835ede762aff3c37b21f0a530))
+* **core:** Use table-prefixes in queries in import commands ([#5887](https://github.com/n8n-io/n8n/issues/5887)) ([ddbfcc7](https://github.com/n8n-io/n8n/commit/ddbfcc7d93cc3645fc3bb0f0de059ac76adaa475))
+* **core:** Waiting workflows not stopping ([#5811](https://github.com/n8n-io/n8n/issues/5811)) ([744c3fd](https://github.com/n8n-io/n8n/commit/744c3fd21130b6ee3c722df3fab096b169fd0ff8))
+* **Date & Time Node:** Add info box at top of date and time explaining expressions ([b7a20dd](https://github.com/n8n-io/n8n/commit/b7a20dd3a2e69a8e4e8ba76c63a6b1f4c26b6a87))
+* **Date & Time Node:** Convert luxon DateTime object to ISO ([7710652](https://github.com/n8n-io/n8n/commit/77106520c8942c746bb1ddffcddcde68a7059805))
+* **editor:** Add $if, $min, $max to root expression autocomplete ([#5858](https://github.com/n8n-io/n8n/issues/5858)) ([a13866e](https://github.com/n8n-io/n8n/commit/a13866e233430ec6aa9fcaa5f3861b3a4470b458))
+* **editor:** Curb overeager item access linting ([#5865](https://github.com/n8n-io/n8n/issues/5865)) ([3ae6933](https://github.com/n8n-io/n8n/commit/3ae69337eeb1f8a4d698f2099bb190c49cc5f8fd))
+* **editor:** Disable Grammarly in expression editors ([#5826](https://github.com/n8n-io/n8n/issues/5826)) ([ddc8f30](https://github.com/n8n-io/n8n/commit/ddc8f30e6d410f7453395f17754b8ee9a546d9b7))
+* **editor:** Disable password reset on desktop with no user management ([#5853](https://github.com/n8n-io/n8n/issues/5853)) ([96533a9](https://github.com/n8n-io/n8n/commit/96533a995c1e7ac653d3f135f954619b098bb609))
+* **editor:** Fix connection lost hover text not showing ([#5828](https://github.com/n8n-io/n8n/issues/5828)) ([b69129b](https://github.com/n8n-io/n8n/commit/b69129bd78689bd56c3a9b07c2e30f58735347d1))
+* **editor:** Fix focused state in Code node editor ([#5869](https://github.com/n8n-io/n8n/issues/5869)) ([48446f5](https://github.com/n8n-io/n8n/commit/48446f5d674c335716c86e30079eb35c75e32b66))
+* **editor:** Fix issue preventing execution preview loading when in an iframe ([#5817](https://github.com/n8n-io/n8n/issues/5817)) ([d86e693](https://github.com/n8n-io/n8n/commit/d86e693019db1fa034d43f8e7e18df09f785b2e1))
+* **editor:** Fix loading executions in long execution list ([#5843](https://github.com/n8n-io/n8n/issues/5843)) ([5c9343c](https://github.com/n8n-io/n8n/commit/5c9343c7c0febdeb3dfa449d6b18d744d909724a))
+* **editor:** Fix mapping with special characters ([#5837](https://github.com/n8n-io/n8n/issues/5837)) ([f8f584c](https://github.com/n8n-io/n8n/commit/f8f584c136da8ad8b17f82f6f4e95f0d69014b40))
+* **editor:** Prevent error from showing-up when duplicating unsaved workflow ([#5833](https://github.com/n8n-io/n8n/issues/5833)) ([0b0024d](https://github.com/n8n-io/n8n/commit/0b0024d7222ac1f6f7872b26eceefab93a17ef22))
+* **editor:** Prevent NDV schema view pagination ([#5844](https://github.com/n8n-io/n8n/issues/5844)) ([1eba478](https://github.com/n8n-io/n8n/commit/1eba4788f26d0f5472fa4156b317d8b14d19b927))
+* **editor:** Show correct status on canceled executions ([#5813](https://github.com/n8n-io/n8n/issues/5813)) ([d0788ee](https://github.com/n8n-io/n8n/commit/d0788ee8e150167a65561552494046d8e506f93c))
+* **editor:** Support backspacing with modifier key ([#5845](https://github.com/n8n-io/n8n/issues/5845)) ([11692c5](https://github.com/n8n-io/n8n/commit/11692c55f381f17a7a137262d85dfd6c7fda7ad5))
+* **Gmail Node:** Gmail luxon object support, fix for timestamp ([2b9ca0d](https://github.com/n8n-io/n8n/commit/2b9ca0d240b403a5f12b115956bbc11672f3a04a))
+* **Google Sheets Node:** Fix insertOrUpdate cell update with object ([0625e2e](https://github.com/n8n-io/n8n/commit/0625e2e6bc67092848f719f8fede87af0f3df891))
+* **HTML Extract Node:** Support for dot notation in JSON property ([0da3b96](https://github.com/n8n-io/n8n/commit/0da3b96cfc943bf8036a48df946873fb32f3f5d9))
+* **HTTP Request Node:** Detect mime-type from streaming responses ([#5896](https://github.com/n8n-io/n8n/issues/5896)) ([69efde7](https://github.com/n8n-io/n8n/commit/69efde7a094b0bf3e3ca04b456ba3a792838a0b9))
+* **HTTP Request Node:** Fix AWS credentials to stop removing url params for STS ([#5790](https://github.com/n8n-io/n8n/issues/5790)) ([a1306c6](https://github.com/n8n-io/n8n/commit/a1306c690398828ed9acb72af0161c4ff827b217))
+* **HTTP Request Node:** Refresh token properly on never fail option ([#5861](https://github.com/n8n-io/n8n/issues/5861)) ([33c67f4](https://github.com/n8n-io/n8n/commit/33c67f45ba959b90c8bebbe0b27b2a7c4152a116))
+* **HTTP Request Node:** Support for dot notation in JSON body ([b29cf9a](https://github.com/n8n-io/n8n/commit/b29cf9a2492a444cb1dd72e74c9ed1d8722bbc5a))
+* **HubSpot Trigger Node:** Developer API key is required for webhooks ([e11a30a](https://github.com/n8n-io/n8n/commit/e11a30a640700d2bc53919422cb8ddbf66aafddd))
+* **LinkedIn Node:** Update the version of the API ([#5720](https://github.com/n8n-io/n8n/issues/5720)) ([18d2e7c](https://github.com/n8n-io/n8n/commit/18d2e7cd57745f0969b0df383572b3874fe65f2c))
+* **Redis Node:** Fix issue with hash set not working as expected ([#5832](https://github.com/n8n-io/n8n/issues/5832)) ([db25441](https://github.com/n8n-io/n8n/commit/db2544146f646ec9a2c38787bc94eafc1edb1228))
+* **Set Node:** Convert string to number ([b408550](https://github.com/n8n-io/n8n/commit/b408550e9f486351198f0ce5c10895c42df45835))
+
+
+### Features
+
+* **core:** Convert eventBus controller to decorator style and improve permissions ([#5779](https://github.com/n8n-io/n8n/issues/5779)) ([f15f4bd](https://github.com/n8n-io/n8n/commit/f15f4bdcf204fa43a652022babf03e577602b2b5))
+* **core:** Prevent non owners password reset when saml is enabled ([#5788](https://github.com/n8n-io/n8n/issues/5788)) ([2216455](https://github.com/n8n-io/n8n/commit/221645576087e4cd828b34ea33e874e1bff5f34a))
+* **core:** Read ephemeral license from environment and clean up ee flags ([#5808](https://github.com/n8n-io/n8n/issues/5808)) ([83aef17](https://github.com/n8n-io/n8n/commit/83aef1712070c29fea5d0522c95b1208af4cd2e4))
+* **editor:** Allow `tab` to accept completion ([#5855](https://github.com/n8n-io/n8n/issues/5855)) ([1b8c35a](https://github.com/n8n-io/n8n/commit/1b8c35ab87ce7ea24d00d13faddba9daf9f2ab39))
+* **editor:** Enable saving workflow when node details view is open ([#5856](https://github.com/n8n-io/n8n/issues/5856)) ([0a59002](https://github.com/n8n-io/n8n/commit/0a59002ef878ff8836d3ca63956f7a444d329d0b))
+* **editor:** SSO onboarding ([#5756](https://github.com/n8n-io/n8n/issues/5756)) ([04f8600](https://github.com/n8n-io/n8n/commit/04f8600bbd220204b5e5a90f22c3dc9c137afb54))
+* **editor:** SSO setup ([#5736](https://github.com/n8n-io/n8n/issues/5736)) ([f4e5949](https://github.com/n8n-io/n8n/commit/f4e59499fc0168295c5df20b1525c7ecea4ea15b)), closes [#5899](https://github.com/n8n-io/n8n/issues/5899)
+* **Filter Node:** Show discarded items ([f7f9d91](https://github.com/n8n-io/n8n/commit/f7f9d915b174d5c17efa918032741d4fa6da85e9))
+* **HTTP Request Node:** Follow redirects by default ([#5895](https://github.com/n8n-io/n8n/issues/5895)) ([f7e610b](https://github.com/n8n-io/n8n/commit/f7e610b15c4699880edffd7f10f223e820052784))
+* **Postgres Node:** Overhaul node ([07dc0e4](https://github.com/n8n-io/n8n/commit/07dc0e4b4075f1fac98d5685a99a38187bca741b))
+* **ServiceNow Node:** Add support for work notes when updating an incident ([#5791](https://github.com/n8n-io/n8n/issues/5791)) ([1409f5d](https://github.com/n8n-io/n8n/commit/1409f5d65262b9783e690408f5dabd074c709f22))
+* **SSH Node:** Hide the private key within the ssh credential ([#5871](https://github.com/n8n-io/n8n/issues/5871)) ([d877361](https://github.com/n8n-io/n8n/commit/d87736103d09042d2f74e74b57be429f2ca3550d))
+
+
+
+## [0.222.1](https://github.com/n8n-io/n8n/compare/n8n@0.222.0...n8n@0.222.1) (2023-04-04)
+
+
+### Bug Fixes
+
+* **AWS SNS Node:** Fix an issue with messages failing to send if they contain certain characters ([#5807](https://github.com/n8n-io/n8n/issues/5807)) ([f0954b9](https://github.com/n8n-io/n8n/commit/f0954b94e164f0ff3e809849731137cf479670a4))
+* **core:** `augmentObject` should clone Buffer/Uint8Array instead of wrapping them in a proxy ([#5902](https://github.com/n8n-io/n8n/issues/5902)) ([a877b02](https://github.com/n8n-io/n8n/commit/a877b025b8c93a31822e7ccb5b935dca00595439))
+* **core:** `augmentObject` should use existing property descriptors whenever possible ([#5872](https://github.com/n8n-io/n8n/issues/5872)) ([b1ee8f4](https://github.com/n8n-io/n8n/commit/b1ee8f4d991ffc5017894f588e9bd21f652f23c6))
+* **core:** Fix the issue of nodes not loading when run via npx ([#5888](https://github.com/n8n-io/n8n/issues/5888)) ([163446c](https://github.com/n8n-io/n8n/commit/163446c674d07c060eaa0d7ec54a087a4cb671d5))
+* **core:** Improve axios error handling in nodes ([#5891](https://github.com/n8n-io/n8n/issues/5891)) ([f0a51a0](https://github.com/n8n-io/n8n/commit/f0a51a0b7671945b84e18774483dc7079f559845))
+* **core:** Password reset should pass in the correct values to external hooks ([#5842](https://github.com/n8n-io/n8n/issues/5842)) ([3bf267c](https://github.com/n8n-io/n8n/commit/3bf267c14757fa67dcfa0edf0b4db74ab1b7415c))
+* **core:** Prevent augmentObject from creating infinitely deep proxies ([#5893](https://github.com/n8n-io/n8n/issues/5893)) ([6906b00](https://github.com/n8n-io/n8n/commit/6906b00b0e734dbe59d1a3a91f07ec1007166b72)), closes [#5848](https://github.com/n8n-io/n8n/issues/5848)
+* **core:** Use table-prefixes in queries in import commands ([#5887](https://github.com/n8n-io/n8n/issues/5887)) ([de58fb9](https://github.com/n8n-io/n8n/commit/de58fb9860d37a39a1e8963e304b8fc87f234bf6))
+* **editor:** Fix focused state in Code node editor ([#5869](https://github.com/n8n-io/n8n/issues/5869)) ([3be37e2](https://github.com/n8n-io/n8n/commit/3be37e25a52983b43b4eed3847922e99f2bf07bc))
+* **editor:** Fix loading executions in long execution list ([#5843](https://github.com/n8n-io/n8n/issues/5843)) ([d5d9f58](https://github.com/n8n-io/n8n/commit/d5d9f58f1777040c63a2a0aa3c0d7bf632dc7b26))
+* **editor:** Show correct status on canceled executions ([#5813](https://github.com/n8n-io/n8n/issues/5813)) ([00181cd](https://github.com/n8n-io/n8n/commit/00181cd803f5a0cca50b5fc1ab84d0a26dd618ae))
+* **Gmail Node:** Gmail luxon object support, fix for timestamp ([695fabb](https://github.com/n8n-io/n8n/commit/695fabb28465d01caa85aefb1e873f88720ce304))
+* **HTTP Request Node:** Detect mime-type from streaming responses ([#5896](https://github.com/n8n-io/n8n/issues/5896)) ([0be1292](https://github.com/n8n-io/n8n/commit/0be129254e96c822dceddbfffaf36e0e6b2ef5e8))
+* **HubSpot Trigger Node:** Developer API key is required for webhooks ([918c79c](https://github.com/n8n-io/n8n/commit/918c79c137f781764f11ad3a33ead337efce681a))
+* **Set Node:** Convert string to number ([72eea0d](https://github.com/n8n-io/n8n/commit/72eea0dfb9e679bde95996d99684e23d081db5a7))
+
+
+
+# [0.222.0](https://github.com/n8n-io/n8n/compare/n8n@0.221.2...n8n@0.222.0) (2023-03-30)
+
+
+### Bug Fixes
+
+* **core:** Assign properties.success earlier to set executionStatus correctly ([#5773](https://github.com/n8n-io/n8n/issues/5773)) ([d33a1ac](https://github.com/n8n-io/n8n/commit/d33a1ac1e9a13985ff84f9271f75ebf368339b6d))
+* **core:** Do not mark duplicates as circular references in `jsonStringify` ([#5789](https://github.com/n8n-io/n8n/issues/5789)) ([f5183c6](https://github.com/n8n-io/n8n/commit/f5183c640109fb4c9552d6b2786f8ebc0e35ca4c))
+* **core:** Do not user `util.types.isProxy` for tracking of augmented objects ([#5836](https://github.com/n8n-io/n8n/issues/5836)) ([3e413f2](https://github.com/n8n-io/n8n/commit/3e413f2f80d6fa349dc6f6ea1b49027ae163df80))
+* **core:** Ensure that all non-lazy-loaded community nodes get post-processed correctly ([#5782](https://github.com/n8n-io/n8n/issues/5782)) ([30aeeb7](https://github.com/n8n-io/n8n/commit/30aeeb70b43ff3916ad79abbe49512a27e50d01d))
+* **core:** Force-upgrade `decode-uri-component` to address CVE-2022-38900 ([#5734](https://github.com/n8n-io/n8n/issues/5734)) ([8dd7f6e](https://github.com/n8n-io/n8n/commit/8dd7f6e1d4ac29b450a0af17d545ffd17038b005))
+* **core:** Force-upgrade `http-cache-semantics` to address CVE-2022-25881 ([#5733](https://github.com/n8n-io/n8n/issues/5733)) ([f7401fb](https://github.com/n8n-io/n8n/commit/f7401fb6133b9bf18f3825304c478d767e69fe27))
+* **core:** Handle Date and RegExp correctly in jsonStringify ([#5812](https://github.com/n8n-io/n8n/issues/5812)) ([753cfb8](https://github.com/n8n-io/n8n/commit/753cfb8b08ff68cc30e6e30959fd0900a44dae21))
+* **core:** Handle Date and RegExp objects in AugmentObject ([#5809](https://github.com/n8n-io/n8n/issues/5809)) ([e6d4e72](https://github.com/n8n-io/n8n/commit/e6d4e729a063cdbbf648c2815c3e55ddddef2b58))
+* **core:** Improve axios error handling in nodes ([#5699](https://github.com/n8n-io/n8n/issues/5699)) ([33d9784](https://github.com/n8n-io/n8n/commit/33d97843194c1cddfd27356c279c0f7a8c2674d3))
+* **core:** Improve community nodes loading ([#5608](https://github.com/n8n-io/n8n/issues/5608)) ([161de11](https://github.com/n8n-io/n8n/commit/161de110cedf2d5d8bc345349d4364ea202e2abd))
+* **core:** Initialize queue in the webhook server as well ([#5766](https://github.com/n8n-io/n8n/issues/5766)) ([e67ad29](https://github.com/n8n-io/n8n/commit/e67ad2962589b445592641a588024c02b4d99d3f))
+* **core:** Persist CurrentAuthenticationMethod setting change ([#5762](https://github.com/n8n-io/n8n/issues/5762)) ([4498c60](https://github.com/n8n-io/n8n/commit/4498c6013dc5b4646b1e3fdba3adef42bfc87952))
+* **core:** Remove circular refs from Code and push msg ([#5741](https://github.com/n8n-io/n8n/issues/5741)) ([b6d8a0f](https://github.com/n8n-io/n8n/commit/b6d8a0f98526bfc98a3d9a722dafce4a53e715ec))
+* **core:** Require Auth on icons and nodes/credentials types static files ([#5745](https://github.com/n8n-io/n8n/issues/5745)) ([5dda3f2](https://github.com/n8n-io/n8n/commit/5dda3f2c61b107ec24557c4bf7de284234e406ab))
+* **core:** Return SAML service provider urls with config ([#5759](https://github.com/n8n-io/n8n/issues/5759)) ([ac18c0b](https://github.com/n8n-io/n8n/commit/ac18c0b9ebb3a5a736fa72985ce5ae2cdab3b270))
+* **core:** Service account private key as a password field ([2b28470](https://github.com/n8n-io/n8n/commit/2b28470fb98a5810ce0d20fe995e2864230005d3))
+* **core:** Upgrade `luxon` to address CVE-2023-22467 ([#5731](https://github.com/n8n-io/n8n/issues/5731)) ([469ce32](https://github.com/n8n-io/n8n/commit/469ce32957ac5e4d342db17a2f680ca65c21d44f))
+* **core:** Upgrade `simple-git` to address CVE-2022-25912 ([#5730](https://github.com/n8n-io/n8n/issues/5730)) ([4a4e2be](https://github.com/n8n-io/n8n/commit/4a4e2be96c0ce096d100e08823aa6b256719c267))
+* **core:** Upgrade `sqlite3` to address CVE-2022-43441 ([#5732](https://github.com/n8n-io/n8n/issues/5732)) ([fd81c74](https://github.com/n8n-io/n8n/commit/fd81c742519882b04f98d25ca41b3fac16dbea8b))
+* **core:** Upgrade convict to address CVE-2023-0163 ([#5729](https://github.com/n8n-io/n8n/issues/5729)) ([564bc03](https://github.com/n8n-io/n8n/commit/564bc03d3fab59e4fe7fa904d5deeeb16da85af9))
+* **core:** Waiting workflows not stopping ([#5811](https://github.com/n8n-io/n8n/issues/5811)) ([8f50bb6](https://github.com/n8n-io/n8n/commit/8f50bb6ed13688d8a81a171c1f1fb9e85847f138))
+* **editor:** Fix connection lost hover text not showing ([#5828](https://github.com/n8n-io/n8n/issues/5828)) ([a2f4a05](https://github.com/n8n-io/n8n/commit/a2f4a05af7f20e007ef16357d71af6a0dbade55c))
+* **editor:** Fix issue preventing execution preview loading when in an iframe ([#5817](https://github.com/n8n-io/n8n/issues/5817)) ([d19a973](https://github.com/n8n-io/n8n/commit/d19a9732b7da188017e2141b3deed7ea004c04a6))
+* **editor:** Use credentials when fetching node and credential types ([#5760](https://github.com/n8n-io/n8n/issues/5760)) ([d3a34ab](https://github.com/n8n-io/n8n/commit/d3a34ab71bd7fc494fb90cda1aa9827a55c5ed69))
+* **Google Sheets Node:** Fix insertOrUpdate cell update with object ([1797cda](https://github.com/n8n-io/n8n/commit/1797cdab5b9e7f23c9f62ce7c6c34c1c2c26b07e))
+* **HTTP Request Node:** Add streaming to binary response  ([#5701](https://github.com/n8n-io/n8n/issues/5701)) ([199a91b](https://github.com/n8n-io/n8n/commit/199a91b3981d40b7181f00702c938b9fa58d1ece)), closes [#5663](https://github.com/n8n-io/n8n/issues/5663)
+* **HTTP Request Node:** Fix AWS credentials to automatically deconstruct the url ([#5751](https://github.com/n8n-io/n8n/issues/5751)) ([d30b892](https://github.com/n8n-io/n8n/commit/d30b89239587562974cc87ae2e29fe57acddf79e))
+* **HTTP Request Node:** Fix AWS credentials to stop removing url params for STS ([#5790](https://github.com/n8n-io/n8n/issues/5790)) ([2c25959](https://github.com/n8n-io/n8n/commit/2c25959e595a48d9ae55c462bd47e014d8c43598))
+* **Split In Batches Node:** Roll back changes in v1 and create v2 ([#5747](https://github.com/n8n-io/n8n/issues/5747)) ([135b0d3](https://github.com/n8n-io/n8n/commit/135b0d3e27705b07fb1e9c39a47ac4b70c1bc25d))
+* Update Posthog no-capture ([#5693](https://github.com/n8n-io/n8n/issues/5693)) ([a732374](https://github.com/n8n-io/n8n/commit/a732374f24354e0c1f36247f4476e743b0fc78e5))
+
+
+### Features
+
+* Add test overrides ([#5642](https://github.com/n8n-io/n8n/issues/5642)) ([696e43a](https://github.com/n8n-io/n8n/commit/696e43a919334d982188cc1f86d3e1b76da6a362))
+* **core:** Improve ldap/saml toggle and tests ([#5771](https://github.com/n8n-io/n8n/issues/5771)) ([47ee357](https://github.com/n8n-io/n8n/commit/47ee357059bb6d87607165d3c24ce0c99cf8bfc9))
+* **core:** Limit user invites when SAML is enabled ([#5761](https://github.com/n8n-io/n8n/issues/5761)) ([57748b7](https://github.com/n8n-io/n8n/commit/57748b71e5cd1399ccaedb9a115b821b34cf55e5))
+* **core:** Make OAuth2 error handling consistent with success handling ([#5555](https://github.com/n8n-io/n8n/issues/5555)) ([40aacf9](https://github.com/n8n-io/n8n/commit/40aacf9279c00c4e3c27669fc38a0ca196a788a4))
+* **editor:** Fix ResourceLocator dropdown style ([#5714](https://github.com/n8n-io/n8n/issues/5714)) ([02810a9](https://github.com/n8n-io/n8n/commit/02810a9ba3e792a2ec8966a2ca3bf7394740bf24))
+* Execution custom data saving and filtering ([#5496](https://github.com/n8n-io/n8n/issues/5496)) ([d78a41d](https://github.com/n8n-io/n8n/commit/d78a41db5420ff6711c30899aa2d71a85049374c)), closes [#5739](https://github.com/n8n-io/n8n/issues/5739)
+* **Filter Node:** New node ([cc9fe7b](https://github.com/n8n-io/n8n/commit/cc9fe7b91ffc4ea72c25e1242e0e477112cb283e))
+
+
+
 ## [0.221.2](https://github.com/n8n-io/n8n/compare/n8n@0.221.1...n8n@0.221.2) (2023-03-24)
 
 

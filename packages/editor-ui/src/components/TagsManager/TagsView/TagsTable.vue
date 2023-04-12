@@ -123,7 +123,7 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		if (this.$props.rows.length === 1 && this.$props.rows[0].create) {
+		if (this.rows.length === 1 && this.rows[0].create) {
 			this.focusOnInput();
 		}
 	},

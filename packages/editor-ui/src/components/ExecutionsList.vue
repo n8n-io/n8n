@@ -779,6 +779,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
+				} else if (status === 'canceled') {
+					text = this.$locale.baseText('executionsList.canceled');
 				} else if (status === 'crashed') {
 					text = this.$locale.baseText('executionsList.error');
 				} else if (status === 'new') {
@@ -801,6 +803,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
+				} else if (status === 'canceled') {
+					path = 'executionsList.statusCanceled';
 				} else if (status === 'crashed') {
 					path = 'executionsList.statusText';
 				} else if (status === 'new') {

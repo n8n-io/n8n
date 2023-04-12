@@ -68,20 +68,20 @@ export default Vue.extend({
 	computed: {
 		...mapStores(useTagsStore),
 		tags() {
-			const tags = this.$props.tagIds
+			const tags = this.tagIds
 				.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag has been deleted from store
 
-			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;
+			const limit = this.limit || DEFAULT_MAX_TAGS_LIMIT;
 
 			let toDisplay: TagEl[] = limit ? tags.slice(0, limit) : tags;
 			toDisplay = toDisplay.map((tag: ITag) => ({
 				...tag,
-				hidden: this.$props.responsive && !this.$data.visibility[tag.id],
+				hidden: this.responsive && !this.$data.visibility[tag.id],
 			}));
 
 			let visibleCount = toDisplay.length;
-			if (this.$props.responsive) {
+			if (this.responsive) {
 				visibleCount = Object.values(this.visibility).reduce(
 					(accu, val) => (val ? accu + 1 : accu),
 					0,

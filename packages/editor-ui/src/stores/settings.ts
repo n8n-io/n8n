@@ -127,6 +127,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.settings.personalizationSurveyEnabled
 			);
 		},
+		isUserActivationSurveyEnabled(): boolean {
+			return (
+				this.settings.telemetry &&
+				this.settings.telemetry.enabled &&
+				this.settings.userActivationSurveyEnabled
+			);
+		},
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},

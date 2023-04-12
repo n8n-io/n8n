@@ -14,6 +14,8 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
+import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { ExternalHooks } from '@/ExternalHooks';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
@@ -21,6 +23,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
 let authlessAgent: SuperAgentTest;
+let externalHooks = utils.mockInstance(ExternalHooks);
 
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['passwordReset'] });
@@ -36,6 +39,7 @@ beforeEach(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
+	externalHooks.run.mockReset();
 });
 
 afterAll(async () => {
@@ -72,6 +76,35 @@ describe('POST /forgot-password', () => {
 
 		const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
 		expect(storedOwner.resetPasswordToken).toBeNull();
+	});
+
+	test('should fail if SAML is authentication method', async () => {
+		await setCurrentAuthenticationMethod('saml');
+		config.set('userManagement.emails.mode', 'smtp');
+		const member = await testDb.createUser({
+			email: 'test@test.com',
+			globalRole: globalMemberRole,
+		});
+
+		await authlessAgent.post('/forgot-password').send({ email: member.email }).expect(403);
+
+		const storedOwner = await Db.collections.User.findOneByOrFail({ email: member.email });
+		expect(storedOwner.resetPasswordToken).toBeNull();
+		await setCurrentAuthenticationMethod('email');
+	});
+
+	test('should succeed if SAML is authentication method and requestor is owner', async () => {
+		await setCurrentAuthenticationMethod('saml');
+		config.set('userManagement.emails.mode', 'smtp');
+
+		const response = await authlessAgent.post('/forgot-password').send({ email: owner.email });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({});
+
+		const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
+		expect(storedOwner.resetPasswordToken).not.toBeNull();
+		await setCurrentAuthenticationMethod('email');
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -191,6 +224,11 @@ describe('POST /change-password', () => {
 		const comparisonResult = await compare(passwordToStore, storedPassword);
 		expect(comparisonResult).toBe(true);
 		expect(storedPassword).not.toBe(passwordToStore);
+
+		expect(externalHooks.run).toHaveBeenCalledWith('user.password.update', [
+			owner.email,
+			storedPassword,
+		]);
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -246,5 +284,7 @@ describe('POST /change-password', () => {
 		});
 
 		expect(response.statusCode).toBe(404);
+
+		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 });

@@ -3,6 +3,7 @@ import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
@@ -23,8 +24,7 @@ import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDes
 import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import { EventNamesTypes } from '@/eventbus/EventMessageClasses';
-import Container from 'typedi';
-import { License } from '../../src/License';
+import { License } from '@/License';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -112,7 +112,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	Container.reset();
 	await testDb.terminate();
 	await eventBus.close();
 });
