@@ -46,6 +46,7 @@ import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 import NodeIcon from '@/components/NodeIcon.vue';
+import { useActions } from '../composables/useActions';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -57,7 +58,8 @@ const props = withDefaults(defineProps<Props>(), {
 	active: false,
 });
 
-const { getNodeTypesWithManualTrigger, actions, addEventToQueue } = useNodeCreatorStore();
+const { actions } = useNodeCreatorStore();
+const { getNodeTypesWithManualTrigger } = useActions();
 const instance = getCurrentInstance();
 
 const dragging = ref(false);

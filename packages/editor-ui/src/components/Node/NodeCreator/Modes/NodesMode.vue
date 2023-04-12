@@ -1,22 +1,19 @@
 <script setup lang="ts">
-import { getCurrentInstance, ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import NodesListPanel from './NodesListPanel.vue';
-import ItemsRenderer from './ItemsRenderer.vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { getCurrentInstance, computed } from 'vue';
+import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { INodeCreateElement, LabelCreateElement, NodeFilterType } from '@/Interface';
-import { useViewStacks } from './composables/useViewStacks';
-import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
-import { sortNodeCreateElements, transformNodeType } from './utils';
-import NoResults from './NoResults.vue';
-import ActionsRenderer from './ActionsRenderer.vue';
-import { useActions } from './composables/useActions';
+import { useViewStacks } from '../composables/useViewStacks';
+import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
+import { transformNodeType } from '../utils';
+import NoResults from '../Panel/NoResults.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
-import { ACTIONS_NODE_CREATOR_MODE, CUSTOM_API_CALL_KEY, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
+import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 import { camelCase } from 'lodash-es';
 import { BaseTextKey } from '@/plugins/i18n';
-import { TriggerView, RegularView } from './RootViews';
+import { TriggerView, RegularView } from '../VIEWS_DATA';
+import { useActions } from '../composables/useActions';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -27,43 +24,15 @@ const emit = defineEmits({
 });
 
 const instance = getCurrentInstance();
-const { mergedNodes, actions, getNodeTypesWithManualTrigger } = useNodeCreatorStore();
+const { mergedNodes, actions } = useNodeCreatorStore();
 const { baseUrl } = useRootStore();
-
+const { getNodeTypesWithManualTrigger } = useActions();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
-const activeViewStackMode = computed(() => useViewStacks().activeViewStackMode);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
-
-registerKeyHook('MainViewArrowRight', {
-	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
-	handler: onKeySelect,
-});
-
-registerKeyHook('MainViewArrowLeft', {
-	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
-	handler: arrowLeft,
-});
-
-function arrowLeft() {
-	popViewStack();
-}
-function onKeySelect(activeItemId: string) {
-	const mergedItems = [
-		...(activeViewStack.value.items || []),
-		...(globalSearchItemsDiff.value || []),
-	];
-
-	const item = mergedItems.find((i) => i.uuid === activeItemId);
-	if (!item) return;
-
-	onSelected(item as INodeCreateElement);
-}
 
 function selectNodeType(nodeTypes: string[]) {
 	emit(
@@ -145,6 +114,7 @@ function onSelected(item: INodeCreateElement) {
 		});
 	}
 }
+
 function subcategoriesMapper(item: INodeCreateElement) {
 	if (item.type !== 'node') return item;
 
@@ -179,6 +149,35 @@ function baseSubcategoriesFilter(item: INodeCreateElement) {
 
 	return hasActions || !hasTriggerGroup;
 }
+
+function arrowLeft() {
+	popViewStack();
+}
+
+function onKeySelect(activeItemId: string) {
+	const mergedItems = [
+		...(activeViewStack.value.items || []),
+		...(globalSearchItemsDiff.value || []),
+	];
+
+	const item = mergedItems.find((i) => i.uuid === activeItemId);
+	if (!item) return;
+
+	onSelected(item as INodeCreateElement);
+}
+
+registerKeyHook('MainViewArrowRight', {
+	keyboardKeys: ['ArrowRight', 'Enter'],
+	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	handler: onKeySelect,
+});
+
+registerKeyHook('MainViewArrowLeft', {
+	keyboardKeys: ['ArrowLeft'],
+	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	handler: arrowLeft,
+});
+
 </script>
 
 <template>

@@ -7,13 +7,13 @@ import {
 	onMounted,
 	defineComponent,
 } from 'vue';
-import ItemsRenderer from './ItemsRenderer.vue';
+import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import { INodeCreateElement, ActionTypeDescription, NodeFilterType, IUpdateInformation, ActionCreateElement } from '@/Interface';
-import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
-import { useActions } from './composables/useActions';
+import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
+import { useActions } from '../composables/useActions';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
-import { useViewStacks } from './composables/useViewStacks';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
+import { useViewStacks } from '../composables/useViewStacks';
 import { HTTP_REQUEST_NODE_TYPE, REGULAR_NODE_CREATOR_MODE, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 import { useUsersStore } from '@/stores/users';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -29,9 +29,7 @@ const { $externalHooks } = new externalHooks();
 const { userActivated } = useUsersStore();
 const { popViewStack, activeViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
-const { getNodeTypesWithManualTrigger, setAddedNodeActionParameters, getActionData } =
-	useNodeCreatorStore();
-const { getPlaceholderTriggerActions, parseCategoryActions, actionsCategoryLocales } = useActions();
+const { getNodeTypesWithManualTrigger, setAddedNodeActionParameters, getActionData, getPlaceholderTriggerActions, parseCategoryActions, actionsCategoryLocales } = useActions();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>

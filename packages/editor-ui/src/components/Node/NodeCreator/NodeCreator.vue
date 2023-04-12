@@ -13,19 +13,21 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<TriggerMode @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<NodesListPanel @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed } from 'vue';
+import { watch, reactive, toRefs, computed, onMounted } from 'vue';
+import NodesListPanel from './Panel/NodesListPanel.vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import TriggerMode from './TriggerMode.vue';
 import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { useActionsGenerator } from './composables/useActionsGeneration';
+
 export interface Props {
 	active?: boolean;
 }
@@ -38,16 +40,8 @@ const emit = defineEmits<{
 	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
 
-const { setShowScrim } = useNodeCreatorStore();
-
-registerKeyHook('NodeCreatorCloseEscape', {
-	keyboardKeys: ['Escape'],
-	handler: () => emit('closeNodeCreator'),
-});
-registerKeyHook('NodeCreatorCloseTab', {
-	keyboardKeys: ['Tab'],
-	handler: () => emit('closeNodeCreator'),
-});
+const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
@@ -122,6 +116,22 @@ watch(viewStacksLength, (viewStacksLength) => {
 		setShowScrim(false);
 	}
 });
+
+registerKeyHook('NodeCreatorCloseEscape', {
+	keyboardKeys: ['Escape'],
+	handler: () => emit('closeNodeCreator'),
+});
+registerKeyHook('NodeCreatorCloseTab', {
+	keyboardKeys: ['Tab'],
+	handler: () => emit('closeNodeCreator'),
+});
+
+onMounted(() => {
+	const { actions, mergedNodes } = generateMergedNodesAndActions();
+
+	setActions(actions);
+	setMergeNodes(mergedNodes);
+})
 const { nodeCreator } = toRefs(state);
 </script>
 
@@ -155,14 +165,5 @@ const { nodeCreator } = toRefs(state);
 	&.active {
 		opacity: 0.7;
 	}
-}
-.newPanel {
-	position: fixed;
-	top: $header-height;
-	bottom: 0;
-	right: 0;
-	z-index: 200;
-	width: $node-creator-width;
-	color: $node-creator-text-color;
 }
 </style>

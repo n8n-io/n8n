@@ -3,8 +3,7 @@ import { defineStore } from 'pinia';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
 import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
-import { useNodesSearch } from './useNodesSearch';
-import { transformNodeType, subcategorizeItems, sortNodeCreateElements } from '../utils';
+import { transformNodeType, subcategorizeItems, sortNodeCreateElements, searchNodes } from '../utils';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 interface ViewStack {
@@ -35,7 +34,6 @@ interface ViewStack {
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const nodeCreatorStore = useNodeCreatorStore();
-	const { searchNodes } = useNodesSearch();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 
 	const viewStacks = ref<ViewStack[]>([]);
@@ -58,13 +56,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const activeViewStack = computed<ViewStack>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
-
 		if (!stack) return {};
 
 		return {
 			...stack,
 			items: activeStackItems.value,
-			hasSearch: (stack.baselineItems || []).length > 3 || stack?.hasSearch,
+			hasSearch: (stack.baselineItems || []).length > 8 || stack?.hasSearch,
 		};
 	});
 
@@ -74,7 +71,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
-
 		if (!stack || !stack.searchItems) return [];
 
 		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
@@ -94,13 +90,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	function setStackBaselineItems() {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
+		if (!stack || !activeViewStack.value.uuid) return;
+
 		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedNodes);
 		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? '*'] ?? [];
 
-		if (!stack || !activeViewStack.value.uuid) return;
-
-		// Adds the nodes specified in `stack.forceIncludeNodes` to the `stackItems` array.
-		// This is done to ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
+		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched
 		if ((stack.forceIncludeNodes ?? []).length > 0) {
 			const matchedNodes = nodeCreatorStore.mergedNodes
@@ -125,12 +120,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		updateCurrentViewStack({ baselineItems: stackItems });
 	}
+
 	function extendItemsWithUUID(items: INodeCreateElement[]) {
 		return items.map((item) => ({
 			...item,
 			uuid: `${item.key}-${uuid()}`,
 		}));
 	}
+
 	function pushViewStack(stack: ViewStack) {
 		if (activeViewStack.value.uuid) {
 			updateCurrentViewStack({ activeIndex: getActiveItemIndex() });
@@ -148,8 +145,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	function popViewStack() {
 		if (activeViewStack.value.uuid) {
+			viewStacks.value.pop()
 			updateCurrentViewStack({ transitionDirection: 'out' });
-			nextTick(() => viewStacks.value.pop());
 		}
 	}
 

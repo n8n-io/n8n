@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { INodeCreateElement, NodeCreateElement } from '@/Interface';
-import NodeItem from './NodeItem.vue';
-import SubcategoryItem from './SubcategoryItem.vue';
-import CategoryItem from './CategoryItem.vue';
-import LabelItem from './LabelItem.vue';
-import ActionItem from './ActionItem.vue';
-import ViewItem from './ViewItem.vue';
-import { reactive, toRefs, onMounted, watch, onUnmounted, ref, computed, nextTick } from 'vue';
-import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { INodeCreateElement} from '@/Interface';
+import NodeItem from '../ItemTypes/NodeItem.vue';
+import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
+import LabelItem from '../ItemTypes/LabelItem.vue';
+import ActionItem from '../ItemTypes/ActionItem.vue';
+import ViewItem from '../ItemTypes/ViewItem.vue';
+import { onMounted, watch, onUnmounted, ref, computed, } from 'vue';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -21,7 +20,6 @@ const props = withDefaults(defineProps<Props>(), {
 	lazyRender: true,
 });
 
-// const { } = useKeyboardNavigation();
 const emit = defineEmits<{
 	(event: 'selected', element: INodeCreateElement, $e?: Event): void;
 	(event: 'dragstart', element: INodeCreateElement, $e: Event): void;

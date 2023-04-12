@@ -7,7 +7,7 @@ import {
 } from '@/Interface';
 import { CORE_NODES_CATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { sublimeSearch } from '@/utils';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -56,4 +56,17 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 
 		return displayNameA.localeCompare(displayNameB, undefined, { sensitivity: 'base' });
 	});
+}
+
+export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
+	// In order to support the old search we need to remove the 'trigger' part
+	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
+	const result = (
+		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
+			{ key: 'properties.displayName', weight: 2 },
+			{ key: 'properties.codex.alias', weight: 1 },
+		]) || []
+	).map(({ item }) => item);
+
+	return result;
 }

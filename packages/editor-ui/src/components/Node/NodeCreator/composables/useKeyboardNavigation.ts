@@ -21,7 +21,6 @@ export const WATCHED_KEYS = [
 
 export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation', () => {
 	const selectableItems = ref<Array<WeakRef<Element>>>([]);
-
 	const activeItemId = ref<string | null>(null);
 	// Array of objects that contains key code and handler
 	const keysHooks = ref<Record<string, KeyHook>>({});

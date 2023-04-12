@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
-import CategoryItem from './CategoryItem.vue';
+import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { computed, watch, ref, getCurrentInstance } from 'vue';
 import ItemsRenderer from './ItemsRenderer.vue';
-import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
-import { useViewStacks } from './composables/useViewStacks';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
+import { useViewStacks } from '../composables/useViewStacks';
 import { useWorkflowsStore } from '@/stores/workflows';
 
 export interface Props {
@@ -48,7 +48,7 @@ function setExpanded(isExpanded: boolean) {
 function arrowRight() {
 	if (expanded.value) return;
 
-	expanded.value = true;
+	setExpanded(true);
 }
 
 function arrowLeft() {
@@ -57,7 +57,7 @@ function arrowLeft() {
 		return;
 	}
 
-	expanded.value = false;
+	setExpanded(false);
 }
 
 watch(

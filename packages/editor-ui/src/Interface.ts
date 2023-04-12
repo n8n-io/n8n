@@ -833,6 +833,12 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
+export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
+
+export type ActionsRecord<T extends SimplifiedNodeType[]> = {
+	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
+};
+
 export interface SimplifiedNodeType
 	extends Pick<
 		INodeTypeDescription,
@@ -843,6 +849,7 @@ export interface SubcategoryItemProps {
 	iconType?: string;
 	icon?: string;
 	title?: string;
+	subcategory?: string;
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
 }

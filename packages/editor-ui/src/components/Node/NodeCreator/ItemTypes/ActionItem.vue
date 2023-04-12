@@ -25,19 +25,20 @@ import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { WEBHOOK_NODE_TYPE } from '@/constants';
-import { useViewStacks } from './composables/useViewStacks';
+import { useViewStacks } from '../composables/useViewStacks';
+import { useActions } from '../composables/useActions';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	action: ActionTypeDescription;
 }
 
 const props = defineProps<Props>();
+
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
-const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
-	useNodeCreatorStore();
+
+const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } = useActions();
 const { activeViewStack } = useViewStacks();
 
 const state = reactive({

@@ -1,23 +1,31 @@
-import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
+import { getCurrentInstance, computed, ref } from 'vue';
 import {
-ActionCreateElement,
+	ActionTypeDescription,
 	INodeCreateElement,
+	IUpdateInformation,
 	LabelCreateElement,
+	ActionsRecord
 } from '@/Interface';
-import { SCHEDULE_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, NODE_CREATOR_OPEN_SOURCES, SCHEDULE_TRIGGER_NODE_TYPE, STICKY_NODE_TYPE, TRIGGER_NODE_CREATOR_MODE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { externalHooks } from '@/mixins/externalHooks';
 import { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRootStore';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
+import { IDataObject, INodeParameters } from 'n8n-workflow';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { Telemetry } from '@/plugins/telemetry';
+import { externalHooks } from '@/mixins/externalHooks';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
-	const useNodeTypesStore = useNodeCreatorStore();
 	const instance = getCurrentInstance();
-	const { baseUrl } = useRootStore();
-	const { $externalHooks } = new externalHooks();
-	const telemetry = instance?.proxy.$telemetry;
+
+	const actionsCategoryLocales = computed(() => {
+		return {
+			actions: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.actions') ?? '',
+			triggers: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.triggers') ?? '',
+		};
+	});
 
 	function getPlaceholderTriggerActions(subcategory: string) {
 		const nodes = [WEBHOOK_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE];
@@ -43,13 +51,6 @@ export const useActions = () => {
 
 		return matchedNodeTypes;
 	}
-
-	const actionsCategoryLocales = computed(() => {
-		return {
-			actions: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.actions') ?? '',
-			triggers: instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.triggers') ?? '',
-		};
-	});
 
 	function filterActionsCategory(items: INodeCreateElement[], category: string) {
 		return items.filter(
@@ -116,9 +117,94 @@ export const useActions = () => {
 		return filteredActions;
 	}
 
+	function getActionData(actionItem: ActionTypeDescription): IUpdateInformation {
+		const displayOptions = actionItem.displayOptions;
+
+		const displayConditions = Object.keys(displayOptions?.show || {}).reduce(
+			(acc: IDataObject, showCondition: string) => {
+				acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
+				return acc;
+			},
+			{},
+		);
+
+		return {
+			name: actionItem.displayName,
+			key: actionItem.name as string,
+			value: { ...actionItem.values, ...displayConditions } as INodeParameters,
+		};
+	}
+
+	function getNodeTypesWithManualTrigger(nodeType?: string): string[] {
+		if (!nodeType) return [];
+
+		const { selectedView, openSource } = useNodeCreatorStore();
+		const { workflowTriggerNodes } = useWorkflowsStore();
+		const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
+		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
+		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_MODE;
+		const isStickyNode = nodeType === STICKY_NODE_TYPE;
+		const singleNodeOpenSources = [
+			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+		];
+
+		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
+		// then we do not want to append the manual trigger
+		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource);
+		const shouldAppendManualTrigger =
+			!isSingleNodeOpenSource &&
+			!isTrigger &&
+			!workflowContainsTrigger &&
+			isTriggerPanel &&
+			!isStickyNode;
+
+		const nodeTypes = shouldAppendManualTrigger ? [MANUAL_TRIGGER_NODE_TYPE, nodeType] : [nodeType];
+
+		return nodeTypes;
+	}
+
+	function setAddedNodeActionParameters(
+		action: IUpdateInformation,
+		telemetry: Telemetry,
+		track = true,
+		rootView?: string
+	) {
+		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
+		const storeWatcher = onWorkflowStoreAction(
+			({ name, after, store: { setLastNodeParameters }, args }) => {
+				if (name !== 'addNode' || args[0].type !== action.key) return;
+				after(() => {
+					setLastNodeParameters(action);
+					if (track) trackActionSelected(action, telemetry, rootView || '');
+					storeWatcher();
+				});
+			},
+		);
+
+		return storeWatcher;
+	}
+
+	function trackActionSelected(action: IUpdateInformation, telemetry: Telemetry, rootView: string) {
+		const { $externalHooks } = new externalHooks();
+
+		const payload = {
+			node_type: action.key,
+			action: action.name,
+			source_mode: rootView.toLowerCase(),
+			resource: (action.value as INodeParameters).resource || '',
+		};
+		$externalHooks().run('nodeCreateList.addAction', payload);
+		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+	}
+
 	return {
 		actionsCategoryLocales,
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
+		getNodeTypesWithManualTrigger,
+		getActionData,
+		setAddedNodeActionParameters
 	};
 };
