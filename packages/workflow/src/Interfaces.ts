@@ -1919,3 +1919,17 @@ export interface IExceutionSummaryNodeExecutionResult {
 		description?: string;
 	}>;
 }
+
+export interface ExecutionOptions {
+	limit?: number;
+}
+
+export interface ExecutionFilters {
+	finished?: boolean;
+	mode?: WorkflowExecuteMode[];
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	waitTill?: boolean;
+	workflowId?: number | string;
+}

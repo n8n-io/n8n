@@ -1,7 +1,7 @@
 import express from 'express';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -83,7 +83,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	Container.reset();
 	await testDb.terminate();
 });
 
