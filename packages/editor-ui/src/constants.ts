@@ -544,6 +544,16 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const TEMPLATE_EXPERIMENT = {
+	name: '002_remove_templates',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	ASSUMPTION_EXPERIMENT.name,
+	ONBOARDING_EXPERIMENT.name,
+	TEMPLATE_EXPERIMENT.name,
+];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];

@@ -157,6 +157,10 @@ export const usePostHog = defineStore('posthog', () => {
 		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
 			segmentStore.showAppCuesChecklist();
 		}
+
+		if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
+			settingsStore.disableTemplates();
+		}
 	};
 
 	return {
