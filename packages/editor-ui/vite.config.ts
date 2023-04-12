@@ -84,7 +84,7 @@ if (NODE_ENV === 'test') {
 const plugins = [
 	vue(),
 	legacy({
-		targets: ['defaults', 'not IE 11'],
+		targets: ['>1%', 'last 3 versions', 'not dead'],
 	}),
 	monacoEditorPlugin({
 		publicPath: 'assets/monaco-editor',
