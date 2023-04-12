@@ -86,6 +86,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				format: ['custom'],
+				operation: ['formatDate'],
 			},
 		},
 		hint: 'List of special tokens <a target="_blank" href="https://moment.github.io/luxon/#/formatting?id=table-of-tokens">More info</a>',
