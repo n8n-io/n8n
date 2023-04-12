@@ -1,36 +1,19 @@
 import { startCase } from 'lodash-es';
-import { defineStore } from 'pinia';
 import {
 	INodePropertyCollection,
 	INodePropertyOptions,
-	IDataObject,
 	INodeProperties,
 	INodeTypeDescription,
 	deepCopy,
-	INodeParameters,
 } from 'n8n-workflow';
-import {
-	STORES,
-	MANUAL_TRIGGER_NODE_TYPE,
-	CORE_NODES_CATEGORY,
-	TRIGGER_NODE_CREATOR_MODE,
-	STICKY_NODE_TYPE,
-	NODE_CREATOR_OPEN_SOURCES,
-} from '@/constants';
-import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
+
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 import {
 	ActionTypeDescription,
-	NodeFilterType,
-	IUpdateInformation,
-	NodeCreatorOpenSource,
 	SimplifiedNodeType,
 ActionsRecord,
 } from '@/Interface';
-import { BaseTextKey, i18n } from '@/plugins/i18n';
-import { externalHooks } from '@/mixins/externalHooks';
-import { Telemetry } from '@/plugins/telemetry';
-import { ref, watch, computed } from 'vue';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { i18n } from '@/plugins/i18n';
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
 const customNodeActionsParsers: {
@@ -253,8 +236,8 @@ export function useActionsGenerator() {
 		};
 	}
 
-	function generateMergedNodesAndActions() {
-		const visibleNodeTypes = deepCopy(useNodeTypesStore().visibleNodeTypes);
+	function generateMergedNodesAndActions(nodeTypes: INodeTypeDescription[]) {
+		const visibleNodeTypes = deepCopy(nodeTypes);
 		const actions: ActionsRecord<typeof mergedNodes> = ({});
 		const mergedNodes:SimplifiedNodeType[] = [];
 

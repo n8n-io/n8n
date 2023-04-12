@@ -153,6 +153,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	function updateCurrentViewStack(stack: Partial<ViewStack>) {
 		const currentStack = viewStacks.value[viewStacks.value.length - 1];
 		const matchedIndex = viewStacks.value.findIndex((s) => s.uuid === currentStack.uuid);
+		if(!currentStack) return;
 
 		// For each key in the stack, update the matched stack
 		Object.keys(stack).forEach((key) => {

@@ -27,12 +27,13 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
-
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 export interface Props {
 	active?: boolean;
 }
 
 const props = defineProps<Props>();
+const { $onAction} = useNodeTypesStore();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
@@ -126,12 +127,13 @@ registerKeyHook('NodeCreatorCloseTab', {
 	handler: () => emit('closeNodeCreator'),
 });
 
-onMounted(() => {
-	const { actions, mergedNodes } = generateMergedNodesAndActions();
+watch(() => useNodeTypesStore().visibleNodeTypes, (nodeTypes) => {
+	console.log('Visible node types updated');
+	const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
 
 	setActions(actions);
 	setMergeNodes(mergedNodes);
-})
+}, { immediate: true });
 const { nodeCreator } = toRefs(state);
 </script>
 

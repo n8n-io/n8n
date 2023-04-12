@@ -11,7 +11,6 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import { INodeCreateElement, ActionTypeDescription, NodeFilterType, IUpdateInformation, ActionCreateElement } from '@/Interface';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import { useActions } from '../composables/useActions';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
 import { HTTP_REQUEST_NODE_TYPE, REGULAR_NODE_CREATOR_MODE, TRIGGER_NODE_CREATOR_MODE } from '@/constants';

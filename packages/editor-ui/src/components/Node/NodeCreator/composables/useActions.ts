@@ -1,10 +1,9 @@
-import { getCurrentInstance, computed, ref } from 'vue';
+import { getCurrentInstance, computed } from 'vue';
 import {
 	ActionTypeDescription,
 	INodeCreateElement,
 	IUpdateInformation,
 	LabelCreateElement,
-	ActionsRecord
 } from '@/Interface';
 import { MANUAL_TRIGGER_NODE_TYPE, NODE_CREATOR_OPEN_SOURCES, SCHEDULE_TRIGGER_NODE_TYPE, STICKY_NODE_TYPE, TRIGGER_NODE_CREATOR_MODE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
