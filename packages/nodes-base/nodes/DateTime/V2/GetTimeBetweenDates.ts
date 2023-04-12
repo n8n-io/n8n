@@ -66,7 +66,7 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 				operation: ['getTimeBetweenDates'],
 			},
 		},
-		default: [],
+		default: ['day'],
 	},
 	{
 		displayName: 'Output Field Name',
