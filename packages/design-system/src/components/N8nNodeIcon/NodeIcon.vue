@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-node-icon',
 	components: {
 		N8nTooltip,
@@ -78,12 +78,13 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		iconStyleData(): object {
+		iconStyleData(): Record<string, string> {
 			if (!this.size) {
 				return {
 					color: this.color || '',
 				};
 			}
+
 			return {
 				color: this.color || '',
 				width: `${this.size}px`,
@@ -92,7 +93,11 @@ export default Vue.extend({
 				'line-height': `${this.size}px`,
 			};
 		},
-		fontStyleData(): object {
+		fontStyleData(): Record<string, string> {
+			if (!this.size) {
+				return {};
+			}
+
 			return {
 				'max-width': `${this.size}px`,
 			};
