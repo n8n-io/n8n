@@ -1,5 +1,9 @@
 import { UserSettings } from 'n8n-core';
-import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
+import {
+	DataSource as Connection,
+	DataSourceOptions as ConnectionOptions,
+	Repository,
+} from 'typeorm';
 import { Container } from 'typedi';
 
 import config from '@/config';
@@ -102,7 +106,7 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		await Db.collections[collection].clear();
+		await (Db.collections[collection] as Repository<any>).delete({});
 	}
 }
 
