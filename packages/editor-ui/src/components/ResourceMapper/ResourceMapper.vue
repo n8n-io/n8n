@@ -78,12 +78,14 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 		};
 	});
 	// Sort so that matching columns are first
-	fields.forEach((field, i) => {
-		if (state.paramValue.matchingColumns.includes(field.name)) {
-			fields.splice(i, 1);
-			fields.unshift(field);
-		}
-	});
+	if (state.paramValue.matchingColumns) {
+		fields.forEach((field, i) => {
+			if (state.paramValue.matchingColumns.includes(field.name)) {
+				fields.splice(i, 1);
+				fields.unshift(field);
+			}
+		});
+	}
 	return fields;
 });
 
@@ -111,7 +113,7 @@ const matchingColumns = computed<string[]>(() => {
 	if (!showMatchingColumnsSelector) {
 		return [];
 	}
-	if (state.paramValue.matchingColumns.length > 0) {
+	if (state.paramValue.matchingColumns && state.paramValue.matchingColumns.length > 0) {
 		return state.paramValue.matchingColumns;
 	}
 	return defaultSelectedColumns.value;
@@ -161,7 +163,7 @@ async function loadFieldsToMap(): Promise<void> {
 }
 
 function getFieldLabel(field: ResourceMapperField): string {
-	if (state.paramValue.matchingColumns.includes(field.id)) {
+	if ((state.paramValue.matchingColumns || []).includes(field.id)) {
 		const suffix = instance?.proxy.$locale.baseText('resourceMapper.usingToMatch') || '';
 		return `${field.displayName} ${suffix}`;
 	}
@@ -245,6 +247,12 @@ defineExpose({
 				:size="labelSize"
 				color="text-dark"
 			/>
+			<n8n-text
+				v-if="
+					props.parameter.typeOptions?.resourceMapper?.supportAutoMap === false && state.loading
+				"
+				>Loading...</n8n-text
+			>
 			<parameter-input-list
 				v-if="showMappingFields"
 				:parameters="fieldsUi"

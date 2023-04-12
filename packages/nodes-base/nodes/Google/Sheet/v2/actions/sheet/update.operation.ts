@@ -241,11 +241,12 @@ export async function execute(
 	columnNames = sheetData[headerRow];
 	const newColumns = new Set<string>();
 
-	const columnToMatchOn =
+	const columnsToMatchOn: string[] =
 		nodeVersion === 3
-			? (this.getNodeParameter('columnToMatchOn', 0) as string)
-			: (this.getNodeParameter('columns.match', 0) as string);
-	const keyIndex = columnNames.indexOf(columnToMatchOn);
+			? [this.getNodeParameter('columnToMatchOn', 0) as string]
+			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+	// TODO: Add support for multiple columns to match on in the next overhaul
+	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
 	const columnValues = await sheet.getColumnValues(
 		range,
@@ -292,33 +293,47 @@ export async function execute(
 				data.push(items[i].json);
 			}
 		} else {
-			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+			const valueToMatchOn =
+				nodeVersion === 3
+					? (this.getNodeParameter('valueToMatchOn', i) as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
 
-			const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
-			if (!valuesToSend?.length) {
-				throw new NodeOperationError(
-					this.getNode(),
-					"At least one value has to be added under 'Values to Send'",
-				);
-			}
-			const fields = valuesToSend.reduce((acc, entry) => {
-				if (entry.column === 'newColumn') {
-					const columnName = entry.columnName as string;
-
-					if (!columnNames.includes(columnName)) {
-						newColumns.add(columnName);
-					}
-
-					acc[columnName] = entry.fieldValue as string;
-				} else {
-					acc[entry.column as string] = entry.fieldValue as string;
+			if (nodeVersion === 3) {
+				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+				if (!valuesToSend?.length) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"At least one value has to be added under 'Values to Send'",
+					);
 				}
-				return acc;
-			}, {} as IDataObject);
+				const fields = valuesToSend.reduce((acc, entry) => {
+					if (entry.column === 'newColumn') {
+						const columnName = entry.columnName as string;
 
-			fields[columnToMatchOn] = valueToMatchOn;
+						if (!columnNames.includes(columnName)) {
+							newColumns.add(columnName);
+						}
 
-			data.push(fields);
+						acc[columnName] = entry.fieldValue as string;
+					} else {
+						acc[entry.column as string] = entry.fieldValue as string;
+					}
+					return acc;
+				}, {} as IDataObject);
+
+				fields[columnsToMatchOn[0]] = valueToMatchOn;
+
+				data.push(fields);
+			} else {
+				const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
+				if (Object.keys(mappingValues).length === 0) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"At least one value has to be added under 'Values to Send'",
+					);
+				}
+				data.push(mappingValues);
+			}
 		}
 
 		if (newColumns.size) {
@@ -332,7 +347,7 @@ export async function execute(
 
 		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
 			data,
-			columnToMatchOn,
+			columnsToMatchOn[0],
 			range,
 			headerRow,
 			firstDataRow,
