@@ -202,10 +202,10 @@ export async function execute(
 		}) as string;
 
 		const nodeVersion = this.getNode().typeVersion;
-		const columnToMatchOn =
+		const columnsToMatchOn: string[] =
 			nodeVersion === 2
-				? (this.getNodeParameter('columnToMatchOn', i) as string)
-				: (this.getNodeParameter('columns.match', i) as string);
+				? [this.getNodeParameter('columnToMatchOn', i) as string]
+				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
 			nodeVersion === 2
@@ -217,7 +217,9 @@ export async function execute(
 
 		if (dataMode === 'autoMapInputData') {
 			item = items[i].json;
-			valueToMatchOn = item[columnToMatchOn] as string;
+			if (nodeVersion === 2) {
+				valueToMatchOn = item[columnsToMatchOn[0]] as string;
+			}
 		}
 
 		if (dataMode === 'defineBelow') {
@@ -227,9 +229,12 @@ export async function execute(
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			item = prepareItem(valuesToSend);
-
-			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+			if (nodeVersion === 2) {
+				item = prepareItem(valuesToSend);
+				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 		}
 
 		const tableSchema = await getTableSchema(db, schema, table);
@@ -240,11 +245,22 @@ export async function execute(
 
 		let valuesLength = values.length + 1;
 
-		const condition = `$${valuesLength}:name = $${valuesLength + 1}`;
-		valuesLength = valuesLength + 2;
-		values.push(columnToMatchOn, valueToMatchOn);
+		let condition = '';
+		if (nodeVersion === 2) {
+			condition = `$${valuesLength}:name = $${valuesLength + 1}`;
+			valuesLength = valuesLength + 2;
+			values.push(columnsToMatchOn[0], valueToMatchOn);
+		} else {
+			const conditions: string[] = [];
+			for (const column of columnsToMatchOn) {
+				conditions.push(`$${valuesLength}:name = $${valuesLength + 1}`);
+				valuesLength = valuesLength + 2;
+				values.push(column, item[column] as string);
+			}
+			condition = conditions.join(' AND ');
+		}
 
-		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
+		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
 
 		const updates: string[] = [];
 

@@ -196,7 +196,11 @@ export async function execute(
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			item = prepareItem(valuesToSend);
+			if (nodeVersion === 2) {
+				item = prepareItem(valuesToSend);
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 		}
 
 		const tableSchema = await getTableSchema(db, schema, table);
