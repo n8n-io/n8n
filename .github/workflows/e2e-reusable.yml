@@ -102,7 +102,6 @@ jobs:
 
   testing:
     runs-on: ubuntu-latest
-    continue-on-error: true
     container:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
