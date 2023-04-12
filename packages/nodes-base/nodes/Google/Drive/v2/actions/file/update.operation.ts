@@ -1,7 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { prepareQueryString } from '../../helpers/utils';
+import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -154,8 +156,55 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	options: IDataObject,
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+
+	const id = this.getNodeParameter('fileId', i, undefined, {
+		extractValue: true,
+	}) as string;
+	const updateFields = this.getNodeParameter('updateFields', i, {});
+
+	const qs: IDataObject = {
+		supportsAllDrives: true,
+	};
+
+	Object.assign(qs, options);
+
+	const queryFields = prepareQueryString(options.fields as string[]);
+
+	qs.fields = queryFields;
+
+	const body: IDataObject = {};
+
+	if (updateFields.fileName) {
+		body.name = updateFields.fileName;
+	}
+
+	if (updateFields.hasOwnProperty('trashed')) {
+		body.trashed = updateFields.trashed;
+	}
+
+	if (updateFields.parentId && updateFields.parentId !== '') {
+		qs.addParents = updateFields.parentId;
+	}
+
+	const responseData = await googleApiRequest.call(
+		this,
+		'PATCH',
+		`/drive/v3/files/${id}`,
+		body,
+		qs,
+	);
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(responseData as IDataObject[]),
+		{ itemData: { item: i } },
+	);
+	returnData.push(...executionData);
 
 	return returnData;
 }

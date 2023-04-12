@@ -1,7 +1,13 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IBinaryKeyData,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -166,8 +172,105 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	options: IDataObject,
+	item: INodeExecutionData,
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+
+	const fileId = this.getNodeParameter('fileId', i, undefined, {
+		extractValue: true,
+	}) as string;
+	const downloadOptions = this.getNodeParameter('options', i);
+
+	const requestOptions = {
+		useStream: true,
+		resolveWithFullResponse: true,
+		encoding: null,
+		json: false,
+	};
+
+	const file = await googleApiRequest.call(
+		this,
+		'GET',
+		`/drive/v3/files/${fileId}`,
+		{},
+		{ fields: 'mimeType,name', supportsTeamDrives: true },
+	);
+	let response;
+
+	if (file.mimeType.includes('vnd.google-apps')) {
+		const parameterKey = 'options.googleFileConversion.conversion';
+		const type = file.mimeType.split('.')[2];
+		let mime;
+		if (type === 'document') {
+			mime = this.getNodeParameter(
+				`${parameterKey}.docsToFormat`,
+				i,
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+			) as string;
+		} else if (type === 'presentation') {
+			mime = this.getNodeParameter(
+				`${parameterKey}.slidesToFormat`,
+				i,
+				'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+			) as string;
+		} else if (type === 'spreadsheet') {
+			mime = this.getNodeParameter(
+				`${parameterKey}.sheetsToFormat`,
+				i,
+				'application/x-vnd.oasis.opendocument.spreadsheet',
+			) as string;
+		} else {
+			mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
+		}
+		response = await googleApiRequest.call(
+			this,
+			'GET',
+			`/drive/v3/files/${fileId}/export`,
+			{},
+			{ mimeType: mime },
+			undefined,
+			requestOptions,
+		);
+	} else {
+		response = await googleApiRequest.call(
+			this,
+			'GET',
+			`/drive/v3/files/${fileId}`,
+			{},
+			{ alt: 'media' },
+			undefined,
+			requestOptions,
+		);
+	}
+
+	const mimeType = response.headers['content-type'] ?? file.mimeType ?? undefined;
+	const fileName = downloadOptions.fileName ?? file.name ?? undefined;
+
+	const newItem: INodeExecutionData = {
+		json: item.json,
+		binary: {},
+	};
+
+	if (item.binary !== undefined) {
+		// Create a shallow copy of the binary data so that the old
+		// data references which do not get changed still stay behind
+		// but the incoming data does not get changed.
+		Object.assign(newItem.binary as IBinaryKeyData, item.binary);
+	}
+
+	item = newItem;
+
+	const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
+
+	item.binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
+		response.body as Buffer,
+		fileName as string,
+		mimeType as string,
+	);
 
 	return returnData;
 }

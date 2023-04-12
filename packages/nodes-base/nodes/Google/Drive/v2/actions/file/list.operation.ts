@@ -1,7 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { prepareQueryString } from '../../helpers/utils';
+import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -192,8 +194,102 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	options: IDataObject,
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+
+	let querySpaces = '';
+	if (options.spaces) {
+		const spaces = options.spaces as string[];
+		if (spaces.includes('*')) {
+			querySpaces = 'appDataFolder, drive, photos';
+		} else {
+			querySpaces = spaces.join(', ');
+		}
+	}
+
+	let queryCorpora = '';
+	if (options.corpora) {
+		queryCorpora = options.corpora as string;
+	}
+
+	let driveId: string | undefined;
+	driveId = options.driveId as string;
+	if (driveId === '') {
+		driveId = undefined;
+	}
+
+	let queryString = '';
+	const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
+	if (useQueryString) {
+		// Use the user defined query string
+		queryString = this.getNodeParameter('queryString', i) as string;
+	} else {
+		// Build query string out of parameters set by user
+		const queryFilters = this.getNodeParameter('queryFilters', i) as IDataObject;
+
+		const queryFilterFields: string[] = [];
+		if (queryFilters.name) {
+			(queryFilters.name as IDataObject[]).forEach((nameFilter) => {
+				let filterOperation = nameFilter.operation;
+				if (filterOperation === 'is') {
+					filterOperation = '=';
+				} else if (filterOperation === 'isNot') {
+					filterOperation = '!=';
+				}
+				queryFilterFields.push(`name ${filterOperation} '${nameFilter.value}'`);
+			});
+
+			queryString += queryFilterFields.join(' or ');
+		}
+
+		queryFilterFields.length = 0;
+		if (queryFilters.mimeType) {
+			(queryFilters.mimeType as IDataObject[]).forEach((mimeTypeFilter) => {
+				let mimeType = mimeTypeFilter.mimeType;
+				if (mimeTypeFilter.mimeType === 'custom') {
+					mimeType = mimeTypeFilter.customMimeType;
+				}
+				queryFilterFields.push(`mimeType = '${mimeType}'`);
+			});
+
+			if (queryFilterFields.length) {
+				if (queryString !== '') {
+					queryString += ' and ';
+				}
+
+				queryString += queryFilterFields.join(' or ');
+			}
+		}
+	}
+
+	const pageSize = this.getNodeParameter('limit', i);
+
+	const queryFields = prepareQueryString(options.fields as string[]);
+
+	const qs = {
+		pageSize,
+		orderBy: 'modifiedTime',
+		fields: `nextPageToken, files(${queryFields})`,
+		spaces: querySpaces,
+		q: queryString,
+		includeItemsFromAllDrives: queryCorpora !== '' || driveId !== '',
+		supportsAllDrives: queryCorpora !== '' || driveId !== '',
+	};
+
+	const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+
+	const files = response.files;
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(files as IDataObject[]),
+		{ itemData: { item: i } },
+	);
+
+	returnData.push(...executionData);
 
 	return returnData;
 }

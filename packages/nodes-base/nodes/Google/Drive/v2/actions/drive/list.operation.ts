@@ -1,8 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { returnAllOrLimit } from '../common.descriptions';
+import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
 	...returnAllOrLimit,
@@ -42,8 +43,42 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	options: IDataObject,
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+
+	const returnAll = this.getNodeParameter('returnAll', i);
+
+	const qs: IDataObject = {};
+
+	let response: IDataObject[] = [];
+
+	Object.assign(qs, options);
+
+	if (returnAll) {
+		response = await googleApiRequestAllItems.call(
+			this,
+			'drives',
+			'GET',
+			'/drive/v3/drives',
+			{},
+			qs,
+		);
+	} else {
+		qs.pageSize = this.getNodeParameter('limit', i);
+		const data = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', {}, qs);
+		response = data.drives as IDataObject[];
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(response),
+		{ itemData: { item: i } },
+	);
+
+	returnData.push(...executionData);
 
 	return returnData;
 }
