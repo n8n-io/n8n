@@ -15,7 +15,6 @@ describe('Workflows', () => {
 
 	beforeEach(() => {
 		cy.visit(WorkflowsPage.url);
-		cy.get('body').should('contain', 'This wont work 123');
 	});
 
 	it('should create a new workflow using empty state card', () => {
