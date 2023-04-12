@@ -76,7 +76,7 @@ export const FormatDateDescription: INodeProperties[] = [
 				description: 'Example: 513388800',
 			},
 		],
-		default: 'mm/dd/yyyy',
+		default: 'MM/dd/yyyy',
 		description: 'The format to convert the date to',
 	},
 	{
