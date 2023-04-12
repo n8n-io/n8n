@@ -8,12 +8,13 @@ import { Router } from 'express';
 import type { Request } from 'express';
 import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
+import { RoleRepository } from '@db/repositories';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import Container from 'typedi';
 import { License } from '../License';
 import { LICENSE_FEATURES } from '@/constants';
 
@@ -55,7 +56,7 @@ const tablesToTruncate = [
 ];
 
 const truncateAll = async () => {
-	const { connection } = Db;
+	const connection = Db.getConnection();
 	for (const table of tablesToTruncate) {
 		await connection.query(
 			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
@@ -64,7 +65,7 @@ const truncateAll = async () => {
 };
 
 const setupUserManagement = async () => {
-	const { connection } = Db;
+	const connection = Db.getConnection();
 	await connection.query('INSERT INTO role (name, scope) VALUES ("owner", "global");');
 	const instanceOwnerRole = (await connection.query(
 		'SELECT last_insert_rowid() as insertId',
@@ -116,13 +117,7 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 		return;
 	}
 
-	const globalRole = await Db.collections.Role.findOneOrFail({
-		select: ['id'],
-		where: {
-			name: 'owner',
-			scope: 'global',
-		},
-	});
+	const globalRole = await Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
 
 	const owner = await Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 

@@ -1,9 +1,6 @@
 import { UserSettings } from 'n8n-core';
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	Repository,
-} from 'typeorm';
+import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
+import { Container } from 'typedi';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -14,7 +11,7 @@ import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -22,6 +19,7 @@ import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { RoleRepository } from '@db/repositories';
 import { ICredentialsDb } from '@/Interfaces';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
@@ -104,8 +102,7 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		const repository: Repository<any> = Db.collections[collection];
-		await repository.delete({});
+		await Db.collections[collection].clear();
 	}
 }
 
@@ -142,7 +139,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOneBy({ scope: 'credential', name: 'user' });
+	const role = await Container.get(RoleRepository).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
@@ -266,38 +263,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
+	return Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
 }
 
 export async function getGlobalMemberRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'member',
-		scope: 'global',
-	});
+	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
 }
 
 export async function getWorkflowEditorRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'editor',
-		scope: 'workflow',
-	});
+	return Container.get(RoleRepository).findWorkflowEditorRoleOrFail();
 }
 
 export async function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	return Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
 }
 
 export async function getAllRoles() {

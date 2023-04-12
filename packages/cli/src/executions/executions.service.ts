@@ -39,7 +39,7 @@ import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
 } from './executionHelpers';
-import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
+import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 interface IGetExecutionsQueryFilter {
