@@ -5,6 +5,8 @@ import { merge } from 'lodash-es';
 import SSOLogin from '@/components/SSOLogin.vue';
 import { STORES } from '@/constants';
 import { useSSOStore } from '@/stores/sso';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/utils/testUtils';
+import { afterEach } from 'vitest';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let ssoStore: ReturnType<typeof useSSOStore>;
@@ -33,19 +35,15 @@ describe('SSOLogin', () => {
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
-					settings: {
-						templates: {
-							host: 'https://api.n8n.io/api/',
-						},
-						enterprise: {
-							saml: true,
-						},
-					},
+					settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
 				},
 			},
-			stubActions: false,
 		});
-		ssoStore = useSSOStore(pinia);
+		ssoStore = useSSOStore();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
 	});
 
 	it('should not render button if conditions are not met', () => {

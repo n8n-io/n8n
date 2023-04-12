@@ -1,5 +1,7 @@
 import { ISettingsState, UserManagementAuthenticationMethod } from '@/Interface';
 
+export const waitAllPromises = () => new Promise((resolve) => setTimeout(resolve));
+
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	settings: {
 		allowedModules: {},
