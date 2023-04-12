@@ -16,7 +16,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "vite build",
-    "typecheck": "vue-tsc --emitDeclarationOnly",
+    "typecheck": "vue-tsc --declaration --emitDeclarationOnly",
     "test": "vitest run --coverage",
     "test:dev": "vitest",
     "build:storybook": "storybook build",
