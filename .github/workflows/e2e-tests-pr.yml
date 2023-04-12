@@ -37,9 +37,10 @@ jobs:
     runs-on: ubuntu-latest
     name: E2E [Electron/Node 16] - Checks
     needs: [run-e2e-tests]
+    if: always()
     steps:
       - name: E2E success comment
-        if: success()
+        if: needs.run-e2e-tests.result == 'success'
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -48,10 +49,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: E2E fail comment
-        if: failure()
+        if: needs.run-e2e-tests.result == 'failure'
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             :warning: Some Cypress E2E specs are failing, please fix them before merging
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fail job if run-e2e-tests failed
+        if: needs.run-e2e-tests.result == 'failure'
+        run: exit 1
