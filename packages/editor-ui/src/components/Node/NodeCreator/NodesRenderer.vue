@@ -88,6 +88,10 @@ function onSelected(item: INodeCreateElement) {
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
 		});
+
+		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+			subcategory: item.key,
+		});
 	}
 
 	if (item.type === 'node') {

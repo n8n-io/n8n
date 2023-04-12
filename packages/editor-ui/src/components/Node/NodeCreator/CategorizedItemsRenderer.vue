@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
 import CategoryItem from './CategoryItem.vue';
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, getCurrentInstance } from 'vue';
 import ItemsRenderer from './ItemsRenderer.vue';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useViewStacks } from './composables/useViewStacks';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -16,11 +17,15 @@ export interface Props {
 	expanded?: boolean;
 }
 
-const { popViewStack } = useViewStacks();
-const { registerKeyHook } = useKeyboardNavigation();
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
+
+const instance = getCurrentInstance();
+
+const { popViewStack } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
+const { workflowId } = useWorkflowsStore();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 const expanded = ref(props.expanded ?? false);
@@ -31,6 +36,28 @@ function toggleExpanded() {
 
 function setExpanded(isExpanded: boolean) {
 	expanded.value = isExpanded;
+
+	if(expanded.value) {
+		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
+			category_name: props.category,
+			workflow_id: workflowId,
+		});
+	}
+}
+
+function arrowRight() {
+	if (expanded.value) return;
+
+	expanded.value = true;
+}
+
+function arrowLeft() {
+	if (!expanded.value) {
+		popViewStack();
+		return;
+	}
+
+	expanded.value = false;
 }
 
 watch(
@@ -56,20 +83,6 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 	condition: (type, activeItemId) => type === 'category' && props.category === activeItemId,
 	handler: arrowLeft,
 });
-
-function arrowRight() {
-	if (expanded.value) return;
-
-	expanded.value = true;
-}
-function arrowLeft() {
-	if (!expanded.value) {
-		popViewStack();
-		return;
-	}
-
-	expanded.value = false;
-}
 </script>
 
 <template>

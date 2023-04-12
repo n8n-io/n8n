@@ -105,24 +105,26 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	const actionData = getActionData(actionCreateElement.properties as ActionTypeDescription);
 
 	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
-	setAddedNodeActionParameters(actionData, telemetry);
+	if(telemetry) setAddedNodeActionParameters(actionData, telemetry, true, rootView.value);
 }
 
 function trackActionsView() {
-		const trigger_action_count = (activeViewStack.baselineItems || [])?.filter((action) =>
-			action.key.toLowerCase().includes('trigger'),
-		).length;
+	const trigger_action_count = (activeViewStack.baselineItems || [])?.filter((action) =>
+		action.key.toLowerCase().includes('trigger'),
+	).length;
 
-		const trackingPayload = {
-			app_identifier: activeViewStack.subcategory,
-			actions: (activeViewStack.baselineItems || [])?.map((action) => (action as ActionCreateElement).properties.displayName),
-			regular_action_count: (activeViewStack.baselineItems || [])?.length - trigger_action_count,
-			trigger_action_count,
-		};
+	const appIdentifier = [...actions.value, ...placeholderTriggerActions][0].key
 
-		$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
-		telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
-	}
+	const trackingPayload = {
+		app_identifier: appIdentifier,
+		actions: (activeViewStack.baselineItems || [])?.map((action) => (action as ActionCreateElement).properties.displayName),
+		regular_action_count: (activeViewStack.baselineItems || [])?.length - trigger_action_count,
+		trigger_action_count,
+	};
+
+	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+}
 
 function resetSearch() {
 	updateCurrentViewStack({ search: '' });
@@ -138,7 +140,7 @@ function addHttpNode() {
 	} as IUpdateInformation;
 
 	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
-	setAddedNodeActionParameters(updateData, telemetry, false);
+	if(telemetry) setAddedNodeActionParameters(updateData, telemetry, false);
 
 	const app_identifier = actions.value[0].key;
 	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });

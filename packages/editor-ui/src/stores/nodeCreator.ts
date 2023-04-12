@@ -61,20 +61,6 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterActions(actions: ActionTypeDescription[]) {
-	// Do not show single action nodes
-	if (actions.length <= 1) return [];
-	return actions.filter(
-		(action: ActionTypeDescription, _: number, arr: ActionTypeDescription[]) => {
-			const isApiCall = action.actionKey === CUSTOM_API_CALL_KEY;
-			if (isApiCall) return false;
-
-			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
-			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
-		},
-	);
-}
-
 function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: string) {
 	const isTrigger = nodeTypeDescription.group.includes('trigger');
 	const category = isTrigger
@@ -251,16 +237,18 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
-		telemetry?: Telemetry,
+		telemetry: Telemetry,
 		track = true,
+		rootView?: string
 	) {
+
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 		const storeWatcher = onWorkflowStoreAction(
 			({ name, after, store: { setLastNodeParameters }, args }) => {
 				if (name !== 'addNode' || args[0].type !== action.key) return;
 				after(() => {
 					setLastNodeParameters(action);
-					if (track) trackActionSelected(action, telemetry);
+					if (track) trackActionSelected(action, telemetry, rootView || '');
 					storeWatcher();
 				});
 			},
@@ -269,12 +257,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		return storeWatcher;
 	}
 
-	function trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
+	function trackActionSelected(action: IUpdateInformation, telemetry: Telemetry, rootView: string) {
 		const { $externalHooks } = new externalHooks();
 
 		const payload = {
 			node_type: action.key,
 			action: action.name,
+			source_mode: rootView.toLowerCase(),
 			resource: (action.value as INodeParameters).resource || '',
 		};
 		$externalHooks().run('nodeCreateList.addAction', payload);

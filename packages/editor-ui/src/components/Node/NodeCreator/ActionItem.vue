@@ -27,7 +27,7 @@ import { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { WEBHOOK_NODE_TYPE } from '@/constants';
-
+import { useViewStacks } from './composables/useViewStacks';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	action: ActionTypeDescription;
@@ -38,6 +38,7 @@ const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
 const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
 	useNodeCreatorStore();
+const { activeViewStack } = useViewStacks();
 
 const state = reactive({
 	dragging: false,
@@ -75,8 +76,9 @@ function onDragStart(event: DragEvent): void {
 			'nodeTypeName',
 			getNodeTypesWithManualTrigger(actionData.value?.key).join(','),
 		);
-
-		state.storeWatcher = setAddedNodeActionParameters(actionData.value, telemetry);
+		if(telemetry) {
+			state.storeWatcher = setAddedNodeActionParameters(actionData.value, telemetry, true, activeViewStack.rootView);
+		}
 		document.body.addEventListener('dragend', onDragEnd);
 	}
 
