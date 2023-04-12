@@ -61,7 +61,7 @@ export const fileRLC: INodeProperties = {
 
 export const folderRLC: INodeProperties = {
 	displayName: 'Folder',
-	name: 'fileId',
+	name: 'folderId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
@@ -116,6 +116,64 @@ export const folderRLC: INodeProperties = {
 	description: 'The ID of the folder',
 };
 
+export const driveRLC: INodeProperties = {
+	displayName: 'Drive',
+	name: 'driveId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	hint: 'The Google Drive drive to operate on',
+	modes: [
+		{
+			displayName: 'Drive',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Drive',
+			typeOptions: {
+				searchListMethod: 'driveSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'Link',
+			name: 'url',
+			type: 'string',
+			placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+			extractValue: {
+				type: 'regex',
+				regex: 'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						errorMessage: 'Not a valid Google Drive Drive URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			hint: 'The ID of the shared drive',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Google Drive Drive ID',
+					},
+				},
+			],
+			url: '=https://drive.google.com/drive/folders/{{$value}}',
+		},
+	],
+	description: 'The ID of the drive',
+};
+
 export const returnAllOrLimit: INodeProperties[] = [
 	{
 		displayName: 'Return All',
@@ -148,12 +206,6 @@ export const fileAndFolderOptions: INodeProperties = {
 	type: 'collection',
 	placeholder: 'Add Option',
 	default: {},
-	// displayOptions: {
-	// 	show: {
-	// 		'/operation': ['copy', 'list', 'share', 'create'],
-	// 		'/resource': ['file', 'folder'],
-	// 	},
-	// },
 	options: [
 		{
 			displayName: 'Email Message',

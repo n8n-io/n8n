@@ -131,7 +131,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const fileId = this.getNodeParameter('fileId', i, undefined, {
+	const folderId = this.getNodeParameter('folderId', i, undefined, {
 		extractValue: true,
 	}) as string;
 
@@ -154,7 +154,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await googleApiRequest.call(
 		this,
 		'POST',
-		`/drive/v3/files/${fileId}/permissions`,
+		`/drive/v3/files/${folderId}/permissions`,
 		body,
 		qs,
 	);

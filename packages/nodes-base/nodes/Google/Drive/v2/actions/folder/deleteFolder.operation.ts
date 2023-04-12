@@ -18,14 +18,14 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const fileId = this.getNodeParameter('fileId', i, undefined, {
+	const folderId = this.getNodeParameter('folderId', i, undefined, {
 		extractValue: true,
 	}) as string;
 
 	await googleApiRequest.call(
 		this,
 		'DELETE',
-		`/drive/v3/files/${fileId}`,
+		`/drive/v3/files/${folderId}`,
 		{},
 		{ supportsTeamDrives: true },
 	);
@@ -33,7 +33,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	// If we are still here it did succeed
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({
-			fileId,
+			fileId: folderId,
 			success: true,
 		}),
 		{ itemData: { item: i } },
