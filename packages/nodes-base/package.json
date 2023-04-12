@@ -802,7 +802,7 @@
     "@types/ssh2-sftp-client": "^5.1.0",
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^8.3.2",
-    "@types/xml2js": "^0.4.3",
+    "@types/xml2js": "^0.4.11",
     "eslint-plugin-n8n-nodes-base": "^1.12.0",
     "gulp": "^4.0.0",
     "n8n-core": "workspace:*"
@@ -900,8 +900,8 @@
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
     "uuid": "^8.3.2",
-    "vm2": "~3.9.5",
+    "vm2": "~3.9.15",
     "xlsx": "^0.17.0",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.5.0"
   }
 }
