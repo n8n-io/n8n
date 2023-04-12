@@ -7,7 +7,7 @@
 	>
 		<div ref="codeNodeEditor" class="ph-no-capture"></div>
 		<n8n-button
-			v-if="isCloud && isEditorHovered"
+			v-if="isCloud && (isEditorHovered || isEditorFocused)"
 			size="small"
 			type="tertiary"
 			:class="$style['ask-ai-button']"
@@ -60,6 +60,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
 			isEditorHovered: false,
+			isEditorFocused: false,
 		};
 	},
 	watch: {
@@ -181,6 +182,14 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		const stateBasedExtensions = [
 			this.linterCompartment.of(this.linterExtension()),
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({
+				focus: () => {
+					this.isEditorFocused = true;
+				},
+				blur: () => {
+					this.isEditorFocused = false;
+				},
+			}),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
 
