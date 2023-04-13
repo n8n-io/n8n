@@ -154,7 +154,7 @@ export class SamlService {
 				relations: ['globalRole', 'authIdentities'],
 			});
 			if (user) {
-				// Login path for existing users that are fully set up
+				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
 				if (
 					user.authIdentities.find(
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
@@ -168,10 +168,11 @@ export class SamlService {
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
+					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
-						onboardingRequired: true,
+						onboardingRequired,
 					};
 				}
 			} else {
