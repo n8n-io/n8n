@@ -7,7 +7,8 @@
     "name": "Mutasem Aldmour",
     "email": "mutasem@n8n.io"
   },
-  "main": "src/main.js",
+  "main": "src/main.ts",
+  "import": "src/main.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"

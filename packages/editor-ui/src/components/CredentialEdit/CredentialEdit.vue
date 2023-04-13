@@ -143,7 +143,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants
 import { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import { getCredentialPermissions, IPermissions } from '@/permissions';
-import { IMenuItem } from 'n8n-design-system';
+import { createEventBus, IMenuItem } from 'n8n-design-system';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -195,7 +195,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			nodeAccess: {} as NodeAccessMap,
 			isDeleting: false,
 			isSaving: false,
@@ -645,7 +645,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 		},
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 
 		getParentTypes(name: string): string[] {
