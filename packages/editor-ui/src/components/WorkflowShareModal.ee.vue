@@ -123,7 +123,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -135,7 +134,7 @@ import { IUser, IWorkflowDb, UIState } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
+import { createEventBus, nodeViewEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
@@ -168,7 +167,7 @@ export default mixins(showMessage).extend({
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: true,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
@@ -262,7 +261,7 @@ export default mixins(showMessage).extend({
 			const saveWorkflowPromise = () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-						nodeViewEventBus.$emit('saveWorkflow', () => {
+						nodeViewEventBus.emit('saveWorkflow', () => {
 							resolve(this.workflow.id);
 						});
 					} else {
@@ -299,7 +298,7 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
 			} finally {
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 				this.loading = false;
 			}
 		},
@@ -428,7 +427,7 @@ export default mixins(showMessage).extend({
 					console.error(failure);
 				}
 			});
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		trackTelemetry(data: ITelemetryTrackProperties) {
 			this.$telemetry.track('User selected sharee to remove', {
