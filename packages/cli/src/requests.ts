@@ -386,19 +386,3 @@ export type BinaryDataRequest = AuthenticatedRequest<
 		mimeType?: string;
 	}
 >;
-
-// ----------------------------------
-//              /sso
-// ----------------------------------
-
-export declare namespace SSO {
-	export type AcsRequest = AuthlessRequest<
-		{},
-		{},
-		{
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			RelayState?: string;
-		},
-		{}
-	>;
-}
