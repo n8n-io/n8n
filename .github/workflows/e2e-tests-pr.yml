@@ -7,24 +7,10 @@ on:
       - 'master'
 
 jobs:
-  # We disable this for now because cancelling runs makes the Cypress Cloud tests to hang.
-  # cancel-previous-runs:
-  #   runs-on: ubuntu-latest
-  #   name: 'Cancel previous e2e test runs'
-  #   strategy:
-  #     matrix:
-  #       node-version: [16.x]
-
-  #   steps:
-  #     - name: 'Cancel previous runs'
-  #       uses: styfle/cancel-workflow-action@0.9.0
-  #       with:
-  #         access_token: ${{ github.token }}
-
   run-e2e-tests:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
-    if: ${{ github.event.review.state == 'approved' }}
+    if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'community') }}
     with:
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
@@ -40,7 +26,7 @@ jobs:
     if: always()
     steps:
       - name: E2E success comment
-        if: needs.run-e2e-tests.result == 'success'
+        if: ${{!contains(github.event.pull_request.labels.*.name, 'community') || needs.run-e2e-tests.result == 'success' }}
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -56,6 +42,10 @@ jobs:
           body: |
             :warning: Some Cypress E2E specs are failing, please fix them before merging
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Success job if community PR
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'community') }}
+        run: exit 0
 
       - name: Fail job if run-e2e-tests failed
         if: needs.run-e2e-tests.result == 'failure'
