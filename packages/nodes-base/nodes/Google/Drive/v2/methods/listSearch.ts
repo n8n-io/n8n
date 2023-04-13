@@ -4,6 +4,7 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 import { googleApiRequest } from '../transport';
+import { RlcDefaults } from '../helpers/interfaces';
 
 interface GoogleDriveFilesItem {
 	id: string;
@@ -62,8 +63,8 @@ export async function folderSearch(
 
 	const results: INodeListSearchItems[] = [
 		{
-			name: '/',
-			value: 'root',
+			name: RlcDefaults.Folder,
+			value: RlcDefaults.Folder,
 		},
 	];
 
@@ -95,8 +96,8 @@ export async function driveSearch(
 
 	const results: INodeListSearchItems[] = [
 		{
-			name: 'My Drive',
-			value: 'root',
+			name: RlcDefaults.Drive,
+			value: RlcDefaults.Drive,
 		},
 	];
 

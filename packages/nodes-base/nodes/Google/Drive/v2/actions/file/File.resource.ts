@@ -86,7 +86,7 @@ export const description: INodeProperties[] = [
 		...fileRLC,
 		displayOptions: {
 			show: {
-				operation: ['download', 'copy', 'update', 'deleteFile', 'share'],
+				operation: ['download', 'update', 'deleteFile', 'share'],
 				resource: ['file'],
 			},
 		},
@@ -104,7 +104,7 @@ export const description: INodeProperties[] = [
 		...fileAndFolderOptions,
 		displayOptions: {
 			show: {
-				operation: ['copy', 'list', 'share', 'create'],
+				operation: ['list', 'share', 'create'],
 				resource: ['file'],
 			},
 		},

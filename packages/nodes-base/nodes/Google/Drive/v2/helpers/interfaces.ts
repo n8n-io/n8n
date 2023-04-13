@@ -10,3 +10,8 @@ export type SearchFilter = {
 	whatToSearch: 'all' | 'files' | 'folders';
 	fileTypes?: string[];
 };
+
+export const enum RlcDefaults {
+	Drive = 'My Drive',
+	Folder = '/',
+}

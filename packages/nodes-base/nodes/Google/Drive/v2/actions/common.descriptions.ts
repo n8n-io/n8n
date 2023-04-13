@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { RlcDefaults } from '../helpers/interfaces';
 
 export const fileRLC: INodeProperties = {
 	displayName: 'File',
@@ -120,7 +121,7 @@ export const driveRLC: INodeProperties = {
 	displayName: 'Drive',
 	name: 'driveId',
 	type: 'resourceLocator',
-	default: { mode: 'list', value: '' },
+	default: { mode: 'list', value: RlcDefaults.Drive },
 	required: true,
 	hint: 'The Google Drive drive to operate on',
 	modes: [

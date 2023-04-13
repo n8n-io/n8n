@@ -6,6 +6,7 @@ import { driveRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { prepareQueryString } from '../../helpers/utils';
 import type { SearchFilter } from '../../helpers/interfaces';
+import { RlcDefaults } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -285,28 +286,20 @@ const properties: INodeProperties[] = [
 			{
 				displayName: 'Spaces',
 				name: 'spaces',
-				type: 'multiOptions',
+				type: 'options',
 				options: [
 					{
-						name: '[All]',
-						value: '*',
-						description: 'All spaces',
-					},
-					{
-						name: 'appDataFolder',
+						name: 'App Data Folder',
 						value: 'appDataFolder',
+						description: "Search for files or folders in the application's hidden app data folder",
 					},
 					{
 						name: 'Drive',
 						value: 'drive',
-					},
-					{
-						name: 'Photos',
-						value: 'photos',
+						description: "The user's 'My Drive' folder",
 					},
 				],
-				default: [],
-				description: 'The spaces to operate on',
+				default: 'drive',
 			},
 			{
 				displayName: 'Corpora',
@@ -357,9 +350,14 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const searchMethod = this.getNodeParameter('searchMethod', i) as string;
 
-	let queryString = this.getNodeParameter('queryString', i) as string;
+	const query = [];
+
+	const queryString = this.getNodeParameter('queryString', i) as string;
+
 	if (searchMethod === 'name') {
-		queryString = `name contains '${queryString}'`;
+		query.push(`name contains '${queryString}'`);
+	} else {
+		query.push(queryString);
 	}
 
 	const filter = this.getNodeParameter('filter.values', i, {}) as SearchFilter;
@@ -368,19 +366,19 @@ export async function execute(
 	const returnedTypes: string[] = [];
 
 	if (Object.keys(filter)) {
-		if (filter.folderId.value !== 'root') {
-			queryString += ` and '${filter.folderId.value}' in parents`;
+		if (filter.folderId.value !== RlcDefaults.Folder) {
+			query.push(`'${filter.folderId.value}' in parents`);
 		}
 
-		if (filter.driveId.value !== 'root') {
+		if (filter.driveId.value !== RlcDefaults.Drive) {
 			driveId = filter.driveId.value;
 		}
 
 		if (filter.whatToSearch === 'folders') {
-			queryString += " and mimeType = 'application/vnd.google-apps.folder'";
+			query.push("mimeType = 'application/vnd.google-apps.folder'");
 		} else {
 			if (filter.whatToSearch === 'files') {
-				queryString += " and mimeType != 'application/vnd.google-apps.folder'";
+				query.push("mimeType != 'application/vnd.google-apps.folder'");
 			}
 
 			if (filter?.fileTypes?.length && !filter.fileTypes.includes('*')) {
@@ -400,31 +398,26 @@ export async function execute(
 	}
 
 	if (returnedTypes.length) {
-		queryString += ` and (${returnedTypes.join(' or ')})`;
+		query.push(`(${returnedTypes.join(' or ')})`);
 	}
 
 	const includeTrashed = this.getNodeParameter('options.includeTrashed', i, false) as boolean;
-	queryString += includeTrashed ? '' : ' and trashed = false';
+	query.push(includeTrashed ? '' : 'trashed = false');
 
 	const queryFields = prepareQueryString(options.fields as string[]);
 
 	const pageSize = this.getNodeParameter('maxResults', i);
 
-	let querySpaces: string | string[] = this.getNodeParameter('options.spaces', i, '') as string[];
-	if (querySpaces.includes('*')) {
-		querySpaces = 'appDataFolder, drive, photos';
-	} else {
-		querySpaces = querySpaces.join(', ');
-	}
+	const querySpaces: string = this.getNodeParameter('options.spaces', i, '') as string;
 
 	const queryCorpora = this.getNodeParameter('options.corpora', i, '') as string;
 
 	const qs: IDataObject = {
 		pageSize,
-		orderBy: 'modifiedTime',
+		// orderBy: 'modifiedTime',
 		fields: `nextPageToken, files(${queryFields})`,
 		spaces: querySpaces,
-		q: queryString,
+		q: query.filter((q) => q).join(' and '),
 		includeItemsFromAllDrives: queryCorpora !== '' || driveId !== '',
 		supportsAllDrives: queryCorpora !== '' || driveId !== '',
 	};
