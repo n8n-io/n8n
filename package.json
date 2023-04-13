@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.222.1",
+  "version": "0.224.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -47,7 +47,7 @@
     "jest": "^29.5.0",
     "jest-environment-jsdom": "^29.5.0",
     "jest-mock": "^29.5.0",
-    "jest-mock-extended": "^3.0.3",
+    "jest-mock-extended": "^3.0.4",
     "nock": "^13.2.9",
     "node-fetch": "^2.6.7",
     "p-limit": "^3.1.0",
@@ -56,10 +56,10 @@
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^1.14.0",
     "supertest": "^6.3.3",
-    "ts-jest": "^29.0.5",
+    "ts-jest": "^29.1.0",
     "tsc-watch": "^6.0.0",
-    "typescript": "*",
-    "turbo": "1.8.8"
+    "turbo": "1.8.8",
+    "typescript": "*"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -78,13 +78,15 @@
       "prettier": "^2.8.3",
       "tslib": "^2.5.0",
       "ts-node": "^10.9.1",
-      "typescript": "^5.0.2",
+      "typescript": "^5.0.3",
+      "xml2js": "^0.5.0",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
     },
     "patchedDependencies": {
       "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
-      "typedi@0.10.0": "patches/typedi@0.10.0.patch"
+      "typedi@0.10.0": "patches/typedi@0.10.0.patch",
+      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch"
     }
   }
 }

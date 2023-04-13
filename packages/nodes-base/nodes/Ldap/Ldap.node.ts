@@ -170,6 +170,7 @@ export class Ldap implements INodeType {
 
 				const baseDN = this.getNodeParameter('baseDN', 0) as string;
 				const results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
@@ -257,6 +258,7 @@ export class Ldap implements INodeType {
 
 				const baseDN = this.getNodeParameter('dn', 0) as string;
 				const results = await client.search(baseDN, { sizeLimit: 1, paged: false });
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
@@ -324,7 +326,7 @@ export class Ldap implements INodeType {
 					}),
 				];
 			} else {
-				throw new NodeOperationError(this.getNode(), error, {});
+				throw new NodeOperationError(this.getNode(), error as Error, {});
 			}
 		}
 

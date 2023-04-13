@@ -60,6 +60,7 @@ import { ABOUT_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { createEventBus } from '@/event-bus';
 
 export default Vue.extend({
 	name: 'About',
@@ -69,7 +70,7 @@ export default Vue.extend({
 	data() {
 		return {
 			ABOUT_MODAL_KEY,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
@@ -77,7 +78,7 @@ export default Vue.extend({
 	},
 	methods: {
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 	},
 });

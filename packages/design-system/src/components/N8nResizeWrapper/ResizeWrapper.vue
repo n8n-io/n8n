@@ -4,7 +4,7 @@
 			v-for="direction in enabledDirections"
 			:key="direction"
 			:data-dir="direction"
-			:class="[$style.resizer, $style[direction]]"
+			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
 			@mousedown="resizerMove"
 		/>
 		<slot></slot>
@@ -13,7 +13,7 @@
 
 <script lang="ts">
 /* eslint-disable @typescript-eslint/unbound-method */
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
@@ -46,7 +46,7 @@ const directionsCursorMaps: { [key: string]: string } = {
 	bottomRight: 'se-resize',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-resize',
 	props: {
 		isResizingEnabled: {
@@ -55,15 +55,19 @@ export default Vue.extend({
 		},
 		height: {
 			type: Number,
+			default: 0,
 		},
 		width: {
 			type: Number,
+			default: 0,
 		},
 		minHeight: {
 			type: Number,
+			default: 0,
 		},
 		minWidth: {
 			type: Number,
+			default: 0,
 		},
 		scale: {
 			type: Number,
@@ -71,10 +75,11 @@ export default Vue.extend({
 		},
 		gridSize: {
 			type: Number,
+			default: 20,
 		},
 		supportedDirections: {
-			type: Array,
-			default: () => [],
+			type: Array as PropType<string[]>,
+			default: (): string[] => [],
 		},
 	},
 	data() {
@@ -90,7 +95,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		enabledDirections() {
+		enabledDirections(): string[] {
 			const availableDirections = Object.keys(directionsCursorMaps);
 
 			if (!this.isResizingEnabled) return [];
