@@ -15,7 +15,7 @@ import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import { isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
-import { AuthenticatedRequest } from '@/requests';
+import { SSO, AuthenticatedRequest } from '@/requests';
 import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
@@ -83,7 +83,7 @@ export class SamlController {
 	 * Assertion Consumer Service endpoint
 	 */
 	@Get(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
-	async acsGet(req: express.Request, res: express.Response) {
+	async acsGet(req: SSO.AcsRequest, res: express.Response) {
 		return this.acsHandler(req, res, 'redirect');
 	}
 
@@ -92,7 +92,7 @@ export class SamlController {
 	 * Assertion Consumer Service endpoint
 	 */
 	@Post(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
-	async acsPost(req: express.Request, res: express.Response) {
+	async acsPost(req: SSO.AcsRequest, res: express.Response) {
 		return this.acsHandler(req, res, 'post');
 	}
 
@@ -101,11 +101,10 @@ export class SamlController {
 	 * Available if SAML is licensed, even if not enabled to run connection tests
 	 * For test connections, returns status 202 if SAML is not enabled
 	 */
-	private async acsHandler(req: express.Request, res: express.Response, binding: SamlLoginBinding) {
+	private async acsHandler(req: SSO.AcsRequest, res: express.Response, binding: SamlLoginBinding) {
 		const loginResult = await this.samlService.handleSamlLogin(req, binding);
 		if (loginResult) {
 			// return attributes if this is a test connection
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (req.body.RelayState && req.body.RelayState === getServiceProviderConfigTestReturnUrl()) {
 				return res.status(202).send(loginResult.attributes);
 			}
