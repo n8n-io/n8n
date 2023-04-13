@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ComponentPublicInstance, computed, nextTick, onMounted, PropType, ref } from 'vue';
+import { ComponentPublicInstance, computed, nextTick, onMounted, PropType, ref, watch } from 'vue';
 import { EnvironmentVariable, IValidator, Rule, RuleGroup, Validatable } from '@/Interface';
 import { useI18n, useToast, useCopyToClipboard } from '@/composables';
 import { EnterpriseEditionFeature } from '@/constants';
@@ -39,7 +39,7 @@ const formValid = computed(() => {
 const keyInputRef = ref<ComponentPublicInstance & { inputRef?: HTMLElement }>();
 const valueInputRef = ref<HTMLElement>();
 
-const usage = computed(() => `$vars.${modelValue.value.key || props.data.key}`);
+const usage = ref(`$vars.${props.data.key}`);
 
 const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
@@ -75,6 +75,21 @@ const keyValidationRules: Array<Rule | RuleGroup> = [
 const valueValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 220 } },
 ];
+
+watch(
+	() => modelValue.value.key,
+	() => {
+		nextTick(() => {
+			if (formValidationStatus.value.key) {
+				updateUsageSyntax();
+			}
+		});
+	},
+);
+
+function updateUsageSyntax() {
+	usage.value = `$vars.${modelValue.value.key || props.data.key}`;
+}
 
 async function onCancel() {
 	modelValue.value = { ...props.data };
@@ -154,7 +169,9 @@ function focusFirstInput() {
 		<td class="variables-usage-column">
 			<div>
 				<n8n-tooltip placement="top">
-					<span v-if="data.key" :class="$style.usageSyntax" @click="onUsageClick">{{ usage }}</span>
+					<span v-if="modelValue.key && usage" :class="$style.usageSyntax" @click="onUsageClick">{{
+						usage
+					}}</span>
 					<template #content>
 						{{ i18n.baseText('variables.row.usage.copyToClipboard') }}
 					</template>
