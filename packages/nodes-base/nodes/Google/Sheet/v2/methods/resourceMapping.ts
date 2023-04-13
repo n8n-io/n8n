@@ -8,7 +8,7 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const fieldsToMatch = (this.getNodeParameter('columns.match', 0) as string[]) || [];
+	const fieldsToMatch = (this.getNodeParameter('columns.matchingColumns', 0) as string[]) || [];
 	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
@@ -28,7 +28,7 @@ export async function getMappingColumns(
 		fields: columns.map((col) => ({
 			id: col,
 			displayName: col,
-			match: false, //fieldsToMatch.includes(col),
+			match: fieldsToMatch.includes(col),
 			required: false,
 			defaultMatch: col === 'id',
 			// TODO: Check with product about this condition before releasing

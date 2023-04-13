@@ -41,7 +41,7 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
-	const fieldsToMatch = (this.getNodeParameter('columns.match', 0) as string[]) || [];
+	const fieldsToMatch = (this.getNodeParameter('columns.matchingColumns', 0) as string[]) || [];
 
 	const { db, pgp, sshClient } = await configurePostgres(credentials);
 
