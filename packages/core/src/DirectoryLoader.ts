@@ -44,6 +44,8 @@ export abstract class DirectoryLoader {
 
 	types: Types = { nodes: [], credentials: [] };
 
+	withLoadOptionsMethods = false; // only for validation during build
+
 	constructor(
 		readonly directory: string,
 		protected readonly excludeNodes: string[] = [],
@@ -103,6 +105,7 @@ export abstract class DirectoryLoader {
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
+			if (this.withLoadOptionsMethods) this.addLoadOptionsMethods(currentVersionNode);
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				Logger.warn(
@@ -111,6 +114,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			if (this.withLoadOptionsMethods) this.addLoadOptionsMethods(tempNode);
 			// Short renaming to avoid type issues
 
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -244,6 +248,12 @@ export abstract class DirectoryLoader {
 		}
 	}
 
+	private addLoadOptionsMethods(node: INodeType) {
+		if (node?.methods?.loadOptions) {
+			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
+		}
+	}
+
 	private fixIconPath(
 		obj: INodeTypeDescription | INodeTypeBaseDescription | ICredentialType,
 		filePath: string,
@@ -296,7 +306,9 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		this.packageName = this.packageJson.name;
 	}
 
-	override async loadAll() {
+	override async loadAll(options = { withLoadOptionsMethods: false }) {
+		this.withLoadOptionsMethods = options.withLoadOptionsMethods;
+
 		await this.readPackageJson();
 
 		const { n8n } = this.packageJson;

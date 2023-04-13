@@ -1369,7 +1369,7 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response.reason as JsonObject);
+					throw new NodeApiError(this.getNode(), response as JsonObject);
 				} else {
 					// Return the actual reason as error
 					returnItems.push({

@@ -10,7 +10,7 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { IsEmail, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
@@ -30,6 +30,15 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
+}
+export class UserSettingsUpdatePayload {
+	@IsBoolean({ message: 'showUserActivationSurvey should be a boolean' })
+	@IsOptional()
+	showUserActivationSurvey: boolean;
+
+	@IsBoolean({ message: 'userActivated should be a boolean' })
+	@IsOptional()
+	userActivated: boolean;
 }
 
 export type AuthlessRequest<
@@ -161,6 +170,7 @@ export declare namespace ExecutionRequest {
 // ----------------------------------
 
 export declare namespace MeRequest {
+	export type UserSettingsUpdate = AuthenticatedRequest<{}, {}, UserSettingsUpdatePayload>;
 	export type UserUpdate = AuthenticatedRequest<{}, {}, UserUpdatePayload>;
 	export type Password = AuthenticatedRequest<
 		{},
