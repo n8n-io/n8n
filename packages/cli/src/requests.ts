@@ -392,7 +392,7 @@ export type BinaryDataRequest = AuthenticatedRequest<
 // ----------------------------------
 
 export declare namespace SSO {
-	export type AcsRequest = AuthenticatedRequest<
+	export type AcsRequest = AuthlessRequest<
 		{},
 		{},
 		{
