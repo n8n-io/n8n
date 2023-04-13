@@ -92,7 +92,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
         <n8n-option-stub value=\\"25\\" label=\\"25\\"></n8n-option-stub>
         <n8n-option-stub value=\\"50\\" label=\\"50\\"></n8n-option-stub>
         <n8n-option-stub value=\\"100\\" label=\\"100\\"></n8n-option-stub>
-        <n8n-option-stub value=\\"15\\" label=\\"All\\"></n8n-option-stub>
+        <n8n-option-stub value=\\"*\\" label=\\"All\\"></n8n-option-stub>
       </n8n-select-stub>
     </div>
   </div>
