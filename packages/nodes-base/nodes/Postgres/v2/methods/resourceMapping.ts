@@ -3,7 +3,7 @@ import type {
 	ResourceMapperFields,
 	ResourceMapperFieldType,
 } from 'n8n-workflow';
-import { getTableSchema } from '../helpers/utils';
+import { getTableSchema, isColumnUnique } from '../helpers/utils';
 import { configurePostgres } from '../transport';
 
 const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
@@ -55,19 +55,22 @@ export async function getMappingColumns(
 
 	try {
 		const columns = await getTableSchema(db, schema, table);
-
-		const columnData: ResourceMapperFields = {
-			fields: columns.map((col) => ({
-				id: col.column_name,
-				displayName: col.column_name,
-				match: fieldsToMatch.includes(col.column_name),
-				required: col.is_nullable !== 'YES',
-				defaultMatch: col.column_name === 'id',
-				display: true,
-				type: mapPostgresType(col.data_type),
-			})),
-		};
-		return columnData;
+		const fields = await Promise.all(
+			columns.map(async (col) => {
+				const canBeUsedToMatch = await isColumnUnique(db, table, col.column_name);
+				return {
+					id: col.column_name,
+					displayName: col.column_name,
+					match: fieldsToMatch.includes(col.column_name),
+					required: col.is_nullable !== 'YES',
+					defaultMatch: col.column_name === 'id',
+					display: true,
+					type: mapPostgresType(col.data_type),
+					canBeUsedToMatch,
+				};
+			}),
+		);
+		return { fields };
 	} catch (error) {
 		throw error;
 	} finally {

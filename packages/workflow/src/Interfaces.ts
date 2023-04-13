@@ -1946,6 +1946,7 @@ export interface ResourceMapperField {
 	displayName: string;
 	match: boolean;
 	defaultMatch: boolean;
+	canBeUsedToMatch?: boolean;
 	required: boolean;
 	display: boolean;
 	type?: ResourceMapperFieldType;

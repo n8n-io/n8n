@@ -80,6 +80,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 			type: (field.type as NodePropertyTypes) || 'string',
 			default: '',
 			required: field.required,
+			description: getFieldDescription(field),
 		};
 	});
 });
@@ -97,6 +98,12 @@ const orderedFields = computed<INodeProperties[]>(() => {
 		});
 	}
 	return fieldsUi.value;
+});
+
+const availableMatchingFields = computed<INodeParameters[]>(() => {
+	return state.fieldsToMap.filter((field) => {
+		return field.canBeUsedToMatch !== false;
+	});
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -181,14 +188,33 @@ async function loadFieldsToMap(): Promise<void> {
 }
 
 function getFieldLabel(field: ResourceMapperField): string {
-	if (
-		showMatchingColumnsSelector.value &&
-		(state.paramValue.matchingColumns || []).includes(field.id)
-	) {
+	if (isMatchingField(field.id)) {
 		const suffix = instance?.proxy.$locale.baseText('resourceMapper.usingToMatch') || '';
 		return `${field.displayName} ${suffix}`;
 	}
 	return field.displayName;
+}
+
+function getFieldDescription(field: ResourceMapperField): string {
+	if (isMatchingField(field.id) && instance) {
+		const singularFieldWord =
+			props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
+			instance?.proxy.$locale.baseText('generic.field');
+		return (
+			instance?.proxy.$locale.baseText('resourceMapper.usingToMatch.description', {
+				interpolate: {
+					fieldWord: singularFieldWord,
+				},
+			}) || ''
+		);
+	}
+	return '';
+}
+
+function isMatchingField(field: string): boolean {
+	return (
+		showMatchingColumnsSelector.value && (state.paramValue.matchingColumns || []).includes(field)
+	);
 }
 
 async function onModeChanged(mode: string): Promise<void> {
@@ -254,7 +280,7 @@ defineExpose({
 		<matching-columns-select
 			v-if="showMatchingColumnsSelector"
 			:label-size="labelSize"
-			:fieldsToMap="state.fieldsToMap"
+			:fieldsToMap="availableMatchingFields"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:inputSize="inputSize"
 			:loading="state.loading"

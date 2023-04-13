@@ -34,6 +34,7 @@ export async function getMappingColumns(
 			// TODO: Check with product about this condition before releasing
 			display: !col.startsWith('_'),
 			type: 'string',
+			canBeUsedToMatch: true,
 		})),
 	};
 
