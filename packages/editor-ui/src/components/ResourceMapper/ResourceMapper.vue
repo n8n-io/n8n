@@ -109,6 +109,10 @@ const showMatchingColumnsSelector = computed<boolean>(() => {
 	return !state.loading && props.parameter.typeOptions?.resourceMapper?.mode !== 'add';
 });
 
+const showMappingModeSelect = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
+});
+
 const matchingColumns = computed<string[]>(() => {
 	if (!showMatchingColumnsSelector) {
 		return [];
@@ -218,7 +222,7 @@ defineExpose({
 <template>
 	<div class="mt-4xs">
 		<mapping-mode-select
-			v-if="props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false"
+			v-if="showMappingModeSelect"
 			:inputSize="inputSize"
 			:labelSize="labelSize"
 			:initialValue="props.parameter.mode || 'defineBelow'"
@@ -247,12 +251,19 @@ defineExpose({
 				:size="labelSize"
 				color="text-dark"
 			/>
-			<n8n-text
-				v-if="
-					props.parameter.typeOptions?.resourceMapper?.supportAutoMap === false && state.loading
-				"
-				>Loading...</n8n-text
-			>
+			<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
+				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				{{
+					$locale.baseText('resourceMapper.fetchingFields.message', {
+						interpolate: {
+							fieldWord:
+								props.parameter.typeOptions?.fieldWords?.plural ||
+								instance?.proxy.$locale.baseText('generic.fields') ||
+								'fields',
+						},
+					})
+				}}
+			</n8n-text>
 			<parameter-input-list
 				v-if="showMappingFields"
 				:parameters="fieldsUi"
