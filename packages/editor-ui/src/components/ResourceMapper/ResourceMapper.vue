@@ -27,6 +27,8 @@ export interface Props {
 	nodeValues: INodeParameters | undefined;
 }
 
+const FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
+
 const instance = getCurrentInstance();
 const nodeTypesStore = useNodeTypesStore();
 
@@ -60,8 +62,9 @@ onMounted(async () => {
 	await initFetching();
 	if (props.nodeValues && props.nodeValues.parameters) {
 		const params = props.nodeValues.parameters as INodeParameters;
-		if ('columns' in params) {
-			state.paramValue = params.columns as ResourceMapperValue;
+		const parameterName = props.parameter.name;
+		if (parameterName in params) {
+			state.paramValue = params[parameterName] as ResourceMapperValue;
 		}
 	}
 });
@@ -77,10 +80,17 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 			required: field.required,
 		};
 	});
+	return fields;
+});
+
+const orderedFields = computed<INodeProperties[]>(() => {
+	const fields = [...fieldsUi.value];
 	// Sort so that matching columns are first
 	if (state.paramValue.matchingColumns) {
 		fields.forEach((field, i) => {
-			if (state.paramValue.matchingColumns.includes(field.name)) {
+			const match = field.name.match(FIELD_NAME_REGEX);
+			const fieldName = match ? match.pop() : field.name;
+			if (state.paramValue.matchingColumns.includes(fieldName || '')) {
 				fields.splice(i, 1);
 				fields.unshift(field);
 			}
@@ -167,7 +177,10 @@ async function loadFieldsToMap(): Promise<void> {
 }
 
 function getFieldLabel(field: ResourceMapperField): string {
-	if ((state.paramValue.matchingColumns || []).includes(field.id)) {
+	if (
+		showMatchingColumnsSelector.value &&
+		(state.paramValue.matchingColumns || []).includes(field.id)
+	) {
 		const suffix = instance?.proxy.$locale.baseText('resourceMapper.usingToMatch') || '';
 		return `${field.displayName} ${suffix}`;
 	}
@@ -194,7 +207,7 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	if (isResourceMapperValue(updateInfo.value)) {
 		// Extract the name from the path
-		const match = updateInfo.name.match(/.value\[\"(.+)\"\]/);
+		const match = updateInfo.name.match(FIELD_NAME_REGEX);
 		if (match) {
 			const name = match.pop();
 			if (name) {
@@ -214,7 +227,7 @@ function emitValueChanged(): void {
 }
 
 defineExpose({
-	fieldsUi,
+	orderedFields,
 	state,
 });
 </script>
@@ -266,7 +279,7 @@ defineExpose({
 			</n8n-text>
 			<parameter-input-list
 				v-if="showMappingFields"
-				:parameters="fieldsUi"
+				:parameters="orderedFields"
 				:nodeValues="nodeValues"
 				:isReadOnly="false"
 				@valueChanged="fieldValueChanged"
