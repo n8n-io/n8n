@@ -14,7 +14,7 @@ export default defineComponent({
 		N8nOption,
 		N8nPagination,
 	},
-	emits: ['update:currentPage'],
+	emits: ['update:currentPage', 'update:rowsPerPage'],
 	props: {
 		columns: {
 			type: Array as PropType<DatatableColumn[]>,
@@ -33,7 +33,7 @@ export default defineComponent({
 			default: true,
 		},
 		rowsPerPage: {
-			type: Number,
+			type: [Number, String] as PropType<number | '*'>,
 			default: 10,
 		},
 	},
@@ -42,10 +42,13 @@ export default defineComponent({
 		const rowsPerPageOptions = ref([10, 25, 50, 100]);
 
 		const style = useCssModule();
-		const currentRowsPerPage = ref(props.rowsPerPage);
 
 		const totalPages = computed(() => {
-			return Math.ceil(props.rows.length / currentRowsPerPage.value);
+			if (props.rowsPerPage === '*') {
+				return 1;
+			}
+
+			return Math.ceil(props.rows.length / props.rowsPerPage);
 		});
 
 		const totalRows = computed(() => {
@@ -53,8 +56,12 @@ export default defineComponent({
 		});
 
 		const visibleRows = computed(() => {
-			const start = (props.currentPage - 1) * currentRowsPerPage.value;
-			const end = start + currentRowsPerPage.value;
+			if (props.rowsPerPage === '*') {
+				return props.rows;
+			}
+
+			const start = (props.currentPage - 1) * props.rowsPerPage;
+			const end = start + props.rowsPerPage;
 
 			return props.rows.slice(start, end);
 		});
@@ -75,10 +82,10 @@ export default defineComponent({
 			emit('update:currentPage', value);
 		}
 
-		function onRowsPerPageChange(value: number) {
-			currentRowsPerPage.value = value;
+		function onRowsPerPageChange(value: number | '*') {
+			emit('update:rowsPerPage', value);
 
-			const maxPage = Math.ceil(totalRows.value / currentRowsPerPage.value);
+			const maxPage = value === '*' ? 1 : Math.ceil(totalRows.value / value);
 			if (maxPage < props.currentPage) {
 				onUpdateCurrentPage(maxPage);
 			}
@@ -100,7 +107,6 @@ export default defineComponent({
 			totalPages,
 			totalRows,
 			visibleRows,
-			currentRowsPerPage,
 			rowsPerPageOptions,
 			getTdValue,
 			getTrClass,
@@ -146,7 +152,7 @@ export default defineComponent({
 				v-if="totalPages > 1"
 				background
 				:pager-count="5"
-				:page-size="currentRowsPerPage"
+				:page-size="rowsPerPage"
 				layout="prev, pager, next"
 				:total="totalRows"
 				:currentPage="currentPage"
@@ -156,13 +162,18 @@ export default defineComponent({
 			<div :class="$style.pageSizeSelector">
 				<n8n-select
 					size="mini"
-					:value="currentRowsPerPage"
+					:value="rowsPerPage"
 					@input="onRowsPerPageChange"
 					popper-append-to-body
 				>
 					<template #prepend>{{ t('datatable.pageSize') }}</template>
-					<n8n-option v-for="size in rowsPerPageOptions" :key="size" :label="size" :value="size" />
-					<n8n-option :label="`All`" :value="totalRows"> </n8n-option>
+					<n8n-option
+						v-for="size in rowsPerPageOptions"
+						:key="size"
+						:label="`${size}`"
+						:value="size"
+					/>
+					<n8n-option :label="`All`" value="*"> </n8n-option>
 				</n8n-select>
 			</div>
 		</div>

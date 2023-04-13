@@ -141,7 +141,9 @@
 						:columns="typeProps.columns"
 						:rows="filteredAndSortedSubviewResources"
 						:currentPage="currentPage"
+						:rowsPerPage="rowsPerPage"
 						@update:currentPage="setCurrentPage"
+						@update:rowsPerPage="setRowsPerPage"
 					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
@@ -292,6 +294,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			sortBy: this.sortOptions[0],
 			hasFilters: false,
 			currentPage: 1,
+			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
 		};
@@ -388,6 +391,9 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		setCurrentPage(page: number) {
 			this.currentPage = page;
+		},
+		setRowsPerPage(rowsPerPage: number | '*') {
+			this.rowsPerPage = rowsPerPage;
 		},
 		resetFilters() {
 			Object.keys(this.filters).forEach((key) => {

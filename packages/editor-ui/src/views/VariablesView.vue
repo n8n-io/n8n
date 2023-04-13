@@ -119,9 +119,6 @@ function addTemporaryVariable() {
 		value: '',
 	};
 
-	allVariables.value.unshift(temporaryVariable);
-	editMode.value[temporaryVariable.id] = true;
-
 	if (layoutRef.value) {
 		// Reset scroll position
 		if (layoutRef.value.$refs.listWrapperRef) {
@@ -133,6 +130,9 @@ function addTemporaryVariable() {
 			layoutRef.value.setCurrentPage(1);
 		}
 	}
+
+	allVariables.value.unshift(temporaryVariable);
+	editMode.value[temporaryVariable.id] = true;
 
 	telemetry.track('User clicked add variable button');
 }
