@@ -20,12 +20,12 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import { Tooltip as ElTooltip } from 'element-ui';
 import type { IN8nButton } from '@/types';
 import N8nButton from '../N8nButton';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-tooltip',
 	inheritAttrs: false,
 	components: {

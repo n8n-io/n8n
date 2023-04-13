@@ -51,7 +51,11 @@ function userToPayload(user: User): {
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
 
-	constructor(private telemetry: Telemetry, private nodeTypes: NodeTypes) {}
+	constructor(
+		private telemetry: Telemetry,
+		private nodeTypes: NodeTypes,
+		private roleService: RoleService,
+	) {}
 
 	async init(instanceId: string) {
 		this.instanceId = instanceId;
@@ -155,7 +159,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await RoleService.getUserRoleForWorkflow(user.id, workflow.id);
+			const role = await this.roleService.getUserRoleForWorkflow(user.id, workflow.id);
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
@@ -342,8 +346,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id);
+					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}

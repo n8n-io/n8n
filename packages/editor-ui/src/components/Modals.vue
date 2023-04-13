@@ -15,6 +15,10 @@
 			<AboutModal />
 		</ModalRoot>
 
+		<ModalRoot :name="ASK_AI_MODAL_KEY">
+			<AskAiModal />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -142,11 +146,13 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	ASK_AI_MODAL_KEY,
 	USER_ACTIVATION_SURVEY_MODAL,
 	MFA_SETUP_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import AskAiModal from './AskAiModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -175,6 +181,7 @@ export default Vue.extend({
 	name: 'Modals',
 	components: {
 		AboutModal,
+		AskAiModal,
 		ActivationModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
@@ -206,6 +213,7 @@ export default Vue.extend({
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
+		ASK_AI_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
