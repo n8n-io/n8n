@@ -344,7 +344,7 @@ export const variablesOptions = () => {
 			doc: {
 				name: variable.key,
 				returnType: 'string',
-				description: i18n.baseText('codeNodeEditor.completer.variables.description'),
+				description: i18n.baseText('codeNodeEditor.completer.$vars.varName'),
 				docURL: 'https://docs.n8n.io/environments/variables/',
 			},
 		}),
