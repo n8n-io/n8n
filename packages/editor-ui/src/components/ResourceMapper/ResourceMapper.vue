@@ -287,13 +287,7 @@ defineExpose({
 			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
-		<div class="mt-xs" v-if="showMappingFields">
-			<n8n-input-label
-				:label="$locale.baseText('resourceMapper.valuesToSend.label')"
-				:underline="true"
-				:size="labelSize"
-				color="text-dark"
-			/>
+		<div class="mt-xs">
 			<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 				{{
@@ -307,6 +301,13 @@ defineExpose({
 					})
 				}}
 			</n8n-text>
+			<n8n-input-label
+				v-if="showMappingFields"
+				:label="$locale.baseText('resourceMapper.valuesToSend.label')"
+				:underline="true"
+				:size="labelSize"
+				color="text-dark"
+			/>
 			<parameter-input-list
 				:parameters="orderedFields"
 				:nodeValues="nodeValues"
