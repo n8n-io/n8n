@@ -93,6 +93,42 @@ export class CompareDatasets implements INodeType {
 						description: 'Output contains all data (but structure more complex)',
 					},
 				],
+				displayOptions: {
+					show: {
+						'@version': [1, 2],
+					},
+				},
+			},
+			{
+				displayName: 'When There Are Differences',
+				name: 'resolve',
+				type: 'options',
+				default: 'includeBoth',
+				options: [
+					{
+						name: 'Use Input A Version',
+						value: 'preferInput1',
+					},
+					{
+						name: 'Use Input B Version',
+						value: 'preferInput2',
+					},
+					{
+						name: 'Use a Mix of Versions',
+						value: 'mix',
+						description: 'Output uses different inputs for different fields',
+					},
+					{
+						name: 'Include Both Versions',
+						value: 'includeBoth',
+						description: 'Output contains all data (but structure more complex)',
+					},
+				],
+				displayOptions: {
+					hide: {
+						'@version': [1, 2],
+					},
+				},
 			},
 			{
 				displayName: 'Fuzzy Compare',

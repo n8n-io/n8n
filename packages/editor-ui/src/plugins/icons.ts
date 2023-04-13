@@ -55,6 +55,7 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFingerprint,
 	faFlask,
 	faFolderOpen,
 	faFont,
@@ -125,6 +126,7 @@ import {
 	faVideo,
 	faTree,
 	faStickyNote as faSolidStickyNote,
+	faUserLock,
 } from '@fortawesome/free-solid-svg-icons';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -188,6 +190,7 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFingerprint);
 addIcon(faFlask);
 addIcon(faFolderOpen);
 addIcon(faFont);
@@ -258,5 +261,6 @@ addIcon(faUserFriends);
 addIcon(faUsers);
 addIcon(faVideo);
 addIcon(faTree);
+addIcon(faUserLock);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

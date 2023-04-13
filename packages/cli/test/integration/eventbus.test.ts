@@ -3,7 +3,7 @@ import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
@@ -112,7 +112,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	Container.reset();
 	await testDb.terminate();
 	await eventBus.close();
 });
