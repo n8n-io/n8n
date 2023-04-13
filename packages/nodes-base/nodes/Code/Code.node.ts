@@ -1,11 +1,11 @@
-import type {
+import {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	replaceCircularReferences,
 } from 'n8n-workflow';
 import { getSandboxContext, Sandbox } from './Sandbox';
-import { standardizeOutput } from './utils';
 import type { CodeNodeMode } from './utils';
 
 export class Code implements INodeType {
@@ -93,11 +93,7 @@ export class Code implements INodeType {
 				items = [{ json: { error: error.message } }];
 			}
 
-			for (const item of items) {
-				standardizeOutput(item.json);
-			}
-
-			return this.prepareOutputData(items);
+			return this.prepareOutputData(replaceCircularReferences(items));
 		}
 
 		// ----------------------------------
@@ -128,13 +124,13 @@ export class Code implements INodeType {
 
 			if (item) {
 				returnData.push({
-					json: standardizeOutput(item.json),
+					json: item.json,
 					pairedItem: { item: index },
 					...(item.binary && { binary: item.binary }),
 				});
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return this.prepareOutputData(replaceCircularReferences(items));
 	}
 }
