@@ -11,7 +11,7 @@ import {
 	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { computed, getCurrentInstance, onMounted, reactive, ref, watch } from 'vue';
+import { computed, getCurrentInstance, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -40,8 +40,7 @@ const emit = defineEmits<{
 
 const state = reactive({
 	paramValue: {
-		// TODO: Check this
-		mappingMode: props.parameter.mode || 'defineBelow',
+		mappingMode: (props.parameter.default as ResourceMapperValue).mappingMode || 'defineBelow',
 		value: {},
 		matchingColumns: [],
 	} as ResourceMapperValue,
@@ -65,12 +64,15 @@ onMounted(async () => {
 		const parameterName = props.parameter.name;
 		if (parameterName in params) {
 			state.paramValue = params[parameterName] as ResourceMapperValue;
+			if (!state.paramValue.matchingColumns) {
+				state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
+			}
 		}
 	}
 });
 
 const fieldsUi = computed<INodeProperties[]>(() => {
-	const fields = state.fieldsToMap.map((field) => {
+	return state.fieldsToMap.map((field) => {
 		return {
 			displayName: getFieldLabel(field),
 			// Set part of the path to each param name so value can be fetched properly by input parameter list component
@@ -80,23 +82,21 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 			required: field.required,
 		};
 	});
-	return fields;
 });
 
 const orderedFields = computed<INodeProperties[]>(() => {
-	const fields = [...fieldsUi.value];
 	// Sort so that matching columns are first
 	if (state.paramValue.matchingColumns) {
-		fields.forEach((field, i) => {
+		fieldsUi.value.forEach((field, i) => {
 			const match = field.name.match(FIELD_NAME_REGEX);
 			const fieldName = match ? match.pop() : field.name;
 			if (state.paramValue.matchingColumns.includes(fieldName || '')) {
-				fields.splice(i, 1);
-				fields.unshift(field);
+				fieldsUi.value.splice(i, 1);
+				fieldsUi.value.unshift(field);
 			}
 		});
 	}
-	return fields;
+	return fieldsUi.value;
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -116,7 +116,11 @@ const showMappingFields = computed<boolean>(() => {
 });
 
 const showMatchingColumnsSelector = computed<boolean>(() => {
-	return !state.loading && props.parameter.typeOptions?.resourceMapper?.mode !== 'add';
+	return (
+		!state.loading &&
+		props.parameter.typeOptions?.resourceMapper?.mode !== 'add' &&
+		state.fieldsToMap.length > 0
+	);
 });
 
 const showMappingModeSelect = computed<boolean>(() => {
@@ -130,10 +134,10 @@ const matchingColumns = computed<string[]>(() => {
 	if (state.paramValue.matchingColumns && state.paramValue.matchingColumns.length > 0) {
 		return state.paramValue.matchingColumns;
 	}
-	return defaultSelectedColumns.value;
+	return defaultSelectedMatchingColumns.value;
 });
 
-const defaultSelectedColumns = computed<string[]>(() => {
+const defaultSelectedMatchingColumns = computed<string[]>(() => {
 	return state.fieldsToMap.length === 1
 		? [state.fieldsToMap[0].id]
 		: state.fieldsToMap.reduce((acc, field) => {
@@ -257,7 +261,7 @@ defineExpose({
 			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
-		<div class="mt-xs">
+		<div class="mt-xs" v-if="showMappingFields">
 			<n8n-input-label
 				:label="$locale.baseText('resourceMapper.valuesToSend.label')"
 				:underline="true"
@@ -278,7 +282,6 @@ defineExpose({
 				}}
 			</n8n-text>
 			<parameter-input-list
-				v-if="showMappingFields"
 				:parameters="orderedFields"
 				:nodeValues="nodeValues"
 				:isReadOnly="false"
