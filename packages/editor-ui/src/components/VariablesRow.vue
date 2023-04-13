@@ -53,24 +53,23 @@ onMounted(() => {
 	focusFirstInput();
 });
 
-const keyCustomValidators: Record<string, IValidator> = {
-	JSON_KEY: {
-		validate: (value: Validatable) => {
-			if (!/^[a-zA-Z0-9_]+$/.test(`${value}`)) {
-				return {
-					messageKey: 'variables.editing.key.error.jsonKey',
-				};
-			}
-
-			return false;
-		},
-	},
-};
-
 const keyValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'REQUIRED' },
-	{ name: 'JSON_KEY' },
 	{ name: 'MAX_LENGTH', config: { maximum: 50 } },
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: /^[a-zA-Z]/,
+			message: i18n.baseText('variables.editing.key.error.startsWithLetter'),
+		},
+	},
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: /^[a-zA-Z][a-zA-Z0-9_]*$/,
+			message: i18n.baseText('variables.editing.key.error.jsonKey'),
+		},
+	},
 ];
 
 const valueValidationRules: Array<Rule | RuleGroup> = [
@@ -129,7 +128,6 @@ function focusFirstInput() {
 					required
 					validateOnBlur
 					:validationRules="keyValidationRules"
-					:validators="keyCustomValidators"
 					v-model="modelValue.key"
 					ref="keyInputRef"
 					@validate="(value) => onValidate('key', value)"

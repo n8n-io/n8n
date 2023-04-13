@@ -88,6 +88,18 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 			return false;
 		},
 	},
+	MATCH_REGEX: {
+		validate: (value: Validatable, config: { regex: RegExp; message: string }) => {
+			if (!config.regex.test(`${value as string}`)) {
+				return {
+					message: config.message,
+					options: config,
+				};
+			}
+
+			return false;
+		},
+	},
 	DEFAULT_PASSWORD_RULES: {
 		rules: [
 			{

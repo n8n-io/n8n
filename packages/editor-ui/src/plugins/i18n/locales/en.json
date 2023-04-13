@@ -1616,6 +1616,7 @@
 	"variables.table.usage": "Usage Syntax",
 	"variables.editing.key.placeholder": "Enter a name",
 	"variables.editing.value.placeholder": "Enter a value",
+	"variables.editing.key.error.startsWithLetter": "This field may only start with a letter",
 	"variables.editing.key.error.jsonKey": "This field may contain only letters, numbers, and underscores",
 	"variables.row.button.save": "Save",
 	"variables.row.button.cancel": "Cancel",
