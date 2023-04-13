@@ -19,11 +19,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { Checkbox as ElCheckbox } from 'element-ui';
 import N8nInputLabel from '../N8nInputLabel';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-checkbox',
 	components: {
 		ElCheckbox,

@@ -33,7 +33,7 @@
 
 <script lang="ts">
 import { Select as ElSelect } from 'element-ui';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 export interface IProps {
 	size?: string;
@@ -41,7 +41,7 @@ export interface IProps {
 	popperClass?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect,

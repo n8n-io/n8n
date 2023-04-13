@@ -1,12 +1,11 @@
 import defaultLang from '../locale/lang/en';
-import Vue from 'vue';
 import Format from './format';
 
 import ElementLocale from 'element-ui/lib/locale';
 import ElementLang from 'element-ui/lib/locale/lang/en';
 ElementLocale.use(ElementLang);
 
-const format = Format(Vue);
+const format = Format();
 let lang = defaultLang;
 
 let i18nHandler;
