@@ -81,17 +81,15 @@ const isValidDate = (str: string) =>
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
 export function jsonToDocument(value: string | number | IDataObject | IDataObject[]): IDataObject {
 	if (value === 'true' || value === 'false' || typeof value === 'boolean') {
-		return { booleanValue: value };
+		if (typeof value === 'string') {
+			return { booleanValue: value === 'true' };
+		}
+
+		return { booleanValue: Boolean(value) };
 	} else if (value === null) {
 		return { nullValue: null };
-	} else if (!isNaN(value as number)) {
-		if (value.toString().indexOf('.') !== -1) {
-			return { doubleValue: value };
-		} else {
-			return { integerValue: value };
-		}
 	} else if (isValidDate(value as string)) {
-		const date = new Date(Date.parse(value as string));
+		const date = moment(value as string, ['YYYY-MM-DD HH:mm:ss Z', moment.ISO_8601], true);
 		return { timestampValue: date.toISOString() };
 	} else if (typeof value === 'string') {
 		return { stringValue: value };
@@ -104,6 +102,12 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 			obj[o] = jsonToDocument(value[o] as IDataObject);
 		}
 		return { mapValue: { fields: obj } };
+	} else if (!isNaN(value as number)) {
+		if (value.toString().indexOf('.') !== -1) {
+			return { doubleValue: value };
+		} else {
+			return { integerValue: value };
+		}
 	}
 
 	return {};
