@@ -132,12 +132,16 @@ export const usePostHog = defineStore('posthog', () => {
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
 				addExperimentOverrides();
-				trackExperiments(map);
+				trackExperimentsDebounced(map);
 			});
 		}
 	};
 
-	const trackExperiments = debounce((featureFlags: FeatureFlags) => {
+	const trackExperiments = (featureFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
+	};
+
+	const trackExperimentsDebounced = debounce((featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
 	}, 2000);
 
