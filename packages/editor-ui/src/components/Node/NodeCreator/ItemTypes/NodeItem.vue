@@ -8,6 +8,7 @@
 		:description="subcategory !== '*' ? description : ''"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
+		:is-trigger="isTrigger"
 	>
 		<template #icon>
 			<node-icon :nodeType="nodeType" />
@@ -104,6 +105,9 @@ const displayName = computed<any>(() => {
 	});
 });
 
+const isTrigger = computed<boolean>(() => {
+	return props.nodeType.displayName.includes('Trigger') && props.subcategory !== '*' && !hasActions.value;
+});
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
