@@ -68,6 +68,8 @@ export const useSSOStore = defineStore('sso', () => {
 			...params,
 		});
 
+	const userData = computed(() => usersStore.currentUser);
+
 	return {
 		isLoading,
 		setLoading,
@@ -80,5 +82,6 @@ export const useSSOStore = defineStore('sso', () => {
 		saveSamlConfig,
 		testSamlConfig,
 		updateUser,
+		userData,
 	};
 });
