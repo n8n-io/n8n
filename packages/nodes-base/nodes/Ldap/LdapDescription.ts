@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const ldapFields: INodeProperties[] = [
 	// ----------------------------------
@@ -9,6 +9,7 @@ export const ldapFields: INodeProperties[] = [
 		name: 'dn',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. ou=users,dc=n8n,dc=io',
 		required: true,
 		typeOptions: {
 			alwaysOpenEditWindow: false,
@@ -57,10 +58,11 @@ export const ldapFields: INodeProperties[] = [
 	//         Rename
 	// ----------------------------------
 	{
-		displayName: 'Target DN',
+		displayName: 'New DN',
 		name: 'targetDn',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. cn=nathan,ou=users,dc=n8n,dc=io',
 		required: true,
 		displayOptions: {
 			show: {
@@ -76,7 +78,7 @@ export const ldapFields: INodeProperties[] = [
 		displayName: 'Attributes',
 		name: 'attributes',
 		placeholder: 'Add Attributes',
-		description: 'Add attributes to an object',
+		description: 'Attributes to add to the entry',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -112,12 +114,12 @@ export const ldapFields: INodeProperties[] = [
 		],
 	},
 	// ----------------------------------
-	//         Modify
+	//         Update
 	// ----------------------------------
 	{
-		displayName: 'Modify Attribute',
+		displayName: 'Update Attributes',
 		name: 'attributes',
-		placeholder: 'Modify Attribute',
+		placeholder: 'Update Attributes',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -125,10 +127,10 @@ export const ldapFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['modify'],
+				operation: ['update'],
 			},
 		},
-		description: 'Modify object attributes',
+		description: 'Update entry attributes',
 		default: {},
 		options: [
 			{
@@ -204,6 +206,7 @@ export const ldapFields: INodeProperties[] = [
 		name: 'baseDN',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. ou=users, dc=n8n, dc=io',
 		required: true,
 		displayOptions: {
 			show: {
@@ -227,7 +230,7 @@ export const ldapFields: INodeProperties[] = [
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description: 'LDAP objects to search for',
+		description: 'Directory object class to search for',
 	},
 	{
 		displayName: 'Custom Filter',
@@ -320,11 +323,15 @@ export const ldapFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Attributes',
+				displayName: 'Attribute Names or IDs',
 				name: 'attributes',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated list of attributes to return',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getAttributes',
+				},
+				default: [],
+				description:
+					'Comma-separated list of attributes to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Page Size',

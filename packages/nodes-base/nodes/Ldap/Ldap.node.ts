@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -10,11 +10,11 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
-import { Attribute, Change, Client, ClientOptions } from 'ldapts';
+import type { ClientOptions } from 'ldapts';
+import { Attribute, Change, Client } from 'ldapts';
 import { ldapFields } from './LdapDescription';
 import { BINARY_AD_ATTRIBUTES, resolveBinaryAttributes } from './Helpers';
 
@@ -56,32 +56,32 @@ export class Ldap implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new object',
-						action: 'Create a new object',
+						description: 'Create a new entry in a directory server',
+						action: 'Create a new entry in a directory server',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete an object',
-						action: 'Delete an object',
-					},
-					{
-						name: 'Modify',
-						value: 'modify',
-						description: 'Modify an attribute',
-						action: 'Modify an attribute',
+						description: 'Delete an entry from a directory server',
+						action: 'Delete an entry from a directory server',
 					},
 					{
 						name: 'Rename',
 						value: 'rename',
-						description: 'Raname an attribute',
-						action: 'Raname an attribute',
+						description: 'Rename the DN of an existing entry in the server',
+						action: 'Rename the DN of an existing entry a directory server',
 					},
 					{
 						name: 'Search',
 						value: 'search',
 						description: 'Search LDAP with a filter',
 						action: 'Search LDAP with a filter',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Add, Replace and Remove Attributes',
+						action: 'Add, Replace and Remove Attributes',
 					},
 				],
 				default: 'search',
@@ -381,7 +381,7 @@ export class Ldap implements INodeType {
 						json: { dn: targetDn, result: 'success' },
 						pairedItem: { item: itemIndex },
 					});
-				} else if (operation === 'modify') {
+				} else if (operation === 'update') {
 					const dn = this.getNodeParameter('dn', itemIndex) as string;
 					const attributes = this.getNodeParameter('attributes', itemIndex, {}) as IDataObject;
 					const changes: Change[] = [];
@@ -427,10 +427,10 @@ export class Ldap implements INodeType {
 						options.paged = { pageSize };
 					}
 
-					// Set attributes to retreive
-					options.attributes = options.attributes
-						? (options.attributes as string).split(',').map((attribute) => attribute.trim())
-						: [];
+					// Set attributes to retrieve
+					if (typeof options.attributes === 'string') {
+						options.attributes = options.attributes.split(',').map((attribute) => attribute.trim());
+					}
 					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
 
 					if (searchFor === 'custom') {
@@ -488,7 +488,7 @@ export class Ldap implements INodeType {
 						error.context.itemIndex = itemIndex;
 						throw error;
 					}
-					throw new NodeOperationError(this.getNode(), error, {
+					throw new NodeOperationError(this.getNode(), error as Error, {
 						itemIndex,
 					});
 				}

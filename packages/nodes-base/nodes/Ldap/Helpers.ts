@@ -1,4 +1,4 @@
-import { Entry } from 'ldapts';
+import type { Entry } from 'ldapts';
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
