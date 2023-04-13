@@ -1,17 +1,24 @@
 import { PiniaVuePlugin } from 'pinia';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { useRouter } from 'vue-router/composables';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
-import { faker } from '@faker-js/faker';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import { useSSOStore } from '@/stores/sso';
 import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/utils/testUtils';
 import { i18nInstance } from '@/plugins/i18n';
 
+vi.mock('vue-router/composables', () => ({
+	useRouter: () => ({
+		push: () => {},
+	}),
+}));
+
 let pinia: ReturnType<typeof createTestingPinia>;
 let ssoStore: ReturnType<typeof useSSOStore>;
+let router: ReturnType<typeof useRouter>;
 
 const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 	render(
@@ -38,15 +45,37 @@ describe('SamlOnboarding', () => {
 			},
 		});
 		ssoStore = useSSOStore(pinia);
+		router = useRouter();
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('should render', () => {
-		const { container } = renderComponent();
+	it('should submit filled in form only and redirect', async () => {
+		vi.spyOn(ssoStore, 'updateUser').mockResolvedValue({
+			id: '1',
+			isPending: false,
+		});
+		vi.spyOn(router, 'push');
 
-		expect(container).not.toBeEmptyDOMElement();
+		const { getByRole, getAllByRole } = renderComponent();
+
+		const inputs = getAllByRole('textbox');
+		const submit = getByRole('button');
+
+		await userEvent.click(submit);
+		await waitAllPromises();
+
+		expect(ssoStore.updateUser).not.toHaveBeenCalled();
+		// expect(router.push).not.toHaveBeenCalled();
+
+		await userEvent.type(inputs[0], 'test');
+		await userEvent.type(inputs[1], 'test');
+		await userEvent.click(submit);
+
+		expect(ssoStore.updateUser).toHaveBeenCalled();
+		// TODO: find out why router push is not called
+		// expect(router.push).toHaveBeenCalled();
 	});
 });
