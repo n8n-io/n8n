@@ -16,9 +16,8 @@ import {
 	isPostUsersId,
 	isUserManagementEnabled,
 } from '@/UserManagement/UserManagementHelper';
-import type { Repository } from 'typeorm';
-import type { User } from '@db/entities/User';
 import { SamlUrls } from '@/sso/saml/constants';
+import type { UserRepository } from '@db/repositories';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -74,7 +73,7 @@ export const setupAuthMiddlewares = (
 	app: Application,
 	ignoredEndpoints: Readonly<string[]>,
 	restEndpoint: string,
-	userRepository: Repository<User>,
+	userRepository: UserRepository,
 ) => {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
 	app.use(cookieParser());

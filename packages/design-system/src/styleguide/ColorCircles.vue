@@ -10,7 +10,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 function hslToHex(h: number, s: number, l: number): string {
 	l /= 100;
@@ -36,7 +36,7 @@ function getHex(hsl: string): string {
 	return hslToHex(colors[0], colors[1], colors[2]);
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'color-circles',
 	data() {
 		return {
@@ -46,16 +46,16 @@ export default Vue.extend({
 	},
 	props: {
 		colors: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 	},
 	created() {
 		const setColors = () => {
-			(this.colors as string[]).forEach((color: string) => {
+			this.colors.forEach((color) => {
 				const style = getComputedStyle(document.body);
 
-				Vue.set(this.hsl, color, style.getPropertyValue(color));
+				this.$set(this.hsl, color, style.getPropertyValue(color));
 			});
 		};
 

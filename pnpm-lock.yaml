@@ -17,6 +17,7 @@ overrides:
   tslib: ^2.5.0
   ts-node: ^10.9.1
   typescript: ^5.0.3
+  xml2js: ^0.5.0
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
 
@@ -870,6 +871,9 @@ importers:
       axios:
         specifier: ^0.21.1
         version: 0.21.4(debug@4.3.2)
+      canvas-confetti:
+        specifier: ^1.6.0
+        version: 1.6.0
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -1000,6 +1004,9 @@ importers:
       '@testing-library/vue':
         specifier: ^5.8.3
         version: 5.8.3(vue-template-compiler@2.7.14)(vue@2.7.14)
+      '@types/canvas-confetti':
+        specifier: ^1.6.0
+        version: 1.6.0
       '@types/dateformat':
         specifier: ^3.0.0
         version: 3.0.1
@@ -1404,14 +1411,14 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       vm2:
-        specifier: ~3.9.5
-        version: 3.9.11
+        specifier: ~3.9.15
+        version: 3.9.15
       xlsx:
         specifier: ^0.17.0
         version: 0.17.5
       xml2js:
-        specifier: ^0.4.23
-        version: 0.4.23
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@types/amqplib':
         specifier: ^0.10.1
@@ -1618,7 +1625,7 @@ importers:
         specifier: ^8.3.2
         version: 8.3.4
       '@types/xml2js':
-        specifier: ^0.4.3
+        specifier: ^0.4.11
         version: 0.4.11
       eslint-plugin-n8n-nodes-base:
         specifier: ^1.12.0
@@ -1678,8 +1685,8 @@ importers:
         specifier: ^2.3.5
         version: 2.3.5
       xml2js:
-        specifier: ^0.4.23
-        version: 0.4.23
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@types/crypto-js':
         specifier: ^4.1.1
@@ -1709,7 +1716,7 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
       '@types/xml2js':
-        specifier: ^0.4.3
+        specifier: ^0.4.11
         version: 0.4.11
 
 packages:
@@ -1861,7 +1868,7 @@ packages:
       tslib: 2.5.0
       tunnel: 0.0.6
       uuid: 8.3.2
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -6016,6 +6023,10 @@ packages:
       '@types/connect': 3.4.35
       '@types/node': 16.18.12
 
+  /@types/canvas-confetti@1.6.0:
+    resolution: {integrity: sha512-Yq6rIccwcco0TLD5SMUrIM7Fk7Fe/C0jmNRxJJCLtAF6gebDkPuUjK5EHedxecm69Pi/aA+It39Ux4OHmFhjRw==}
+    dev: true
+
   /@types/caseless@0.12.2:
     resolution: {integrity: sha512-6ckxMjBBD8URvjB6J3NcnuAn5Pkl7t3TizAg+xdlzzQGSPSmBcXf8KoIH0ua/i+tio+ZRUHEXp0HEmvaR4kt0w==}
     dev: true
@@ -7646,17 +7657,10 @@ packages:
     hasBin: true
     dev: true
 
-  /acorn@8.8.0:
-    resolution: {integrity: sha512-QOxyigPVrpZ2GXT+PFyZTl6TtOFc5egxHIP9IlQ+RbupQuX4RkT/Bee4/kQuC02Xkzg84JcT7oLYtDIQxp+v7w==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-    dev: false
-
   /acorn@8.8.1:
     resolution: {integrity: sha512-7zFpHzhnqYKrkYdUjF1HI1bzd0VygEGX8lFk4k5zVMqHEoES+P+7TKI+EvLO9WVMJ8eekdO0aDEK044xTXwPPA==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-    dev: true
 
   /address@1.2.1:
     resolution: {integrity: sha512-B+6bi5D34+fDYENiH5qOlA0cV2rAGKuWZ9LeyUUehbXy8e0VS9e498yO0Jeeh+iM+6KbfudHTFjXw2MmJD4QRA==}
@@ -8258,7 +8262,7 @@ packages:
       url: 0.10.3
       util: 0.12.4
       uuid: 8.0.0
-      xml2js: 0.4.19
+      xml2js: 0.5.0
     dev: false
 
   /aws-sign2@0.7.0:
@@ -8562,7 +8566,7 @@ packages:
     resolution: {integrity: sha512-tWvcAbh8QPd/lj+yfGZBMY/roof/e2iSXrJbYXYjxVhHQ88D2CF3AxDTdwhb9wcNdHVNbCttaWipchJPEs5r0g==}
     engines: {node: '>=10'}
     dependencies:
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     dev: false
 
   /body-parser@1.20.1:
@@ -8902,6 +8906,10 @@ packages:
   /caniuse-lite@1.0.30001445:
     resolution: {integrity: sha512-8sdQIdMztYmzfTMO6KfLny878Ln9c2M0fc7EH60IjlP4Dc4PiCy7K2Vl3ITmWgOyPgVQKa5x+UP/KqFsxj4mBg==}
     dev: true
+
+  /canvas-confetti@1.6.0:
+    resolution: {integrity: sha512-ej+w/m8Jzpv9Z7W7uJZer14Ke8P2ogsjg4ZMGIuq4iqUOqY2Jq8BNW42iGmNfRwREaaEfFIczLuZZiEVSYNHAA==}
+    dev: false
 
   /capital-case@1.0.4:
     resolution: {integrity: sha512-ds37W8CytHgwnhGGTi88pcPyR15qoNkOpYwmMMfnWqqWgESapLqvDx6huFjQ5vqWSn2Z06173XNA7LtMOeUh1A==}
@@ -10366,7 +10374,7 @@ packages:
       ast-types: 0.13.4
       escodegen: 1.14.3
       esprima: 4.0.1
-      vm2: 3.9.11
+      vm2: 3.9.15
     dev: false
 
   /del@6.1.1:
@@ -18633,7 +18641,7 @@ packages:
     resolution: {integrity: sha512-aqD3E8iavcCdkhVxNDIdg1nkBI17jgqF+9OqPS1orwNaOgySdpvq6B+DoONLhzjzwV8mWg37sb60e4bmLK117A==}
     dependencies:
       entities: 2.2.0
-      xml2js: 0.4.23
+      xml2js: 0.5.0
     dev: false
 
   /run-async@2.4.1:
@@ -20737,7 +20745,7 @@ packages:
       sqlite3: 5.1.6
       tslib: 2.5.0
       uuid: 9.0.0
-      xml2js: 0.4.23
+      xml2js: 0.5.0
       yargs: 17.6.2
     transitivePeerDependencies:
       - supports-color
@@ -21416,12 +21424,12 @@ packages:
       - terser
     dev: true
 
-  /vm2@3.9.11:
-    resolution: {integrity: sha512-PFG8iJRSjvvBdisowQ7iVF580DXb1uCIiGaXgm7tynMR1uTBlv7UJlB1zdv5KJ+Tmq1f0Upnj3fayoEOPpCBKg==}
+  /vm2@3.9.15:
+    resolution: {integrity: sha512-XqNqknHGw2avJo13gbIwLNZUumvrSHc9mLqoadFZTpo3KaNEJoe1I0lqTFhRXmXD7WkLyG01aaraXdXT0pa4ag==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:
-      acorn: 8.8.0
+      acorn: 8.8.1
       acorn-walk: 8.2.0
     dev: false
 
@@ -22152,15 +22160,8 @@ packages:
     engines: {node: '>=12'}
     dev: true
 
-  /xml2js@0.4.19:
-    resolution: {integrity: sha512-esZnJZJOiJR9wWKMyuvSE1y6Dq5LCuJanqhxslH2bxM6duahNZ+HMpCLhBQGZkbX6xRf8x1Y2eJlgt2q3qo49Q==}
-    dependencies:
-      sax: 1.2.4
-      xmlbuilder: 9.0.7
-    dev: false
-
-  /xml2js@0.4.23:
-    resolution: {integrity: sha512-ySPiMjM0+pLDftHgXY4By0uswI3SPKLDw/i3UXbnO8M/p28zqexCUoPmQFrYD+/1BzhGJSs2i1ERWKJAtiLrug==}
+  /xml2js@0.5.0:
+    resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
     engines: {node: '>=4.0.0'}
     dependencies:
       sax: 1.2.4
@@ -22173,11 +22174,6 @@ packages:
 
   /xmlbuilder@11.0.1:
     resolution: {integrity: sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA==}
-    engines: {node: '>=4.0'}
-    dev: false
-
-  /xmlbuilder@9.0.7:
-    resolution: {integrity: sha512-7YXTQc3P2l9+0rjaUbLwMKRhtmwg1M1eDf6nag7urC7pIPYLD9W/jmzQ4ptRSUbodw5S0jfoGTflLemQibSpeQ==}
     engines: {node: '>=4.0'}
     dev: false
 

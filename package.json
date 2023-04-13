@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.223.0",
+  "version": "0.224.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -79,6 +79,7 @@
       "tslib": "^2.5.0",
       "ts-node": "^10.9.1",
       "typescript": "^5.0.3",
+      "xml2js": "^0.5.0",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
     },

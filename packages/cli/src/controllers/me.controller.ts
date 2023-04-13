@@ -8,13 +8,18 @@ import {
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
-import type { User } from '@db/entities/User';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
+import type { User } from '@db/entities/User';
+import type { UserRepository } from '@db/repositories';
 import { Response } from 'express';
-import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
-import { AuthenticatedRequest, MeRequest, UserUpdatePayload } from '@/requests';
+import {
+	AuthenticatedRequest,
+	MeRequest,
+	UserSettingsUpdatePayload,
+	UserUpdatePayload,
+} from '@/requests';
 import type {
 	PublicUser,
 	IDatabaseCollections,
@@ -23,6 +28,7 @@ import type {
 } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import { UserService } from '@/user/user.service';
 
 @RestController('/me')
 export class MeController {
@@ -32,7 +38,7 @@ export class MeController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	constructor({
 		logger,
@@ -52,7 +58,7 @@ export class MeController {
 	}
 
 	/**
-	 * Update the logged-in user's settings, except password.
+	 * Update the logged-in user's properties, except password.
 	 */
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
@@ -233,5 +239,23 @@ export class MeController {
 		});
 
 		return { success: true };
+	}
+
+	/**
+	 * Update the logged-in user's settings.
+	 */
+	@Patch('/settings')
+	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const { id } = req.user;
+
+		await UserService.updateUserSettings(id, payload);
+
+		const user = await this.userRepository.findOneOrFail({
+			select: ['settings'],
+			where: { id },
+		});
+
+		return user.settings;
 	}
 }

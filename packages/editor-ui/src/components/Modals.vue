@@ -91,6 +91,10 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
+		<ModalRoot :name="USER_ACTIVATION_SURVEY_MODAL">
+			<WorkflowSuccessModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -139,6 +143,7 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -163,6 +168,7 @@ import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
+import WorkflowSuccessModal from './UserActivationSurveyModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 
 export default Vue.extend({
@@ -191,6 +197,7 @@ export default Vue.extend({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
+		WorkflowSuccessModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -215,6 +222,7 @@ export default Vue.extend({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
+		USER_ACTIVATION_SURVEY_MODAL,
 	}),
 });
 </script>
