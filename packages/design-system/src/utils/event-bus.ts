@@ -2,7 +2,13 @@
 export type CallbackFn = Function;
 export type UnregisterFn = () => void;
 
-export function createEventBus() {
+export interface EventBus {
+	on: (eventName: string, fn: CallbackFn) => UnregisterFn;
+	off: (eventName: string, fn: CallbackFn) => void;
+	emit: <T = Event>(eventName: string, event?: T) => void;
+}
+
+export function createEventBus(): EventBus {
 	const handlers = new Map<string, CallbackFn[]>();
 
 	function off(eventName: string, fn: CallbackFn) {
@@ -43,5 +49,3 @@ export function createEventBus() {
 		emit,
 	};
 }
-
-export type EventBus = ReturnType<typeof createEventBus>;
