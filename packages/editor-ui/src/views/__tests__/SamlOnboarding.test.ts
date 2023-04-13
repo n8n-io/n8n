@@ -10,11 +10,14 @@ import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/utils/testUtils';
 import { i18nInstance } from '@/plugins/i18n';
 
-vi.mock('vue-router/composables', () => ({
-	useRouter: () => ({
-		push: () => {},
-	}),
-}));
+vi.mock('vue-router/composables', () => {
+	const push = vi.fn();
+	return {
+		useRouter: () => ({
+			push,
+		}),
+	};
+});
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let ssoStore: ReturnType<typeof useSSOStore>;
@@ -57,7 +60,6 @@ describe('SamlOnboarding', () => {
 			id: '1',
 			isPending: false,
 		});
-		vi.spyOn(router, 'push');
 
 		const { getByRole, getAllByRole } = renderComponent();
 
@@ -68,14 +70,13 @@ describe('SamlOnboarding', () => {
 		await waitAllPromises();
 
 		expect(ssoStore.updateUser).not.toHaveBeenCalled();
-		// expect(router.push).not.toHaveBeenCalled();
+		expect(router.push).not.toHaveBeenCalled();
 
 		await userEvent.type(inputs[0], 'test');
 		await userEvent.type(inputs[1], 'test');
 		await userEvent.click(submit);
 
 		expect(ssoStore.updateUser).toHaveBeenCalled();
-		// TODO: find out why router push is not called
-		// expect(router.push).toHaveBeenCalled();
+		expect(router.push).toHaveBeenCalled();
 	});
 });
