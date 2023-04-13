@@ -16,10 +16,78 @@ export const ldapFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['compare', 'create', 'delete', 'rename', 'modify'],
+				operation: ['compare'],
 			},
 		},
-		description: 'The distinguished name of the entry',
+		description: 'The distinguished name of the entry to compare',
+	},
+	{
+		displayName: 'DN',
+		name: 'dn',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. ou=users,dc=n8n,dc=io',
+		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: false,
+		},
+		displayOptions: {
+			show: {
+				operation: ['create'],
+			},
+		},
+		description: 'The distinguished name of the entry to create',
+	},
+	{
+		displayName: 'DN',
+		name: 'dn',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. ou=users,dc=n8n,dc=io',
+		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: false,
+		},
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+			},
+		},
+		description: 'The distinguished name of the entry to delete',
+	},
+	{
+		displayName: 'DN',
+		name: 'dn',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. cn=john,ou=users,dc=n8n,dc=io',
+		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: false,
+		},
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+			},
+		},
+		description: 'The distinguished name of the entry to rename',
+	},
+	{
+		displayName: 'DN',
+		name: 'dn',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. ou=users,dc=n8n,dc=io',
+		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: false,
+		},
+		displayOptions: {
+			show: {
+				operation: ['modify'],
+			},
+		},
+		description: 'The distinguished name of the entry to modify',
 	},
 	// ----------------------------------
 	//         Compare
