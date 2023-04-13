@@ -16,32 +16,33 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'variable-table',
 	data() {
 		return {
 			observer: null as null | MutationObserver,
-			values: {},
+			values: {} as Record<string, string>,
 		};
 	},
 	props: {
 		variables: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 		attr: {
 			type: String,
+			default: '',
 		},
 	},
 	created() {
 		const setValues = () => {
-			(this.variables as string[]).forEach((variable: string) => {
+			this.variables.forEach((variable) => {
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 
-				Vue.set(this.values, variable, value);
+				this.$set(this.values, variable, value);
 			});
 		};
 

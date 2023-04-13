@@ -35,39 +35,53 @@ const completeOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model to use. Currently, only gpt-3.5-turbo and gpt-3.5-turbo-0301 are supported.',
+			'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 		displayOptions: {
 			show: {
 				operation: ['complete'],
 				resource: ['chat'],
 			},
 		},
-		options: [
-			{
-				name: 'gpt-3.5-turbo',
-				value: 'gpt-3.5-turbo',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ $responseItem.id.startsWith('gpt-') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
 			},
-			{
-				name: 'gpt-3.5-turbo-0301',
-				value: 'gpt-3.5-turbo-0301',
-			},
-			{
-				name: 'gpt-4',
-				value: 'gpt-4',
-			},
-			{
-				name: 'gpt-4-0314',
-				value: 'gpt-4-0314',
-			},
-			{
-				name: 'gpt-4-32k',
-				value: 'gpt-4-32k',
-			},
-			{
-				name: 'gpt-4-32k-0314',
-				value: 'gpt-4-32k-0314',
-			},
-		],
+		},
 		routing: {
 			send: {
 				type: 'body',
