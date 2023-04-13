@@ -365,7 +365,7 @@ export async function execute(
 	let driveId = '';
 	const returnedTypes: string[] = [];
 
-	if (Object.keys(filter)) {
+	if (Object.keys(filter)?.length) {
 		if (filter.folderId.value !== RlcDefaults.Folder) {
 			query.push(`'${filter.folderId.value}' in parents`);
 		}
