@@ -219,7 +219,6 @@ function focusFirstInput() {
 						<n8n-button
 							data-test-id="variable-row-delete-button"
 							type="tertiary"
-							class="mr-xs"
 							:disabled="!permissions.delete"
 							@click="onDelete"
 						>

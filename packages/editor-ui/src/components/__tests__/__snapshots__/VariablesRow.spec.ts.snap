@@ -20,7 +20,7 @@ exports[`VariablesRow > should render correctly 1`] = `
             <!----><span> Edit </span></button></div>
       </n8n-tooltip-stub>
       <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\">
-        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium disabled\\" data-test-id=\\"variable-row-delete-button\\">
+        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button tertiary medium disabled\\" data-test-id=\\"variable-row-delete-button\\">
             <!----><span> Delete </span></button></div>
       </n8n-tooltip-stub>
     </div>
