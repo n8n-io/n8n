@@ -5,6 +5,7 @@ import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { driveRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { prepareQueryString } from '../../helpers/utils';
+import type { SearchFilter } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -101,12 +102,19 @@ const properties: INodeProperties[] = [
 						],
 					},
 					{
-						displayName: 'File Types',
+						displayName: 'Drive File Types',
 						name: 'fileTypes',
 						type: 'multiOptions',
-						default: ['application/vnd.google-apps.file'],
-						description: 'Return only items corresponding to the selected types',
+						default: [],
+						description:
+							'Return only items corresponding to the selected types. Those mime types are specific to Google Drive, to filter by file extension use the "Additional Mime Types" option.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 						options: [
+							{
+								name: 'All',
+								value: '*',
+								description: 'Return all file types',
+							},
 							{
 								name: '3rd Party Shortcut',
 								value: 'application/vnd.google-apps.drive-sdk',
@@ -126,14 +134,6 @@ const properties: INodeProperties[] = [
 							{
 								name: 'Google Drawing',
 								value: 'application/vnd.google-apps.drawing',
-							},
-							{
-								name: 'Google Drive File',
-								value: 'application/vnd.google-apps.file',
-							},
-							{
-								name: 'Google Drive Folder',
-								value: 'application/vnd.google-apps.folder',
 							},
 							{
 								name: 'Google Forms',
@@ -172,6 +172,11 @@ const properties: INodeProperties[] = [
 								value: 'application/vnd.google-apps.video',
 							},
 						],
+						displayOptions: {
+							hide: {
+								whatToSearch: ['all'],
+							},
+						},
 					},
 				],
 			},
@@ -190,7 +195,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Also include files and folders with the those MIME type(s), to include multiple types separate them with a comma',
+					'Also include files with the those MIME type(s), to include multiple types separate them with a comma. Common <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">mime types</a>.',
 			},
 			{
 				displayName: 'Fields',
@@ -350,19 +355,85 @@ export async function execute(
 	i: number,
 	options: IDataObject,
 ): Promise<INodeExecutionData[]> {
+	const searchMethod = this.getNodeParameter('searchMethod', i) as string;
+
+	let queryString = this.getNodeParameter('queryString', i) as string;
+	if (searchMethod === 'name') {
+		queryString = `name contains '${queryString}'`;
+	}
+
+	const filter = this.getNodeParameter('filter.values', i, {}) as SearchFilter;
+
+	let driveId = '';
+	const returnedTypes: string[] = [];
+
+	if (Object.keys(filter)) {
+		if (filter.folderId.value !== 'root') {
+			queryString += ` and '${filter.folderId.value}' in parents`;
+		}
+
+		if (filter.driveId.value !== 'root') {
+			driveId = filter.driveId.value;
+		}
+
+		if (filter.whatToSearch === 'folders') {
+			queryString += " and mimeType = 'application/vnd.google-apps.folder'";
+		} else {
+			if (filter.whatToSearch === 'files') {
+				queryString += " and mimeType != 'application/vnd.google-apps.folder'";
+			}
+
+			if (filter?.fileTypes?.length && !filter.fileTypes.includes('*')) {
+				filter.fileTypes.forEach((fileType: string) => {
+					returnedTypes.push(`mimeType = '${fileType}'`);
+				});
+			}
+		}
+	}
+
+	const additionalMimeType = this.getNodeParameter('options.mimeTypes', i, '') as string;
+	if (additionalMimeType) {
+		const mimes = additionalMimeType.split(',').map((type) => type.trim());
+		mimes.forEach((mime) => {
+			returnedTypes.push(`mimeType = '${mime}'`);
+		});
+	}
+
+	if (returnedTypes.length) {
+		queryString += ` and (${returnedTypes.join(' or ')})`;
+	}
+
+	const includeTrashed = this.getNodeParameter('options.includeTrashed', i, false) as boolean;
+	queryString += includeTrashed ? '' : ' and trashed = false';
+
 	const queryFields = prepareQueryString(options.fields as string[]);
 
-	const pageSize = this.getNodeParameter('limit', i);
+	const pageSize = this.getNodeParameter('maxResults', i);
 
-	const qs = {
+	let querySpaces: string | string[] = this.getNodeParameter('options.spaces', i, '') as string[];
+	if (querySpaces.includes('*')) {
+		querySpaces = 'appDataFolder, drive, photos';
+	} else {
+		querySpaces = querySpaces.join(', ');
+	}
+
+	const queryCorpora = this.getNodeParameter('options.corpora', i, '') as string;
+
+	const qs: IDataObject = {
 		pageSize,
 		orderBy: 'modifiedTime',
 		fields: `nextPageToken, files(${queryFields})`,
-		spaces: '',
-		q: '',
+		spaces: querySpaces,
+		q: queryString,
+		includeItemsFromAllDrives: queryCorpora !== '' || driveId !== '',
+		supportsAllDrives: queryCorpora !== '' || driveId !== '',
 	};
 
-	const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+	if (driveId) {
+		qs.driveId = driveId;
+	}
+
+	const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
 
 	const files = response.files;
 
