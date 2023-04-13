@@ -223,7 +223,7 @@ export default defineComponent({
 	justify-content: center;
 	align-items: center;
 	bottom: 0;
-	overflow: auto;
+	overflow: visible;
 	margin-top: var(--spacing-s);
 }
 
