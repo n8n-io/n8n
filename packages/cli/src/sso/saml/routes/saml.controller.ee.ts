@@ -105,6 +105,7 @@ export class SamlController {
 		const loginResult = await this.samlService.handleSamlLogin(req, binding);
 		if (loginResult) {
 			// return attributes if this is a test connection
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (req.body.RelayState && req.body.RelayState === getServiceProviderConfigTestReturnUrl()) {
 				return res.status(202).send(loginResult.attributes);
 			}
