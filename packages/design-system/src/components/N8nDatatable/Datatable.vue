@@ -72,11 +72,6 @@ export default defineComponent({
 				[style.datatableWrapper]: true,
 			};
 		});
-		function getTrClass() {
-			return {
-				[style.datatableRow]: true,
-			};
-		}
 
 		function onUpdateCurrentPage(value: number) {
 			emit('update:currentPage', value);
@@ -109,7 +104,6 @@ export default defineComponent({
 			visibleRows,
 			rowsPerPageOptions,
 			getTdValue,
-			getTrClass,
 			getThStyle,
 			onUpdateCurrentPage,
 			onRowsPerPageChange,
@@ -136,7 +130,7 @@ export default defineComponent({
 			<tbody>
 				<template v-for="row in visibleRows">
 					<slot name="row" :columns="columns" :row="row" :getTdValue="getTdValue">
-						<tr :key="row.id" :class="getTrClass()">
+						<tr :key="row.id">
 							<td v-for="column in columns" :key="column.id" :class="column.classes">
 								<component v-if="column.render" :is="column.render" :row="row" :column="column" />
 								<span v-else>{{ getTdValue(row, column) }}</span>
