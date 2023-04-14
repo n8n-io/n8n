@@ -138,6 +138,18 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 				{
+					displayName:
+						'Make sure you have specified the scope(s) for the Service Account in the credential',
+					name: 'googleApiWarning',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							nodeCredentialType: ['googleApi'],
+						},
+					},
+				},
+				{
 					displayName: 'Generic Auth Type',
 					name: 'genericAuthType',
 					type: 'credentialsSelect',
