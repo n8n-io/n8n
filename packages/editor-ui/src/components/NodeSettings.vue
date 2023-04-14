@@ -205,6 +205,7 @@ import { useHistoryStore } from '@/stores/history';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
 import { useCredentialsStore } from '@/stores/credentials';
+import { EventBus } from '@/event-bus';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -322,7 +323,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 	},
 	props: {
-		eventBus: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
 		dragging: {
 			type: Boolean,
 		},
@@ -897,7 +900,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
 		if (this.eventBus) {
-			(this.eventBus as Vue).$on('openSettings', () => {
+			this.eventBus.on('openSettings', () => {
 				this.openPanel = 'settings';
 			});
 		}

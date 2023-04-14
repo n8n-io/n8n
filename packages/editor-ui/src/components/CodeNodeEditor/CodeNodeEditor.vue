@@ -1,5 +1,21 @@
 <template>
-	<div ref="codeNodeEditor" :class="{ [$style['max-height']]: true }" class="ph-no-capture"></div>
+	<div
+		:class="$style['code-node-editor-container']"
+		@mouseover="onMouseOver"
+		@mouseout="onMouseOut"
+		ref="codeNodeEditorContainer"
+	>
+		<div ref="codeNodeEditor" class="ph-no-capture" :class="{ [$style['max-height']]: true }"></div>
+		<n8n-button
+			v-if="isCloud && (isEditorHovered || isEditorFocused)"
+			size="small"
+			type="tertiary"
+			:class="$style['ask-ai-button']"
+			@mousedown="onAskAiButtonClick"
+		>
+			{{ $locale.baseText('codeNodeEditor.askAi') }}
+		</n8n-button>
+	</div>
 </template>
 
 <script lang="ts">
@@ -16,13 +32,16 @@ import { linterExtension } from './languages/javaScript/linter';
 import { completerExtension } from './languages/javaScript/completer';
 import { codeNodeEditorTheme } from './theme';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
-import { CODE_NODE_TYPE } from '@/constants';
+import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
+import Modal from '../Modal.vue';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
+	components: { Modal },
 	props: {
 		mode: {
 			type: String,
@@ -54,6 +73,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
 			isDefault: false,
+			isEditorHovered: false,
+			isEditorFocused: false,
 		};
 	},
 	watch: {
@@ -67,6 +88,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	},
 	computed: {
 		...mapStores(useRootStore),
+		isCloud() {
+			return useSettingsStore().deploymentType === 'cloud';
+		},
 		content(): string {
 			if (!this.editor) return '';
 
@@ -74,6 +98,23 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	methods: {
+		onMouseOver(event: MouseEvent) {
+			const fromElement = event.relatedTarget as HTMLElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+
+			if (!ref.contains(fromElement)) this.isEditorHovered = true;
+		},
+		onMouseOut(event: MouseEvent) {
+			const fromElement = event.relatedTarget as HTMLElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+
+			if (!ref.contains(fromElement)) this.isEditorHovered = false;
+		},
+		onAskAiButtonClick() {
+			this.$telemetry.track('User clicked ask ai button', { source: 'code' });
+
+			this.uiStore.openModal(ASK_AI_MODAL_KEY);
+		},
 		reloadLinter() {
 			if (!this.editor) return;
 
@@ -140,13 +181,21 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	destroyed() {
-		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
+		codeNodeEditorEventBus.off('error-line-number', this.highlightLine);
 	},
 	mounted() {
-		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
+		codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
 		const stateBasedExtensions = [
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({
+				focus: () => {
+					this.isEditorFocused = true;
+				},
+				blur: () => {
+					this.isEditorFocused = false;
+				},
+			}),
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
 				this.trackCompletion(viewUpdate);
@@ -210,7 +259,17 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 </script>
 
 <style lang="scss" module>
-.max-height {
-	height: 100%;
+.code-node-editor-container {
+	position: relative;
+
+	& > div {
+		height: 100%;
+	}
+}
+
+.ask-ai-button {
+	position: absolute;
+	top: var(--spacing-2xs);
+	right: var(--spacing-2xs);
 }
 </style>

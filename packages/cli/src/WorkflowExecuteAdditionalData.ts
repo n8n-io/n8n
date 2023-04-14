@@ -71,7 +71,7 @@ import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -638,7 +638,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					};
 
 					if (this.retryOf !== undefined) {
-						fullExecutionData.retryOf = this.retryOf.toString();
+						fullExecutionData.retryOf = this.retryOf?.toString();
 					}
 
 					const workflowId = this.workflowData.id;
@@ -1054,7 +1054,7 @@ async function executeWorkflow(
 			mode: 'integrated',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
-			status: 'error',
+			status: 'failed',
 		};
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
@@ -1072,6 +1072,9 @@ async function executeWorkflow(
 		if (workflowData.id) {
 			fullExecutionData.workflowId = workflowData.id;
 		}
+
+		// remove execution from active executions
+		Container.get(ActiveExecutions).remove(executionId, fullRunData);
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 

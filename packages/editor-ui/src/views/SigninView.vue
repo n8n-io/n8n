@@ -44,7 +44,6 @@ export default mixins(showMessage).extend({
 			title: this.$locale.baseText('auth.signin'),
 			buttonText: this.$locale.baseText('auth.signin'),
 			redirectText: this.$locale.baseText('forgotPassword'),
-			redirectLink: '/forgot-password',
 			inputs: [
 				{
 					name: 'email',
@@ -73,6 +72,10 @@ export default mixins(showMessage).extend({
 				},
 			],
 		};
+
+		if (!this.settingsStore.isDesktopDeployment || this.settingsStore.isUserManagementEnabled) {
+			this.FORM_CONFIG.redirectLink = '/forgot-password';
+		}
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string }) {

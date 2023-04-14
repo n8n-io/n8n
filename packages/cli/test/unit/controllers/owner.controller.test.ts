@@ -1,12 +1,15 @@
-import type { Repository } from 'typeorm';
 import type { CookieOptions, Response } from 'express';
 import { anyObject, captor, mock } from 'jest-mock-extended';
 import type { ILogger } from 'n8n-workflow';
 import jwt from 'jsonwebtoken';
-import type { ICredentialsDb, IInternalHooksClass } from '@/Interfaces';
+import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import type { Settings } from '@db/entities/Settings';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type {
+	CredentialsRepository,
+	SettingsRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@db/repositories';
 import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
@@ -18,10 +21,10 @@ describe('OwnerController', () => {
 	const config = mock<Config>();
 	const logger = mock<ILogger>();
 	const internalHooks = mock<IInternalHooksClass>();
-	const userRepository = mock<Repository<User>>();
-	const settingsRepository = mock<Repository<Settings>>();
-	const credentialsRepository = mock<Repository<ICredentialsDb>>();
-	const workflowsRepository = mock<Repository<WorkflowEntity>>();
+	const userRepository = mock<UserRepository>();
+	const settingsRepository = mock<SettingsRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
+	const workflowsRepository = mock<WorkflowRepository>();
 	const controller = new OwnerController({
 		config,
 		logger,

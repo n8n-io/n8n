@@ -1,13 +1,14 @@
 {
   "name": "n8n-design-system",
-  "version": "0.60.0",
+  "version": "0.61.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
     "name": "Mutasem Aldmour",
     "email": "mutasem@n8n.io"
   },
-  "main": "src/main.js",
+  "main": "src/main.ts",
+  "import": "src/main.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
@@ -15,7 +16,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "vite build",
-    "typecheck": "vue-tsc --emitDeclarationOnly",
+    "typecheck": "vue-tsc --declaration --emitDeclarationOnly",
     "test": "vitest run --coverage",
     "test:dev": "vitest",
     "build:storybook": "storybook build",
