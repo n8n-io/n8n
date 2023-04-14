@@ -34,7 +34,7 @@ paths:
   'packages/nodes-base/nodes/**':
     - Added workflow tests for nodes if possible.
   'packages/nodes-base/package.json':
-    - Avoided adding additional dependencies for nodes if not absolutely necessary.
+    - Avoided adding dependencies for nodes if not absolutely necessary.
 
   # design-system
   'packages/design-system/**/*.vue':
