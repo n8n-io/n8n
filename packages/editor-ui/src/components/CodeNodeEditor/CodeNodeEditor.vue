@@ -18,7 +18,13 @@
 								label="GPT 3.5 ($0.002 / 1K tokens)"
 							/>
 						</n8n-select>
-						<n8n-input v-model="apiKey" type="text" :rows="5" ref="input" placeholder="API Key" />
+						<n8n-input
+							v-model="apiKey"
+							type="password"
+							:rows="5"
+							ref="input"
+							placeholder="API Key"
+						/>
 						<n8n-input v-model="userPrompt" type="textarea" :rows="5" ref="input" />
 						<div v-if="lastQueryUsage" :class="$style.apiUsage">
 							<p>Last query tokens:</p>
@@ -35,20 +41,6 @@
 								@click="generateCode"
 								:disabled="!apiKey"
 							/>
-							<n8n-button
-								:loading="isModifying"
-								label="Modify"
-								type="secondary"
-								:disabled="!apiKey"
-								@click="modifyCode"
-							/>
-							<n8n-button
-								:loading="isExplaining"
-								label="Explain"
-								type="secondary"
-								:disabled="!apiKey"
-								@click="explainCode"
-							/>
 						</div>
 					</div>
 					<div v-if="explanation" :class="$style.explanation"></div>
@@ -56,13 +48,6 @@
 			</template>
 		</n8n-info-accordion>
 		<div ref="codeNodeEditor" class="ph-no-capture" />
-		<el-dialog
-			:visible="explainModalVisible && explanation.length > 0"
-			append-to-body
-			@close="explainModalVisible = false"
-		>
-			<n8n-markdown :content="explanation" :class="$style.explanation" />
-		</el-dialog>
 	</div>
 </template>
 
@@ -110,16 +95,19 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			selectedModel: 'gpt-4',
 			explanation: '',
 			lastQueryUsage: null,
-			explainModalVisible: false,
 			isGenerating: false,
-			isExplaining: false,
-			isModifying: false,
 		};
 	},
 	watch: {
 		mode() {
 			this.reloadLinter();
 			this.refreshPlaceholder();
+		},
+		apiKey(key) {
+			if (key) {
+				console.log('🚀 ~ file: CodeNodeEditor.vue:125 ~ apiKey ~ key:', key);
+				window.localStorage.setItem('openai-api-key', key);
+			}
 		},
 	},
 	computed: {
@@ -149,125 +137,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 			return ((totalTokens / 1000) * tokenPrice).toFixed(6);
 		},
-		async modifyCode() {
-			// Get the current selection
-			const selection = this.editor?.state.selection;
-
-			if (!selection) return;
-			// Iterate through the selection ranges
-			for (const range of selection.ranges) {
-				// Get the selected text
-				const selectedText = this.editor?.state.doc.sliceString(range.from, range.to);
-
-				this.isModifying = true;
-				const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: 'Bearer ' + this.apiKey,
-					},
-					body: JSON.stringify({
-						model: this.selectedModel,
-						temperature: 0.8,
-						messages: [
-							{
-								role: 'system',
-								content:
-									"You're coding assistant for n8n function node. I will provide you with a prompt and you will provide me with Javascript code in Markdown format. Do not include any additional text besides the code and included commented explanation. Return an array of objects, one for each item you would like to output. I only want a part of the code replaced. Each reply should start with ```javascript. Only return the modified code, not the whole thing.",
-							},
-							{
-								role: 'system',
-								content:
-									"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json. You always need to return the result." +
-									window.__schema
-										? JSON.stringify(window.__schema.value)
-										: 'No schema, this is a first node in the workflow.',
-							},
-							{
-								role: 'user',
-								content: 'The code: \n' + this.editor?.state.doc,
-							},
-							{
-								role: 'user',
-								content: 'The code to replace: \n' + selectedText,
-							},
-							{
-								role: 'user',
-								content: 'The prompt: \n' + this.userPrompt,
-							},
-						],
-					}),
-				});
-
-				const completionJSON = await completion.json();
-				this.isModifying = false;
-
-				const parseJS = completionJSON?.choices[0]?.message?.content
-					.split('```javascript\n')[1]
-					.split('```')[0];
-
-				this.editor?.dispatch({
-					changes: { from: range.from, to: range.to, insert: parseJS },
-				});
-
-				this.lastQueryUsage = completionJSON?.usage;
-			}
-		},
-		async explainCode() {
-			// Get the current selection
-			const selection = this.editor?.state.selection;
-
-			if (!selection) return;
-			// Iterate through the selection ranges
-			for (const range of selection.ranges) {
-				// Get the selected text
-				const selectedText = this.editor?.state.doc.sliceString(range.from, range.to);
-				console.log('Selected text:', selectedText);
-
-				// Get the range
-				console.log('Selection range:', range);
-
-				this.isExplaining = true;
-				// const runData = this.ndvStore
-				const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: 'Bearer ' + this.apiKey,
-					},
-					body: JSON.stringify({
-						model: this.selectedModel,
-						temperature: 0.8,
-						messages: [
-							{
-								role: 'system',
-								content:
-									"You're coding assistant for n8n function node. I will provide you with a code snippet fro n8n function node and you'll reply with a thorough explanation of what the code does. Also include suggestions on way to improve it",
-							},
-							{
-								role: 'system',
-								content:
-									"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json." +
-									window.__schema
-										? JSON.stringify(window.__schema.value)
-										: 'No schema, this is a first node in the workflow.',
-							},
-							{
-								role: 'user',
-								content: 'The code: \n' + this.editor?.state.doc,
-							},
-						],
-					}),
-				});
-
-				const completionJSON = await completion.json();
-				this.isExplaining = false;
-				this.explanation = completionJSON?.choices[0]?.message?.content;
-				this.explainModalVisible = true;
-
-				this.lastQueryUsage = completionJSON?.usage;
-			}
-		},
 		async generateCode() {
 			this.isGenerating = true;
 			const completion = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -287,11 +156,11 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 						},
 						{
 							role: 'system',
-							content:
-								"The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via `$input.all()` and the individual item $input.all()[0].json. You always need to return the result." +
+							content: `The input follows following schema. You can reference the properties if it's required for the generation. You can reference the data via \`$input.all()\` which will return array of all the items. To access individual item you would use for example, \`$input.all()[0].json\` notation to get the zeroth index-item in the array. You always need to return the result. Schema: \n ${
 								window.__schema
 									? JSON.stringify(window.__schema.value)
-									: 'No schema, this is a first node in the workflow.',
+									: 'No schema, this is a first node in the workflow.'
+							}`,
 						},
 						{
 							role: 'user',
@@ -381,6 +250,10 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
 	},
 	mounted() {
+		const localStorageKey = window.localStorage.getItem('openai-api-key');
+		if (localStorageKey) {
+			this.apiKey = localStorageKey;
+		}
 		codeNodeEditorEventBus.$on('error-line-number', this.highlightLine);
 
 		const stateBasedExtensions = [

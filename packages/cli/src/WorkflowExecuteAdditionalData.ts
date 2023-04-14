@@ -633,7 +633,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						startedAt: fullRunData.startedAt,
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: pristineWorkflowData,
-						waitTill: fullRunData.waitTill,
+						waitTill: fullRunData.waitTill as Date | undefined,
 						status: workflowStatusFinal,
 					};
 
