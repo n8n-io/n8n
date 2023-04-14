@@ -27,8 +27,20 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 		displayName: 'Units',
 		name: 'units',
 		type: 'multiOptions',
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+		// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 		options: [
+			{
+				name: 'Year',
+				value: 'year',
+			},
+			{
+				name: 'Month',
+				value: 'month',
+			},
+			{
+				name: 'Week',
+				value: 'week',
+			},
 			{
 				name: 'Day',
 				value: 'day',
@@ -38,28 +50,16 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 				value: 'hour',
 			},
 			{
-				name: 'Millisecond',
-				value: 'millisecond',
-			},
-			{
 				name: 'Minute',
 				value: 'minute',
-			},
-			{
-				name: 'Month',
-				value: 'month',
 			},
 			{
 				name: 'Second',
 				value: 'second',
 			},
 			{
-				name: 'Week',
-				value: 'week',
-			},
-			{
-				name: 'Year',
-				value: 'year',
+				name: 'Millisecond',
+				value: 'millisecond',
 			},
 		],
 		displayOptions: {

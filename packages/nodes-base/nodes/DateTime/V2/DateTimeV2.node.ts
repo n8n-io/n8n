@@ -171,9 +171,9 @@ export class DateTimeV2 implements INodeType {
 			} else if (operation === 'extractDate') {
 				const date = this.getNodeParameter('date', i) as string | DateTime;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				const part = this.getNodeParameter('part', i) as keyof DateTime;
+				const part = this.getNodeParameter('part', i) as keyof DateTime | 'week';
 				const parsedDate = parseDate.call(this, date, workflowTimezone);
-				const selectedPart = parsedDate.get(part);
+				const selectedPart = part === 'week' ? parsedDate.weekNumber : parsedDate.get(part);
 				responseData.push({ [outputFieldName]: selectedPart });
 			}
 			const executionData = this.helpers.constructExecutionMetaData(

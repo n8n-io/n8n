@@ -53,6 +53,18 @@ export const RoundDateDescription: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
+				name: 'Year',
+				value: 'year',
+			},
+			{
+				name: 'Month',
+				value: 'month',
+			},
+			{
+				name: 'Week',
+				value: 'week',
+			},
+			{
 				name: 'Day',
 				value: 'day',
 			},
@@ -65,20 +77,8 @@ export const RoundDateDescription: INodeProperties[] = [
 				value: 'minute',
 			},
 			{
-				name: 'Month',
-				value: 'month',
-			},
-			{
 				name: 'Second',
 				value: 'second',
-			},
-			{
-				name: 'Week',
-				value: 'week',
-			},
-			{
-				name: 'Year',
-				value: 'year',
 			},
 		],
 		default: 'month',
