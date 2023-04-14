@@ -112,7 +112,7 @@ onBeforeMount(async () => {
 				</template>
 			</i18n>
 		</n8n-info-tip>
-		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-testid="sso-content-licensed">
+		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 				<CopyInput
@@ -143,18 +143,18 @@ onBeforeMount(async () => {
 					:disabled="!ssoSettingsSaved"
 					type="tertiary"
 					@click="onTest"
-					data-testid="sso-test"
+					data-test-id="sso-test"
 				>
 					{{ locale.baseText('settings.sso.settings.test') }}
 				</n8n-button>
-				<n8n-button :disabled="!metadata" @click="onSave" data-testid="sso-save">
+				<n8n-button :disabled="!metadata" @click="onSave" data-test-id="sso-save">
 					{{ locale.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 			</div>
 		</div>
 		<n8n-action-box
 			v-else
-			data-testid="sso-content-unlicensed"
+			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sso.actionBox.description')"
 			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"
