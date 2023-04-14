@@ -7,7 +7,7 @@ import { faker } from '@faker-js/faker';
 import SettingsSso from '@/views/SettingsSso.vue';
 import { useSSOStore } from '@/stores/sso';
 import { STORES } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/utils/testUtils';
+import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { i18nInstance } from '@/plugins/i18n';
 import { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
 

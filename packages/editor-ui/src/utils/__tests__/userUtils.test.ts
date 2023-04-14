@@ -7,7 +7,7 @@ import { useSSOStore } from '@/stores/sso';
 import { IN8nUISettings, IUser } from '@/Interface';
 import { routes } from '@/router';
 import { VIEWS } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/utils/testUtils';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 const DEFAULT_SETTINGS: IN8nUISettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 
