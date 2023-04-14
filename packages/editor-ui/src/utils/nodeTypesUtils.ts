@@ -1,14 +1,9 @@
-import { MAIN_AUTH_FIELD_NAME, NODE_RESOURCE_FIELD_NAME } from './../constants';
+import { MAIN_AUTH_FIELD_NAME } from './../constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from './../stores/nodeTypes';
 import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
-	CUSTOM_NODES_CATEGORY,
-	SUBCATEGORY_DESCRIPTIONS,
-	UNCATEGORIZED_CATEGORY,
-	UNCATEGORIZED_SUBCATEGORY,
-	PERSONALIZED_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
 	REGULAR_NODE_CREATOR_MODE,
@@ -18,10 +13,8 @@ import {
 } from '@/constants';
 import {
 	INodeCreateElement,
-	ICategoriesWithNodes,
 	INodeUi,
 	ITemplatesNode,
-	ActionTypeDescription,
 	NodeAuthenticationOption,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
@@ -30,7 +23,6 @@ import {
 	INodeExecutionData,
 	INodeProperties,
 	INodeTypeDescription,
-	INodeActionTypeDescription,
 	NodeParameterValueType,
 	INodePropertyOptions,
 	INodePropertyCollection,
@@ -38,7 +30,6 @@ import {
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 import { useCredentialsStore } from '@/stores/credentials';
 import { i18n as locale } from '@/plugins/i18n';
-import { useSettingsStore } from '@/stores/settings';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -48,176 +39,6 @@ import { useSettingsStore } from '@/stores/settings';
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
-
-const addNodeToCategory = (
-	accu: ICategoriesWithNodes,
-	nodeType: INodeTypeDescription | ActionTypeDescription,
-	category: string,
-	subcategory: string,
-) => {
-	if (!accu[category]) {
-		accu[category] = {};
-	}
-	if (!accu[category][subcategory]) {
-		accu[category][subcategory] = {
-			triggerCount: 0,
-			regularCount: 0,
-			nodes: [],
-		};
-	}
-	const isTrigger = nodeType.group.includes('trigger');
-	if (isTrigger) {
-		accu[category][subcategory].triggerCount++;
-	}
-	if (!isTrigger) {
-		accu[category][subcategory].regularCount++;
-	}
-	accu[category][subcategory].nodes.push({
-		type: nodeType.actionKey ? 'action' : 'node',
-		key: `${nodeType.name}`,
-		category,
-		label: nodeType?.codex?.label,
-		properties: {
-			nodeType,
-			subcategory,
-		},
-		includedByTrigger: isTrigger,
-		includedByRegular: !isTrigger,
-	});
-};
-
-export const getCategoriesWithNodes = (
-	nodeTypes: INodeTypeDescription[],
-	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
-	requiredCategories: string[] = [],
-): ICategoriesWithNodes => {
-	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
-		a.displayName > b.displayName ? 1 : -1,
-	);
-	const result = sorted.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-		if (!nodeType.codex || !nodeType.codex.categories) {
-			addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
-			return accu;
-		}
-
-		nodeType.codex.categories.forEach((_category: string) => {
-			const category = _category.trim();
-			const subcategories = nodeType?.codex?.subcategories?.[category] ?? null;
-
-			if (subcategories === null || subcategories.length === 0) {
-				addNodeToCategory(accu, nodeType, category, uncategorizedSubcategory);
-				return;
-			}
-
-			subcategories.forEach((subcategory) => {
-				addNodeToCategory(accu, nodeType, category, subcategory);
-			});
-		});
-		return accu;
-	}, {});
-
-	// Make sure that the required categories are included even if they are empty
-	// inject them into the result otherwise
-	requiredCategories.forEach((category) => {
-		if (!result[category]) {
-			result[category] = {};
-		}
-	});
-	return result;
-};
-
-const getCategories = (
-	categoriesWithNodes: ICategoriesWithNodes,
-	requiredCategories: string[] = [],
-): string[] => {
-	const excludeFromSort = [
-		CORE_NODES_CATEGORY,
-		CUSTOM_NODES_CATEGORY,
-		UNCATEGORIZED_CATEGORY,
-		PERSONALIZED_CATEGORY,
-	];
-	const categories = [...new Set([...Object.keys(categoriesWithNodes), ...requiredCategories])];
-
-	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
-	sorted.sort();
-
-	return [
-		CORE_NODES_CATEGORY,
-		CUSTOM_NODES_CATEGORY,
-		PERSONALIZED_CATEGORY,
-		...sorted,
-		UNCATEGORIZED_CATEGORY,
-	];
-};
-
-export const getCategorizedList = (
-	categoriesWithNodes: ICategoriesWithNodes,
-	categoryIsExpanded = false,
-	requiredCategories: string[] = [],
-): INodeCreateElement[] => {
-	const categories = getCategories(categoriesWithNodes, requiredCategories);
-	console.log('🚀 ~ file: nodeTypesUtils.ts:150 ~ categories:', categories);
-	// console.log('🚀 ~ file: nodeTypesUtils.ts:145 ~ categories:', categories);
-
-	const result = categories.reduce((accu: INodeCreateElement[], category: string) => {
-		if (!categoriesWithNodes[category] && !requiredCategories.includes(category)) {
-			return accu;
-		}
-
-		const categoryEl: INodeCreateElement = {
-			type: 'category',
-			key: category,
-			properties: {
-				category,
-				name: category,
-				expanded: categoryIsExpanded,
-			},
-		};
-		// console.log('🚀 ~ file: nodeTypesUtils.ts:159 ~ result ~ categoryEl:', categoryEl);
-
-		const subcategories = Object.keys(categoriesWithNodes[category]);
-		if (subcategories.length === 1) {
-			const subcategory = categoriesWithNodes[category][subcategories[0]];
-			if (subcategory.triggerCount > 0) {
-				categoryEl.includedByTrigger = subcategory.triggerCount > 0;
-			}
-			if (subcategory.regularCount > 0) {
-				categoryEl.includedByRegular = subcategory.regularCount > 0;
-			}
-			return [...accu, categoryEl, ...subcategory.nodes];
-		}
-
-		subcategories.sort();
-		const subcategorized = subcategories.reduce(
-			(accu: INodeCreateElement[], subcategory: string) => {
-				const subcategoryEl: INodeCreateElement = {
-					type: 'subcategory',
-					key: `${category}_${subcategory}`,
-					properties: {
-						subcategory,
-						description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
-					},
-					includedByTrigger: categoriesWithNodes[category][subcategory].triggerCount > 0,
-					includedByRegular: categoriesWithNodes[category][subcategory].regularCount > 0,
-				};
-
-				if (subcategoryEl.includedByTrigger) {
-					categoryEl.includedByTrigger = true;
-				}
-				if (subcategoryEl.includedByRegular) {
-					categoryEl.includedByRegular = true;
-				}
-
-				accu.push(subcategoryEl);
-				return accu;
-			},
-			[],
-		);
-
-		return [...accu, categoryEl, ...subcategorized];
-	}, []);
-	return result;
-};
 
 export function getAppNameFromCredType(name: string) {
 	return name

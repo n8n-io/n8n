@@ -928,15 +928,6 @@ export type INodeCreateElement =
 	| LabelCreateElement
 	| ActionCreateElement;
 
-export interface ICategoriesWithNodes {
-	[category: string]: {
-		[subcategory: string]: {
-			regularCount: number;
-			triggerCount: number;
-			nodes: INodeCreateElement[];
-		};
-	};
-}
 export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
 }

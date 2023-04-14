@@ -53,7 +53,12 @@ export default defineComponent({
 	},
 	computed: {
 		classes(): string[] {
-			return ['n8n-callout', this.$style.callout, this.$style[this.theme],  this.slim ? this.$style.slim : ''];
+			return [
+				'n8n-callout',
+				this.$style.callout,
+				this.$style[this.theme],
+				this.slim ? this.$style.slim : '',
+			];
 		},
 		getIcon(): string {
 			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {

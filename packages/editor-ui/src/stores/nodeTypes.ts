@@ -7,13 +7,11 @@ import {
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
 import {
-	ICategoriesWithNodes,
-	INodeCreateElement,
 	INodeTypesState,
 	IResourceLocatorReqParams,
 } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit, getCategoriesWithNodes, getCategorizedList } from '@/utils';
+import { omit } from '@/utils';
 import {
 	ILoadOptions,
 	INodeCredentials,
@@ -27,8 +25,6 @@ import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useCredentialsStore } from './credentials';
 import { useRootStore } from './n8nRootStore';
-import { useUsersStore } from './users';
-import { useNodeCreatorStore } from './nodeCreator';
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }
@@ -87,13 +83,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
 			return this.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
-		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			const usersStore = useUsersStore();
-			return getCategoriesWithNodes(this.visibleNodeTypes, usersStore.personalizedNodeTypes);
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return getCategorizedList(this.categoriesWithNodes);
 		},
 	},
 	actions: {
