@@ -129,7 +129,10 @@ export class DateTimeV2 implements INodeType {
 				const date = this.getNodeParameter('date', i) as string;
 				const format = this.getNodeParameter('format', i) as string;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				const dateLuxon = parseDate.call(this, date, workflowTimezone);
+				const { timezone } = this.getNodeParameter('additionalFields', i) as { timezone: boolean };
+				const dateLuxon = timezone
+					? parseDate.call(this, date, workflowTimezone)
+					: parseDate.call(this, date);
 				if (format === 'custom') {
 					const customFormat = this.getNodeParameter('customFormat', i) as string;
 					responseData.push({

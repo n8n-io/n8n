@@ -68,12 +68,12 @@ export const FormatDateDescription: INodeProperties[] = [
 			{
 				name: 'Unix Timestamp',
 				value: 'X',
-				description: 'Example: 513388800.879',
+				description: 'Example: 1672531200',
 			},
 			{
 				name: 'Unix Ms Timestamp',
 				value: 'x',
-				description: 'Example: 513388800',
+				description: 'Example: 1674691200000',
 			},
 		],
 		default: 'MM/dd/yyyy',
@@ -104,5 +104,26 @@ export const FormatDateDescription: INodeProperties[] = [
 				operation: ['formatDate'],
 			},
 		},
+	},
+	{
+		displayName: 'Options',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: ['formatDate'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Use Workflow Timezone',
+				name: 'timezone',
+				type: 'boolean',
+				default: false,
+				description: "Whether to use the timezone of the input or the workflow's timezone",
+			},
+		],
 	},
 ];
