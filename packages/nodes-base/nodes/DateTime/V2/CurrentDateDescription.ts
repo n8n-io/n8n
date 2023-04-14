@@ -41,7 +41,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				operation: ['getCurrentDate'],

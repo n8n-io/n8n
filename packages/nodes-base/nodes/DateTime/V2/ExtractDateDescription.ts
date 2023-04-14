@@ -29,7 +29,20 @@ export const ExtractDateDescription: INodeProperties[] = [
 		displayName: 'Part',
 		name: 'part',
 		type: 'options',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
+			{
+				name: 'Year',
+				value: 'year',
+			},
+			{
+				name: 'Month',
+				value: 'month',
+			},
+			{
+				name: 'Week',
+				value: 'week',
+			},
 			{
 				name: 'Day',
 				value: 'day',
@@ -43,20 +56,8 @@ export const ExtractDateDescription: INodeProperties[] = [
 				value: 'minute',
 			},
 			{
-				name: 'Month',
-				value: 'month',
-			},
-			{
 				name: 'Second',
 				value: 'second',
-			},
-			{
-				name: 'Week',
-				value: 'week',
-			},
-			{
-				name: 'Year',
-				value: 'year',
 			},
 		],
 		default: 'month',

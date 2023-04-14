@@ -109,7 +109,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
 				operation: ['formatDate'],
