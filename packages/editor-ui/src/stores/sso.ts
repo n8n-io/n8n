@@ -68,11 +68,14 @@ export const useSSOStore = defineStore('sso', () => {
 			...params,
 		});
 
+	const userData = computed(() => usersStore.currentUser);
+
 	return {
 		isLoading,
 		setLoading,
 		isSamlLoginEnabled,
 		isEnterpriseSamlEnabled,
+		isDefaultAuthenticationSaml,
 		showSsoLoginButton,
 		getSSORedirectUrl,
 		getSamlMetadata,
@@ -80,5 +83,6 @@ export const useSSOStore = defineStore('sso', () => {
 		saveSamlConfig,
 		testSamlConfig,
 		updateUser,
+		userData,
 	};
 });
