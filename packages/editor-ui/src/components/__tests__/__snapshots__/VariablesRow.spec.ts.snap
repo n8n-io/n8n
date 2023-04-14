@@ -16,11 +16,11 @@ exports[`VariablesRow > should render correctly 1`] = `
   <td>
     <div class=\\"buttons hoverButtons\\">
       <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\">
-        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium disabled\\" data-test-id=\\"variable-row-edit-button\\">
+        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium disabled\\" data-test-id=\\"variable-row-edit-button\\">
             <!----><span> Edit </span></button></div>
       </n8n-tooltip-stub>
       <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\">
-        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button tertiary medium disabled\\" data-test-id=\\"variable-row-delete-button\\">
+        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-live=\\"polite\\" class=\\"button button tertiary medium disabled\\" data-test-id=\\"variable-row-delete-button\\">
             <!----><span> Delete </span></button></div>
       </n8n-tooltip-stub>
     </div>
@@ -70,8 +70,8 @@ exports[`VariablesRow > should show key and value inputs in edit mode 1`] = `
     </div>
   </td>
   <td>
-    <div class=\\"buttons\\"><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-cancel-button\\">
-        <!----><span> Cancel </span></button><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium\\" data-test-id=\\"variable-row-save-button\\">
+    <div class=\\"buttons\\"><button aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-cancel-button\\">
+        <!----><span> Cancel </span></button><button aria-live=\\"polite\\" class=\\"button button primary medium\\" data-test-id=\\"variable-row-save-button\\">
         <!----><span> Save </span></button></div>
   </td>
 </tr>"
