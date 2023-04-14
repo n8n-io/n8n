@@ -14,7 +14,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowShortResponse } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
-import { waitAllPromises } from '@/utils/testUtils';
+import { waitAllPromises } from '@/__tests__/utils';
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({
 	createdAt: faker.date.past().toDateString(),
