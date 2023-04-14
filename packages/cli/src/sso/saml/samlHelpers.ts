@@ -19,7 +19,7 @@ import {
 	setCurrentAuthenticationMethod,
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
-import { SamlConfiguration } from './types/requests';
+import type { SamlConfiguration } from './types/requests';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */

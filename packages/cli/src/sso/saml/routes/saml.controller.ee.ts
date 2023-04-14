@@ -132,11 +132,11 @@ export class SamlController {
 				}
 			}
 			throw new AuthError('SAML Authentication failed');
-		} catch (err) {
+		} catch (error) {
 			if (isConnectionTestRequest(req)) {
-				return res.send(getSamlConnectionTestFailedView(err.message));
+				return res.send(getSamlConnectionTestFailedView((error as Error).message));
 			}
-			throw new AuthError('SAML Authentication failed: ' + err.message);
+			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
 	}
 

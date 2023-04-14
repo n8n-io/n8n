@@ -1,4 +1,4 @@
-import { SamlUserAttributes } from '../types/samlUserAttributes';
+import type { SamlUserAttributes } from '../types/samlUserAttributes';
 
 export function getSamlConnectionTestSuccessView(attributes: SamlUserAttributes): string {
 	return `
