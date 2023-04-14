@@ -345,6 +345,7 @@ export class UsersController {
 		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
 	}
 
+	@Authorized('any')
 	@Get('/')
 	async listUsers(req: UserRequest.List) {
 		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
