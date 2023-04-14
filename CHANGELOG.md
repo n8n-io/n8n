@@ -1,3 +1,14 @@
+## [0.222.3](https://github.com/n8n-io/n8n/compare/n8n@0.222.2...n8n@0.222.3) (2023-04-14)
+
+
+### Bug Fixes
+
+* **core:** Fix broken API permissions in public API ([#5978](https://github.com/n8n-io/n8n/issues/5978)) ([f4be887](https://github.com/n8n-io/n8n/commit/f4be8870366d9ef9913e56ad426db56eb6b906e0))
+* **editor:** Only treat as CTRL pressed by default on touch devices for MouseEvent ([#5968](https://github.com/n8n-io/n8n/issues/5968)) ([57af90f](https://github.com/n8n-io/n8n/commit/57af90ff6874980e88929e9dd09c8b06e683d03e))
+* **editor:** Update vite legacy-plugin browser target (no-changelog) ([#5952](https://github.com/n8n-io/n8n/issues/5952)) ([f565b16](https://github.com/n8n-io/n8n/commit/f565b16cfc150b05b5a38f77e29e92ad879be96d))
+
+
+
 ## [0.222.2](https://github.com/n8n-io/n8n/compare/n8n@0.222.1...n8n@0.222.2) (2023-04-11)
 
 
