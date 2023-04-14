@@ -1,0 +1,42 @@
+name: 'Release: Push to Channel'
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'n8n Release version to push to a channel'
+        required: true
+
+      release-channel:
+        description: 'Release channel'
+        required: true
+        type: choice
+        default: 'next'
+        options:
+          - next
+          - latest
+
+jobs:
+  release-to-npm:
+    name: Release to NPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+      - run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          npm dist-tag add n8n@${{ github.event.inputs.version }} ${{ github.event.inputs.release-channel }}
+
+  release-to-docker-hub:
+    name: Release to DockerHub
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - run: docker buildx imagetools create -t n8nio/n8n:${{ github.event.inputs.release-channel }} n8nio/n8n:${{ github.event.inputs.version }}
