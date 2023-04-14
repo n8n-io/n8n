@@ -3,7 +3,6 @@ import { configure } from '@testing-library/vue';
 import Vue from 'vue';
 import '../plugins';
 import { I18nPlugin } from '@/plugins/i18n';
-import { configure } from '@testing-library/vue';
 
 configure({ testIdAttribute: 'data-test-id' });
 
@@ -23,6 +22,3 @@ window.ResizeObserver =
 		observe: vi.fn(),
 		unobserve: vi.fn(),
 	}));
-
-// Configure Testing Library
-configure({ testIdAttribute: 'data-test-id' });
