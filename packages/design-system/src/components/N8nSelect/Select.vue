@@ -167,7 +167,9 @@ export default Vue.extend({
 	input {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
-		padding: 0 var(--spacing-3xs);
+		@-moz-document url-prefix() {
+			padding: 0 var(--spacing-3xs);
+		}
 	}
 }
 
