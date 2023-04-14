@@ -11,10 +11,10 @@ import {
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { Role } from '@/databases/entities/Role';
-import { User } from '@/databases/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { randomEmail, randomName } from '../integration/shared/random';
 import * as Helpers from './Helpers';

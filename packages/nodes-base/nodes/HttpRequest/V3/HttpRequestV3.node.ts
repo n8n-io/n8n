@@ -138,6 +138,18 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 				{
+					displayName:
+						'Make sure you have specified the scope(s) for the Service Account in the credential',
+					name: 'googleApiWarning',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							nodeCredentialType: ['googleApi'],
+						},
+					},
+				},
+				{
 					displayName: 'Generic Auth Type',
 					name: 'genericAuthType',
 					type: 'credentialsSelect',
@@ -1369,7 +1381,7 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response.reason as JsonObject);
+					throw new NodeApiError(this.getNode(), response as JsonObject);
 				} else {
 					// Return the actual reason as error
 					returnItems.push({

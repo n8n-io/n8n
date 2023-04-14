@@ -2,7 +2,7 @@
 import { AuthIdentity } from './AuthIdentity';
 import { AuthProviderSyncHistory } from './AuthProviderSyncHistory';
 import { CredentialsEntity } from './CredentialsEntity';
-import { EventDestinations } from './MessageEventBusDestinationEntity';
+import { EventDestinations } from './EventDestinations';
 import { ExecutionEntity } from './ExecutionEntity';
 import { InstalledNodes } from './InstalledNodes';
 import { InstalledPackages } from './InstalledPackages';

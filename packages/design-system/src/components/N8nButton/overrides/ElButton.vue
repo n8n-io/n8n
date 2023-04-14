@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nButton from '../Button.vue';
 
 const classToTypeMap = {
@@ -13,7 +13,7 @@ const classToTypeMap = {
 	'el-picker-panel__link-btn': 'secondary',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		N8nButton,
 	},

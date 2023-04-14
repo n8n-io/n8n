@@ -1,8 +1,11 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/vue';
 import Vue from 'vue';
 import '../plugins';
 import { I18nPlugin } from '@/plugins/i18n';
 import { configure } from '@testing-library/vue';
+
+configure({ testIdAttribute: 'data-test-id' });
 
 Vue.config.productionTip = false;
 Vue.config.devtools = false;

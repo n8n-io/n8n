@@ -5,6 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
+	ASK_AI_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -29,6 +30,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
 import {
 	CurlToJSONResponse,
@@ -53,6 +55,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		activeCredentialType: null,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[ASK_AI_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -123,6 +128,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				mode: '',
 				activeId: null,
 				showAuthSelector: false,
+			},
+			[USER_ACTIVATION_SURVEY_MODAL]: {
+				open: false,
 			},
 		},
 		modalStack: [],

@@ -136,7 +136,7 @@ export default defineComponent({
 			<tbody>
 				<template v-for="row in visibleRows">
 					<slot name="row" :columns="columns" :row="row" :getTdValue="getTdValue">
-						<tr :key="row.id">
+						<tr :key="row.id" :class="getTrClass()">
 							<td v-for="column in columns" :key="column.id" :class="column.classes">
 								<component v-if="column.render" :is="column.render" :row="row" :column="column" />
 								<span v-else>{{ getTdValue(row, column) }}</span>

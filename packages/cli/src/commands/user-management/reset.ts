@@ -1,7 +1,9 @@
+import { Container } from 'typedi';
 import { Not } from 'typeorm';
 import * as Db from '@/Db';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import { BaseCommand } from '../BaseCommand';
 
 const defaultUserProps = {
@@ -20,15 +22,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'workflow',
-		});
-
-		const ownerCredentialRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		const ownerWorkflowRole = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+		const ownerCredentialRole = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
 
 		await Db.collections.SharedWorkflow.update(
 			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
@@ -44,10 +39,10 @@ export class Reset extends BaseCommand {
 		await Db.collections.User.save(Object.assign(owner, defaultUserProps));
 
 		const danglingCredentials: CredentialsEntity[] =
-			(await Db.collections.Credentials.createQueryBuilder('credentials')
+			await Db.collections.Credentials.createQueryBuilder('credentials')
 				.leftJoinAndSelect('credentials.shared', 'shared')
 				.where('shared.credentialsId is null')
-				.getMany()) as CredentialsEntity[];
+				.getMany();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Db.collections.SharedCredentials.create({
 				credentials,
@@ -70,10 +65,7 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'global',
-		});
+		const globalRole = await Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
 
 		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
 

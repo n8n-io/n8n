@@ -7,10 +7,10 @@ export type RuleGroup = {
 
 export type Validatable = string | number | boolean | null | undefined;
 
-export type IValidator = {
+export type IValidator<T = unknown> = {
 	validate: (
 		value: Validatable,
-		config: unknown,
+		config: T,
 	) => false | { messageKey: string; message?: string; options?: unknown } | null;
 };
 

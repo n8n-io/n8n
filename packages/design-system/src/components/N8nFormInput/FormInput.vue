@@ -92,7 +92,7 @@ import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
-import ElSwitch from 'element-ui/lib/switch';
+import { Switch as ElSwitch } from 'element-ui';
 
 import { getValidationError, VALIDATORS } from './validators';
 import { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
