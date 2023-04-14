@@ -38,7 +38,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -55,7 +55,8 @@ export const CurrentDateDescription: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'America/New_York',
 				default: '',
-				description: 'The timezone to use. If not set, the timezone of the workflow will be used.',
+				description:
+					'The timezone to use. If not set, the timezone of the n8n instance will be used. Use ‘GMT’ for +00:00 timezone.',
 			},
 		],
 	},

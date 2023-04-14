@@ -29,7 +29,7 @@ export const SubtractFromDateDescription: INodeProperties[] = [
 	{
 		displayName: 'Time Unit to Subtract',
 		name: 'timeUnit',
-		description: 'Time unit for Duration parameter above',
+		description: 'Time unit for Duration parameter below',
 		displayOptions: {
 			show: {
 				operation: ['subtractFromDate'],
@@ -39,12 +39,12 @@ export const SubtractFromDateDescription: INodeProperties[] = [
 		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
-				name: 'Quarters',
-				value: 'quarters',
-			},
-			{
 				name: 'Years',
 				value: 'years',
+			},
+			{
+				name: 'Quarters',
+				value: 'quarters',
 			},
 			{
 				name: 'Months',

@@ -27,6 +27,7 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 		displayName: 'Units',
 		name: 'units',
 		type: 'multiOptions',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Day',
