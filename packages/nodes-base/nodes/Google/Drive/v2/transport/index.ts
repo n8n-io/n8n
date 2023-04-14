@@ -1,3 +1,5 @@
+import type { OptionsWithUri } from 'request';
+
 import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -5,8 +7,6 @@ import type {
 	IDataObject,
 	IPollFunctions,
 	JsonObject,
-	IHttpRequestOptions,
-	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -58,26 +58,27 @@ async function getAccessToken(
 		},
 	);
 
-	const options: IHttpRequestOptions = {
+	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method: 'POST',
-		body: {
+		form: {
 			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 			assertion: signature,
 		},
-		url: 'https://oauth2.googleapis.com/token',
+		uri: 'https://oauth2.googleapis.com/token',
 		json: true,
 	};
 
-	return this.helpers.httpRequest(options);
+	return this.helpers.request(options);
 }
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: IHttpRequestMethods,
+	method: string,
 	resource: string,
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -89,14 +90,14 @@ export async function googleApiRequest(
 		'serviceAccount',
 	) as string;
 
-	let options: IHttpRequestOptions = {
+	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		url: uri || `https://www.googleapis.com${resource}`,
+		uri: uri || `https://www.googleapis.com${resource}`,
 		json: true,
 	};
 
@@ -116,7 +117,7 @@ export async function googleApiRequest(
 			);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			return await this.helpers.httpRequest(options);
+			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
 		}
@@ -132,7 +133,7 @@ export async function googleApiRequest(
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: IHttpRequestMethods,
+	method: string,
 	endpoint: string,
 
 	body: any = {},
