@@ -13,6 +13,15 @@ import { fileRLC, folderRLC } from '../common.descriptions';
 const properties: INodeProperties[] = [
 	fileRLC,
 	{
+		displayName: 'File Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. My File',
+		description:
+			'The name of the new file. If not set, “Copy of {original file name}” will be used.',
+	},
+	{
 		displayName: 'Copy Location',
 		name: 'copyLocation',
 		type: 'options',
@@ -43,13 +52,19 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'File Name',
-				name: 'name',
+				displayName: 'Copy Requires Writer Permission',
+				name: 'copyRequiresWriterPermission',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the options to copy, print, or download this file, should be disabled for readers and commenters',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. My File',
-				description:
-					'The name of the new file. If not set, “Copy of {original file name}” will be used.',
+				description: 'A short description of the file',
 			},
 		],
 	},
@@ -69,10 +84,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const fileId = file.value;
 
-	let name = this.getNodeParameter('options.name', i, '') as string;
-	if (name === '') {
-		name = `Copy of ${file.cachedResultName}`;
-	}
+	const options = this.getNodeParameter('options', i, {});
+
+	let name = this.getNodeParameter('name', i) as string;
+	name = name ? name : `Copy of ${file.cachedResultName}`;
+
+	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
 	const parents: string[] = [];
 	const copyLocation = this.getNodeParameter('copyLocation', i) as string;
@@ -83,7 +100,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		parents.push(destinationFolder);
 	}
 
-	const body: IDataObject = { parents, name };
+	const body: IDataObject = { copyRequiresWriterPermission, parents, name };
+
+	if (options.description) {
+		body.description = options.description;
+	}
 
 	const qs = {
 		supportsAllDrives: true,
