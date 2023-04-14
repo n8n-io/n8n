@@ -345,6 +345,17 @@ function executeData(
 		// which does not use the node name
 		const parentNodeName = parentNode[0];
 
+		const parentPinData = useWorkflowsStore().getPinData![parentNodeName];
+
+		// populate `executeData` from `pinData`
+
+		if (parentPinData) {
+			executeData.data = { main: [parentPinData] };
+			executeData.source = { main: [{ previousNode: parentNodeName }] };
+
+			return executeData;
+		}
+
 		// populate `executeData` from `runData`
 
 		const workflowRunData = useWorkflowsStore().getWorkflowRunData;
