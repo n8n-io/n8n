@@ -14,6 +14,7 @@ export default defineComponent({
 		N8nOption,
 		N8nPagination,
 	},
+	emits: ['update:currentPage', 'update:rowsPerPage'],
 	props: {
 		columns: {
 			type: Array as PropType<DatatableColumn[]>,
@@ -23,25 +24,31 @@ export default defineComponent({
 			type: Array as PropType<DatatableRow[]>,
 			required: true,
 		},
+		currentPage: {
+			type: Number,
+			default: 1,
+		},
 		pagination: {
 			type: Boolean,
 			default: true,
 		},
 		rowsPerPage: {
-			type: Number,
+			type: [Number, String] as PropType<number | '*'>,
 			default: 10,
 		},
 	},
-	setup(props) {
+	setup(props, { emit }) {
 		const { t } = useI18n();
 		const rowsPerPageOptions = ref([10, 25, 50, 100]);
 
 		const style = useCssModule();
-		const currentPage = ref(1);
-		const currentRowsPerPage = ref(props.rowsPerPage);
 
 		const totalPages = computed(() => {
-			return Math.ceil(props.rows.length / currentRowsPerPage.value);
+			if (props.rowsPerPage === '*') {
+				return 1;
+			}
+
+			return Math.ceil(props.rows.length / props.rowsPerPage);
 		});
 
 		const totalRows = computed(() => {
@@ -49,8 +56,12 @@ export default defineComponent({
 		});
 
 		const visibleRows = computed(() => {
-			const start = (currentPage.value - 1) * currentRowsPerPage.value;
-			const end = start + currentRowsPerPage.value;
+			if (props.rowsPerPage === '*') {
+				return props.rows;
+			}
+
+			const start = (props.currentPage - 1) * props.rowsPerPage;
+			const end = start + props.rowsPerPage;
 
 			return props.rows.slice(start, end);
 		});
@@ -67,12 +78,16 @@ export default defineComponent({
 			};
 		}
 
-		function onRowsPerPageChange(value: number) {
-			currentRowsPerPage.value = value;
+		function onUpdateCurrentPage(value: number) {
+			emit('update:currentPage', value);
+		}
 
-			const maxPage = Math.ceil(totalRows.value / currentRowsPerPage.value);
-			if (maxPage < currentPage.value) {
-				currentPage.value = maxPage;
+		function onRowsPerPageChange(value: number | '*') {
+			emit('update:rowsPerPage', value);
+
+			const maxPage = value === '*' ? 1 : Math.ceil(totalRows.value / value);
+			if (maxPage < props.currentPage) {
+				onUpdateCurrentPage(maxPage);
 			}
 		}
 
@@ -80,17 +95,23 @@ export default defineComponent({
 			return getValueByPath<DatatableRowDataType>(row, column.path);
 		}
 
+		function getThStyle(column: DatatableColumn) {
+			return {
+				...(column.width ? { width: column.width } : {}),
+			};
+		}
+
 		return {
 			t,
 			classes,
-			currentPage,
 			totalPages,
 			totalRows,
 			visibleRows,
-			currentRowsPerPage,
 			rowsPerPageOptions,
 			getTdValue,
 			getTrClass,
+			getThStyle,
+			onUpdateCurrentPage,
 			onRowsPerPageChange,
 		};
 	},
@@ -102,7 +123,12 @@ export default defineComponent({
 		<table :class="$style.datatable">
 			<thead :class="$style.datatableHeader">
 				<tr>
-					<th v-for="column in columns" :key="column.id" :class="column.classes">
+					<th
+						v-for="column in columns"
+						:key="column.id"
+						:class="column.classes"
+						:style="getThStyle(column)"
+					>
 						{{ column.label }}
 					</th>
 				</tr>
@@ -125,23 +151,29 @@ export default defineComponent({
 			<n8n-pagination
 				v-if="totalPages > 1"
 				background
-				:current-page.sync="currentPage"
 				:pager-count="5"
-				:page-size="currentRowsPerPage"
+				:page-size="rowsPerPage"
 				layout="prev, pager, next"
 				:total="totalRows"
+				:currentPage="currentPage"
+				@update:currentPage="onUpdateCurrentPage"
 			/>
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select
 					size="mini"
-					:value="currentRowsPerPage"
+					:value="rowsPerPage"
 					@input="onRowsPerPageChange"
 					popper-append-to-body
 				>
 					<template #prepend>{{ t('datatable.pageSize') }}</template>
-					<n8n-option v-for="size in rowsPerPageOptions" :key="size" :label="size" :value="size" />
-					<n8n-option :label="`All`" :value="totalRows"> </n8n-option>
+					<n8n-option
+						v-for="size in rowsPerPageOptions"
+						:key="size"
+						:label="`${size}`"
+						:value="size"
+					/>
+					<n8n-option :label="`All`" value="*"> </n8n-option>
 				</n8n-select>
 			</div>
 		</div>
@@ -160,6 +192,7 @@ export default defineComponent({
 	tbody {
 		tr {
 			td {
+				vertical-align: top;
 				color: var(--color-text-base);
 				padding: var(--spacing-s) var(--spacing-2xs);
 			}
@@ -190,7 +223,7 @@ export default defineComponent({
 	justify-content: center;
 	align-items: center;
 	bottom: 0;
-	overflow: auto;
+	overflow: visible;
 	margin-top: var(--spacing-s);
 }
 

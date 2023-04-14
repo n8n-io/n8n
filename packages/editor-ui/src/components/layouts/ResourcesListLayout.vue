@@ -58,7 +58,7 @@
 					/>
 				</slot>
 			</div>
-			<page-view-layout-list v-else>
+			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
@@ -117,7 +117,11 @@
 
 				<slot name="preamble" />
 
-				<div v-if="filteredAndSortedSubviewResources.length > 0">
+				<div
+					v-if="filteredAndSortedSubviewResources.length > 0"
+					:class="$style.listWrapper"
+					ref="listWrapperRef"
+				>
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
@@ -133,8 +137,13 @@
 					<n8n-datatable
 						v-if="typeProps.columns"
 						data-test-id="resources-table"
+						:class="$style.datatable"
 						:columns="typeProps.columns"
 						:rows="filteredAndSortedSubviewResources"
+						:currentPage="currentPage"
+						:rowsPerPage="rowsPerPage"
+						@update:currentPage="setCurrentPage"
+						@update:rowsPerPage="setRowsPerPage"
 					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />
@@ -226,7 +235,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		displayName: {
 			type: Function as PropType<(resource: IResource) => string>,
-			default: () => (resource: IResource) => resource.name,
+			default: (resource: IResource) => resource.name,
 		},
 		resources: {
 			type: Array,
@@ -259,6 +268,10 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: Boolean,
 			default: true,
 		},
+		sortFns: {
+			type: Object as PropType<Record<string, (a: IResource, b: IResource) => number>>,
+			default: (): Record<string, (a: IResource, b: IResource) => number> => ({}),
+		},
 		sortOptions: {
 			type: Array as PropType<string[]>,
 			default: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
@@ -280,6 +293,8 @@ export default mixins(showMessage, debounceHelper).extend({
 			isOwnerSubview: false,
 			sortBy: this.sortOptions[0],
 			hasFilters: false,
+			currentPage: 1,
+			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
 		};
@@ -338,15 +353,23 @@ export default mixins(showMessage, debounceHelper).extend({
 			return filtered.sort((a, b) => {
 				switch (this.sortBy) {
 					case 'lastUpdated':
-						return new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
+						return this.sortFns['lastUpdated']
+							? this.sortFns['lastUpdated'](a, b)
+							: new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
 					case 'lastCreated':
-						return new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
+						return this.sortFns['lastCreated']
+							? this.sortFns['lastCreated'](a, b)
+							: new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
 					case 'nameAsc':
-						return this.displayName(a).trim().localeCompare(this.displayName(b).trim());
+						return this.sortFns['nameAsc']
+							? this.sortFns['nameAsc'](a, b)
+							: this.displayName(a).trim().localeCompare(this.displayName(b).trim());
 					case 'nameDesc':
-						return this.displayName(b).trim().localeCompare(this.displayName(a).trim());
+						return this.sortFns['nameDesc']
+							? this.sortFns['nameDesc'](a, b)
+							: this.displayName(b).trim().localeCompare(this.displayName(a).trim());
 					default:
-						return 0;
+						return this.sortFns[this.sortBy] ? this.sortFns[this.sortBy](a, b) : 0;
 				}
 			});
 		},
@@ -365,6 +388,12 @@ export default mixins(showMessage, debounceHelper).extend({
 
 			this.loading = false;
 			this.$nextTick(this.focusSearchInput);
+		},
+		setCurrentPage(page: number) {
+			this.currentPage = page;
+		},
+		setRowsPerPage(rowsPerPage: number | '*') {
+			this.rowsPerPage = rowsPerPage;
 		},
 		resetFilters() {
 			Object.keys(this.filters).forEach((key) => {
@@ -451,7 +480,8 @@ export default mixins(showMessage, debounceHelper).extend({
 		'filters.search'() {
 			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
 		},
-		sortBy() {
+		sortBy(newValue) {
+			this.$emit('sort', newValue);
 			this.sendSortingTelemetry();
 		},
 	},
@@ -479,6 +509,10 @@ export default mixins(showMessage, debounceHelper).extend({
 	//flex-direction: column;
 }
 
+.listWrapper {
+	height: 100%;
+}
+
 .sort-and-filter {
 	display: flex;
 	flex-direction: row;
@@ -492,5 +526,9 @@ export default mixins(showMessage, debounceHelper).extend({
 
 .card-loading {
 	height: 69px;
+}
+
+.datatable {
+	padding-bottom: var(--spacing-s);
 }
 </style>

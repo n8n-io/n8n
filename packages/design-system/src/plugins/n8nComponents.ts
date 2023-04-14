@@ -13,6 +13,7 @@ import N8nCard from '../components/N8nCard';
 import N8nDatatable from '../components/N8nDatatable';
 import N8nFormBox from '../components/N8nFormBox';
 import N8nFormInputs from '../components/N8nFormInputs';
+import N8nFormInput from '../components/N8nFormInput';
 import N8nHeading from '../components/N8nHeading';
 import N8nIcon from '../components/N8nIcon';
 import N8nIconButton from '../components/N8nIconButton';
@@ -65,6 +66,7 @@ export default {
 		app.component('n8n-datatable', N8nDatatable);
 		app.component('n8n-form-box', N8nFormBox);
 		app.component('n8n-form-inputs', N8nFormInputs);
+		app.component('n8n-form-input', N8nFormInput);
 		app.component('n8n-icon', N8nIcon);
 		app.component('n8n-icon-button', N8nIconButton);
 		app.component('n8n-info-tip', N8nInfoTip);

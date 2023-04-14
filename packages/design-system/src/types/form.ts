@@ -11,7 +11,7 @@ export type IValidator = {
 	validate: (
 		value: Validatable,
 		config: unknown,
-	) => false | { messageKey: string; options?: unknown } | null;
+	) => false | { messageKey: string; message?: string; options?: unknown } | null;
 };
 
 export type FormState = {
