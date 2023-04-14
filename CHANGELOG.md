@@ -1,3 +1,13 @@
+## [0.224.1](https://github.com/n8n-io/n8n/compare/n8n@0.224.0...n8n@0.224.1) (2023-04-14)
+
+
+### Bug Fixes
+
+* **core:** Fix broken API permissions in public API ([#5978](https://github.com/n8n-io/n8n/issues/5978)) ([b76ab31](https://github.com/n8n-io/n8n/commit/b76ab318f8919138391850738de99e592aa020a7))
+* **editor:** Only treat as CTRL pressed by default on touch devices for MouseEvent ([#5968](https://github.com/n8n-io/n8n/issues/5968)) ([471be3b](https://github.com/n8n-io/n8n/commit/471be3b4a89e9967524a5d06212153bbf2b56537))
+
+
+
 # [0.224.0](https://github.com/n8n-io/n8n/compare/n8n@0.223.0...n8n@0.224.0) (2023-04-12)
 
 
