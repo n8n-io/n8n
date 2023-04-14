@@ -18,9 +18,14 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: { userId: user.id },
-	});
+	let sharedWorkflows;
+	if (user.globalRole.name === 'owner') {
+		sharedWorkflows = await Db.collections.SharedWorkflow.find();
+	} else {
+		sharedWorkflows = await Db.collections.SharedWorkflow.find({
+			where: { userId: user.id },
+		});
+	}
 
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
