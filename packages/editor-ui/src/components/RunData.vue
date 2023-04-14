@@ -190,11 +190,11 @@
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
-					<code-editor
+					<code-node-editor
 						:value="editMode.value"
-						:options="{ scrollBeyondLastLine: false }"
-						type="json"
-						@input="ndvStore.setOutputPanelEditModeValue($event)"
+						language="json"
+						:maxHeight="true"
+						@valueChanged="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -228,7 +228,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
-				<slot name="recovered-artifical-output-data"></slot>
+				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
@@ -501,7 +501,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
-import { CodeEditor } from '@/components/forms';
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
 import { isEmpty } from '@/utils';
@@ -525,7 +525,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		BinaryDataDisplay,
 		NodeErrorView,
 		WarningTooltip,
-		CodeEditor,
+		CodeNodeEditor,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
@@ -1425,6 +1425,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 .dataContainer {
 	position: relative;
 	height: 100%;
+	overflow-y: auto;
 
 	&:hover {
 		.actions-group {

@@ -18,21 +18,26 @@ import {
 	deleteCharBackward,
 } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
+import type { Extension } from '@codemirror/state';
 
 import { codeInputHandler } from '@/plugins/codemirror/inputHandlers/code.inputHandler';
 
-export const baseExtensions = [
+export const readOnlyEditorExtensions: readonly Extension[] = [
 	lineNumbers(),
-	highlightActiveLineGutter(),
+	EditorView.lineWrapping,
 	highlightSpecialChars(),
+	lintGutter(),
+];
+
+export const writableEditorExtensions: readonly Extension[] = [
 	history(),
 	foldGutter(),
-	lintGutter(),
 	codeInputHandler(),
 	dropCursor(),
 	indentOnInput(),
 	bracketMatching(),
 	highlightActiveLine(),
+	highlightActiveLineGutter(),
 	keymap.of([
 		{ key: 'Enter', run: insertNewlineAndIndent },
 		{ key: 'Tab', run: acceptCompletion },
@@ -42,5 +47,4 @@ export const baseExtensions = [
 		{ key: 'Backspace', run: deleteCharBackward, shift: deleteCharBackward },
 		indentWithTab,
 	]),
-	EditorView.lineWrapping,
 ];

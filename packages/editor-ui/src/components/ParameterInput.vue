@@ -51,17 +51,29 @@
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<code-edit
+				<el-dialog
 					v-if="codeEditDialogVisible"
-					:value="value"
-					:parameter="parameter"
-					:type="editorType"
-					:codeAutocomplete="codeAutocomplete"
-					:path="path"
-					:readonly="isReadOnly"
-					@closeDialog="closeCodeEditDialog"
-					@valueChanged="expressionUpdated"
-				></code-edit>
+					visible
+					append-to-body
+					:close-on-click-modal="false"
+					width="80%"
+					:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+						.nodeText()
+						.inputLabelDisplayName(parameter, path)}`"
+					:before-close="closeCodeEditDialog"
+				>
+					<div class="ignore-key-press">
+						<code-node-editor
+							:value="value"
+							:defaultValue="parameter.default"
+							:language="getArgument('editorLanguage') ?? 'json'"
+							:isReadOnly="isReadOnly"
+							:maxHeight="true"
+							@valueChanged="expressionUpdated"
+						/>
+					</div>
+				</el-dialog>
+
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
 					:value="value"
@@ -75,7 +87,9 @@
 				<code-node-editor
 					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCode="node.parameters.jsCode"
+					:value="node.parameters.jsCode"
+					:defaultValue="parameter.default"
+					:language="getArgument('editorLanguage')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
@@ -92,16 +106,16 @@
 
 				<div
 					v-else-if="isEditor === true"
-					class="code-edit clickable ph-no-capture"
+					class="readonly-code clickable ph-no-capture"
 					@click="displayEditDialog()"
 				>
-					<prism-editor
+					<code-node-editor
 						v-if="!codeEditDialogVisible"
-						:lineNumbers="true"
-						:readonly="true"
-						:code="displayValue"
-						language="js"
-					></prism-editor>
+						:value="value"
+						:language="getArgument('editorLanguage') ?? 'json'"
+						:isReadOnly="true"
+						:maxHeight="true"
+					/>
 				</div>
 
 				<n8n-input
@@ -341,7 +355,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, NodeParameterValue } from 'n8n-workflow';
 
-import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -351,8 +364,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-// @ts-ignore
-import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
@@ -385,14 +396,12 @@ export default mixins(
 ).extend({
 	name: 'parameter-input',
 	components: {
-		CodeEdit,
 		CodeNodeEditor,
 		HtmlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
 		CredentialsSelect,
-		PrismEditor,
 		ScopesNotice,
 		ParameterOptions,
 		ParameterIssues,
@@ -554,8 +563,8 @@ export default mixins(
 				return null;
 			}
 		},
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
+		node(): INodeUi {
+			return this.ndvStore.activeNode!;
 		},
 		displayTitle(): string {
 			const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -914,15 +923,7 @@ export default mixins(
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
-			if (this.parameter.typeOptions === undefined) {
-				return undefined;
-			}
-
-			if (this.parameter.typeOptions[argumentName] === undefined) {
-				return undefined;
-			}
-
-			return this.parameter.typeOptions[argumentName];
+			return this.parameter.typeOptions?.[argumentName];
 		},
 		expressionUpdated(value: string) {
 			const val: NodeParameterValueType = this.isResourceLocatorParameter
@@ -1204,7 +1205,7 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-.code-edit {
+.readonly-code {
 	font-size: var(--font-size-xs);
 }
 

@@ -13,7 +13,6 @@ import { tags } from '@lezer/highlight';
 const BASE_STYLING = {
 	fontSize: '0.8em',
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
-	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '300px',
 		lineHeight: '1.3em',
@@ -29,7 +28,7 @@ const BASE_STYLING = {
 
 const cssStyleDeclaration = getComputedStyle(document.documentElement);
 
-export const CODE_NODE_EDITOR_THEME = [
+export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
@@ -37,6 +36,7 @@ export const CODE_NODE_EDITOR_THEME = [
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
+			height: settings.maxHeight ? '100%' : null,
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
@@ -69,7 +69,8 @@ export const CODE_NODE_EDITOR_THEME = [
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			maxHeight: BASE_STYLING.maxHeight,
+			minHeight: '100px',
+			maxHeight: settings.maxHeight ? null : '400px',
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
