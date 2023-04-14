@@ -36,7 +36,15 @@
 				</n8n-text>
 			</div>
 			<execution-card
-				v-else
+				v-else-if="temporaryExecution"
+				:execution="temporaryExecution"
+				:ref="`execution-${temporaryExecution.id}`"
+				:data-test-id="`execution-details-${temporaryExecution.id}`"
+				:showGap="true"
+				@refresh="onRefresh"
+				@retryExecution="onRetryExecution"
+			/>
+			<execution-card
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
@@ -88,6 +96,10 @@ export default Vue.extend({
 		loadingMore: {
 			type: Boolean,
 			default: false,
+		},
+		temporaryExecution: {
+			type: Object as PropType<IExecutionsSummary>,
+			default: null,
 		},
 	},
 	data() {

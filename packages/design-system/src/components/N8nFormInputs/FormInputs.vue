@@ -5,7 +5,7 @@
 				<div
 					v-for="(input, index) in filteredInputs"
 					:key="input.name"
-					:class="{ [`mt-${verticalSpacing}`]: index > 0 }"
+					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
 					<n8n-text
 						color="text-base"
@@ -37,12 +37,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
+import { createEventBus, EventBus } from '../../utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
@@ -50,13 +51,12 @@ export default Vue.extend({
 	},
 	props: {
 		inputs: {
-			type: Array,
-			default() {
-				return [[]];
-			},
+			type: Array as PropType<IFormInput[]>,
+			default: (): IFormInput[] => [],
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
+			default: (): EventBus => createEventBus(),
 		},
 		columnView: {
 			type: Boolean,
@@ -64,8 +64,8 @@ export default Vue.extend({
 		},
 		verticalSpacing: {
 			type: String,
-			required: false,
-			validator: (value: string): boolean => ['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
+			default: '',
+			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
 	},
 	data() {
@@ -76,19 +76,19 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		(this.inputs as IFormInput[]).forEach((input) => {
+		this.inputs.forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
-				Vue.set(this.values, input.name, input.initialValue);
+				this.$set(this.values, input.name, input.initialValue);
 			}
 		});
 
 		if (this.eventBus) {
-			this.eventBus.$on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
+			this.eventBus.on('submit', () => this.onSubmit());
 		}
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			return (this.inputs as IFormInput[]).filter((input) =>
+			return this.inputs.filter((input) =>
 				typeof input.shouldDisplay === 'function' ? input.shouldDisplay(this.values) : true,
 			);
 		},
@@ -106,15 +106,16 @@ export default Vue.extend({
 		onInput(name: string, value: unknown) {
 			this.values = {
 				...this.values,
-				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+				[name]: value,
 			};
-			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+			this.$emit('input', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
-			Vue.set(this.validity, name, valid);
+			this.$set(this.validity, name, valid);
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;
+
 			if (this.isReadyToSubmit) {
 				const toSubmit = this.filteredInputs.reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {

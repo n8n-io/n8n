@@ -5,6 +5,8 @@ import get from 'lodash.get';
 import intersection from 'lodash.intersection';
 import isEmpty from 'lodash.isempty';
 import omit from 'lodash.omit';
+import unset from 'lodash.unset';
+import { cloneDeep } from 'lodash';
 import set from 'lodash.set';
 import union from 'lodash.union';
 import { fuzzyCompare } from '../../utils/utilities';
@@ -22,7 +24,7 @@ type EntryMatches = {
 type CompareFunction = <T, U>(a: T, b: U) => boolean;
 
 const processNullishValueFunction = (version: number) => {
-	if (version === 2) {
+	if (version >= 2) {
 		return <T>(value: T) => (value === undefined ? null : value);
 	}
 	return <T>(value: T) => value || null;
@@ -43,9 +45,16 @@ function compareItems(
 
 	const keys1 = Object.keys(item1.json);
 	const keys2 = Object.keys(item2.json);
-	const intersectionKeys = intersection(keys1, keys2);
+	const allUniqueKeys = union(keys1, keys2);
 
-	const same = intersectionKeys.reduce((acc, key) => {
+	let keysToCompare;
+	if (options.fuzzyCompare && (options.nodeVersion as number) >= 2.1) {
+		keysToCompare = allUniqueKeys;
+	} else {
+		keysToCompare = intersection(keys1, keys2);
+	}
+
+	const same = keysToCompare.reduce((acc, key) => {
 		if (isEntriesEqual(item1.json[key], item2.json[key])) {
 			acc[key] = item1.json[key];
 		}
@@ -53,13 +62,12 @@ function compareItems(
 	}, {} as IDataObject);
 
 	const sameKeys = Object.keys(same);
-	const allUniqueKeys = union(keys1, keys2);
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
 	const skipped: IDataObject = {};
 
-	differentKeys.forEach((key) => {
+	differentKeys.forEach((key, i) => {
 		const processNullishValue = processNullishValueFunction(options.nodeVersion as number);
 
 		switch (options.resolve) {
@@ -70,18 +78,63 @@ function compareItems(
 				different[key] = processNullishValue(item2.json[key]);
 				break;
 			default:
-				const input1 = processNullishValue(item1.json[key]);
-				const input2 = processNullishValue(item2.json[key]);
+				let input1 = processNullishValue(item1.json[key]);
+				let input2 = processNullishValue(item2.json[key]);
 
 				let [firstInputName, secondInputName] = ['input1', 'input2'];
-				if (options.nodeVersion === 2) {
+				if ((options.nodeVersion as number) >= 2) {
 					[firstInputName, secondInputName] = ['inputA', 'inputB'];
 				}
 
-				if (skipFields.includes(key)) {
-					skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
-				} else {
+				if (
+					(options.nodeVersion as number) >= 2.1 &&
+					!options.disableDotNotation &&
+					!skipFields.some((field) => field === key)
+				) {
+					const skippedFieldsWithDotNotation = skipFields.filter(
+						(field) => field.startsWith(key) && field.includes('.'),
+					);
+
+					input1 = cloneDeep(input1);
+					input2 = cloneDeep(input2);
+
+					if (
+						skippedFieldsWithDotNotation.length &&
+						(typeof input1 !== 'object' || typeof input2 !== 'object')
+					) {
+						throw new Error(
+							`The field \'${key}\' in item ${i} is not an object. It is not possible to use dot notation.`,
+						);
+					}
+
+					if (skipped[key] === undefined && skippedFieldsWithDotNotation.length) {
+						skipped[key] = { [firstInputName]: {}, [secondInputName]: {} };
+					}
+
+					for (const skippedField of skippedFieldsWithDotNotation) {
+						const nestedField = skippedField.replace(`${key}.`, '');
+						set(
+							(skipped[key] as IDataObject)[firstInputName] as IDataObject,
+							nestedField,
+							get(input1, nestedField),
+						);
+						set(
+							(skipped[key] as IDataObject)[secondInputName] as IDataObject,
+							nestedField,
+							get(input2, nestedField),
+						);
+
+						unset(input1, nestedField);
+						unset(input2, nestedField);
+					}
+
 					different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+				} else {
+					if (skipFields.includes(key)) {
+						skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+					} else {
+						different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+					}
 				}
 		}
 	});
@@ -191,15 +244,22 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
-	let compareVersion = 1;
-	if (options.nodeVersion === 2) {
-		compareVersion = 2;
-	}
-
-	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean, compareVersion);
+	const isEntriesEqual = fuzzyCompare(
+		options.fuzzyCompare as boolean,
+		options.nodeVersion as number,
+	);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
+
+	if (disableDotNotation && skipFields.some((field) => field.includes('.'))) {
+		const fieldToSkip = skipFields.find((field) => field.includes('.'));
+		throw new Error(
+			`Dot notation is disabled, but field to skip comparing '${
+				fieldToSkip as string
+			}' contains dot`,
+		);
+	}
 
 	const filteredData = {
 		matched: [] as EntryMatches[],
@@ -261,8 +321,18 @@ export function findMatches(
 			let entryFromInput2 = match.json;
 
 			if (skipFields.length) {
-				entryFromInput1 = omit(entryFromInput1, skipFields);
-				entryFromInput2 = omit(entryFromInput2, skipFields);
+				if (disableDotNotation || !skipFields.some((field) => field.includes('.'))) {
+					entryFromInput1 = omit(entryFromInput1, skipFields);
+					entryFromInput2 = omit(entryFromInput2, skipFields);
+				} else {
+					entryFromInput1 = cloneDeep(entryFromInput1);
+					entryFromInput2 = cloneDeep(entryFromInput2);
+
+					skipFields.forEach((field) => {
+						unset(entryFromInput1, field);
+						unset(entryFromInput2, field);
+					});
+				}
 			}
 
 			let isItemsEqual = true;
