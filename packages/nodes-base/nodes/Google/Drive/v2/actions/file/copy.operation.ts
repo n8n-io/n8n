@@ -1,13 +1,16 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeParameterResourceLocator,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { prepareQueryString } from '../../helpers/utils';
-import { driveRLC, fileRLC, folderRLC } from '../common.descriptions';
+import { fileRLC, folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	driveRLC,
 	fileRLC,
 	{
 		displayName: 'Copy Location',
@@ -24,13 +27,6 @@ const properties: INodeProperties[] = [
 				value: 'select',
 			},
 		],
-	},
-	{
-		...driveRLC,
-		displayName: 'Destination Drive',
-		name: 'destinationDriveId',
-		description: 'The Drive where you want to save the copied file',
-		displayOptions: { show: { copyLocation: ['select'] } },
 	},
 	{
 		...folderRLC,
@@ -68,29 +64,26 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	options: IDataObject,
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const file = this.getNodeParameter('fileId', i) as INodeParameterResourceLocator;
 
-	const fileId = this.getNodeParameter('fileId', i, undefined, {
-		extractValue: true,
-	}) as string;
+	const fileId = file.value;
 
-	const queryFields = prepareQueryString(options.fields as string[]);
-
-	const body: IDataObject = {
-		fields: queryFields,
-	};
-
-	const optionProperties = ['name', 'parents'];
-	for (const propertyName of optionProperties) {
-		if (options[propertyName] !== undefined) {
-			body[propertyName] = options[propertyName];
-		}
+	let name = this.getNodeParameter('options.name', i, '') as string;
+	if (name === '') {
+		name = `Copy of ${file.cachedResultName}`;
 	}
+
+	const parents: string[] = [];
+	const copyLocation = this.getNodeParameter('copyLocation', i) as string;
+	if (copyLocation === 'select') {
+		const destinationFolder = this.getNodeParameter('destinationFolderId', i, undefined, {
+			extractValue: true,
+		}) as string;
+		parents.push(destinationFolder);
+	}
+
+	const body: IDataObject = { parents, name };
 
 	const qs = {
 		supportsAllDrives: true,
@@ -109,7 +102,5 @@ export async function execute(
 		{ itemData: { item: i } },
 	);
 
-	returnData.push(...executionData);
-
-	return returnData;
+	return executionData;
 }
