@@ -19,7 +19,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 				pinia,
 				stubs: {
 					'n8n-button': {
-						template: '<button data-testid="sso-button"></button>',
+						template: '<button data-test-id="sso-button"></button>',
 					},
 				},
 			},
