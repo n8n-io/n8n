@@ -16,7 +16,7 @@ import axios from 'axios';
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
 
-	displayName = 'Google API';
+	displayName = 'Google Service Account API';
 
 	documentationUrl = 'google/service-account';
 
@@ -66,14 +66,14 @@ export class GoogleApi implements ICredentialType {
 				'The email address of the user for which the application is requesting delegated access',
 		},
 		{
-			displayName: 'Set up for use in HTTP node',
+			displayName: 'Set up for use in HTTP Request node',
 			name: 'httpNode',
 			type: 'boolean',
 			default: false,
 		},
 		{
 			displayName:
-				"When using the HTTP node, you must specify the scopes you want to send. In other nodes, they're added automatically",
+				"When using the HTTP Request node, you must specify the scopes you want to send. In other nodes, they're added automatically",
 			name: 'httpWarning',
 			type: 'notice',
 			default: '',
@@ -88,6 +88,8 @@ export class GoogleApi implements ICredentialType {
 			name: 'scopes',
 			type: 'string',
 			default: '',
+			description:
+				'You can find the scopes for services <a href="https://developers.google.com/identity/protocols/oauth2/scopes" target="_blank">here</a>',
 			displayOptions: {
 				show: {
 					httpNode: [true],
