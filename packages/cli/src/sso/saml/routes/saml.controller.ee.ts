@@ -13,7 +13,7 @@ import { getInitSSOFormView } from '../views/initSsoPost';
 import { issueCookie } from '@/auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
-import { isSamlLicensedAndEnabled } from '../samlHelpers';
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
 import { AuthenticatedRequest } from '@/requests';
 import {
@@ -111,7 +111,7 @@ export class SamlController {
 		try {
 			const loginResult = await this.samlService.handleSamlLogin(req, binding);
 			// if RelayState is set to the test connection Url, this is a test connection
-			if (req.body.RelayState && req.body.RelayState === getServiceProviderConfigTestReturnUrl()) {
+			if (isConnectionTestRequest(req)) {
 				if (loginResult.authenticatedUser) {
 					return res.send(getSamlConnectionTestSuccessView(loginResult.attributes));
 				} else {
@@ -133,7 +133,7 @@ export class SamlController {
 			}
 			throw new AuthError('SAML Authentication failed');
 		} catch (err) {
-			if (req.body.RelayState && req.body.RelayState === getServiceProviderConfigTestReturnUrl()) {
+			if (isConnectionTestRequest(req)) {
 				return res.send(getSamlConnectionTestFailedView(err.message));
 			}
 			throw new AuthError('SAML Authentication failed: ' + err.message);
