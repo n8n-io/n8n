@@ -75,18 +75,21 @@ watch(
 );
 
 function onBackButton() {
-	popViewStack()
+	popViewStack();
 }
 </script>
 
 <template>
 	<transition
-			v-if="viewStacks.length > 0"
+		v-if="viewStacks.length > 0"
 		:name="`panel-slide-${activeViewStack.transitionDirection}`"
 		@afterLeave="onTransitionEnd"
 	>
-	<aside :class="$style.nodesListPanel" @keydown.capture.stop :key="`${activeViewStack.uuid}`">
-			<header :class="{ [$style.header]: true, [$style.hasBg]: activeViewStack.hasHeaderBg }" data-test-id="nodes-list-header">
+		<aside :class="$style.nodesListPanel" @keydown.capture.stop :key="`${activeViewStack.uuid}`">
+			<header
+				:class="{ [$style.header]: true, [$style.hasBg]: activeViewStack.hasHeaderBg }"
+				data-test-id="nodes-list-header"
+			>
 				<div :class="$style.top">
 					<button :class="$style.backButton" @click="onBackButton" v-if="viewStacks.length > 1">
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />

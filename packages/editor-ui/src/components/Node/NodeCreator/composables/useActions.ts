@@ -5,7 +5,14 @@ import {
 	IUpdateInformation,
 	LabelCreateElement,
 } from '@/Interface';
-import { MANUAL_TRIGGER_NODE_TYPE, NODE_CREATOR_OPEN_SOURCES, SCHEDULE_TRIGGER_NODE_TYPE, STICKY_NODE_TYPE, TRIGGER_NODE_CREATOR_MODE, WEBHOOK_NODE_TYPE } from '@/constants';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	TRIGGER_NODE_CREATOR_MODE,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sortNodeCreateElements, transformNodeType } from '../utils';
@@ -168,7 +175,7 @@ export const useActions = () => {
 		action: IUpdateInformation,
 		telemetry: Telemetry,
 		track = true,
-		rootView?: string
+		rootView?: string,
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 		const storeWatcher = onWorkflowStoreAction(
@@ -204,6 +211,6 @@ export const useActions = () => {
 		parseCategoryActions,
 		getNodeTypesWithManualTrigger,
 		getActionData,
-		setAddedNodeActionParameters
+		setAddedNodeActionParameters,
 	};
 };

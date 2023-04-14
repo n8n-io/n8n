@@ -1,5 +1,10 @@
 <template>
-	<div :class="$style.categoryWrapper" v-on="$listeners" data-keyboard-nav="true" data-test-id="node-creator-category-item">
+	<div
+		:class="$style.categoryWrapper"
+		v-on="$listeners"
+		data-keyboard-nav="true"
+		data-test-id="node-creator-category-item"
+	>
 		<div :class="{ [$style.category]: true, [$style.active]: active }">
 			<span :class="$style.name">
 				<span v-text="categoryName" />

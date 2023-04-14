@@ -8,11 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import {
-	ActionTypeDescription,
-	SimplifiedNodeType,
-ActionsRecord,
-} from '@/Interface';
+import { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
 import { i18n } from '@/plugins/i18n';
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -238,8 +234,8 @@ export function useActionsGenerator() {
 
 	function generateMergedNodesAndActions(nodeTypes: INodeTypeDescription[]) {
 		const visibleNodeTypes = deepCopy(nodeTypes);
-		const actions: ActionsRecord<typeof mergedNodes> = ({});
-		const mergedNodes:SimplifiedNodeType[] = [];
+		const actions: ActionsRecord<typeof mergedNodes> = {};
+		const mergedNodes: SimplifiedNodeType[] = [];
 
 		visibleNodeTypes
 			.filter((node) => !node.group.includes('trigger'))
@@ -278,5 +274,5 @@ export function useActionsGenerator() {
 
 	return {
 		generateMergedNodesAndActions,
-	}
+	};
 }

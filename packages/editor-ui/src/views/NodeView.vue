@@ -3766,7 +3766,7 @@ export default mixins(
 			const mode =
 				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_MODE ? 'trigger' : 'regular';
 
-			if(createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
+			if (createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { INodeCreateElement} from '@/Interface';
+import { INodeCreateElement } from '@/Interface';
 import NodeItem from '../ItemTypes/NodeItem.vue';
 import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
-import { onMounted, watch, onUnmounted, ref, computed, } from 'vue';
+import { onMounted, watch, onUnmounted, ref, computed } from 'vue';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 
 export interface Props {

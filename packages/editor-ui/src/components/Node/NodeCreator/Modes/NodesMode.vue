@@ -177,7 +177,6 @@ registerKeyHook('MainViewArrowLeft', {
 	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
 	handler: arrowLeft,
 });
-
 </script>
 
 <template>

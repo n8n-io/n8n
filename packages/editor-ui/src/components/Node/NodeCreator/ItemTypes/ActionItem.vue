@@ -77,8 +77,13 @@ function onDragStart(event: DragEvent): void {
 			'nodeTypeName',
 			getNodeTypesWithManualTrigger(actionData.value?.key).join(','),
 		);
-		if(telemetry) {
-			state.storeWatcher = setAddedNodeActionParameters(actionData.value, telemetry, true, activeViewStack.rootView);
+		if (telemetry) {
+			state.storeWatcher = setAddedNodeActionParameters(
+				actionData.value,
+				telemetry,
+				true,
+				activeViewStack.rootView,
+			);
 		}
 		document.body.addEventListener('dragend', onDragEnd);
 	}

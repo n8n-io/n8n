@@ -1,14 +1,11 @@
 import { defineStore } from 'pinia';
-import {
-	STORES,
-	TRIGGER_NODE_CREATOR_MODE,
-} from '@/constants';
+import { STORES, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 
 import {
 	NodeFilterType,
 	NodeCreatorOpenSource,
 	SimplifiedNodeType,
-ActionsRecord,
+	ActionsRecord,
 } from '@/Interface';
 
 import { ref } from 'vue';

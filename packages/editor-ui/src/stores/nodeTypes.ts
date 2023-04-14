@@ -6,10 +6,7 @@ import {
 	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
-import {
-	INodeTypesState,
-	IResourceLocatorReqParams,
-} from '@/Interface';
+import { INodeTypesState, IResourceLocatorReqParams } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils';
 import {

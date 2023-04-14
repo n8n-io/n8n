@@ -37,7 +37,7 @@ function toggleExpanded() {
 function setExpanded(isExpanded: boolean) {
 	expanded.value = isExpanded;
 
-	if(expanded.value) {
+	if (expanded.value) {
 		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
 			category_name: props.category,
 			workflow_id: workflowId,

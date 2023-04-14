@@ -3,7 +3,12 @@ import { defineStore } from 'pinia';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
 import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
-import { transformNodeType, subcategorizeItems, sortNodeCreateElements, searchNodes } from '../utils';
+import {
+	transformNodeType,
+	subcategorizeItems,
+	sortNodeCreateElements,
+	searchNodes,
+} from '../utils';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 interface ViewStack {
@@ -145,7 +150,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	function popViewStack() {
 		if (activeViewStack.value.uuid) {
-			viewStacks.value.pop()
+			viewStacks.value.pop();
 			updateCurrentViewStack({ transitionDirection: 'out' });
 		}
 	}
@@ -153,7 +158,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	function updateCurrentViewStack(stack: Partial<ViewStack>) {
 		const currentStack = viewStacks.value[viewStacks.value.length - 1];
 		const matchedIndex = viewStacks.value.findIndex((s) => s.uuid === currentStack.uuid);
-		if(!currentStack) return;
+		if (!currentStack) return;
 
 		// For each key in the stack, update the matched stack
 		Object.keys(stack).forEach((key) => {

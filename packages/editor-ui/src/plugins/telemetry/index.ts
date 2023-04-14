@@ -136,12 +136,11 @@ export class Telemetry {
 						this.track('User opened nodes panel', properties);
 					}
 					break;
-					case 'nodeCreateList.destroyed':
-						if (
+				case 'nodeCreateList.destroyed':
+					if (
 						this.userNodesPanelSession.data.nodeFilter.length > 0 &&
 						this.userNodesPanelSession.data.nodeFilter !== ''
-						) {
-
+					) {
 						this.track('User entered nodes panel search term', this.generateNodesPanelEvent());
 					}
 					break;

@@ -33,7 +33,7 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
-const { $onAction} = useNodeTypesStore();
+const { $onAction } = useNodeTypesStore();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
@@ -127,13 +127,17 @@ registerKeyHook('NodeCreatorCloseTab', {
 	handler: () => emit('closeNodeCreator'),
 });
 
-watch(() => useNodeTypesStore().visibleNodeTypes, (nodeTypes) => {
-	console.log('Visible node types updated');
-	const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+watch(
+	() => useNodeTypesStore().visibleNodeTypes,
+	(nodeTypes) => {
+		console.log('Visible node types updated');
+		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
 
-	setActions(actions);
-	setMergeNodes(mergedNodes);
-}, { immediate: true });
+		setActions(actions);
+		setMergeNodes(mergedNodes);
+	},
+	{ immediate: true },
+);
 const { nodeCreator } = toRefs(state);
 </script>
 
