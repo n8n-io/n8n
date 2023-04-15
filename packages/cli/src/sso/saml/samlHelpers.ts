@@ -18,6 +18,8 @@ import {
 	isSamlCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '../ssoHelpers';
+import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
+import type { SamlConfiguration } from './types/requests';
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -172,4 +174,8 @@ export function getMappedSamlAttributesFromFlowResult(
 		if (!lastName) result.missingAttributes.push(attributeMapping.lastName);
 	}
 	return result;
+}
+
+export function isConnectionTestRequest(req: SamlConfiguration.AcsRequest): boolean {
+	return req.body.RelayState === getServiceProviderConfigTestReturnUrl();
 }
