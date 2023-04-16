@@ -155,8 +155,8 @@ importers:
   packages/cli:
     dependencies:
       '@n8n_io/license-sdk':
-        specifier: ~2.0.0
-        version: 2.0.0
+        specifier: ~2.1.0
+        version: 2.1.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -4288,8 +4288,8 @@ packages:
     dev: false
     optional: true
 
-  /@n8n_io/license-sdk@2.0.0:
-    resolution: {integrity: sha512-JBgVqp2Hp8QkEHwWmDvoU8dLrq0wZlK38FnwaX/yZiCGpEz1+zywFxaggxbDYXxvhX3cwlgxv3o3kfVaYX1Xlw==}
+  /@n8n_io/license-sdk@2.1.0:
+    resolution: {integrity: sha512-SwIm9b6a30/fAvl1aY0a6cgoSyQBgKHX44M4Ykesn45VSGBKlzO5uuIiIcEPdVjjLEelm7u6wLoDFdIVG37b7Q==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
