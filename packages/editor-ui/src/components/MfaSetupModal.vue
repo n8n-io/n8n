@@ -134,7 +134,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
@@ -149,6 +148,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useUsersStore } from '@/stores/users';
 import CopyInput from '@/components/CopyInput.vue';
 import { copyPaste } from '@/mixins/copyPaste';
+import { createEventBus } from '@/event-bus';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 
@@ -162,12 +162,12 @@ export default mixins(showMessage, copyPaste).extend({
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			MFA_SETUP_MODAL_KEY,
 			secret: '',
 			qrCode: '',
 			readyToSubmit: false,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			showRecoveryCodes: false,
 			recoveryCodes: [] as string[],
 			recoveryCodesDownloaded: false,
@@ -181,7 +181,7 @@ export default mixins(showMessage, copyPaste).extend({
 	},
 	methods: {
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onInput(value: string) {
 			if (value.length !== MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH) {
@@ -216,7 +216,7 @@ export default mixins(showMessage, copyPaste).extend({
 			}
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		onDownloadClick() {
 			const filename = 'n8n-recovery-codes.txt';

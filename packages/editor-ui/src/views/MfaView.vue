@@ -85,6 +85,7 @@ import {
 } from '@/constants';
 import { useUsersStore } from '@/stores/users';
 import { mapStores } from 'pinia';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage, genericHelpers).extend({
 	name: 'MfaView',
@@ -115,7 +116,7 @@ export default mixins(showMessage, genericHelpers).extend({
 			email: '',
 			password: '',
 			hasAnyChanges: false,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			formInputs: null as null | IFormInputs,
 			showRecoveryCodeForm: false,
 			formError: '',
@@ -229,7 +230,7 @@ export default mixins(showMessage, genericHelpers).extend({
 			this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 	},
 });
