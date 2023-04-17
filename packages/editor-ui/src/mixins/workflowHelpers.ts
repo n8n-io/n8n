@@ -133,33 +133,6 @@ export function resolveParameter(
 		runExecutionData = executionData.data;
 	}
 
-	parentNode.forEach((parentNodeName) => {
-		const pinData: IPinData[string] | undefined =
-			useWorkflowsStore().pinDataByNodeName(parentNodeName);
-
-		if (pinData) {
-			runExecutionData = {
-				...runExecutionData,
-				resultData: {
-					...runExecutionData.resultData,
-					runData: {
-						...runExecutionData.resultData.runData,
-						[parentNodeName]: [
-							{
-								startTime: new Date().valueOf(),
-								executionTime: 0,
-								source: [],
-								data: {
-									main: [pinData.map((data) => ({ json: data }))],
-								},
-							},
-						],
-					},
-				},
-			};
-		}
-	});
-
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
 	}

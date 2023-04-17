@@ -8,13 +8,15 @@ import { Router } from 'express';
 import type { Request } from 'express';
 import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
+import { RoleRepository } from '@db/repositories';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import Container from 'typedi';
 import { License } from '../License';
+import { LICENSE_FEATURES } from '@/constants';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -22,11 +24,11 @@ if (process.env.E2E_TESTS !== 'true') {
 }
 
 const enabledFeatures = {
-	sharing: true, //default to true here instead of setting it in config/index.ts for e2e
-	ldap: false,
-	saml: false,
-	logStreaming: false,
-	advancedExecutionFilters: false,
+	[LICENSE_FEATURES.SHARING]: true, //default to true here instead of setting it in config/index.ts for e2e
+	[LICENSE_FEATURES.LDAP]: false,
+	[LICENSE_FEATURES.SAML]: false,
+	[LICENSE_FEATURES.LOG_STREAMING]: false,
+	[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 };
 
 type Feature = keyof typeof enabledFeatures;
@@ -54,7 +56,7 @@ const tablesToTruncate = [
 ];
 
 const truncateAll = async () => {
-	const { connection } = Db;
+	const connection = Db.getConnection();
 	for (const table of tablesToTruncate) {
 		await connection.query(
 			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
@@ -63,7 +65,7 @@ const truncateAll = async () => {
 };
 
 const setupUserManagement = async () => {
-	const { connection } = Db;
+	const connection = Db.getConnection();
 	await connection.query('INSERT INTO role (name, scope) VALUES ("owner", "global");');
 	const instanceOwnerRole = (await connection.query(
 		'SELECT last_insert_rowid() as insertId',
@@ -93,7 +95,7 @@ const setupUserManagement = async () => {
 };
 
 const resetLogStreaming = async () => {
-	enabledFeatures.logStreaming = false;
+	enabledFeatures[LICENSE_FEATURES.LOG_STREAMING] = false;
 	for (const id in eventBus.destinations) {
 		await eventBus.removeDestination(id);
 	}
@@ -115,13 +117,7 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 		return;
 	}
 
-	const globalRole = await Db.collections.Role.findOneOrFail({
-		select: ['id'],
-		where: {
-			name: 'owner',
-			scope: 'global',
-		},
-	});
+	const globalRole = await Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
 
 	const owner = await Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 

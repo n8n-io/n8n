@@ -51,7 +51,7 @@ import mixins from 'vue-typed-mixins';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import {
 	deepCopy,
@@ -59,6 +59,7 @@ import {
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
 import { BaseTextKey } from '../../plugins/i18n';
+import { EventBus } from '@/event-bus';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -75,7 +76,7 @@ export default mixins(showMessage).extend({
 	components: {},
 	props: {
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		destination: {
 			type: Object,
@@ -91,7 +92,7 @@ export default mixins(showMessage).extend({
 			deepCopy(defaultMessageEventBusDestinationOptions),
 			this.destination,
 		);
-		this.eventBus.$on('destinationWasSaved', () => {
+		this.eventBus.on('destinationWasSaved', () => {
 			const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
 			if (updatedDestination) {
 				this.nodeParameters = Object.assign(

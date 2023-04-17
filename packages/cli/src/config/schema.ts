@@ -1042,6 +1042,15 @@ export const schema = {
 		},
 	},
 
+	userActivationSurvey: {
+		enabled: {
+			doc: 'Whether user activation survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
+		},
+	},
+
 	diagnostics: {
 		enabled: {
 			doc: 'Whether diagnostic mode is enabled.',

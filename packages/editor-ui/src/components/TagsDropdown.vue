@@ -64,13 +64,22 @@ import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useTagsStore } from '@/stores/tags';
+import { EventBus } from '@/event-bus';
+import { PropType } from 'vue';
 
 const MANAGE_KEY = '__manage';
 const CREATE_KEY = '__create';
 
 export default mixins(showMessage).extend({
 	name: 'TagsDropdown',
-	props: ['placeholder', 'currentTagIds', 'createEnabled', 'eventBus'],
+	props: {
+		placeholder: {},
+		currentTagIds: {},
+		createEnabled: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
+	},
 	data() {
 		return {
 			filter: '',
@@ -108,8 +117,8 @@ export default mixins(showMessage).extend({
 			}
 		}
 
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
+		if (this.eventBus) {
+			this.eventBus.on('focus', () => {
 				this.focusOnInput();
 				this.focusOnTopOption();
 			});
@@ -131,7 +140,7 @@ export default mixins(showMessage).extend({
 			);
 		},
 		appliedTags(): string[] {
-			return this.$props.currentTagIds.filter((id: string) => this.tagsStore.getTagById(id));
+			return this.currentTagIds.filter((id: string) => this.tagsStore.getTagById(id));
 		},
 	},
 	methods: {
@@ -143,7 +152,7 @@ export default mixins(showMessage).extend({
 			const name = this.$data.filter;
 			try {
 				const newTag = await this.tagsStore.create(name);
-				this.$emit('update', [...this.$props.currentTagIds, newTag.id]);
+				this.$emit('update', [...this.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
 				this.$data.filter = '';

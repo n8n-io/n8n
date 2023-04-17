@@ -195,15 +195,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		inputSize: {
 			type: String,
 			default: 'small',
-			validator: (size) => {
+			validator: (size: string) => {
 				return ['mini', 'small', 'medium', 'large', 'xlarge'].includes(size);
 			},
 		},
 		parameterIssues: {
 			type: Array as PropType<string[]>,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		displayTitle: {
 			type: String,

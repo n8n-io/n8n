@@ -41,15 +41,17 @@
 <script lang="ts">
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
-interface IAccordionItem {
+export interface IAccordionItem {
 	id: string;
 	label: string;
 	icon: string;
+	iconColor?: string;
+	tooltip?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-info-accordion',
 	components: {
 		N8nText,
@@ -64,9 +66,7 @@ export default Vue.extend({
 		},
 		items: {
 			type: Array as PropType<IAccordionItem[]>,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		initiallyExpanded: {
 			type: Boolean,
@@ -92,7 +92,7 @@ export default Vue.extend({
 		toggle() {
 			this.expanded = !this.expanded;
 		},
-		onClick(e) {
+		onClick(e: MouseEvent) {
 			this.$emit('click', e);
 		},
 		onTooltipClick(item: string, event: MouseEvent) {
