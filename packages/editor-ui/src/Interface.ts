@@ -854,7 +854,6 @@ export interface SubcategoryItemProps {
 	forceIncludeNodes?: string[];
 }
 export interface ViewItemProps {
-	withTopBorder: boolean;
 	title: string;
 	description: string;
 	icon: string;

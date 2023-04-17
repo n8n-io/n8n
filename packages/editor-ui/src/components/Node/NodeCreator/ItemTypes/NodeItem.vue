@@ -106,7 +106,7 @@ const displayName = computed<any>(() => {
 });
 
 const isTrigger = computed<boolean>(() => {
-	return props.nodeType.group.includes('trigger') && props.subcategory !== '*' && !hasActions.value;
+	return props.nodeType.group.includes('trigger') && !hasActions.value;
 });
 function onDragStart(event: DragEvent): void {
 	/**

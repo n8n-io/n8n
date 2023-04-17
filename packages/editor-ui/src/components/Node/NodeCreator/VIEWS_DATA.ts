@@ -157,7 +157,6 @@ export function RegularView($locale: any) {
 				properties: {
 					title: $locale.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
 					icon: 'bolt',
-					withTopBorder: true,
 					description: $locale.baseText(
 						'nodeCreator.triggerHelperPanel.addAnotherTriggerDescription',
 					),

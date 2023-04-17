@@ -30,9 +30,4 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 	margin-left: 15px;
 	margin-right: 12px;
 }
-.withTopBorder {
-	border-top: 1px solid var(--color-foreground-base);
-	margin-top: var(--spacing-m);
-	padding-top: var(--spacing-l);
-}
 </style>
