@@ -133,9 +133,9 @@ export async function apiRequest(
 		}
 
 		if (error.message.includes('PERMISSION_DENIED')) {
-			const message = 'Missing permissions for Google Sheet';
-			const description =
-				"Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)";
+			const message = `Missing permissions for Google Sheet, ${error.message}}`;
+			const details = error.description ? ` Details of the error: ${error.description}.` : '';
+			const description = `Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)${details}`;
 			throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
 		}
 
