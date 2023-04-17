@@ -164,18 +164,17 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			let computedValue: NodeParameterValue;
 			try {
+				let opts;
 				if (this.ndvStore.isInputParentOfActiveNode) {
-					const options = {
+					opts = {
 						targetItem: this.targetItem ?? undefined,
 						inputNodeName: this.ndvStore.ndvInputNodeName,
 						inputRunIndex: this.ndvStore.ndvInputRunIndex,
 						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
 					};
-
-					computedValue = this.resolveExpression(value, undefined, options);
-				} else {
-					computedValue = this.resolveExpression(value);
 				}
+
+				computedValue = this.resolveExpression(value, undefined, opts);
 
 				if (computedValue === null) {
 					return null;
