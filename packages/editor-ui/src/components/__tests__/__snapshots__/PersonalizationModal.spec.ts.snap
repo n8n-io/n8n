@@ -70,7 +70,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                     <!---->
                   </div>
                 </div>
-                <div class=\\"mt-undefined\\">
+                <div class=\\"\\">
                   <div class=\\"container\\" data-test-id=\\"role\\"><label for=\\"role\\" class=\\"inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> Which role best describes you? <!----></span></div>
                       <!---->
@@ -122,7 +122,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                     <!---->
                   </div>
                 </div>
-                <div class=\\"mt-undefined\\">
+                <div class=\\"\\">
                   <div class=\\"container\\" data-test-id=\\"automationBeneficiary\\"><label for=\\"automationBeneficiary\\" class=\\"inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> Who will your automations mainly be for? <!----></span></div>
                       <!---->
@@ -168,7 +168,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                     <!---->
                   </div>
                 </div>
-                <div class=\\"mt-undefined\\">
+                <div class=\\"\\">
                   <div class=\\"container\\" data-test-id=\\"companySize\\"><label for=\\"companySize\\" class=\\"inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> How big is your company? <!----></span></div>
                       <!---->
@@ -217,7 +217,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                     <!---->
                   </div>
                 </div>
-                <div class=\\"mt-undefined\\">
+                <div class=\\"\\">
                   <div class=\\"container\\" data-test-id=\\"reportedSource\\"><label for=\\"reportedSource\\" class=\\"inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> How did you hear about n8n? <!----></span></div>
                       <!---->
@@ -273,7 +273,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
           </div>
         </div>
         <div class=\\"footer\\">
-          <div><button aria-disabled=\\"false\\" aria-busy=\\"false\\" aria-live=\\"polite\\" class=\\"button button primary medium float-right\\">
+          <div><button aria-live=\\"polite\\" class=\\"button button primary medium float-right\\">
               <!----><span>Get started</span></button></div>
         </div>
       </div>

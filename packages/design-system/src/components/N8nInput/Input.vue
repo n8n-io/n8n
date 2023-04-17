@@ -25,9 +25,9 @@
 
 <script lang="ts">
 import { Input as ElInput } from 'element-ui';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
 		ElInput,

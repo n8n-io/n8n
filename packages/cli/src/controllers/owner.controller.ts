@@ -9,14 +9,16 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import type { IDatabaseCollections, IInternalHooksClass, ICredentialsDb } from '@/Interfaces';
-import type { Settings } from '@db/entities/Settings';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type {
+	CredentialsRepository,
+	SettingsRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@db/repositories';
 
 @RestController('/owner')
 export class OwnerController {
@@ -26,13 +28,13 @@ export class OwnerController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
-	private readonly settingsRepository: Repository<Settings>;
+	private readonly settingsRepository: SettingsRepository;
 
-	private readonly credentialsRepository: Repository<ICredentialsDb>;
+	private readonly credentialsRepository: CredentialsRepository;
 
-	private readonly workflowsRepository: Repository<WorkflowEntity>;
+	private readonly workflowsRepository: WorkflowRepository;
 
 	constructor({
 		config,
