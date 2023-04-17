@@ -46,7 +46,7 @@ export class MfaService {
 			where: { id: userId },
 			select: ['id', 'mfaSecret', 'mfaRecoveryCodes'],
 		});
-		return this.decryptSecretAndRecoveryCodes(mfaSecret ?? '', mfaRecoveryCodes);
+		return this.decryptSecretAndRecoveryCodes(mfaSecret ?? '', mfaRecoveryCodes ?? []);
 	}
 
 	public async enableMfa(userId: string) {
