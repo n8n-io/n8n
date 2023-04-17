@@ -861,11 +861,6 @@ export interface ViewItemProps {
 export interface LabelItemProps {
 	key: string;
 }
-export interface ActionItemProps {
-	subcategory: string;
-	nodeType: ActionTypeDescription;
-}
-
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;

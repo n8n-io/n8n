@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import SearchBar from './SearchBar.vue';
 import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue';
-import { TriggerView, RegularView } from '../VIEWS_DATA';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { INodeCreateElement } from '@/Interface';
-import { useViewStacks } from '../composables/useViewStacks';
-import ActionsRenderer from '../Modes/ActionsMode.vue';
-import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
-import NodesRenderer from '../Modes/NodesMode.vue';
 import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+
+import { TriggerView, RegularView } from '../VIEWS_DATA';
+import { useViewStacks } from '../composables/useViewStacks';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
+import SearchBar from './SearchBar.vue';
+import ActionsRenderer from '../Modes/ActionsMode.vue';
+import NodesRenderer from '../Modes/NodesMode.vue';
 
 const instance = getCurrentInstance();
 

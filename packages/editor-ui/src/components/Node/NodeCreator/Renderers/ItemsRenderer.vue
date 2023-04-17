@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
+import { onMounted, watch, onUnmounted, ref, computed } from 'vue';
+
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import NodeItem from '../ItemTypes/NodeItem.vue';
 import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
-import { onMounted, watch, onUnmounted, ref, computed } from 'vue';
-import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -30,6 +31,7 @@ const renderedItems = ref<INodeCreateElement[]>([]);
 const renderAnimationRequest = ref<number>(0);
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
+
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {

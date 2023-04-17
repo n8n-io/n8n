@@ -1,4 +1,5 @@
 import { getCurrentInstance, computed } from 'vue';
+import { IDataObject, INodeParameters } from 'n8n-workflow';
 import {
 	ActionTypeDescription,
 	INodeCreateElement,
@@ -13,14 +14,15 @@ import {
 	TRIGGER_NODE_CREATOR_MODE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+
 import { BaseTextKey } from '@/plugins/i18n';
-import { sortNodeCreateElements, transformNodeType } from '../utils';
-import { IDataObject, INodeParameters } from 'n8n-workflow';
+import { Telemetry } from '@/plugins/telemetry';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { Telemetry } from '@/plugins/telemetry';
 import { externalHooks } from '@/mixins/externalHooks';
+
+import { sortNodeCreateElements, transformNodeType } from '../utils';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();

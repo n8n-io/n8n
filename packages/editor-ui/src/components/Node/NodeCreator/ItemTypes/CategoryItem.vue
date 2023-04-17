@@ -18,7 +18,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 
 export interface Props {
 	expanded?: boolean;
@@ -68,12 +68,6 @@ const categoryName = computed(() => {
 	}
 }
 
-.callout {
-	--callout-border-color: var(--color-foreground-base);
-	--callout-background-color: var(--color-background-light);
-	--callout-color: var(--color-text-base);
-	margin: var(--spacing-xs) var(--spacing-s) 0;
-}
 .name {
 	flex-grow: 1;
 	color: var(--color-text-dark);

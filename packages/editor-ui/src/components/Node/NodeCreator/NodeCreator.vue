@@ -20,14 +20,17 @@
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed, onMounted } from 'vue';
-import NodesListPanel from './Panel/NodesListPanel.vue';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
+import { watch, reactive, toRefs, computed } from 'vue';
+
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import SlideTransition from '@/components/transitions/SlideTransition.vue';
+
 import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import NodesListPanel from './Panel/NodesListPanel.vue';
+
 export interface Props {
 	active?: boolean;
 }

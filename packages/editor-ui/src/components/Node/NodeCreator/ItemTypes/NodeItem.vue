@@ -40,13 +40,13 @@
 <script setup lang="ts">
 import { computed, ref, getCurrentInstance } from 'vue';
 import { SimplifiedNodeType } from '@/Interface';
-
-import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
-import { isCommunityPackageName } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
+import { isCommunityPackageName } from '@/utils';
+import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import NodeIcon from '@/components/NodeIcon.vue';
+
 import { useActions } from '../composables/useActions';
 
 export interface Props {

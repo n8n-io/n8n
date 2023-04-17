@@ -1,11 +1,11 @@
 import { ref, set } from 'vue';
 import { defineStore } from 'pinia';
 
-type KeyboardKey = (typeof WATCHED_KEYS)[number];
+export type KeyboardKey = (typeof WATCHED_KEYS)[number];
 interface KeyHook {
 	keyboardKeys: KeyboardKey[];
 	condition?: (type: string, activeItemId: string) => boolean;
-	handler: (activeItemId: string) => void;
+	handler: (activeItemId: string, keyboardKey: KeyboardKey) => void;
 }
 
 export const KEYBOARD_ID_ATTR = 'data-keyboard-nav-id';
@@ -34,13 +34,11 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	function refreshSelectableItems(): Promise<void> {
 		return new Promise((resolve) => {
 			// Wait for DOM to update
+			cleanupSelectableItems();
 			setTimeout(() => {
-				cleanupSelectableItems();
-
 				selectableItems.value = Array.from(
 					document.querySelectorAll('[data-keyboard-nav-type]'),
 				).map((el) => new WeakRef(el));
-
 				resolve();
 			}, 0);
 		});
@@ -58,7 +56,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 				hook.condition(getItemType(activeItem) || '', activeItemId.value);
 
 			if (conditionPassed && activeItemId.value) {
-				hook.handler(activeItemId.value);
+				hook.handler(activeItemId.value, keyboardKey);
 			}
 		});
 	}
@@ -95,12 +93,18 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 		executeKeyHooks(pressedKey, activeItem);
 	}
 
+	function setActiveItemId(id: string) {
+		activeItemId.value = id;
+	}
+
 	function setActiveItem(item?: Element) {
 		const itemId = getElementId(item);
 		if (!itemId) return;
 
-		activeItemId.value = itemId;
-		item?.scrollIntoView({ block: 'center' });
+		setActiveItemId(itemId);
+		if (item?.scrollIntoView) {
+			item?.scrollIntoView({ block: 'center' });
+		}
 	}
 
 	async function setActiveItemIndex(index: number) {
@@ -142,9 +146,11 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	return {
 		activeItemId,
 		attachKeydownEvent,
+		refreshSelectableItems,
 		detachKeydownEvent,
 		registerKeyHook,
 		getActiveItemIndex,
+		setActiveItemId,
 		setActiveItemIndex,
 	};
 });

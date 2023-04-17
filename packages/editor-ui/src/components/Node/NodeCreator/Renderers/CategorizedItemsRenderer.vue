@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { INodeCreateElement } from '@/Interface';
-import CategoryItem from '../ItemTypes/CategoryItem.vue';
 import { computed, watch, ref, getCurrentInstance } from 'vue';
-import ItemsRenderer from './ItemsRenderer.vue';
+import { INodeCreateElement } from '@/Interface';
+
+import { useWorkflowsStore } from '@/stores/workflows';
+
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useWorkflowsStore } from '@/stores/workflows';
+import ItemsRenderer from './ItemsRenderer.vue';
+import CategoryItem from '../ItemTypes/CategoryItem.vue';
 
 export interface Props {
 	elements: INodeCreateElement[];

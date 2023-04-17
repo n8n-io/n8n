@@ -1,19 +1,21 @@
 <script setup lang="ts">
-import { getCurrentInstance, computed } from 'vue';
-import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { INodeCreateElement, LabelCreateElement, NodeFilterType } from '@/Interface';
-import { useViewStacks } from '../composables/useViewStacks';
-import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
-import { transformNodeType } from '../utils';
-import NoResults from '../Panel/NoResults.vue';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
-import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
 import { camelCase } from 'lodash-es';
+import { getCurrentInstance, computed } from 'vue';
+import { INodeCreateElement, NodeFilterType } from '@/Interface';
+import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+
 import { BaseTextKey } from '@/plugins/i18n';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+
 import { TriggerView, RegularView } from '../VIEWS_DATA';
+import { transformNodeType } from '../utils';
+import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
+import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
+import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
+import NoResults from '../Panel/NoResults.vue';
 
 export interface Props {
 	rootView: 'trigger' | 'action';

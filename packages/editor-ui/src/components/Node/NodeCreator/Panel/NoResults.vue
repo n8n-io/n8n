@@ -43,8 +43,9 @@
 
 <script setup lang="ts">
 import { REQUEST_NODE_FORM_URL } from '@/constants';
-import NoResultsIcon from './NoResultsIcon.vue';
 import { NodeFilterType } from '@/Interface';
+
+import NoResultsIcon from './NoResultsIcon.vue';
 
 export interface Props {
 	showIcon?: boolean;

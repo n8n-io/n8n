@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, VNode, PropType, onMounted, defineComponent } from 'vue';
-import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import {
 	INodeCreateElement,
 	ActionTypeDescription,
@@ -8,18 +7,21 @@ import {
 	IUpdateInformation,
 	ActionCreateElement,
 } from '@/Interface';
-import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
-import { useActions } from '../composables/useActions';
-import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
-import { useViewStacks } from '../composables/useViewStacks';
 import {
 	HTTP_REQUEST_NODE_TYPE,
 	REGULAR_NODE_CREATOR_MODE,
 	TRIGGER_NODE_CREATOR_MODE,
+	CUSTOM_API_CALL_KEY,
 } from '@/constants';
+
 import { useUsersStore } from '@/stores/users';
 import { externalHooks } from '@/mixins/externalHooks';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
+
+import { useActions } from '../composables/useActions';
+import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
+import { useViewStacks } from '../composables/useViewStacks';
+import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
+import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 
 const emit = defineEmits({
 	nodeTypeSelected: (nodeTypes: string[]) => true,

@@ -1,16 +1,19 @@
 import { computed, nextTick, ref, set } from 'vue';
 import { defineStore } from 'pinia';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { v4 as uuid } from 'uuid';
 import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
+import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+
+import { useKeyboardNavigation } from './useKeyboardNavigation';
 import {
 	transformNodeType,
 	subcategorizeItems,
 	sortNodeCreateElements,
 	searchNodes,
 } from '../utils';
-import { useKeyboardNavigation } from './useKeyboardNavigation';
-import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+
 interface ViewStack {
 	uuid?: string;
 	title?: string;
