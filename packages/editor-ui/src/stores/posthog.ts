@@ -8,6 +8,7 @@ import {
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	ONBOARDING_EXPERIMENT,
+	TEMPLATE_EXPERIMENT,
 } from '@/constants';
 import { useTelemetryStore } from './telemetry';
 import { useSegment } from './segment';
