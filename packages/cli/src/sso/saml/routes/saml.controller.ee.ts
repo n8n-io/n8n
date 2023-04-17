@@ -13,7 +13,7 @@ import { getInitSSOFormView } from '../views/initSsoPost';
 import { issueCookie } from '@/auth/jwt';
 import { validate } from 'class-validator';
 import type { PostBindingContext } from 'samlify/types/src/entity';
-import { isSamlLicensedAndEnabled } from '../samlHelpers';
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
 import { AuthenticatedRequest } from '@/requests';
 import {
@@ -21,6 +21,8 @@ import {
 	getServiceProviderEntityId,
 	getServiceProviderReturnUrl,
 } from '../serviceProvider.ee';
+import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
+import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -106,11 +108,15 @@ export class SamlController {
 		res: express.Response,
 		binding: SamlLoginBinding,
 	) {
-		const loginResult = await this.samlService.handleSamlLogin(req, binding);
-		if (loginResult) {
-			// return attributes if this is a test connection
-			if (req.body.RelayState && req.body.RelayState === getServiceProviderConfigTestReturnUrl()) {
-				return res.status(202).send(loginResult.attributes);
+		try {
+			const loginResult = await this.samlService.handleSamlLogin(req, binding);
+			// if RelayState is set to the test connection Url, this is a test connection
+			if (isConnectionTestRequest(req)) {
+				if (loginResult.authenticatedUser) {
+					return res.send(getSamlConnectionTestSuccessView(loginResult.attributes));
+				} else {
+					return res.send(getSamlConnectionTestFailedView('', loginResult.attributes));
+				}
 			}
 			if (loginResult.authenticatedUser) {
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
@@ -125,8 +131,13 @@ export class SamlController {
 					return res.status(202).send(loginResult.attributes);
 				}
 			}
+			throw new AuthError('SAML Authentication failed');
+		} catch (error) {
+			if (isConnectionTestRequest(req)) {
+				return res.send(getSamlConnectionTestFailedView((error as Error).message));
+			}
+			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
-		throw new AuthError('SAML Authentication failed');
 	}
 
 	/**

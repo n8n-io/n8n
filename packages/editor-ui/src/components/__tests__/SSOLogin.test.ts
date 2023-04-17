@@ -5,7 +5,7 @@ import { merge } from 'lodash-es';
 import SSOLogin from '@/components/SSOLogin.vue';
 import { STORES } from '@/constants';
 import { useSSOStore } from '@/stores/sso';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/utils/testUtils';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { afterEach } from 'vitest';
 
 let pinia: ReturnType<typeof createTestingPinia>;
@@ -19,7 +19,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 				pinia,
 				stubs: {
 					'n8n-button': {
-						template: '<button data-testid="sso-button"></button>',
+						template: '<button data-test-id="sso-button"></button>',
 					},
 				},
 			},
