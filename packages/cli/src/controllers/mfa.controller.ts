@@ -72,7 +72,7 @@ export class MFAController {
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
 		if (isInstanceOwner(req.user)) {
-			await Container.get(ExternalHooks).run('mfa.update', [
+			await Container.get(ExternalHooks).run('user.mfa.update', [
 				{
 					email,
 					mfaEnabled,
@@ -93,7 +93,7 @@ export class MFAController {
 			await this.mfaService.getRawSecretAndRecoveryCodes(id);
 
 		if (isInstanceOwner(req.user)) {
-			await Container.get(ExternalHooks).run('mfa.update', [
+			await Container.get(ExternalHooks).run('user.mfa.update', [
 				{
 					email,
 					mfaEnabled,
