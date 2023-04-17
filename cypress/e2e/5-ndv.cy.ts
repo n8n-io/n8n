@@ -480,9 +480,4 @@ describe('NDV', () => {
 		// todo there's a bug here need to fix
 		// ndv.getters.outputHoveringItem().should('not.exist');
 	});
-
-	// todos
-	// it('can pair items between input and output across pages', () => {});
-	// it('shows only connected input branches of parent nodes', () => {});
-	// it('avoids linking when runs don't match')
 });
