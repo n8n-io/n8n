@@ -247,7 +247,7 @@ const moderateOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'e.g. I want to kill them',
+		placeholder: 'e.g. My cat is adorable ❤️❤️',
 		description: 'The input text to classify',
 		displayOptions: {
 			show: {
