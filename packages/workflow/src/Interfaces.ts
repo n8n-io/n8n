@@ -520,6 +520,12 @@ export interface IHttpRequestOptions {
 	json?: boolean;
 }
 
+export interface PaginationOptions {
+	continue: boolean | string;
+	request: IRequestOptionsSimplifiedAuth;
+	maxRequests?: number;
+}
+
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
@@ -567,6 +573,7 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 
 export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
+	rawValue?: boolean; // If the value is an expression it returns it as an unresolved string
 }
 
 namespace ExecuteFunctions {
@@ -702,6 +709,14 @@ export interface RequestHelperFunctions {
 		requestOptions: IHttpRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
+	requestWithAuthenticationPaginated(
+		this: IAllExecuteFunctions,
+		requestOptions: OptionsWithUri,
+		itemIndex: number,
+		paginationOptions: PaginationOptions,
+		credentialsType?: string,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any[]>;
 
 	requestOAuth1(
 		this: IAllExecuteFunctions,

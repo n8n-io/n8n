@@ -61,6 +61,7 @@ import type {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
+	PaginationOptions,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -75,6 +76,7 @@ import {
 	ExpressionError,
 } from 'n8n-workflow';
 
+import merge from 'lodash.merge';
 import pick from 'lodash.pick';
 import { Agent } from 'https';
 import { IncomingMessage } from 'http';
@@ -87,8 +89,8 @@ import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
-import type { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
-import type { RequestPromiseOptions } from 'request-promise-native';
+import type { RequestCallback, RequiredUriUrl } from 'request';
+import type { OptionsWithUri, OptionsWithUrl, RequestPromiseOptions } from 'request-promise-native';
 import requestPromise from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
@@ -1885,6 +1887,11 @@ export function getNodeParameter(
 	}
 
 	let returnData;
+
+	if (options?.rawValue) {
+		return value;
+	}
+
 	try {
 		returnData = workflow.expression.getParameterValue(
 			value,
@@ -2036,70 +2043,186 @@ const getRequestHelperFunctions = (
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
-): RequestHelperFunctions => ({
-	httpRequest,
+): RequestHelperFunctions => {
+	const getResolvedValue = (
+		parameterValue: NodeParameterValueType,
+		itemIndex: number,
+		runIndex: number,
+		executeData: IExecuteData,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		returnObjectAsString = false,
+	): NodeParameterValueType => {
+		// Expressions can not access data
+		const runExecutionData: IRunExecutionData | null = null;
+		const connectionInputData: INodeExecutionData[] = [];
+		const mode: WorkflowExecuteMode = 'internal';
 
-	async httpRequestWithAuthentication(
-		this,
-		credentialsType,
-		requestOptions,
-		additionalCredentialOptions,
-	): Promise<any> {
-		return httpRequestWithAuthentication.call(
+		if (
+			typeof parameterValue === 'object' ||
+			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
+		) {
+			return workflow.expression.getParameterValue(
+				parameterValue,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				node.name,
+				connectionInputData,
+				mode,
+				additionalData.timezone,
+				additionalKeys ?? {},
+				executeData,
+				returnObjectAsString,
+			);
+		}
+
+		return parameterValue;
+	};
+
+	return {
+		httpRequest,
+		async requestWithAuthenticationPaginated(
+			this: IExecuteFunctions,
+			requestOptions: OptionsWithUri,
+			itemIndex: number,
+			paginationOptions: PaginationOptions,
+			credentialsType?: string,
+			additionalCredentialOptions?: IAdditionalCredentialOptions,
+		): Promise<any[]> {
+			const responseData = [];
+			if (!requestOptions.qs) {
+				requestOptions.qs = {};
+			}
+			requestOptions.resolveWithFullResponse = true;
+
+			let tempResponseData: IN8nHttpFullResponse;
+			let makeAdditionalRequest: boolean;
+			let paginateRequestData: IHttpRequestOptions;
+
+			const runIndex = 0;
+
+			const additionalKeys = {
+				$request: requestOptions,
+				$response: {} as IN8nHttpFullResponse,
+				$version: node.typeVersion,
+				$count: 0,
+			};
+
+			const executeData: IExecuteData = {
+				data: {},
+				node,
+				source: null,
+			};
+
+			do {
+				paginateRequestData = getResolvedValue(
+					paginationOptions.request as unknown as NodeParameterValueType,
+					itemIndex,
+					runIndex,
+					executeData,
+					additionalKeys,
+					false,
+				) as object as IHttpRequestOptions;
+
+				const tempRequestOptions = merge(requestOptions, paginateRequestData);
+
+				if (credentialsType) {
+					tempResponseData = await this.helpers.requestWithAuthentication.call(
+						this,
+						credentialsType,
+						tempRequestOptions,
+						additionalCredentialOptions,
+					);
+				} else {
+					tempResponseData = await this.helpers.request(tempRequestOptions);
+				}
+
+				additionalKeys.$response = tempResponseData;
+
+				responseData.push(tempResponseData);
+
+				additionalKeys.$count = additionalKeys.$count + 1;
+				if (
+					paginationOptions.maxRequests &&
+					additionalKeys.$count >= paginationOptions.maxRequests
+				) {
+					break;
+				}
+
+				makeAdditionalRequest = getResolvedValue(
+					paginationOptions.continue,
+					itemIndex,
+					runIndex,
+					executeData,
+					additionalKeys,
+					false,
+				) as boolean;
+			} while (makeAdditionalRequest);
+
+			return responseData;
+		},
+		async httpRequestWithAuthentication(
 			this,
 			credentialsType,
 			requestOptions,
-			workflow,
-			node,
-			additionalData,
 			additionalCredentialOptions,
-		);
-	},
+		): Promise<any> {
+			return httpRequestWithAuthentication.call(
+				this,
+				credentialsType,
+				requestOptions,
+				workflow,
+				node,
+				additionalData,
+				additionalCredentialOptions,
+			);
+		},
 
-	request: async (uriOrObject, options) =>
-		proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+		request: async (uriOrObject, options) =>
+			proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
 
-	async requestWithAuthentication(
-		this,
-		credentialsType,
-		requestOptions,
-		additionalCredentialOptions,
-	): Promise<any> {
-		return requestWithAuthentication.call(
+		async requestWithAuthentication(
 			this,
 			credentialsType,
 			requestOptions,
-			workflow,
-			node,
-			additionalData,
 			additionalCredentialOptions,
-		);
-	},
+		): Promise<any> {
+			return requestWithAuthentication.call(
+				this,
+				credentialsType,
+				requestOptions,
+				workflow,
+				node,
+				additionalData,
+				additionalCredentialOptions,
+			);
+		},
 
-	async requestOAuth1(
-		this: IAllExecuteFunctions,
-		credentialsType: string,
-		requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
-	): Promise<any> {
-		return requestOAuth1.call(this, credentialsType, requestOptions);
-	},
+		async requestOAuth1(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+		): Promise<any> {
+			return requestOAuth1.call(this, credentialsType, requestOptions);
+		},
 
-	async requestOAuth2(
-		this: IAllExecuteFunctions,
-		credentialsType: string,
-		requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
-		oAuth2Options?: IOAuth2Options,
-	): Promise<any> {
-		return requestOAuth2.call(
-			this,
-			credentialsType,
-			requestOptions,
-			node,
-			additionalData,
-			oAuth2Options,
-		);
-	},
-});
+		async requestOAuth2(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			oAuth2Options?: IOAuth2Options,
+		): Promise<any> {
+			return requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				oAuth2Options,
+			);
+		},
+	};
+};
 
 const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {

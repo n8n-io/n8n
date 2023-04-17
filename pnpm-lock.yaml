@@ -587,6 +587,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@types/lodash.merge':
+        specifier: ^4.6.7
+        version: 4.6.7
       axios:
         specifier: ^0.21.1
         version: 0.21.4(debug@4.3.2)
@@ -617,6 +620,9 @@ importers:
       lodash.get:
         specifier: ^4.4.2
         version: 4.4.2
+      lodash.merge:
+        specifier: ^4.6.2
+        version: 4.6.2
       lodash.pick:
         specifier: ^4.4.0
         version: 4.4.0
