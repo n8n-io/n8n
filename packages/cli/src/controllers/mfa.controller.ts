@@ -2,6 +2,9 @@ import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { BadRequestError } from '@/ResponseHelper';
 import { MfaService } from '@/Mfa/mfa.service';
+import Container from 'typedi';
+import { ExternalHooks } from '@/ExternalHooks';
+import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
 
 @RestController('/mfa')
 export class MFAController {
@@ -50,7 +53,7 @@ export class MFAController {
 	@Post('/enable')
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
-		const { id, mfaEnabled } = req.user;
+		const { id, mfaEnabled, email } = req.user;
 
 		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
 			await this.mfaService.getRawSecretAndRecoveryCodes(id);
@@ -68,12 +71,38 @@ export class MFAController {
 		if (!verified)
 			throw new BadRequestError('MFA token expired. Close the modal and enable MFA again', 997);
 
+		if (isInstanceOwner(req.user)) {
+			await Container.get(ExternalHooks).run('mfa.update', [
+				{
+					email,
+					mfaEnabled,
+					mfaSecret: secret,
+					mfaRecoveryCodes: recoveryCodes,
+				},
+			]);
+		}
+
 		await this.mfaService.enableMfa(id);
 	}
 
 	@Delete('/disable')
 	async disableMFA(req: AuthenticatedRequest) {
-		const { id } = req.user;
+		const { id, mfaEnabled, email } = req.user;
+
+		const { decryptedSecret: secret, decryptedRecoveryCodes: recoveryCodes } =
+			await this.mfaService.getRawSecretAndRecoveryCodes(id);
+
+		if (isInstanceOwner(req.user)) {
+			await Container.get(ExternalHooks).run('mfa.update', [
+				{
+					email,
+					mfaEnabled,
+					mfaSecret: secret,
+					mfaRecoveryCodes: recoveryCodes,
+				},
+			]);
+		}
+
 		await this.mfaService.disableMfa(id);
 	}
 
