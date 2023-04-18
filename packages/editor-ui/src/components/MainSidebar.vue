@@ -228,7 +228,7 @@ export default mixins(
 				},
 				{
 					id: 'variables',
-					icon: 'code',
+					icon: 'variable',
 					label: this.$locale.baseText('mainSidebar.variables'),
 					customIconSize: 'medium',
 					position: 'top',
