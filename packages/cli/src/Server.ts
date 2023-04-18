@@ -160,6 +160,7 @@ import { variablesController } from './environments/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import { isVersionControlEnabled } from './environment/versionControl/versionControlHelper';
 
 const exec = promisify(callbackExec);
 
@@ -320,6 +321,7 @@ class Server extends AbstractServer {
 				logStreaming: false,
 				advancedExecutionFilters: false,
 				variables: false,
+				versionControl: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -354,6 +356,7 @@ class Server extends AbstractServer {
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
+			versionControl: isVersionControlEnabled(),
 		});
 
 		if (isLdapEnabled()) {
