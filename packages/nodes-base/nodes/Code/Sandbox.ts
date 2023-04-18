@@ -171,7 +171,7 @@ export class Sandbox extends NodeVM {
 	}
 
 	private validateResult({ json, binary }: INodeExecutionData) {
-		if (json !== undefined && !isObject(json)) {
+		if (json === undefined || !isObject(json)) {
 			throw new ValidationError({
 				message: "A 'json' property isn't an object",
 				description: "In the returned data, every key named 'json' must point to an object",
