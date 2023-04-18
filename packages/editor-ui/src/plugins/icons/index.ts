@@ -1,6 +1,7 @@
 import Vue from 'vue';
 
-import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
@@ -128,12 +129,12 @@ import {
 	faStickyNote as faSolidStickyNote,
 	faUserLock,
 } from '@fortawesome/free-solid-svg-icons';
+import { faVariable } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addIcon(icon: any) {
-	library.add(icon as IconDefinition);
+function addIcon(icon: IconDefinition) {
+	library.add(icon);
 }
 
 addIcon(faAngleDoubleLeft);
@@ -239,7 +240,7 @@ addIcon(faSignOutAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);
-addIcon(faStickyNote);
+addIcon(faStickyNote as IconDefinition);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
@@ -259,6 +260,7 @@ addIcon(faUser);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);
+addIcon(faVariable);
 addIcon(faVideo);
 addIcon(faTree);
 addIcon(faUserLock);

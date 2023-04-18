@@ -155,8 +155,8 @@ importers:
   packages/cli:
     dependencies:
       '@n8n_io/license-sdk':
-        specifier: ~2.0.0
-        version: 2.0.0
+        specifier: ~2.1.0
+        version: 2.1.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -880,6 +880,9 @@ importers:
       codemirror-lang-n8n-expression:
         specifier: ^0.2.0
         version: 0.2.0(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      copy-to-clipboard:
+        specifier: ^3.3.3
+        version: 3.3.3
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -4288,8 +4291,8 @@ packages:
     dev: false
     optional: true
 
-  /@n8n_io/license-sdk@2.0.0:
-    resolution: {integrity: sha512-JBgVqp2Hp8QkEHwWmDvoU8dLrq0wZlK38FnwaX/yZiCGpEz1+zywFxaggxbDYXxvhX3cwlgxv3o3kfVaYX1Xlw==}
+  /@n8n_io/license-sdk@2.1.0:
+    resolution: {integrity: sha512-SwIm9b6a30/fAvl1aY0a6cgoSyQBgKHX44M4Ykesn45VSGBKlzO5uuIiIcEPdVjjLEelm7u6wLoDFdIVG37b7Q==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -9830,6 +9833,12 @@ packages:
       each-props: 1.3.2
       is-plain-object: 5.0.0
     dev: true
+
+  /copy-to-clipboard@3.3.3:
+    resolution: {integrity: sha512-2KV8NhB5JqC3ky0r9PMCAZKbUHSwtEo4CwCs0KXgruG43gX5PMqDEBbVU4OUzw2MuAWUfsuFmWvEKG5QRfSnJA==}
+    dependencies:
+      toggle-selection: 1.0.6
+    dev: false
 
   /copy-to@2.0.1:
     resolution: {integrity: sha512-3DdaFaU/Zf1AnpLiFDeNCD4TOWe3Zl2RZaTzUvWiIk5ERzcCodOE20Vqq4fzCbNoHURFHT4/us/Lfq+S2zyY4w==}
@@ -20303,6 +20312,10 @@ packages:
     dependencies:
       through2: 2.0.5
     dev: true
+
+  /toggle-selection@1.0.6:
+    resolution: {integrity: sha512-BiZS+C1OS8g/q2RRbJmy59xpyghNBqrr6k5L/uKBGRsTfxmu3ffiRnd8mlGPUVayg8pvfi5urfnu8TU7DVOkLQ==}
+    dev: false
 
   /toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}

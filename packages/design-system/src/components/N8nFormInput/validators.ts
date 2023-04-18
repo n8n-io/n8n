@@ -93,6 +93,19 @@ export const containsUpperCaseValidator: IValidator<{ minimum: number }> = {
 	},
 };
 
+export const matchRegex: IValidator<{ regex: RegExp; message: string }> = {
+	validate: (value: Validatable, config: { regex: RegExp; message: string }) => {
+		if (!config.regex.test(`${value as string}`)) {
+			return {
+				message: config.message,
+				options: config,
+			};
+		}
+
+		return false;
+	},
+};
+
 export const defaultPasswordRules: RuleGroup = {
 	rules: [
 		{
@@ -117,6 +130,7 @@ export const VALIDATORS = {
 	VALID_EMAIL: emailValidator,
 	CONTAINS_UPPERCASE: containsUpperCaseValidator,
 	DEFAULT_PASSWORD_RULES: defaultPasswordRules,
+	MATCH_REGEX: matchRegex,
 };
 
 export const getValidationError = <T extends Validatable, C>(
