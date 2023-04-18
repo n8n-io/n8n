@@ -296,23 +296,7 @@ export class Html implements INodeType {
 						}
 						htmlArray = item.json[dataPropertyName] as string;
 					} else {
-						if (item.binary === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'No item does not contain binary data!',
-								{
-									itemIndex,
-								},
-							);
-						}
-						if (item.binary[dataPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No property named "${dataPropertyName}" exists!`,
-								{ itemIndex },
-							);
-						}
-
+						this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 							itemIndex,
 							dataPropertyName,

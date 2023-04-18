@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -1076,7 +1075,6 @@ export class SlackV1 implements INodeType {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
 						const options = this.getNodeParameter('options', i);
-						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -1093,31 +1091,18 @@ export class SlackV1 implements INodeType {
 						if (options.title) {
 							body.title = options.title as string;
 						}
-						if (binaryData) {
+						if (this.getNodeParameter('binaryData', i)) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							if (
-								items[i].binary === undefined ||
-								//@ts-ignore
-								items[i].binary[binaryPropertyName] === undefined
-							) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 								i,
 								binaryPropertyName,
 							);
 							body.file = {
-								//@ts-ignore
 								value: binaryDataBuffer,
 								options: {
-									//@ts-ignore
-									filename: items[i].binary[binaryPropertyName].fileName,
-									//@ts-ignore
-									contentType: items[i].binary[binaryPropertyName].mimeType,
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
 								},
 							};
 							responseData = await slackApiRequest.call(

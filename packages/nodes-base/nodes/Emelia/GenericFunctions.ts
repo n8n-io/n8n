@@ -1,8 +1,8 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	INodeCredentialTestResult,
 	INodePropertyOptions,

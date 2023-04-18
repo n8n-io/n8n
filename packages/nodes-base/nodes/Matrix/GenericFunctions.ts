@@ -1,9 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { v4 as uuid } from 'uuid';
 
@@ -190,25 +194,11 @@ export async function handleMatrixCall(
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
 
-			if (
-				item.binary === undefined ||
-				//@ts-ignore
-				item.binary[binaryPropertyName] === undefined
-			) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Item has no binary property called "${binaryPropertyName}"`,
-				);
-			}
-
-			// @ts-ignore
-			qs.filename = item.binary[binaryPropertyName].fileName;
-			//@ts-ignore
-			const filename = item.binary[binaryPropertyName].fileName;
-
+			const { fileName, mimeType } = this.helpers.assertBinaryData(index, binaryPropertyName);
 			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
-			//@ts-ignore
-			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
+
+			qs.filename = fileName;
+			headers['Content-Type'] = mimeType;
 			headers.accept = 'application/json,text/*;q=0.99';
 
 			const uploadRequestResult = await matrixApiRequest.call(
@@ -226,7 +216,7 @@ export async function handleMatrixCall(
 
 			body = {
 				msgtype: `m.${mediaType}`,
-				body: filename,
+				body: fileName,
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();

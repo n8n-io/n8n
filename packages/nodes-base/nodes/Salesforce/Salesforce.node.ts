@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { accountFields, accountOperations } from './AccountDescription';
 
@@ -1066,7 +1065,7 @@ export class Salesforce implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		Logger.debug(
+		this.logger.debug(
 			`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`,
 		);
 
@@ -1834,7 +1833,6 @@ export class Salesforce implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-						let data;
 						const body: { entity_content: { [key: string]: string } } = {
 							entity_content: {
 								Title: title,
@@ -1848,34 +1846,26 @@ export class Salesforce implements INodeType {
 							body.entity_content.FirstPublishLocationId =
 								additionalFields.linkToObjectId as string;
 						}
-						if (items[i].binary && items[i].binary![binaryPropertyName]) {
-							const binaryData = items[i].binary![binaryPropertyName];
-							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body.entity_content.PathOnClient = `${title}.${
-								additionalFields.fileExtension || binaryData.fileExtension
-							}`;
-							data = {
-								entity_content: {
-									value: JSON.stringify(body.entity_content),
-									options: {
-										contentType: 'application/json',
-									},
+						body.entity_content.PathOnClient = `${title}.${
+							additionalFields.fileExtension || binaryData.fileExtension
+						}`;
+						const data = {
+							entity_content: {
+								value: JSON.stringify(body.entity_content),
+								options: {
+									contentType: 'application/json',
 								},
-								VersionData: {
-									value: dataBuffer,
-									options: {
-										filename: body.entity_content.PathOnClient,
-									},
+							},
+							VersionData: {
+								value: dataBuffer,
+								options: {
+									filename: body.entity_content.PathOnClient,
 								},
-							};
-						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								`The property ${binaryPropertyName} does not exist`,
-								{ itemIndex: i },
-							);
-						}
+							},
+						};
 						responseData = await salesforceApiRequest.call(
 							this,
 							'POST',

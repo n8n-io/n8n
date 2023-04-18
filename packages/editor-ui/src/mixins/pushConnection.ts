@@ -25,7 +25,7 @@ import {
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -295,7 +295,7 @@ export const pushConnection = mixins(
 						for (const key of Object.keys(activeRunData)) {
 							if (
 								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
-									.isArtificalRecoveredEventItem === true &&
+									?.isArtificialRecoveredEventItem === true &&
 								activeRunData[key].length > 0
 							)
 								pushData.data.data.resultData.runData[key] = activeRunData[key];
@@ -335,7 +335,7 @@ export const pushConnection = mixins(
 					runDataExecuted.data.resultData.error &&
 					runDataExecuted.data.resultData.error.lineNumber;
 
-				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {

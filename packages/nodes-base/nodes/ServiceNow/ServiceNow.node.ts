@@ -1,8 +1,7 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
-	IBinaryData,
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -605,17 +604,7 @@ export class ServiceNow implements INodeType {
 						const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						let binaryData: IBinaryData;
-
-						if (items[i].binary && items[i].binary![inputDataFieldName]) {
-							binaryData = items[i].binary![inputDataFieldName];
-						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${inputDataFieldName}"`,
-								{ itemIndex: i },
-							);
-						}
+						const binaryData = this.helpers.assertBinaryData(i, inputDataFieldName);
 
 						const headers: IDataObject = {
 							'Content-Type': binaryData.mimeType,

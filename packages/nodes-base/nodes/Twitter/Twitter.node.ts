@@ -1,7 +1,7 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -125,7 +125,7 @@ export class Twitter implements INodeType {
 								return propertyName.trim();
 							});
 
-							const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
+							const medias = await uploadAttachments.call(this, attachmentProperties, i);
 							body.message_create.message_data.attachment = {
 								type: 'media',
 								//@ts-ignore
@@ -166,7 +166,7 @@ export class Twitter implements INodeType {
 								return propertyName.trim();
 							});
 
-							const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
+							const medias = await uploadAttachments.call(this, attachmentProperties, i);
 
 							body.media_ids = (medias as IDataObject[])
 								.map((media: IDataObject) => media.media_id_string)

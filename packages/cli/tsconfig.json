@@ -18,7 +18,7 @@
 		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso/saml/saml-schema-metadata-2.0.xsd"],
 	"references": [
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }

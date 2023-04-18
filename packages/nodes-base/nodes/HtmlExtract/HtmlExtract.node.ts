@@ -1,12 +1,14 @@
 import cheerio from 'cheerio';
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import get from 'lodash.get';
 
 type Cheerio = ReturnType<typeof cheerio>;
 
@@ -227,28 +229,17 @@ export class HtmlExtract implements INodeType {
 
 				let htmlArray: string[] | string = [];
 				if (sourceData === 'json') {
-					if (item.json[dataPropertyName] === undefined) {
+					const data = get(item.json, dataPropertyName, undefined);
+					if (data === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`No property named "${dataPropertyName}" exists!`,
 							{ itemIndex },
 						);
 					}
-					htmlArray = item.json[dataPropertyName] as string;
+					htmlArray = data as string;
 				} else {
-					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No item does not contain binary data!', {
-							itemIndex,
-						});
-					}
-					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`No property named "${dataPropertyName}" exists!`,
-							{ itemIndex },
-						);
-					}
-
+					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 						itemIndex,
 						dataPropertyName,

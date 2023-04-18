@@ -51,7 +51,11 @@ function userToPayload(user: User): {
 export class InternalHooks implements IInternalHooksClass {
 	private instanceId: string;
 
-	constructor(private telemetry: Telemetry, private nodeTypes: NodeTypes) {}
+	constructor(
+		private telemetry: Telemetry,
+		private nodeTypes: NodeTypes,
+		private roleService: RoleService,
+	) {}
 
 	async init(instanceId: string) {
 		this.instanceId = instanceId;
@@ -155,7 +159,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await RoleService.getUserRoleForWorkflow(user.id, workflow.id);
+			const role = await this.roleService.getUserRoleForWorkflow(user.id, workflow.id);
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
@@ -284,9 +288,19 @@ export class InternalHooks implements IInternalHooksClass {
 			properties.user_id = userId;
 		}
 
+		properties.success = !!runData?.finished;
+
+		let executionStatus: ExecutionStatus;
+		if (runData?.status === 'crashed') {
+			executionStatus = 'crashed';
+		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
+			executionStatus = 'waiting';
+		} else {
+			executionStatus = properties.success ? 'success' : 'failed';
+		}
+
 		if (runData !== undefined) {
 			properties.execution_mode = runData.mode;
-			properties.success = !!runData.finished;
 			properties.is_manual = runData.mode === 'manual';
 
 			let nodeGraphResult: INodesGraphResult | null = null;
@@ -332,8 +346,7 @@ export class InternalHooks implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id);
+					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}
@@ -342,7 +355,7 @@ export class InternalHooks implements IInternalHooksClass {
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					user_id: userId,
 					workflow_id: workflow.id,
-					status: properties.success ? 'success' : 'failed',
+					status: executionStatus,
 					executionStatus: runData?.status ?? 'unknown',
 					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
@@ -390,15 +403,6 @@ export class InternalHooks implements IInternalHooksClass {
 					);
 				}
 			}
-		}
-
-		let executionStatus: ExecutionStatus;
-		if (runData?.status === 'crashed') {
-			executionStatus = 'crashed';
-		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
-			executionStatus = 'waiting';
-		} else {
-			executionStatus = properties.success ? 'success' : 'failed';
 		}
 
 		promises.push(

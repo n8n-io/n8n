@@ -1,11 +1,13 @@
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
-import { BinaryDataManager, Credentials, loadClassInIsolation } from 'n8n-core';
+import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	IDataObject,
 	IDeferredPromise,
+	IExecuteFunctions,
 	IExecuteWorkflowInfo,
+	IGetNodeParameterOptions,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	ILogger,
@@ -29,6 +31,25 @@ import { WorkflowTestData } from './types';
 import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
+import { get } from 'lodash';
+
+import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
+
+const getFakeDecryptedCredentials = (
+	nodeCredentials: INodeCredentialsDetails,
+	type: string,
+	fakeCredentialsMap: IDataObject,
+) => {
+	if (nodeCredentials && fakeCredentialsMap[JSON.stringify(nodeCredentials)]) {
+		return fakeCredentialsMap[JSON.stringify(nodeCredentials)] as ICredentialDataDecryptedObject;
+	}
+
+	if (type && fakeCredentialsMap[type]) {
+		return fakeCredentialsMap[type] as ICredentialDataDecryptedObject;
+	}
+
+	return {};
+};
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -57,7 +78,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		return {};
+		return getFakeDecryptedCredentials(nodeCredentials, type, FAKE_CREDENTIALS_DATA);
 	}
 
 	async getCredentials(
@@ -194,10 +215,9 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 		if (!loadInfo) {
 			throw new Error(`Unknown node type: ${nodeName}`);
 		}
-		const node = loadClassInIsolation(
-			path.join(process.cwd(), loadInfo.sourcePath),
-			loadInfo.className,
-		) as INodeType;
+		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+		const nodeSourcePath = path.join(process.cwd(), sourcePath);
+		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
 		nodeTypes.addNode(nodeName, node);
 	}
 
@@ -310,4 +330,32 @@ export const getWorkflowFilenames = (dirname: string) => {
 	});
 
 	return workflows;
+};
+
+export const createMockExecuteFunction = (
+	nodeParameters: IDataObject,
+	nodeMock: INode,
+	continueBool = false,
+) => {
+	const fakeExecuteFunction = {
+		getNodeParameter(
+			parameterName: string,
+			_itemIndex: number,
+			fallbackValue?: IDataObject | undefined,
+			options?: IGetNodeParameterOptions | undefined,
+		) {
+			const parameter = options?.extractValue ? `${parameterName}.value` : parameterName;
+			return get(nodeParameters, parameter, fallbackValue);
+		},
+		getNode() {
+			return nodeMock;
+		},
+		continueOnFail() {
+			return continueBool;
+		},
+		helpers: {
+			constructExecutionMetaData,
+		},
+	} as unknown as IExecuteFunctions;
+	return fakeExecuteFunction;
 };

@@ -1,6 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -192,29 +192,16 @@ export class Zulip implements INodeType {
 					//https://zulipchat.com/api/upload-file
 					if (operation === 'updateFile') {
 						const credentials = await this.getCredentials('zulipApi');
-						const binaryProperty = this.getNodeParameter('dataBinaryProperty', i);
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-						}
-						//@ts-ignore
-						if (items[i].binary[binaryProperty] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryProperty}"`,
-								{ itemIndex: i },
-							);
-						}
+						const dataBinaryProperty = this.getNodeParameter('dataBinaryProperty', i);
 
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
+						const binaryData = this.helpers.assertBinaryData(i, dataBinaryProperty);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, dataBinaryProperty);
 						const formData = {
 							file: {
-								//@ts-ignore
 								value: binaryDataBuffer,
 								options: {
-									//@ts-ignore
-									filename: items[i].binary[binaryProperty].fileName,
-									//@ts-ignore
-									contentType: items[i].binary[binaryProperty].mimeType,
+									filename: binaryData.fileName,
+									contentType: binaryData.mimeType,
 								},
 							},
 						};

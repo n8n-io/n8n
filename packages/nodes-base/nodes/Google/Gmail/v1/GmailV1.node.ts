@@ -1,9 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -314,21 +313,18 @@ export class GmailV1 implements INodeType {
 									!isEmpty(attachmentsUi.attachmentsBinary) &&
 									items[i].binary
 								) {
-									// @ts-ignore
 									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
 										for (const binaryProperty of (property as string).split(',')) {
-											if (items[i].binary![binaryProperty] !== undefined) {
-												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-													i,
-													binaryProperty,
-												);
-												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
-													type: binaryData.mimeType,
-												});
-											}
+											const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+											const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+												i,
+												binaryProperty,
+											);
+											attachmentsBinary.push({
+												name: binaryData.fileName || 'unknown',
+												content: binaryDataBuffer,
+												type: binaryData.mimeType,
+											});
 										}
 									}
 								}
@@ -404,21 +400,18 @@ export class GmailV1 implements INodeType {
 									!isEmpty(attachmentsUi.attachmentsBinary) &&
 									items[i].binary
 								) {
-									// @ts-ignore
 									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
 										for (const binaryProperty of (property as string).split(',')) {
-											if (items[i].binary![binaryProperty] !== undefined) {
-												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-													i,
-													binaryProperty,
-												);
-												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
-													type: binaryData.mimeType,
-												});
-											}
+											const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+											const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+												i,
+												binaryProperty,
+											);
+											attachmentsBinary.push({
+												name: binaryData.fileName || 'unknown',
+												content: binaryDataBuffer,
+												type: binaryData.mimeType,
+											});
 										}
 									}
 								}
@@ -651,18 +644,16 @@ export class GmailV1 implements INodeType {
 									) {
 										for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
 											for (const binaryProperty of (property as string).split(',')) {
-												if (items[i].binary![binaryProperty] !== undefined) {
-													const binaryData = items[i].binary![binaryProperty];
-													const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-														i,
-														binaryProperty,
-													);
-													attachmentsBinary.push({
-														name: binaryData.fileName || 'unknown',
-														content: binaryDataBuffer,
-														type: binaryData.mimeType,
-													});
-												}
+												const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+													i,
+													binaryProperty,
+												);
+												attachmentsBinary.push({
+													name: binaryData.fileName || 'unknown',
+													content: binaryDataBuffer,
+													type: binaryData.mimeType,
+												});
 											}
 										}
 									}

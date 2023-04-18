@@ -47,9 +47,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,
@@ -206,7 +206,7 @@ export default Vue.extend({
 	border-bottom: var(--border-base);
 }
 
-.tooltipPopper {
+:root .tooltipPopper {
 	max-width: 400px;
 
 	li {

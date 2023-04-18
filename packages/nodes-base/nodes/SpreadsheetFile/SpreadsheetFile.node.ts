@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -295,30 +294,22 @@ export class SpreadsheetFile implements INodeType {
 
 		if (operation === 'fromFile') {
 			// Read data from spreadsheet file to workflow
-
-			let item: INodeExecutionData;
 			for (let i = 0; i < items.length; i++) {
 				try {
-					item = items[i];
-
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const options = this.getNodeParameter('options', i, {});
 
-					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
-						// Property did not get found on item
-						continue;
-					}
-
+					this.helpers.assertBinaryData(i, binaryPropertyName);
 					// Read the binary spreadsheet data
-					const binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					let workbook;
 					if (options.readAsString === true) {
-						workbook = xlsxRead(binaryData.toString(), {
+						workbook = xlsxRead(binaryDataBuffer.toString(), {
 							type: 'string',
 							raw: options.rawData as boolean,
 						});
 					} else {
-						workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
+						workbook = xlsxRead(binaryDataBuffer, { raw: options.rawData as boolean });
 					}
 
 					if (workbook.SheetNames.length === 0) {

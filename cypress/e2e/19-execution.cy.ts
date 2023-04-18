@@ -9,9 +9,6 @@ describe('Execution', () => {
 	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
-		// Import workflow
-		workflowsPage.getters.newWorkflowButtonCard().click();
-		cy.waitForLoad();
 	});
 
 	it('should test manual workflow', () => {

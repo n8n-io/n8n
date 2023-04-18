@@ -457,7 +457,7 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
  * to have the parameters available they depend on
  *
  */
-export function getParamterResolveOrder(
+export function getParameterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
 	parameterDependencies: IParameterDependencies,
 ): number[] {
@@ -583,7 +583,7 @@ export function getNodeParameters(
 	nodeValuesRoot = nodeValuesRoot || nodeValuesDisplayCheck;
 
 	// Go through the parameters in order of their dependencies
-	const parameterItterationOrderIndex = getParamterResolveOrder(
+	const parameterItterationOrderIndex = getParameterResolveOrder(
 		nodePropertiesArray,
 		parameterDependencies,
 	);

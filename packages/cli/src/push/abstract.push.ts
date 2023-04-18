@@ -1,4 +1,4 @@
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonStringify, LoggerProxy as Logger } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import { eventBus } from '../eventbus';
 
@@ -38,7 +38,7 @@ export abstract class AbstractPush<T> {
 
 		Logger.debug(`Send data of type "${type}" to editor-UI`, { dataType: type, sessionId });
 
-		const sendData = JSON.stringify({ type, data });
+		const sendData = jsonStringify({ type, data }, { replaceCircularRefs: true });
 
 		if (sessionId === undefined) {
 			// Send to all connected clients

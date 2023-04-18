@@ -84,20 +84,8 @@ export namespace SendInBlueNode {
 				const { binaryPropertyName } = dataPropertyList;
 				const dataMappingList = (binaryPropertyName as string).split(',');
 				for (const attachmentDataName of dataMappingList) {
-					const binaryPropertyAttachmentName = attachmentDataName;
-
-					const item = this.getInputData();
-
-					if (item.binary![binaryPropertyAttachmentName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Item has no binary property called "${binaryPropertyName}"`,
-						);
-					}
-
-					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(
-						binaryPropertyAttachmentName,
-					);
+					const binaryData = this.helpers.assertBinaryData(attachmentDataName);
+					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(attachmentDataName);
 
 					const {
 						data: content,
@@ -111,7 +99,7 @@ export namespace SendInBlueNode {
 						itemIndex,
 						mimeType,
 						fileExtension!,
-						fileName || item.binary!.data.fileName!,
+						fileName ?? binaryData.fileName!,
 					);
 
 					attachment.push({ content, name });

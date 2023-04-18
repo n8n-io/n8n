@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -235,6 +234,8 @@ export class MicrosoftSql implements INodeType {
 						options: {
 							encrypt: credentials.tls as boolean,
 							enableArithAbort: false,
+							tdsVersion: credentials.tdsVersion as string,
+							trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 						},
 					};
 					const pool = new mssql.ConnectionPool(config);
@@ -269,6 +270,7 @@ export class MicrosoftSql implements INodeType {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
 				tdsVersion: credentials.tdsVersion as string,
+				trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 			},
 		};
 

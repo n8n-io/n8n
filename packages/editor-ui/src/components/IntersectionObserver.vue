@@ -16,14 +16,14 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		if (!this.$props.enabled) {
+		if (!this.enabled) {
 			return;
 		}
 
 		const options = {
 			root: this.$refs.root as Element,
 			rootMargin: '0px',
-			threshold: this.$props.threshold,
+			threshold: this.threshold,
 		};
 
 		const observer = new IntersectionObserver((entries) => {
@@ -46,7 +46,7 @@ export default Vue.extend({
 		});
 	},
 	beforeDestroy() {
-		if (this.$props.enabled) {
+		if (this.enabled) {
 			this.$data.observer.disconnect();
 		}
 	},

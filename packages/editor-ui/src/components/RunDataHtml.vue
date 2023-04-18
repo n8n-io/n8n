@@ -1,5 +1,5 @@
 <template>
-	<div class="__html-display" v-html="html"></div>
+	<div class="__html-display ph-no-capture" v-html="html"></div>
 </template>
 
 <script lang="ts">

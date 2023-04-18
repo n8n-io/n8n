@@ -1,6 +1,7 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -4337,31 +4338,15 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/files';
 
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-
-						if (item.binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item has no binary property called "${binaryPropertyName}"`,
-								{ itemIndex: i },
-							);
-						}
-
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						formData.file = {
 							value: fileBufferData,
 							options: {
-								contentType: item.binary[binaryPropertyName].mimeType,
-								filename: item.binary[binaryPropertyName].fileName,
+								contentType: binaryData.mimeType,
+								filename: binaryData.fileName,
 							},
 						};
 

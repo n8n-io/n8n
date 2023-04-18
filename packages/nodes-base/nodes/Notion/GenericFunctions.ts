@@ -1,16 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IBinaryKeyData,
+	IDataObject,
+	IDisplayOptions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type {
-	IBinaryKeyData,
-	IDataObject,
-	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
@@ -109,7 +106,8 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData.has_more !== false);
