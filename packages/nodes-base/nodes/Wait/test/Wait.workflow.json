@@ -11,7 +11,7 @@
 		},
 		{
 			"parameters": {
-				"amount": 2,
+				"amount": 42,
 				"unit": "seconds"
 			},
 			"id": "37f2c758-6fb2-43ce-86ae-ca11ec957cbd",
@@ -28,7 +28,7 @@
 						{
 							"value1": "={{ parseInt($json.afterTimestamp) }}",
 							"operation": "largerEqual",
-							"value2": "={{ parseInt($json.startTimestamp) + 2 }}"
+							"value2": "={{ parseInt($json.startTimestamp) + 42 }}"
 						}
 					]
 				}
