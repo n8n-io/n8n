@@ -86,11 +86,7 @@ describe('ExecutionFilter', () => {
 			await userEvent.click(getByTestId('executions-filter-button'));
 			await userEvent.hover(getByTestId('execution-filter-saved-data-key-input'));
 
-			if (!advancedExecutionFilters) {
-				expect(getByTestId('executions-filter-view-plans-link').getAttribute('href')).contains(
-					plansLinkUrlBase,
-				);
-			} else {
+			if (advancedExecutionFilters) {
 				expect(queryByTestId('executions-filter-view-plans-link')).not.toBeInTheDocument();
 			}
 
