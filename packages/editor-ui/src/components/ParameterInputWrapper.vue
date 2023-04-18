@@ -31,7 +31,6 @@
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
 			:singleLine="true"
-			renderHTML
 		/>
 		<input-hint
 			v-else-if="parameterHint"
@@ -185,7 +184,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			}
 
 			return typeof computedValue === 'string'
-				? this.toDisplayableString(computedValue)
+				? `"${computedValue}"`
 				: JSON.stringify(computedValue);
 		},
 		expressionOutput(): string | null {
@@ -197,11 +196,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 	},
 	methods: {
-		toDisplayableString(str: string): string {
-			const whitespaced = str.replace(/ /g, '&nbsp;');
-
-			return `<span class="${this.$style.quotes}">"</span><span>${whitespaced}</span><span class="${this.$style.quotes}">"</span>`;
-		},
 		onFocus() {
 			this.$emit('focus');
 		},
@@ -229,10 +223,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 <style lang="scss" module>
 .hint {
 	margin-top: var(--spacing-4xs);
-
-	.quotes {
-		color: var(--color-text-lighter);
-	}
 }
 
 .hovering {

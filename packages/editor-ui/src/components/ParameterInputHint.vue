@@ -2,7 +2,11 @@
 	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
 		<div
 			v-if="!renderHTML"
-			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
+			:class="{
+				[$style.singleline]: singleLine,
+				[$style.highlight]: highlight,
+				[$style['preserve-whitespace']]: true,
+			}"
 		>
 			{{ hint }}
 		</div>
@@ -55,5 +59,8 @@ export default Vue.extend({
 }
 .highlight {
 	color: var(--color-secondary);
+}
+.preserve-whitespace {
+	white-space: pre;
 }
 </style>

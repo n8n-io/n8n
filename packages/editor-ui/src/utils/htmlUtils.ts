@@ -6,7 +6,7 @@ import xss, { friendlyAttrValue } from 'xss';
 
 export function sanitizeHtml(dirtyHtml: string) {
 	const allowedAttributes = ['href', 'name', 'target', 'title', 'class', 'id'];
-	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small', 'span'];
+	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small'];
 
 	const sanitizedHtml = xss(dirtyHtml, {
 		onTagAttr: (tag, name, value) => {
