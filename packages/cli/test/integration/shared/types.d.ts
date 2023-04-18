@@ -24,7 +24,8 @@ type EndpointGroup =
 	| 'ldap'
 	| 'saml'
 	| 'eventBus'
-	| 'license';
+	| 'license'
+	| 'variables';
 
 export type CredentialPayload = {
 	name: string;

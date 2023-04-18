@@ -1,0 +1,78 @@
+// Vitest Snapshot v1
+
+exports[`VariablesRow > should render correctly 1`] = `
+"<tr class=\\"variablesRow\\">
+  <td class=\\"variables-key-column\\">
+    <div><span>key</span></div>
+  </td>
+  <td class=\\"variables-value-column\\">
+    <div><span>value</span></div>
+  </td>
+  <td class=\\"variables-usage-column\\">
+    <div>
+      <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"usageSyntax\\">$vars.key</span></n8n-tooltip-stub>
+    </div>
+  </td>
+  <td>
+    <div class=\\"buttons hoverButtons\\">
+      <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\">
+        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium disabled\\" data-test-id=\\"variable-row-edit-button\\">
+            <!----><span> Edit </span></button></div>
+      </n8n-tooltip-stub>
+      <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\">
+        <div><button disabled=\\"disabled\\" aria-disabled=\\"true\\" aria-live=\\"polite\\" class=\\"button button tertiary medium disabled\\" data-test-id=\\"variable-row-delete-button\\">
+            <!----><span> Delete </span></button></div>
+      </n8n-tooltip-stub>
+    </div>
+  </td>
+</tr>"
+`;
+
+exports[`VariablesRow > should show key and value inputs in edit mode 1`] = `
+"<tr class=\\"variablesRow\\">
+  <td class=\\"variables-key-column\\">
+    <div>
+      <div class=\\"container\\" data-test-id=\\"variable-row-key-input\\">
+        <!---->
+        <div class=\\"\\">
+          <div class=\\"el-input el-input--large n8n-input\\">
+            <!----><input type=\\"text\\" autocomplete=\\"off\\" name=\\"key\\" placeholder=\\"Enter a name\\" class=\\"el-input__inner\\">
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+          </div>
+        </div>
+        <!---->
+      </div>
+    </div>
+  </td>
+  <td class=\\"variables-value-column\\">
+    <div>
+      <div class=\\"container\\" data-test-id=\\"variable-row-value-input\\">
+        <!---->
+        <div class=\\"\\">
+          <div class=\\"el-input el-input--large n8n-input\\">
+            <!----><input type=\\"text\\" autocomplete=\\"off\\" name=\\"value\\" placeholder=\\"Enter a value\\" class=\\"el-input__inner\\">
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+          </div>
+        </div>
+        <!---->
+      </div>
+    </div>
+  </td>
+  <td class=\\"variables-usage-column\\">
+    <div>
+      <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"usageSyntax\\">$vars.key</span></n8n-tooltip-stub>
+    </div>
+  </td>
+  <td>
+    <div class=\\"buttons\\"><button aria-live=\\"polite\\" class=\\"mr-xs button button tertiary medium\\" data-test-id=\\"variable-row-cancel-button\\">
+        <!----><span> Cancel </span></button><button aria-live=\\"polite\\" class=\\"button button primary medium\\" data-test-id=\\"variable-row-save-button\\">
+        <!----><span> Save </span></button></div>
+  </td>
+</tr>"
+`;

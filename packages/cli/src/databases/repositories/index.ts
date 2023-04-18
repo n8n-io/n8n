@@ -12,6 +12,7 @@ export { SharedCredentialsRepository } from './sharedCredentials.repository';
 export { SharedWorkflowRepository } from './sharedWorkflow.repository';
 export { TagRepository } from './tag.repository';
 export { UserRepository } from './user.repository';
+export { VariablesRepository } from './variables.repository';
 export { WebhookRepository } from './webhook.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowStatisticsRepository } from './workflowStatistics.repository';
