@@ -1019,7 +1019,7 @@ export class HttpRequestV2 implements INodeType {
 			if (response!.status !== 'fulfilled') {
 				if (!this.continueOnFail()) {
 					// throw error;
-					throw new NodeApiError(this.getNode(), response as JsonObject);
+					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
 					// Return the actual reason as error
 					returnItems.push({
