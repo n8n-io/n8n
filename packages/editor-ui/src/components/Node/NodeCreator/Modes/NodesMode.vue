@@ -2,7 +2,7 @@
 import { camelCase } from 'lodash-es';
 import { getCurrentInstance, computed } from 'vue';
 import { INodeCreateElement, NodeFilterType } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -99,7 +99,7 @@ function onSelected(item: INodeCreateElement) {
 
 	if (item.type === 'view') {
 		const view =
-			item.key === TRIGGER_NODE_CREATOR_MODE
+			item.key === TRIGGER_NODE_CREATOR_VIEW
 				? TriggerView(instance?.proxy?.$locale)
 				: RegularView(instance?.proxy?.$locale);
 
@@ -144,7 +144,7 @@ function baseSubcategoriesFilter(item: INodeCreateElement) {
 	const nodeActions = actions?.[item.key] || [];
 	const hasActions = nodeActions.length > 0;
 
-	const isTriggerRootView = activeViewStack.value.rootView === TRIGGER_NODE_CREATOR_MODE;
+	const isTriggerRootView = activeViewStack.value.rootView === TRIGGER_NODE_CREATOR_VIEW;
 	if (isTriggerRootView) {
 		return hasActions || hasTriggerGroup;
 	}
@@ -190,7 +190,7 @@ registerKeyHook('MainViewArrowLeft', {
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
 			>
 				<NoResults
-					:rootView="activeViewStack.rootView || TRIGGER_NODE_CREATOR_MODE"
+					:rootView="activeViewStack.rootView || TRIGGER_NODE_CREATOR_VIEW"
 					showIcon
 					showRequest
 				/>

@@ -6,13 +6,9 @@ import {
 	CORE_NODES_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
-	REGULAR_NODE_CREATOR_MODE,
-	TRIGGER_NODE_CREATOR_MODE,
-	ALL_NODE_FILTER,
 	MAPPING_PARAMS,
 } from '@/constants';
 import {
-	INodeCreateElement,
 	INodeUi,
 	ITemplatesNode,
 	NodeAuthenticationOption,
@@ -111,26 +107,6 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
-	if (selectedView === REGULAR_NODE_CREATOR_MODE && el.includedByRegular) {
-		return true;
-	}
-	if (selectedView === TRIGGER_NODE_CREATOR_MODE && el.includedByTrigger) {
-		return true;
-	}
-
-	return selectedView === ALL_NODE_FILTER;
-};
-
-const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {
-	if (!nodeType.codex || !nodeType.codex.alias) {
-		return false;
-	}
-
-	return nodeType.codex.alias.reduce((accu: boolean, alias: string) => {
-		return accu || alias.toLowerCase().indexOf(filter) > -1;
-	}, false);
-};
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (

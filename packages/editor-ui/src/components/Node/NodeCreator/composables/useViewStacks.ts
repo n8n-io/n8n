@@ -2,7 +2,7 @@ import { computed, nextTick, ref, set } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
@@ -74,7 +74,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	const activeViewStackMode = computed(
-		() => activeViewStack.value.mode || TRIGGER_NODE_CREATOR_MODE,
+		() => activeViewStack.value.mode || TRIGGER_NODE_CREATOR_VIEW,
 	);
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {

@@ -728,7 +728,7 @@
 	"nodeCreator.actionsList.apiCall": "Didn't find the right event? Make a <a data-action='addHttpNode'>custom {node} API call</a>",
 	"nodeCreator.actionsList.apiCallNoResult": "Nothing found — try making a <a data-action='addHttpNode'>custom {nodeNameTitle} API call</a>",
 	"nodeCreator.actionsCallout.noActionItems": "We don't have <strong>{nodeName}</strong> actions yet. Have one in mind? Make a <a target=\"_blank\" href=\"https://community.n8n.io/c/feature-requests/5\"> request in our community</a>",
-	"nodeCreator.actionsCallout.triggersStartWorkflow": "Triggers start your workflow. Actions perform steps in your workflow. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/\"> Learn more</a>",
+	"nodeCreator.actionsCallout.triggersStartWorkflow": "Actions need to be triggered by another node, e.g. at regular intervals with the <strong>Schedule</strong> node. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/\"> Learn more</a>",
 	"nodeCreator.actionsTooltip.triggersStartWorkflow": "A trigger is a step that starts your workflow. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/\"> Learn more</a>",
 	"nodeCreator.actionsTooltip.actionsPerformStep": "Actions perform a step once your workflow has already started. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/\"> Learn more</a>",
 	"nodeCreator.actionsCallout.wfStartedAction": "Workflows can only be started by Triggers, not Actions. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/\"> Learn more</a>",

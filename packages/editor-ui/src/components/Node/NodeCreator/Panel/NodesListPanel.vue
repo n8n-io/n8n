@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue';
 import { INodeCreateElement } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
@@ -57,7 +57,7 @@ watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
 		const view =
-			selectedView === TRIGGER_NODE_CREATOR_MODE
+			selectedView === TRIGGER_NODE_CREATOR_VIEW
 				? TriggerView(instance?.proxy?.$locale)
 				: RegularView(instance?.proxy?.$locale);
 

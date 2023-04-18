@@ -1,4 +1,4 @@
-import { ACTIONS_NODE_CREATOR_MODE, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
@@ -36,8 +36,8 @@ import {
 import { SignInType } from './constants';
 import {
 	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_MODE,
-	REGULAR_NODE_CREATOR_MODE,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
 } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 import { PartialBy } from '@/utils/typeHelpers';
@@ -1213,7 +1213,7 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type NodeFilterType = typeof REGULAR_NODE_CREATOR_MODE | typeof TRIGGER_NODE_CREATOR_MODE;
+export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''

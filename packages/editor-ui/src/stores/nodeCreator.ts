@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES, TRIGGER_NODE_CREATOR_MODE } from '@/constants';
+import { STORES, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import {
 	NodeFilterType,
@@ -11,7 +11,7 @@ import {
 import { ref } from 'vue';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
-	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_MODE);
+	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
 	const mergedNodes = ref<SimplifiedNodeType[]>([]);
 	const actions = ref<ActionsRecord<typeof mergedNodes.value>>({});
 

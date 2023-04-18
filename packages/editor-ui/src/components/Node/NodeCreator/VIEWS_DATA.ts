@@ -5,18 +5,18 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
-	REGULAR_NODE_CREATOR_MODE,
+	REGULAR_NODE_CREATOR_VIEW,
 	TRANSFORM_DATA_SUBCATEGORY,
 	FILES_SUBCATEGORY,
 	FLOWS_CONTROL_SUBCATEGORY,
 	HELPERS_SUBCATEGORY,
-	TRIGGER_NODE_CREATOR_MODE,
+	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
 } from '@/constants';
 
 export function TriggerView($locale: any) {
 	return {
-		value: TRIGGER_NODE_CREATOR_MODE,
+		value: TRIGGER_NODE_CREATOR_VIEW,
 		title: $locale.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: $locale.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
@@ -104,7 +104,7 @@ export function TriggerView($locale: any) {
 
 export function RegularView($locale: any) {
 	return {
-		value: REGULAR_NODE_CREATOR_MODE,
+		value: REGULAR_NODE_CREATOR_VIEW,
 		title: $locale.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
 			{
@@ -152,7 +152,7 @@ export function RegularView($locale: any) {
 				},
 			},
 			{
-				key: TRIGGER_NODE_CREATOR_MODE,
+				key: TRIGGER_NODE_CREATOR_VIEW,
 				type: 'view',
 				properties: {
 					title: $locale.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),

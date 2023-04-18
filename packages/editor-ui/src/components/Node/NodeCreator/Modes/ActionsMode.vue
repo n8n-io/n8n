@@ -9,17 +9,20 @@ import {
 } from '@/Interface';
 import {
 	HTTP_REQUEST_NODE_TYPE,
-	REGULAR_NODE_CREATOR_MODE,
-	TRIGGER_NODE_CREATOR_MODE,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
+	AUTO_INSERT_ACTION_EXPERIMENT
 } from '@/constants';
 
+import { usePostHog } from '@/stores/posthog';
 import { useUsersStore } from '@/stores/users';
 import { externalHooks } from '@/mixins/externalHooks';
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
+
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 
@@ -41,6 +44,7 @@ const {
 	parseCategoryActions,
 	actionsCategoryLocales,
 } = useActions();
+
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -65,9 +69,13 @@ const actions = computed(() => {
 });
 
 const search = computed(() => useViewStacks().activeViewStack.search);
+
 const subcategory = computed(() => useViewStacks().activeViewStack.subcategory);
+
 const rootView = computed(() => useViewStacks().activeViewStack.rootView);
+
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
+
 const hasNoTriggerActions = computed(
 	() =>
 		parseCategoryActions(
@@ -76,6 +84,7 @@ const hasNoTriggerActions = computed(
 			!search.value,
 		).length === 0,
 );
+
 const containsAPIAction = computed(() => {
 	const actions = activeViewStack.baselineItems || [];
 
@@ -85,6 +94,8 @@ const containsAPIAction = computed(() => {
 
 	return result === true;
 });
+
+const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
 
 registerKeyHook('ActionsKeyRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
@@ -111,8 +122,23 @@ function onKeySelect(activeItemId: string) {
 
 function onSelected(actionCreateElement: INodeCreateElement) {
 	const actionData = getActionData(actionCreateElement.properties as ActionTypeDescription);
+	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
+		(p) => p.key === actionCreateElement.key,
+	);
+	// TODO: This should be controlled by A/B experiment
+	const includeNodeWithPlaceholderTrigger = usePostHog().isVariantEnabled(
+		AUTO_INSERT_ACTION_EXPERIMENT.name,
+		AUTO_INSERT_ACTION_EXPERIMENT.variant
+	);
 
-	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
+	if (includeNodeWithPlaceholderTrigger && isPlaceholderTriggerAction && isTriggerRootView) {
+		const actionNode = actions.value[0].key;
+
+		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
+	} else {
+		emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
+	}
+
 	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, true, rootView.value);
 }
 
@@ -171,7 +197,7 @@ const OrderSwitcher = defineComponent({
 		return h(
 			'div',
 			{},
-			this.rootView === REGULAR_NODE_CREATOR_MODE ? [actions, triggers] : [triggers, actions],
+			this.rootView === REGULAR_NODE_CREATOR_VIEW ? [actions, triggers] : [triggers, actions],
 		);
 	},
 });
@@ -184,14 +210,14 @@ onMounted(() => {
 <template>
 	<div :class="$style.container">
 		<OrderSwitcher :rootView="rootView">
-			<template #triggers>
+			<template #triggers v-if="isTriggerRootView || parsedTriggerActions.length !== 0">
 				<!-- Triggers Category -->
 				<CategorizedItemsRenderer
 					:elements="parsedTriggerActions"
 					:category="triggerCategoryName"
 					:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
 					isTriggerCategory
-					:expanded="rootView === TRIGGER_NODE_CREATOR_MODE"
+					:expanded="isTriggerRootView"
 					@selected="onSelected"
 				>
 					<!-- Empty state -->
@@ -224,13 +250,13 @@ onMounted(() => {
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
-			<template #actions>
+			<template #actions v-if="parsedActionActions.length !== 0">
 				<!-- Actions Category -->
 				<CategorizedItemsRenderer
 					:elements="parsedActionActions"
 					:category="actionsCategoryLocales.actions"
 					:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.actionsPerformStep')"
-					:expanded="rootView === REGULAR_NODE_CREATOR_MODE"
+					:expanded="!isTriggerRootView || parsedTriggerActions.length === 0"
 					@selected="onSelected"
 				>
 					<template>

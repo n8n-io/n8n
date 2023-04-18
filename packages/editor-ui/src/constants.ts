@@ -181,10 +181,8 @@ export const SUBCATEGORY_DESCRIPTIONS: {
 		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
 	},
 };
-export const REGULAR_NODE_CREATOR_MODE = 'Regular';
-export const TRIGGER_NODE_CREATOR_MODE = 'Trigger';
-export const ACTIONS_NODE_CREATOR_MODE = 'Actions';
-export const ALL_NODE_FILTER = 'All';
+export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
+export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
@@ -356,11 +354,6 @@ export const HIRING_BANNER = `
 Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
 `;
 
-export const NODE_TYPE_COUNT_MAPPER = {
-	[REGULAR_NODE_CREATOR_MODE]: ['regularCount'],
-	[TRIGGER_NODE_CREATOR_MODE]: ['triggerCount'],
-	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
-};
 export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
 export enum VIEWS {
@@ -547,6 +540,12 @@ export const ONBOARDING_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const AUTO_INSERT_ACTION_EXPERIMENT = {
+	name: '003_auto_insert_action',
+	control: 'control',
+	variant: 'variant'
+};
+
+export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];

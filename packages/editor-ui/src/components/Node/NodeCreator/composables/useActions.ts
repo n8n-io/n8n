@@ -11,7 +11,7 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	TRIGGER_NODE_CREATOR_MODE,
+	TRIGGER_NODE_CREATOR_VIEW,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
@@ -150,7 +150,7 @@ export const useActions = () => {
 		const { workflowTriggerNodes } = useWorkflowsStore();
 		const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
 		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_MODE;
+		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
 		const isStickyNode = nodeType === STICKY_NODE_TYPE;
 		const singleNodeOpenSources = [
 			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
