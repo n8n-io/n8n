@@ -35,6 +35,7 @@ import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToE
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281779 } from './1679416281779-CreateExecutionMetadataTable';
+import { CreateVariables1677501636753 } from './1677501636753-CreateVariables';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -74,4 +75,5 @@ export const mysqlMigrations = [
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677236788851,
 	CreateExecutionMetadataTable1679416281779,
+	CreateVariables1677501636753,
 ];

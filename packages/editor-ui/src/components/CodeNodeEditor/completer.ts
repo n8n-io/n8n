@@ -13,6 +13,7 @@ import { luxonCompletions } from './completions/luxon.completions';
 import { itemIndexCompletions } from './completions/itemIndex.completions';
 import { itemFieldCompletions } from './completions/itemField.completions';
 import { jsonFieldCompletions } from './completions/jsonField.completions';
+import { variablesCompletions } from './completions/variables.completions';
 
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
@@ -24,6 +25,7 @@ export const completerExtension = mixins(
 	requireCompletions,
 	executionCompletions,
 	workflowCompletions,
+	variablesCompletions,
 	prevNodeCompletions,
 	luxonCompletions,
 	itemIndexCompletions,
@@ -49,6 +51,7 @@ export const completerExtension = mixins(
 					this.nodeSelectorCompletions,
 					this.prevNodeCompletions,
 					this.workflowCompletions,
+					this.variablesCompletions,
 					this.executionCompletions,
 
 					// luxon
@@ -167,6 +170,7 @@ export const completerExtension = mixins(
 				// core
 
 				if (value === '$execution') return this.executionCompletions(context, variable);
+				if (value === '$vars') return this.variablesCompletions(context, variable);
 				if (value === '$workflow') return this.workflowCompletions(context, variable);
 				if (value === '$prevNode') return this.prevNodeCompletions(context, variable);
 

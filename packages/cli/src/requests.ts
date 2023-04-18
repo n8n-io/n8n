@@ -16,6 +16,7 @@ import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfac
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
+import type { Variables } from '@db/entities/Variables';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -386,3 +387,17 @@ export type BinaryDataRequest = AuthenticatedRequest<
 		mimeType?: string;
 	}
 >;
+
+// ----------------------------------
+//           /variables
+// ----------------------------------
+//
+export declare namespace VariablesRequest {
+	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
+
+	type GetAll = AuthenticatedRequest;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
+	type Delete = Get;
+}

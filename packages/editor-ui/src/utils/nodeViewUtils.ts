@@ -62,17 +62,6 @@ export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
 	},
 };
 
-export const WELCOME_STICKY_NODE = {
-	name: QUICKSTART_NOTE_NAME,
-	type: STICKY_NODE_TYPE,
-	typeVersion: 1,
-	position: [0, 0] as XYPosition,
-	parameters: {
-		height: 320,
-		width: 380,
-	},
-};
-
 export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 	type: N8nConnector.type,
 	options: {
