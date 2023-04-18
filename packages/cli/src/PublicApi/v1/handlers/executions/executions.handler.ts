@@ -91,7 +91,7 @@ export = {
 
 			// user does not have workflows hence no executions
 			// or the execution he is trying to access belongs to a workflow he does not own
-			if (!sharedWorkflowsIds.length) {
+			if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
@@ -105,7 +105,7 @@ export = {
 				limit,
 				lastId,
 				includeData,
-				...(workflowId && { workflowIds: [workflowId] }),
+				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
 				excludedExecutionsIds: runningExecutionsIds,
 			};
 

@@ -5,6 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
+	ASK_AI_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -54,6 +55,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		activeCredentialType: null,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[ASK_AI_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -209,6 +213,14 @@ export const useUIStore = defineStore(STORES.UI, {
 							action: `contextual.workflows.sharing.unavailable.action${contextKey}`,
 							button: `contextual.workflows.sharing.unavailable.button${contextKey}`,
 						},
+					},
+				},
+				variables: {
+					unavailable: {
+						title: `contextual.variables.unavailable.title${contextKey}`,
+						description: 'contextual.variables.unavailable.description',
+						action: `contextual.variables.unavailable.action${contextKey}`,
+						button: `contextual.variables.unavailable.button${contextKey}`,
 					},
 				},
 				users: {

@@ -56,6 +56,7 @@ import type {
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
+	VariablesRepository,
 	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
@@ -99,6 +100,7 @@ export interface IDatabaseCollections {
 	SharedWorkflow: SharedWorkflowRepository;
 	Tag: TagRepository;
 	User: UserRepository;
+	Variables: VariablesRepository;
 	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
@@ -458,6 +460,7 @@ export interface IInternalHooksClass {
 	}): Promise<void>;
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
+	onVariableCreated(createData: { variable_type: string }): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
@@ -538,10 +541,15 @@ export interface IN8nUISettings {
 		saml: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
+		variables: boolean;
+		versionControl: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
 		environment: 'production' | 'staging';
+	};
+	variables: {
+		limit: number;
 	};
 }
 

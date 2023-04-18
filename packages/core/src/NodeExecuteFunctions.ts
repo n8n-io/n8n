@@ -1686,6 +1686,7 @@ export function getAdditionalKeys(
 				  }
 				: undefined,
 		},
+		$vars: additionalData.variables,
 
 		// deprecated
 		$executionId: executionId,
@@ -2020,6 +2021,7 @@ const getCommonWorkflowFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
 	logger: Logger,
+	getExecutionId: () => additionalData.executionId!,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -2325,7 +2327,6 @@ export function getExecuteFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getExecutionId: () => additionalData.executionId!,
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input
