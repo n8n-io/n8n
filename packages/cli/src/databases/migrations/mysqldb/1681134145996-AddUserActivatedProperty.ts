@@ -27,7 +27,9 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 
 		const updatedUsers = activatedUsers.map((user) =>
 			queryRunner.query(
-				`UPDATE ${tablePrefix}user SET settings = '${user.settings}' WHERE id = '${user.id}' `,
+				`UPDATE ${tablePrefix}user SET settings = '${JSON.stringify(user.settings)}' WHERE id = '${
+					user.id
+				}' `,
 			),
 		);
 
