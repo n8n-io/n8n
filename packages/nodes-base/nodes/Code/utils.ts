@@ -13,6 +13,7 @@ function isTraversable(maybe: unknown): maybe is IDataObject {
  */
 export function standardizeOutput(output: IDataObject) {
 	function standardizeOutputRecursive(obj: IDataObject, knownObjects = new WeakSet()): IDataObject {
+		if (obj === undefined || obj === null) return obj;
 		for (const [key, value] of Object.entries(obj)) {
 			if (!isTraversable(value)) continue;
 

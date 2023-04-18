@@ -719,6 +719,7 @@ export interface RequestHelperFunctions {
 export interface FunctionsBase {
 	logger: ILogger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
