@@ -107,7 +107,6 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (
 		parameter.modes !== undefined &&

@@ -12,7 +12,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 	CUSTOM_API_CALL_KEY,
-	AUTO_INSERT_ACTION_EXPERIMENT
+	AUTO_INSERT_ACTION_EXPERIMENT,
 } from '@/constants';
 
 import { usePostHog } from '@/stores/posthog';
@@ -44,7 +44,6 @@ const {
 	parseCategoryActions,
 	actionsCategoryLocales,
 } = useActions();
-
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -128,7 +127,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	// TODO: This should be controlled by A/B experiment
 	const includeNodeWithPlaceholderTrigger = usePostHog().isVariantEnabled(
 		AUTO_INSERT_ACTION_EXPERIMENT.name,
-		AUTO_INSERT_ACTION_EXPERIMENT.variant
+		AUTO_INSERT_ACTION_EXPERIMENT.variant,
 	);
 
 	if (includeNodeWithPlaceholderTrigger && isPlaceholderTriggerAction && isTriggerRootView) {

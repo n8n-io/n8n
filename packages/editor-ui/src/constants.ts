@@ -543,9 +543,13 @@ export const ONBOARDING_EXPERIMENT = {
 export const AUTO_INSERT_ACTION_EXPERIMENT = {
 	name: '003_auto_insert_action',
 	control: 'control',
-	variant: 'variant'
+	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [
+	ASSUMPTION_EXPERIMENT.name,
+	ONBOARDING_EXPERIMENT.name,
+	AUTO_INSERT_ACTION_EXPERIMENT.name,
+];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
