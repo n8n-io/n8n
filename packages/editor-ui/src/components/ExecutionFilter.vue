@@ -261,6 +261,7 @@ onBeforeMount(() => {
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a
+											href="#"
 											@click.prevent="goToUpgrade"
 											data-test-id="executions-filter-view-plans-link"
 											>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
@@ -287,7 +288,7 @@ onBeforeMount(() => {
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
-										<a @click.prevent="goToUpgrade">{{
+										<a href="#" @click.prevent="goToUpgrade">{{
 											$locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>
