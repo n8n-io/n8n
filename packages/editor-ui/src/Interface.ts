@@ -1470,6 +1470,16 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
+export interface EnvironmentVariable {
+	id: number;
+	key: string;
+	value: string;
+}
+
+export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
+	id: string;
+}
+
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;

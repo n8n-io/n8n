@@ -12,70 +12,70 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
       </tr>
     </thead>
     <tbody>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>1</span></td>
         <td><span>Richard Hendricks</span></td>
         <td><span>29</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 1</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>2</span></td>
         <td><span>Bertram Gilfoyle</span></td>
         <td><span>44</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 2</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>3</span></td>
         <td><span>Dinesh Chugtai</span></td>
         <td><span>31</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 3</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>4</span></td>
         <td><span>Jared Dunn </span></td>
         <td><span>38</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 4</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>5</span></td>
         <td><span>Richard Hendricks</span></td>
         <td><span>29</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 5</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>6</span></td>
         <td><span>Bertram Gilfoyle</span></td>
         <td><span>44</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 6</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>7</span></td>
         <td><span>Dinesh Chugtai</span></td>
         <td><span>31</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 7</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>8</span></td>
         <td><span>Jared Dunn </span></td>
         <td><span>38</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 8</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>9</span></td>
         <td><span>Richard Hendricks</span></td>
         <td><span>29</span></td>
         <td><button aria-live=\\"polite\\" class=\\"button button primary medium\\" column=\\"[object Object]\\">
             <!----><span>Button 9</span></button></td>
       </tr>
-      <tr class=\\"datatableRow\\">
+      <tr>
         <td><span>10</span></td>
         <td><span>Bertram Gilfoyle</span></td>
         <td><span>44</span></td>
@@ -92,7 +92,7 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
         <n8n-option-stub value=\\"25\\" label=\\"25\\"></n8n-option-stub>
         <n8n-option-stub value=\\"50\\" label=\\"50\\"></n8n-option-stub>
         <n8n-option-stub value=\\"100\\" label=\\"100\\"></n8n-option-stub>
-        <n8n-option-stub value=\\"15\\" label=\\"All\\"></n8n-option-stub>
+        <n8n-option-stub value=\\"*\\" label=\\"All\\"></n8n-option-stub>
       </n8n-select-stub>
     </div>
   </div>
