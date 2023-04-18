@@ -185,7 +185,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			if (typeof computedValue === 'string') {
 				return computedValue.startsWith('"') && computedValue.endsWith('"')
-					? `'${computedValue}''`
+					? `'${computedValue}'`
 					: `"${computedValue}"`;
 			}
 
