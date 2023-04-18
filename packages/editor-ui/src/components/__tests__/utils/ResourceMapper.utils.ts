@@ -1,7 +1,10 @@
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
-import { IDataObject, ResourceMapperFields } from 'n8n-workflow';
+import { merge } from 'lodash-es';
+import { ResourceMapperFields } from 'n8n-workflow';
 
-const NODE_PARAMETERS = {
+export const NODE_PARAMETER_VALUES = {
 	authentication: 'oAuth2',
 	resource: 'sheet',
 	operation: 'appendOrUpdate',
@@ -29,14 +32,20 @@ const NODE_PARAMETERS = {
 };
 
 export const DEFAULT_SETUP = {
-	pinia: createTestingPinia(),
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.SETTINGS]: {
+				settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
+			},
+		},
+	}),
 	props: {
 		path: 'parameters.columns',
 		dependentParametersValues: 'gid=0',
 		inputSize: 'small',
 		labelSize: 'small',
 		node: {
-			parameters: NODE_PARAMETERS,
+			parameters: NODE_PARAMETER_VALUES,
 			id: 'f63efb2d-3cc5-4500-89f9-b39aab19baf5',
 			name: 'Google Sheets',
 			type: 'n8n-nodes-base.googleSheets',
@@ -55,7 +64,7 @@ export const DEFAULT_SETUP = {
 			maxTries: 3,
 			waitBetweenTries: 1000,
 			notes: '',
-			parameters: NODE_PARAMETERS,
+			parameters: NODE_PARAMETER_VALUES,
 		},
 		parameter: {
 			displayName: 'Columns',
@@ -90,16 +99,6 @@ export const DEFAULT_SETUP = {
 					sheetName: [''],
 				},
 			},
-		},
-	},
-	mocks: {
-		$locale: {
-			baseText() {
-				return '';
-			},
-		},
-		$store: {
-			getters: {},
 		},
 	},
 };
@@ -167,31 +166,4 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 			canBeUsedToMatch: true,
 		},
 	],
-};
-
-export const RESOLVED_PARAMETER_MOCK: IDataObject = {
-	authentication: 'oAuth2',
-	resource: 'sheet',
-	operation: 'appendOrUpdate',
-	documentId: {
-		__rl: true,
-		value:
-			'https://docs.google.com/spreadsheets/d/1BAjxEhlUu5tXDCMQcjqjguIZDFuct3FYkdo7flxl3yc/edit#gid=0',
-		mode: 'url',
-		__regex: 'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
-	},
-	sheetName: {
-		__rl: true,
-		value: 'gid=0',
-		mode: 'list',
-		cachedResultName: 'Users',
-		cachedResultUrl:
-			'https://docs.google.com/spreadsheets/d/1BAjxEhlUu5tXDCMQcjqjguIZDFuct3FYkdo7flxl3yc/edit#gid=0',
-	},
-	columns: {
-		mappingMode: 'defineBelow',
-		value: {},
-		matchingColumns: ['id'],
-	},
-	options: {},
 };
