@@ -719,6 +719,7 @@ export interface RequestHelperFunctions {
 export interface FunctionsBase {
 	logger: ILogger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -1430,6 +1431,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 			  };
 	};
 	actions?: INodeActionTypeDescription[];
+	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
 export interface INodeHookDescription {
@@ -1691,6 +1693,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId: string;
+	variables: IDataObject;
 }
 
 export type WorkflowExecuteMode =
@@ -1918,4 +1921,18 @@ export interface IExceutionSummaryNodeExecutionResult {
 		message?: string;
 		description?: string;
 	}>;
+}
+
+export interface ExecutionOptions {
+	limit?: number;
+}
+
+export interface ExecutionFilters {
+	finished?: boolean;
+	mode?: WorkflowExecuteMode[];
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	waitTill?: boolean;
+	workflowId?: number | string;
 }

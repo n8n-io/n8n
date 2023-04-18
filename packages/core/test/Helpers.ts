@@ -287,12 +287,12 @@ class NodeTypesClass implements INodeTypes {
 							options: [
 								{
 									name: 'ALL',
-									description: 'Only if all conditions are meet it goes into "true" branch.',
+									description: 'Only if all conditions are met it goes into "true" branch.',
 									value: 'all',
 								},
 								{
 									name: 'ANY',
-									description: 'If any of the conditions is meet it goes into "true" branch.',
+									description: 'If any of the conditions is met it goes into "true" branch.',
 									value: 'any',
 								},
 							],
