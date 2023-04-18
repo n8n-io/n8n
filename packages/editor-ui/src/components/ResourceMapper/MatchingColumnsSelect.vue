@@ -85,7 +85,7 @@ defineExpose({
 </script>
 
 <template>
-	<div class="mt-2xs">
+	<div class="mt-2xs" data-test-id="matching-column-select">
 		<n8n-input-label
 			:label="fieldLabel"
 			:bold="false"

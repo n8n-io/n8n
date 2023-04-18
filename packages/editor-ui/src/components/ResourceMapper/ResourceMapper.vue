@@ -263,7 +263,7 @@ defineExpose({
 </script>
 
 <template>
-	<div class="mt-4xs">
+	<div class="mt-4xs" data-test-id="resource-mapper-container">
 		<mapping-mode-select
 			v-if="showMappingModeSelect"
 			:inputSize="inputSize"
@@ -287,7 +287,7 @@ defineExpose({
 			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
-		<div class="mt-xs">
+		<div class="mt-xs" data-test-id="mapping-fields-container">
 			<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 				{{

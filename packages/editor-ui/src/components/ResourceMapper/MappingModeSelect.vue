@@ -106,7 +106,7 @@ defineExpose({
 </script>
 
 <template>
-	<div>
+	<div data-test-id="mapping-mode-select">
 		<n8n-input-label
 			:label="$locale.baseText('resourceMapper.mappingMode.label')"
 			:bold="false"
