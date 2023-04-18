@@ -75,7 +75,6 @@ import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/In
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
@@ -86,7 +85,6 @@ export default Vue.extend({
 		InlineExpressionEditorInput,
 		InlineExpressionEditorOutput,
 		ExpressionFunctionIcon,
-		workflowHelpers,
 	},
 	data() {
 		return {
