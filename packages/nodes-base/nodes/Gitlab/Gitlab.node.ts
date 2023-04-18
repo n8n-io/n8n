@@ -1676,7 +1676,7 @@ export class Gitlab implements INodeType {
 						if (additionalParameters.reference) {
 							qs.ref = additionalParameters.reference;
 						} else {
-							qs.ref = 'main';
+							qs.ref = 'master';
 						}
 
 						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
