@@ -20,7 +20,7 @@ export type ExecutionFilterProps = {
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
-const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
+const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/account/change-plan';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
