@@ -62,17 +62,17 @@ const renderOptions: RenderOptions<ExecutionFilter> = {
 
 describe('ExecutionFilter', () => {
 	test.each([
-		['development', 'default', DEVELOPMENT_SUBSCRIPTION_HOST, false, workflowsData],
-		['development', 'default', '', true, workflowsData],
-		['development', 'cloud', CLOUD_HOST, false, undefined],
-		['development', 'cloud', '', true, undefined],
-		['production', 'cloud', CLOUD_HOST, false, workflowsData],
-		['production', 'cloud', '', true, undefined],
-		['production', 'default', PRODUCTION_SUBSCRIPTION_HOST, false, undefined],
-		['production', 'default', '', true, workflowsData],
+		['development', 'default', false, workflowsData],
+		['development', 'default', true, workflowsData],
+		['development', 'cloud', false, undefined],
+		['development', 'cloud', true, undefined],
+		['production', 'cloud', false, workflowsData],
+		['production', 'cloud', true, undefined],
+		['production', 'default', false, undefined],
+		['production', 'default', true, workflowsData],
 	])(
 		'renders in %s environment on %s deployment with advancedExecutionFilters %s and workflows %s',
-		async (environment, deployment, plansLinkUrlBase, advancedExecutionFilters, workflows) => {
+		async (environment, deployment, advancedExecutionFilters, workflows) => {
 			initialState[STORES.SETTINGS].settings.license.environment = environment;
 			initialState[STORES.SETTINGS].settings.deployment.type = deployment;
 			initialState[STORES.SETTINGS].settings.enterprise.advancedExecutionFilters =
