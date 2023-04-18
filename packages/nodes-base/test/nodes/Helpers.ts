@@ -133,6 +133,7 @@ export function WorkflowExecuteAdditionalData(
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
 		userId: '123',
+		variables: {},
 	};
 }
 

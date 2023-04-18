@@ -65,6 +65,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
+import { useEnvironmentsStore } from '@/stores';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -143,6 +144,7 @@ export function resolveParameter(
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
+		$vars: useEnvironmentsStore().variablesAsObject,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
