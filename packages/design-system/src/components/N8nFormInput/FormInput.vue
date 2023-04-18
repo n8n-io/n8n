@@ -212,7 +212,15 @@ function onEnter(event: Event) {
 const validationError = computed<string | null>(() => {
 	const error = getInputValidationError();
 
-	return error ? t(error.messageKey, error.options) : null;
+	if (error) {
+		if (error.messageKey) {
+			return t(error.messageKey, error.options);
+		} else {
+			return error.message;
+		}
+	}
+
+	return null;
 });
 
 const hasDefaultSlot = computed(() => !!slots.default);
