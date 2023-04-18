@@ -152,17 +152,7 @@ export default mixins(showMessage, copyPaste).extend({
 			}
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=users`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-users`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('users', 'upgrade-users');
 		},
 	},
 });
