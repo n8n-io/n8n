@@ -73,6 +73,7 @@ import { v4 as uuid } from 'uuid';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { variablesController } from '@/environments/variables.controller';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
@@ -151,6 +152,7 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			license: { controller: licenseController, path: 'license' },
+			variables: { controller: variablesController, path: 'variables' },
 		};
 
 		if (enablePublicAPI) {
@@ -268,7 +270,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license'];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
