@@ -1686,6 +1686,7 @@ export function getAdditionalKeys(
 				  }
 				: undefined,
 		},
+		$vars: additionalData.variables,
 
 		// deprecated
 		$executionId: executionId,

@@ -215,6 +215,14 @@ export const useUIStore = defineStore(STORES.UI, {
 						},
 					},
 				},
+				variables: {
+					unavailable: {
+						title: `contextual.variables.unavailable.title${contextKey}`,
+						description: 'contextual.variables.unavailable.description',
+						action: `contextual.variables.unavailable.action${contextKey}`,
+						button: `contextual.variables.unavailable.button${contextKey}`,
+					},
+				},
 				users: {
 					settings: {
 						unavailable: {

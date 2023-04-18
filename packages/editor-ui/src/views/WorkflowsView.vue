@@ -11,7 +11,7 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
-		<template #callout v-if="!hasActiveWorkflows && isDemoTest">
+		<template #callout v-if="!hasActiveWorkflows">
 			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-xs">
 				{{ $locale.baseText('workflows.viewDemoNotice') }}
 
@@ -60,7 +60,6 @@
 					</n8n-text>
 				</n8n-card>
 				<n8n-card
-					v-if="isDemoTest"
 					:class="$style.emptyStateCard"
 					hoverable
 					@click="goToTemplates"
@@ -184,9 +183,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		hasActiveWorkflows(): boolean {
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
-		isDemoTest(): boolean {
-			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
-		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
 				{
@@ -214,14 +210,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 			});
 		},
 		goToTemplates() {
-			if (this.isDemoTest) {
-				this.$router.push({ name: VIEWS.COLLECTION, params: { id: '7' } });
-				this.$telemetry.track('User clicked on inspect demo workflow', {
-					location: this.allWorkflows.length ? 'workflows' : 'start_page',
-				});
-			} else {
-				this.$router.push({ name: VIEWS.TEMPLATES });
-			}
+			this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
 			await Promise.all([
