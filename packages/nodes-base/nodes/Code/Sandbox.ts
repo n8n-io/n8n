@@ -83,17 +83,15 @@ export class Sandbox extends NodeVM {
 			);
 
 			for (const item of executionResult) {
-				this.validateResult(item);
-
 				if (mustHaveTopLevelN8nKey) {
 					this.validateTopLevelKeys(item);
 				}
 			}
-		} else {
-			this.validateResult(executionResult);
 		}
 
-		return this.helpers.normalizeItems(executionResult as INodeExecutionData[]);
+		const returnData = this.helpers.normalizeItems(executionResult);
+		returnData.forEach((item) => this.validateResult(item));
+		return returnData;
 	}
 
 	async runCodeEachItem(itemIndex: number): Promise<INodeExecutionData | undefined> {
