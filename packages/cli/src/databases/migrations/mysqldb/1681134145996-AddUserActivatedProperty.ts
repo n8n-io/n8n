@@ -11,7 +11,7 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 		const tablePrefix = getTablePrefix();
 
 		const activatedUsers: userSettings[] = await queryRunner.query(
-			`SELECT sw.userId AS id,
+			`SELECT DISTINCT sw.userId AS id,
 				JSON_SET(COALESCE(u.settings, '{}'), '$.userActivated', true) AS settings
 			FROM ${tablePrefix}workflow_statistics AS ws
 						JOIN ${tablePrefix}shared_workflow as sw
