@@ -596,7 +596,6 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
 							role: [ROLE.Owner],
 						},
 						deny: {
