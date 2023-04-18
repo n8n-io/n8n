@@ -149,8 +149,6 @@ export const usePostHog = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
-
-		segmentStore.showAppCuesChecklist();
 	};
 
 	return {
