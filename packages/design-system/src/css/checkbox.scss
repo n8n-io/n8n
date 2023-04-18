@@ -190,7 +190,7 @@
 		position: relative;
 		border: var.$checkbox-input-border;
 		border-radius: var.$checkbox-border-radius;
-		margin-top: 2px;
+		margin-top: var(--spacing-5xs);
 		box-sizing: border-box;
 		width: var.$checkbox-input-width;
 		height: var.$checkbox-input-height;
