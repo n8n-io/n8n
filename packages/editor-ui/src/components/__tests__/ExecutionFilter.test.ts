@@ -12,10 +12,6 @@ import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
 
 Vue.use(PiniaVuePlugin);
 
-const CLOUD_HOST = 'https://app.n8n.cloud';
-const PRODUCTION_SUBSCRIPTION_HOST = 'https://subscription.n8n.io';
-const DEVELOPMENT_SUBSCRIPTION_HOST = 'https://staging-subscription.n8n.io';
-
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
 	workflowId: 'all',
