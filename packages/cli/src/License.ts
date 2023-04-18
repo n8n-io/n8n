@@ -128,6 +128,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
 
+	isVersionControlEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}

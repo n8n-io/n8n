@@ -75,6 +75,7 @@ export enum LICENSE_FEATURES {
 	LOG_STREAMING = 'feat:logStreaming',
 	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
 	VARIABLES = 'feat:variables',
+	VERSION_CONTROL = 'feat:versionControl',
 }
 
 export enum LICENSE_QUOTAS {
