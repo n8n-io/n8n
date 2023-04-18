@@ -461,6 +461,7 @@ export enum EnterpriseEditionFeature {
 	LogStreaming = 'logStreaming',
 	Variables = 'variables',
 	Saml = 'saml',
+	VersionControl = 'versionControl',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
