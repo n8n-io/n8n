@@ -1,4 +1,3 @@
-import type { NodeVMOptions } from 'vm2';
 import { NodeVM } from 'vm2';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
@@ -12,33 +11,32 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+interface SandboxContext extends IWorkflowDataProxyData {
+	$getNodeParameter: IExecuteFunctions['getNodeParameter'];
+	$getWorkflowStaticData: IExecuteFunctions['getWorkflowStaticData'];
+	helpers: IExecuteFunctions['helpers'];
+}
+
+const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
+	process.env;
+
 export class Sandbox extends NodeVM {
 	private itemIndex: number | undefined = undefined;
 
 	constructor(
-		context: ReturnType<typeof getSandboxContext>,
+		context: SandboxContext,
 		private jsCode: string,
 		workflowMode: WorkflowExecuteMode,
 		private helpers: IExecuteFunctions['helpers'],
 	) {
-		super(Sandbox.getSandboxOptions(context, workflowMode));
-	}
-
-	static getSandboxOptions(
-		context: ReturnType<typeof getSandboxContext>,
-		workflowMode: WorkflowExecuteMode,
-	): NodeVMOptions {
-		const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
-			process.env;
-
-		return {
+		super({
 			console: workflowMode === 'manual' ? 'redirect' : 'inherit',
 			sandbox: context,
 			require: {
 				builtin: builtIn ? builtIn.split(',') : [],
 				external: external ? { modules: external.split(','), transitive: false } : false,
 			},
-		};
+		});
 	}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
@@ -145,13 +143,6 @@ export class Sandbox extends NodeVM {
 			});
 		}
 
-		this.validateResult(executionResult);
-
-		// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
-		// and another top-level key is unrecognized, then the user mis-added a property
-		// directly on the item, when they intended to add it on the `json` property
-		this.validateTopLevelKeys(executionResult);
-
 		if (Array.isArray(executionResult)) {
 			const firstSentence =
 				executionResult.length > 0
@@ -165,7 +156,15 @@ export class Sandbox extends NodeVM {
 			});
 		}
 
-		return executionResult.json ? executionResult : { json: executionResult };
+		const [returnData] = this.helpers.normalizeItems([executionResult]);
+		this.validateResult(returnData);
+
+		// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
+		// and another top-level key is unrecognized, then the user mis-added a property
+		// directly on the item, when they intended to add it on the `json` property
+		this.validateTopLevelKeys(returnData);
+
+		return returnData;
 	}
 
 	private validateResult({ json, binary }: INodeExecutionData) {
@@ -198,23 +197,14 @@ export class Sandbox extends NodeVM {
 	}
 }
 
-export function getSandboxContext(this: IExecuteFunctions, index?: number) {
-	const sandboxContext: Record<string, unknown> & {
-		$item: (i: number) => IWorkflowDataProxyData;
-		$input: any;
-	} = {
+export function getSandboxContext(this: IExecuteFunctions, index?: number): SandboxContext {
+	return {
 		// from NodeExecuteFunctions
 		$getNodeParameter: this.getNodeParameter,
 		$getWorkflowStaticData: this.getWorkflowStaticData,
 		helpers: this.helpers,
 
 		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
-		$item: this.getWorkflowDataProxy,
-		$input: null,
+		...this.getWorkflowDataProxy(index ?? 0),
 	};
-
-	// $node, $items(), $parameter, $json, $env, etc.
-	Object.assign(sandboxContext, sandboxContext.$item(index ?? 0));
-
-	return sandboxContext;
 }

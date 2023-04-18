@@ -66,8 +66,6 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const items = this.getInputData();
-
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
@@ -106,6 +104,8 @@ export class Code implements INodeType {
 		// ----------------------------------
 
 		const returnData: INodeExecutionData[] = [];
+
+		const items = this.getInputData();
 
 		for (let index = 0; index < items.length; index++) {
 			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
