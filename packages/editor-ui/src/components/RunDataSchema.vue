@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
+import { merge } from 'lodash-es';
 import { INodeUi, Schema } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
@@ -8,7 +9,7 @@ import { useWebhooksStore } from '@/stores/webhooks';
 import { runExternalHook } from '@/mixins/externalHooks';
 import { telemetry } from '@/plugins/telemetry';
 import { IDataObject } from 'n8n-workflow';
-import { getSchema, isEmpty, mergeDeep } from '@/utils';
+import { getSchema, isEmpty } from '@/utils';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
 
@@ -18,6 +19,7 @@ type Props = {
 	distanceFromActive: number;
 	runIndex: number;
 	totalRuns: number;
+	paneType: 'input' | 'output';
 	node: INodeUi | null;
 };
 
@@ -31,7 +33,7 @@ const webhooksStore = useWebhooksStore();
 
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
-	return getSchema(mergeDeep([head, ...tail, head]));
+	return getSchema(merge({}, head, ...tail, head));
 });
 
 const isDataEmpty = computed(() => {
@@ -92,6 +94,7 @@ const onDragEnd = (el: HTMLElement) => {
 						:schema="schema"
 						:level="0"
 						:parent="null"
+						:paneType="paneType"
 						:subKey="`${schema.type}-0-0`"
 						:mappingEnabled="mappingEnabled"
 						:draggingPath="draggingPath"

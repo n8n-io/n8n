@@ -28,11 +28,10 @@ export const LOGGED_OUT_RESPONSE_BODY = {
  * Routes requiring a valid `n8n-auth` cookie for a user, either owner or member.
  */
 export const ROUTES_REQUIRING_AUTHENTICATION: Readonly<string[]> = [
-	'GET /me',
 	'PATCH /me',
 	'PATCH /me/password',
 	'POST /me/survey',
-	'POST /owner',
+	'POST /owner/setup',
 	'GET /non-existent',
 ];
 
@@ -43,7 +42,8 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users',
 	'DELETE /users/123',
 	'POST /users/123/reinvite',
-	'POST /owner',
+	'POST /owner/pre-setup',
+	'POST /owner/setup',
 	'POST /owner/skip-setup',
 ];
 

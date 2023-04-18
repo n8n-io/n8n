@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -211,11 +210,9 @@ export class EmailSendV1 implements INodeType {
 						});
 
 					for (const propertyName of attachmentProperties) {
-						if (!item.binary.hasOwnProperty(propertyName)) {
-							continue;
-						}
+						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 						attachments.push({
-							filename: item.binary[propertyName].fileName || 'unknown',
+							filename: binaryData.fileName || 'unknown',
 							content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 						});
 					}

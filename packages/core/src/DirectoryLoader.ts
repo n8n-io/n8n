@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, getVersionedNodeTypeAll, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -32,35 +32,50 @@ export type Types = {
 };
 
 export abstract class DirectoryLoader {
-	readonly loadedNodes: INodeTypeNameVersion[] = [];
+	isLazyLoaded = false;
 
-	readonly nodeTypes: INodeTypeData = {};
+	loadedNodes: INodeTypeNameVersion[] = [];
 
-	readonly credentialTypes: ICredentialTypeData = {};
+	nodeTypes: INodeTypeData = {};
 
-	readonly known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+	credentialTypes: ICredentialTypeData = {};
 
-	readonly types: Types = { nodes: [], credentials: [] };
+	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+
+	types: Types = { nodes: [], credentials: [] };
+
+	withLoadOptionsMethods = false; // only for validation during build
 
 	constructor(
-		protected readonly directory: string,
+		readonly directory: string,
 		protected readonly excludeNodes: string[] = [],
 		protected readonly includeNodes: string[] = [],
 	) {}
 
+	abstract packageName: string;
+
 	abstract loadAll(): Promise<void>;
+
+	reset() {
+		this.loadedNodes = [];
+		this.nodeTypes = {};
+		this.credentialTypes = {};
+		this.known = { nodes: {}, credentials: {} };
+		this.types = { nodes: [], credentials: [] };
+	}
 
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
 	}
 
-	protected loadNodeFromFile(packageName: string, nodeName: string, filePath: string) {
+	protected loadNodeFromFile(nodeName: string, filePath: string) {
 		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
+		const isCustom = this.packageName === 'CUSTOM';
 
 		try {
 			tempNode = loadClassInIsolation(filePath, nodeName);
-			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.addCodex({ node: tempNode, filePath, isCustom });
 		} catch (error) {
 			Logger.error(
 				`Error loading node "${nodeName}" from: "${filePath}" - ${(error as Error).message}`,
@@ -68,7 +83,7 @@ export abstract class DirectoryLoader {
 			throw error;
 		}
 
-		const fullNodeName = `${packageName}.${tempNode.description.name}`;
+		const fullNodeName = `${this.packageName}.${tempNode.description.name}`;
 
 		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeName)) {
 			return;
@@ -88,16 +103,18 @@ export abstract class DirectoryLoader {
 			}
 
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
-			this.addCodex({ node: currentVersionNode, filePath, isCustom: packageName === 'CUSTOM' });
+			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
+			if (this.withLoadOptionsMethods) this.addLoadOptionsMethods(currentVersionNode);
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				Logger.warn(
-					`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
+					`"executeSingle" will get deprecated soon. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
 					{ filePath },
 				);
 			}
 		} else {
+			if (this.withLoadOptionsMethods) this.addLoadOptionsMethods(tempNode);
 			// Short renaming to avoid type issues
 
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -120,7 +137,9 @@ export abstract class DirectoryLoader {
 			version: nodeVersion,
 		});
 
-		this.types.nodes.push(tempNode.description);
+		getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
+			this.types.nodes.push(description);
+		});
 	}
 
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
@@ -218,7 +237,7 @@ export abstract class DirectoryLoader {
 			}
 
 			node.description.codex = codex;
-		} catch (_) {
+		} catch {
 			Logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
@@ -229,6 +248,12 @@ export abstract class DirectoryLoader {
 		}
 	}
 
+	private addLoadOptionsMethods(node: INodeType) {
+		if (node?.methods?.loadOptions) {
+			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
+		}
+	}
+
 	private fixIconPath(
 		obj: INodeTypeDescription | INodeTypeBaseDescription | ICredentialType,
 		filePath: string,
@@ -236,7 +261,8 @@ export abstract class DirectoryLoader {
 		if (obj.icon?.startsWith('file:')) {
 			const iconPath = path.join(path.dirname(filePath), obj.icon.substring(5));
 			const relativePath = path.relative(this.directory, iconPath);
-			obj.icon = `file:${relativePath}`;
+			obj.iconUrl = `icons/${this.packageName}/${relativePath}`;
+			delete obj.icon;
 		}
 	}
 }
@@ -246,6 +272,8 @@ export abstract class DirectoryLoader {
  * e.g. `~/.n8n/custom`
  */
 export class CustomDirectoryLoader extends DirectoryLoader {
+	packageName = 'CUSTOM';
+
 	override async loadAll() {
 		const filePaths = await glob('**/*.@(node|credentials).js', {
 			cwd: this.directory,
@@ -256,7 +284,7 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 			const [fileName, type] = path.parse(filePath).name.split('.');
 
 			if (type === 'node') {
-				this.loadNodeFromFile('CUSTOM', fileName, filePath);
+				this.loadNodeFromFile(fileName, filePath);
 			} else if (type === 'credentials') {
 				this.loadCredentialFromFile(fileName, filePath);
 			}
@@ -278,7 +306,9 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		this.packageName = this.packageJson.name;
 	}
 
-	override async loadAll() {
+	override async loadAll(options = { withLoadOptionsMethods: false }) {
+		this.withLoadOptionsMethods = options.withLoadOptionsMethods;
+
 		await this.readPackageJson();
 
 		const { n8n } = this.packageJson;
@@ -300,7 +330,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 
-				this.loadNodeFromFile(this.packageName, nodeName, filePath);
+				this.loadNodeFromFile(nodeName, filePath);
 			}
 		}
 
@@ -365,6 +395,8 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 				credentials: this.types.credentials?.length ?? 0,
 				nodes: this.types.nodes?.length ?? 0,
 			});
+
+			this.isLazyLoaded = true;
 
 			return; // We can load nodes and credentials lazily now
 		} catch {

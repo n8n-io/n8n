@@ -426,7 +426,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 						values: [
 							{
 								displayName: 'Parameter',
-								name: 'parmeters',
+								name: 'parameters',
 								type: 'string',
 								default: '',
 								placeholder: 'key=value',

@@ -64,9 +64,8 @@ export const dataLocationOnSheet: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 1,
-						description:
-							'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-						hint: 'From start of range. First row is row 1',
+						description: "Index is relative to the set 'Range', first row index is 1",
+						hint: 'Index of the row which contains the column names',
 						displayOptions: {
 							show: {
 								rangeDefinition: ['specifyRange'],
@@ -81,9 +80,8 @@ export const dataLocationOnSheet: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 2,
-						description:
-							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
-						hint: 'From start of range. First row is row 1',
+						description: "Index is relative to the set 'Range', first row index is 1",
+						hint: 'Index of first row which contains the actual data',
 						displayOptions: {
 							show: {
 								rangeDefinition: ['specifyRange'],
@@ -131,9 +129,8 @@ export const locationDefine: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 1,
-						description:
-							'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-						hint: 'From start of range. First row is row 1',
+						description: "Index is relative to the set 'Range', first row index is 1",
+						hint: 'Index of the row which contains the column names',
 					},
 					{
 						displayName: 'First Data Row',
@@ -143,9 +140,8 @@ export const locationDefine: INodeProperties[] = [
 							minValue: 1,
 						},
 						default: 2,
-						description:
-							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
-						hint: 'From start of range. First row is row 1',
+						description: "Index is relative to the set 'Range', first row index is 1",
+						hint: 'Index of first row which contains the actual data',
 					},
 				],
 			},

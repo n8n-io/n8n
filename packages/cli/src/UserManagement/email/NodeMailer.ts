@@ -3,9 +3,9 @@ import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
-import type { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
+import type { MailData, SendEmailResult } from './Interfaces';
 
-export class NodeMailer implements UserManagementMailerImplementation {
+export class NodeMailer {
 	private transport?: Transporter;
 
 	async init(): Promise<void> {

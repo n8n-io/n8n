@@ -1,7 +1,7 @@
 export const query = {
 	getUsers() {
-		return `query Users ($first: Int){
-			users (first: $first){
+		return `query Users ($first: Int, $after: String){
+			users (first: $first, after: $after){
 				nodes {
 					id
 					name
@@ -26,8 +26,8 @@ export const query = {
 			}}`;
 	},
 	getStates() {
-		return `query States ($first: Int){
-				workflowStates (first: $first){
+		return `query States ($first: Int, $after: String, $filter: WorkflowStateFilter){
+				workflowStates (first: $first, after: $after, filter: $filter){
 					nodes {
 						id
 						name
@@ -117,6 +117,15 @@ export const query = {
 				cycle {
 					id
 					name
+				}
+			}
+		}`;
+	},
+	getIssueTeam() {
+		return `query Issue($issueId: String!) {
+			issue(id: $issueId) {
+				team {
+					id
 				}
 			}
 		}`;

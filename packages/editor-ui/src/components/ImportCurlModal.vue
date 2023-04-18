@@ -40,7 +40,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	IMPORT_CURL_MODAL_KEY,
@@ -53,6 +52,7 @@ import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'ImportCurlModal',
@@ -63,7 +63,7 @@ export default mixins(showMessage).extend({
 		return {
 			IMPORT_CURL_MODAL_KEY,
 			curlCommand: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
@@ -74,7 +74,7 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onInput(value: string): void {
 			this.curlCommand = value;

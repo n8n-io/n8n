@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -13,7 +13,7 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: [1, 2],
+		version: [1, 2, 2.1],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		forceInputNodeExecution: '={{ $version === 1 }}',
@@ -95,6 +95,55 @@ export class CompareDatasets implements INodeType {
 						description: 'Output contains all data (but structure more complex)',
 					},
 				],
+				displayOptions: {
+					show: {
+						'@version': [1, 2],
+					},
+				},
+			},
+			{
+				displayName: 'When There Are Differences',
+				name: 'resolve',
+				type: 'options',
+				default: 'includeBoth',
+				options: [
+					{
+						name: 'Use Input A Version',
+						value: 'preferInput1',
+					},
+					{
+						name: 'Use Input B Version',
+						value: 'preferInput2',
+					},
+					{
+						name: 'Use a Mix of Versions',
+						value: 'mix',
+						description: 'Output uses different inputs for different fields',
+					},
+					{
+						name: 'Include Both Versions',
+						value: 'includeBoth',
+						description: 'Output contains all data (but structure more complex)',
+					},
+				],
+				displayOptions: {
+					hide: {
+						'@version': [1, 2],
+					},
+				},
+			},
+			{
+				displayName: 'Fuzzy Compare',
+				name: 'fuzzyCompare',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+				displayOptions: {
+					hide: {
+						'@version': [1],
+					},
+				},
 			},
 			{
 				displayName: 'Prefer',
@@ -157,6 +206,11 @@ export class CompareDatasets implements INodeType {
 						default: false,
 						description:
 							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+						displayOptions: {
+							show: {
+								'@version': [1],
+							},
+						},
 					},
 					{
 						displayName: 'Disable Dot Notation',
@@ -195,6 +249,12 @@ export class CompareDatasets implements INodeType {
 		);
 
 		const options = this.getNodeParameter('options', 0, {});
+
+		options.nodeVersion = this.getNode().typeVersion;
+
+		if (options.nodeVersion >= 2) {
+			options.fuzzyCompare = this.getNodeParameter('fuzzyCompare', 0, false) as boolean;
+		}
 
 		const input1 = checkInput(
 			this.getInputData(0),

@@ -28,13 +28,57 @@ import {
 	NodeParameterValueType,
 	INodeActionTypeDescription,
 	IDisplayOptions,
+	IExecutionsSummary,
 	IAbstractEventMessage,
+	FeatureFlags,
+	ExecutionStatus,
+	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
+import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
+import { PartialBy } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
+
+declare global {
+	interface Window {
+		posthog?: {
+			init(
+				key: string,
+				options?: {
+					api_host?: string;
+					autocapture?: boolean;
+					disable_session_recording?: boolean;
+					debug?: boolean;
+					bootstrap?: {
+						distinctId?: string;
+						isIdentifiedID?: boolean;
+						featureFlags: FeatureFlags;
+					};
+				},
+			): void;
+			isFeatureEnabled?(flagName: string): boolean;
+			getFeatureFlag?(flagName: string): boolean | string;
+			identify?(
+				id: string,
+				userProperties?: Record<string, string | number>,
+				userPropertiesOnce?: Record<string, string>,
+			): void;
+			reset?(resetDeviceId?: boolean): void;
+			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
+			reloadFeatureFlags?(): void;
+		};
+		analytics?: {
+			track(event: string, proeprties?: ITelemetryTrackProperties): void;
+		};
+		featureFlags?: {
+			getAll: () => FeatureFlags;
+			getVariant: (name: string) => string | boolean | undefined;
+			override: (name: string, value: string) => void;
+		};
+	}
+}
 
 export type EndpointStyle = {
 	width?: number;
@@ -99,9 +143,9 @@ export interface IExternalHooks {
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
+	getCurrentExecutions(filter: ExecutionsQueryFilter): Promise<IExecutionsCurrentSummaryExtended[]>;
 	getPastExecutions(
-		filter: object,
+		filter: ExecutionsQueryFilter,
 		limit: number,
 		lastId?: string,
 		firstId?: string,
@@ -350,24 +394,12 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
-}
-
-export interface IExecutionsSummary {
-	id: string;
-	mode: WorkflowExecuteMode;
-	finished?: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
-	filters?: IDataObject;
+	filters?: ExecutionsQueryFilter;
 	ids?: string[];
 }
 
@@ -379,7 +411,13 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -428,6 +466,9 @@ export interface IPushDataExecutionStarted {
 	retryOf?: string;
 	workflowId: string;
 	workflowName?: string;
+}
+export interface IPushDataExecutionRecovered {
+	executionId: string;
 }
 
 export interface IPushDataExecutionFinished {
@@ -509,9 +550,28 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSm?: string[] | null;
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
+	email?: string | null;
 };
 
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+export type IPersonalizationSurveyAnswersV4 = {
+	version: 'v4';
+	automationGoalDevops?: string[] | null;
+	automationGoalDevopsOther?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+	email?: string | null;
+	role?: string | null;
+	roleOther?: string | null;
+	reportedSource?: string | null;
+	reportedSourceOther?: string | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
@@ -525,6 +585,7 @@ export interface IUserResponse {
 	firstName?: string;
 	lastName?: string;
 	email?: string;
+	createdAt?: string;
 	globalRole?: {
 		name: IRole;
 		id: string;
@@ -533,6 +594,16 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
+	settings?: {
+		isOnboarded?: boolean;
+		showUserActivationSurvey?: boolean;
+		firstSuccessfulWorkflowId?: string;
+		userActivated?: boolean;
+	};
+}
+
+export interface CurrentUserResponse extends IUserResponse {
+	featureFlags?: FeatureFlags;
 }
 
 export interface IUser extends IUserResponse {
@@ -541,7 +612,6 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: Date;
 }
 
 export interface IVersionNotificationSettings {
@@ -565,10 +635,17 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
+export enum UserManagementAuthenticationMethod {
+	Email = 'email',
+	Ldap = 'ldap',
+	Saml = 'saml',
+}
+
 export interface IUserManagementConfig {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+	authenticationMethod: UserManagementAuthenticationMethod;
 }
 
 export interface IPermissionGroup {
@@ -678,6 +755,7 @@ export interface IN8nUISettings {
 	versionNotifications: IVersionNotificationSettings;
 	instanceId: string;
 	personalizationSurveyEnabled: boolean;
+	userActivationSurveyEnabled: boolean;
 	telemetry: ITelemetrySettings;
 	userManagement: IUserManagementConfig;
 	defaultLocale: string;
@@ -688,7 +766,16 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
+	};
 	executionMode: string;
+	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
 	isNpmAvailable: boolean;
 	publicApi: {
@@ -699,9 +786,15 @@ export interface IN8nUISettings {
 			enabled: boolean;
 		};
 	};
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -741,13 +834,15 @@ export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
 	key?: string;
+	iconType: string;
 	icon?: string;
 	defaults?: INodeParameters;
-	iconData?: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
-	};
+}
+export interface ViewItemProps {
+	withTopBorder: boolean;
+	title: string;
+	description: string;
+	icon: string;
 }
 
 export interface INodeItemProps {
@@ -762,10 +857,11 @@ export interface IActionItemProps {
 
 export interface ICategoryItemProps {
 	expanded: boolean;
+	category: string;
+	name: string;
 }
 
 export interface CreateElementBase {
-	category: string;
 	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
@@ -773,6 +869,7 @@ export interface CreateElementBase {
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
+	category?: string[];
 	properties: INodeItemProps;
 }
 
@@ -785,9 +882,14 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
 	properties: ISubcategoryItemProps;
 }
+export interface ViewCreateElement extends CreateElementBase {
+	type: 'view';
+	properties: ViewItemProps;
+}
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
+	category: string;
 	properties: IActionItemProps;
 }
 
@@ -795,6 +897,7 @@ export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| ViewCreateElement
 	| ActionCreateElement;
 
 export interface ICategoriesWithNodes {
@@ -889,6 +992,7 @@ export interface WorkflowsState {
 
 export interface RootState {
 	baseUrl: string;
+	restEndpoint: string;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -1042,6 +1146,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
@@ -1093,13 +1198,24 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
+export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
+
+export type NodeCreatorOpenSource =
+	| ''
+	| 'no_trigger_execution_tooltip'
+	| 'plus_endpoint'
+	| 'trigger_placeholder_button'
+	| 'tab'
+	| 'node_connection_action'
+	| 'node_connection_drop'
+	| 'add_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showTabs: boolean;
 	showScrim: boolean;
-	selectedType: INodeFilterType;
+	rootViewHistory: INodeFilterType[];
+	selectedView: INodeFilterType;
+	openSource: NodeCreatorOpenSource;
 }
 
 export interface ISettingsState {
@@ -1116,6 +1232,10 @@ export interface ISettingsState {
 		};
 	};
 	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
 	};
@@ -1348,4 +1468,78 @@ export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
 	displayOptions?: IDisplayOptions;
+};
+
+export interface EnvironmentVariable {
+	id: number;
+	key: string;
+	value: string;
+}
+
+export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
+	id: string;
+}
+
+export type ExecutionFilterMetadata = {
+	key: string;
+	value: string;
+};
+
+export type ExecutionFilterType = {
+	status: string;
+	workflowId: string;
+	startDate: string | Date;
+	endDate: string | Date;
+	tags: string[];
+	metadata: ExecutionFilterMetadata[];
+};
+
+export type ExecutionsQueryFilter = {
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	finished?: boolean;
+	waitTill?: boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
+};
+
+export type SamlAttributeMapping = {
+	email: string;
+	firstName: string;
+	lastName: string;
+	userPrincipalName: string;
+};
+
+export type SamlLoginBinding = 'post' | 'redirect';
+
+export type SamlSignatureConfig = {
+	prefix: 'ds';
+	location: {
+		reference: '/samlp:Response/saml:Issuer';
+		action: 'after';
+	};
+};
+
+export type SamlPreferencesLoginEnabled = {
+	loginEnabled: boolean;
+};
+
+export type SamlPreferences = {
+	mapping?: SamlAttributeMapping;
+	metadata?: string;
+	metadataUrl?: string;
+	ignoreSSL?: boolean;
+	loginBinding?: SamlLoginBinding;
+	acsBinding?: SamlLoginBinding;
+	authnRequestsSigned?: boolean;
+	loginLabel?: string;
+	wantAssertionsSigned?: boolean;
+	wantMessageSigned?: boolean;
+	signatureConfig?: SamlSignatureConfig;
+} & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
+
+export type SamlPreferencesExtractedData = {
+	entityID: string;
+	returnUrl: string;
 };

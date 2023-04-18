@@ -95,15 +95,15 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
 				const { from, to, text, token } = segment;
 
-				if (token === 'Plaintext') {
-					acc.push({ kind: 'plaintext', from, to, plaintext: text });
+				if (token === 'Resolvable') {
+					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
+
+					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
 
 					return acc;
 				}
 
-				const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-
-				acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+				acc.push({ kind: 'plaintext', from, to, plaintext: text });
 
 				return acc;
 			}, []);

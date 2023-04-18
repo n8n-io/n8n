@@ -201,7 +201,6 @@ export class SendInBlueTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -268,7 +267,7 @@ export class SendInBlueTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 					delete webhookData.hookSecret;

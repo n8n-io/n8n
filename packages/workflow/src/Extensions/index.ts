@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/no-cycle
 export {
 	extend,
+	extendOptional,
 	hasExpressionExtension,
 	hasNativeMethod,
 	extendTransform,

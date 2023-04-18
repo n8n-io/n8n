@@ -140,6 +140,36 @@ module.exports = {
 		},
 	},
 
+	'no-unused-param-in-catch-clause': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Unused param in catch clause must be omitted.',
+				recommended: 'error',
+			},
+			messages: {
+				removeUnusedParam: 'Remove unused param in catch clause',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				CatchClause(node) {
+					if (node.param?.name?.startsWith('_')) {
+						const start = node.range[0] + 'catch '.length;
+						const end = node.param.range[1] + '()'.length;
+
+						context.report({
+							messageId: 'removeUnusedParam',
+							node,
+							fix: (fixer) => fixer.removeRange([start, end]),
+						});
+					}
+				},
+			};
+		},
+	},
+
 	'no-interpolation-in-regular-string': {
 		meta: {
 			type: 'problem',

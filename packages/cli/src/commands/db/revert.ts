@@ -1,10 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
-
 import { getLogger } from '@/Logger';
 import { getConnectionOptions } from '@/Db';
 import config from '@/config';
@@ -18,36 +15,39 @@ export class DbRevertMigrationCommand extends Command {
 		help: flags.help({ char: 'h' }),
 	};
 
-	async run() {
-		const logger = getLogger();
-		LoggerProxy.init(logger);
+	protected logger = LoggerProxy.init(getLogger());
 
+	private connection: Connection;
+
+	async init() {
 		this.parse(DbRevertMigrationCommand);
+	}
 
-		let connection: Connection | undefined;
-		try {
-			const dbType = config.getEnv('database.type');
-			const connectionOptions: ConnectionOptions = {
-				...getConnectionOptions(dbType),
-				subscribers: [],
-				synchronize: false,
-				migrationsRun: false,
-				dropSchema: false,
-				logging: ['query', 'error', 'schema'],
-			};
-			connection = new Connection(connectionOptions);
-			await connection.initialize();
-			await connection.undoLastMigration();
-			await connection.destroy();
-		} catch (error) {
-			if (connection?.isInitialized) await connection.destroy();
+	async run() {
+		const dbType = config.getEnv('database.type');
+		const connectionOptions: ConnectionOptions = {
+			...getConnectionOptions(dbType),
+			subscribers: [],
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+			logging: ['query', 'error', 'schema'],
+		};
 
-			console.error('Error reverting last migration. See log messages for details.');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			logger.error(error.message);
-			this.exit(1);
-		}
+		this.connection = new Connection(connectionOptions);
+		await this.connection.initialize();
+		await this.connection.undoLastMigration();
+		await this.connection.destroy();
+	}
 
-		this.exit();
+	async catch(error: Error) {
+		this.logger.error('Error reverting last migration. See log messages for details.');
+		this.logger.error(error.message);
+	}
+
+	protected async finally(error: Error | undefined) {
+		if (this.connection?.isInitialized) await this.connection.destroy();
+
+		this.exit(error ? 1 : 0);
 	}
 }

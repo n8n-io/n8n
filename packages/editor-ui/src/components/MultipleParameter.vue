@@ -90,7 +90,7 @@ import { deepCopy, INodeParameters, INodeProperties } from 'n8n-workflow';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 export default Vue.extend({
 	name: 'MultipleParameter',

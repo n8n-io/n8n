@@ -1,13 +1,7 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { randFirstName, randLastName } from '@ngneat/falso';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { v4 as uuid } from 'uuid';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
@@ -16,17 +10,10 @@ const multipleWorkflowsCount = 5;
 describe('Workflows', () => {
 	before(() => {
 		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
+		cy.skipSetup();
 	});
 
 	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		});
-
-		cy.signin({ email, password });
 		cy.visit(WorkflowsPage.url);
 	});
 
@@ -41,8 +28,6 @@ describe('Workflows', () => {
 	});
 
 	it('should create multiple new workflows using add workflow button', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('not.exist');
-
 		[...Array(multipleWorkflowsCount).keys()].forEach(() => {
 			cy.visit(WorkflowsPage.url);
 			WorkflowsPage.getters.createWorkflowButton().click();
@@ -92,11 +77,5 @@ describe('Workflows', () => {
 		});
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
-	});
-
-	it('should contain empty state cards', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		WorkflowsPage.getters.newWorkflowTemplateCard().should('be.visible');
 	});
 });

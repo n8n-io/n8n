@@ -22,6 +22,7 @@
 				:label="$locale.baseText('auth.changePassword')"
 				@click="onSubmitClick"
 				float="right"
+				data-test-id="change-password-button"
 			/>
 		</template>
 	</Modal>
@@ -32,11 +33,11 @@ import mixins from 'vue-typed-mixins';
 
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import Vue from 'vue';
 import { IFormInputs } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -49,8 +50,8 @@ export default mixins(showMessage).extend({
 	data() {
 		return {
 			config: null as null | IFormInputs,
-			formBus: new Vue(),
-			modalBus: new Vue(),
+			formBus: createEventBus(),
+			modalBus: createEventBus(),
 			password: '',
 			loading: false,
 			CHANGE_PASSWORD_MODAL_KEY,
@@ -132,14 +133,14 @@ export default mixins(showMessage).extend({
 					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
 				});
 
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},
 		onSubmitClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 	},
 });

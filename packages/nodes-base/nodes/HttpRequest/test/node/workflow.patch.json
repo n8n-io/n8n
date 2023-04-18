@@ -1,0 +1,73 @@
+{
+	"name": "http request test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "12433cfb-74d9-4bf1-9afd-0ab9afc9ef19",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"method": "PATCH",
+				"url": "https://dummyjson.com/products/1",
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "{\"title\":\"iPhone 12\"}",
+				"options": {}
+			},
+			"id": "312e64ca-00bf-40e6-b21d-1f73930ef98c",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 3,
+			"position": [1100, 360]
+		}
+	],
+	"pinData": {
+		"HTTP Request": [
+			{
+				"json": {
+					"id": 1,
+					"title": "iPhone 12",
+					"price": 549,
+					"stock": 94,
+					"rating": 4.69,
+					"images": [
+						"https://i.dummyjson.com/data/products/1/1.jpg",
+						"https://i.dummyjson.com/data/products/1/2.jpg",
+						"https://i.dummyjson.com/data/products/1/3.jpg",
+						"https://i.dummyjson.com/data/products/1/4.jpg",
+						"https://i.dummyjson.com/data/products/1/thumbnail.jpg"
+					],
+					"thumbnail": "https://i.dummyjson.com/data/products/1/thumbnail.jpg",
+					"description": "An apple mobile which is nothing like apple",
+					"brand": "Apple",
+					"category": "smartphones"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "a49ffcc8-e61f-4fcd-93c0-c1c422d14b6c",
+	"id": "108",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

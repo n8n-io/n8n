@@ -19,6 +19,7 @@ import config from '@/config';
 import type { TagEntity } from './TagEntity';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
+import type { WorkflowTagMapping } from './WorkflowTagMapping';
 import { idStringifier, objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
@@ -72,6 +73,9 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 		},
 	})
 	tags?: TagEntity[];
+
+	@OneToMany('WorkflowTagMapping', 'workflows')
+	tagMappings: WorkflowTagMapping[];
 
 	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];

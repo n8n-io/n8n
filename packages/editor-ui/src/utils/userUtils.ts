@@ -65,6 +65,7 @@ import {
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
+	IPersonalizationSurveyAnswersV4,
 	IPersonalizationSurveyVersions,
 	IUser,
 } from '@/Interface';
@@ -74,9 +75,12 @@ import { ILogInStatus, IRole, IUserPermissions } from '@/Interface';
 	Utility functions used to handle users in n8n
 */
 
-function isPersonalizationV2OrV3(
+function isPersonalizationSurveyV2OrLater(
 	data: IPersonalizationSurveyVersions,
-): data is IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3 {
+): data is
+	| IPersonalizationSurveyAnswersV2
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4 {
 	return 'version' in data;
 }
 
@@ -179,17 +183,18 @@ export function getPersonalizedNodeTypes(
 		| IPersonalizationSurveyAnswersV1
 		| IPersonalizationSurveyAnswersV2
 		| IPersonalizationSurveyAnswersV3
+		| IPersonalizationSurveyAnswersV4
 		| null,
 ): string[] {
 	if (!answers) {
 		return [];
 	}
 
-	if (isPersonalizationV2OrV3(answers)) {
-		return getPersonalizationV2(answers);
+	if (isPersonalizationSurveyV2OrLater(answers)) {
+		return getPersonalizationSurveyV2OrLater(answers);
 	}
 
-	return getPersonalizationV1(answers);
+	return getPersonalizationSurveyV1(answers);
 }
 
 export function getAccountAge(currentUser: IUser): number {
@@ -202,8 +207,11 @@ export function getAccountAge(currentUser: IUser): number {
 	return -1;
 }
 
-function getPersonalizationV2(
-	answers: IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3,
+function getPersonalizationSurveyV2OrLater(
+	answers:
+		| IPersonalizationSurveyAnswersV2
+		| IPersonalizationSurveyAnswersV3
+		| IPersonalizationSurveyAnswersV4,
 ) {
 	let nodeTypes: string[] = [];
 
@@ -339,7 +347,7 @@ function getPersonalizationV2(
 	return nodeTypes;
 }
 
-function getPersonalizationV1(answers: IPersonalizationSurveyAnswersV1) {
+function getPersonalizationSurveyV1(answers: IPersonalizationSurveyAnswersV1) {
 	const companySize = answers[COMPANY_SIZE_KEY];
 	const workArea = answers[WORK_AREA_KEY];
 

@@ -10,13 +10,14 @@ describe('Expression editor modal', () => {
 
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openExpressionEditorModal();
 	});
 
 	it('should resolve primitive resolvables', () => {
+		WorkflowPage.getters.expressionModalInput().clear();
 		WorkflowPage.getters.expressionModalInput().type('{{ 1 + 2');
 		WorkflowPage.getters.expressionModalOutput().contains(/^3$/);
 		WorkflowPage.getters.expressionModalInput().clear();
@@ -31,6 +32,7 @@ describe('Expression editor modal', () => {
 	});
 
 	it('should resolve object resolvables', () => {
+		WorkflowPage.getters.expressionModalInput().clear();
 		WorkflowPage.getters
 			.expressionModalInput()
 			.type('{{ { a : 1 }', { parseSpecialCharSequences: false });
@@ -45,6 +47,7 @@ describe('Expression editor modal', () => {
 	});
 
 	it('should resolve array resolvables', () => {
+		WorkflowPage.getters.expressionModalInput().clear();
 		WorkflowPage.getters.expressionModalInput().type('{{ [1, 2, 3]');
 		WorkflowPage.getters.expressionModalOutput().contains(/^\[Array: \[1,2,3\]\]$/);
 
@@ -55,7 +58,8 @@ describe('Expression editor modal', () => {
 	});
 
 	it('should resolve $parameter[]', () => {
+		WorkflowPage.getters.expressionModalInput().clear();
 		WorkflowPage.getters.expressionModalInput().type('{{ $parameter["operation"]');
-		WorkflowPage.getters.expressionModalOutput().contains(/^get$/);
+		WorkflowPage.getters.expressionModalOutput().contains(/^getAll$/);
 	});
 });

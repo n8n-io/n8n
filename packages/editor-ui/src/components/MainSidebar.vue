@@ -43,7 +43,7 @@
 			</template>
 			<template #footer v-if="showUserArea">
 				<div :class="$style.userArea">
-					<div class="ml-3xs">
+					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
 						<el-dropdown
 							:disabled="!isCollapsed"
@@ -60,12 +60,12 @@
 							</div>
 							<template #dropdown>
 								<el-dropdown-menu>
-									<el-dropdown-item command="settings">{{
-										$locale.baseText('settings')
-									}}</el-dropdown-item>
-									<el-dropdown-item command="logout">{{
-										$locale.baseText('auth.signout')
-									}}</el-dropdown-item>
+									<el-dropdown-item command="settings">
+										{{ $locale.baseText('settings') }}
+									</el-dropdown-item>
+									<el-dropdown-item command="logout">
+										{{ $locale.baseText('auth.signout') }}
+									</el-dropdown-item>
 								</el-dropdown-menu>
 							</template>
 						</el-dropdown>
@@ -227,6 +227,14 @@ export default mixins(
 					activateOnRouteNames: [VIEWS.CREDENTIALS],
 				},
 				{
+					id: 'variables',
+					icon: 'variable',
+					label: this.$locale.baseText('mainSidebar.variables'),
+					customIconSize: 'medium',
+					position: 'top',
+					activateOnRouteNames: [VIEWS.VARIABLES],
+				},
+				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
@@ -337,14 +345,8 @@ export default mixins(
 					break;
 			}
 		},
-		async onLogout() {
-			try {
-				await this.usersStore.logout();
-				const route = this.$router.resolve({ name: VIEWS.SIGNIN });
-				window.open(route.href, '_self');
-			} catch (e) {
-				this.$showError(e, this.$locale.baseText('auth.signout.error'));
-			}
+		onLogout() {
+			this.$router.push({ name: VIEWS.SIGNOUT });
 		},
 		toggleCollapse() {
 			this.uiStore.toggleSidebarMenuCollapse();
@@ -377,6 +379,12 @@ export default mixins(
 				case 'credentials': {
 					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
 						this.goToRoute({ name: VIEWS.CREDENTIALS });
+					}
+					break;
+				}
+				case 'variables': {
+					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
+						this.goToRoute({ name: VIEWS.VARIABLES });
 					}
 					break;
 				}

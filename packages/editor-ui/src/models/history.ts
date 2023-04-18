@@ -1,7 +1,7 @@
 import { INodeUi } from '@/Interface';
 import { IConnection } from 'n8n-workflow';
-import Vue from 'vue';
 import { XYPosition } from '../Interface';
+import { createEventBus } from '@/event-bus';
 
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
@@ -21,7 +21,7 @@ export enum COMMANDS {
 // this timeout in between canvas actions
 // (0 is usually enough but leaving this just in case)
 const CANVAS_ACTION_TIMEOUT = 10;
-export const historyBus = new Vue();
+export const historyBus = createEventBus();
 
 export abstract class Undoable {}
 
@@ -75,7 +75,7 @@ export class MoveNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			historyBus.$emit('nodeMove', {
+			historyBus.emit('nodeMove', {
 				nodeName: this.nodeName,
 				position: this.oldPosition,
 			});
@@ -102,7 +102,7 @@ export class AddNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			historyBus.$emit('revertAddNode', { node: this.node });
+			historyBus.emit('revertAddNode', { node: this.node });
 			resolve();
 		});
 	}
@@ -126,7 +126,7 @@ export class RemoveNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			historyBus.$emit('revertRemoveNode', { node: this.node });
+			historyBus.emit('revertRemoveNode', { node: this.node });
 			resolve();
 		});
 	}
@@ -156,7 +156,7 @@ export class AddConnectionCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			historyBus.$emit('revertAddConnection', { connection: this.connectionData });
+			historyBus.emit('revertAddConnection', { connection: this.connectionData });
 			resolve();
 		});
 	}
@@ -187,7 +187,7 @@ export class RemoveConnectionCommand extends Command {
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
 			setTimeout(() => {
-				historyBus.$emit('revertRemoveConnection', { connection: this.connectionData });
+				historyBus.emit('revertRemoveConnection', { connection: this.connectionData });
 				resolve();
 			}, CANVAS_ACTION_TIMEOUT);
 		});
@@ -218,7 +218,7 @@ export class EnableNodeToggleCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			historyBus.$emit('enableNodeToggle', {
+			historyBus.emit('enableNodeToggle', {
 				nodeName: this.nodeName,
 				isDisabled: this.oldState,
 			});
@@ -251,7 +251,7 @@ export class RenameNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			historyBus.$emit('revertRenameNode', {
+			historyBus.emit('revertRenameNode', {
 				currentName: this.currentName,
 				newName: this.newName,
 			});

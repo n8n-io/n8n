@@ -1,10 +1,15 @@
 import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject, IOAuth2Options } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IOAuth2Options,
+} from 'n8n-workflow';
 
 import { NodeOperationError } from 'n8n-workflow';
 
-import _ from 'lodash';
+import get from 'lodash.get';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -59,7 +64,7 @@ export async function slackApiRequest(
 				}'`,
 				{
 					description:
-						'Hint: Upgrate to the Slack plan that includes the funcionality you want to use.',
+						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
 				},
 			);
 		} else if (response.error === 'missing_scope') {
@@ -104,12 +109,12 @@ export async function slackApiRequestAllItems(
 		query.limit = 100;
 	}
 	do {
-		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
-		query.cursor = _.get(responseData, 'response_metadata.next_cursor');
+		responseData = await slackApiRequest.call(this, method, endpoint, body as IDataObject, query);
+		query.cursor = get(responseData, 'response_metadata.next_cursor');
 		query.page++;
 		returnData.push.apply(
 			returnData,
-			responseData[propertyName].matches ?? responseData[propertyName],
+			(responseData[propertyName].matches as IDataObject[]) ?? responseData[propertyName],
 		);
 	} while (
 		(responseData.response_metadata?.next_cursor !== undefined &&
