@@ -538,6 +538,7 @@ export interface IN8nUISettings {
 		saml: boolean;
 		logStreaming: boolean;
 		advancedExecutionFilters: boolean;
+		versionControl: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

@@ -158,6 +158,7 @@ import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import { isVersionControlEnabled } from './environment/versionControl/versionControlHelper';
 
 const exec = promisify(callbackExec);
 
@@ -317,6 +318,7 @@ class Server extends AbstractServer {
 				saml: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
+				versionControl: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -347,6 +349,7 @@ class Server extends AbstractServer {
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			versionControl: isVersionControlEnabled(),
 		});
 
 		if (isLdapEnabled()) {

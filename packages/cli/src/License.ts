@@ -119,6 +119,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
+	isVersionControlEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
