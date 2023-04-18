@@ -446,7 +446,7 @@ class Server extends AbstractServer {
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = this.instanceId;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 

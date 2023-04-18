@@ -27,6 +27,7 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { UserSettings } from 'n8n-core';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -54,6 +55,8 @@ export abstract class AbstractServer {
 	protected endpointWebhookTest: string;
 
 	protected endpointWebhookWaiting: string;
+
+	protected instanceId: string;
 
 	abstract configure(): Promise<void>;
 
@@ -189,6 +192,10 @@ export abstract class AbstractServer {
 		if (config.getEnv('executions.mode') === 'queue') {
 			await this.setupRedisChecks();
 		}
+	}
+
+	private async setInstanceId() {
+		this.instanceId = await UserSettings.getInstanceId();
 	}
 
 	// This connection is going to be our heartbeat
@@ -437,6 +444,8 @@ export abstract class AbstractServer {
 		}
 
 		await this.setupHealthCheck();
+
+		await this.setInstanceId();
 
 		await this.configure();
 
