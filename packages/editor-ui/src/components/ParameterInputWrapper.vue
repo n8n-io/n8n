@@ -31,6 +31,7 @@
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
 			:singleLine="true"
+			renderHTML
 		/>
 		<input-hint
 			v-else-if="parameterHint"
@@ -176,14 +177,16 @@ export default mixins(showMessage, workflowHelpers).extend({
 					return null;
 				}
 
-				if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
-					computedValue = this.$locale.baseText('parameterInput.emptyString');
+				if (typeof computedValue === 'string' && computedValue.length === 0) {
+					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
 			}
 
-			return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
+			return typeof computedValue === 'string'
+				? this.toDisplayableString(computedValue)
+				: JSON.stringify(computedValue);
 		},
 		expressionOutput(): string | null {
 			if (this.isValueExpression && this.expressionValueComputed) {
@@ -194,6 +197,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 	},
 	methods: {
+		toDisplayableString(str: string): string {
+			const whitespaced = str.replace(/ /g, '&nbsp;');
+
+			return `<span class="${this.$style.quotes}">"</span><span>${whitespaced}</span><span class="${this.$style.quotes}">"</span>`;
+		},
 		onFocus() {
 			this.$emit('focus');
 		},
@@ -221,6 +229,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 <style lang="scss" module>
 .hint {
 	margin-top: var(--spacing-4xs);
+
+	.quotes {
+		color: var(--color-text-lighter);
+	}
 }
 
 .hovering {
