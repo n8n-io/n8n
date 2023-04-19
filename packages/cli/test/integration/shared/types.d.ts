@@ -23,6 +23,7 @@ type EndpointGroup =
 	| 'nodes'
 	| 'ldap'
 	| 'saml'
+	| 'versionControl'
 	| 'eventBus'
 	| 'license'
 	| 'variables';
