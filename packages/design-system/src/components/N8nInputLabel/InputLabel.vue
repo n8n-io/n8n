@@ -4,6 +4,7 @@
 			v-if="label || $slots.options"
 			:for="inputName"
 			:class="{
+				'n8n-input-label': true,
 				[$style.inputLabel]: true,
 				[$style.heading]: !!label,
 				[$style.underline]: underline,
