@@ -125,7 +125,6 @@ export class GSuiteAdmin implements INodeType {
 						value: orgUnitName,
 					});
 				}
-				console.log(returnData);
 				return returnData;
 			},
 		},
@@ -468,8 +467,6 @@ export class GSuiteAdmin implements INodeType {
 						qs.customer = 'my_customer';
 					}
 
-					console.log(qs);
-
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
 							this,
@@ -511,7 +508,6 @@ export class GSuiteAdmin implements INodeType {
 					const action = this.getNodeParameter('action', 1);
 
 					qs.action = action;
-					console.log(qs);
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',
