@@ -11,11 +11,11 @@
 			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
 			<div :class="$style.action">
 				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-				<n8n-link v-if="rootView === 'regular'" @click="$emit('http')">
+				<n8n-link v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
 					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 				</n8n-link>
 
-				<n8n-link v-if="rootView === 'trigger'" @click="$emit('webhook')">
+				<n8n-link v-if="rootView === TRIGGER_NODE_CREATOR_VIEW" @click="$emit('addWebhookNode')">
 					{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 				</n8n-link>
 				{{ $locale.baseText('nodeCreator.noResults.node') }}
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { REQUEST_NODE_FORM_URL } from '@/constants';
+import { REQUEST_NODE_FORM_URL, REGULAR_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 import { NodeFilterType } from '@/Interface';
 
 import NoResultsIcon from './NoResultsIcon.vue';
@@ -50,7 +50,7 @@ import NoResultsIcon from './NoResultsIcon.vue';
 export interface Props {
 	showIcon?: boolean;
 	showRequest?: boolean;
-	rootView: NodeFilterType;
+	rootView?: NodeFilterType;
 }
 
 defineProps<Props>();
