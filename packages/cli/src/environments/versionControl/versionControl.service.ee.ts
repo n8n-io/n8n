@@ -4,7 +4,6 @@ import { VersionControlPreferences } from './types/versionControlPreferences';
 import { VERSION_CONTROL_PREFERENCES_DB_KEY } from './constants';
 import * as Db from '@/Db';
 import { jsonParse } from 'n8n-workflow';
-import type { Settings } from '@/databases/entities/Settings';
 
 @Service()
 export class VersionControlService {
