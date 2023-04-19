@@ -1,5 +1,5 @@
 import { PiniaVuePlugin } from 'pinia';
-import { render } from '@testing-library/vue';
+import { render, within } from '@testing-library/vue';
 import { merge } from 'lodash-es';
 import {
 	DEFAULT_SETUP,
@@ -10,6 +10,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { waitAllPromises } from '@/__tests__/utils';
 import * as workflowHelpers from '@/mixins/workflowHelpers';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+import userEvent from '@testing-library/user-event';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 
@@ -40,5 +41,144 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length);
+	});
+
+	it('renders add mode  properly', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// This mode doesn't render matching column selector
+		expect(queryByTestId('matching-column-select')).not.toBeInTheDocument();
+	});
+
+	it('renders multi-key match selector properly', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							mode: 'upsert',
+							multiKeyMatch: true,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		expect(container.querySelector('.el-select__tags')).toBeInTheDocument();
+	});
+
+	it('does not render mapping mode selector if it is disabled', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							supportAutoMap: false,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		expect(queryByTestId('mapping-mode-select')).not.toBeInTheDocument();
+	});
+
+	it('renders field on top of the list when they are selected for matching', async () => {
+		const { container, getByTestId } = renderComponent({
+			props: {
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							supportAutoMap: true,
+							mode: 'upsert',
+							multiKeyMatch: false,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		// Id should be the first field in the list
+		expect(container.querySelector('.parameter-item:first-child')).toContainHTML(
+			'id (using to match)',
+		);
+		// Select Last Name as matching column
+		await userEvent.click(getByTestId('matching-column-select'));
+		const matchingColumnDropdown = getByTestId('matching-column-select');
+		await userEvent.click(within(matchingColumnDropdown).getByText('Last Name'));
+		// Now, last name should be the first field in the list
+		expect(container.querySelector('.parameter-item:first-child')).toContainHTML(
+			'Last Name (using to match)',
+		);
+	});
+
+	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
+		const { getByTestId, getByText, queryByText } = renderComponent({
+			props: {
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							supportAutoMap: true,
+							mode: 'upsert',
+							multiKeyMatch: true,
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
+		const matchingColumnDropdown = getByTestId('matching-column-select');
+		await userEvent.click(matchingColumnDropdown);
+		await userEvent.click(within(matchingColumnDropdown).getByText('Username'));
+		// Both matching columns should be rendered in the dropdown
+		expect(getByTestId('matching-column-select')).toContainHTML(
+			'<span class="el-select__tags-text">Last Name</span>',
+		);
+		expect(getByTestId('matching-column-select')).toContainHTML(
+			'<span class="el-select__tags-text">Username</span>',
+		);
+		// Both last name and username fields should have proper labels
+		expect(getByText('Last Name (using to match)')).toBeInTheDocument();
+		expect(getByText('Username (using to match)')).toBeInTheDocument();
+		expect(queryByText('First Name (using to match)')).not.toBeInTheDocument();
+	});
+
+	it('uses field words defined in node definition', async () => {
+		const { getByText } = renderComponent({
+			props: {
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							fieldWords: {
+								singular: 'foo',
+								plural: 'foos',
+							},
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		expect(getByText('Set the value for each foo')).toBeInTheDocument();
+		expect(
+			getByText('Look for incoming data that matches the foos to the input data in the service'),
+		).toBeInTheDocument();
+		expect(getByText('Foos to match on')).toBeInTheDocument();
+		expect(getByText('The foos that identify the row(s) to modify')).toBeInTheDocument();
 	});
 });
