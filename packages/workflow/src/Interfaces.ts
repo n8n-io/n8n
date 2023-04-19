@@ -172,6 +172,7 @@ export interface IRequestOptionsSimplified {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body: IDataObject;
 	headers: IDataObject;
@@ -182,6 +183,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body?: IDataObject;
 	headers?: IDataObject;
@@ -501,6 +503,7 @@ export interface IHttpRequestOptions {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
