@@ -5,7 +5,8 @@ import { createHash } from 'crypto';
 
 import { Builder } from 'xml2js';
 
-import type {
+import {
+	BINARY_ENCODING,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -26,6 +27,7 @@ import {
 	awsApiRequestRESTAllItems,
 	awsApiRequestSOAP,
 } from './GenericFunctions';
+import { Readable } from 'form-data';
 
 export class AwsS3V2 implements INodeType {
 	description: INodeTypeDescription;
@@ -845,28 +847,46 @@ export class AwsS3V2 implements INodeType {
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-								i,
-								binaryPropertyName,
-							);
+							// const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							// 	i,
+							// 	binaryPropertyName,
+							// );
 
-							body = binaryDataBuffer;
+							let uploadData: Buffer | Readable;
+							if (binaryPropertyData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id);
+							} else {
+								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
+							}
 
-							headers['Content-Type'] = binaryPropertyData.mimeType;
-
-							headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
-
-							responseData = await awsApiRequestREST.call(
+							const createMultiPartUpload = await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
-								'PUT',
-								`${path}${fileName || binaryPropertyData.fileName}`,
+								'POST',
+								`${bucketName}-${this.getNode().id}`,
 								body,
 								qs,
 								headers,
 								{},
 								region as string,
 							);
+
+							console.log(createMultiPartUpload);
+							// headers['Content-Type'] = binaryPropertyData.mimeType;
+
+							// headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+
+							// responseData = await awsApiRequestREST.call(
+							// 	this,
+							// 	`${bucketName}.s3`,
+							// 	'PUT',
+							// 	`${path}${fileName || binaryPropertyData.fileName}`,
+							// 	body,
+							// 	qs,
+							// 	headers,
+							// 	{},
+							// 	region as string,
+							// );
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
