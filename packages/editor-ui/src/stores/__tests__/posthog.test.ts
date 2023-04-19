@@ -1,10 +1,10 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { usePostHog } from './posthog';
-import { useUsersStore } from './users';
-import { useSettingsStore } from './settings';
+import { usePostHog } from '@/stores/posthog';
+import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 import { IN8nUISettings } from '@/Interface';
-import { useRootStore } from './n8nRootStore';
-import { useTelemetryStore } from './telemetry';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useTelemetryStore } from '@/stores/telemetry';
 
 const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,
