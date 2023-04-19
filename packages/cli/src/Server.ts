@@ -156,8 +156,11 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
+import { variablesController } from './environments/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import { isVersionControlEnabled } from './environment/versionControl/versionControlHelper';
 
 const exec = promisify(callbackExec);
 
@@ -317,10 +320,15 @@ class Server extends AbstractServer {
 				saml: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
+				variables: false,
+				versionControl: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
+			variables: {
+				limit: 0,
 			},
 		};
 	}
@@ -347,6 +355,8 @@ class Server extends AbstractServer {
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			versionControl: isVersionControlEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -361,6 +371,10 @@ class Server extends AbstractServer {
 				loginLabel: getSamlLoginLabel(),
 				loginEnabled: isSamlLoginEnabled(),
 			});
+		}
+
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
 		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -540,6 +554,13 @@ class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
+		// Variables
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(

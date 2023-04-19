@@ -6,7 +6,7 @@
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
-		:item-size="77"
+		:type-props="{ itemSize: 77 }"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
