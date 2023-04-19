@@ -21,7 +21,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
             <div>
               <div class=\\"grid\\">
                 <div class=\\"\\">
-                  <div class=\\"container\\" data-test-id=\\"companyType\\"><label for=\\"companyType\\" class=\\"inputLabel heading medium\\">
+                  <div class=\\"container\\" data-test-id=\\"companyType\\"><label for=\\"companyType\\" class=\\"n8n-input-label inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> What best describes your company? <!----></span></div>
                       <!---->
                       <!---->
@@ -71,7 +71,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                   </div>
                 </div>
                 <div class=\\"\\">
-                  <div class=\\"container\\" data-test-id=\\"role\\"><label for=\\"role\\" class=\\"inputLabel heading medium\\">
+                  <div class=\\"container\\" data-test-id=\\"role\\"><label for=\\"role\\" class=\\"n8n-input-label inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> Which role best describes you? <!----></span></div>
                       <!---->
                       <!---->
@@ -123,7 +123,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                   </div>
                 </div>
                 <div class=\\"\\">
-                  <div class=\\"container\\" data-test-id=\\"automationBeneficiary\\"><label for=\\"automationBeneficiary\\" class=\\"inputLabel heading medium\\">
+                  <div class=\\"container\\" data-test-id=\\"automationBeneficiary\\"><label for=\\"automationBeneficiary\\" class=\\"n8n-input-label inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> Who will your automations mainly be for? <!----></span></div>
                       <!---->
                       <!---->
@@ -169,7 +169,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                   </div>
                 </div>
                 <div class=\\"\\">
-                  <div class=\\"container\\" data-test-id=\\"companySize\\"><label for=\\"companySize\\" class=\\"inputLabel heading medium\\">
+                  <div class=\\"container\\" data-test-id=\\"companySize\\"><label for=\\"companySize\\" class=\\"n8n-input-label inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> How big is your company? <!----></span></div>
                       <!---->
                       <!---->
@@ -218,7 +218,7 @@ exports[`PersonalizationModal.vue > should render correctly 1`] = `
                   </div>
                 </div>
                 <div class=\\"\\">
-                  <div class=\\"container\\" data-test-id=\\"reportedSource\\"><label for=\\"reportedSource\\" class=\\"inputLabel heading medium\\">
+                  <div class=\\"container\\" data-test-id=\\"reportedSource\\"><label for=\\"reportedSource\\" class=\\"n8n-input-label inputLabel heading medium\\">
                       <div class=\\"title\\"><span class=\\"n8n-text size-medium bold\\"> How did you hear about n8n? <!----></span></div>
                       <!---->
                       <!---->
