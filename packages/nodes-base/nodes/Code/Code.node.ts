@@ -66,8 +66,6 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		let items = this.getInputData();
-
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
@@ -80,24 +78,25 @@ export class Code implements INodeType {
 
 			const context = getSandboxContext.call(this);
 			context.items = context.$input.all();
-			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
+			const sandbox = new Sandbox(context, jsCodeAllItems, workflowMode, this.helpers);
 
 			if (workflowMode === 'manual') {
 				sandbox.on('console.log', this.sendMessageToUI);
 			}
 
+			let result: INodeExecutionData[];
 			try {
-				items = await sandbox.runCode(jsCodeAllItems);
+				result = await sandbox.runCodeAllItems();
 			} catch (error) {
 				if (!this.continueOnFail()) return Promise.reject(error);
-				items = [{ json: { error: error.message } }];
+				result = [{ json: { error: error.message } }];
 			}
 
-			for (const item of items) {
+			for (const item of result) {
 				standardizeOutput(item.json);
 			}
 
-			return this.prepareOutputData(items);
+			return this.prepareOutputData(result);
 		}
 
 		// ----------------------------------
@@ -106,31 +105,32 @@ export class Code implements INodeType {
 
 		const returnData: INodeExecutionData[] = [];
 
-		for (let index = 0; index < items.length; index++) {
-			let item = items[index];
+		const items = this.getInputData();
 
+		for (let index = 0; index < items.length; index++) {
 			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
 
 			const context = getSandboxContext.call(this, index);
 			context.item = context.$input.item;
-			const sandbox = new Sandbox(context, workflowMode, nodeMode, this.helpers);
+			const sandbox = new Sandbox(context, jsCodeEachItem, workflowMode, this.helpers);
 
 			if (workflowMode === 'manual') {
 				sandbox.on('console.log', this.sendMessageToUI);
 			}
 
+			let result: INodeExecutionData | undefined;
 			try {
-				item = await sandbox.runCode(jsCodeEachItem, index);
+				result = await sandbox.runCodeEachItem(index);
 			} catch (error) {
 				if (!this.continueOnFail()) return Promise.reject(error);
 				returnData.push({ json: { error: error.message } });
 			}
 
-			if (item) {
+			if (result) {
 				returnData.push({
-					json: standardizeOutput(item.json),
+					json: standardizeOutput(result.json),
 					pairedItem: { item: index },
-					...(item.binary && { binary: item.binary }),
+					...(result.binary && { binary: result.binary }),
 				});
 			}
 		}
