@@ -406,6 +406,9 @@ importers:
       sse-channel:
         specifier: ^4.0.0
         version: 4.0.0
+      sshpk:
+        specifier: ^1.17.0
+        version: 1.17.0
       swagger-ui-express:
         specifier: ^4.3.0
         version: 4.5.0(express@4.18.2)
@@ -536,6 +539,9 @@ importers:
       '@types/shelljs':
         specifier: ^0.8.11
         version: 0.8.11
+      '@types/sshpk':
+        specifier: ^1.17.1
+        version: 1.17.1
       '@types/superagent':
         specifier: 4.1.13
         version: 4.1.13
@@ -5959,7 +5965,6 @@ packages:
     resolution: {integrity: sha512-5TMxIpYbIA9c1J0hYQjQDX3wr+rTgQEAXaW2BI8ECM8FO53wSW4HFZplTalrKSHuZUc76NtXcePRhwuOHqGD5g==}
     dependencies:
       '@types/node': 16.18.12
-    dev: false
 
   /@types/aws4@1.11.2:
     resolution: {integrity: sha512-x0f96eBPrCCJzJxdPbUvDFRva4yPpINJzTuXXpmS2j9qLUpF2nyGzvXPlRziuGbCsPukwY4JfuO+8xwsoZLzGw==}
@@ -6879,6 +6884,13 @@ packages:
   /@types/ssh2@1.11.6:
     resolution: {integrity: sha512-8Mf6bhzYYBLEB/G6COux7DS/F5bCWwojv/qFo2yH/e4cLzAavJnxvFXrYW59iKfXdhG6OmzJcXDasgOb/s0rxw==}
     dependencies:
+      '@types/node': 16.18.12
+    dev: true
+
+  /@types/sshpk@1.17.1:
+    resolution: {integrity: sha512-bOJek/W++DvWRNAeHmpvgX8Q1ypAq4nmeVi3nJ+pjDcMB214S8kSGkxRUw/Uz+zau4VwxcfNp0xUq4s/3DLjLw==}
+    dependencies:
+      '@types/asn1': 0.2.0
       '@types/node': 16.18.12
     dev: true
 
