@@ -1,22 +1,20 @@
 <script lang="ts">
+import { DefineComponent, defineComponent } from 'vue';
 import { Pagination as ElPagination } from 'element-ui';
 
-export default {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-	props: (ElPagination as any).props,
+export default defineComponent({
+	props: (ElPagination as unknown as DefineComponent).props,
 	components: {
 		ElPagination,
 	},
-};
+});
 </script>
 
 <template>
-	<div>
-		<el-pagination
-			background
-			layout="prev, pager, next"
-			v-bind="[$props, $attrs]"
-			v-on="$listeners"
-		/>
-	</div>
+	<el-pagination
+		background
+		layout="prev, pager, next"
+		v-bind="[$props, $attrs]"
+		v-on="$listeners"
+	/>
 </template>

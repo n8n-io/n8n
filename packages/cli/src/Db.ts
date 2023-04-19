@@ -36,6 +36,7 @@ import {
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
+	VariablesRepository,
 	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
@@ -182,6 +183,7 @@ export async function init(
 	collections.SharedWorkflow = Container.get(SharedWorkflowRepository);
 	collections.Tag = Container.get(TagRepository);
 	collections.User = Container.get(UserRepository);
+	collections.Variables = Container.get(VariablesRepository);
 	collections.Webhook = Container.get(WebhookRepository);
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);

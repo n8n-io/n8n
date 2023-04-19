@@ -4,7 +4,7 @@ import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { useUsageStore } from '@/stores/usage';
 import { useUIStore } from '@/stores/ui';
-import { BaseTextKey, i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();
@@ -56,16 +56,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	const linkUrlTranslationKey = uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey;
-	let linkUrl = locale.baseText(linkUrlTranslationKey);
-
-	if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-		linkUrl = `${usageStore.viewPlansUrl}&source=sso`;
-	} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-		linkUrl = `${linkUrl}&utm_campaign=upgrade-sso`;
-	}
-
-	window.open(linkUrl, '_blank');
+	uiStore.goToUpgrade('sso', 'upgrade-sso`');
 };
 
 onBeforeMount(async () => {
@@ -112,7 +103,7 @@ onBeforeMount(async () => {
 				</template>
 			</i18n>
 		</n8n-info-tip>
-		<div v-if="ssoStore.isEnterpriseSamlEnabled">
+		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 				<CopyInput
@@ -135,20 +126,26 @@ onBeforeMount(async () => {
 			</div>
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.ips.label') }}</label>
-				<n8n-input v-model="metadata" type="textarea" />
+				<n8n-input v-model="metadata" type="textarea" name="metadata" />
 				<small>{{ locale.baseText('settings.sso.settings.ips.help') }}</small>
 			</div>
 			<div :class="$style.buttons">
-				<n8n-button :disabled="!ssoSettingsSaved" type="tertiary" @click="onTest">
+				<n8n-button
+					:disabled="!ssoSettingsSaved"
+					type="tertiary"
+					@click="onTest"
+					data-test-id="sso-test"
+				>
 					{{ locale.baseText('settings.sso.settings.test') }}
 				</n8n-button>
-				<n8n-button :disabled="!metadata" @click="onSave">
+				<n8n-button :disabled="!metadata" @click="onSave" data-test-id="sso-save">
 					{{ locale.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 			</div>
 		</div>
 		<n8n-action-box
 			v-else
+			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sso.actionBox.description')"
 			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"

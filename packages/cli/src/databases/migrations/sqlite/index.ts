@@ -33,6 +33,7 @@ import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToE
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677237073720 } from './1677237073720-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281777 } from './1679416281777-CreateExecutionMetadataTable';
+import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -68,6 +69,7 @@ const sqliteMigrations: Migration[] = [
 	AddStatusToExecutions1674138566000,
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677237073720,
+	CreateVariables1677501636752,
 	CreateExecutionMetadataTable1679416281777,
 ];
 

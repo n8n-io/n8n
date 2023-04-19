@@ -1080,6 +1080,38 @@ export class Gitlab implements INodeType {
 				default: 1,
 				description: 'Page of results to display',
 			},
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['file'],
+						operation: ['list'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'ref',
+						type: 'string',
+						default: '',
+						placeholder: 'main',
+						description:
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
+					},
+					{
+						displayName: 'Recursive',
+						name: 'recursive',
+						type: 'boolean',
+						default: false,
+						description: 'Whether or not to get a recursive file tree. Default is false.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         file:get
@@ -1134,9 +1166,9 @@ export class Gitlab implements INodeType {
 						name: 'reference',
 						type: 'string',
 						default: '',
-						placeholder: 'master',
+						placeholder: 'main',
 						description:
-							'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
 					},
 				],
 			},
@@ -1635,7 +1667,8 @@ export class Gitlab implements INodeType {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i);
-						qs = this.getNodeParameter('additionalFields', i, {});
+
+						qs = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
 						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
