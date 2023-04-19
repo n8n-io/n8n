@@ -612,11 +612,10 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-							role: [ROLE.Owner],
+							role: [ROLE.Default, ROLE.Owner],
 						},
 						deny: {
-							role: [ROLE.Default],
+							role: [ROLE.Member],
 						},
 					},
 				},
@@ -675,7 +674,10 @@ export const routes = [
 				meta: {
 					permissions: {
 						allow: {
-							role: [ROLE.Owner],
+							role: [ROLE.Default, ROLE.Owner],
+						},
+						deny: {
+							role: [ROLE.Member],
 						},
 					},
 				},
