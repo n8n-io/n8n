@@ -128,7 +128,7 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
 
-	isVersionControlEnabled() {
+	isVersionControlLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
 	}
 
