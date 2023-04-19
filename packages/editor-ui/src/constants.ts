@@ -395,6 +395,7 @@ export enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
+	VERSION_CONTROL = 'VersionControl',
 }
 
 export enum FAKE_DOOR_FEATURES {
