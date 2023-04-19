@@ -75,6 +75,14 @@ export default mixins(userHelpers, pushConnection).extend({
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
 				{
+					id: 'settings-version-control',
+					icon: 'code-branch',
+					label: this.$locale.baseText('settings.versionControl.title'),
+					position: 'top',
+					available: this.canAccessVersionControl(),
+					activateOnRouteNames: [VIEWS.VERSION_CONTROL],
+				},
+				{
 					id: 'settings-sso',
 					icon: 'user-lock',
 					label: this.$locale.baseText('settings.sso'),
@@ -151,6 +159,9 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
+		canAccessVersionControl(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
+		},
 		canAccessSso(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.SSO_SETTINGS);
 		},
@@ -205,6 +216,11 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-sso':
 					if (this.$router.currentRoute.name !== VIEWS.SSO_SETTINGS) {
 						this.$router.push({ name: VIEWS.SSO_SETTINGS });
+					}
+					break;
+				case 'settings-version-control':
+					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
+						this.$router.push({ name: VIEWS.VERSION_CONTROL });
 					}
 					break;
 				default:
