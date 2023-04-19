@@ -56,22 +56,16 @@ export class VersionControlService {
 	}
 
 	async saveSamlPreferencesToDb(): Promise<VersionControlPreferences | undefined> {
-		const loadedPrefs = await Db.collections.Settings.findOne({
-			where: { key: VERSION_CONTROL_PREFERENCES_DB_KEY },
-		});
 		const settingsValue = JSON.stringify(this._versionControlPreferences);
-		let result: Settings;
-		if (loadedPrefs) {
-			loadedPrefs.value = settingsValue;
-			result = await Db.collections.Settings.save(loadedPrefs);
-		} else {
-			result = await Db.collections.Settings.save({
-				key: VERSION_CONTROL_PREFERENCES_DB_KEY,
-				value: settingsValue,
-				loadOnStartup: true,
-			});
-		}
-		if (result) return jsonParse<VersionControlPreferences>(result.value);
+		const result = await Db.collections.Settings.save({
+			key: VERSION_CONTROL_PREFERENCES_DB_KEY,
+			value: settingsValue,
+			loadOnStartup: true,
+		});
+		if (result)
+			try {
+				return jsonParse<VersionControlPreferences>(result.value);
+			} catch {}
 		return;
 	}
 }
