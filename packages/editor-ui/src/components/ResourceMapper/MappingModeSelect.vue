@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
-import { computed, getCurrentInstance, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { i18n as locale } from '@/plugins/i18n';
 
 export interface Props {
 	initialValue: string;
@@ -13,40 +14,28 @@ export interface Props {
 	loadingError: boolean;
 }
 
-const instance = getCurrentInstance();
-
 const props = defineProps<Props>();
 
 // Mapping mode options: Labels here use field words defined in parameter type options
 const mappingModeOptions = [
 	{
-		name: instance?.proxy.$locale.baseText('resourceMapper.mappingMode.defineBelow.name'),
+		name: locale.baseText('resourceMapper.mappingMode.defineBelow.name'),
 		value: 'defineBelow',
-		description: instance?.proxy.$locale.baseText(
-			'resourceMapper.mappingMode.defineBelow.description',
-			{
-				interpolate: {
-					fieldWord:
-						props.typeOptions?.fieldWords?.singular ||
-						instance?.proxy.$locale.baseText('generic.field'),
-				},
+		description: locale.baseText('resourceMapper.mappingMode.defineBelow.description', {
+			interpolate: {
+				fieldWord: props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field'),
 			},
-		),
+		}),
 	},
 	{
-		name: instance?.proxy.$locale.baseText('resourceMapper.mappingMode.autoMapInputData.name'),
+		name: locale.baseText('resourceMapper.mappingMode.autoMapInputData.name'),
 		value: 'autoMapInputData',
-		description: instance?.proxy.$locale.baseText(
-			'resourceMapper.mappingMode.autoMapInputData.description',
-			{
-				interpolate: {
-					fieldWord:
-						props.typeOptions?.fieldWords?.plural ||
-						instance?.proxy.$locale.baseText('generic.fields'),
-					serviceName: props.serviceName || instance?.proxy.$locale.baseText('generic.service'),
-				},
+		description: locale.baseText('resourceMapper.mappingMode.autoMapInputData.description', {
+			interpolate: {
+				fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
+				serviceName: props.serviceName || locale.baseText('generic.service'),
 			},
-		),
+		}),
 	},
 ];
 
@@ -58,14 +47,12 @@ const emit = defineEmits<{
 const selected = ref(props.initialValue);
 
 const errorMessage = computed<string>(() => {
-	if (selected.value === 'defineBelow' && instance) {
+	if (selected.value === 'defineBelow') {
 		// Loading error message
 		if (props.loadingError) {
-			return instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.errorMessage', {
+			return locale.baseText('resourceMapper.fetchingFields.errorMessage', {
 				interpolate: {
-					fieldWord:
-						props.typeOptions?.fieldWords?.plural ||
-						instance?.proxy.$locale.baseText('generic.fields'),
+					fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
 				},
 			});
 		}
@@ -74,12 +61,10 @@ const errorMessage = computed<string>(() => {
 			return (
 				// Use custom error message if defined
 				props.typeOptions?.noFieldsError ||
-				instance?.proxy.$locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
+				locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
 					interpolate: {
-						fieldWord:
-							props.typeOptions?.fieldWords?.plural ||
-							instance?.proxy.$locale.baseText('generic.fields'),
-						serviceName: props.serviceName || instance?.proxy.$locale.baseText('generic.service'),
+						fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
+						serviceName: props.serviceName || locale.baseText('generic.service'),
 					},
 				})
 			);
@@ -141,7 +126,7 @@ defineExpose({
 								interpolate: {
 									fieldWord:
 										props.typeOptions?.fieldWords?.plural ||
-										instance?.proxy.$locale.baseText('generic.fields') ||
+										locale.baseText('generic.fields') ||
 										'fields',
 								},
 							})

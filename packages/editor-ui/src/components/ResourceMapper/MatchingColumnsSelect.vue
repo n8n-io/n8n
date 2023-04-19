@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
-import { computed, getCurrentInstance, reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
+import { i18n as locale } from '@/plugins/i18n';
 
 export interface Props {
 	initialValue: string[];
@@ -10,8 +11,6 @@ export interface Props {
 	inputSize: string;
 	loading: boolean;
 }
-
-const instance = getCurrentInstance();
 
 const props = defineProps<Props>();
 
@@ -34,36 +33,29 @@ const emit = defineEmits<{
 
 // Field label and description: Labels here use field words defined in parameter type options
 const fieldLabel = computed<string>(() => {
-	if (instance) {
-		const pluralFieldWord =
-			props.typeOptions?.fieldWords?.plural || instance?.proxy.$locale.baseText('generic.fields');
-		const singularFieldWord =
-			props.typeOptions?.fieldWords?.singular || instance?.proxy.$locale.baseText('generic.field');
-		let fieldWord = props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord;
-		fieldWord = fieldWord.charAt(0).toUpperCase() + fieldWord.slice(1);
-		return instance?.proxy.$locale.baseText('resourceMapper.columnsToMatchOn.label', {
-			interpolate: {
-				fieldWord,
-			},
-		});
-	}
-	// This should indicate that something is wrong since instance should be defined at this point
-	return '';
+	const pluralFieldWord =
+		props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
+	const singularFieldWord =
+		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
+	let fieldWord = props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord;
+	fieldWord = fieldWord.charAt(0).toUpperCase() + fieldWord.slice(1);
+	return locale.baseText('resourceMapper.columnsToMatchOn.label', {
+		interpolate: {
+			fieldWord,
+		},
+	});
 });
 
 const fieldDescription = computed<string>(() => {
-	if (instance) {
-		const pluralFieldWord =
-			props.typeOptions?.fieldWords?.plural || instance?.proxy.$locale.baseText('generic.fields');
-		const singularFieldWord =
-			props.typeOptions?.fieldWords?.singular || instance?.proxy.$locale.baseText('generic.field');
-		return instance?.proxy.$locale.baseText('resourceMapper.columnsToMatchOn.description', {
-			interpolate: {
-				fieldWord: props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord,
-			},
-		});
-	}
-	return '';
+	const pluralFieldWord =
+		props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
+	const singularFieldWord =
+		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
+	return locale.baseText('resourceMapper.columnsToMatchOn.description', {
+		interpolate: {
+			fieldWord: props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord,
+		},
+	});
 });
 
 function onSelectionChange(value: string | string[]) {

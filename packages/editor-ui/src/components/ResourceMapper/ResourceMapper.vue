@@ -11,11 +11,12 @@ import {
 	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { computed, getCurrentInstance, onMounted, reactive, watch } from 'vue';
+import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import { isResourceMapperValue } from '@/utils';
+import { i18n as locale } from '@/plugins/i18n';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -29,7 +30,6 @@ export interface Props {
 
 const FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
-const instance = getCurrentInstance();
 const nodeTypesStore = useNodeTypesStore();
 
 const props = defineProps<Props>();
@@ -189,19 +189,19 @@ async function loadFieldsToMap(): Promise<void> {
 
 function getFieldLabel(field: ResourceMapperField): string {
 	if (isMatchingField(field.id)) {
-		const suffix = instance?.proxy.$locale.baseText('resourceMapper.usingToMatch') || '';
+		const suffix = locale.baseText('resourceMapper.usingToMatch') || '';
 		return `${field.displayName} ${suffix}`;
 	}
 	return field.displayName;
 }
 
 function getFieldDescription(field: ResourceMapperField): string {
-	if (isMatchingField(field.id) && instance) {
+	if (isMatchingField(field.id)) {
 		const singularFieldWord =
 			props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
-			instance?.proxy.$locale.baseText('generic.field');
+			locale.baseText('generic.field');
 		return (
-			instance?.proxy.$locale.baseText('resourceMapper.usingToMatch.description', {
+			locale.baseText('resourceMapper.usingToMatch.description', {
 				interpolate: {
 					fieldWord: singularFieldWord,
 				},
@@ -295,7 +295,7 @@ defineExpose({
 						interpolate: {
 							fieldWord:
 								props.parameter.typeOptions?.fieldWords?.plural ||
-								instance?.proxy.$locale.baseText('generic.fields') ||
+								locale.baseText('generic.fields') ||
 								'fields',
 						},
 					})
