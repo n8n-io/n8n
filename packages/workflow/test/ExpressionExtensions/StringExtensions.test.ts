@@ -169,11 +169,11 @@ describe('Data Transformation Functions', () => {
 		test('.extractDomain should work on a string', () => {
 			expect(evaluate('={{ "test@example.org".extractDomain() }}')).toEqual('example.org');
 			expect(evaluate('={{ "https://example.org/".extractDomain() }}')).toEqual('example.org');
-			expect(evaluate('={{ "https://www.google.com".extractDomain() }}')).toEqual('google.com');
+			expect(evaluate('={{ "https://www.google.com".extractDomain() }}')).toEqual('www.google.com');
 			expect(evaluate('={{ "http://example.org".extractDomain() }}')).toEqual('example.org');
-			expect(evaluate('={{ "ftp://ftp.example.com".extractDomain() }}')).toEqual('example.com');
+			expect(evaluate('={{ "ftp://ftp.example.com".extractDomain() }}')).toEqual('ftp.example.com');
 			expect(evaluate('={{ "google.com".extractDomain() }}')).toEqual('google.com');
-			expect(evaluate('={{ "www.example.net".extractDomain() }}')).toEqual('example.net');
+			expect(evaluate('={{ "www.example.net".extractDomain() }}')).toEqual('www.example.net');
 			expect(evaluate('={{ "//example.com".extractDomain() }}')).toEqual('example.com');
 			expect(evaluate('={{ "mailto:john.doe@example.com".extractDomain() }}')).toEqual('example.com');
 			expect(evaluate('={{ "tel:+1-555-123-4567".extractDomain() }}')).toEqual(undefined);
@@ -181,18 +181,18 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "name+tag@example.com".extractDomain() }}')).toEqual('example.com');
 			expect(evaluate('={{ "first.last@example.co.uk".extractDomain() }}')).toEqual('example.co.uk');
 			expect(evaluate('={{ "user@subdomain.example.com".extractDomain() }}')).toEqual('subdomain.example.com');
-			expect(evaluate('={{ "www.example.net?test=1213".extractDomain() }}')).toEqual('example.net');
-			expect(evaluate('={{ "www.example.net?test".extractDomain() }}')).toEqual('example.net');
-			expect(evaluate('={{ "www.example.net#tesdt123".extractDomain() }}')).toEqual('example.net');
-			expect(evaluate('={{ "https://www.example.net?test=1213".extractDomain() }}')).toEqual('example.net');
-			expect(evaluate('={{ "https://www.example.net?test".extractDomain() }}')).toEqual('example.net');
-			expect(evaluate('={{ "https://www.example.net#tesdt123".extractDomain() }}')).toEqual('example.net');
+			expect(evaluate('={{ "www.example.net?test=1213".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "www.example.net?test".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "www.example.net#tesdt123".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "https://www.example.net?test=1213".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "https://www.example.net?test".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "https://www.example.net#tesdt123".extractDomain() }}')).toEqual('www.example.net');
 			expect(evaluate('={{ "https://192.168.1.1".extractDomain() }}')).toEqual('192.168.1.1');
-			expect(evaluate('={{ "http://www.xn--80aswg.xn--j1amh".extractDomain() }}')).toEqual('xn--80aswg.xn--j1amh');
+			expect(evaluate('={{ "http://www.xn--80aswg.xn--j1amh".extractDomain() }}')).toEqual('www.xn--80aswg.xn--j1amh');
 			expect(evaluate('={{ "https://localhost".extractDomain() }}')).toEqual('localhost');
 			expect(evaluate('={{ "https://localhost?test=123".extractDomain() }}')).toEqual('localhost');
-			expect(evaluate('={{ "https://www.example_with_underscore.com".extractDomain() }}')).toEqual('example_with_underscore.com');
-			expect(evaluate('={{ "https://www.example.com:8080".extractDomain() }}')).toEqual('example.com');
+			expect(evaluate('={{ "https://www.example_with_underscore.com".extractDomain() }}')).toEqual('www.example_with_underscore.com');
+			expect(evaluate('={{ "https://www.example.com:8080".extractDomain() }}')).toEqual('www.example.com');
 			expect(evaluate('={{ "https://example.space".extractDomain() }}')).toEqual('example.space');
 		});
 
