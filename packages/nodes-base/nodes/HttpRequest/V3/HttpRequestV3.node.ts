@@ -138,6 +138,18 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 				{
+					displayName:
+						'Make sure you have specified the scope(s) for the Service Account in the credential',
+					name: 'googleApiWarning',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							nodeCredentialType: ['googleApi'],
+						},
+					},
+				},
+				{
 					displayName: 'Generic Auth Type',
 					name: 'genericAuthType',
 					type: 'credentialsSelect',
@@ -748,9 +760,7 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {
-								redirect: {},
-							},
+							default: { redirect: {} },
 							options: [
 								{
 									displayName: 'Redirect',
@@ -779,6 +789,56 @@ export class HttpRequestV3 implements INodeType {
 									],
 								},
 							],
+							displayOptions: {
+								show: {
+									'@version': [1, 2, 3],
+								},
+							},
+						},
+						{
+							displayName: 'Redirects',
+							name: 'redirect',
+							placeholder: 'Add Redirect',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {
+								redirect: {},
+							},
+							options: [
+								{
+									displayName: 'Redirect',
+									name: 'redirect',
+									values: [
+										{
+											displayName: 'Follow Redirects',
+											name: 'followRedirects',
+											type: 'boolean',
+											default: true,
+											noDataExpression: true,
+											description: 'Whether to follow all redirects',
+										},
+										{
+											displayName: 'Max Redirects',
+											name: 'maxRedirects',
+											type: 'number',
+											displayOptions: {
+												show: {
+													followRedirects: [true],
+												},
+											},
+											default: 21,
+											description: 'Max number of redirects to follow',
+										},
+									],
+								},
+							],
+							displayOptions: {
+								hide: {
+									'@version': [1, 2, 3],
+								},
+							},
 						},
 						{
 							displayName: 'Response',
@@ -984,7 +1044,6 @@ export class HttpRequestV3 implements INodeType {
 				'keypair',
 			) as string;
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
-
 			const {
 				redirect,
 				batching,
@@ -1038,13 +1097,14 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || fullResponse) {
 				requestOptions.resolveWithFullResponse = true;
 			}
+			const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
 
-			if (redirect?.redirect?.followRedirects) {
+			if (redirect?.redirect?.followRedirects || defaultRedirect) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects) {
+			if (redirect?.redirect?.maxRedirects || defaultRedirect) {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
@@ -1116,7 +1176,7 @@ export class HttpRequestV3 implements INodeType {
 								this.getNode(),
 								'JSON parameter need to be an valid JSON',
 								{
-									runIndex: itemIndex,
+									itemIndex,
 								},
 							);
 						}
@@ -1182,7 +1242,7 @@ export class HttpRequestV3 implements INodeType {
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
 							{
-								runIndex: itemIndex,
+								itemIndex,
 							},
 						);
 					}
@@ -1204,7 +1264,7 @@ export class HttpRequestV3 implements INodeType {
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
 							{
-								runIndex: itemIndex,
+								itemIndex,
 							},
 						);
 					}
@@ -1321,7 +1381,7 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response.reason as JsonObject);
+					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
 					// Return the actual reason as error
 					returnItems.push({

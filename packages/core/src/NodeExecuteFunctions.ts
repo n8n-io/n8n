@@ -578,7 +578,13 @@ function digestAuthAxiosConfig(
 	return axiosConfig;
 }
 
-async function proxyRequestToAxios(
+type ConfigObject = {
+	auth?: { sendImmediately: boolean };
+	resolveWithFullResponse?: boolean;
+	simple?: boolean;
+};
+
+export async function proxyRequestToAxios(
 	workflow: Workflow,
 	additionalData: IWorkflowExecuteAdditionalData,
 	node: INode,
@@ -597,12 +603,6 @@ async function proxyRequestToAxios(
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
-	};
-
-	type ConfigObject = {
-		auth?: { sendImmediately: boolean };
-		resolveWithFullResponse?: boolean;
-		simple?: boolean;
 	};
 	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
@@ -707,12 +707,17 @@ async function proxyRequestToAxios(
 				}
 
 				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
-				throw Object.assign(new Error(message, { cause: error }), {
+				throw Object.assign(error, {
+					message,
 					statusCode: response.status,
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+					error: responseData,
+					config: undefined,
+					request: undefined,
+					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else {
-				throw Object.assign(new Error(error.message, { cause: error }), {
+				throw Object.assign(error, {
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 				});
 			}
@@ -1117,7 +1122,6 @@ export async function requestOAuth2(
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
-
 	if (isN8nRequest) {
 		return this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (error.response?.status === 401) {
@@ -1179,85 +1183,95 @@ export async function requestOAuth2(
 			throw error;
 		});
 	}
-
-	return this.helpers.request(newRequestOptions).catch(async (error: IResponseError) => {
-		const statusCodeReturned =
-			oAuth2Options?.tokenExpiredStatusCode === undefined
-				? 401
-				: oAuth2Options?.tokenExpiredStatusCode;
-
-		if (error.statusCode === statusCodeReturned) {
-			// Token is probably not valid anymore. So try refresh it.
-
-			const tokenRefreshOptions: IDataObject = {};
-
-			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
-				const body: IDataObject = {
-					client_id: credentials.clientId,
-					client_secret: credentials.clientSecret,
-				};
-				tokenRefreshOptions.body = body;
-				// Override authorization property so the credentials are not included in it
-				tokenRefreshOptions.headers = {
-					Authorization: '',
-				};
+	return this.helpers
+		.request(newRequestOptions)
+		.then((response) => {
+			const requestOptions = newRequestOptions as any;
+			if (
+				requestOptions.resolveWithFullResponse === true &&
+				requestOptions.simple === false &&
+				response.statusCode ===
+					(oAuth2Options?.tokenExpiredStatusCode === undefined
+						? 401
+						: oAuth2Options?.tokenExpiredStatusCode)
+			) {
+				throw response;
 			}
-
-			Logger.debug(
-				`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
-			);
-
-			let newToken;
-
-			// if it's OAuth2 with client credentials grant type, get a new token
-			// instead of refreshing it.
-			if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-				newToken = await getClientCredentialsToken(token.client, credentials);
-			} else {
-				newToken = await token.refresh(tokenRefreshOptions);
-			}
-
-			Logger.debug(
-				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
-			);
-
-			credentials.oauthTokenData = newToken.data;
-
-			// Find the credentials
-			if (!node.credentials?.[credentialsType]) {
-				throw new Error(
-					`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+			return response;
+		})
+		.catch(async (error: IResponseError) => {
+			const statusCodeReturned =
+				oAuth2Options?.tokenExpiredStatusCode === undefined
+					? 401
+					: oAuth2Options?.tokenExpiredStatusCode;
+			if (error.statusCode === statusCodeReturned) {
+				// Token is probably not valid anymore. So try refresh it.
+				const tokenRefreshOptions: IDataObject = {};
+				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+					const body: IDataObject = {
+						client_id: credentials.clientId,
+						client_secret: credentials.clientSecret,
+					};
+					tokenRefreshOptions.body = body;
+					// Override authorization property so the credentials are not included in it
+					tokenRefreshOptions.headers = {
+						Authorization: '',
+					};
+				}
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
 				);
+
+				let newToken;
+
+				// if it's OAuth2 with client credentials grant type, get a new token
+				// instead of refreshing it.
+				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+					newToken = await getClientCredentialsToken(token.client, credentials);
+				} else {
+					newToken = await token.refresh(tokenRefreshOptions);
+				}
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
+				);
+
+				credentials.oauthTokenData = newToken.data;
+
+				// Find the credentials
+				if (!node.credentials?.[credentialsType]) {
+					throw new Error(
+						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
+					);
+				}
+				const nodeCredentials = node.credentials[credentialsType];
+
+				// Save the refreshed token
+				await additionalData.credentialsHelper.updateCredentials(
+					nodeCredentials,
+					credentialsType,
+					credentials as unknown as ICredentialDataDecryptedObject,
+				);
+
+				Logger.debug(
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
+				);
+
+				// Make the request again with the new token
+				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+				newRequestOptions.headers = newRequestOptions.headers ?? {};
+
+				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+					Object.assign(newRequestOptions.headers, {
+						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+					});
+				}
+
+				return this.helpers.request(newRequestOptions);
 			}
-			const nodeCredentials = node.credentials[credentialsType];
 
-			// Save the refreshed token
-			await additionalData.credentialsHelper.updateCredentials(
-				nodeCredentials,
-				credentialsType,
-				credentials as unknown as ICredentialDataDecryptedObject,
-			);
-
-			Logger.debug(
-				`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been saved to database successfully.`,
-			);
-
-			// Make the request again with the new token
-			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
-			newRequestOptions.headers = newRequestOptions.headers ?? {};
-
-			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-				Object.assign(newRequestOptions.headers, {
-					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
-				});
-			}
-
-			return this.helpers.request(newRequestOptions);
-		}
-
-		// Unknown error so simply throw it
-		throw error;
-	});
+			// Unknown error so simply throw it
+			throw error;
+		});
 }
 
 /**
@@ -1644,10 +1658,24 @@ export function getAdditionalKeys(
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
-							setWorkflowExecutionMetadata(runExecutionData, key, value);
+							try {
+								setWorkflowExecutionMetadata(runExecutionData, key, value);
+							} catch (e) {
+								if (mode === 'manual') {
+									throw e;
+								}
+								Logger.verbose(e.message);
+							}
 						},
 						setAll(obj: Record<string, string>): void {
-							setAllWorkflowExecutionMetadata(runExecutionData, obj);
+							try {
+								setAllWorkflowExecutionMetadata(runExecutionData, obj);
+							} catch (e) {
+								if (mode === 'manual') {
+									throw e;
+								}
+								Logger.verbose(e.message);
+							}
 						},
 						get(key: string): string {
 							return getWorkflowExecutionMetadata(runExecutionData, key);
@@ -1658,6 +1686,7 @@ export function getAdditionalKeys(
 				  }
 				: undefined,
 		},
+		$vars: additionalData.variables,
 
 		// deprecated
 		$executionId: executionId,
@@ -1992,6 +2021,7 @@ const getCommonWorkflowFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
 	logger: Logger,
+	getExecutionId: () => additionalData.executionId!,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -2297,7 +2327,6 @@ export function getExecuteFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getExecutionId: () => additionalData.executionId!,
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input

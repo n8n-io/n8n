@@ -18,14 +18,7 @@
 						:disabled="item.disabled"
 						:divided="item.divided"
 					>
-						<div
-							:class="{
-								[$style.itemContainer]: true,
-								[$style.hasCustomStyling]: item.customClass !== undefined,
-								[item.customClass]: item.customClass !== undefined,
-							}"
-							:data-test-id="`workflow-menu-item-${item.id}`"
-						>
+						<div :class="getItemClasses(item)" :data-test-id="`workflow-menu-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
 								<n8n-icon :icon="item.icon" :size="iconSize" />
 							</span>
@@ -41,7 +34,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import {
 	Dropdown as ElDropdown,
 	DropdownMenu as ElDropdownMenu,
@@ -49,7 +42,7 @@ import {
 } from 'element-ui';
 import N8nIcon from '../N8nIcon';
 
-interface IActionDropdownItem {
+export interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;
@@ -64,7 +57,7 @@ interface IActionDropdownItem {
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-dropdown',
 	components: {
 		ElDropdown,
@@ -99,6 +92,13 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
+			return {
+				[this.$style.itemContainer]: true,
+				[this.$style.hasCustomStyling]: item.customClass !== undefined,
+				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+			};
+		},
 		onSelect(action: string): void {
 			this.$emit('select', action);
 		},

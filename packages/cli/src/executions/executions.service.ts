@@ -39,7 +39,7 @@ import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
 } from './executionHelpers';
-import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
+import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 interface IGetExecutionsQueryFilter {
@@ -304,7 +304,7 @@ export class ExecutionsService {
 			});
 		}
 
-		// Omit `data` from the Execution since it is the largest and not necesary for the list.
+		// Omit `data` from the Execution since it is the largest and not necessary for the list.
 		let query = Db.collections.Execution.createQueryBuilder('execution')
 			.select([
 				'execution.id',

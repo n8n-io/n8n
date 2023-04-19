@@ -241,7 +241,7 @@ import {
 	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
-import {
+import type {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -266,7 +266,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { Route, RawLocation } from 'vue-router';
-import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
+import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
@@ -276,9 +276,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useEnvironmentsStore } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
@@ -471,6 +471,7 @@ export default mixins(
 			useWorkflowsStore,
 			useUsersStore,
 			useNodeCreatorStore,
+			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
 		),
@@ -2532,35 +2533,7 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
-				// For novice users (onboardingFlowEnabled == true)
-				// Inject welcome sticky note and zoom to fit
-
-				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					// Position the welcome sticky left to the added trigger node
-					const position: XYPosition = [50, 250];
-
-					await this.addNodes([
-						{
-							id: uuid(),
-							...NodeViewUtils.WELCOME_STICKY_NODE,
-							parameters: {
-								// Use parameters from the template but add translated content
-								...NodeViewUtils.WELCOME_STICKY_NODE.parameters,
-								content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
-							},
-							position,
-						},
-					]);
-					setTimeout(() => {
-						this.canvasStore.zoomToFit();
-						this.canvasStore.canvasAddButtonPosition = [500, 350];
-						this.$telemetry.track('welcome note inserted');
-					}, 0);
-				}
-			} else {
-				this.canvasStore.zoomToFit();
-			}
+			this.canvasStore.zoomToFit();
 		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
@@ -3628,6 +3601,9 @@ export default mixins(
 		async loadCredentials(): Promise<void> {
 			await this.credentialsStore.fetchAllCredentials();
 		},
+		async loadVariables(): Promise<void> {
+			await this.environmentsStore.fetchAllVariables();
+		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
@@ -3883,6 +3859,7 @@ export default mixins(
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
 		];
+		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -3976,17 +3953,17 @@ export default mixins(
 		this.$root.$on('newWorkflow', this.newWorkflow);
 		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		historyBus.$on('nodeMove', this.onMoveNode);
-		historyBus.$on('revertAddNode', this.onRevertAddNode);
-		historyBus.$on('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.$on('revertAddConnection', this.onRevertAddConnection);
-		historyBus.$on('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.$on('revertRenameNode', this.onRevertNameChange);
-		historyBus.$on('enableNodeToggle', this.onRevertEnableToggle);
+		historyBus.on('nodeMove', this.onMoveNode);
+		historyBus.on('revertAddNode', this.onRevertAddNode);
+		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.on('revertAddConnection', this.onRevertAddConnection);
+		historyBus.on('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.on('revertRenameNode', this.onRevertNameChange);
+		historyBus.on('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+		dataPinningEventBus.on('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.on('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
 	},
@@ -3999,17 +3976,17 @@ export default mixins(
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		historyBus.$off('nodeMove', this.onMoveNode);
-		historyBus.$off('revertAddNode', this.onRevertAddNode);
-		historyBus.$off('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.$off('revertAddConnection', this.onRevertAddConnection);
-		historyBus.$off('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.$off('revertRenameNode', this.onRevertNameChange);
-		historyBus.$off('enableNodeToggle', this.onRevertEnableToggle);
+		historyBus.off('nodeMove', this.onMoveNode);
+		historyBus.off('revertAddNode', this.onRevertAddNode);
+		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.off('revertAddConnection', this.onRevertAddConnection);
+		historyBus.off('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.off('revertRenameNode', this.onRevertNameChange);
+		historyBus.off('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+		dataPinningEventBus.off('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
 	destroyed() {
 		this.resetWorkspace();

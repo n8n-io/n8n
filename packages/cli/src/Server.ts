@@ -10,7 +10,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
+import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
@@ -156,8 +156,11 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
+import { variablesController } from './environments/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import { isVersionControlEnabled } from './environment/versionControl/versionControlHelper';
 
 const exec = promisify(callbackExec);
 
@@ -262,6 +265,8 @@ class Server extends AbstractServer {
 			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
+			userActivationSurveyEnabled:
+				config.getEnv('userActivationSurvey.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				enabled: isUserManagementEnabled(),
@@ -315,10 +320,15 @@ class Server extends AbstractServer {
 				saml: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
+				variables: false,
+				versionControl: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
+			variables: {
+				limit: 0,
 			},
 		};
 	}
@@ -345,6 +355,8 @@ class Server extends AbstractServer {
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			versionControl: isVersionControlEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -361,10 +373,13 @@ class Server extends AbstractServer {
 			});
 		}
 
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
+
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
 		}
-
 		return this.frontendSettings;
 	}
 
@@ -452,6 +467,11 @@ class Server extends AbstractServer {
 			...excludeEndpoints.split(':'),
 		].filter((u) => !!u);
 
+		assert(
+			!ignoredEndpoints.includes(this.restEndpoint),
+			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
+		);
+
 		// eslint-disable-next-line no-useless-escape
 		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
@@ -534,6 +554,13 @@ class Server extends AbstractServer {
 		}
 
 		// ----------------------------------------
+		// Variables
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(

@@ -28,6 +28,7 @@ import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import ExecutionsView from '@/views/ExecutionsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
+import VariablesView from '@/views/VariablesView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
@@ -168,6 +169,21 @@ export const routes = [
 		name: VIEWS.CREDENTIALS,
 		components: {
 			default: CredentialsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/variables',
+		name: VIEWS.VARIABLES,
+		components: {
+			default: VariablesView,
 			sidebar: MainSidebar,
 		},
 		meta: {
@@ -578,12 +594,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								const ssoStore = useSSOStore();
-								return (
-									!ssoStore.isEnterpriseSamlEnabled ||
-									settingsStore.isCloudDeployment ||
-									settingsStore.isDesktopDeployment
-								);
+								return settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment;
 							},
 						},
 					},
@@ -601,11 +612,10 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-							role: [ROLE.Owner],
+							role: [ROLE.Default, ROLE.Owner],
 						},
 						deny: {
-							role: [ROLE.Default],
+							role: [ROLE.Member],
 						},
 					},
 				},
@@ -664,7 +674,10 @@ export const routes = [
 				meta: {
 					permissions: {
 						allow: {
-							role: [ROLE.Owner],
+							role: [ROLE.Default, ROLE.Owner],
+						},
+						deny: {
+							role: [ROLE.Member],
 						},
 					},
 				},

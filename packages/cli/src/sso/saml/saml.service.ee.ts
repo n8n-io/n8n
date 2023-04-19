@@ -1,7 +1,7 @@
 import type express from 'express';
 import { Service } from 'typedi';
 import * as Db from '@/Db';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
@@ -20,7 +20,7 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '@/databases/entities/Settings';
+import type { Settings } from '@db/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
@@ -139,14 +139,11 @@ export class SamlService {
 	async handleSamlLogin(
 		req: express.Request,
 		binding: SamlLoginBinding,
-	): Promise<
-		| {
-				authenticatedUser: User | undefined;
-				attributes: SamlUserAttributes;
-				onboardingRequired: boolean;
-		  }
-		| undefined
-	> {
+	): Promise<{
+		authenticatedUser: User | undefined;
+		attributes: SamlUserAttributes;
+		onboardingRequired: boolean;
+	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const user = await Db.collections.User.findOne({
@@ -154,7 +151,7 @@ export class SamlService {
 				relations: ['globalRole', 'authIdentities'],
 			});
 			if (user) {
-				// Login path for existing users that are fully set up
+				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
 				if (
 					user.authIdentities.find(
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
@@ -168,10 +165,11 @@ export class SamlService {
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
+					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
-						onboardingRequired: true,
+						onboardingRequired,
 					};
 				}
 			} else {
@@ -186,7 +184,11 @@ export class SamlService {
 				}
 			}
 		}
-		return undefined;
+		return {
+			authenticatedUser: undefined,
+			attributes,
+			onboardingRequired: false,
+		};
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
