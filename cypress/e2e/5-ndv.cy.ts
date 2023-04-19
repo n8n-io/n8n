@@ -397,7 +397,7 @@ describe('NDV', () => {
 
 		// unlink
 		ndv.actions.toggleOutputRunLinking();
-		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.getters.inputTbodyCell(1, 0).trigger('mousedown'); // remove tooltip
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector()
 			.should('exist')
@@ -406,14 +406,14 @@ describe('NDV', () => {
 
 		// link again
 		ndv.actions.toggleOutputRunLinking();
-		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.getters.inputTbodyCell(1, 0).trigger('mousedown'); // remove tooltip
 		ndv.getters.inputRunSelector()
 			.find('input')
 			.should('include.value', '1 of 2 (6 items)');
 		
 		// unlink again
 		ndv.actions.toggleInputRunLinking();
-		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.getters.inputTbodyCell(1, 0).trigger('mousedown'); // remove tooltip
 		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
 		ndv.getters.outputRunSelector()
 			.find('input')
@@ -421,7 +421,7 @@ describe('NDV', () => {
 
 		// link again
 		ndv.actions.toggleInputRunLinking();
-		ndv.getters.inputTbodyCell(1, 0).realMouseDown(); // remove tooltip
+		ndv.getters.inputTbodyCell(1, 0).trigger('mousedown'); // remove tooltip
 		ndv.getters.outputRunSelector()
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
