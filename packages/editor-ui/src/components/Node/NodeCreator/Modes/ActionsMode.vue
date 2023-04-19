@@ -262,7 +262,7 @@ onMounted(() => {
 						<n8n-callout
 							theme="info"
 							iconless
-							v-if="!userActivated"
+							v-if="!userActivated && isTriggerRootView"
 							slim
 							data-test-id="actions-panel-activation-callout"
 						>

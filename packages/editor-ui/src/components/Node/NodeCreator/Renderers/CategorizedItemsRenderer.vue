@@ -101,7 +101,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			:data-keyboard-nav-id="category"
 			@click="toggleExpanded"
 		>
-			<span :class="$style.mouseOverTooltip">
+			<span :class="$style.mouseOverTooltip" v-if="mouseOverTooltip">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<template #content>
@@ -129,9 +129,6 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 </template>
 
 <style lang="scss" module>
-.categoryItem {
-	margin-bottom: var(--spacing-2xs);
-}
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
