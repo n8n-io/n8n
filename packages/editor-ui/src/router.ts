@@ -40,6 +40,7 @@ import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
+import SettingsVersionControl from './views/SettingsVersionControl.vue';
 
 Vue.use(Router);
 
@@ -568,6 +569,31 @@ export const routes = [
 								const settingsStore = useSettingsStore();
 								return settingsStore.isPublicApiEnabled === false;
 							},
+						},
+					},
+				},
+			},
+			{
+				path: 'version-control',
+				name: VIEWS.VERSION_CONTROL,
+				components: {
+					settingsView: SettingsVersionControl,
+				},
+				meta: {
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties(route: Route) {
+							return {
+								feature: 'vc',
+							};
+						},
+					},
+					permissions: {
+						allow: {
+							role: [ROLE.Owner],
+						},
+						deny: {
+							shouldDeny: () => !window.localStorage.getItem('version-control'),
 						},
 					},
 				},
