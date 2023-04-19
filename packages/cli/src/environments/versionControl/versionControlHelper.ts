@@ -6,7 +6,7 @@ import type { KeyPair } from './types/keyPair';
 
 export function isVersionControlLicensed() {
 	const license = Container.get(License);
-	return license.isVersionControlEnabled();
+	return license.isVersionControlLicensed();
 }
 
 export function isVersionControlEnabled() {

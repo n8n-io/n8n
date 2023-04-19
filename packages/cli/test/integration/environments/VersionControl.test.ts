@@ -10,7 +10,7 @@ let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	Container.get(License).isVersionControlEnabled = () => true;
+	Container.get(License).isVersionControlLicensed = () => true;
 	const app = await utils.initTestServer({ endpointGroups: ['versionControl'] });
 	owner = await testDb.createOwner();
 	authOwnerAgent = utils.createAuthAgent(app)(owner);

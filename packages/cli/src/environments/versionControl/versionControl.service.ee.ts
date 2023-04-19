@@ -44,11 +44,13 @@ export class VersionControlService {
 			where: { key: VERSION_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPrefs) {
-			const prefs = jsonParse<VersionControlPreferences>(loadedPrefs.value);
-			if (prefs) {
-				this.setPreferences(prefs);
-				return prefs;
-			}
+			try {
+				const prefs = jsonParse<VersionControlPreferences>(loadedPrefs.value);
+				if (prefs) {
+					this.setPreferences(prefs);
+					return prefs;
+				}
+			} catch {}
 		}
 		return;
 	}
