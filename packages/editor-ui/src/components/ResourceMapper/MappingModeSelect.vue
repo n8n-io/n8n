@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 
 export interface Props {
@@ -45,6 +45,13 @@ const emit = defineEmits<{
 }>();
 
 const selected = ref(props.initialValue);
+
+watch(
+	() => props.initialValue,
+	() => {
+		selected.value = props.initialValue;
+	},
+);
 
 const errorMessage = computed<string>(() => {
 	if (selected.value === 'defineBelow') {

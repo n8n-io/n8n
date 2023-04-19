@@ -40,7 +40,7 @@ const emit = defineEmits<{
 
 const state = reactive({
 	paramValue: {
-		mappingMode: (props.parameter.default as ResourceMapperValue).mappingMode || 'defineBelow',
+		mappingMode: 'defineBelow',
 		value: {},
 		matchingColumns: [],
 	} as ResourceMapperValue,
@@ -268,7 +268,7 @@ defineExpose({
 			v-if="showMappingModeSelect"
 			:inputSize="inputSize"
 			:labelSize="labelSize"
-			:initialValue="props.parameter.mode || 'defineBelow'"
+			:initialValue="state.paramValue.mappingMode || 'defineBelow'"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:serviceName="nodeType?.displayName || ''"
 			:loading="state.loading"
