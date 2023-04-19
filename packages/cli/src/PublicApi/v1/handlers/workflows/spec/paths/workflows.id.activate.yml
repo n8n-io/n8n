@@ -4,7 +4,7 @@ post:
   tags:
     - Workflow
   summary: Activate a workflow
-  description: Active a workflow.
+  description: Activate a workflow.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   responses:

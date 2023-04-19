@@ -27,12 +27,12 @@ export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 
 export async function getSharedWorkflow(
 	user: User,
-	workflowId?: string | undefined,
+	workflowId: string,
 ): Promise<SharedWorkflow | null> {
 	return Db.collections.SharedWorkflow.findOne({
 		where: {
 			...(!user.isOwner && { userId: user.id }),
-			...(workflowId && { workflowId }),
+			workflowId,
 		},
 		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
 	});
@@ -120,6 +120,40 @@ export async function updateWorkflow(
 	updateData: WorkflowEntity,
 ): Promise<UpdateResult> {
 	return Db.collections.Workflow.update(workflowId, updateData);
+}
+
+export async function hasWorkflowOwnership(user: User, workflowId: string): Promise<boolean> {
+	if (isInstanceOwner(user)) return true;
+	return Db.collections.SharedWorkflow.exist({
+		where: {
+			workflowId,
+			userId: user.id,
+			role: {
+				scope: 'workflow',
+				name: 'owner',
+			},
+		},
+	});
+}
+
+export async function transferWorkflowOwnership(
+	currentOwner: User,
+	workflowId: string,
+	newOwnerId: string,
+) {
+	return Db.collections.SharedWorkflow.update(
+		{
+			workflowId,
+			userId: currentOwner.id,
+			role: {
+				scope: 'workflow',
+				name: 'owner',
+			},
+		},
+		{
+			userId: newOwnerId,
+		},
+	);
 }
 
 export function hasStartNode(workflow: WorkflowEntity): boolean {

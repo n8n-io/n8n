@@ -85,6 +85,7 @@ export declare namespace WorkflowRequest {
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
+	type TransferOwnership = AuthenticatedRequest<{ id: string }, {}, { newOwnerEmail: string }, {}>;
 }
 
 export declare namespace UserRequest {

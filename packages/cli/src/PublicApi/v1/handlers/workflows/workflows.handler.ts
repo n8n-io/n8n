@@ -11,7 +11,7 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole } from '../users/users.service';
+import { getUserIdByEmail, getWorkflowOwnerRole } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -25,6 +25,8 @@ import {
 	getWorkflowIdsViaTags,
 	parseTagNames,
 	getWorkflowsAndCount,
+	hasWorkflowOwnership,
+	transferWorkflowOwnership,
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
@@ -266,6 +268,26 @@ export = {
 
 			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
+		},
+	],
+	transferWorkflowOwnership: [
+		authorize(['owner', 'member']),
+		async (
+			req: WorkflowRequest.TransferOwnership,
+			res: express.Response,
+		): Promise<express.Response> => {
+			const { id } = req.params;
+			const newOwnerId = await getUserIdByEmail(req.body.newOwnerEmail);
+			if (!newOwnerId) return res.status(404).json({ message: 'No such user' });
+
+			if (await hasWorkflowOwnership(req.user, id)) {
+				await transferWorkflowOwnership(req.user, id, newOwnerId);
+				return res.json({});
+			}
+
+			// user trying to access a workflow he does not own
+			// or workflow does not exist
+			return res.status(404).json({ message: 'Not Found' });
 		},
 	],
 };

@@ -1,0 +1,29 @@
+post:
+  x-eov-operation-id: transferWorkflowOwnership
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Transfer the ownership of a workflow
+  description: Transfer the ownership of a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required:
+            - newOwnerEmail
+          properties:
+            newOwnerEmail:
+              type: string
+              readOnly: true
+  responses:
+    '200':
+      description: Ok
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

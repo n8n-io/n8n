@@ -14,12 +14,15 @@ import {
 	encryptCredential,
 	getCredentials,
 	getSharedCredentials,
+	hasCredentialsOwnership,
 	removeCredential,
 	sanitizeCredentials,
 	saveCredential,
 	toJsonSchema,
+	transferCredentialsOwnership,
 } from './credentials.service';
 import { Container } from 'typedi';
+import { getUserIdByEmail } from '../users/users.service';
 
 export = {
 	createCredential: [
@@ -98,6 +101,27 @@ export = {
 				.filter((property) => property.type !== 'hidden');
 
 			return res.json(toJsonSchema(schema));
+		},
+	],
+
+	transferCredentialOwnership: [
+		authorize(['owner', 'member']),
+		async (
+			req: CredentialRequest.TransferOwnership,
+			res: express.Response,
+		): Promise<express.Response> => {
+			const { id } = req.params;
+			const newOwnerId = await getUserIdByEmail(req.body.newOwnerEmail);
+			if (!newOwnerId) return res.status(404).json({ message: 'No such user' });
+
+			if (await hasCredentialsOwnership(req.user, id)) {
+				await transferCredentialsOwnership(req.user, id, newOwnerId);
+				return res.json({});
+			}
+
+			// user trying to access a credential they do not own
+			// or credential does not exist
+			return res.status(404).json({ message: 'Not Found' });
 		},
 	],
 };

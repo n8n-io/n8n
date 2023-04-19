@@ -50,12 +50,14 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/transferOwnership:
+    $ref: './handlers/workflows/spec/paths/workflows.id.transferOwnership.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /source-control/pull:
-    $ref: "./handlers/sourceControl/spec/paths/sourceControl.yml"
+    $ref: './handlers/sourceControl/spec/paths/sourceControl.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

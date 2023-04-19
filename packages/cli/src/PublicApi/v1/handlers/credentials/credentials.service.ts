@@ -10,6 +10,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
+import { isInstanceOwner } from '../users/users.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });
@@ -101,6 +102,40 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	coreCredential.setData(credential.data, encryptionKey);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
+}
+
+export async function hasCredentialsOwnership(user: User, credentialsId: string): Promise<boolean> {
+	if (isInstanceOwner(user)) return true;
+	return Db.collections.SharedCredentials.exist({
+		where: {
+			credentialsId,
+			userId: user.id,
+			role: {
+				scope: 'credential',
+				name: 'owner',
+			},
+		},
+	});
+}
+
+export async function transferCredentialsOwnership(
+	currentOwner: User,
+	credentialsId: string,
+	newOwnerId: string,
+) {
+	return Db.collections.SharedCredentials.update(
+		{
+			credentialsId,
+			userId: currentOwner.id,
+			role: {
+				scope: 'credential',
+				name: 'owner',
+			},
+		},
+		{
+			userId: newOwnerId,
+		},
+	);
 }
 
 export function sanitizeCredentials(credentials: CredentialsEntity): Partial<CredentialsEntity>;
