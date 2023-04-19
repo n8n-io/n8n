@@ -302,7 +302,9 @@ export class SamlService {
 			);
 		} catch (error) {
 			// throw error;
-			throw new AuthError('SAML Authentication failed. Could not parse SAML response.');
+			throw new AuthError(
+				`SAML Authentication failed. Could not parse SAML response. ${(error as Error).message}`,
+			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,
