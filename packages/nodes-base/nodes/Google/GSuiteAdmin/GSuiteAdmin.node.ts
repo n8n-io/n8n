@@ -58,7 +58,7 @@ export class GSuiteAdmin implements INodeType {
 						value: 'device',
 					},
 				],
-				default: 'device',
+				default: 'user',
 			},
 			...groupOperations,
 			...groupFields,
