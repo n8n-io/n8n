@@ -5,8 +5,7 @@ import { createHash } from 'crypto';
 
 import { Builder } from 'xml2js';
 
-import {
-	BINARY_ENCODING,
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -14,7 +13,7 @@ import {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
 import { bucketFields, bucketOperations } from './BucketDescription';
 
@@ -27,7 +26,9 @@ import {
 	awsApiRequestRESTAllItems,
 	awsApiRequestSOAP,
 } from './GenericFunctions';
-import { Readable } from 'form-data';
+import type { Readable } from 'stream';
+
+const UPLOAD_CHUNK_SIZE = 256 * 1024;
 
 export class AwsS3V2 implements INodeType {
 	description: INodeTypeDescription;
@@ -854,7 +855,7 @@ export class AwsS3V2 implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryPropertyData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id);
+								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id, UPLOAD_CHUNK_SIZE);
 							} else {
 								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
 							}
@@ -863,7 +864,7 @@ export class AwsS3V2 implements INodeType {
 								this,
 								`${bucketName}.s3`,
 								'POST',
-								`${bucketName}-${this.getNode().id}`,
+								`/${bucketName}-${this.getNode().id}?uploads`,
 								body,
 								qs,
 								headers,
@@ -871,22 +872,33 @@ export class AwsS3V2 implements INodeType {
 								region as string,
 							);
 
-							console.log(createMultiPartUpload);
+							const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
+							let offset = 0;
+							for await (const chunk of uploadData) {
+								const nextOffsets = offset + Number(chunk.length);
+								headers['Content-Length'] = chunk.length;
+								headers['Content-MD5'] = createHash('md5').update(chunk).digest('base64');
+								try {
+									const sendChunks = await awsApiRequestREST.call(
+										this,
+										`${bucketName}.s3`,
+										'PUT',
+										`/${bucketName}-${this.getNode().id}?partNumber=${offset}&uploadId=${uploadId}`,
+										chunk,
+										qs,
+										headers,
+										{},
+										region as string,
+									);
+								} catch (error) {
+									if (error.response?.status !== 308) throw error;
+								}
+								offset = nextOffsets;
+							}
+
 							// headers['Content-Type'] = binaryPropertyData.mimeType;
 
 							// headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
-
-							// responseData = await awsApiRequestREST.call(
-							// 	this,
-							// 	`${bucketName}.s3`,
-							// 	'PUT',
-							// 	`${path}${fileName || binaryPropertyData.fileName}`,
-							// 	body,
-							// 	qs,
-							// 	headers,
-							// 	{},
-							// 	region as string,
-							// );
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
