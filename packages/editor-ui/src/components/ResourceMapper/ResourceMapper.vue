@@ -287,11 +287,11 @@ defineExpose({
 			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
-		<div class="mt-xs" data-test-id="mapping-fields-container">
+		<div class="mt-xs" data-test-id="mapping-fields-container" v-if="showMappingFields">
 			<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 				{{
-					$locale.baseText('resourceMapper.fetchingFields.message', {
+					locale.baseText('resourceMapper.fetchingFields.message', {
 						interpolate: {
 							fieldWord:
 								props.parameter.typeOptions?.fieldWords?.plural ||
@@ -302,8 +302,7 @@ defineExpose({
 				}}
 			</n8n-text>
 			<n8n-input-label
-				v-if="showMappingFields"
-				:label="$locale.baseText('resourceMapper.valuesToSend.label')"
+				:label="locale.baseText('resourceMapper.valuesToSend.label')"
 				:underline="true"
 				:size="labelSize"
 				color="text-dark"
