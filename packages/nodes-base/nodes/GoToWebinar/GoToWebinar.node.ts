@@ -120,7 +120,7 @@ export class GoToWebinar implements INodeType {
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
 				return loadWebinarSessions.call(this);
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

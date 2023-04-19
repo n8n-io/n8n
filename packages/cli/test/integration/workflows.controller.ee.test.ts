@@ -303,7 +303,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: false, // although owner can see, he does not have access
+				currentUserHasAccess: false, // although owner can see, they do not have access
 			},
 		]);
 
