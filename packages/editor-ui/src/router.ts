@@ -593,7 +593,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !window.posthog?.isFeatureEnabled?.('version-control'),
+							shouldDeny: () => !window.localStorage.getItem('version-control'),
 						},
 					},
 				},
