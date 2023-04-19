@@ -214,6 +214,9 @@ export async function execute(
 
 		let item: IDataObject = {};
 		let valueToMatchOn: string | IDataObject = '';
+		if (nodeVersion === 2) {
+			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+		}
 
 		if (dataMode === 'autoMapInputData') {
 			item = items[i].json;
