@@ -537,12 +537,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const ONBOARDING_EXPERIMENT = {
-	name: 'checklist_001',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const EXPERIMENTS_TO_TRACK = [ONBOARDING_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
