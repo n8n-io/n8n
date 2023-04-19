@@ -825,15 +825,31 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-	const axiosRequest = convertN8nRequestToAxios(requestOptions);
+	let axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
 	) {
 		delete axiosRequest.data;
 	}
+	let result: AxiosResponse<any>;
+	try {
+		result = await axios(axiosRequest);
+	} catch (error) {
+		if (requestOptions.auth?.sendImmediately === false) {
+			const { response } = error;
+			if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+				throw error;
+			}
 
-	const result = await axios(axiosRequest);
+			const { auth } = axiosRequest;
+			delete axiosRequest.auth;
+			axiosRequest = digestAuthAxiosConfig(axiosRequest, response, auth);
+			result = await axios(axiosRequest);
+		}
+		throw error;
+	}
+
 	if (requestOptions.returnFullResponse) {
 		return {
 			body: result.data,
@@ -842,6 +858,7 @@ async function httpRequest(
 			statusMessage: result.statusText,
 		};
 	}
+
 	return result.data;
 }
 
