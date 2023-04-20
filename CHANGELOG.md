@@ -3,7 +3,6 @@
 
 ### Bug Fixes
 
-* **editor:** Add correct add variable button message when no variables created (no-changelog) ([#6028](https://github.com/n8n-io/n8n/issues/6028)) ([67f6934](https://github.com/n8n-io/n8n/commit/67f693435b4455b66efa2575e1c8bb48c87e0da1))
 * **editor:** Clean up demo and template callouts from workflows page ([#6023](https://github.com/n8n-io/n8n/issues/6023)) ([6ec1c45](https://github.com/n8n-io/n8n/commit/6ec1c45355807e62f31a707bada823cdc73bc719))
 * **editor:** Fix memory leak in Node Detail View by correctly unsubscribing from event buses ([#6021](https://github.com/n8n-io/n8n/issues/6021)) ([1b9e047](https://github.com/n8n-io/n8n/commit/1b9e047ef5745f479e6693dca9696efbec32a7a6))
 * **editor:** SettingsSidebar should disconnect from push when navigating away ([#6025](https://github.com/n8n-io/n8n/issues/6025)) ([e9f8cfe](https://github.com/n8n-io/n8n/commit/e9f8cfe82182ee0d7c8c2394551791793cc71f47))
