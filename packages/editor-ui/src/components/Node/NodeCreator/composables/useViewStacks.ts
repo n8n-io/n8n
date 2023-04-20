@@ -84,6 +84,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
 	});
 
+	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack || !stack.search) return [];

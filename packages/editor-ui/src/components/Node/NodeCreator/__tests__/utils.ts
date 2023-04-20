@@ -4,19 +4,14 @@ import {
 	SubcategoryItemProps,
 	ViewItemProps,
 	LabelItemProps,
-	CategoryItemProps,
 	NodeCreateElement,
-	CategoryCreateElement,
 	SubcategoryCreateElement,
 	ViewCreateElement,
 	LabelCreateElement,
 	ActionCreateElement,
-	INodeCreateElement,
-	SubcategorizedNodeTypes,
 } from '@/Interface'; // Import your types from the file
 import { v4 as uuidv4 } from 'uuid';
 
-// Mock functions
 export const mockSimplifiedNodeType = (
 	overrides?: Partial<SimplifiedNodeType>,
 ): SimplifiedNodeType => ({
@@ -40,7 +35,7 @@ export const mockSimplifiedNodeType = (
 	...overrides,
 });
 
-const mockActionTypeDescription = (
+export const mockActionTypeDescription = (
 	overrides?: Partial<ActionTypeDescription>,
 ): ActionTypeDescription => ({
 	...mockSimplifiedNodeType(),
@@ -78,12 +73,6 @@ const mockLabelItemProps = (overrides?: Partial<LabelItemProps>): LabelItemProps
 	...overrides,
 });
 
-const mockCategoryItemProps = (overrides?: Partial<CategoryItemProps>): CategoryItemProps => ({
-	name: 'Sample category name',
-	count: 42,
-	...overrides,
-});
-
 export const mockNodeCreateElement = (
 	subcategory?: string,
 	overrides?: Partial<SimplifiedNodeType>,
@@ -93,17 +82,6 @@ export const mockNodeCreateElement = (
 	type: 'node',
 	subcategory: subcategory || 'sampleSubcategory',
 	properties: mockSimplifiedNodeType(overrides),
-});
-
-export const mockCategoryCreateElement = (
-	subcategory?: string,
-	overrides?: Partial<CategoryItemProps>,
-): CategoryCreateElement => ({
-	uuid: uuidv4(),
-	key: uuidv4(),
-	type: 'category',
-	subcategory: subcategory || 'sampleSubcategory',
-	properties: mockCategoryItemProps(overrides),
 });
 
 export const mockSubcategoryCreateElement = (
@@ -146,22 +124,3 @@ export const mockActionCreateElement = (
 	subcategory: subcategory || 'sampleSubcategory',
 	properties: mockActionTypeDescription(overrides),
 });
-
-export const mockINodeCreateElement = (type: string): INodeCreateElement => {
-	switch (type) {
-		case 'node':
-			return mockNodeCreateElement();
-		case 'category':
-			return mockCategoryCreateElement();
-		case 'subcategory':
-			return mockSubcategoryCreateElement();
-		case 'view':
-			return mockViewCreateElement();
-		case 'label':
-			return mockLabelCreateElement();
-		case 'action':
-			return mockActionCreateElement();
-		default:
-			throw new Error('Invalid type');
-	}
-};
