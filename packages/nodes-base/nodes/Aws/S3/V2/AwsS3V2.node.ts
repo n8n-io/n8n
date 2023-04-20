@@ -876,8 +876,9 @@ export class AwsS3V2 implements INodeType {
 							let offset = 0;
 							for await (const chunk of uploadData) {
 								const nextOffsets = offset + Number(chunk.length);
+								const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
 								headers['Content-Length'] = chunk.length;
-								headers['Content-MD5'] = createHash('md5').update(chunk).digest('base64');
+								headers['Content-MD5'] = createHash('md5').update(chunkBuffer).digest('base64');
 								try {
 									const sendChunks = await awsApiRequestREST.call(
 										this,
@@ -890,6 +891,7 @@ export class AwsS3V2 implements INodeType {
 										{},
 										region as string,
 									);
+									console.log(sendChunks);
 								} catch (error) {
 									if (error.response?.status !== 308) throw error;
 								}
