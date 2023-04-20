@@ -172,7 +172,7 @@ export default mixins().extend({
 	},
 	methods: {
 		onDestinationWasSaved() {
-			this.$forceUpdate()
+			this.$forceUpdate();
 		},
 		onBusClosing() {
 			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
