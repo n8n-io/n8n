@@ -1954,7 +1954,7 @@ export interface ResourceMapperField {
 	type?: ResourceMapperFieldType;
 }
 
-export type ResourceMapperFieldType = 'string' | 'number' | 'datetime' | 'boolean';
+export type ResourceMapperFieldType = 'string' | 'number' | 'dateTime' | 'boolean';
 
 export type ResourceMapperValue = {
 	mappingMode: string;

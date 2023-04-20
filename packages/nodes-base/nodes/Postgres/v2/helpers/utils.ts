@@ -353,6 +353,23 @@ export async function isColumnUnique(
 	return unique.some((u) => u.column_name === column);
 }
 
+export async function doesRowExist(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	values: string[],
+): Promise<boolean> {
+	const where = [];
+	for (let i = 3; i < 3 + values.length; i += 2) {
+		where.push(`$${i}:name=$${i + 1}`);
+	}
+	const exists = await db.any(
+		`SELECT EXISTS(SELECT 1 FROM $1:name.$2:name WHERE ${where.join(' AND ')})`,
+		[schema, table, ...values],
+	);
+	return exists[0].exists;
+}
+
 export function checkItemAgainstSchema(
 	node: INode,
 	item: IDataObject,

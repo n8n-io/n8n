@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -13,6 +14,7 @@ import type {
 import {
 	addReturning,
 	checkItemAgainstSchema,
+	doesRowExist,
 	getTableSchema,
 	prepareItem,
 	replaceEmptyStringsByNulls,
@@ -240,6 +242,33 @@ export async function execute(
 			}
 		}
 
+		const matchValues: string[] = [];
+		if (nodeVersion === 2) {
+			matchValues.push(columnsToMatchOn[0]);
+			matchValues.push(valueToMatchOn);
+		} else {
+			columnsToMatchOn.forEach((column) => {
+				matchValues.push(column);
+				matchValues.push(item[column] as string);
+			});
+		}
+
+		const rowExists = await doesRowExist(db, schema, table, matchValues);
+		if (!rowExists) {
+			const matchValuesMessage: string[] = [];
+			matchValues.forEach((val, index) => {
+				if (index % 2 === 0) {
+					matchValuesMessage.push(`${matchValues[index]}=${matchValues[index + 1]}`);
+				}
+			});
+			throw new NodeOperationError(
+				this.getNode(),
+				`Row you are trying to update (${matchValuesMessage.join(
+					', ',
+				)}) doesn't exist in table "${table}"`,
+			);
+		}
+
 		const tableSchema = await getTableSchema(db, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
@@ -282,5 +311,6 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	const results = await runQueries(queries, items, nodeOptions);
+	return results;
 }

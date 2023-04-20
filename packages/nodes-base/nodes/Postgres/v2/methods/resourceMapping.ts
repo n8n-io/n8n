@@ -21,7 +21,7 @@ const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 		'bigserial',
 	],
 	boolean: ['boolean'],
-	datetime: ['timestamp', 'date', 'time'],
+	dateTime: ['timestamp', 'date', 'time'],
 };
 
 function mapPostgresType(postgresType: string): ResourceMapperFieldType {

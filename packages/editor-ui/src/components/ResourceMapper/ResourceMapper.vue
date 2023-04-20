@@ -64,10 +64,10 @@ onMounted(async () => {
 		const parameterName = props.parameter.name;
 		if (parameterName in params) {
 			state.paramValue = params[parameterName] as ResourceMapperValue;
-			if (!state.paramValue.matchingColumns) {
-				state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
-			}
 		}
+	}
+	if (!state.paramValue.matchingColumns) {
+		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
 	}
 });
 
