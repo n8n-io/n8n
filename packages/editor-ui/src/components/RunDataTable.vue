@@ -163,8 +163,8 @@
 /* eslint-disable prefer-spread */
 import { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/utils';
-import Vue, { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import Vue, { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
@@ -177,8 +177,9 @@ import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'run-data-table',
+	mixins: [externalHooks],
 	components: { Draggable, MappingPill },
 	props: {
 		node: {

@@ -24,7 +24,6 @@
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
 import { IExecutionResponse, INodeUi } from '@/Interface';
 import {
 	IBinaryKeyData,
@@ -41,9 +40,11 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
+import { defineComponent } from 'vue';
 
-export default mixins(genericHelpers, workflowHelpers).extend({
+export default defineComponent({
 	name: 'CodeEdit',
+	mixins: [genericHelpers, workflowHelpers],
 	components: {
 		CodeEditor,
 	},

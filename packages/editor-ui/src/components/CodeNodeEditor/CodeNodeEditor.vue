@@ -19,8 +19,6 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, ViewUpdate } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
@@ -37,13 +35,16 @@ import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 import Modal from '../Modal.vue';
 import { useSettingsStore } from '@/stores/settings';
+import { defineComponent, PropType } from 'vue';
 
-export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
+export default defineComponent({
 	name: 'code-node-editor',
+	mixins: [linterExtension, completerExtension, workflowHelpers],
 	components: { Modal },
 	props: {
 		mode: {
-			type: String,
+			type: String as PropType<'runOnceForAllItems' | 'runOnceForEachItem'>,
+			required: true,
 			validator: (value: string): boolean =>
 				['runOnceForAllItems', 'runOnceForEachItem'].includes(value),
 		},

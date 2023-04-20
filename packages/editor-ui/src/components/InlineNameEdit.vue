@@ -32,11 +32,12 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'InlineNameEdit',
+	mixins: [showMessage],
 	props: {
 		name: {
 			type: String,

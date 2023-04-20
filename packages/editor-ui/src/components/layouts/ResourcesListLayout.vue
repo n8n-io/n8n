@@ -183,13 +183,12 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
-import Vue, { PropType } from 'vue';
+import Vue, { defineComponent, PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -219,8 +218,9 @@ type IResourceKeyType = 'credentials' | 'workflows';
 
 const filterKeys = ['ownedBy', 'sharedWith'];
 
-export default mixins(showMessage, debounceHelper).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [showMessage, debounceHelper],
 	components: {
 		TemplateCard,
 		PageViewLayout,

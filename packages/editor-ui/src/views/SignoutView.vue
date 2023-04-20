@@ -2,11 +2,12 @@
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
-import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SignoutView',
+	mixins: [showMessage],
 	computed: {
 		...mapStores(useUsersStore),
 	},

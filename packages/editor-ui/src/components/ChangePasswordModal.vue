@@ -29,8 +29,6 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
 import { IFormInputs } from '@/Interface';
@@ -38,10 +36,12 @@ import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { createEventBus } from '@/event-bus';
+import { defineComponent } from 'vue';
 
-export default mixins(showMessage).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'ChangePasswordModal',
+	mixins: [showMessage],
+	components: { Modal },
 	props: {
 		modalName: {
 			type: String,
