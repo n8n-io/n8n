@@ -106,7 +106,7 @@ const orderedFields = computed<INodeProperties[]>(() => {
 	return fieldsUi.value;
 });
 
-const availableMatchingFields = computed<INodeParameters[]>(() => {
+const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return state.fieldsToMap.filter((field) => {
 		return field.canBeUsedToMatch !== false;
 	});
@@ -144,7 +144,7 @@ const matchingColumns = computed<string[]>(() => {
 	if (!showMatchingColumnsSelector) {
 		return [];
 	}
-	if (state.paramValue.matchingColumns && state.paramValue.matchingColumns.length > 0) {
+	if (state.paramValue.matchingColumns) {
 		return state.paramValue.matchingColumns;
 	}
 	return defaultSelectedMatchingColumns.value;
@@ -234,7 +234,10 @@ async function onModeChanged(mode: string): Promise<void> {
 }
 
 function onMatchingColumnsChanged(matchingColumns: string[]): void {
-	state.paramValue.matchingColumns = matchingColumns;
+	state.paramValue = {
+		...state.paramValue,
+		matchingColumns,
+	};
 	if (!state.loading) {
 		emitValueChanged();
 	}
