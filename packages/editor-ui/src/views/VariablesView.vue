@@ -259,7 +259,7 @@ function displayName(resource: EnvironmentVariable) {
 		</template>
 		<template v-if="!isFeatureEnabled" #empty>
 			<n8n-action-box
-				data-test-id="empty-resources-list"
+				data-test-id="unavailable-resources-list"
 				emoji="👋"
 				:heading="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.title)"
 				:description="
