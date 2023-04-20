@@ -544,8 +544,6 @@ export const TEMPLATE_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [
-	TEMPLATE_EXPERIMENT.name,
-];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
