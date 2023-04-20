@@ -166,6 +166,7 @@ async function initFetching(): Promise<void> {
 	state.loadingError = false;
 	try {
 		await loadFieldsToMap();
+		onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 	} catch (error) {
 		state.loadingError = true;
 	} finally {
