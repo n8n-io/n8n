@@ -414,7 +414,7 @@ export class GoogleDriveTriggerV1 implements INodeType {
 			folderSearch,
 		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
