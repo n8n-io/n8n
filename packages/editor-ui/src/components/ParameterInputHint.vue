@@ -5,7 +5,6 @@
 			:class="{
 				[$style.singleline]: singleLine,
 				[$style.highlight]: highlight,
-				[$style['preserve-whitespace']]: true,
 			}"
 		>
 			{{ hint }}

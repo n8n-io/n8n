@@ -183,13 +183,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
 			}
 
-			if (typeof computedValue === 'string') {
-				return computedValue.startsWith('"') && computedValue.endsWith('"')
-					? `'${computedValue}'`
-					: `"${computedValue}"`;
-			}
-
-			return JSON.stringify(computedValue);
+			return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
 		},
 		expressionOutput(): string | null {
 			if (this.isValueExpression && this.expressionValueComputed) {
