@@ -135,18 +135,16 @@ export default mixins().extend({
 			}
 		});
 		// refresh when a modal closes
-		this.eventBus.on('destinationWasSaved', async () => {
-			this.$forceUpdate();
-		});
+		this.eventBus.on('destinationWasSaved', this.onDestinationWasSaved);
 		// listen to remove emission
-		this.eventBus.on('remove', async (destinationId: string) => {
-			await this.onRemove(destinationId);
-		});
+		this.eventBus.on('remove', this.onRemove);
 		// listen to modal closing and remove nodes from store
-		this.eventBus.on('closing', async (destinationId: string) => {
-			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
-			this.uiStore.stateIsDirty = false;
-		});
+		this.eventBus.on('closing', this.onBusClosing);
+	},
+	destroyed() {
+		this.eventBus.off('destinationWasSaved', this.onDestinationWasSaved);
+		this.eventBus.off('remove', this.onRemove);
+		this.eventBus.off('closing', this.onBusClosing);
 	},
 	computed: {
 		...mapStores(
@@ -173,6 +171,13 @@ export default mixins().extend({
 		},
 	},
 	methods: {
+		onDestinationWasSaved() {
+			this.$forceUpdate();
+		},
+		onBusClosing() {
+			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+			this.uiStore.stateIsDirty = false;
+		},
 		async getDestinationDataFromBackend(): Promise<void> {
 			this.logStreamingStore.clearEventNames();
 			this.logStreamingStore.clearDestinationItemTrees();
