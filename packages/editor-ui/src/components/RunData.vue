@@ -585,7 +585,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			currentPage: 1,
 			pageSize: 10,
 			pageSizes: [10, 25, 50, 100],
-			eventBus: dataPinningEventBus,
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
@@ -595,8 +594,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		this.init();
 
 		if (!this.isPaneTypeInput) {
-			this.eventBus.on('data-pinning-error', this.onDataPinningError);
-			this.eventBus.on('data-unpinning', this.onDataUnpinning);
+			dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
+			dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
 
 			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
@@ -609,8 +608,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	},
 	destroyed() {
 		this.hidePinDataDiscoveryTooltip();
-		this.eventBus.off('data-pinning-error', this.onDataPinningError);
-		this.eventBus.off('data-unpinning', this.onDataUnpinning);
+		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
+		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -908,7 +907,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				setTimeout(() => {
 					this.isControlledPinDataTooltip = true;
 					this.pinDataDiscoveryTooltipVisible = true;
-					this.eventBus.emit('data-pinning-discovery', { isTooltipVisible: true });
+					dataPinningEventBus.emit('data-pinning-discovery', { isTooltipVisible: true });
 				}, 500); // Wait for NDV to open
 			}
 		},
@@ -916,7 +915,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			if (this.pinDataDiscoveryTooltipVisible) {
 				this.isControlledPinDataTooltip = false;
 				this.pinDataDiscoveryTooltipVisible = false;
-				this.eventBus.emit('data-pinning-discovery', { isTooltipVisible: false });
+				dataPinningEventBus.emit('data-pinning-discovery', { isTooltipVisible: false });
 			}
 		},
 		pinDataDiscoveryComplete() {

@@ -143,7 +143,7 @@ export class Keap implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -158,7 +158,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -173,7 +173,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the countries to display them to user so that he can
+			// Get all the countries to display them to user so that they can
 			// select them easily
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +188,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the provinces to display them to user so that he can
+			// Get all the provinces to display them to user so that they can
 			// select them easily
 			async getProvinces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('countryCode') as string;
@@ -208,7 +208,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the contact types to display them to user so that he can
+			// Get all the contact types to display them to user so that they can
 			// select them easily
 			async getContactTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -223,7 +223,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

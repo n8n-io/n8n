@@ -130,7 +130,7 @@ function focusFirstInput() {
 </script>
 
 <template>
-	<tr :class="$style.variablesRow">
+	<tr :class="$style.variablesRow" data-test-id="variables-row">
 		<td class="variables-key-column">
 			<div>
 				<span v-if="!editing">{{ data.key }}</span>

@@ -3,7 +3,7 @@ import { useDebounceHelper } from '../useDebounce';
 import { render, screen } from '@testing-library/vue';
 
 describe('useDebounceHelper', () => {
-	const debounceTime = 200;
+	const debounceTime = 500;
 
 	const TestComponent = {
 		template: `
@@ -23,6 +23,7 @@ describe('useDebounceHelper', () => {
 			},
 		},
 		setup() {
+			vitest.useFakeTimers();
 			const { callDebounced } = useDebounceHelper();
 			return {
 				callDebounced,
@@ -52,7 +53,7 @@ describe('useDebounceHelper', () => {
 
 		expect(mockFn).toHaveBeenCalledTimes(0);
 
-		await new Promise((resolve) => setTimeout(resolve, debounceTime));
+		vitest.advanceTimersByTime(debounceTime);
 
 		expect(mockFn).toHaveBeenCalledTimes(1);
 	});
