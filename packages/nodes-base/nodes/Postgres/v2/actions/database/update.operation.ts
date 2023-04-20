@@ -253,17 +253,22 @@ export async function execute(
 			});
 			const rowExists = await doesRowExist(db, schema, table, matchValues);
 			if (!rowExists) {
-				const matchValuesMessage: string[] = [];
+				const descriptionValues: string[] = [];
 				matchValues.forEach((val, index) => {
 					if (index % 2 === 0) {
-						matchValuesMessage.push(`${matchValues[index]}=${matchValues[index + 1]}`);
+						descriptionValues.push(`${matchValues[index]}=${matchValues[index + 1]}`);
 					}
 				});
+
 				throw new NodeOperationError(
 					this.getNode(),
-					`Row you are trying to update (${matchValuesMessage.join(
-						', ',
-					)}) doesn't exist in table "${table}"`,
+					"The row you are trying to update doesn't exist",
+					{
+						description: `No rows matching the provided values (${descriptionValues.join(
+							', ',
+						)}) were found in the table "${table}".`,
+						itemIndex: i,
+					},
 				);
 			}
 		}
