@@ -534,7 +534,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		},
 
 		// Returns the currently loaded workflow as JSON.
-		getWorkflowDataToSave(): Promise<IWorkflowData> {
+		async getWorkflowDataToSave(): Promise<IWorkflowData> {
 			const workflowNodes = this.workflowsStore.allNodes;
 			const workflowConnections = this.workflowsStore.allConnections;
 
@@ -542,12 +542,8 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 			const nodes = [];
 			for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-				try {
-					// @ts-ignore
-					nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
-				} catch (e) {
-					return Promise.reject(e);
-				}
+				// @ts-ignore
+				nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
 
 				nodes.push(nodeData);
 			}
@@ -568,7 +564,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				data.id = workflowId;
 			}
 
-			return Promise.resolve(data);
+			return data;
 		},
 
 		// Returns all node-types

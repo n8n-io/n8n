@@ -799,11 +799,11 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	};
 }
 
-export const emptyPackage = () => {
+export const emptyPackage = async () => {
 	const installedPackage = new InstalledPackages();
 	installedPackage.installedNodes = [];
 
-	return Promise.resolve(installedPackage);
+	return installedPackage;
 };
 
 // ----------------------------------

@@ -535,7 +535,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					filter.metadata,
 				)
 					? this.restApi().getCurrentExecutions({})
-					: Promise.resolve([]);
+					: [];
 
 				const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
 
