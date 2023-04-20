@@ -1,15 +1,6 @@
 <template>
 	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
-		<div
-			v-if="!renderHTML"
-			:class="{
-				[$style.singleline]: singleLine,
-				[$style.highlight]: highlight,
-				[$style['preserve-whitespace']]: true,
-			}"
-		>
-			{{ hint }}
-		</div>
+		<div v-if="!renderHTML" :class="style">{{ hint }}</div>
 		<div
 			v-else
 			ref="hint"
@@ -42,6 +33,15 @@ export default Vue.extend({
 	},
 	methods: {
 		sanitizeHtml,
+	},
+	computed: {
+		style() {
+			return {
+				[this.$style.singleline]: this.singleLine,
+				[this.$style.highlight]: this.highlight,
+				[this.$style['preserve-whitespace']]: true,
+			};
+		},
 	},
 	mounted() {
 		if (this.$refs.hint) {
