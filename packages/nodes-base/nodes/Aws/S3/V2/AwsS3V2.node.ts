@@ -97,7 +97,7 @@ export class AwsS3V2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
-			const headers: IDataObject = {};
+			let headers: IDataObject = {};
 			try {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
@@ -838,7 +838,7 @@ export class AwsS3V2 implements INodeType {
 							});
 							headers['x-amz-tagging'] = tags.join('&');
 						}
-
+						// Get the region of the bucket
 						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
@@ -848,10 +848,6 @@ export class AwsS3V2 implements INodeType {
 						if (isBinaryData) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							// const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-							// 	i,
-							// 	binaryPropertyName,
-							// );
 
 							let uploadData: Buffer | Readable;
 							if (binaryPropertyData.id) {
@@ -859,7 +855,8 @@ export class AwsS3V2 implements INodeType {
 							} else {
 								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
 							}
-
+							const newHeaders = headers;
+							console.log('New Headers', newHeaders);
 							const createMultiPartUpload = await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
@@ -867,35 +864,36 @@ export class AwsS3V2 implements INodeType {
 								`/${bucketName}-${this.getNode().id}?uploads`,
 								body,
 								qs,
-								headers,
+								newHeaders,
 								{},
 								region as string,
 							);
-
+							headers = {};
 							const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
-							let offset = 0;
+							let part = 1;
 							for await (const chunk of uploadData) {
-								const nextOffsets = offset + Number(chunk.length);
 								const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
 								headers['Content-Length'] = chunk.length;
-								headers['Content-MD5'] = createHash('md5').update(chunkBuffer).digest('base64');
+								headers['Content-MD5'] = createHash('MD5').update(chunkBuffer).digest('base64');
+								console.log('New headers', headers);
 								try {
 									const sendChunks = await awsApiRequestREST.call(
 										this,
 										`${bucketName}.s3`,
 										'PUT',
-										`/${bucketName}-${this.getNode().id}?partNumber=${offset}&uploadId=${uploadId}`,
+										`/${bucketName}-${this.getNode().id}?partNumber=${part}&uploadId=${uploadId}`,
 										chunk,
 										qs,
 										headers,
 										{},
 										region as string,
 									);
+									part++;
 									console.log(sendChunks);
 								} catch (error) {
+									console.log(part);
 									if (error.response?.status !== 308) throw error;
 								}
-								offset = nextOffsets;
 							}
 
 							// headers['Content-Type'] = binaryPropertyData.mimeType;

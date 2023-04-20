@@ -33,9 +33,7 @@ export async function awsApiRequest(
 		body,
 		url: '',
 		headers,
-		//region: credentials?.region as string,
 	} as IHttpRequestOptions;
-
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
