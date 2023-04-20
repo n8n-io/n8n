@@ -184,7 +184,7 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected">
+		<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected" :class="$style.items">
 			<template
 				#empty
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
@@ -208,3 +208,9 @@ registerKeyHook('MainViewArrowLeft', {
 		</CategorizedItemsRenderer>
 	</span>
 </template>
+
+<style lang="scss" module>
+.items {
+	margin-bottom: var(--spacing-s);
+}
+</style>

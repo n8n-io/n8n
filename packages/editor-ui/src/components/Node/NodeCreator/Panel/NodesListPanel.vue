@@ -142,7 +142,7 @@ function onBackButton() {
 :global(.panel-slide-in-enter-active),
 :global(.panel-slide-out-leave-active),
 :global(.panel-slide-out-enter-active) {
-	transition: transform 300ms ease;
+	transition: transform 200ms ease;
 	position: absolute;
 	left: 0;
 	right: 0;

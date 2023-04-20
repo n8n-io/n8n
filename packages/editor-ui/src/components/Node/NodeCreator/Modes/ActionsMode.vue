@@ -34,7 +34,7 @@ const telemetry = instance?.proxy.$telemetry;
 
 const { $externalHooks } = new externalHooks();
 const { userActivated } = useUsersStore();
-const { popViewStack, activeViewStack, updateCurrentViewStack } = useViewStacks();
+const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
 	getNodeTypesWithManualTrigger,
@@ -47,10 +47,16 @@ const {
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
-	parseCategoryActions(actions.value, actionsCategoryLocales.value.triggers, !search.value),
+	parseActions(actions.value, actionsCategoryLocales.value.triggers, false),
 );
 const parsedActionActions = computed(() =>
-	parseCategoryActions(actions.value, actionsCategoryLocales.value.actions, !search.value),
+	parseActions(actions.value, actionsCategoryLocales.value.actions, !search.value),
+);
+const parsedTriggerActionsBaseline = computed(() =>
+	parseActions(useViewStacks().activeViewStack.baselineItems || [], actionsCategoryLocales.value.triggers, false),
+);
+const parsedActionActionsBaseline = computed(() =>
+	parseActions(useViewStacks().activeViewStack.baselineItems || [], actionsCategoryLocales.value.actions, !search.value),
 );
 
 // Because the placeholder items are inserted into the slots, we need to
@@ -78,14 +84,14 @@ const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value
 const hasNoTriggerActions = computed(
 	() =>
 		parseCategoryActions(
-			activeViewStack.baselineItems || [],
+			useViewStacks().activeViewStack.baselineItems || [],
 			actionsCategoryLocales.value.triggers,
 			!search.value,
 		).length === 0,
 );
 
 const containsAPIAction = computed(() => {
-	const actions = activeViewStack.baselineItems || [];
+	const actions = useViewStacks().activeViewStack.baselineItems || [];
 
 	const result = actions.some((p) => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
@@ -107,6 +113,10 @@ registerKeyHook('ActionsKeyLeft', {
 	condition: (type) => type === 'action',
 	handler: arrowLeft,
 });
+
+function parseActions(base: INodeCreateElement[], locale: string, withLabels = false) {
+	return parseCategoryActions(base, locale, withLabels);
+}
 
 function arrowLeft() {
 	popViewStack();
@@ -142,6 +152,8 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 }
 
 function trackActionsView() {
+	const activeViewStack = useViewStacks().activeViewStack;
+
 	const trigger_action_count = (activeViewStack.baselineItems || [])?.filter((action) =>
 		action.key.toLowerCase().includes('trigger'),
 	).length;
@@ -209,14 +221,14 @@ onMounted(() => {
 <template>
 	<div :class="$style.container">
 		<OrderSwitcher :rootView="rootView">
-			<template #triggers v-if="isTriggerRootView || parsedTriggerActions.length !== 0">
+			<template #triggers v-if="isTriggerRootView || parsedTriggerActionsBaseline.length !== 0">
 				<!-- Triggers Category -->
 				<CategorizedItemsRenderer
 					:elements="parsedTriggerActions"
 					:category="triggerCategoryName"
 					:mouseOverTooltip="$locale.baseText('nodeCreator.actionsTooltip.triggersStartWorkflow')"
 					isTriggerCategory
-					:expanded="isTriggerRootView"
+					:expanded="isTriggerRootView || parsedActionActions.length === 0"
 					@selected="onSelected"
 				>
 					<!-- Empty state -->
@@ -249,7 +261,7 @@ onMounted(() => {
 					</template>
 				</CategorizedItemsRenderer>
 			</template>
-			<template #actions v-if="parsedActionActions.length !== 0">
+			<template #actions v-if="!isTriggerRootView || parsedActionActionsBaseline.length !== 0">
 				<!-- Actions Category -->
 				<CategorizedItemsRenderer
 					:elements="parsedActionActions"
@@ -281,7 +293,7 @@ onMounted(() => {
 							/>
 						</n8n-info-tip>
 						<template v-else>
-							<span
+							<p
 								:class="$style.resetSearch"
 								v-html="$locale.baseText('nodeCreator.actionsCategory.noMatchingActions')"
 								@click="resetSearch"
@@ -309,17 +321,15 @@ onMounted(() => {
 .container {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
-	& > [data-category-collapsed='true']:nth-child(1) {
-		margin-bottom: calc(-1 * var(--spacing-xl));
-	}
+	padding-bottom: var(--spacing-3xl);
 }
 
 .resetSearch {
 	cursor: pointer;
+	line-height: var(--font-line-height-regular);
 	font-weight: var(--font-weight-regular);
 	font-size: var(--font-size-2xs);
-	padding: 0 var(--spacing-s) 0;
+	padding: var(--spacing-2xs) var(--spacing-s) 0;
 	color: var(--color-text-base);
 
 	i {
@@ -329,7 +339,7 @@ onMounted(() => {
 	}
 }
 .actionsEmpty {
-	padding: var(--spacing-4xs) var(--spacing-xs) var(--spacing-s);
+	padding: var(--spacing-2xs) var(--spacing-xs) var(--spacing-s);
 	font-weight: var(--font-weight-regular);
 
 	strong {
