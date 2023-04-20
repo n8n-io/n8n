@@ -151,10 +151,12 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-			name,
-			variant,
-		});
+		setTimeout(() => {
+			telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+				name,
+				variant,
+			});
+		}, 2000);
 
 		trackedDemoExp.value[name] = variant;
 
