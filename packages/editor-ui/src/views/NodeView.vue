@@ -2516,6 +2516,20 @@ export default mixins(
 				}
 			}
 		},
+		onBeforeUnload(e) {
+			if (this.isDemo || window.preventNodeViewBeforeUnload) {
+				return;
+			} else if (this.uiStore.stateIsDirty) {
+				const confirmationMessage = this.$locale.baseText(
+					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
+				);
+				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+			} else {
+				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				return;
+			}
+		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
 			await this.resetWorkspace();
@@ -2597,23 +2611,7 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			// allow to be overriden in e2e tests
-			// @ts-ignore
-			window.onBeforeUnloadNodeView = (e) => {
-				if (this.isDemo) {
-					return;
-				} else if (this.uiStore.stateIsDirty) {
-					const confirmationMessage = this.$locale.baseText(
-						'nodeView.itLooksLikeYouHaveBeenEditingSomething',
-					);
-					(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-					return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
-				} else {
-					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
-					return;
-				}
-			};
-			window.addEventListener('beforeunload', window.onBeforeUnloadNodeView);
+			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3972,6 +3970,7 @@ export default mixins(
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
+		window.removeEventListener('beforeunload', this.onBeforeUnload);
 
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
