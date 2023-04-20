@@ -1164,7 +1164,10 @@ export async function getBase(
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
-	const encryptionKey = await UserSettings.getEncryptionKey();
+	const [encryptionKey, variables] = await Promise.all([
+		UserSettings.getEncryptionKey(),
+		WorkflowHelpers.getVariables(),
+	]);
 
 	return {
 		credentialsHelper: new CredentialsHelper(encryptionKey),
@@ -1179,6 +1182,7 @@ export async function getBase(
 		executionTimeoutTimestamp,
 		userId,
 		setExecutionStatus,
+		variables,
 	};
 }
 

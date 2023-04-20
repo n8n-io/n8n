@@ -1,5 +1,9 @@
 import { UserSettings } from 'n8n-core';
-import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
+import {
+	DataSource as Connection,
+	DataSourceOptions as ConnectionOptions,
+	Repository,
+} from 'typeorm';
 import { Container } from 'typedi';
 
 import config from '@/config';
@@ -102,7 +106,7 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		await Db.collections[collection].clear();
+		await (Db.collections[collection] as Repository<any>).delete({});
 	}
 }
 
@@ -482,6 +486,33 @@ export async function getAllWorkflows() {
 export async function getWorkflowSharing(workflow: WorkflowEntity) {
 	return Db.collections.SharedWorkflow.findBy({
 		workflowId: workflow.id,
+	});
+}
+
+// ----------------------------------
+//             variables
+// ----------------------------------
+
+export async function createVariable(key: string, value: string) {
+	return Db.collections.Variables.save({
+		key,
+		value,
+	});
+}
+
+export async function getVariableByKey(key: string) {
+	return Db.collections.Variables.findOne({
+		where: {
+			key,
+		},
+	});
+}
+
+export async function getVariableById(id: number) {
+	return Db.collections.Variables.findOne({
+		where: {
+			id,
+		},
 	});
 }
 

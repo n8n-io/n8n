@@ -139,14 +139,11 @@ export class SamlService {
 	async handleSamlLogin(
 		req: express.Request,
 		binding: SamlLoginBinding,
-	): Promise<
-		| {
-				authenticatedUser: User | undefined;
-				attributes: SamlUserAttributes;
-				onboardingRequired: boolean;
-		  }
-		| undefined
-	> {
+	): Promise<{
+		authenticatedUser: User | undefined;
+		attributes: SamlUserAttributes;
+		onboardingRequired: boolean;
+	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const user = await Db.collections.User.findOne({
@@ -154,7 +151,7 @@ export class SamlService {
 				relations: ['globalRole', 'authIdentities'],
 			});
 			if (user) {
-				// Login path for existing users that are fully set up
+				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
 				if (
 					user.authIdentities.find(
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
@@ -168,10 +165,11 @@ export class SamlService {
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
+					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
-						onboardingRequired: true,
+						onboardingRequired,
 					};
 				}
 			} else {
@@ -186,7 +184,11 @@ export class SamlService {
 				}
 			}
 		}
-		return undefined;
+		return {
+			authenticatedUser: undefined,
+			attributes,
+			onboardingRequired: false,
+		};
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
@@ -300,7 +302,9 @@ export class SamlService {
 			);
 		} catch (error) {
 			// throw error;
-			throw new AuthError('SAML Authentication failed. Could not parse SAML response.');
+			throw new AuthError(
+				`SAML Authentication failed. Could not parse SAML response. ${(error as Error).message}`,
+			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

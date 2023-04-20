@@ -49,9 +49,7 @@ router.afterEach((to, from) => {
 	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 	const userStore = useUsersStore();
 	if (userStore.currentUser && to.name && to.name !== VIEWS.SIGNOUT && !to.name.includes('Modal')) {
-		setTimeout(() => {
-			userStore.showUserActivationSurveyModal();
-		}, 500);
+		userStore.showUserActivationSurveyModal();
 	}
 });
 

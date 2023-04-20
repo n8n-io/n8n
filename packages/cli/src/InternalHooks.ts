@@ -981,4 +981,8 @@ export class InternalHooks implements IInternalHooksClass {
 	async onAuditGeneratedViaCli() {
 		return this.telemetry.track('Instance generated security audit via CLI command');
 	}
+
+	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
+		return this.telemetry.track('User created variable', createData);
+	}
 }

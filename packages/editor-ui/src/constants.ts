@@ -26,6 +26,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
+export const ASK_AI_MODAL_KEY = 'askAi';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -193,6 +194,7 @@ export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
+export const ASK_AI_WAITLIST_URL = 'https://n8n-community.typeform.com/to/odKU4oDR';
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -369,6 +371,7 @@ export enum VIEWS {
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
@@ -392,6 +395,7 @@ export enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
+	VERSION_CONTROL = 'VersionControl',
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -432,6 +436,7 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$vars',
 	'$workflow',
 ];
 
@@ -455,7 +460,9 @@ export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Variables = 'variables',
 	Saml = 'saml',
+	VersionControl = 'versionControl',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -531,19 +538,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const ASSUMPTION_EXPERIMENT = {
-	name: 'adore-assumption-tests-1',
-	control: 'control',
-	demo: 'assumption-demo',
-	video: 'assumption-video',
-};
-
-export const ONBOARDING_EXPERIMENT = {
-	name: 'checklist_001',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const TEMPLATE_EXPERIMENT = {
 	name: '002_remove_templates',
 	control: 'control',
@@ -551,8 +545,6 @@ export const TEMPLATE_EXPERIMENT = {
 };
 
 export const EXPERIMENTS_TO_TRACK = [
-	ASSUMPTION_EXPERIMENT.name,
-	ONBOARDING_EXPERIMENT.name,
 	TEMPLATE_EXPERIMENT.name,
 ];
 

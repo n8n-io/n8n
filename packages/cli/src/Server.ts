@@ -156,8 +156,13 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
+import { variablesController } from './environments/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -317,10 +322,15 @@ class Server extends AbstractServer {
 				saml: false,
 				logStreaming: false,
 				advancedExecutionFilters: false,
+				variables: false,
+				versionControl: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
+			variables: {
+				limit: 0,
 			},
 		};
 	}
@@ -347,6 +357,8 @@ class Server extends AbstractServer {
 			ldap: isLdapEnabled(),
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			versionControl: isVersionControlLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -361,6 +373,10 @@ class Server extends AbstractServer {
 				loginLabel: getSamlLoginLabel(),
 				loginEnabled: isSamlLoginEnabled(),
 			});
+		}
+
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
 		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -379,6 +395,7 @@ class Server extends AbstractServer {
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
+		const versionControlService = Container.get(VersionControlService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -407,6 +424,7 @@ class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
+			new VersionControlController(versionControlService),
 		];
 
 		if (isLdapEnabled()) {
@@ -531,15 +549,32 @@ class Server extends AbstractServer {
 
 		// initialize SamlService if it is licensed, even if not enabled, to
 		// set up the initial environment
-		if (isSamlLicensed()) {
-			try {
-				await Container.get(SamlService).init();
-			} catch (error) {
-				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
-			}
+		try {
+			await Container.get(SamlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
+		// Variables
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+		// Version Control
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			await Container.get(VersionControlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`Version Control initialization failed: ${error.message}`);
+		}
+
+		// ----------------------------------------
+
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get(
