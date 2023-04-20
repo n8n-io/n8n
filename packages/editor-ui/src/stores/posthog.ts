@@ -4,11 +4,7 @@ import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { FeatureFlags } from 'n8n-workflow';
-import {
-	EXPERIMENTS_TO_TRACK,
-	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	ONBOARDING_EXPERIMENT,
-} from '@/constants';
+import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry';
 import { useSegment } from './segment';
 import { debounce } from 'lodash-es';
@@ -153,10 +149,6 @@ export const usePostHog = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
-
-		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
-			segmentStore.showAppCuesChecklist();
-		}
 	};
 
 	return {

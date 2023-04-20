@@ -529,17 +529,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-workflow-sharing`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 	},
 	watch: {

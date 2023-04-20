@@ -1,3 +1,50 @@
+# [0.225.0](https://github.com/n8n-io/n8n/compare/n8n@0.224.0...n8n@0.225.0) (2023-04-19)
+
+
+### Bug Fixes
+
+* **core:** Fix broken API permissions in public API ([#5978](https://github.com/n8n-io/n8n/issues/5978)) ([49d838f](https://github.com/n8n-io/n8n/commit/49d838f628a124f3497165437a384e78d8a8ff63))
+* **core:** Fix paired item returning wrong data ([#5898](https://github.com/n8n-io/n8n/issues/5898)) ([b13b7d7](https://github.com/n8n-io/n8n/commit/b13b7d73e7857fe9a264d9400adfa337907f659a))
+* **core:** Improve SAML connection test result views ([#5981](https://github.com/n8n-io/n8n/issues/5981)) ([4c994fa](https://github.com/n8n-io/n8n/commit/4c994faec1ed6173d99f5b01efd9678e54e7eb49))
+* **core:** Make `getExecutionId` available on all nodes types ([#5990](https://github.com/n8n-io/n8n/issues/5990)) ([c42820e](https://github.com/n8n-io/n8n/commit/c42820e82efe7365b5d7344bb3f474ba420ea7c9))
+* **core:** Skip SAML onboarding for users with first- and lastname ([#5966](https://github.com/n8n-io/n8n/issues/5966)) ([8474cd3](https://github.com/n8n-io/n8n/commit/8474cd386ddfca9e9078b45af65af9299d63eb85))
+* **editor:** Add padding to prepend input ([#5874](https://github.com/n8n-io/n8n/issues/5874)) ([cd89489](https://github.com/n8n-io/n8n/commit/cd894893aafe1fc25e0e556a9651ab458b50ae99))
+* **editor:** Cleanup demo/video experiment ([#5974](https://github.com/n8n-io/n8n/issues/5974)) ([c171365](https://github.com/n8n-io/n8n/commit/c171365d2a613ea1fb9b08c22c54be29d1c8ade7))
+* **editor:** Enterprise features missing with UM ([#5995](https://github.com/n8n-io/n8n/issues/5995)) ([f9a810a](https://github.com/n8n-io/n8n/commit/f9a810aaf7fd56beba1342016a96922e8b332951))
+* **editor:** Fix moving canvas on middle click preventing lasso selection ([#5996](https://github.com/n8n-io/n8n/issues/5996)) ([3c2a569](https://github.com/n8n-io/n8n/commit/3c2a56928b46425822795cf1594133a538f47c21))
+* **editor:** Make sure to redirect to blank canvas after personalisation modal ([#5980](https://github.com/n8n-io/n8n/issues/5980)) ([7c474d3](https://github.com/n8n-io/n8n/commit/7c474d3c92ecca8e44e8eea76ada69aa7e8f5987))
+* **editor:** Only treat as CTRL pressed by default on touch devices for MouseEvent ([#5968](https://github.com/n8n-io/n8n/issues/5968)) ([536d810](https://github.com/n8n-io/n8n/commit/536d8109b02d1a0f771055c36ff0f45dae08281e))
+* **editor:** Fix n8n-checkbox alignment ([#6004](https://github.com/n8n-io/n8n/issues/6004)) ([f544826](https://github.com/n8n-io/n8n/commit/f5448269ee9277f19b0943035d23ad0df1dcde67))
+* **Code Node:** Handle user code returning `null` and `undefined` ([#5989](https://github.com/n8n-io/n8n/issues/5989)) ([a3664de](https://github.com/n8n-io/n8n/commit/a3664de3556f9f8159ed310a289ec12a4cd2c5c5))
+* **Github Trigger Node:** Remove content_reference event ([#5830](https://github.com/n8n-io/n8n/issues/5830)) ([d288a91](https://github.com/n8n-io/n8n/commit/d288a918f17dad2d0e32cf2d66f94037c77679b3))
+* **Google Sheets Trigger Node:** Return actual error message ([ba5b4eb](https://github.com/n8n-io/n8n/commit/ba5b4eb42fa1b609ddbe726d3e8655c1f9d28a2e))
+* **HTTP Request Node:** Fix itemIndex in HTTP Request errors ([#5991](https://github.com/n8n-io/n8n/issues/5991)) ([b351c62](https://github.com/n8n-io/n8n/commit/b351c6265938a908f90237c834012cc19cf70dc3))
+* **NocoDB Node:** Fix for updating or deleting rows with not default primary keys ([ee7f863](https://github.com/n8n-io/n8n/commit/ee7f86394eaf7aceee5521a4178c80a3c05cc27d))
+* **OpenAI Node:** Update models to only show those supported ([#5805](https://github.com/n8n-io/n8n/issues/5805)) ([29959be](https://github.com/n8n-io/n8n/commit/29959be6883d48c0385f333b3d9798a8c7c91c43))
+* **OpenAI Node:** Update OpenAI Text Moderate input placeholder text ([#5823](https://github.com/n8n-io/n8n/issues/5823)) ([6b9909b](https://github.com/n8n-io/n8n/commit/6b9909bd80f4b04ec877fe7ee9b8a2619392d220))
+
+
+### Features
+
+* **core:** Add variables feature ([#5602](https://github.com/n8n-io/n8n/issues/5602)) ([1bb9871](https://github.com/n8n-io/n8n/commit/1bb987140af8e835770a0ca45403e274a793f22c))
+* **core:** Add versionControl feature flag ([#6000](https://github.com/n8n-io/n8n/issues/6000)) ([33299ca](https://github.com/n8n-io/n8n/commit/33299ca61aaec94714431a58286da4bb2cf829c1))
+* **core:** Support for google service account in HTTP node ([0b48088](https://github.com/n8n-io/n8n/commit/0b48088296a7f826be3664f10c847b9dca753732))
+* **editor:** Add Ask AI preview ([#5916](https://github.com/n8n-io/n8n/issues/5916)) ([f8f8374](https://github.com/n8n-io/n8n/commit/f8f8374506c3d0c2ad7cea73bb461b3f64a81be1))
+* **GitLab Node:** Add Additional parameters for File List ([#5621](https://github.com/n8n-io/n8n/issues/5621)) ([3810039](https://github.com/n8n-io/n8n/commit/3810039da032ecbd038255316b3d8fa5ce5ef2df))
+* **MySQL Node:** Overhaul ([0a53c95](https://github.com/n8n-io/n8n/commit/0a53c957c4d69270e10058cdd384e47c8e3c987e))
+
+
+
+## [0.224.1](https://github.com/n8n-io/n8n/compare/n8n@0.224.0...n8n@0.224.1) (2023-04-14)
+
+
+### Bug Fixes
+
+* **core:** Fix broken API permissions in public API ([#5978](https://github.com/n8n-io/n8n/issues/5978)) ([b76ab31](https://github.com/n8n-io/n8n/commit/b76ab318f8919138391850738de99e592aa020a7))
+* **editor:** Only treat as CTRL pressed by default on touch devices for MouseEvent ([#5968](https://github.com/n8n-io/n8n/issues/5968)) ([471be3b](https://github.com/n8n-io/n8n/commit/471be3b4a89e9967524a5d06212153bbf2b56537))
+
+
+
 # [0.224.0](https://github.com/n8n-io/n8n/compare/n8n@0.223.0...n8n@0.224.0) (2023-04-12)
 
 

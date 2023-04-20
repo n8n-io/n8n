@@ -101,9 +101,6 @@ export default mixins(showMessage, restApi).extend({
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
-		isDemoTest(): boolean {
-			return usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.demo);
-		},
 	},
 	methods: {
 		async confirmSetupOrGoBack(): Promise<boolean> {
@@ -163,7 +160,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: this.isDemoTest ? VIEWS.HOMEPAGE : VIEWS.NEW_WORKFLOW });
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
@@ -187,7 +184,7 @@ export default mixins(showMessage, restApi).extend({
 		onSkip() {
 			this.usersStore.skipOwnerSetup();
 			this.$router.push({
-				name: this.isDemoTest ? VIEWS.HOMEPAGE : VIEWS.NEW_WORKFLOW,
+				name: VIEWS.NEW_WORKFLOW,
 			});
 		},
 	},

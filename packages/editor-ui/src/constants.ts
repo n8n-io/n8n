@@ -371,6 +371,7 @@ export enum VIEWS {
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
@@ -394,6 +395,7 @@ export enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
+	VERSION_CONTROL = 'VersionControl',
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -434,6 +436,7 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$vars',
 	'$workflow',
 ];
 
@@ -457,7 +460,9 @@ export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Variables = 'variables',
 	Saml = 'saml',
+	VersionControl = 'versionControl',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -533,19 +538,6 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const ASSUMPTION_EXPERIMENT = {
-	name: 'adore-assumption-tests-1',
-	control: 'control',
-	demo: 'assumption-demo',
-	video: 'assumption-video',
-};
-
-export const ONBOARDING_EXPERIMENT = {
-	name: 'checklist_001',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
