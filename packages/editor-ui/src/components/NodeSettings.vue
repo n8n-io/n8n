@@ -902,16 +902,12 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	mounted() {
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
-		if (this.eventBus) {
-			this.eventBus.on('openSettings', this.openSettings);
-		}
+		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 	destroyed() {
-		if (this.eventBus) {
-			this.eventBus.off('openSettings', this.openSettings);
-		}
+		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
 </script>

@@ -17,11 +17,12 @@ describe('Data mapping', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 
-		cy.window()
-			// @ts-ignore
-			.then(
-				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
-			);
+		cy.window().then(
+			(win) => {
+				// @ts-ignore
+				win.preventNodeViewBeforeUnload = true;
+			},
+		);
 	});
 
 	it('maps expressions from table header', () => {
