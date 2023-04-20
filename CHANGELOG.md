@@ -1,3 +1,31 @@
+## [0.225.1](https://github.com/n8n-io/n8n/compare/n8n@0.225.0...n8n@0.225.1) (2023-04-20)
+
+
+### Bug Fixes
+
+* **editor:** Clean up demo and template callouts from workflows page ([#6023](https://github.com/n8n-io/n8n/issues/6023)) ([6ec1c45](https://github.com/n8n-io/n8n/commit/6ec1c45355807e62f31a707bada823cdc73bc719))
+* **editor:** Fix memory leak in Node Detail View by correctly unsubscribing from event buses ([#6021](https://github.com/n8n-io/n8n/issues/6021)) ([1b9e047](https://github.com/n8n-io/n8n/commit/1b9e047ef5745f479e6693dca9696efbec32a7a6))
+* **editor:** SettingsSidebar should disconnect from push when navigating away ([#6025](https://github.com/n8n-io/n8n/issues/6025)) ([e9f8cfe](https://github.com/n8n-io/n8n/commit/e9f8cfe82182ee0d7c8c2394551791793cc71f47))
+* **Notion Node:** Update credential test to not require user permissions ([#6022](https://github.com/n8n-io/n8n/issues/6022)) ([6d02ae5](https://github.com/n8n-io/n8n/commit/6d02ae53cf1ec616abd47e434018bdf5e998f916))
+
+
+
+## [0.224.2](https://github.com/n8n-io/n8n/compare/n8n@0.224.1...n8n@0.224.2) (2023-04-20)
+
+
+### Bug Fixes
+
+* **core:** Fix paired item returning wrong data ([#5898](https://github.com/n8n-io/n8n/issues/5898)) ([2a45441](https://github.com/n8n-io/n8n/commit/2a45441d8aa1e9069af09eb28b9b26b0c4abf96e))
+* **core:** Make `getExecutionId` available on all nodes types ([#5990](https://github.com/n8n-io/n8n/issues/5990)) ([8373aab](https://github.com/n8n-io/n8n/commit/8373aab1fffc6f15e2a79462c97cd52cff277784))
+* **editor:** Fix memory leak in Node Detail View by correctly unsubscribing from event buses ([#6021](https://github.com/n8n-io/n8n/issues/6021)) ([d8fce5b](https://github.com/n8n-io/n8n/commit/d8fce5b1cbcded5dcb652b1b5bf252555343d4b1))
+* **editor:** Fix moving canvas on middle click preventing lasso selection ([#5996](https://github.com/n8n-io/n8n/issues/5996)) ([a7a5778](https://github.com/n8n-io/n8n/commit/a7a57782bbaadad342f592331b7b9d49aa0e62de))
+* **editor:** SettingsSidebar should disconnect from push when navigating away ([#6025](https://github.com/n8n-io/n8n/issues/6025)) ([b475c8f](https://github.com/n8n-io/n8n/commit/b475c8f26aea9c108a8ea29826619925516c372f))
+* **Google Sheets Trigger Node:** Return actual error message ([5e59141](https://github.com/n8n-io/n8n/commit/5e59141ec60566dbacea246402e57b13328a94b3))
+* **HTTP Request Node:** Fix itemIndex in HTTP Request errors ([#5991](https://github.com/n8n-io/n8n/issues/5991)) ([4a521a4](https://github.com/n8n-io/n8n/commit/4a521a416e3fb85ba58d4ca4ad420b485c220d96))
+* **Notion Node:** Update credential test to not require user permissions ([#6022](https://github.com/n8n-io/n8n/issues/6022)) ([14c9b5e](https://github.com/n8n-io/n8n/commit/14c9b5e6295a59b5ddbde0e07ba94250b50bcedf))
+
+
+
 # [0.225.0](https://github.com/n8n-io/n8n/compare/n8n@0.224.0...n8n@0.225.0) (2023-04-19)
 
 
