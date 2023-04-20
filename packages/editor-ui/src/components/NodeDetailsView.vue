@@ -211,15 +211,10 @@ export default mixins(
 		};
 	},
 	mounted() {
-		dataPinningEventBus.on(
-			'data-pinning-discovery',
-			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
-				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
-			},
-		);
+		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	destroyed() {
-		dataPinningEventBus.off('data-pinning-discovery');
+		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
@@ -480,6 +475,9 @@ export default mixins(
 		},
 	},
 	methods: {
+		setIsTooltipVisible({ isTooltipVisible }: { isTooltipVisible: boolean }) {
+			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+		},
 		onKeyDown(e: KeyboardEvent) {
 			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
 				e.stopPropagation();
