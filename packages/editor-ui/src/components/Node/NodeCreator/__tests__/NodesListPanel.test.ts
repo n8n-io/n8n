@@ -81,6 +81,7 @@ describe('NodesListPanel', () => {
 			expect(screen.getByText('Select a trigger')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 			screen.getByText('On app event').click();
+			await Vue.nextTick();
 			expect(screen.queryByTestId('node-creator-search-bar')).not.toBeInTheDocument();
 			mockedTriggerNodes.forEach((n) => {
 				expect(screen.queryByText(n.name)).toBeInTheDocument();
@@ -163,6 +164,7 @@ describe('NodesListPanel', () => {
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
 
 			screen.getByText('Action in an app').click();
+			await Vue.nextTick();
 			mockedNodes.forEach((n) => {
 				expect(screen.queryByText(n.displayName)).toBeInTheDocument();
 			});
@@ -229,6 +231,7 @@ describe('NodesListPanel', () => {
 			await Vue.nextTick();
 
 			screen.getByText('On app event').click();
+			await Vue.nextTick();
 			expect(screen.queryByTestId('node-creator-search-bar')).not.toBeInTheDocument();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
 		});

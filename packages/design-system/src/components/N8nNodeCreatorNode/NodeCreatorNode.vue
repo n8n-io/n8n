@@ -93,11 +93,6 @@ defineEmits<{
 .nodeIcon {
 	display: flex;
 	margin-right: var(--node-icon-margin-right, var(--spacing-s));
-
-	// & > .n8n-node-icon {
-	// 	min-width: 25px;
-	// 	max-width: 25px;
-	// }
 }
 .name {
 	font-weight: var(--node-creator-name-weight, var(--font-weight-bold));
