@@ -135,14 +135,14 @@ export default mixins().extend({
 			}
 		});
 		// refresh when a modal closes
-		this.eventBus.on('destinationWasSaved', this.$forceUpdate);
+		this.eventBus.on('destinationWasSaved', this.onDestinationWasSaved);
 		// listen to remove emission
 		this.eventBus.on('remove', this.onRemove);
 		// listen to modal closing and remove nodes from store
 		this.eventBus.on('closing', this.onBusClosing);
 	},
 	destroyed() {
-		this.eventBus.off('destinationWasSaved', this.$forceUpdate);
+		this.eventBus.off('destinationWasSaved', this.onDestinationWasSaved);
 		this.eventBus.off('remove', this.onRemove);
 		this.eventBus.off('closing', this.onBusClosing);
 	},
@@ -171,6 +171,9 @@ export default mixins().extend({
 		},
 	},
 	methods: {
+		onDestinationWasSaved() {
+			this.$forceUpdate()
+		},
 		onBusClosing() {
 			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 			this.uiStore.stateIsDirty = false;
