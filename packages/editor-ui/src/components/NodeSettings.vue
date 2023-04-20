@@ -912,7 +912,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		if (this.eventBus) {
 			this.eventBus.off('openSettings', this.openSettings);
 		}
-	}
+	},
 });
 </script>
 
