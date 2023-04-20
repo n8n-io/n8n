@@ -59,6 +59,7 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { showMessage } from '@/mixins/showMessage';
+import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
@@ -70,7 +71,7 @@ import { BaseTextKey } from '@/plugins/i18n';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, pushConnection).extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
 		CommunityPackageCard,
@@ -81,6 +82,9 @@ export default mixins(showMessage).extend({
 		};
 	},
 	async mounted() {
+		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
+		this.pushConnect();
+
 		try {
 			this.$data.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
@@ -123,6 +127,9 @@ export default mixins(showMessage).extend({
 		} finally {
 			this.$data.loading = false;
 		}
+	},
+	beforeDestroy() {
+		this.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
