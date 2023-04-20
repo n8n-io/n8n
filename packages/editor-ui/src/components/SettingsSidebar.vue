@@ -137,6 +137,9 @@ export default mixins(userHelpers, pushConnection).extend({
 	mounted() {
 		this.pushConnect();
 	},
+	beforeDestroy() {
+		this.pushDisconnect();
+	},
 	methods: {
 		canAccessPersonalSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS);
