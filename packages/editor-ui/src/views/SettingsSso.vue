@@ -2,13 +2,11 @@
 import { computed, ref, onBeforeMount } from 'vue';
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
-import { useUsageStore } from '@/stores/usage';
 import { useUIStore } from '@/stores/ui';
-import { BaseTextKey, i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();
-const usageStore = useUsageStore();
 const uiStore = useUIStore();
 
 const ssoActivatedLabel = computed(() =>
@@ -56,16 +54,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	const linkUrlTranslationKey = uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey;
-	let linkUrl = locale.baseText(linkUrlTranslationKey);
-
-	if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-		linkUrl = `${usageStore.viewPlansUrl}&source=sso`;
-	} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-		linkUrl = `${linkUrl}&utm_campaign=upgrade-sso`;
-	}
-
-	window.open(linkUrl, '_blank');
+	uiStore.goToUpgrade('sso', 'upgrade-sso');
 };
 
 onBeforeMount(async () => {

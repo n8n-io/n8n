@@ -1680,7 +1680,7 @@ export class Asana implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
+			// Get all the available workspaces to display them to user so that they can
 			// select them easily
 			getWorkspaces,
 
@@ -1764,7 +1764,7 @@ export class Asana implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available teams to display them to user so that he can
+			// Get all the available teams to display them to user so that they can
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workspaceId = this.getCurrentNodeParameter('workspace');

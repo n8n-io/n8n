@@ -194,7 +194,7 @@ export class SlackV2 implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -220,7 +220,7 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -254,7 +254,7 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getChannelsName(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -287,7 +287,7 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the team fields to display them to user so that he can
+			// Get all the team fields to display them to user so that they can
 			// select them easily
 			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

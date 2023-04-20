@@ -19,7 +19,7 @@
 			"versionNotifications": {
 				"enabled": true,
 				"endpoint": "https://api.n8n.io/api/versions/",
-				"infoUrl": "https://docs.n8n.io/getting-started/installation/updating.html"
+				"infoUrl": "https://docs.n8n.io/release-notes/"
 			},
 			"instanceId": "c229842c6d1e217486d04caf7223758e08385156ca87a58286c850760c7161f4",
 			"telemetry": {
