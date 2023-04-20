@@ -148,7 +148,7 @@ const emit = defineEmits<{
 }>();
 
 const instance = getCurrentInstance();
-const { $externalHooks } = new externalHooks();
+const { $externalHooks } = externalHooks.methods;
 
 const { defaultLocale } = useRootStore();
 const { workflowId } = useWorkflowsStore();

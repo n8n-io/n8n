@@ -43,7 +43,7 @@ const emit = defineEmits<{
 	(event: 'input', value: string): void;
 }>();
 
-const { $externalHooks } = new externalHooks();
+const { $externalHooks } = externalHooks.methods;
 
 const state = reactive({
 	inputRef: null as HTMLInputElement | null,

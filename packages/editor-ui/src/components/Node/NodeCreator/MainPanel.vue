@@ -124,7 +124,7 @@ const state = reactive({
 	activeNodeActions: null as INodeTypeDescription | null,
 });
 const { baseUrl } = useRootStore();
-const { $externalHooks } = new externalHooks();
+const { $externalHooks } = externalHooks.methods;
 const {
 	mergedAppNodes,
 	getActionData,

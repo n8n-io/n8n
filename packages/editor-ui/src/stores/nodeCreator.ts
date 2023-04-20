@@ -286,7 +286,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return storeWatcher;
 		},
 		trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
-			const { $externalHooks } = new externalHooks();
+			const { $externalHooks } = externalHooks.methods;
 
 			const payload = {
 				node_type: action.key,
