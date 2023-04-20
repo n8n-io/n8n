@@ -37,12 +37,10 @@ export default Vue.extend({
 		if (this.autofocus && this.$refs.input) {
 			this.focus();
 		}
-
-		if (this.eventBus) {
-			this.eventBus.on('focus', () => {
-				this.focus();
-			});
-		}
+		this.eventBus?.on('focus', this.focus);
+	},
+	destroyed() {
+		this.eventBus?.off('focus', this.focus);
 	},
 	methods: {
 		focus() {
