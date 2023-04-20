@@ -9,7 +9,7 @@ export class CreateVariables1677501636754 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(`
-			CREATE TABLE public.variables (
+			CREATE TABLE ${tablePrefix}variables (
 				id serial4 NOT NULL PRIMARY KEY,
 				"key" varchar(50) NOT NULL,
 				"type" varchar(50) NOT NULL DEFAULT 'string',

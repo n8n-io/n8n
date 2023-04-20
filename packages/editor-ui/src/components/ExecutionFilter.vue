@@ -13,6 +13,7 @@ import { getObjectKeys, isEmpty } from '@/utils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsageStore } from '@/stores/usage';
+import { useUIStore } from '@/stores/ui';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
@@ -20,10 +21,10 @@ export type ExecutionFilterProps = {
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
-const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
+const uiStore = useUIStore();
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	popoverPlacement: 'bottom',
 });
@@ -32,11 +33,6 @@ const emit = defineEmits<{
 }>();
 const debouncedEmit = debounce(emit, 500);
 
-const viewPlansLink = computed(() =>
-	settingsStore.isCloudDeployment
-		? CLOUD_UPGRADE_LINK
-		: `${usageStore.viewPlansUrl}&source=custom-data-filter`,
-);
 const isAdvancedExecutionFilterEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
 );
@@ -126,6 +122,10 @@ const onTagsChange = (tags: string[]) => {
 const onFilterReset = () => {
 	Object.assign(filter, getDefaultFilter());
 	emit('filterChanged', filter);
+};
+
+const goToUpgrade = () => {
+	uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
 onBeforeMount(() => {
@@ -261,8 +261,8 @@ onBeforeMount(() => {
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a
-											target="_blank"
-											:href="viewPlansLink"
+											href="#"
+											@click.prevent="goToUpgrade"
 											data-test-id="executions-filter-view-plans-link"
 											>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 										>
@@ -288,7 +288,7 @@ onBeforeMount(() => {
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
-										<a target="_blank" :href="viewPlansLink">{{
+										<a href="#" @click.prevent="goToUpgrade">{{
 											$locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>

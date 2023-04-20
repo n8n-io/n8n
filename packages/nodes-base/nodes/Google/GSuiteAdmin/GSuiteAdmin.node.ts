@@ -63,7 +63,7 @@ export class GSuiteAdmin implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the domains to display them to user so that he can
+			// Get all the domains to display them to user so that they can
 			// select them easily
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -83,7 +83,7 @@ export class GSuiteAdmin implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the schemas to display them to user so that he can
+			// Get all the schemas to display them to user so that they can
 			// select them easily
 			async getSchemas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
