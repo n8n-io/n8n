@@ -891,4 +891,4 @@ export interface N8nApp {
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
 
-export type userSettings = Pick<User, 'id' | 'settings'>;
+export type UserSettings = Pick<User, 'id' | 'settings'>;

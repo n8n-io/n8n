@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import { userSettings } from '@/Interfaces';
+import type { UserSettings } from '@/Interfaces';
 
 export class AddUserActivatedProperty1681134145996 implements MigrationInterface {
 	name = 'AddUserActivatedProperty1681134145996';
@@ -10,7 +10,7 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 
 		const tablePrefix = getTablePrefix();
 
-		const activatedUsers: userSettings[] = await queryRunner.query(
+		const activatedUsers: UserSettings[] = await queryRunner.query(
 			`SELECT DISTINCT sw.userId AS id,
 				JSON_SET(COALESCE(u.settings, '{}'), '$.userActivated', true) AS settings
 			FROM ${tablePrefix}workflow_statistics AS ws
