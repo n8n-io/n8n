@@ -29,15 +29,6 @@ const goToUpgrade = () => {
 			<template #heading>
 				<span>{{ locale.baseText('settings.versionControl.actionBox.title') }}</span>
 			</template>
-			<template #description>
-				<i18n path="settings.versionControl.actionBox.description">
-					<template #link>
-						<a href="#" target="_blank">
-							{{ locale.baseText('settings.versionControl.actionBox.description.link') }}
-						</a>
-					</template>
-				</i18n>
-			</template>
 		</n8n-action-box>
 	</div>
 </template>
