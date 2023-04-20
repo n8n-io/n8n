@@ -245,15 +245,17 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 }
 
 function fieldValueChanged(updateInfo: IUpdateInformation): void {
-	if (isResourceMapperValue(updateInfo.value)) {
-		// Extract the name from the path
-		const match = updateInfo.name.match(FIELD_NAME_REGEX);
-		if (match) {
-			const name = match.pop();
-			if (name) {
-				state.paramValue.value[name] = updateInfo.value ? updateInfo.value : null;
-				emitValueChanged();
-			}
+	let newValue = null;
+	if (updateInfo.value && isResourceMapperValue(updateInfo.value)) {
+		newValue = updateInfo.value;
+	}
+	// Extract the name from the path
+	const match = updateInfo.name.match(FIELD_NAME_REGEX);
+	if (match) {
+		const name = match.pop();
+		if (name) {
+			state.paramValue.value[name] = newValue;
+			emitValueChanged();
 		}
 	}
 }
