@@ -1604,6 +1604,7 @@
 	"variables.heading": "Variables",
 	"variables.add": "Add Variable",
 	"variables.add.unavailable": "Upgrade plan to keep using variables",
+	"variables.add.unavailable.empty": "Upgrade plan to start using variables",
 	"variables.add.onlyOwnerCanCreate": "Only owner can create variables",
 	"variables.empty.heading": "{name}, let's set up a variable",
 	"variables.empty.heading.userNotSetup": "Set up a variable",
