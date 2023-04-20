@@ -4,7 +4,8 @@ import type {
 	ResourceMapperFieldType,
 } from 'n8n-workflow';
 import { getTableSchema, isColumnUnique } from '../helpers/utils';
-import { configurePostgres } from '../transport';
+import { configurePostgres, Connections } from '../transport';
+import { ConnectionsData } from '../helpers/interfaces';
 
 const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
@@ -43,7 +44,7 @@ export async function getMappingColumns(
 	const credentials = await this.getCredentials('postgres');
 	const fieldsToMatch = (this.getNodeParameter('columns.matchingColumns', 0) as string[]) || [];
 
-	const { db, pgp, sshClient } = await configurePostgres(credentials);
+	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -73,10 +74,5 @@ export async function getMappingColumns(
 		return { fields };
 	} catch (error) {
 		throw error;
-	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
-		pgp.end();
 	}
 }

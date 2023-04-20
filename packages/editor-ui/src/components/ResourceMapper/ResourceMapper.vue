@@ -64,6 +64,12 @@ onMounted(async () => {
 		const parameterName = props.parameter.name;
 		if (parameterName in params) {
 			state.paramValue = params[parameterName] as ResourceMapperValue;
+			// TODO: Handle missing values properly once add/remove fields is implemented
+			Object.keys(state.paramValue.value).forEach((key) => {
+				if (state.paramValue.value[key] === '') {
+					state.paramValue.value[key] = null;
+				}
+			});
 		}
 	}
 	if (!state.paramValue.matchingColumns) {
@@ -241,7 +247,7 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 		if (match) {
 			const name = match.pop();
 			if (name) {
-				state.paramValue.value[name] = updateInfo.value;
+				state.paramValue.value[name] = updateInfo.value ? updateInfo.value : null;
 				emitValueChanged();
 			}
 		}

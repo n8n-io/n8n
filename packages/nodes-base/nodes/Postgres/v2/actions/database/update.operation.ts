@@ -251,24 +251,22 @@ export async function execute(
 				matchValues.push(column);
 				matchValues.push(item[column] as string);
 			});
+			const rowExists = await doesRowExist(db, schema, table, matchValues);
+			if (!rowExists) {
+				const matchValuesMessage: string[] = [];
+				matchValues.forEach((val, index) => {
+					if (index % 2 === 0) {
+						matchValuesMessage.push(`${matchValues[index]}=${matchValues[index + 1]}`);
+					}
+				});
+				throw new NodeOperationError(
+					this.getNode(),
+					`Row you are trying to update (${matchValuesMessage.join(
+						', ',
+					)}) doesn't exist in table "${table}"`,
+				);
+			}
 		}
-
-		const rowExists = await doesRowExist(db, schema, table, matchValues);
-		if (!rowExists) {
-			const matchValuesMessage: string[] = [];
-			matchValues.forEach((val, index) => {
-				if (index % 2 === 0) {
-					matchValuesMessage.push(`${matchValues[index]}=${matchValues[index + 1]}`);
-				}
-			});
-			throw new NodeOperationError(
-				this.getNode(),
-				`Row you are trying to update (${matchValuesMessage.join(
-					', ',
-				)}) doesn't exist in table "${table}"`,
-			);
-		}
-
 		const tableSchema = await getTableSchema(db, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
