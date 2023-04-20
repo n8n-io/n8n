@@ -135,10 +135,14 @@ export default mixins(userHelpers, pushConnection).extend({
 		},
 	},
 	mounted() {
-		this.pushConnect();
+		if (this.settingsStore.isCommunityNodesFeatureEnabled) {
+			this.pushConnect();
+		}
 	},
 	beforeDestroy() {
-		this.pushDisconnect();
+		if (this.settingsStore.isCommunityNodesFeatureEnabled) {
+			this.pushDisconnect();
+		}
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {
