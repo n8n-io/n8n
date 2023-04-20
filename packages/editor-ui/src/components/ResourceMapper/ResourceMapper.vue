@@ -246,7 +246,12 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 
 function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	let newValue = null;
-	if (updateInfo.value && isResourceMapperValue(updateInfo.value)) {
+	if (
+		updateInfo.value !== undefined &&
+		updateInfo.value !== '' &&
+		updateInfo.value !== null &&
+		isResourceMapperValue(updateInfo.value)
+	) {
 		newValue = updateInfo.value;
 	}
 	// Extract the name from the path
