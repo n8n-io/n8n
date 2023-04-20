@@ -53,12 +53,7 @@ export default Vue.extend({
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
-
-		if (this.eventBus) {
-			this.eventBus.on('close', () => {
-				this.close();
-			});
-		}
+		this.eventBus?.on('close', this.close);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -66,6 +61,7 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
+		this.eventBus?.off('close', this.close);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
 	computed: {
