@@ -53,7 +53,7 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(
-			`UPDATE ${tablePrefix}user SET settings = JSON_EXTRACT_PATH(settings, 'userActivated')`,
+			`UPDATE "${tablePrefix}user" SET settings = settings::jsonb - 'userActivated'`,
 		);
 	}
 }
