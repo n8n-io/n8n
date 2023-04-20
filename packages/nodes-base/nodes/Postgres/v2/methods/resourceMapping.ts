@@ -4,8 +4,8 @@ import type {
 	ResourceMapperFieldType,
 } from 'n8n-workflow';
 import { getTableSchema, isColumnUnique } from '../helpers/utils';
-import { configurePostgres, Connections } from '../transport';
-import { ConnectionsData } from '../helpers/interfaces';
+import { Connections } from '../transport';
+import type { ConnectionsData } from '../helpers/interfaces';
 
 const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
@@ -22,7 +22,16 @@ const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 		'bigserial',
 	],
 	boolean: ['boolean'],
-	dateTime: ['timestamp', 'date', 'time'],
+	dateTime: [
+		'timestamp',
+		'date',
+		'time',
+		'timestampz',
+		'timestamp without time zone',
+		'timestamp with time zone',
+		'time without time zone',
+		'time with time zone',
+	],
 };
 
 function mapPostgresType(postgresType: string): ResourceMapperFieldType {
