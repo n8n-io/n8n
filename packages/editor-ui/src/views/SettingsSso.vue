@@ -56,7 +56,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('sso', 'upgrade-sso`');
+	uiStore.goToUpgrade('sso', 'upgrade-sso');
 };
 
 onBeforeMount(async () => {
