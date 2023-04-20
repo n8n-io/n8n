@@ -2,13 +2,11 @@
 import { computed, ref, onBeforeMount } from 'vue';
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
-import { useUsageStore } from '@/stores/usage';
 import { useUIStore } from '@/stores/ui';
 import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();
-const usageStore = useUsageStore();
 const uiStore = useUIStore();
 
 const ssoActivatedLabel = computed(() =>
