@@ -25,12 +25,9 @@ const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 	dateTime: [
 		'timestamp',
 		'date',
-		'time',
 		'timestampz',
 		'timestamp without time zone',
 		'timestamp with time zone',
-		'time without time zone',
-		'time with time zone',
 	],
 };
 
