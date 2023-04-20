@@ -53,10 +53,18 @@ const parsedActionActions = computed(() =>
 	parseActions(actions.value, actionsCategoryLocales.value.actions, !search.value),
 );
 const parsedTriggerActionsBaseline = computed(() =>
-	parseActions(useViewStacks().activeViewStack.baselineItems || [], actionsCategoryLocales.value.triggers, false),
+	parseActions(
+		useViewStacks().activeViewStack.baselineItems || [],
+		actionsCategoryLocales.value.triggers,
+		false,
+	),
 );
 const parsedActionActionsBaseline = computed(() =>
-	parseActions(useViewStacks().activeViewStack.baselineItems || [], actionsCategoryLocales.value.actions, !search.value),
+	parseActions(
+		useViewStacks().activeViewStack.baselineItems || [],
+		actionsCategoryLocales.value.actions,
+		!search.value,
+	),
 );
 
 // Because the placeholder items are inserted into the slots, we need to

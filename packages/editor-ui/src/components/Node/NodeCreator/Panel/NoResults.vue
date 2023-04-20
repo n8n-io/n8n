@@ -42,7 +42,11 @@
 </template>
 
 <script setup lang="ts">
-import { REQUEST_NODE_FORM_URL, REGULAR_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import {
+	REQUEST_NODE_FORM_URL,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
 import { NodeFilterType } from '@/Interface';
 
 import NoResultsIcon from './NoResultsIcon.vue';
