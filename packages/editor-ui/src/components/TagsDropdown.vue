@@ -117,14 +117,12 @@ export default mixins(showMessage).extend({
 			}
 		}
 
-		if (this.eventBus) {
-			this.eventBus.on('focus', () => {
-				this.focusOnInput();
-				this.focusOnTopOption();
-			});
-		}
+		this.eventBus?.on('focus', this.onBusFocus);
 
 		this.tagsStore.fetchAll();
+	},
+	destroyed() {
+		this.eventBus?.off('focus', this.onBusFocus);
 	},
 	computed: {
 		...mapStores(useTagsStore, useUIStore),
@@ -144,6 +142,10 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
+		onBusFocus() {
+			this.focusOnInput();
+			this.focusOnTopOption();
+		},
 		filterOptions(filter = '') {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => this.focusOnTopOption());

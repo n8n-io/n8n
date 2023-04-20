@@ -82,7 +82,7 @@ export class Twist implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
+			// Get all the available workspaces to display them to user so that they can
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -96,7 +96,7 @@ export class Twist implements INodeType {
 
 				return returnData;
 			},
-			// Get all the available conversations to display them to user so that he can
+			// Get all the available conversations to display them to user so that they can
 			// select them easily
 			async getConversations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -113,7 +113,7 @@ export class Twist implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available users to display them to user so that he can
+			// Get all the available users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -130,7 +130,7 @@ export class Twist implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
