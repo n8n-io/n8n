@@ -66,7 +66,7 @@
 
 <script lang="ts">
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 
 import { useNDVStore } from '@/stores/ndv';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -79,7 +79,7 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ExpressionParameterInput',
 	components: {
 		InlineExpressionEditorInput,

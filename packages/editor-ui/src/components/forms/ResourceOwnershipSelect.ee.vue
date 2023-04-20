@@ -8,10 +8,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { IMenuItem } from 'n8n-design-system';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		value: {
 			type: Boolean,

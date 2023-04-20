@@ -79,12 +79,13 @@
 
 <script lang="ts">
 import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
 		value: {

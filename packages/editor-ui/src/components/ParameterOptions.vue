@@ -25,11 +25,12 @@
 </template>
 
 <script lang="ts">
-import { NodeParameterValueType } from 'n8n-workflow';
-import Vue, { PropType } from 'vue';
+import type { NodeParameterValueType } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'parameter-options',
 	props: {
 		parameter: {

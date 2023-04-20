@@ -1,8 +1,8 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { WorkflowTitleStatus } from '@/Interface';
 
-export const titleChange = Vue.extend({
+export const titleChange = defineComponent({
 	methods: {
 		/**
 		 * Change title of n8n tab

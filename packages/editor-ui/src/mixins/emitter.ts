@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 
 function broadcast(componentName: string, eventName: string, params: any) {
 	// @ts-ignore
@@ -17,7 +17,7 @@ function broadcast(componentName: string, eventName: string, params: any) {
 	});
 }
 
-export default Vue.extend({
+export default defineComponent({
 	methods: {
 		$dispatch(componentName: string, eventName: string, params: any) {
 			let parent = this.$parent || this.$root;

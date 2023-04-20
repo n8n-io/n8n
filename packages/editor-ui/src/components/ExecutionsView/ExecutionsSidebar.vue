@@ -70,14 +70,14 @@ import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '@/constants';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { Route } from 'vue-router';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { ExecutionFilterType } from '@/Interface';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
