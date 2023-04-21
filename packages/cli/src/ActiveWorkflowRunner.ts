@@ -66,6 +66,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { START_NODES } from './constants';
+import http from 'http';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -82,6 +83,8 @@ export class ActiveWorkflowRunner {
 		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
+	private skipWebhookTriggers: boolean;
+
 	constructor(
 		private activeExecutions: ActiveExecutions,
 		private externalHooks: ExternalHooks,
@@ -89,7 +92,8 @@ export class ActiveWorkflowRunner {
 	) {}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async init() {
+	async init(options?: { skipWebhookTriggers?: boolean }) {
+		this.skipWebhookTriggers = options?.skipWebhookTriggers ?? false;
 		// Get the active workflows from database
 
 		// NOTE
@@ -824,26 +828,44 @@ export class ActiveWorkflowRunner {
 				activation,
 			);
 
-			// Add the workflows which have webhooks defined
-			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode, activation);
+			if (!this.skipWebhookTriggers) {
+				// Add the workflows which have webhooks defined
+				await this.addWorkflowWebhooks(workflowInstance, additionalData, mode, activation);
+			}
 
 			if (
 				workflowInstance.getTriggerNodes().length !== 0 ||
 				workflowInstance.getPollNodes().length !== 0
 			) {
-				await this.activeWorkflows.add(
-					workflowId,
-					workflowInstance,
-					additionalData,
-					mode,
-					activation,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
-				Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, {
-					workflowId,
-					workflowName: workflowData.name,
-				});
+				if (this.skipWebhookTriggers) {
+					await this.activeWorkflows.add(
+						workflowId,
+						workflowInstance,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					);
+					Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, {
+						workflowId,
+						workflowName: workflowData.name,
+					});
+				} else {
+					console.log('will fire request to other service');
+					try {
+						http.get(
+							'http://127.0.0.1:8888/reload?action=activate&workflowId=' + workflowId,
+							(res) => {
+								console.log('statusCode:', res.statusCode);
+							},
+						);
+					} catch (error) {
+						Logger.error('Error reloading workflow');
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+						Logger.error(error.message);
+					}
+				}
 			}
 
 			// Workflow got now successfully activated so make sure nothing is left in the queue
@@ -977,6 +999,18 @@ export class ActiveWorkflowRunner {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
 			);
+		}
+
+		if (!this.skipWebhookTriggers) {
+			try {
+				http.get('http://127.0.0.1:8888/reload?action=remove&workflowId=' + workflowId, (res) => {
+					console.log('statusCode:', res.statusCode);
+				});
+			} catch (error) {
+				Logger.error('Error reloading workflow');
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				Logger.error(error.message);
+			}
 		}
 
 		if (this.activationErrors[workflowId] !== undefined) {
