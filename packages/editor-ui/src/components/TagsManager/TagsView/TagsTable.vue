@@ -110,7 +110,7 @@
 import { Table as ElTable } from 'element-ui';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { ITagRow } from '@/Interface';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { N8nInput } from 'n8n-design-system';
 
 type TableRef = InstanceType<typeof ElTable>;
@@ -119,7 +119,7 @@ type N8nInputRef = InstanceType<typeof N8nInput>;
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TagsTable',
 	props: ['rows', 'isLoading', 'newName', 'isSaving'],
 	data() {
