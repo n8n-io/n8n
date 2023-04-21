@@ -362,7 +362,7 @@ export const NODE_TYPE_COUNT_MAPPER = {
 };
 export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
-export enum VIEWS {
+export const enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
@@ -398,7 +398,7 @@ export enum VIEWS {
 	VERSION_CONTROL = 'VersionControl',
 }
 
-export enum FAKE_DOOR_FEATURES {
+export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
 	SSO = 'sso',
@@ -443,7 +443,7 @@ export const MAPPING_PARAMS = [
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
 
-export enum WORKFLOW_MENU_ACTIONS {
+export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
@@ -455,7 +455,7 @@ export enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export enum EnterpriseEditionFeature {
+export const enum EnterpriseEditionFeature {
 	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
@@ -466,7 +466,7 @@ export enum EnterpriseEditionFeature {
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
-export enum MAIN_HEADER_TABS {
+export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
@@ -504,7 +504,7 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export enum STORES {
+export const enum STORES {
 	COMMUNITY_NODES = 'communityNodes',
 	ROOT = 'root',
 	SETTINGS = 'settings',
@@ -523,7 +523,7 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
-export enum SignInType {
+export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
 }
@@ -538,6 +538,12 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const EXPERIMENTS_TO_TRACK = [];
+export const TEMPLATE_EXPERIMENT = {
+	name: '002_remove_templates',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];

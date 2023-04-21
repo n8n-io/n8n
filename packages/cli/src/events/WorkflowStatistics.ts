@@ -9,7 +9,7 @@ import { InternalHooks } from '@/InternalHooks';
 import config from '@/config';
 import { UserService } from '@/user/user.service';
 
-enum StatisticsUpsertResult {
+const enum StatisticsUpsertResult {
 	insert = 'insert',
 	update = 'update',
 	failed = 'failed',

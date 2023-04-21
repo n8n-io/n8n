@@ -121,7 +121,12 @@
 			</div>
 		</div>
 
-		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
+		<div
+			:class="$style.runSelector"
+			v-if="maxRunIndex > 0"
+			v-show="!editMode.enabled"
+			data-test-id="run-selector"
+		>
 			<n8n-select
 				size="small"
 				:value="runIndex"
@@ -157,7 +162,11 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
+		<div
+			v-if="maxOutputIndex > 0 && branches.length > 1"
+			:class="$style.tabs"
+			data-test-id="branches"
+		>
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
@@ -1137,9 +1146,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const previous = this.displayMode;
 			this.ndvStore.setPanelDisplayMode({ pane: this.paneType, mode: displayMode });
 
-			const dataContainer = this.$refs.dataContainer;
-			if (dataContainer) {
-				const dataDisplay = (dataContainer as Element).children[0];
+			const dataContainerRef = this.$refs.dataContainer as Element | undefined;
+			if (dataContainerRef) {
+				const dataDisplay = dataContainerRef.children[0];
 
 				if (dataDisplay) {
 					dataDisplay.scrollTo(0, 0);
