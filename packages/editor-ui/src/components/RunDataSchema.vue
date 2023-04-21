@@ -6,10 +6,9 @@ import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv';
 import { useWebhooksStore } from '@/stores/webhooks';
-import { runExternalHook } from '@/mixins/externalHooks';
 import { telemetry } from '@/plugins/telemetry';
 import { IDataObject } from 'n8n-workflow';
-import { getSchema, isEmpty } from '@/utils';
+import { getSchema, isEmpty, runExternalHook } from '@/utils';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
 

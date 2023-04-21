@@ -58,7 +58,8 @@
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
 import ParameterOptions from './ParameterOptions.vue';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from '@/utils';
 import { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
@@ -67,7 +68,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 
 type ParamRef = InstanceType<typeof ParameterInputWrapper>;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'parameter-input-expanded',
 	components: {
 		ParameterOptions,
