@@ -6,6 +6,11 @@
  */
 module.exports = {
 	/**
+	 * https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md
+	 */
+	'no-useless-promise-resolve-reject': require('eslint-plugin-unicorn/rules/no-useless-promise-resolve-reject'),
+
+	/**
 	 * A rule to detect calls to JSON.parse() that are not wrapped inside try/catch blocks.
 	 *
 	 * Valid:

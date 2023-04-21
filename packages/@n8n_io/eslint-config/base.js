@@ -345,6 +345,8 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
 
+		'n8n-local-rules/no-useless-promise-resolve-reject': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
