@@ -49,6 +49,7 @@ import type {
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
+	IN8nUISettings,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
@@ -112,7 +113,6 @@ import type {
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IN8nUISettings,
 } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import {
@@ -313,8 +313,8 @@ class Server extends AbstractServer {
 			},
 			isNpmAvailable: false,
 			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
