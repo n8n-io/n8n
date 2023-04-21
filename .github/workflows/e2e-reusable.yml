@@ -47,6 +47,11 @@ on:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
         required: true
+    outputs:
+      tests_passed:
+        description: 'True if all E2E tests passed, otherwise false'
+        value: ${{ jobs.check_testing_matrix.outputs.all_tests_passed }}
+
 
 jobs:
   # single job that generates and outputs a common id
@@ -109,7 +114,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        containers: ${{ fromJSON(inputs.containers) }}
+        # If spec is not e2e/* then we run only one container to prevent
+        # running the same tests multiple times
+        containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -135,9 +142,9 @@ jobs:
           install: false
           start: pnpm start
           wait-on: 'http://localhost:5678'
-          wait-on-timeout: 120 #
+          wait-on-timeout: 120
           record: ${{ inputs.record }}
-          parallel: ${{ inputs.parallel }}
+          parallel: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.parallel || false ) }}
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
@@ -148,3 +155,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
           COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+
+  # Check if all tests passed and set the output variable
+  check_testing_matrix:
+    runs-on: ubuntu-latest
+    needs: [testing]
+    outputs:
+      all_tests_passed: ${{ steps.all_tests_passed.outputs.result }}
+    steps:
+      - name: Check all tests passed
+        id: all_tests_passed
+        run: |
+          success=true
+          for status in ${{ needs.testing.result }}; do
+            if [ $status != "success" ]; then
+              success=false
+              break
+            fi
+          done
+          echo "::set-output name=result::$success"
