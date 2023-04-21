@@ -4,7 +4,7 @@
 			<div v-show="!hideMenuBar" class="top-menu">
 				<WorkflowDetails />
 				<tab-bar
-					v-if="onWorkflowPage"
+					v-if="showWorkflowTabs"
 					:items="tabBarItems"
 					:activeTab="activeHeaderTab"
 					@select="onTabSelected"
@@ -25,7 +25,8 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import type { INodeUi, ITabBarItem } from '@/Interface';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { Route } from 'vue-router';
 import { mapStores } from 'pinia';
@@ -65,10 +66,11 @@ export default mixins(pushConnection, workflowHelpers).extend({
 		currentWorkflow(): string {
 			return this.$route.params.name || this.workflowsStore.workflowId;
 		},
-		onWorkflowPage(): boolean {
+		showWorkflowTabs() {
 			return (
-				this.$route.meta &&
-				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
+				this.$route.name === VIEWS.WORKFLOW ||
+				this.$route.name === VIEWS.EXECUTION_HOME ||
+				this.$route.name === VIEWS.EXECUTION_PREVIEW
 			);
 		},
 		activeExecution(): IExecutionsSummary {

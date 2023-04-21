@@ -238,10 +238,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			return this.workflowsStore.workflowId;
 		},
 		onWorkflowPage(): boolean {
-			return (
-				this.$route.meta &&
-				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
-			);
+			return this.$route.name === VIEWS.WORKFLOW;
 		},
 		onExecutionsTab(): boolean {
 			return [

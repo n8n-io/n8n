@@ -434,7 +434,8 @@ export default mixins(
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
+		next();
+		/*if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
 			next();
 			return;
 		}
@@ -478,7 +479,7 @@ export default mixins(
 			}
 		} else {
 			next();
-		}
+		}*/
 	},
 	computed: {
 		...mapStores(
@@ -642,12 +643,28 @@ export default mixins(
 		};
 	},
 	beforeDestroy() {
-		this.resetWorkspace();
-		// Make sure the event listeners get removed again else we
-		// could add up with them registered multiple times
+		this.$root.$off('newWorkflow', this.newWorkflow);
+		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
+		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		historyBus.$off('nodeMove', this.onMoveNode);
+		historyBus.$off('revertAddNode', this.onRevertAddNode);
+		historyBus.$off('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.$off('revertAddConnection', this.onRevertAddConnection);
+		historyBus.$off('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.$off('revertRenameNode', this.onRevertNameChange);
+		historyBus.$off('enableNodeToggle', this.onRevertEnableToggle);
+		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
+		this.uiStore.stateIsDirty = false;
+		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		this.unbindCanvasEvents();
+		this.instance.unbind();
+		this.instance.destroy();
+		this.resetWorkspace();
 	},
 	methods: {
 		showTriggerMissingToltip(isVisible: boolean) {
@@ -3828,8 +3845,31 @@ export default mixins(
 		},
 	},
 	async mounted() {
+		console.log('NodeView mounted');
+		const openSideMenu = this.uiStore.addFirstStepOnLoad;
+		if (openSideMenu) {
+			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+		}
+		this.uiStore.addFirstStepOnLoad = false;
+		document.addEventListener('keydown', this.keyDown);
+		document.addEventListener('keyup', this.keyUp);
+
+		this.$root.$on('newWorkflow', this.newWorkflow);
+		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
+		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		historyBus.$on('nodeMove', this.onMoveNode);
+		historyBus.$on('revertAddNode', this.onRevertAddNode);
+		historyBus.$on('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.$on('revertAddConnection', this.onRevertAddConnection);
+		historyBus.$on('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.$on('revertRenameNode', this.onRevertNameChange);
+		historyBus.$on('enableNodeToggle', this.onRevertEnableToggle);
+
+		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+
 		this.canvasStore.isDemo = this.isDemo;
-		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
 		this.$titleReset();
 
@@ -3918,61 +3958,6 @@ export default mixins(
 				}, promptTimeout);
 			}
 		}
-	},
-	activated() {
-		const openSideMenu = this.uiStore.addFirstStepOnLoad;
-		if (openSideMenu) {
-			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
-		}
-		this.uiStore.addFirstStepOnLoad = false;
-		this.bindCanvasEvents();
-		document.addEventListener('keydown', this.keyDown);
-		document.addEventListener('keyup', this.keyUp);
-
-		this.$root.$on('newWorkflow', this.newWorkflow);
-		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		historyBus.$on('nodeMove', this.onMoveNode);
-		historyBus.$on('revertAddNode', this.onRevertAddNode);
-		historyBus.$on('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.$on('revertAddConnection', this.onRevertAddConnection);
-		historyBus.$on('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.$on('revertRenameNode', this.onRevertNameChange);
-		historyBus.$on('enableNodeToggle', this.onRevertEnableToggle);
-
-		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
-	},
-	deactivated() {
-		this.unbindCanvasEvents();
-		document.removeEventListener('keydown', this.keyDown);
-		document.removeEventListener('keyup', this.keyUp);
-
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		historyBus.$off('nodeMove', this.onMoveNode);
-		historyBus.$off('revertAddNode', this.onRevertAddNode);
-		historyBus.$off('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.$off('revertAddConnection', this.onRevertAddConnection);
-		historyBus.$off('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.$off('revertRenameNode', this.onRevertNameChange);
-		historyBus.$off('enableNodeToggle', this.onRevertEnableToggle);
-
-		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
-	},
-	destroyed() {
-		this.resetWorkspace();
-		this.instance.unbind();
-		this.instance.destroy();
-		this.uiStore.stateIsDirty = false;
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 	},
 });
 </script>

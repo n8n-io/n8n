@@ -262,7 +262,6 @@ const router = new Router({
 				sidebar: MainSidebar,
 			},
 			meta: {
-				keepWorkflowAlive: true,
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -277,7 +276,6 @@ const router = new Router({
 						executionPreview: ExecutionsLandingPage,
 					},
 					meta: {
-						keepWorkflowAlive: true,
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -292,7 +290,6 @@ const router = new Router({
 						executionPreview: ExecutionPreview,
 					},
 					meta: {
-						keepWorkflowAlive: true,
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
