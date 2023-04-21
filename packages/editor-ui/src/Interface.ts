@@ -153,7 +153,6 @@ export interface IRestApi {
 		firstId?: string,
 	): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
 	getCredentialTranslation(credentialType: string): Promise<object>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
