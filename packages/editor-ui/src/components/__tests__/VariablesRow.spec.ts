@@ -1,20 +1,23 @@
 import VariablesRow from '../VariablesRow.vue';
 import { EnvironmentVariable } from '@/Interface';
-import { fireEvent, render } from '@testing-library/vue';
+import { fireEvent } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
 import { useSettingsStore, useUsersStore } from '@/stores';
+import { renderComponent } from '@/__tests__/utils';
 
 describe('VariablesRow', () => {
 	let server: ReturnType<typeof setupServer>;
+	let pinia: ReturnType<typeof createPinia>;
 
 	beforeAll(() => {
 		server = setupServer();
 	});
 
 	beforeEach(async () => {
-		setActivePinia(createPinia());
+		pinia = createPinia();
+		setActivePinia(pinia);
 
 		await useSettingsStore().getSettings();
 		await useUsersStore().loginWithCookie();
@@ -33,11 +36,12 @@ describe('VariablesRow', () => {
 	};
 
 	it('should render correctly', () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent(VariablesRow, {
 			props: {
 				data: environmentVariable,
 			},
 			stubs,
+			pinia,
 		});
 
 		expect(wrapper.html()).toMatchSnapshot();
@@ -45,11 +49,12 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show edit and delete buttons on hover', async () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent(VariablesRow, {
 			props: {
 				data: environmentVariable,
 			},
 			stubs,
+			pinia,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -59,12 +64,13 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show key and value inputs in edit mode', async () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent(VariablesRow, {
 			props: {
 				data: environmentVariable,
 				editing: true,
 			},
 			stubs,
+			pinia,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);
@@ -82,12 +88,13 @@ describe('VariablesRow', () => {
 	});
 
 	it('should show cancel and save buttons in edit mode', async () => {
-		const wrapper = render(VariablesRow, {
+		const wrapper = renderComponent(VariablesRow, {
 			props: {
 				data: environmentVariable,
 				editing: true,
 			},
 			stubs,
+			pinia,
 		});
 
 		await fireEvent.mouseEnter(wrapper.container);

@@ -55,7 +55,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
@@ -67,7 +67,7 @@ Vue.component('TimeAgo', TimeAgo);
 Vue.component('Badge', Badge);
 Vue.component('WarningTooltip', WarningTooltip);
 
-export default Vue.extend({
+export default defineComponent({
 	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'VersionCard',
 	props: ['version'],
