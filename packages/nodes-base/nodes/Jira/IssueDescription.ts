@@ -455,6 +455,7 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee',
 				name: 'assignee',
 				type: 'resourceLocator',
+				required: false,
 				default: { mode: 'list', value: '' },
 				modes: [
 					{

@@ -616,6 +616,7 @@ export class Jira implements INodeType {
 						extractValue: true,
 					});
 					if (assignee) updateFields.assignee = assignee;
+					else delete updateFields.assignee;
 
 					const reporter = this.getNodeParameter('updateFields.reporter', i, '', {
 						extractValue: true,
