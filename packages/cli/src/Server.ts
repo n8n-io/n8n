@@ -440,6 +440,8 @@ class Server extends AbstractServer {
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
 
+		this.instanceId = await UserSettings.getInstanceId();
+
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
 			.catch(() => false);
