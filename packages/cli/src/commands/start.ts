@@ -194,14 +194,14 @@ export class Start extends BaseCommand {
 			const hasCert = (await license.loadCertStr()).length > 0;
 
 			if (hasCert) {
-				LoggerProxy.debug('Skipping license activation');
-			} else {
-				try {
-					LoggerProxy.debug('Attempting license activation');
-					await license.activate(activationKey);
-				} catch (e) {
-					LoggerProxy.error('Could not activate license', e as Error);
-				}
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
+			try {
+				LoggerProxy.debug('Attempting license activation');
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
 			}
 		}
 	}
