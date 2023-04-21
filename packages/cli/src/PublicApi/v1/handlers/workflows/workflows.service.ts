@@ -11,15 +11,19 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { isInstanceOwner } from '../users/users.service';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
+import { START_NODES } from '@/constants';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
+	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: { userId: user.id },
+		where,
+		select: ['workflowId'],
 	});
+	return sharedWorkflows.map(({ workflowId }) => workflowId);
 
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
@@ -108,14 +112,10 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return Db.collections.Workflow.remove(workflow);
 }
 
-export async function getWorkflows(
+export async function getWorkflowsAndCount(
 	options: FindManyOptions<WorkflowEntity>,
-): Promise<WorkflowEntity[]> {
-	return Db.collections.Workflow.find(options);
-}
-
-export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>): Promise<number> {
-	return Db.collections.Workflow.count(options);
+): Promise<[WorkflowEntity[], number]> {
+	return Db.collections.Workflow.findAndCount(options);
 }
 
 export async function updateWorkflow(
@@ -128,7 +128,7 @@ export async function updateWorkflow(
 export function hasStartNode(workflow: WorkflowEntity): boolean {
 	if (!workflow.nodes.length) return false;
 
-	const found = workflow.nodes.find((node) => node.type === 'n8n-nodes-base.start');
+	const found = workflow.nodes.find((node) => START_NODES.includes(node.type));
 
 	return Boolean(found);
 }

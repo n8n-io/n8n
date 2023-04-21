@@ -38,7 +38,7 @@
 
 <script lang="ts">
 import Vue, { PropType } from 'vue';
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 
 import { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';

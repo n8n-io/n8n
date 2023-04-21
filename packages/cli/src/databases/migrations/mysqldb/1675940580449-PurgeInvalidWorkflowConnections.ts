@@ -3,6 +3,7 @@ import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/mi
 import { NodeTypes } from '@/NodeTypes';
 import { IConnections, INode } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
+import { Container } from 'typedi';
 
 export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationInterface {
 	name = 'PurgeInvalidWorkflowConnections1675940580449';
@@ -12,17 +13,24 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 
 		const tablePrefix = getTablePrefix();
 
-		const workflows: Array<{ id: number; nodes: INode[]; connections: IConnections }> =
-			await queryRunner.query(`
+		const workflows: Array<{
+			id: number;
+			nodes: INode[] | string;
+			connections: IConnections | string;
+		}> = await queryRunner.query(`
 			SELECT id, nodes, connections
 			FROM \`${tablePrefix}workflow_entity\`
 		`);
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		workflows.forEach(async (workflow) => {
-			let connections: IConnections = workflow.connections;
-			const nodes: INode[] = workflow.nodes;
+			let connections: IConnections =
+				typeof workflow.connections === 'string'
+					? JSON.parse(workflow.connections)
+					: workflow.connections;
+			const nodes: INode[] =
+				typeof workflow.nodes === 'string' ? JSON.parse(workflow.nodes) : workflow.nodes;
 
 			const nodesThatCannotReceiveInput: string[] = nodes.reduce((acc, node) => {
 				try {
@@ -50,22 +58,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 								!nodesThatCannotReceiveInput.includes(outgoingConnections.node),
 						);
 					});
-
-					// Filter out output connection items that are empty
-					connection[outputConnectionName] = connection[outputConnectionName].filter(
-						(item) => item.length > 0,
-					);
-
-					// Delete the output connection container if it is empty
-					if (connection[outputConnectionName].length === 0) {
-						delete connection[outputConnectionName];
-					}
 				});
-
-				// Finally delete the source node if it has no output connections
-				if (Object.keys(connection).length === 0) {
-					delete connections[sourceNodeName];
-				}
 			});
 
 			// Update database with new connections

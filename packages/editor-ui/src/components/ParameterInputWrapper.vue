@@ -27,8 +27,10 @@
 			v-if="expressionOutput"
 			:class="$style.hint"
 			data-test-id="parameter-expression-preview"
+			class="ph-no-capture"
 			:highlight="!!(expressionOutput && targetItem)"
 			:hint="expressionOutput"
+			:singleLine="true"
 		/>
 		<input-hint
 			v-else-if="parameterHint"

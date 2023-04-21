@@ -62,17 +62,6 @@ export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
 	},
 };
 
-export const WELCOME_STICKY_NODE = {
-	name: QUICKSTART_NOTE_NAME,
-	type: STICKY_NODE_TYPE,
-	typeVersion: 1,
-	position: [0, 0] as XYPosition,
-	parameters: {
-		height: 320,
-		width: 380,
-	},
-};
-
 export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 	type: N8nConnector.type,
 	options: {
@@ -541,7 +530,11 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 	const outputMap: {
 		[sourceOutputIndex: string]: {
 			[targetNodeName: string]: {
-				[targetInputIndex: string]: { total: number; iterations: number };
+				[targetInputIndex: string]: {
+					total: number;
+					iterations: number;
+					isArtificialRecoveredEventItem?: boolean;
+				};
 			};
 		};
 	} = {};
@@ -553,6 +546,13 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 
 		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
 			const sourceOutputIndex = i;
+
+			// executionData that was recovered by recoverEvents in the CLI will have an isArtificialRecoveredEventItem property
+			// to indicate that it was not part of the original executionData
+			// we do not want to count these items in the summary
+			// if (output?.[0]?.json?.isArtificialRecoveredEventItem) {
+			// 	return outputMap;
+			// }
 
 			if (!outputMap[sourceOutputIndex]) {
 				outputMap[sourceOutputIndex] = {};
@@ -589,10 +589,19 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 					};
 				}
 
-				outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output
-					? output.length
-					: 0;
-				outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
+				if (output?.[0]?.json?.isArtificialRecoveredEventItem) {
+					outputMap[sourceOutputIndex][targetNodeName][
+						targetInputIndex
+					].isArtificialRecoveredEventItem = true;
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total = 0;
+				} else {
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output
+						? output.length
+						: 0;
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output
+						? 1
+						: 0;
+				}
 			});
 		});
 	});
@@ -605,6 +614,13 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+};
+
+export const recoveredConnection = (connection: Connection) => {
+	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+	connection.addClass('success');
+	showOrHideMidpointArrow(connection);
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 };
 
 export const getRunItemsLabel = (output: { total: number; iterations: number }): string => {

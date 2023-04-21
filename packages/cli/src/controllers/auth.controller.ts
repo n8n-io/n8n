@@ -1,18 +1,28 @@
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
+import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
-import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type {
+	PublicUser,
+	IDatabaseCollections,
+	IInternalHooksClass,
+	CurrentUser,
+} from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import type { PostHogClient } from '@/posthog';
+import {
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso/ssoHelpers';
+import type { UserRepository } from '@db/repositories';
 
 @RestController()
 export class AuthController {
@@ -22,23 +32,28 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
+
+	private readonly postHog?: PostHogClient;
 
 	constructor({
 		config,
 		logger,
 		internalHooks,
 		repositories,
+		postHog,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
 		repositories: Pick<IDatabaseCollections, 'User'>;
+		postHog?: PostHogClient;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
+		this.postHog = postHog;
 	}
 
 	/**
@@ -46,17 +61,30 @@ export class AuthController {
 	 * Authless endpoint.
 	 */
 	@Post('/login')
-	async login(req: LoginRequest, res: Response): Promise<PublicUser> {
+	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
-		const user =
-			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+		let user: User | undefined;
 
+		if (isSamlCurrentAuthenticationMethod()) {
+			// attempt to fetch user data with the credentials, but don't log in yet
+			const preliminaryUser = await handleEmailLogin(email, password);
+			// if the user is an owner, continue with the login
+			if (preliminaryUser?.globalRole?.name === 'owner') {
+				user = preliminaryUser;
+			} else {
+				throw new AuthError('SAML is enabled, please log in with SAML');
+			}
+		} else if (isLdapCurrentAuthenticationMethod()) {
+			user = await handleLdapLogin(email, password);
+		} else {
+			user = await handleEmailLogin(email, password);
+		}
 		if (user) {
 			await issueCookie(res, user);
-			return sanitizeUser(user);
+			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
 
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
@@ -66,7 +94,7 @@ export class AuthController {
 	 * Manually check the `n8n-auth` cookie.
 	 */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<PublicUser> {
+	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
 		// Manually check the existing cookie.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
@@ -76,7 +104,7 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				return sanitizeUser(user);
+				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -102,7 +130,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return sanitizeUser(user);
+		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
 
 	/**

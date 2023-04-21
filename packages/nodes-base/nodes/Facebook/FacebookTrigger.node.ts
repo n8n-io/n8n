@@ -1,12 +1,13 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -160,7 +161,7 @@ export class FacebookTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available organizations to display them to user so that he can
+			// Get all the available organizations to display them to user so that they can
 			// select them easily
 			async getObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const object = this.getCurrentNodeParameter('object') as string;
@@ -169,7 +170,6 @@ export class FacebookTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -220,7 +220,7 @@ export class FacebookTrigger implements INodeType {
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
-					throw new NodeApiError(this.getNode(), responseData, {
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 						message: 'Facebook webhook creation response did not contain the expected data.',
 					});
 				}

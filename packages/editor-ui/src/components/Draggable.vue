@@ -103,6 +103,12 @@ export default Vue.extend({
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
+
+			// blur so that any focused inputs update value
+			const activeElement = document.activeElement as HTMLElement;
+			if (activeElement) {
+				activeElement.blur();
+			}
 		},
 		onDrag(e: MouseEvent) {
 			e.preventDefault();

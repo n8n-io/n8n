@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -150,7 +154,7 @@ export async function execute(
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject[]),
 		{ itemData: { item: index } },
 	);
 

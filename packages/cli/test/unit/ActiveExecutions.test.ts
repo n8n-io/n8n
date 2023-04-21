@@ -156,6 +156,7 @@ function mockFullRunData(): IRun {
 		},
 		mode: 'manual',
 		startedAt: new Date(),
+		status: 'new',
 	};
 }
 

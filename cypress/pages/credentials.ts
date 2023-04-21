@@ -5,7 +5,7 @@ export class CredentialsPage extends BasePage {
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
 		createCredentialButton: () => cy.getByTestId('resources-list-add'),
-		searchInput: () => cy.getByTestId('resources-list-search'),
+		searchInput: () => cy.getByTestId('resources-list-search').find('input'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),
 		credentialCards: () => cy.getByTestId('resources-list-item'),
 		credentialCard: (credentialName: string) =>

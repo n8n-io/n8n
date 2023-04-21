@@ -61,6 +61,7 @@
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				data-test-id="credential-sharing-modal-users-select"
 				@input="onAddSharee"
 			>
 				<template #prefix>
@@ -136,7 +137,7 @@ export default mixins(showMessage).extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 	},
 	methods: {
@@ -177,20 +178,10 @@ export default mixins(showMessage).extend({
 		},
 		goToUsersSettings() {
 			this.$router.push({ name: VIEWS.USERS_SETTINGS });
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=credential_sharing`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-credentials-sharing`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
 	},
 	mounted() {

@@ -1,5 +1,10 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject, INodeListSearchItems, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodeListSearchItems,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 
@@ -47,7 +52,7 @@ export function merge(responseData: [any]) {
 	for (const {
 		data: { rows },
 	} of responseData) {
-		allRows.push(...rows);
+		allRows.push(...(rows as IDataObject[]));
 	}
 	response.data.rows = allRows as [];
 	return [response];

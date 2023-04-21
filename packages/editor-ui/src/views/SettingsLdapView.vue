@@ -169,6 +169,7 @@ import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { getLdapSynchronizations } from '@/api/ldap';
 import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
+import { createEventBus } from '@/event-bus';
 
 type FormValues = {
 	loginEnabled: boolean;
@@ -221,7 +222,7 @@ export default mixins(showMessage).extend({
 			loadingTable: false,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			readyToSubmit: false,
 			page: 0,
 			loginEnabled: false,
@@ -354,7 +355,7 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		async onTestConnectionClick() {
 			this.loadingTestConnection = true;

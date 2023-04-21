@@ -1,12 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -80,7 +80,7 @@ export class MicrosoftExcel implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the workbooks to display them to user so that he can
+			// Get all the workbooks to display them to user so that they can
 			// select them easily
 			async getWorkbooks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const qs: IDataObject = {
@@ -105,7 +105,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the worksheets to display them to user so that he can
+			// Get all the worksheets to display them to user so that they can
 			// select them easily
 			async getworksheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workbookId = this.getCurrentNodeParameter('workbook');
@@ -131,7 +131,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tables to display them to user so that he can
+			// Get all the tables to display them to user so that they can
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workbookId = this.getCurrentNodeParameter('workbook');
@@ -235,7 +235,7 @@ export class MicrosoftExcel implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: 0 } },
 					);
 
@@ -296,7 +296,7 @@ export class MicrosoftExcel implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -432,7 +432,7 @@ export class MicrosoftExcel implements INodeType {
 						columns = columns.map((column: IDataObject) => column.name);
 
 						if (!columns.includes(lookupColumn)) {
-							throw new NodeApiError(this.getNode(), responseData, {
+							throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 								message: `Column ${lookupColumn} does not exist on the table selected`,
 							});
 						}
@@ -555,7 +555,7 @@ export class MicrosoftExcel implements INodeType {
 						returnData.push(...executionData);
 					} else if (responseData !== undefined) {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -632,7 +632,7 @@ export class MicrosoftExcel implements INodeType {
 							const keyRow = this.getNodeParameter('keyRow', i) as number;
 							const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
 							if (responseData.values === null) {
-								throw new NodeApiError(this.getNode(), responseData, {
+								throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 									message: 'Range did not return data',
 								});
 							}

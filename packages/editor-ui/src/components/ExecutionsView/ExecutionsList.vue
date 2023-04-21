@@ -4,9 +4,10 @@
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
+			:temporaryExecution="temporaryExecution"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
-			@loadMore="loadMore"
+			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
 			@refresh="loadAutoRefresh"
 		/>
@@ -26,20 +27,20 @@ import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue
 import {
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
-	MODAL_CLOSE,
 	MODAL_CONFIRMED,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
+	ExecutionFilterType,
 	IExecutionsListResponse,
-	IExecutionsSummary,
 	INodeUi,
 	ITag,
 	IWorkflowDb,
 } from '@/Interface';
 import {
+	IExecutionsSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -53,7 +54,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range as _range } from 'lodash';
+import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
 import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -63,6 +64,12 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useTagsStore } from '@/stores/tags';
+import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+
+// Number of execution pages that are fetched before temporary execution card is shown
+const MAX_LOADING_ATTEMPTS = 5;
+// Number of executions fetched on each page
+const LOAD_MORE_PAGE_SIZE = 100;
 
 export default mixins(
 	restApi,
@@ -71,7 +78,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-view',
+	name: 'executions-list',
 	components: {
 		ExecutionsSidebar,
 	},
@@ -79,7 +86,8 @@ export default mixins(
 		return {
 			loading: false,
 			loadingMore: false,
-			filter: { finished: true, status: '' },
+			filter: {} as ExecutionFilterType,
+			temporaryExecution: null as IExecutionsSummary | null,
 		};
 	},
 	computed: {
@@ -87,13 +95,11 @@ export default mixins(
 		hidePreview(): boolean {
 			const activeNotPresent =
 				this.filterApplied &&
-				(this.executions as IExecutionsSummary[]).find(
-					(ex) => ex.id === this.activeExecution.id,
-				) === undefined;
+				!(this.executions as IExecutionsSummary[]).find((ex) => ex.id === this.activeExecution?.id);
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
-			return this.filter.status !== '';
+			return this.filter.status !== 'all';
 		},
 		workflowDataNotLoaded(): boolean {
 			return (
@@ -106,6 +112,12 @@ export default mixins(
 		},
 		totalFinishedExecutionsCount(): number {
 			return this.workflowsStore.getTotalFinishedExecutionsCount;
+		},
+		requestFilter(): IDataObject {
+			return executionFilterToQueryFilter({
+				...this.filter,
+				workflowId: this.currentWorkflow,
+			});
 		},
 	},
 	watch: {
@@ -179,7 +191,7 @@ export default mixins(
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
 				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
-					this.setExecutions();
+					await this.setExecutions();
 				}
 				if (this.activeExecution) {
 					this.$router
@@ -193,7 +205,7 @@ export default mixins(
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced('loadMore', { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {
@@ -211,15 +223,9 @@ export default mixins(
 				lastId = lastItem.id;
 			}
 
-			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
-			if (this.filter.status === 'waiting') {
-				requestFilter.waitTill = true;
-			} else if (this.filter.status !== '') {
-				requestFilter.finished = this.filter.status === 'success';
-			}
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(requestFilter, limit, lastId);
+				data = await this.restApi().getPastExecutions(this.requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
 				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
@@ -234,6 +240,10 @@ export default mixins(
 			for (const newExecution of data.results) {
 				if (currentExecutions.find((ex) => ex.id === newExecution.id) === undefined) {
 					currentExecutions.push(newExecution);
+				}
+				// If we loaded temp execution, put it into it's place and remove from top of the list
+				if (newExecution.id === this.temporaryExecution?.id) {
+					this.temporaryExecution = null;
 				}
 			}
 			this.workflowsStore.currentWorkflowExecutions = currentExecutions;
@@ -251,6 +261,9 @@ export default mixins(
 					this.executions[0];
 
 				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
+				if (this.temporaryExecution?.id === this.$route.params.executionId) {
+					this.temporaryExecution = null;
+				}
 				if (this.executions.length > 0) {
 					await this.$router
 						.push({
@@ -305,8 +318,8 @@ export default mixins(
 				);
 			}
 		},
-		onFilterUpdated(newFilter: { finished: boolean; status: string }): void {
-			this.filter = newFilter;
+		onFilterUpdated(filter: ExecutionFilterType): void {
+			this.filter = filter;
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
@@ -344,7 +357,7 @@ export default mixins(
 
 					if (existingStillRunning && currentFinished) {
 						existingExecutions[executionIndex] = currentItem;
-						if (currentItem.id === this.activeExecution.id) {
+						if (currentItem.id === this.activeExecution?.id) {
 							updatedActiveExecution = currentItem;
 						}
 					}
@@ -371,8 +384,8 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
-				if (!activeInList && this.executions.length > 0) {
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
+				if (!activeInList && this.executions.length > 0 && !this.temporaryExecution) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -390,7 +403,7 @@ export default mixins(
 				return [];
 			}
 			try {
-				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
 				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 					this.$showMessage(
@@ -423,7 +436,11 @@ export default mixins(
 			}
 
 			// If there is no execution in the route, select the first one
-			if (this.workflowsStore.activeWorkflowExecution === null && this.executions.length > 0) {
+			if (
+				this.workflowsStore.activeWorkflowExecution === null &&
+				this.executions.length > 0 &&
+				!this.temporaryExecution
+			) {
 				this.workflowsStore.activeWorkflowExecution = this.executions[0];
 				this.$router
 					.push({
@@ -436,8 +453,8 @@ export default mixins(
 		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {
 			// First check if executions exists in the DB at all
 			if (attemptCount === 0) {
-				const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
-				if (!executionExists) {
+				const existingExecution = await this.workflowsStore.fetchExecutionDataById(executionId);
+				if (!existingExecution) {
 					this.workflowsStore.activeWorkflowExecution = null;
 					this.$showError(
 						new Error(
@@ -448,14 +465,21 @@ export default mixins(
 						this.$locale.baseText('nodeView.showError.openExecution.title'),
 					);
 					return;
+				} else {
+					this.temporaryExecution = existingExecution as IExecutionsSummary;
 				}
 			}
-
 			// stop if the execution wasn't found in the first 1000 lookups
-			if (attemptCount >= 10) return;
-
+			if (attemptCount >= MAX_LOADING_ATTEMPTS) {
+				if (this.temporaryExecution) {
+					this.workflowsStore.activeWorkflowExecution = this.temporaryExecution;
+					return;
+				}
+				this.workflowsStore.activeWorkflowExecution = null;
+				return;
+			}
 			// Fetch next batch of executions
-			await this.loadMore(100);
+			await this.loadMore(LOAD_MORE_PAGE_SIZE);
 			const execution = this.workflowsStore.getExecutionDataById(executionId);
 			if (!execution) {
 				// If it's not there load next until found
@@ -465,6 +489,7 @@ export default mixins(
 			} else {
 				// When found set execution as active
 				this.workflowsStore.activeWorkflowExecution = execution;
+				this.temporaryExecution = null;
 				return;
 			}
 		},
@@ -619,8 +644,7 @@ export default mixins(
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			this.workflowsStore.activeWorkflows = await this.restApi().getActiveWorkflows();
 		},
 		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';

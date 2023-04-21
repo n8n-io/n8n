@@ -195,15 +195,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		inputSize: {
 			type: String,
 			default: 'small',
-			validator: (size) => {
+			validator: (size: string) => {
 				return ['mini', 'small', 'medium', 'large', 'xlarge'].includes(size);
 			},
 		},
 		parameterIssues: {
 			type: Array as PropType<string[]>,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		displayTitle: {
 			type: String,
@@ -447,7 +445,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	methods: {
 		setWidth() {
-			this.width = (this.$refs.container as HTMLElement).offsetWidth;
+			const containerRef = this.$refs.container as HTMLElement;
+			if (containerRef) {
+				this.width = containerRef?.offsetWidth;
+			}
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {

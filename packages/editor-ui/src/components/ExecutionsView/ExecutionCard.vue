@@ -6,6 +6,7 @@
 			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
+			[$style.showGap]: showGap,
 		}"
 	>
 		<router-link
@@ -14,11 +15,12 @@
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { workflowId: currentWorkflow, executionId: execution.id },
 			}"
+			:data-test-execution-status="executionUIDetails.name"
 		>
 			<div :class="$style.description">
-				<n8n-text color="text-dark" :bold="true" size="medium">{{
-					executionUIDetails.startTime
-				}}</n8n-text>
+				<n8n-text color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
+					{{ executionUIDetails.startTime }}
+				</n8n-text>
 				<div :class="$style.executionStatus">
 					<n8n-spinner
 						v-if="executionUIDetails.name === 'running'"
@@ -37,15 +39,13 @@
 						<execution-time :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
-						v-else-if="
-							executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'
-						"
+						v-else-if="executionUIDetails.runningTime !== ''"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
 						{{
 							$locale.baseText('executionDetails.runningTimeFinished', {
-								interpolate: { time: executionUIDetails.runningTime },
+								interpolate: { time: executionUIDetails?.runningTime },
 							})
 						}}
 					</n8n-text>
@@ -62,6 +62,7 @@
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					activatorIcon="redo"
+					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
 				<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
@@ -107,6 +108,10 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 			type: Boolean,
 			default: false,
 		},
+		showGap: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	computed: {
 		retryExecutionActions(): object[] {
@@ -139,6 +144,7 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 <style module lang="scss">
 .executionCard {
 	display: flex;
+	flex-direction: column;
 	padding-right: var(--spacing-m);
 
 	&.active {
@@ -250,6 +256,12 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 
 	& + & {
 		margin-left: var(--spacing-2xs);
+	}
+}
+.showGap {
+	margin-bottom: var(--spacing-2xs);
+	.executionLink {
+		border-bottom: 1px solid var(--color-foreground-dark);
 	}
 }
 </style>

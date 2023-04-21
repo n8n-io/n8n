@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -75,7 +75,7 @@ export class Salesmate implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available users to display them to user so that he can
+			// Get all the available users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -90,7 +90,7 @@ export class Salesmate implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available contacs to display them to user so that he can
+			// Get all the available contacs to display them to user so that they can
 			// select them easily
 			async getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -109,7 +109,7 @@ export class Salesmate implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available companies to display them to user so that he can
+			// Get all the available companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -281,7 +281,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -473,7 +473,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -683,7 +683,7 @@ export class Salesmate implements INodeType {
 					responseData = responseData.Data;
 
 					if (!rawData) {
-						responseData = simplifySalesmateData(responseData);
+						responseData = simplifySalesmateData(responseData as IDataObject[]);
 					}
 				}
 				if (operation === 'getAll') {
@@ -782,7 +782,7 @@ export class Salesmate implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

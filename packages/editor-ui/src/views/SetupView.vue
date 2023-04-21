@@ -14,13 +14,14 @@ import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { VIEWS, ASSUMPTION_EXPERIMENT } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useCredentialsStore } from '@/stores/credentials';
+import { usePostHog } from '@/stores/posthog';
 
 export default mixins(showMessage, restApi).extend({
 	name: 'SetupView',
@@ -28,9 +29,9 @@ export default mixins(showMessage, restApi).extend({
 		AuthView,
 	},
 	async mounted() {
-		const getAllCredentialsPromise = this.getAllCredentials();
-		const getAllWorkflowsPromise = this.getAllWorkflows();
-		await Promise.all([getAllCredentialsPromise, getAllWorkflowsPromise]);
+		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
+		this.credentialsCount = credentials;
+		this.workflowsCount = workflows;
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -102,14 +103,6 @@ export default mixins(showMessage, restApi).extend({
 		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
 	},
 	methods: {
-		async getAllCredentials() {
-			const credentials = await this.credentialsStore.fetchAllCredentials();
-			this.credentialsCount = credentials.length;
-		},
-		async getAllWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
-			this.workflowsCount = workflows.length;
-		},
 		async confirmSetupOrGoBack(): Promise<boolean> {
 			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
 				return true;
@@ -167,7 +160,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.HOMEPAGE });
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
@@ -191,7 +184,7 @@ export default mixins(showMessage, restApi).extend({
 		onSkip() {
 			this.usersStore.skipOwnerSetup();
 			this.$router.push({
-				name: VIEWS.HOMEPAGE,
+				name: VIEWS.NEW_WORKFLOW,
 			});
 		},
 	},

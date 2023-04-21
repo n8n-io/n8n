@@ -1,13 +1,13 @@
+import { Container } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { INode, IPinData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import type { FindOptionsWhere, UpdateResult } from 'typeorm';
+import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
@@ -22,15 +22,16 @@ import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import * as TestWebhooks from '@/TestWebhooks';
+import { TestWebhooks } from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
+import type { WorkflowForList } from '@/workflows/workflows.types';
+import { InternalHooks } from '@/InternalHooks';
 
-export interface IGetWorkflowsQueryFilter {
-	id?: string;
-	name?: string;
-	active?: boolean;
-}
+export type IGetWorkflowsQueryFilter = Pick<
+	FindOptionsWhere<WorkflowEntity>,
+	'id' | 'name' | 'active'
+>;
 
 const schemaGetWorkflowsQueryFilter = {
 	$id: '/IGetWorkflowsQueryFilter',
@@ -91,7 +92,7 @@ export class WorkflowsService {
 			nodes: workflow.nodes,
 			connections: workflow.connections,
 			active: workflow.active,
-			nodeTypes: NodeTypes(),
+			nodeTypes: Container.get(NodeTypes),
 		}).getParentNodes(startNodeName);
 
 		let checkNodeName = '';
@@ -114,7 +115,7 @@ export class WorkflowsService {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
+	static async getMany(user: User, rawFilter: string): Promise<WorkflowForList[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -122,7 +123,7 @@ export class WorkflowsService {
 			return [];
 		}
 
-		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
+		let filter: IGetWorkflowsQueryFilter = {};
 		if (rawFilter) {
 			try {
 				const filterJson: JsonObject = jsonParse(rawFilter);
@@ -152,31 +153,32 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = [
-			'id',
-			'name',
-			'active',
-			'createdAt',
-			'updatedAt',
-			'nodes',
-		];
+		const select: FindOptionsSelect<WorkflowEntity> = {
+			id: true,
+			name: true,
+			active: true,
+			createdAt: true,
+			updatedAt: true,
+		};
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
+			select.tags = { id: true, name: true };
 		}
 
 		if (isSharingEnabled()) {
-			relations.push('shared', 'shared.user', 'shared.role');
+			relations.push('shared');
+			select.shared = { userId: true, roleId: true };
+			select.versionId = true;
 		}
 
+		filter.id = In(sharedWorkflowIds);
 		return Db.collections.Workflow.find({
-			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
+			select,
 			relations,
-			where: {
-				id: In(sharedWorkflowIds),
-				...filter,
-			},
+			where: filter,
+			order: { updatedAt: 'DESC' },
 		});
 	}
 
@@ -184,7 +186,7 @@ export class WorkflowsService {
 		user: User,
 		workflow: WorkflowEntity,
 		workflowId: string,
-		tags?: string[],
+		tagIds?: string[],
 		forceSave?: boolean,
 		roles?: string[],
 	): Promise<WorkflowEntity> {
@@ -235,38 +237,33 @@ export class WorkflowsService {
 
 		WorkflowHelpers.addNodeIds(workflow);
 
-		await ExternalHooks().run('workflow.update', [workflow]);
+		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
 			// changed and so the changes would not take effect
-			await ActiveWorkflowRunner.getInstance().remove(workflowId);
+			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
-		if (workflow.settings) {
-			if (workflow.settings.timezone === 'DEFAULT') {
-				// Do not save the default timezone
-				delete workflow.settings.timezone;
+		const workflowSettings = workflow.settings ?? {};
+
+		const keysAllowingDefault = [
+			'timezone',
+			'saveDataErrorExecution',
+			'saveDataSuccessExecution',
+			'saveManualExecutions',
+			'saveExecutionProgress',
+		] as const;
+		for (const key of keysAllowingDefault) {
+			// Do not save the default value
+			if (workflowSettings[key] === 'DEFAULT') {
+				delete workflowSettings[key];
 			}
-			if (workflow.settings.saveDataErrorExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveDataErrorExecution;
-			}
-			if (workflow.settings.saveDataSuccessExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveDataSuccessExecution;
-			}
-			if (workflow.settings.saveManualExecutions === 'DEFAULT') {
-				// Do not save when default got set
-				delete workflow.settings.saveManualExecutions;
-			}
-			if (
-				parseInt(workflow.settings.executionTimeout as string, 10) ===
-				config.get('executions.timeout')
-			) {
-				// Do not save when default got set
-				delete workflow.settings.executionTimeout;
-			}
+		}
+
+		if (workflowSettings.executionTimeout === config.get('executions.timeout')) {
+			// Do not save when default got set
+			delete workflowSettings.executionTimeout;
 		}
 
 		if (workflow.name) {
@@ -288,13 +285,11 @@ export class WorkflowsService {
 			]),
 		);
 
-		if (tags && !config.getEnv('workflowTagsDisabled')) {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			await TagHelpers.removeRelations(workflowId, tablePrefix);
-
-			if (tags.length) {
-				await TagHelpers.createRelations(workflowId, tags, tablePrefix);
-			}
+		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
+			await Db.collections.WorkflowTagMapping.delete({ workflowId });
+			await Db.collections.WorkflowTagMapping.insert(
+				tagIds.map((tagId) => ({ tagId, workflowId })),
+			);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -312,26 +307,30 @@ export class WorkflowsService {
 			);
 		}
 
-		if (updatedWorkflow.tags?.length && tags?.length) {
+		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tags,
+				requestOrder: tagIds,
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowSaved(user, updatedWorkflow, false);
+		await Container.get(ExternalHooks).run('workflow.afterUpdate', [updatedWorkflow]);
+		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await ExternalHooks().run('workflow.activate', [updatedWorkflow]);
-				await ActiveWorkflowRunner.getInstance().add(
+				await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
+				await Container.get(ActiveWorkflowRunner).add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
 				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				await Db.collections.Workflow.update(workflowId, { active: false });
+				// and revert the versionId change so UI remains consistent
+				await Db.collections.Workflow.update(workflowId, {
+					active: false,
+					versionId: shared.workflow.versionId,
+				});
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
@@ -378,14 +377,14 @@ export class WorkflowsService {
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 				active: false,
-				nodeTypes: NodeTypes(),
+				nodeTypes: Container.get(NodeTypes),
 				staticData: undefined,
 				settings: workflowData.settings,
 			});
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
+			const needsWebhook = await Container.get(TestWebhooks).needsWebhookData(
 				workflowData,
 				workflow,
 				additionalData,
@@ -431,7 +430,7 @@ export class WorkflowsService {
 	}
 
 	static async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
-		await ExternalHooks().run('workflow.delete', [workflowId]);
+		await Container.get(ExternalHooks).run('workflow.delete', [workflowId]);
 
 		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 			relations: ['workflow', 'role'],
@@ -449,13 +448,13 @@ export class WorkflowsService {
 
 		if (sharedWorkflow.workflow.active) {
 			// deactivate before deleting
-			await ActiveWorkflowRunner.getInstance().remove(workflowId);
+			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
 		await Db.collections.Workflow.delete(workflowId);
 
-		void InternalHooksManager.getInstance().onWorkflowDeleted(user, workflowId, false);
-		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
+		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
+		await Container.get(ExternalHooks).run('workflow.afterDelete', [workflowId]);
 
 		return sharedWorkflow.workflow;
 	}

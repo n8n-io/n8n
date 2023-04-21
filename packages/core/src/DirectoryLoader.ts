@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, getVersionedNodeTypeAll, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -45,7 +45,7 @@ export abstract class DirectoryLoader {
 	types: Types = { nodes: [], credentials: [] };
 
 	constructor(
-		protected readonly directory: string,
+		readonly directory: string,
 		protected readonly excludeNodes: string[] = [],
 		protected readonly includeNodes: string[] = [],
 	) {}
@@ -100,6 +100,10 @@ export abstract class DirectoryLoader {
 				this.fixIconPath(versionNode.description, filePath);
 			}
 
+			for (const version of Object.values(tempNode.nodeVersions)) {
+				this.addLoadOptionsMethods(version);
+			}
+
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
@@ -111,6 +115,7 @@ export abstract class DirectoryLoader {
 				);
 			}
 		} else {
+			this.addLoadOptionsMethods(tempNode);
 			// Short renaming to avoid type issues
 
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -133,7 +138,9 @@ export abstract class DirectoryLoader {
 			version: nodeVersion,
 		});
 
-		this.types.nodes.push(tempNode.description);
+		getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
+			this.types.nodes.push(description);
+		});
 	}
 
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
@@ -231,7 +238,7 @@ export abstract class DirectoryLoader {
 			}
 
 			node.description.codex = codex;
-		} catch (_) {
+		} catch {
 			Logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
@@ -239,6 +246,12 @@ export abstract class DirectoryLoader {
 					categories: [CUSTOM_NODES_CATEGORY],
 				};
 			}
+		}
+	}
+
+	private addLoadOptionsMethods(node: INodeType) {
+		if (node?.methods?.loadOptions) {
+			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
 		}
 	}
 

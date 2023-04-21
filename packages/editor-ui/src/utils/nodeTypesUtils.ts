@@ -4,7 +4,6 @@ import { useNodeTypesStore } from './../stores/nodeTypes';
 import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
-	RECOMMENDED_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
 	SUBCATEGORY_DESCRIPTIONS,
 	UNCATEGORIZED_CATEGORY,
@@ -37,6 +36,9 @@ import {
 	INodePropertyCollection,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
+import { useCredentialsStore } from '@/stores/credentials';
+import { i18n as locale } from '@/plugins/i18n';
+import { useSettingsStore } from '@/stores/settings';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -72,7 +74,7 @@ const addNodeToCategory = (
 	}
 	accu[category][subcategory].nodes.push({
 		type: nodeType.actionKey ? 'action' : 'node',
-		key: `${category}_${nodeType.name}`,
+		key: `${nodeType.name}`,
 		category,
 		properties: {
 			nodeType,
@@ -85,17 +87,12 @@ const addNodeToCategory = (
 
 export const getCategoriesWithNodes = (
 	nodeTypes: INodeTypeDescription[],
-	personalizedNodeTypes: string[],
 	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
 ): ICategoriesWithNodes => {
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
 		a.displayName > b.displayName ? 1 : -1,
 	);
 	const result = sorted.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-		if (personalizedNodeTypes.includes(nodeType.name)) {
-			addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, uncategorizedSubcategory);
-		}
-
 		if (!nodeType.codex || !nodeType.codex.categories) {
 			addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
 			return accu;
@@ -125,14 +122,12 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 		CUSTOM_NODES_CATEGORY,
 		UNCATEGORIZED_CATEGORY,
 		PERSONALIZED_CATEGORY,
-		RECOMMENDED_CATEGORY,
 	];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
 	sorted.sort();
 
 	return [
-		RECOMMENDED_CATEGORY,
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
 		PERSONALIZED_CATEGORY,
@@ -155,8 +150,9 @@ export const getCategorizedList = (
 		const categoryEl: INodeCreateElement = {
 			type: 'category',
 			key: category,
-			category,
 			properties: {
+				category,
+				name: category,
 				expanded: categoryIsExpanded,
 			},
 		};
@@ -179,7 +175,6 @@ export const getCategorizedList = (
 				const subcategoryEl: INodeCreateElement = {
 					type: 'subcategory',
 					key: `${category}_${subcategory}`,
-					category,
 					properties: {
 						subcategory,
 						description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
@@ -277,15 +272,15 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
-	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
+export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
+	if (selectedView === REGULAR_NODE_FILTER && el.includedByRegular) {
 		return true;
 	}
-	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
+	if (selectedView === TRIGGER_NODE_FILTER && el.includedByTrigger) {
 		return true;
 	}
 
-	return selectedType === ALL_NODE_FILTER;
+	return selectedView === ALL_NODE_FILTER;
 };
 
 const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {
@@ -389,6 +384,9 @@ export const getNodeAuthOptions = (
 	if (!nodeType) {
 		return [];
 	}
+	const recommendedSuffix = locale.baseText(
+		'credentialEdit.credentialConfig.recommendedAuthTypeSuffix',
+	);
 	let options: NodeAuthenticationOption[] = [];
 	const authProp = getMainAuthField(nodeType);
 	// Some nodes have multiple auth fields with same name but different display options so need
@@ -400,18 +398,32 @@ export const getNodeAuthOptions = (
 	authProps.forEach((field) => {
 		if (field.options) {
 			options = options.concat(
-				field.options.map((option) => ({
-					name: option.name,
-					value: option.value,
-					// Also add in the display options so we can hide/show the option if necessary
-					displayOptions: field.displayOptions,
-				})) || [],
+				field.options.map((option) => {
+					// Check if credential type associated with this auth option has overwritten properties
+					let hasOverrides = false;
+					const cred = getNodeCredentialForSelectedAuthType(nodeType, option.value);
+					if (cred) {
+						hasOverrides =
+							useCredentialsStore().getCredentialTypeByName(cred.name).__overwrittenProperties !==
+							undefined;
+					}
+					return {
+						name:
+							// Add recommended suffix if credentials have overrides and option is not already recommended
+							hasOverrides && !option.name.endsWith(recommendedSuffix)
+								? `${option.name} ${recommendedSuffix}`
+								: option.name,
+						value: option.value,
+						// Also add in the display options so we can hide/show the option if necessary
+						displayOptions: field.displayOptions,
+					};
+				}) || [],
 			);
 		}
 	});
 	// sort so recommended options are first
 	options.forEach((item, i) => {
-		if (item.name.includes('(recommended)')) {
+		if (item.name.includes(recommendedSuffix)) {
 			options.splice(i, 1);
 			options.unshift(item);
 		}
@@ -533,7 +545,6 @@ export const getCredentialsRelatedFields = (
 		credentialType.displayOptions.show
 	) {
 		Object.keys(credentialType.displayOptions.show).forEach((option) => {
-			console.log(option);
 			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
 		});
 	}

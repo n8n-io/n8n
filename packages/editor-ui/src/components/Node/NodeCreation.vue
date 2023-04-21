@@ -38,7 +38,12 @@
 <script lang="ts">
 import Vue from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
-import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE } from '@/constants';
+import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
+	NODE_CREATOR_OPEN_SOURCES,
+	STICKY_NODE_TYPE,
+} from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
@@ -94,7 +99,10 @@ export default Vue.extend({
 			document.addEventListener('mousemove', moveCallback, false);
 		},
 		openNodeCreator() {
-			this.$emit('toggleNodeCreator', { source: 'add_node_button', createNodeActive: true });
+			this.$emit('toggleNodeCreator', {
+				source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+				createNodeActive: true,
+			});
 		},
 		addStickyNote() {
 			if (document.activeElement) {

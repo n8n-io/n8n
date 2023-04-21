@@ -34,26 +34,14 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Default owner', () => {
-	before(() => {
-		cy.resetAll();
-	});
-	beforeEach(() => {
-		cy.visit('/');
-	});
-
-	it('should skip owner setup', () => {
-		cy.skipSetup();
-	});
-
 	it('should be able to create workflows', () => {
-		workflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		workflowsPage.getters.newWorkflowButtonCard().click();
-
+		cy.resetAll();
+		cy.skipSetup();
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
 
 		// reload page, ensure owner still has access
 		cy.reload();
-
+		cy.waitForLoad();
 		workflowPage.getters.workflowNameInput().should('contain.value', 'Test workflow');
 	});
 
@@ -82,6 +70,7 @@ describe('Default owner', () => {
 	});
 
 	it('should be able to setup UM from settings', () => {
+		cy.visit('/');
 		mainSidebar.getters.settings().should('be.visible');
 		mainSidebar.actions.goToSettings();
 		cy.url().should('include', settingsUsagePage.url);
