@@ -1,4 +1,4 @@
-import { ref, Ref, watch } from 'vue';
+import { ref, Ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -10,7 +10,6 @@ import {
 	TEMPLATE_EXPERIMENT,
 } from '@/constants';
 import { useTelemetryStore } from './telemetry';
-import { useSegment } from './segment';
 import { debounce } from 'lodash-es';
 
 const EVENTS = {
@@ -22,7 +21,6 @@ export const usePostHog = defineStore('posthog', () => {
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
-	const segmentStore = useSegment();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -48,8 +46,11 @@ export const usePostHog = defineStore('posthog', () => {
 		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
 		if (cachedOverrdies) {
 			try {
+				console.log('Overriding feature flags', cachedOverrdies);
 				overrides.value = JSON.parse(cachedOverrdies);
-			} catch (e) {}
+			} catch (e) {
+				console.log('Could not override experiment', e);
+			}
 		}
 
 		window.featureFlags = {
@@ -127,9 +128,9 @@ export const usePostHog = defineStore('posthog', () => {
 			};
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
-			trackExperimentsDebounced(evaluatedFeatureFlags);
-			evaluateExperiments(evaluatedFeatureFlags);
 			addExperimentOverrides();
+			trackExperimentsDebounced(featureFlags.value);
+			evaluateExperiments(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
@@ -137,8 +138,8 @@ export const usePostHog = defineStore('posthog', () => {
 				addExperimentOverrides();
 
 				// must be debounced because it is called multiple times by posthog
-				trackExperimentsDebounced(map);
-				evaluateExperimentsDebounced(map);
+				trackExperimentsDebounced(featureFlags.value);
+				evaluateExperimentsDebounced(featureFlags.value);
 			});
 		}
 	};
