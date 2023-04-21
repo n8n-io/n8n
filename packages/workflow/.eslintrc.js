@@ -11,13 +11,5 @@ module.exports = {
 	rules: {
 		'@typescript-eslint/consistent-type-imports': 'error',
 		'import/order': 'off', // TODO: remove this
-		'no-restricted-syntax': [
-			'error',
-			{
-				selector: 'TSEnumDeclaration:not([const=true])',
-				message:
-					'Do not declare raw enums as it lead to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-',
-			},
-		],
 	},
 };

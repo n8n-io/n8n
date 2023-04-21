@@ -64,12 +64,11 @@ export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
 
 export type ResourceLocator = 'id' | 'url' | 'list';
 
-// eslint-disable-next-line no-restricted-syntax
-export enum ResourceLocatorUiNames {
-	id = 'By ID',
-	url = 'By URL',
-	list = 'From List',
-}
+export const ResourceLocatorUiNames = {
+	id: 'By ID',
+	url: 'By URL',
+	list: 'From List',
+};
 
 export type SheetCellDecoded = {
 	cell?: string;

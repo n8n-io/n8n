@@ -13,7 +13,8 @@ import type {
 
 import { todoistApiRequest } from '../GenericFunctions';
 
-import { OperationType, TodoistService } from './Service';
+import type { OperationType } from './Service';
+import { TodoistService } from './Service';
 
 // interface IBodyCreateTask {
 // 	content?: string;
@@ -701,15 +702,11 @@ export class TodoistV2 implements INodeType {
 		const service = new TodoistService();
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
+		const operation = this.getNodeParameter('operation', 0) as OperationType;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = await service.execute(
-						this,
-						OperationType[operation as keyof typeof OperationType],
-						i,
-					);
+					responseData = await service.execute(this, operation, i);
 				}
 
 				if (responseData !== undefined && Array.isArray(responseData?.data)) {

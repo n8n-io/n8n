@@ -33,14 +33,6 @@ module.exports = {
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
-		'no-restricted-syntax': [
-			'error',
-			{
-				selector: 'TSEnumDeclaration:not([const=true])',
-				message:
-					'Do not declare raw enums as it lead to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-',
-			},
-		],
 	},
 
 	overrides: [
