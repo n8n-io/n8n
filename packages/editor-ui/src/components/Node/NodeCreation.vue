@@ -17,6 +17,7 @@
 				<div
 					:class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']"
 					@click="addStickyNote"
+					data-test-id="add-sticky-button"
 				>
 					<n8n-icon-button
 						size="medium"

@@ -672,18 +672,18 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		scrollToTop() {
 			setTimeout(() => {
-				const content = this.$refs.content as Element;
-				if (content) {
-					content.scrollTop = 0;
+				const contentRef = this.$refs.content as Element | undefined;
+				if (contentRef) {
+					contentRef.scrollTop = 0;
 				}
 			}, 0);
 		},
 
 		scrollToBottom() {
 			setTimeout(() => {
-				const content = this.$refs.content as Element;
-				if (content) {
-					content.scrollTop = content.scrollHeight;
+				const contentRef = this.$refs.content as Element | undefined;
+				if (contentRef) {
+					contentRef.scrollTop = contentRef.scrollHeight;
 				}
 			}, 0);
 		},

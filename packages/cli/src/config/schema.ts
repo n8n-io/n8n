@@ -1130,7 +1130,7 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether autorenew for licenses is enabled.',
+			doc: 'Whether auto renewal for licenses is enabled.',
 		},
 		autoRenewOffset: {
 			format: Number,

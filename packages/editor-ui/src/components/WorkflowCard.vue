@@ -81,6 +81,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 
+type ActivatorRef = InstanceType<typeof WorkflowActivator>;
+
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -164,7 +166,7 @@ export default mixins(showMessage).extend({
 	methods: {
 		async onClick(event?: PointerEvent) {
 			if (event) {
-				if ((this.$refs.activator as Vue)?.$el.contains(event.target as HTMLElement)) {
+				if ((this.$refs.activator as ActivatorRef)?.$el.contains(event.target as HTMLElement)) {
 					return;
 				}
 
