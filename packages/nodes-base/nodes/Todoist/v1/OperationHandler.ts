@@ -42,7 +42,7 @@ export interface Command {
 	};
 }
 
-export enum CommandType {
+export const enum CommandType {
 	ITEM_MOVE = 'item_move',
 	ITEM_ADD = 'item_add',
 	ITEM_UPDATE = 'item_update',

@@ -6,7 +6,7 @@ import { createEventBus } from '@/event-bus';
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
 // when debugging
-export enum COMMANDS {
+export const enum COMMANDS {
 	MOVE_NODE = 'moveNode',
 	ADD_NODE = 'addNode',
 	REMOVE_NODE = 'removeNode',

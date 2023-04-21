@@ -79,6 +79,8 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
+type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
+
 export default Vue.extend({
 	name: 'ExpressionParameterInput',
 	components: {
@@ -115,7 +117,11 @@ export default Vue.extend({
 			return (this.hoveringItem?.itemIndex ?? 0) + 1;
 		},
 		hoveringItem(): TargetItem | null {
-			return this.ndvStore.hoveringItem;
+			if (this.ndvStore.isInputParentOfActiveNode) {
+				return this.ndvStore.hoveringItem;
+			}
+
+			return null;
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
@@ -123,9 +129,10 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const inlineInput = this.$refs.inlineInput as (Vue & HTMLElement) | undefined;
-
-			if (inlineInput?.$el) inlineInput.focus();
+			const inlineInputRef = this.$refs.inlineInput as InlineExpressionEditorInputRef | undefined;
+			if (inlineInputRef?.$el) {
+				inlineInputRef.focus();
+			}
 		},
 		onFocus() {
 			this.isFocused = true;

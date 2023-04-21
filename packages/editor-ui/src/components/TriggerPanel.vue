@@ -113,6 +113,9 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { N8nInfoAccordion } from 'n8n-design-system';
+
+type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -355,7 +358,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	methods: {
 		expandExecutionHelp() {
 			if (this.$refs.help) {
-				(this.$refs.help as Vue).$emit('expand');
+				(this.$refs.help as HelpRef).$emit('expand');
 			}
 		},
 		onLinkClick(e: MouseEvent) {

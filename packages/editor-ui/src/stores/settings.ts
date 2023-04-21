@@ -16,16 +16,19 @@ import {
 } from '@/constants';
 import {
 	ILdapConfig,
-	ILogLevel,
 	IN8nPromptResponse,
 	IN8nPrompts,
-	IN8nUISettings,
 	IN8nValueSurveyData,
 	ISettingsState,
 	UserManagementAuthenticationMethod,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
-import { IDataObject, ITelemetrySettings } from 'n8n-workflow';
+import {
+	IDataObject,
+	ILogLevel,
+	IN8nUISettings,
+	ITelemetrySettings,
+	WorkflowSettings,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';
@@ -175,7 +178,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isQueueModeEnabled(): boolean {
 			return this.settings.executionMode === 'queue';
 		},
-		workflowCallerPolicyDefaultOption(): WorkflowCallerPolicyDefaultOption {
+		workflowCallerPolicyDefaultOption(): WorkflowSettings.CallerPolicy {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
 		isDefaultAuthenticationSaml(): boolean {
