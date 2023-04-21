@@ -170,6 +170,9 @@ import { useSettingsStore } from '@/stores/settings';
 import { getLdapSynchronizations } from '@/api/ldap';
 import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
 import { createEventBus } from '@/event-bus';
+import { N8nFormInputs } from 'n8n-design-system';
+
+type N8nFormInputsRef = InstanceType<typeof N8nFormInputs>;
 
 type FormValues = {
 	loginEnabled: boolean;
@@ -295,32 +298,33 @@ export default mixins(showMessage).extend({
 		async onSubmit(): Promise<void> {
 			// We want to save all form values (incl. the hidden onces), so we are using
 			// `values` data prop of the `FormInputs` child component since they are all preserved there
-			const formInputs = this.$refs.ldapConfigForm as (Vue & { values: FormValues }) | undefined;
-			if (!this.hasAnyChanges || !formInputs) {
+			const formInputsRef = this.$refs.ldapConfigForm as N8nFormInputsRef | undefined;
+			if (!this.hasAnyChanges || !formInputsRef) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: formInputs.values.loginEnabled,
-				loginLabel: formInputs.values.loginLabel,
-				connectionUrl: formInputs.values.serverAddress,
-				allowUnauthorizedCerts: formInputs.values.allowUnauthorizedCerts,
-				connectionPort: +formInputs.values.port,
-				connectionSecurity: formInputs.values.connectionSecurity,
-				baseDn: formInputs.values.baseDn,
-				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
+				loginEnabled: formInputsRef.values.loginEnabled,
+				loginLabel: formInputsRef.values.loginLabel,
+				connectionUrl: formInputsRef.values.serverAddress,
+				allowUnauthorizedCerts: formInputsRef.values.allowUnauthorizedCerts,
+				connectionPort: +formInputsRef.values.port,
+				connectionSecurity: formInputsRef.values.connectionSecurity,
+				baseDn: formInputsRef.values.baseDn,
+				bindingAdminDn:
+					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminDn : '',
 				bindingAdminPassword:
-					formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
-				emailAttribute: formInputs.values.email,
-				firstNameAttribute: formInputs.values.firstName,
-				lastNameAttribute: formInputs.values.lastName,
-				loginIdAttribute: formInputs.values.loginId,
-				ldapIdAttribute: formInputs.values.ldapId,
-				userFilter: formInputs.values.userFilter,
-				synchronizationEnabled: formInputs.values.synchronizationEnabled,
-				synchronizationInterval: +formInputs.values.synchronizationInterval,
-				searchPageSize: +formInputs.values.pageSize,
-				searchTimeout: +formInputs.values.searchTimeout,
+					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminPassword : '',
+				emailAttribute: formInputsRef.values.email,
+				firstNameAttribute: formInputsRef.values.firstName,
+				lastNameAttribute: formInputsRef.values.lastName,
+				loginIdAttribute: formInputsRef.values.loginId,
+				ldapIdAttribute: formInputsRef.values.ldapId,
+				userFilter: formInputsRef.values.userFilter,
+				synchronizationEnabled: formInputsRef.values.synchronizationEnabled,
+				synchronizationInterval: +formInputsRef.values.synchronizationInterval,
+				searchPageSize: +formInputsRef.values.pageSize,
+				searchTimeout: +formInputsRef.values.searchTimeout,
 			};
 
 			let saveForm = true;

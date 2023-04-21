@@ -62,6 +62,8 @@ import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 
+type ParamRef = InstanceType<typeof ParameterInput>;
+
 export default mixins(showMessage, workflowHelpers).extend({
 	name: 'parameter-input-wrapper',
 	components: {
@@ -208,9 +210,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$emit('drop', data);
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			const paramRef = this.$refs.param as ParamRef | undefined;
+
+			paramRef?.$emit('optionSelected', command);
 		},
 		onValueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);

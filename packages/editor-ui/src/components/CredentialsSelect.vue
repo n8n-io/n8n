@@ -61,6 +61,9 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
 import { useCredentialsStore } from '@/stores/credentials';
+import { N8nSelect } from 'n8n-design-system';
+
+type N8nSelectRef = InstanceType<typeof N8nSelect>;
 
 export default Vue.extend({
 	name: 'CredentialsSelect',
@@ -93,9 +96,9 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.focus();
+			const selectRef = this.$refs.innerSelect as N8nSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
 			}
 		},
 		/**

@@ -96,9 +96,9 @@ export default mixins(showMessage).extend({
 					throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
 				}
 
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
+				const iframeRef = this.$refs.preview_iframe as HTMLIFrameElement | undefined;
+				if (iframeRef?.contentWindow) {
+					iframeRef.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openWorkflow',
 							workflow: this.workflow,
@@ -119,9 +119,9 @@ export default mixins(showMessage).extend({
 				if (!this.executionId) {
 					throw new Error(this.$locale.baseText('workflowPreview.showError.missingExecution'));
 				}
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
+				const iframeRef = this.$refs.preview_iframe as HTMLIFrameElement | undefined;
+				if (iframeRef?.contentWindow) {
+					iframeRef.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openExecution',
 							executionId: this.executionId,

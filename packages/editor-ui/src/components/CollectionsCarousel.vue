@@ -35,6 +35,8 @@ import VueAgile from 'vue-agile';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
+type SliderRef = InstanceType<typeof VueAgile>;
+
 export default mixins(genericHelpers).extend({
 	name: 'CollectionsCarousel',
 	props: {
@@ -97,22 +99,23 @@ export default mixins(genericHelpers).extend({
 	},
 	mounted() {
 		this.$nextTick(() => {
-			const slider = this.$refs.slider;
-			if (!slider) {
+			const sliderRef = this.$refs.slider as SliderRef | undefined;
+			if (!sliderRef) {
 				return;
 			}
-			// @ts-ignore
-			this.listElement = slider.$el.querySelector('.agile__list');
+
+			this.listElement = sliderRef.$el.querySelector('.agile__list');
 			if (this.listElement) {
 				this.listElement.addEventListener('scroll', this.updateCarouselScroll);
 			}
 		});
 	},
 	beforeDestroy() {
-		if (this.$refs.slider) {
-			// @ts-ignore
-			this.$refs.slider.destroy();
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (sliderRef) {
+			sliderRef.destroy();
 		}
+
 		window.removeEventListener('scroll', this.updateCarouselScroll);
 	},
 });
