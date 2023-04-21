@@ -148,7 +148,7 @@ import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -160,7 +160,6 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 import { useUsageStore } from '@/stores/usage';
-import { BaseTextKey } from '@/plugins/i18n';
 import { createEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -172,7 +171,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(workflowHelpers, titleChange).extend({
+export default mixins(workflowHelpers).extend({
 	name: 'WorkflowDetails',
 	components: {
 		TagsContainer,
@@ -183,6 +182,11 @@ export default mixins(workflowHelpers, titleChange).extend({
 		TagsDropdown,
 		InlineTextEdit,
 		BreakpointsObserver,
+	},
+	setup() {
+		return {
+			...useTitleChange(),
+		};
 	},
 	data() {
 		return {
@@ -516,7 +520,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					}
 					this.uiStore.stateIsDirty = false;
 					// Reset tab title since workflow is deleted.
-					this.$titleReset();
+					this.titleReset();
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 						type: 'success',

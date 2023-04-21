@@ -9,19 +9,18 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { titleChange } from './titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export const workflowRun = mixins(
-	externalHooks,
-	restApi,
-	workflowHelpers,
-	showMessage,
-	titleChange,
-).extend({
+export const workflowRun = mixins(externalHooks, restApi, workflowHelpers, showMessage).extend({
+	setup() {
+		return {
+			...useTitleChange(),
+		};
+	},
 	computed: {
 		...mapStores(useRootStore, useUIStore, useWorkflowsStore),
 	},
@@ -67,7 +66,7 @@ export const workflowRun = mixins(
 				return;
 			}
 
-			this.$titleSet(workflow.name as string, 'EXECUTING');
+			this.titleSet(workflow.name as string, 'EXECUTING');
 
 			this.clearAllStickyNotifications();
 
@@ -114,7 +113,7 @@ export const workflowRun = mixins(
 							type: 'error',
 							duration: 0,
 						});
-						this.$titleSet(workflow.name as string, 'ERROR');
+						this.titleSet(workflow.name as string, 'ERROR');
 						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
 
 						this.getWorkflowDataToSave().then((workflowData) => {
@@ -240,7 +239,7 @@ export const workflowRun = mixins(
 
 				return runWorkflowApiResponse;
 			} catch (error) {
-				this.$titleSet(workflow.name as string, 'ERROR');
+				this.titleSet(workflow.name as string, 'ERROR');
 				this.$showError(error, this.$locale.baseText('workflowRun.showError.title'));
 				return undefined;
 			}
