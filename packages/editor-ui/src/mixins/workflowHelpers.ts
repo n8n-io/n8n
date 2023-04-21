@@ -65,6 +65,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
+import { useEnvironmentsStore } from '@/stores';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -140,33 +141,6 @@ export function resolveParameter(
 		runExecutionData = executionData.data;
 	}
 
-	parentNode.forEach((parentNodeName) => {
-		const pinData: IPinData[string] | undefined =
-			useWorkflowsStore().pinDataByNodeName(parentNodeName);
-
-		if (pinData) {
-			runExecutionData = {
-				...runExecutionData,
-				resultData: {
-					...runExecutionData.resultData,
-					runData: {
-						...runExecutionData.resultData.runData,
-						[parentNodeName]: [
-							{
-								startTime: new Date().valueOf(),
-								executionTime: 0,
-								source: [],
-								data: {
-									main: [pinData.map((data) => ({ json: data }))],
-								},
-							},
-						],
-					},
-				},
-			};
-		}
-	});
-
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
 	}
@@ -177,6 +151,7 @@ export function resolveParameter(
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
+		$vars: useEnvironmentsStore().variablesAsObject,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -254,7 +229,7 @@ function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boo
 		nodeTypes,
 		settings: useWorkflowsStore().workflowSettings,
 		// @ts-ignore
-		pinData: useWorkflowsStore().pinData,
+		pinData: useWorkflowsStore().getPinData,
 	});
 
 	return cachedWorkflow;

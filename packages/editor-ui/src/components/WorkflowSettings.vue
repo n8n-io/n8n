@@ -355,6 +355,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'WorkflowSettings',
@@ -407,7 +408,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			executionTimeout: 0,
 			maxExecutionTimeout: 0,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			WORKFLOW_SETTINGS_MODAL_KEY,
 		};
 	},
@@ -528,7 +529,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				: str.replace(/[^0-9,\s]/g, '');
 		},
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
 		},
 		setTimeout(key: string, value: string) {

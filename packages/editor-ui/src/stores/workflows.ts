@@ -51,13 +51,13 @@ import {
 	getActiveWorkflows,
 	getCurrentExecutions,
 	getExecutionData,
-	getFinishedExecutions,
+	getExecutions,
 	getNewWorkflow,
 	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
 	getPairedItemsMapping,
@@ -471,7 +471,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowPinData(pinData: IPinData): void {
 			this.workflow.pinData = pinData || {};
-			dataPinningEventBus.$emit('pin-data', pinData || {});
+			dataPinningEventBus.emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(tags: string[]): void {
@@ -511,7 +511,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
+			dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 
 		unpinData(payload: { node: INodeUi }): void {
@@ -525,7 +525,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+			dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
 		addConnection(data: { connection: IConnection[] }): void {
@@ -933,7 +933,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			requestFilter: ExecutionsQueryFilter,
 		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
-			let finishedExecutions = [];
 
 			if (!requestFilter.workflowId) {
 				return [];
@@ -945,10 +944,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						workflowId: requestFilter.workflowId,
 					});
 				}
-				finishedExecutions = await getFinishedExecutions(
-					rootStore.getRestApiContext,
-					requestFilter,
-				);
+				const finishedExecutions = await getExecutions(rootStore.getRestApiContext, requestFilter);
 				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
