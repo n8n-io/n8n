@@ -6,6 +6,10 @@ import type {
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
+import set from 'lodash.set';
+
+export type BodyParameter = { name: string; value: string };
+
 export type IAuthDataSanitizeKeys = {
 	[key: string]: string[];
 };
@@ -140,3 +144,25 @@ export const binaryContentTypes = [
 	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 	'application/x-7z-compressed',
 ];
+
+export type BodyParametersReducer = (
+	acc: IDataObject,
+	cur: { name: string; value: string },
+) => IDataObject;
+
+export const prepareRequestBody = (
+	parameters: BodyParameter[],
+	bodyType: string,
+	version: number,
+	defaultReducer: BodyParametersReducer,
+) => {
+	if (bodyType === 'json' && version >= 4) {
+		return parameters.reduce((acc, entry) => {
+			const value = entry.value;
+			set(acc, entry.name, value);
+			return acc;
+		}, {} as IDataObject);
+	} else {
+		return parameters.reduce(defaultReducer, {});
+	}
+};

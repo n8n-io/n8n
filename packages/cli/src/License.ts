@@ -1,13 +1,23 @@
-import type { TEntitlement, TLicenseContainerStr } from '@n8n_io/license-sdk';
+import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
-import { LICENSE_FEATURES, N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import {
+	LICENSE_FEATURES,
+	LICENSE_QUOTAS,
+	N8N_VERSION,
+	SETTINGS_LICENSE_CERT_KEY,
+} from './constants';
 import { Service } from 'typedi';
 
-async function loadCertStr(): Promise<TLicenseContainerStr> {
+async function loadCertStr(): Promise<TLicenseBlock> {
+	// if we have an ephemeral license, we don't want to load it from the database
+	const ephemeralLicense = config.get('license.cert');
+	if (ephemeralLicense) {
+		return ephemeralLicense;
+	}
 	const databaseSettings = await Db.collections.Settings.findOne({
 		where: {
 			key: SETTINGS_LICENSE_CERT_KEY,
@@ -17,7 +27,9 @@ async function loadCertStr(): Promise<TLicenseContainerStr> {
 	return databaseSettings?.value ?? '';
 }
 
-async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
+async function saveCertStr(value: TLicenseBlock): Promise<void> {
+	// if we have an ephemeral license, we don't want to save it to the database
+	if (config.get('license.cert')) return;
 	await Db.collections.Settings.upsert(
 		{
 			key: SETTINGS_LICENSE_CERT_KEY,
@@ -112,6 +124,14 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
+	isVariablesEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+	}
+
+	isVersionControlLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -155,7 +175,11 @@ export class License {
 
 	// Helper functions for computed data
 	getTriggerLimit(): number {
-		return (this.getFeatureValue('quota:activeWorkflows') ?? -1) as number;
+		return (this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? -1) as number;
+	}
+
+	getVariablesLimit(): number {
+		return (this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? -1) as number;
 	}
 
 	getPlanName(): string {

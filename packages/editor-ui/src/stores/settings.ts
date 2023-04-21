@@ -127,6 +127,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.settings.personalizationSurveyEnabled
 			);
 		},
+		isUserActivationSurveyEnabled(): boolean {
+			return (
+				this.settings.telemetry &&
+				this.settings.telemetry.enabled &&
+				this.settings.userActivationSurveyEnabled
+			);
+		},
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},
@@ -179,13 +186,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		setSettings(settings: IN8nUISettings): void {
 			this.settings = settings;
 			this.userManagement = settings.userManagement;
-			this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
+			if (this.userManagement) {
+				this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
+			}
 			this.api = settings.publicApi;
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
-			this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
-			this.ldap.loginLabel = settings.sso.ldap.loginLabel;
-			this.saml.loginEnabled = settings.sso.saml.loginEnabled;
-			this.saml.loginLabel = settings.sso.saml.loginLabel;
+			if (settings.sso?.ldap) {
+				this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
+				this.ldap.loginLabel = settings.sso.ldap.loginLabel;
+			}
+			if (settings.sso?.saml) {
+				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
+				this.saml.loginLabel = settings.sso.saml.loginLabel;
+			}
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();

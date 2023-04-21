@@ -990,31 +990,6 @@ export const schema = {
 		},
 	},
 
-	enterprise: {
-		features: {
-			sharing: {
-				format: Boolean,
-				default: false,
-			},
-			ldap: {
-				format: Boolean,
-				default: false,
-			},
-			saml: {
-				format: Boolean,
-				default: false,
-			},
-			logStreaming: {
-				format: Boolean,
-				default: false,
-			},
-			advancedExecutionFilters: {
-				format: Boolean,
-				default: false,
-			},
-		},
-	},
-
 	sso: {
 		justInTimeProvisioning: {
 			format: Boolean,
@@ -1064,6 +1039,15 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	userActivationSurvey: {
+		enabled: {
+			doc: 'Whether user activation survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
 		},
 	},
 
@@ -1165,6 +1149,12 @@ export const schema = {
 			default: 1,
 			env: 'N8N_LICENSE_TENANT_ID',
 			doc: 'Tenant id used by the license manager',
+		},
+		cert: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_CERT',
+			doc: 'Ephemeral license certificate',
 		},
 	},
 

@@ -117,6 +117,9 @@ class WorkflowRunnerProcess {
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
+		// Init db since we need to read the license.
+		await Db.init();
+
 		const instanceId = userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(instanceId);
 		await Container.get(InternalHooks).init(instanceId);
@@ -124,19 +127,13 @@ class WorkflowRunnerProcess {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
-		// Init db since we need to read the license.
-		await Db.init();
-
 		const license = Container.get(License);
 		await license.init(instanceId);
 
-		// Start timeout for the execution
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
-			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
+		const workflowSettings = this.data.workflowData.settings ?? {};
 
+		// Start timeout for the execution
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
@@ -173,6 +170,7 @@ class WorkflowRunnerProcess {
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		additionalData.restartExecutionId = this.data.restartExecutionId;
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		additionalData.hooks.hookFunctions.sendResponse = [

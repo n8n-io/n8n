@@ -20,7 +20,7 @@ export class NDV extends BasePage {
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.monaco-editor[role=code]'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
-		savePinnedDataButton: () => this.getters.runDataPaneHeader().find('button').contains('Save'),
+		savePinnedDataButton: () => this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),

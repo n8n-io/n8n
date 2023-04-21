@@ -21,6 +21,7 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	WorkflowSettings,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -248,11 +249,9 @@ export class WorkflowRunner {
 		// Changes were made by adding the `workflowTimeout` to the `additionalData`
 		// So that the timeout will also work for executions with nested workflows.
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
 
+		const workflowSettings = data.workflowData.settings ?? {};
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
@@ -265,13 +264,14 @@ export class WorkflowRunner {
 			active: data.workflowData.active,
 			nodeTypes,
 			staticData: data.workflowData.staticData,
-			settings: data.workflowData.settings,
+			settings: workflowSettings,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		additionalData.restartExecutionId = restartExecutionId;
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
@@ -590,16 +590,12 @@ export class WorkflowRunner {
 				try {
 					// Check if this execution data has to be removed from database
 					// based on workflow settings.
-					let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
-					let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
-					if (data.workflowData.settings !== undefined) {
-						saveDataErrorExecution =
-							(data.workflowData.settings.saveDataErrorExecution as string) ||
-							saveDataErrorExecution;
-						saveDataSuccessExecution =
-							(data.workflowData.settings.saveDataSuccessExecution as string) ||
-							saveDataSuccessExecution;
-					}
+					const workflowSettings = data.workflowData.settings ?? {};
+					const saveDataErrorExecution =
+						workflowSettings.saveDataErrorExecution ?? config.getEnv('executions.saveDataOnError');
+					const saveDataSuccessExecution =
+						workflowSettings.saveDataSuccessExecution ??
+						config.getEnv('executions.saveDataOnSuccess');
 
 					const workflowDidSucceed = !runData.data.resultData.error;
 					if (
@@ -649,6 +645,8 @@ export class WorkflowRunner {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
+		data.restartExecutionId = restartExecutionId;
+
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
@@ -666,10 +664,9 @@ export class WorkflowRunner {
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
+
+		const workflowSettings = data.workflowData.settings ?? {};
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 
 		const processTimeoutFunction = (timeout: number) => {
 			this.activeExecutions.stopExecution(executionId, 'timeout');
@@ -747,8 +744,22 @@ export class WorkflowRunner {
 					childExecutionIds.splice(executionIdIndex, 1);
 				}
 
-				// eslint-disable-next-line @typescript-eslint/await-thenable
-				this.activeExecutions.remove(message.data.executionId, message.data.result);
+				if (message.data.result === undefined) {
+					const noDataError = new WorkflowOperationError('Workflow finished with no result data');
+					const subWorkflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
+						data,
+						message.data.executionId,
+					);
+					await this.processError(
+						noDataError,
+						startedAt,
+						data.executionMode,
+						message.data?.executionId,
+						subWorkflowHooks,
+					);
+				} else {
+					this.activeExecutions.remove(message.data.executionId, message.data.result);
+				}
 			}
 		});
 

@@ -1,7 +1,24 @@
 import type { IDataObject } from './Interfaces';
-import util from 'util';
+
+const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
+
+const augmentedObjects = new WeakSet<object>();
+
+function augment<T>(value: T): T {
+	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
+	if (value instanceof Date) return new Date(value.valueOf()) as T;
+	if (value instanceof Uint8Array) return value.slice() as T;
+
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
+	if (Array.isArray(value)) return augmentArray(value) as T;
+
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
+	return augmentObject(value) as T;
+}
 
 export function augmentArray<T>(data: T[]): T[] {
+	if (augmentedObjects.has(data)) return data;
+
 	let newData: unknown[] | undefined = undefined;
 
 	function getData(): unknown[] {
@@ -11,30 +28,18 @@ export function augmentArray<T>(data: T[]): T[] {
 		return newData;
 	}
 
-	return new Proxy(data, {
+	const proxy = new Proxy(data, {
 		deleteProperty(target, key: string) {
 			return Reflect.deleteProperty(getData(), key);
 		},
 		get(target, key: string, receiver): unknown {
 			const value = Reflect.get(newData !== undefined ? newData : target, key, receiver) as unknown;
-
-			if (typeof value === 'object') {
-				if (value === null || util.types.isProxy(value)) {
-					return value;
-				}
-
+			const newValue = augment(value);
+			if (newValue !== value) {
 				newData = getData();
-
-				if (Array.isArray(value)) {
-					Reflect.set(newData, key, augmentArray(value));
-				} else {
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					Reflect.set(newData, key, augmentObject(value as IDataObject));
-				}
-
-				return Reflect.get(newData, key);
+				Reflect.set(newData, key, newValue);
+				return newValue;
 			}
-
 			return value;
 		},
 		getOwnPropertyDescriptor(target, key) {
@@ -45,7 +50,8 @@ export function augmentArray<T>(data: T[]): T[] {
 			if (key === 'length') {
 				return Reflect.getOwnPropertyDescriptor(newData, key);
 			}
-			return { configurable: true, enumerable: true };
+
+			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 		has(target, key) {
 			return Reflect.has(newData !== undefined ? newData : target, key);
@@ -54,24 +60,25 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Reflect.ownKeys(newData !== undefined ? newData : target);
 		},
 		set(target, key: string, newValue: unknown) {
-			if (newValue !== null && typeof newValue === 'object') {
-				// Always proxy all objects. Like that we can check in get simply if it
-				// is a proxy and it does then not matter if it was already there from the
-				// beginning and it got proxied at some point or set later and so theoretically
-				// does not have to get proxied
-				newValue = new Proxy(newValue, {});
-			}
-
-			return Reflect.set(getData(), key, newValue);
+			// Always proxy all objects. Like that we can check in get simply if it
+			// is a proxy and it does then not matter if it was already there from the
+			// beginning and it got proxied at some point or set later and so theoretically
+			// does not have to get proxied
+			return Reflect.set(getData(), key, augment(newValue));
 		},
 	});
+
+	augmentedObjects.add(proxy);
+	return proxy;
 }
 
 export function augmentObject<T extends object>(data: T): T {
+	if (augmentedObjects.has(data)) return data;
+
 	const newData = {} as IDataObject;
 	const deletedProperties: Array<string | symbol> = [];
 
-	return new Proxy(data, {
+	const proxy = new Proxy(data, {
 		get(target, key: string, receiver): unknown {
 			if (deletedProperties.indexOf(key) !== -1) {
 				return undefined;
@@ -83,18 +90,13 @@ export function augmentObject<T extends object>(data: T): T {
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const value = Reflect.get(target, key, receiver);
-
-			if (value !== null && typeof value === 'object') {
-				if (Array.isArray(value)) {
-					newData[key] = augmentArray(value);
-				} else {
-					newData[key] = augmentObject(value as IDataObject);
-				}
-
-				return newData[key];
+			const newValue = augment(value);
+			if (newValue !== value) {
+				Object.assign(newData, { [key]: newValue });
+				return newValue;
 			}
 
-			return value as string;
+			return value;
 		},
 		deleteProperty(target, key: string) {
 			if (key in newData) {
@@ -126,18 +128,20 @@ export function augmentObject<T extends object>(data: T): T {
 
 			return true;
 		},
+
 		ownKeys(target) {
-			return [...new Set([...Reflect.ownKeys(target), ...Object.keys(newData)])].filter(
+			const originalKeys = Reflect.ownKeys(target);
+			const newKeys = Object.keys(newData);
+			return [...new Set([...originalKeys, ...newKeys])].filter(
 				(key) => deletedProperties.indexOf(key) === -1,
 			);
 		},
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		getOwnPropertyDescriptor(k) {
-			return {
-				enumerable: true,
-				configurable: true,
-			};
+		getOwnPropertyDescriptor(target, key) {
+			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 	});
+
+	augmentedObjects.add(proxy);
+	return proxy;
 }

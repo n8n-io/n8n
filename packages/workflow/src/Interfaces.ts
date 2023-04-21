@@ -172,6 +172,7 @@ export interface IRequestOptionsSimplified {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body: IDataObject;
 	headers: IDataObject;
@@ -182,6 +183,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body?: IDataObject;
 	headers?: IDataObject;
@@ -722,6 +724,7 @@ export interface RequestHelperFunctions {
 export interface FunctionsBase {
 	logger: ILogger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -1433,6 +1436,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 			  };
 	};
 	actions?: INodeActionTypeDescription[];
+	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
 export interface INodeHookDescription {
@@ -1463,21 +1467,30 @@ export interface IWebhookDescription {
 	restartWebhook?: boolean;
 }
 
+export interface ProxyInput {
+	all: () => INodeExecutionData[];
+	context: any;
+	first: () => INodeExecutionData | undefined;
+	item: INodeExecutionData | undefined;
+	last: () => INodeExecutionData | undefined;
+	params?: INodeParameters;
+}
+
 export interface IWorkflowDataProxyData {
 	[key: string]: any;
-	$binary: any;
+	$binary: INodeExecutionData['binary'];
 	$data: any;
 	$env: any;
-	$evaluateExpression: any;
-	$item: any;
-	$items: any;
-	$json: any;
+	$evaluateExpression: (expression: string, itemIndex?: number) => NodeParameterValueType;
+	$item: (itemIndex: number, runIndex?: number) => IWorkflowDataProxyData;
+	$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => INodeExecutionData[];
+	$json: INodeExecutionData['json'];
 	$node: any;
-	$parameter: any;
-	$position: any;
+	$parameter: INodeParameters;
+	$position: number;
 	$workflow: any;
 	$: any;
-	$input: any;
+	$input: ProxyInput;
 	$thisItem: any;
 	$thisRunIndex: number;
 	$thisItemIndex: number;
@@ -1550,7 +1563,7 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	waitTill?: Date;
+	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
 	status: ExecutionStatus;
@@ -1680,6 +1693,7 @@ export interface IWorkflowExecuteAdditionalData {
 	) => Promise<any>;
 	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
+	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -1693,6 +1707,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId: string;
+	variables: IDataObject;
 }
 
 export type WorkflowExecuteMode =
@@ -1712,8 +1727,21 @@ export interface IWorkflowHooksOptionalParameters {
 	sessionId?: string;
 }
 
+export namespace WorkflowSettings {
+	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
+	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+}
+
 export interface IWorkflowSettings {
-	[key: string]: IDataObject | string | number | boolean | undefined;
+	timezone?: 'DEFAULT' | string;
+	errorWorkflow?: string;
+	callerIds?: string;
+	callerPolicy?: WorkflowSettings.CallerPolicy;
+	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution?: WorkflowSettings.SaveDataExecution;
+	saveManualExecutions?: 'DEFAULT' | boolean;
+	saveExecutionProgress?: 'DEFAULT' | boolean;
+	executionTimeout?: number;
 }
 
 export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
@@ -1907,4 +1935,18 @@ export interface IExceutionSummaryNodeExecutionResult {
 		message?: string;
 		description?: string;
 	}>;
+}
+
+export interface ExecutionOptions {
+	limit?: number;
+}
+
+export interface ExecutionFilters {
+	finished?: boolean;
+	mode?: WorkflowExecuteMode[];
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	waitTill?: boolean;
+	workflowId?: number | string;
 }

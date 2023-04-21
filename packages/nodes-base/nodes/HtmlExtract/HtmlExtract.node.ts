@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import get from 'lodash.get';
+
 type Cheerio = ReturnType<typeof cheerio>;
 
 interface IValueData {
@@ -227,14 +229,15 @@ export class HtmlExtract implements INodeType {
 
 				let htmlArray: string[] | string = [];
 				if (sourceData === 'json') {
-					if (item.json[dataPropertyName] === undefined) {
+					const data = get(item.json, dataPropertyName, undefined);
+					if (data === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`No property named "${dataPropertyName}" exists!`,
 							{ itemIndex },
 						);
 					}
-					htmlArray = item.json[dataPropertyName] as string;
+					htmlArray = data as string;
 				} else {
 					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(

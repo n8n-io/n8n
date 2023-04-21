@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import type { PluginObject } from 'vue';
 import N8nActionBox from '../components/N8nActionBox';
 import N8nActionDropdown from '../components/N8nActionDropdown';
 import N8nActionToggle from '../components/N8nActionToggle';
@@ -10,8 +10,10 @@ import N8nButton from '../components/N8nButton';
 import { N8nElButton } from '../components/N8nButton/overrides';
 import N8nCallout from '../components/N8nCallout';
 import N8nCard from '../components/N8nCard';
+import N8nDatatable from '../components/N8nDatatable';
 import N8nFormBox from '../components/N8nFormBox';
 import N8nFormInputs from '../components/N8nFormInputs';
+import N8nFormInput from '../components/N8nFormInput';
 import N8nHeading from '../components/N8nHeading';
 import N8nIcon from '../components/N8nIcon';
 import N8nIconButton from '../components/N8nIconButton';
@@ -47,8 +49,8 @@ import N8nUsersList from '../components/N8nUsersList';
 import N8nResizeWrapper from '../components/N8nResizeWrapper';
 import N8nRecycleScroller from '../components/N8nRecycleScroller';
 
-export default {
-	install: (app: typeof Vue) => {
+const n8nComponentsPlugin: PluginObject<{}> = {
+	install: (app) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-dropdown', N8nActionDropdown);
@@ -61,8 +63,10 @@ export default {
 		app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);
 		app.component('n8n-card', N8nCard);
+		app.component('n8n-datatable', N8nDatatable);
 		app.component('n8n-form-box', N8nFormBox);
 		app.component('n8n-form-inputs', N8nFormInputs);
+		app.component('n8n-form-input', N8nFormInput);
 		app.component('n8n-icon', N8nIcon);
 		app.component('n8n-icon-button', N8nIconButton);
 		app.component('n8n-info-tip', N8nInfoTip);
@@ -98,3 +102,5 @@ export default {
 		app.component('n8n-recycle-scroller', N8nRecycleScroller);
 	},
 };
+
+export default n8nComponentsPlugin;
