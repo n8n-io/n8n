@@ -125,25 +125,38 @@ export const usePostHog = defineStore('posthog', () => {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
-			trackExperiments(evaluatedFeatureFlags);
+
+			// does not need to be debounced really, but tracking does not fire without delay on page load
+			trackExperimentsDebounced(evaluatedFeatureFlags);
+			evaluateExperiments(evaluatedFeatureFlags);
 			addExperimentOverrides();
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
 				addExperimentOverrides();
+
+				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(map);
+				evaluateExperimentsDebounced(map);
 			});
 		}
 	};
 
+	const evaluateExperiments = (featureFlags: FeatureFlags) => {
+		Object.keys(featureFlags).forEach((name) => {
+			const variant = featureFlags[name];
+			if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
+				settingsStore.disableTemplates();
+			}
+		});
+	};
+	const evaluateExperimentsDebounced = debounce(evaluateExperiments, 2000);
+
 	const trackExperiments = (featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
 	};
-
-	const trackExperimentsDebounced = debounce((featureFlags: FeatureFlags) => {
-		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	}, 2000);
+	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
 
 	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
 		const variant = featureFlags[name];
@@ -151,18 +164,12 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		setTimeout(() => {
-			telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-				name,
-				variant,
-			});
-		}, 2000);
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+			name,
+			variant,
+		});
 
 		trackedDemoExp.value[name] = variant;
-
-		if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
-			settingsStore.disableTemplates();
-		}
 	};
 
 	return {
