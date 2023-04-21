@@ -34,7 +34,7 @@ export class GotifyApi implements ICredentialType {
 			name: 'ignoreSSLIssues',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to allow for connections to servers without SSL configured',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 	];
 }
