@@ -111,6 +111,15 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		isDNVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
+		isInputParentOfActiveNode(): boolean {
+			const inputNodeName = this.ndvInputNodeName;
+			if (!this.activeNode || !inputNodeName) {
+				return false;
+			}
+			const workflow = useWorkflowsStore().getCurrentWorkflow();
+			const parentNodes = workflow.getParentNodes(this.activeNode.name, 'main', 1);
+			return parentNodes.includes(inputNodeName);
+		},
 	},
 	actions: {
 		setInputNodeName(name: string | undefined): void {

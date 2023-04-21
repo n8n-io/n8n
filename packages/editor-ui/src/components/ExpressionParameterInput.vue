@@ -115,7 +115,11 @@ export default Vue.extend({
 			return (this.hoveringItem?.itemIndex ?? 0) + 1;
 		},
 		hoveringItem(): TargetItem | null {
-			return this.ndvStore.hoveringItem;
+			if (this.ndvStore.isInputParentOfActiveNode) {
+				return this.ndvStore.hoveringItem;
+			}
+
+			return null;
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
