@@ -78,7 +78,7 @@ export const enum LICENSE_FEATURES {
 	VERSION_CONTROL = 'feat:versionControl',
 }
 
-export enum LICENSE_QUOTAS {
+export const enum LICENSE_QUOTAS {
 	TRIGGER_LIMIT = 'quota:activeWorkflows',
 	VARIABLES_LIMIT = 'quota:maxVariables',
 }
