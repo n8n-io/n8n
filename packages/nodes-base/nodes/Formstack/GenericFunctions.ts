@@ -39,7 +39,7 @@ export interface IFormstackSubmissionFieldContainer {
 	value: string;
 }
 
-export enum FormstackFieldFormat {
+export const enum FormstackFieldFormat {
 	ID = 'id',
 	Label = 'label',
 	Name = 'name',
