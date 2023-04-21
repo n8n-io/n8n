@@ -9,11 +9,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-link',
 	props: {
 		size: {

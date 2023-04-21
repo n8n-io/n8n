@@ -64,27 +64,27 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		value(): any | undefined {
-			if (this.$props.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
-				return this.$props.valueXS;
+			if (this.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
+				return this.valueXS;
 			}
 
-			if (this.$props.valueXL !== undefined && this.$data.width >= BREAKPOINT_XL) {
-				return this.$props.valueXL;
+			if (this.valueXL !== undefined && this.$data.width >= BREAKPOINT_XL) {
+				return this.valueXL;
 			}
 
-			if (this.$props.valueLG !== undefined && this.$data.width >= BREAKPOINT_LG) {
-				return this.$props.valueLG;
+			if (this.valueLG !== undefined && this.$data.width >= BREAKPOINT_LG) {
+				return this.valueLG;
 			}
 
-			if (this.$props.valueMD !== undefined && this.$data.width >= BREAKPOINT_MD) {
-				return this.$props.valueMD;
+			if (this.valueMD !== undefined && this.$data.width >= BREAKPOINT_MD) {
+				return this.valueMD;
 			}
 
-			if (this.$props.valueSM !== undefined) {
-				return this.$props.valueSM;
+			if (this.valueSM !== undefined) {
+				return this.valueSM;
 			}
 
-			return this.$props.valueDefault;
+			return this.valueDefault;
 		},
 	},
 });

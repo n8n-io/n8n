@@ -133,7 +133,7 @@ export class Mautic implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available companies to display them to user so that he can
+			// Get all the available companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -151,7 +151,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -164,7 +164,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available stages to display them to user so that he can
+			// Get all the available stages to display them to user so that they can
 			// select them easily
 			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -177,7 +177,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available company fields to display them to user so that he can
+			// Get all the available company fields to display them to user so that they can
 			// select them easily
 			async getCompanyFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -215,7 +215,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available contact fields to display them to user so that he can
+			// Get all the available contact fields to display them to user so that they can
 			// select them easily
 			async getContactFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -233,7 +233,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available segments to display them to user so that he can
+			// Get all the available segments to display them to user so that they can
 			// select them easily
 			async getSegments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -246,7 +246,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available campaings to display them to user so that he can
+			// Get all the available campaings to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -264,7 +264,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available emails to display them to user so that he can
+			// Get all the available emails to display them to user so that they can
 			// select them easily
 			async getEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -277,7 +277,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available list / segment emails to display them to user so that he can
+			// Get all the available list / segment emails to display them to user so that they can
 			// select them easily
 			async getSegmentEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -292,7 +292,7 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available campaign / template emails to display them to user so that he can
+			// Get all the available campaign / template emails to display them to user so that they can
 			// select them easily
 			async getCampaignEmails(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

@@ -69,13 +69,13 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
-import Vue from 'vue';
 import { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
+import { createEventBus } from '@/event-bus';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -101,8 +101,8 @@ export default mixins(showMessage, copyPaste).extend({
 	data() {
 		return {
 			config: null as IFormInputs | null,
-			formBus: new Vue(),
-			modalBus: new Vue(),
+			formBus: createEventBus(),
+			modalBus: createEventBus(),
 			emails: '',
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
@@ -279,7 +279,7 @@ export default mixins(showMessage, copyPaste).extend({
 				if (successfulUrlInvites.length > 1) {
 					this.showInviteUrls = successfulUrlInvites;
 				} else {
-					this.modalBus.$emit('close');
+					this.modalBus.emit('close');
 				}
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
@@ -307,7 +307,7 @@ export default mixins(showMessage, copyPaste).extend({
 			});
 		},
 		onSubmitClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {

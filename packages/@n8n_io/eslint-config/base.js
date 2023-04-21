@@ -343,6 +343,8 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
+		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
@@ -392,6 +394,18 @@ const config = (module.exports = {
 				destructuredArrayIgnorePattern: '^_',
 				varsIgnorePattern: '^_',
 				ignoreRestSiblings: true,
+			},
+		],
+
+		/**
+		 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
+		 */
+		'no-restricted-syntax': [
+			'error',
+			{
+				selector: 'TSEnumDeclaration:not([const=true])',
+				message:
+					'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
 			},
 		],
 

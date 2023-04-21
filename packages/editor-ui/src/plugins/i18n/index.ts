@@ -336,8 +336,12 @@ export class I18nClass {
 		$now: this.baseText('codeNodeEditor.completer.$now'),
 		$parameter: this.baseText('codeNodeEditor.completer.$parameter'),
 		$prevNode: this.baseText('codeNodeEditor.completer.$prevNode'),
+		$if: this.baseText('codeNodeEditor.completer.$if'),
+		$max: this.baseText('codeNodeEditor.completer.$max'),
+		$min: this.baseText('codeNodeEditor.completer.$min'),
 		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
 		$today: this.baseText('codeNodeEditor.completer.$today'),
+		$vars: this.baseText('codeNodeEditor.completer.$vars'),
 		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
 	};
 

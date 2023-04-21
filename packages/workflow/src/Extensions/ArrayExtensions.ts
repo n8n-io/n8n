@@ -30,7 +30,7 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 		if (current && typeof current === 'object') {
 			const p: unknown[] = [];
 			Object.keys(current).forEach((k) => {
-				extraArgs.forEach((field: string) => {
+				(extraArgs as string[]).forEach((field) => {
 					if (current && field === k) {
 						p.push((current as { [key: string]: unknown })[k]);
 					}

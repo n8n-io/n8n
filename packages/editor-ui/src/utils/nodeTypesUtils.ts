@@ -545,7 +545,6 @@ export const getCredentialsRelatedFields = (
 		credentialType.displayOptions.show
 	) {
 		Object.keys(credentialType.displayOptions.show).forEach((option) => {
-			console.log(option);
 			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
 		});
 	}

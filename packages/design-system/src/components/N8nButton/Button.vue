@@ -18,11 +18,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-button',
 	props: {
 		label: {
@@ -81,11 +81,11 @@ export default Vue.extend({
 		N8nIcon,
 	},
 	computed: {
-		ariaBusy(): string {
-			return this.loading ? 'true' : 'false';
+		ariaBusy(): 'true' | undefined {
+			return this.loading ? 'true' : undefined;
 		},
-		ariaDisabled(): string {
-			return this.disabled ? 'true' : 'false';
+		ariaDisabled(): 'true' | undefined {
+			return this.disabled ? 'true' : undefined;
 		},
 		classes(): string {
 			return (
@@ -194,7 +194,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .tertiary {
-	font-weight: var(--font-weight-regular) !important;
+	font-weight: var(--font-weight-bold) !important;
 
 	--button-background-color: var(--color-background-xlight);
 	--button-color: var(--color-text-dark);

@@ -9,7 +9,7 @@ import type {
 	IWorkflowStatisticsDataLoaded,
 	IWorkflowStatisticsTimestamps,
 } from '@/Interfaces';
-import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
 import type { ExecutionRequest } from '../requests';
 

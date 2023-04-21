@@ -1,46 +1,48 @@
 paths:
-  "packages/**":
+  'packages/**':
     - If fixing bug, added test to cover scenario.
     - If addressing forum or Github issue, added link to description.
-  "packages/**/*.ts":
+  'packages/**/*.ts':
     - Added unit tests to cover new or updated functionality.
-  "**/*.vue":
+  '**/*.vue':
     - Used composition API for all new components.
     - Added component or unit tests to cover functionality.
-  
+
   # cli
-  "packages/cli/src/databases/migrations/**":
-    - Requested review from at least two engineers on migration. 
+  'packages/cli/src/databases/migrations/**':
+    - Requested review from at least two engineers on migration.
     - Avoided irreversible data migrations.
     - Avoided deleting or updating data keys.
     - Wrote 'down' migration if possible.
-  "n8n/packages/cli/src/api/**":
+  'n8n/packages/cli/src/api/**':
     - Added integration tests for new endpoints.
 
   # editor ui
-  "packages/editor-ui/**/*.vue":
+  'packages/editor-ui/**/*.vue':
     - Added E2E if adding new features.
     - Used design system tokens (colors, spacings...) where possible.
-  "packages/editor-ui/src/mixins/restApi.ts":
+  'packages/editor-ui/src/mixins/restApi.ts':
     - Avoided adding new methods. Only deleted from here.
-  "packages/editor-ui/src/mixins/**":
+  'packages/editor-ui/src/mixins/**':
     - Avoided adding new mixins (use composables instead). Only removed code from here.
-  "packages/editor-ui/src/views/NodeView.vue":
-    - Avoided adding code here. Only refactored to make it smaller. 
-  "packages/editor-ui/src/hooks/**":
+  'packages/editor-ui/src/views/NodeView.vue':
+    - Avoided adding code here. Only refactored to make it smaller.
+  'packages/editor-ui/src/hooks/**':
     - Avoided adding new hooks. Only refactored to move hooks to relevant store instead.
 
   # nodes-base
-  "packages/nodes-base/nodes/**":
+  'packages/nodes-base/nodes/**':
     - Added workflow tests for nodes if possible.
+  'packages/nodes-base/package.json':
+    - Avoided adding dependencies for nodes if not absolutely necessary.
 
   # design-system
-  "packages/design-system/**/*.vue":
+  'packages/design-system/**/*.vue':
     - Used design system tokens (colors, spacings...) where possible.
     - Updated Storybook with new component or updated functionality.
 
   # e2e
-  "cypress/e2e/**":
+  'cypress/e2e/**':
     - Avoided chaining commands more than two or three times (to avoid flakiness because only last one will be retried).
     - Spoofed endpoints that are not critical for the test (to avoid flakiness).
     - Picked most efficient path to start the test (for example skipped account setup and starting at /workflow/new for a canvas test).

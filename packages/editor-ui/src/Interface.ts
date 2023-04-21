@@ -17,7 +17,6 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
-	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
@@ -33,10 +32,14 @@ import {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
+	IN8nUISettings,
+	IUserManagementSettings,
+	WorkflowSettings,
 } from 'n8n-workflow';
 import { SignInType } from './constants';
 import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
+import { PartialBy } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 
@@ -593,6 +596,12 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
+	settings?: {
+		isOnboarded?: boolean;
+		showUserActivationSurvey?: boolean;
+		firstSuccessfulWorkflowId?: string;
+		userActivated?: boolean;
+	};
 }
 
 export interface CurrentUserResponse extends IUserResponse {
@@ -628,17 +637,10 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
-export enum UserManagementAuthenticationMethod {
+export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
 	Saml = 'saml',
-}
-
-export interface IUserManagementConfig {
-	enabled: boolean;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
-	authenticationMethod: UserManagementAuthenticationMethod;
 }
 
 export interface IPermissionGroup {
@@ -725,93 +727,14 @@ export interface ITemplatesCategory {
 
 export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
 
-export interface IN8nUISettings {
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
-	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	urlBaseEditor: string;
-	urlBaseWebhook: string;
-	versionCli: string;
-	n8nMetadata?: {
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
-	instanceId: string;
-	personalizationSurveyEnabled: boolean;
-	telemetry: ITelemetrySettings;
-	userManagement: IUserManagementConfig;
-	defaultLocale: string;
-	workflowTagsDisabled: boolean;
-	logLevel: ILogLevel;
-	hiringBannerEnabled: boolean;
-	templates: {
-		enabled: boolean;
-		host: string;
-	};
-	posthog: {
-		enabled: boolean;
-		apiHost: string;
-		apiKey: string;
-		autocapture: boolean;
-		disableSessionRecording: boolean;
-		debug: boolean;
-	};
-	executionMode: string;
-	pushBackend: 'sse' | 'websocket';
-	communityNodesEnabled: boolean;
-	isNpmAvailable: boolean;
-	publicApi: {
-		enabled: boolean;
-		latestVersion: number;
-		path: string;
-		swaggerUi: {
-			enabled: boolean;
-		};
-	};
-	sso: {
-		saml: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-		ldap: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-	};
-	onboardingCallPromptEnabled: boolean;
-	allowedModules: {
-		builtIn?: string[];
-		external?: string[];
-	};
-	enterprise: Record<string, boolean>;
-	deployment?: {
-		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
-	};
-	hideUsagePage: boolean;
-	license: {
-		environment: 'development' | 'production';
-	};
-}
-
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveDataErrorExecution?: string;
-	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+	maxExecutionTimeout?: number;
 	callerIds?: string;
-	callerPolicy?: WorkflowCallerPolicyDefaultOption;
+	callerPolicy?: WorkflowSettings.CallerPolicy;
 }
 
 export interface ITimeoutHMS {
@@ -984,6 +907,7 @@ export interface WorkflowsState {
 
 export interface RootState {
 	baseUrl: string;
+	restEndpoint: string;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -1168,9 +1092,6 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 }
-
-export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
-
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;
@@ -1212,7 +1133,7 @@ export interface INodeCreatorState {
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
-	userManagement: IUserManagementConfig;
+	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {
 		enabled: boolean;
@@ -1461,6 +1382,16 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
+export interface EnvironmentVariable {
+	id: number;
+	key: string;
+	value: string;
+}
+
+export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
+	id: string;
+}
+
 export type ExecutionFilterMetadata = {
 	key: string;
 	value: string;
@@ -1483,4 +1414,44 @@ export type ExecutionsQueryFilter = {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+};
+
+export type SamlAttributeMapping = {
+	email: string;
+	firstName: string;
+	lastName: string;
+	userPrincipalName: string;
+};
+
+export type SamlLoginBinding = 'post' | 'redirect';
+
+export type SamlSignatureConfig = {
+	prefix: 'ds';
+	location: {
+		reference: '/samlp:Response/saml:Issuer';
+		action: 'after';
+	};
+};
+
+export type SamlPreferencesLoginEnabled = {
+	loginEnabled: boolean;
+};
+
+export type SamlPreferences = {
+	mapping?: SamlAttributeMapping;
+	metadata?: string;
+	metadataUrl?: string;
+	ignoreSSL?: boolean;
+	loginBinding?: SamlLoginBinding;
+	acsBinding?: SamlLoginBinding;
+	authnRequestsSigned?: boolean;
+	loginLabel?: string;
+	wantAssertionsSigned?: boolean;
+	wantMessageSigned?: boolean;
+	signatureConfig?: SamlSignatureConfig;
+} & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
+
+export type SamlPreferencesExtractedData = {
+	entityID: string;
+	returnUrl: string;
 };

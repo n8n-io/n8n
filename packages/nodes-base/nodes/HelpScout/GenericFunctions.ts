@@ -64,7 +64,8 @@ export async function helpscoutApiRequestAllItems(
 		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = get(responseData, '_links.next.href');
 		returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData._links?.next?.href !== undefined);
