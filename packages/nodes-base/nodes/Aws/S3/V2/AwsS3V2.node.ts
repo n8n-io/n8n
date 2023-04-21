@@ -856,7 +856,6 @@ export class AwsS3V2 implements INodeType {
 								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
 							}
 							const newHeaders = headers;
-							console.log('New Headers', newHeaders);
 							const createMultiPartUpload = await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
@@ -875,7 +874,6 @@ export class AwsS3V2 implements INodeType {
 								const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
 								headers['Content-Length'] = chunk.length;
 								headers['Content-MD5'] = createHash('MD5').update(chunkBuffer).digest('base64');
-								console.log('New headers', headers);
 								try {
 									const sendChunks = await awsApiRequestREST.call(
 										this,
@@ -889,8 +887,20 @@ export class AwsS3V2 implements INodeType {
 										region as string,
 									);
 									part++;
-									console.log(sendChunks);
+									console.log('Send Chunks', sendChunks);
+									headers = {};
 								} catch (error) {
+									try {
+										const abortUpload = await awsApiRequestREST.call(
+											this,
+											`${bucketName}.s3`,
+											'DELETE',
+											`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+										);
+										console.log('Abort Upload', abortUpload);
+									} catch (err) {
+										// console.log('Error while aborting ', err);
+									}
 									console.log(part);
 									if (error.response?.status !== 308) throw error;
 								}
