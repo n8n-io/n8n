@@ -19,12 +19,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export const workflowRun = mixins(
-	externalHooks,
-	workflowHelpers,
-	showMessage,
-	useTitleChange,
-).extend({
+export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).extend({
 	setup() {
 		return {
 			...useTitleChange(),
