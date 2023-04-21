@@ -8,7 +8,6 @@ import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type {
@@ -19,8 +18,11 @@ import type {
 } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
-import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
-import { SamlUrls } from '../sso/saml/constants';
+import {
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso/ssoHelpers';
+import type { UserRepository } from '@db/repositories';
 
 @RestController()
 export class AuthController {
@@ -30,7 +32,7 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	private readonly postHog?: PostHogClient;
 
@@ -73,19 +75,12 @@ export class AuthController {
 			if (preliminaryUser?.globalRole?.name === 'owner') {
 				user = preliminaryUser;
 			} else {
-				// TODO:SAML - uncomment this block when we have a way to redirect users to the SSO flow
-				// if (doRedirectUsersFromLoginToSsoFlow()) {
-				res.redirect(SamlUrls.restInitSSO);
-				return;
-				// return withFeatureFlags(this.postHog, sanitizeUser(preliminaryUser));
-				// } else {
-				// throw new AuthError(
-				// 	'Login with username and password is disabled due to SAML being the default authentication method. Please use SAML to log in.',
-				// );
-				// }
+				throw new AuthError('SAML is enabled, please log in with SAML');
 			}
+		} else if (isLdapCurrentAuthenticationMethod()) {
+			user = await handleLdapLogin(email, password);
 		} else {
-			user = (await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+			user = await handleEmailLogin(email, password);
 		}
 		if (user) {
 			await issueCookie(res, user);

@@ -33,6 +33,7 @@ import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToE
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236854063 } from './1677236854063-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-CreateExecutionMetadataTable';
+import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -70,4 +71,5 @@ export const postgresMigrations = [
 	MigrateExecutionStatus1676996103000,
 	UpdateRunningExecutionStatus1677236854063,
 	CreateExecutionMetadataTable1679416281778,
+	CreateVariables1677501636754,
 ];

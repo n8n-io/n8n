@@ -43,10 +43,11 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
-import { historyHelper } from '@/mixins/history';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
+import { useRoute } from 'vue-router/composables';
 
-export default mixins(newVersions, showMessage, userHelpers, restApi, historyHelper).extend({
+export default mixins(newVersions, showMessage, userHelpers, restApi).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -54,10 +55,9 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 		Modals,
 	},
 	setup() {
-		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 		return {
-			registerCustomAction,
-			unregisterCustomAction,
+			...useGlobalLinkActions(),
+			...useHistoryHelper(useRoute()),
 		};
 	},
 	computed: {
