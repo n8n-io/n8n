@@ -1,3 +1,4 @@
+LABEL org.opencontainers.image.source="https://github.com/n8n-io/n8n"
 ARG NODE_VERSION=16
 FROM node:${NODE_VERSION}-alpine
 
