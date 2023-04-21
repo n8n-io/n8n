@@ -254,8 +254,8 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7
       google-timezones-json:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^1.1.0
+        version: 1.1.0
       handlebars:
         specifier: 4.7.7
         version: 4.7.7
@@ -12652,8 +12652,8 @@ packages:
       - supports-color
     dev: false
 
-  /google-timezones-json@1.0.2:
-    resolution: {integrity: sha512-UWXQ7BpSCW8erDespU2I4cri22xsKgwOCyhsJal0OJhi2tFpwJpsYNJt4vCiFPL1p2HzCGiS713LKpNR25n9Kg==}
+  /google-timezones-json@1.1.0:
+    resolution: {integrity: sha512-6BmBx9gJVALV2jsfMks8PwmkWT5ip3+bmMyTgXu4PY+G8nKjHi61yrL7rSXpMYRsIzUXhVKpj+MnjhnwG9nung==}
     dev: false
 
   /gopd@1.0.1:
