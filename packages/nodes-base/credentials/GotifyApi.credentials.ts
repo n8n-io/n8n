@@ -12,6 +12,9 @@ export class GotifyApi implements ICredentialType {
 			displayName: 'App API Token',
 			name: 'appApiToken',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 			description: '(Optional) Needed for message creation',
 		},
@@ -19,6 +22,9 @@ export class GotifyApi implements ICredentialType {
 			displayName: 'Client API Token',
 			name: 'clientApiToken',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 			description: '(Optional) Needed for everything (delete, getAll) but message creation',
 		},
