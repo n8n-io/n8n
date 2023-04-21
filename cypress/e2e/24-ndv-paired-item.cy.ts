@@ -147,8 +147,13 @@ describe('NDV', () => {
 		ndv.getters.outputRunSelector().find('input')
 			.should('include.value', '1 of 2 (6 items)');
 
-		ndv.getters.inputHoveringItem().should('have.text', '1111').realHover();
-		ndv.getters.outputHoveringItem().should('have.text', '1111');
+		ndv.getters.inputTableRow(1)
+			.should('have.text', '1111')
+			.invoke('attr', 'data-test-id')
+			.should('equal', 'hovering-item');
+		ndv.getters.outputTableRow(1)
+			.should('have.text', '1111')
+			.realHover();
 
 		ndv.getters.outputTableRow(3)
 			.should('have.text', '4444')
