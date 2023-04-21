@@ -402,9 +402,9 @@ export default mixins(
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 		},
 		nodeViewScale(newScale) {
-			const element = this.$refs.nodeView as HTMLDivElement;
-			if (element) {
-				element.style.transform = `scale(${newScale})`;
+			const elementRef = this.$refs.nodeView as HTMLDivElement | undefined;
+			if (elementRef) {
+				elementRef.style.transform = `scale(${newScale})`;
 			}
 		},
 	},

@@ -424,9 +424,9 @@ export default mixins(workflowHelpers).extend({
 				this.$root.$emit('importWorkflowData', { data: workflowData });
 			};
 
-			const input = this.$refs.importFile as HTMLInputElement;
-			if (input !== null && input.files !== null && input.files.length !== 0) {
-				reader.readAsText(input!.files[0]!);
+			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
+			if (inputRef?.files && inputRef.files.length !== 0) {
+				reader.readAsText(inputRef.files[0]);
 			}
 		},
 		async onWorkflowMenuSelect(action: string): Promise<void> {
