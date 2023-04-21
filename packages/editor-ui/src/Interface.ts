@@ -635,7 +635,7 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
-export enum UserManagementAuthenticationMethod {
+export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
 	Saml = 'saml',
