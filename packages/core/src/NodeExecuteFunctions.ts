@@ -1121,13 +1121,16 @@ export async function requestOAuth2(
 		oauthTokenData = data;
 	}
 
+	const accessToken =
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
+	const refreshToken = oauthTokenData.refreshToken;
 	const token = oAuthClient.createToken(
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
-		oauthTokenData.refreshToken,
+		{
+			...oauthTokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
-		oauthTokenData,
 	);
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.

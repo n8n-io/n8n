@@ -87,10 +87,8 @@ export class ClientOAuth2Token {
 			{},
 		);
 
-		const data = await this.client.request(config);
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		return this.client.createToken({ ...this.data, ...data });
+		const responseData = await this.client.request<ClientOAuth2TokenData>(config);
+		return this.client.createToken({ ...this.data, ...responseData });
 	}
 
 	/**

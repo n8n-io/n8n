@@ -56,16 +56,9 @@ export class ClientOAuth2 {
 	/**
 	 * Create a new token from existing data.
 	 */
-	createToken(
-		access: string,
-		refresh: string,
-		type?: string,
-		data?: ClientOAuth2TokenData,
-	): ClientOAuth2Token {
+	createToken(data: ClientOAuth2TokenData, type?: string): ClientOAuth2Token {
 		return new ClientOAuth2Token(this, {
 			...data,
-			access_token: access,
-			refresh_token: refresh,
 			...(typeof type === 'string' ? { token_type: type } : type),
 		});
 	}

@@ -1,5 +1,5 @@
 import type { ClientOAuth2, ClientOAuth2Options } from './ClientOAuth2';
-import type { ClientOAuth2Token } from './ClientOAuth2Token';
+import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS } from './constants';
 import { auth, expects, requestOptions, sanitizeScope } from './utils';
 
@@ -32,7 +32,7 @@ export class CredentialsFlow {
 			body.scope = sanitizeScope(options.scopes);
 		}
 
-		const data = await this.client.request(
+		const responseData = await this.client.request<ClientOAuth2TokenData>(
 			requestOptions(
 				{
 					url: options.accessTokenUri,
@@ -47,8 +47,6 @@ export class CredentialsFlow {
 				options,
 			),
 		);
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		return this.client.createToken(data);
+		return this.client.createToken(responseData);
 	}
 }
