@@ -386,7 +386,6 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
-// export type IExecuteResponsePromiseData = IDataObject;
 export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
 
 export interface INodeTypeNameVersion {

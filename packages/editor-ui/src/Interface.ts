@@ -17,7 +17,6 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
-	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
@@ -33,7 +32,6 @@ import {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	ILogLevel,
 	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
@@ -645,13 +643,6 @@ export enum UserManagementAuthenticationMethod {
 	Saml = 'saml',
 }
 
-// export interface IUserManagementConfig {
-// 	enabled: boolean;
-// 	showSetupOnFirstLoad?: boolean;
-// 	smtpSetup: boolean;
-// 	authenticationMethod: UserManagementAuthenticationMethod;
-// }
-
 export interface IPermissionGroup {
 	loginStatus?: ILogInStatus[];
 	role?: IRole[];
@@ -735,85 +726,6 @@ export interface ITemplatesCategory {
 }
 
 export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
-
-// export interface IN8nUISettings {
-// 	endpointWebhook: string;
-// 	endpointWebhookTest: string;
-// 	saveDataErrorExecution: string;
-// 	saveDataSuccessExecution: string;
-// 	saveManualExecutions: boolean;
-// 	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
-// 	timezone: string;
-// 	executionTimeout: number;
-// 	maxExecutionTimeout: number;
-// 	oauthCallbackUrls: {
-// 		oauth1: string;
-// 		oauth2: string;
-// 	};
-// 	urlBaseEditor: string;
-// 	urlBaseWebhook: string;
-// 	versionCli: string;
-// 	n8nMetadata?: {
-// 		[key: string]: string | number | undefined;
-// 	};
-// 	versionNotifications: IVersionNotificationSettings;
-// 	instanceId: string;
-// 	personalizationSurveyEnabled: boolean;
-// 	userActivationSurveyEnabled: boolean;
-// 	telemetry: ITelemetrySettings;
-// 	userManagement: IUserManagementConfig;
-// 	defaultLocale: string;
-// 	workflowTagsDisabled: boolean;
-// 	logLevel: ILogLevel;
-// 	hiringBannerEnabled: boolean;
-// 	templates: {
-// 		enabled: boolean;
-// 		host: string;
-// 	};
-// 	posthog: {
-// 		enabled: boolean;
-// 		apiHost: string;
-// 		apiKey: string;
-// 		autocapture: boolean;
-// 		disableSessionRecording: boolean;
-// 		debug: boolean;
-// 	};
-// 	executionMode: string;
-// 	pushBackend: 'sse' | 'websocket';
-// 	communityNodesEnabled: boolean;
-// 	isNpmAvailable: boolean;
-// 	publicApi: {
-// 		enabled: boolean;
-// 		latestVersion: number;
-// 		path: string;
-// 		swaggerUi: {
-// 			enabled: boolean;
-// 		};
-// 	};
-// 	sso: {
-// 		saml: {
-// 			loginLabel: string;
-// 			loginEnabled: boolean;
-// 		};
-// 		ldap: {
-// 			loginLabel: string;
-// 			loginEnabled: boolean;
-// 		};
-// 	};
-// 	onboardingCallPromptEnabled: boolean;
-// 	allowedModules: {
-// 		builtIn?: string[];
-// 		external?: string[];
-// 	};
-// 	enterprise: Record<string, boolean>;
-// 	deployment?: {
-// 		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
-// 	};
-// 	hideUsagePage: boolean;
-// 	license: {
-// 		environment: 'development' | 'production';
-// 	};
-// }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
@@ -1180,9 +1092,6 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 }
-
-// export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
-
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;

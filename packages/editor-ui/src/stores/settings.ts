@@ -21,7 +21,6 @@ import {
 	IN8nValueSurveyData,
 	ISettingsState,
 	UserManagementAuthenticationMethod,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
 import {
 	IDataObject,
