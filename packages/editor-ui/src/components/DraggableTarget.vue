@@ -55,10 +55,10 @@ export default Vue.extend({
 	},
 	methods: {
 		onMouseMove(e: MouseEvent) {
-			const target = this.$refs.target as HTMLElement;
+			const targetRef = this.$refs.target as HTMLElement | undefined;
 
-			if (target && this.isDragging) {
-				const dim = target.getBoundingClientRect();
+			if (targetRef && this.isDragging) {
+				const dim = targetRef.getBoundingClientRect();
 
 				this.hovering =
 					e.clientX >= dim.left &&

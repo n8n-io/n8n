@@ -137,6 +137,8 @@ import { useUIStore } from '@/stores/ui';
 import { Dropdown as ElDropdown } from 'element-ui';
 import { IAbstractEventMessage } from 'n8n-workflow';
 
+type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
+
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
@@ -182,9 +184,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
-			const retryDropdown = this.$refs.retryDropdown as (Vue & { hide: () => void }) | undefined;
-			if (retryDropdown && event.relatedTarget === null) {
-				retryDropdown.hide();
+			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
+			if (retryDropdownRef && event.relatedTarget === null) {
+				retryDropdownRef.hide();
 			}
 		},
 	},

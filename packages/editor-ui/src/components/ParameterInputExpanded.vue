@@ -65,6 +65,8 @@ import { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
+type ParamRef = InstanceType<typeof ParameterInputWrapper>;
+
 export default Vue.extend({
 	name: 'parameter-input-expanded',
 	components: {
@@ -145,7 +147,7 @@ export default Vue.extend({
 		},
 		optionSelected(command: string) {
 			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
+				(this.$refs.param as ParamRef).$emit('optionSelected', command);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {
