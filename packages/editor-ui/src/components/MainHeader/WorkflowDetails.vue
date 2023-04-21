@@ -421,8 +421,8 @@ export default mixins(workflowHelpers, titleChange).extend({
 			};
 
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
-			if (inputRef && inputRef.files !== null && inputRef.files.length !== 0) {
-				reader.readAsText(inputRef.files[0]!);
+			if (inputRef?.files && inputRef.files.length !== 0) {
+				reader.readAsText(inputRef.files[0]);
 			}
 		},
 		async onWorkflowMenuSelect(action: string): Promise<void> {
