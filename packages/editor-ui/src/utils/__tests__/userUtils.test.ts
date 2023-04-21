@@ -4,10 +4,11 @@ import { merge } from 'lodash-es';
 import { isAuthorized } from '@/utils';
 import { useSettingsStore } from '@/stores/settings';
 import { useSSOStore } from '@/stores/sso';
-import { IN8nUISettings, IUser } from '@/Interface';
+import { IUser } from '@/Interface';
 import { routes } from '@/router';
 import { VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { IN8nUISettings } from 'n8n-workflow';
 
 const DEFAULT_SETTINGS: IN8nUISettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 
