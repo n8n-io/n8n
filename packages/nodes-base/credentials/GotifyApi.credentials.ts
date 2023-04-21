@@ -29,5 +29,12 @@ export class GotifyApi implements ICredentialType {
 			default: '',
 			description: 'The URL of the Gotify host',
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			description: 'Ignore SSL Issues, to allow for connections to servers without SSL configured',
+		},
 	];
 }
