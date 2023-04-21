@@ -97,10 +97,10 @@ import {
 } from 'vue';
 import { camelCase } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
 import SearchBar from './SearchBar.vue';
-import {
+import type {
 	INodeCreateElement,
 	ISubcategoryItemProps,
 	ICategoryItemProps,
@@ -109,7 +109,7 @@ import {
 	CategoryCreateElement,
 	INodeItemProps,
 } from '@/Interface';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';

@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ViewItemProps } from '@/Interface';
+import type { ViewItemProps } from '@/Interface';
 
 export interface Props {
 	view: ViewItemProps;

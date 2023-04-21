@@ -1,5 +1,5 @@
-import { IExternalHooks } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { IExternalHooks } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 import { useWebhooksStore } from '@/stores';
 import { runExternalHook } from '@/mixins/externalHooks';
 

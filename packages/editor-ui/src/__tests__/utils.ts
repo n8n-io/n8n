@@ -1,4 +1,5 @@
-import { ISettingsState, UserManagementAuthenticationMethod } from '@/Interface';
+import type { ISettingsState } from '@/Interface';
+import { UserManagementAuthenticationMethod } from '@/Interface';
 
 export const retry = (assertion: () => any, { interval = 20, timeout = 200 } = {}) => {
 	return new Promise((resolve, reject) => {

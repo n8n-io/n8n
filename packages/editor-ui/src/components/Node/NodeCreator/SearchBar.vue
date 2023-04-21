@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { EventBus } from '@/event-bus';
+import type { EventBus } from '@/event-bus';
 
 export interface Props {
 	placeholder: string;

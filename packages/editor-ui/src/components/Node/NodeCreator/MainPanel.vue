@@ -79,12 +79,9 @@
 
 <script setup lang="ts">
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
-import {
-	INodeTypeDescription,
-	INodeActionTypeDescription,
-	INodeTypeNameVersion,
-} from 'n8n-workflow';
-import {
+import type { INodeTypeDescription, INodeActionTypeDescription } from 'n8n-workflow';
+import { INodeTypeNameVersion } from 'n8n-workflow';
+import type {
 	INodeCreateElement,
 	NodeCreateElement,
 	IActionItemProps,
@@ -107,7 +104,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
 import useMainPanelView from './useMainPanelView';

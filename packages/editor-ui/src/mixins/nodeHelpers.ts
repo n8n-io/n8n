@@ -6,11 +6,10 @@ import {
 	EnterpriseEditionFeature,
 } from '@/constants';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
-	NodeHelpers,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
@@ -24,8 +23,9 @@ import {
 	INodePropertyOptions,
 	IDataObject,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import {
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,

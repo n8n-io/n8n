@@ -22,7 +22,8 @@
 import mixins from 'vue-typed-mixins';
 
 import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, ViewUpdate } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 
 import { baseExtensions } from './baseExtensions';

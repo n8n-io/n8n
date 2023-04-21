@@ -4,7 +4,7 @@ import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from '../useHistoryHelper';
 import { defineComponent } from 'vue';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 
 const undoMock = vi.fn();
 const redoMock = vi.fn();

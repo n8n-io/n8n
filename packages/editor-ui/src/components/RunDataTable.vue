@@ -162,11 +162,12 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-import { INodeUi, ITableData, NDVState } from '@/Interface';
+import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/utils';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import type Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';

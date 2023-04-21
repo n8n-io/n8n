@@ -5,7 +5,8 @@
 </template>
 
 <script lang="ts">
-import { format, LocaleFunc, register } from 'timeago.js';
+import type { LocaleFunc } from 'timeago.js';
+import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/utils';
 import Vue from 'vue';
 import { mapStores } from 'pinia';

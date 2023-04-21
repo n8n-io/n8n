@@ -42,21 +42,21 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import type Vue from 'vue';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	INodeProperties,
 	INodePropertyMode,
-	IRunData,
-	isResourceLocatorValue,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import { IRunData, isResourceLocatorValue } from 'n8n-workflow';
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';

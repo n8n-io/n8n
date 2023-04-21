@@ -21,7 +21,8 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { restApi } from '@/mixins/restApi';
-import { IBinaryData, jsonParse } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 
