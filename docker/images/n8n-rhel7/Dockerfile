@@ -1,3 +1,4 @@
+LABEL org.opencontainers.image.source="https://github.com/n8n-io/n8n"
 FROM richxsl/rhel7
 
 ARG N8N_VERSION
