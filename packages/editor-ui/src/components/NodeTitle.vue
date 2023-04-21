@@ -70,9 +70,9 @@ export default Vue.extend({
 			this.newName = this.value;
 			this.editName = true;
 			this.$nextTick(() => {
-				const input = this.$refs.input;
-				if (input) {
-					(input as HTMLInputElement).focus();
+				const inputRef = this.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			});
 		},
