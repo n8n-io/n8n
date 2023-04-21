@@ -188,19 +188,12 @@ export class Start extends BaseCommand {
 		const license = Container.get(License);
 		await license.init(this.instanceId);
 
-		const hasCert = (await license.loadCertStr()).length > 0;
 		const activationKey = config.getEnv('license.activationKey');
-
 		if (activationKey) {
-			if (hasCert) {
-				LoggerProxy.info('Skipping license activation');
-			} else {
-				try {
-					LoggerProxy.debug('Attempting license activation');
-					await license.activate(activationKey);
-				} catch (e) {
-					LoggerProxy.error('Could not activate license', e as Error);
-				}
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
 			}
 		}
 	}
