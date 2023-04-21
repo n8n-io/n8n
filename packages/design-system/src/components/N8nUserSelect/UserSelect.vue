@@ -30,41 +30,39 @@
 </template>
 
 <script lang="ts">
-import 'vue';
-import mixins from 'vue-typed-mixins';
-import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
 import { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
+import { defineComponent, PropType } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-user-select',
+	mixins: [Locale],
 	components: {
 		N8nUserInfo,
-		ElSelect,
-		ElOption,
+		N8nSelect,
+		N8nOption,
 	},
 	props: {
 		users: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<IUser[]>,
+			default: () => [],
 		},
 		value: {
 			type: String,
 			default: '',
 		},
 		ignoreIds: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<string[]>,
+			default: () => [],
 			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
 		},
 		currentUserId: {
 			type: String,
+			default: '',
 		},
 		placeholder: {
 			type: String,
@@ -72,6 +70,7 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
+			default: '',
 			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
@@ -82,12 +81,12 @@ export default mixins(Locale).extend({
 	},
 	computed: {
 		filteredUsers(): IUser[] {
-			return (this.users as IUser[]).filter((user) => {
+			return this.users.filter((user) => {
 				if (user.isPendingUser || !user.email) {
 					return false;
 				}
 
-				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+				if (this.ignoreIds.includes(user.id)) {
 					return false;
 				}
 

@@ -1579,7 +1579,7 @@ export class Mailchimp implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1595,7 +1595,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available merge fields to display them to user so that he can
+			// Get all the available merge fields to display them to user so that they can
 			// select them easily
 			async getMergeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1616,7 +1616,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the interest fields to display them to user so that he can
+			// Get all the interest fields to display them to user so that they can
 			// select them easily
 			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

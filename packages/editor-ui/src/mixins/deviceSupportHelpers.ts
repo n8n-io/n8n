@@ -19,7 +19,7 @@ export const deviceSupportHelpers = Vue.extend({
 	},
 	methods: {
 		isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
-			if (this.isTouchDevice === true) {
+			if (this.isTouchDevice === true && e instanceof MouseEvent) {
 				return true;
 			}
 			if (this.isMacOs) {

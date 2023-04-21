@@ -19,11 +19,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { Checkbox as ElCheckbox } from 'element-ui';
 import N8nInputLabel from '../N8nInputLabel';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-checkbox',
 	components: {
 		ElCheckbox,
@@ -76,6 +76,7 @@ export default Vue.extend({
 .n8nCheckbox {
 	display: flex !important;
 	white-space: normal !important;
+	margin-bottom: var(--spacing-2xs);
 
 	span {
 		white-space: normal;
@@ -83,6 +84,7 @@ export default Vue.extend({
 
 	label {
 		cursor: pointer;
+		margin-bottom: 0;
 	}
 }
 </style>

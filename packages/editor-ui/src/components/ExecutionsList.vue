@@ -8,7 +8,7 @@
 						class="mr-xl"
 						v-model="autoRefresh"
 						@change="handleAutoRefreshToggle"
-						data-testid="execution-auto-refresh-checkbox"
+						data-test-id="execution-auto-refresh-checkbox"
 					>
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
@@ -27,7 +27,7 @@
 				"
 				:value="allExistingSelected"
 				@change="handleCheckAllExistingChange"
-				data-testid="select-all-executions-checkbox"
+				data-test-id="select-all-executions-checkbox"
 			/>
 
 			<table :class="$style.execTable">
@@ -39,7 +39,7 @@
 								@change="handleCheckAllVisibleChange"
 								:disabled="finishedExecutionsCount < 1"
 								label=""
-								data-testid="select-visible-executions-checkbox"
+								data-test-id="select-visible-executions-checkbox"
 							/>
 						</th>
 						<th>{{ $locale.baseText('executionsList.name') }}</th>
@@ -64,7 +64,7 @@
 								:value="selectedItems[execution.id] || allExistingSelected"
 								@change="handleCheckboxChanged(execution.id)"
 								label=""
-								data-testid="select-execution-checkbox"
+								data-test-id="select-execution-checkbox"
 							/>
 						</td>
 						<td>
@@ -212,7 +212,7 @@
 			<div
 				v-if="!combinedExecutions.length"
 				:class="$style.loadedAll"
-				data-testid="execution-list-empty"
+				data-test-id="execution-list-empty"
 			>
 				{{ $locale.baseText('executionsList.empty') }}
 			</div>
@@ -228,17 +228,17 @@
 					:label="$locale.baseText('executionsList.loadMore')"
 					@click="loadMore()"
 					:loading="isDataLoading"
-					data-testid="load-more-button"
+					data-test-id="load-more-button"
 				/>
 			</div>
-			<div v-else :class="$style.loadedAll" data-testid="execution-all-loaded">
+			<div v-else :class="$style.loadedAll" data-test-id="execution-all-loaded">
 				{{ $locale.baseText('executionsList.loadedAll') }}
 			</div>
 		</div>
 		<div
 			v-if="numSelected > 0"
 			:class="$style.selectionOptions"
-			data-testid="selected-executions-info"
+			data-test-id="selected-executions-info"
 		>
 			<span>
 				{{
@@ -252,13 +252,13 @@
 				:label="$locale.baseText('generic.delete')"
 				type="tertiary"
 				@click="handleDeleteSelected"
-				data-testid="delete-selected-button"
+				data-test-id="delete-selected-button"
 			/>
 			<n8n-button
 				:label="$locale.baseText('executionsList.clearSelection')"
 				type="tertiary"
 				@click="handleClearSelection"
-				data-testid="clear-selection-button"
+				data-test-id="clear-selection-button"
 			/>
 		</div>
 	</div>

@@ -4,8 +4,22 @@ import {
 	KV_LIMIT,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
+	ExecutionMetadataValidationError,
 } from '@/WorkflowExecutionMetadata';
-import type { IRunExecutionData } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
+import type { ILogger, IRunExecutionData } from 'n8n-workflow';
+
+beforeAll(() => {
+	const fakeLogger = {
+		log: () => {},
+		debug: () => {},
+		verbose: () => {},
+		info: () => {},
+		warn: () => {},
+		error: () => {},
+	} as ILogger;
+	LoggerProxy.init(fakeLogger);
+});
 
 describe('Execution Metadata functions', () => {
 	test('setWorkflowExecutionMetadata will set a value', () => {
@@ -42,7 +56,7 @@ describe('Execution Metadata functions', () => {
 		});
 	});
 
-	test('setWorkflowExecutionMetadata should convert values to strings', () => {
+	test('setWorkflowExecutionMetadata should only convert numbers to strings', () => {
 		const metadata = {};
 		const executionData = {
 			resultData: {
@@ -50,9 +64,60 @@ describe('Execution Metadata functions', () => {
 			},
 		} as IRunExecutionData;
 
-		setWorkflowExecutionMetadata(executionData, 'test1', 1234);
+		expect(() => setWorkflowExecutionMetadata(executionData, 'test1', 1234)).not.toThrow(
+			ExecutionMetadataValidationError,
+		);
 
 		expect(metadata).toEqual({
+			test1: '1234',
+		});
+
+		expect(() => setWorkflowExecutionMetadata(executionData, 'test2', {})).toThrow(
+			ExecutionMetadataValidationError,
+		);
+
+		expect(metadata).not.toEqual({
+			test1: '1234',
+			test2: {},
+		});
+	});
+
+	test('setAllWorkflowExecutionMetadata should not convert values to strings and should set other values correctly', () => {
+		const metadata = {};
+		const executionData = {
+			resultData: {
+				metadata,
+			},
+		} as IRunExecutionData;
+
+		expect(() =>
+			setAllWorkflowExecutionMetadata(executionData, {
+				test1: {} as unknown as string,
+				test2: [] as unknown as string,
+				test3: 'value3',
+				test4: 'value4',
+			}),
+		).toThrow(ExecutionMetadataValidationError);
+
+		expect(metadata).toEqual({
+			test3: 'value3',
+			test4: 'value4',
+		});
+	});
+
+	test('setWorkflowExecutionMetadata should validate key characters', () => {
+		const metadata = {};
+		const executionData = {
+			resultData: {
+				metadata,
+			},
+		} as IRunExecutionData;
+
+		expect(() => setWorkflowExecutionMetadata(executionData, 'te$t1$', 1234)).toThrow(
+			ExecutionMetadataValidationError,
+		);
+
+		expect(metadata).not.toEqual({
 			test1: '1234',
 		});
 	});

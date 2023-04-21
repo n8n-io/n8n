@@ -161,7 +161,7 @@ export class FacebookTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available organizations to display them to user so that he can
+			// Get all the available organizations to display them to user so that they can
 			// select them easily
 			async getObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const object = this.getCurrentNodeParameter('object') as string;

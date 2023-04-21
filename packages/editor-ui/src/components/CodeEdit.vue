@@ -135,6 +135,7 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 					'$mode',
 					'$parameter',
 					'$resumeWebhookUrl',
+					'$vars',
 					'$workflow',
 					'$now',
 					'$today',

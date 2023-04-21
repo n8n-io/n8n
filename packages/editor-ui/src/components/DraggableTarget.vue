@@ -22,9 +22,7 @@ export default Vue.extend({
 		},
 		stickyOffset: {
 			type: Array as PropType<number[]>,
-			default() {
-				return [0, 0];
-			},
+			default: () => [0, 0],
 		},
 	},
 	data() {

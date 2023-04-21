@@ -202,7 +202,7 @@ export class Hubspot implements INodeType {
 			/*                                 CONTACT                                    */
 			/* -------------------------------------------------------------------------- */
 
-			// Get all the contact lead statuses to display them to user so that he can
+			// Get all the contact lead statuses to display them to user so that they can
 			// select them easily
 			async getContactLeadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -223,7 +223,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact legal basics to display them to user so that he can
+			// Get all the contact legal basics to display them to user so that they can
 			// select them easily
 			async getContactLealBasics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -244,7 +244,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact lifecycle stages to display them to user so that he can
+			// Get all the contact lifecycle stages to display them to user so that they can
 			// select them easily
 			async getContactLifeCycleStages(
 				this: ILoadOptionsFunctions,
@@ -267,7 +267,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact lifecycle stages to display them to user so that he can
+			// Get all the contact lifecycle stages to display them to user so that they can
 			// select them easily
 			async getContactOriginalSources(
 				this: ILoadOptionsFunctions,
@@ -290,7 +290,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact preffered languages to display them to user so that he can
+			// Get all the contact preffered languages to display them to user so that they can
 			// select them easily
 			async getContactPrefferedLanguages(
 				this: ILoadOptionsFunctions,
@@ -313,7 +313,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact preffered languages to display them to user so that he can
+			// Get all the contact preffered languages to display them to user so that they can
 			// select them easily
 			async getContactStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -334,7 +334,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact properties to display them to user so that he can
+			// Get all the contact properties to display them to user so that they can
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -351,7 +351,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact properties to display them to user so that he can
+			// Get all the contact properties to display them to user so that they can
 			// select them easily
 			async getContactCustomProperties(
 				this: ILoadOptionsFunctions,
@@ -372,7 +372,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the contact number of employees options to display them to user so that he can
+			// Get all the contact number of employees options to display them to user so that they can
 			// select them easily
 			async getContactNumberOfEmployees(
 				this: ILoadOptionsFunctions,
@@ -399,7 +399,7 @@ export class Hubspot implements INodeType {
 			/*                                 COMPANY                                    */
 			/* -------------------------------------------------------------------------- */
 
-			// Get all the company industries to display them to user so that he can
+			// Get all the company industries to display them to user so that they can
 			// select them easily
 			async getCompanyIndustries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -420,7 +420,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company lead statuses to display them to user so that he can
+			// Get all the company lead statuses to display them to user so that they can
 			// select them easily
 			async getCompanyleadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -441,7 +441,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company lifecycle stages to display them to user so that he can
+			// Get all the company lifecycle stages to display them to user so that they can
 			// select them easily
 			async getCompanylifecycleStages(
 				this: ILoadOptionsFunctions,
@@ -464,7 +464,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company types stages to display them to user so that he can
+			// Get all the company types stages to display them to user so that they can
 			// select them easily
 			async getCompanyTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -485,7 +485,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company types stages to display them to user so that he can
+			// Get all the company types stages to display them to user so that they can
 			// select them easily
 			async getCompanyTargetAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -506,7 +506,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company source types stages to display them to user so that he can
+			// Get all the company source types stages to display them to user so that they can
 			// select them easily
 			async getCompanySourceTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -527,7 +527,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company web technologies stages to display them to user so that he can
+			// Get all the company web technologies stages to display them to user so that they can
 			// select them easily
 			async getCompanyWebTechnologies(
 				this: ILoadOptionsFunctions,
@@ -550,7 +550,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company properties to display them to user so that he can
+			// Get all the company properties to display them to user so that they can
 			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -567,7 +567,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the company custom properties to display them to user so that he can
+			// Get all the company custom properties to display them to user so that they can
 			// select them easily
 			async getCompanyCustomProperties(
 				this: ILoadOptionsFunctions,
@@ -592,7 +592,7 @@ export class Hubspot implements INodeType {
 			/*                                 DEAL                                       */
 			/* -------------------------------------------------------------------------- */
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getDealStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -610,7 +610,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the deal types to display them to user so that he can
+			// Get all the deal types to display them to user so that they can
 			// select them easily
 			async getDealTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -627,7 +627,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the deal properties to display them to user so that he can
+			// Get all the deal properties to display them to user so that they can
 			// select them easily
 			async getDealCustomProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -645,7 +645,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the deal properties to display them to user so that he can
+			// Get all the deal properties to display them to user so that they can
 			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -666,7 +666,7 @@ export class Hubspot implements INodeType {
 			/*                                 FORM                                       */
 			/* -------------------------------------------------------------------------- */
 
-			// Get all the forms to display them to user so that he can
+			// Get all the forms to display them to user so that they can
 			// select them easily
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -683,7 +683,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the subscription types to display them to user so that he can
+			// Get all the subscription types to display them to user so that they can
 			// select them easily
 			async getSubscriptionTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -710,7 +710,7 @@ export class Hubspot implements INodeType {
 			/*                                 TICKET                                     */
 			/* -------------------------------------------------------------------------- */
 
-			// Get all the ticket categories to display them to user so that he can
+			// Get all the ticket categories to display them to user so that they can
 			// select them easily
 			async getTicketCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -731,7 +731,7 @@ export class Hubspot implements INodeType {
 				return returnData.sort((a, b) => (a.name < b.name ? 0 : 1));
 			},
 
-			// Get all the ticket pipelines to display them to user so that he can
+			// Get all the ticket pipelines to display them to user so that they can
 			// select them easily
 			async getTicketPipelines(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -748,7 +748,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the ticket resolutions to display them to user so that he can
+			// Get all the ticket resolutions to display them to user so that they can
 			// select them easily
 			async getTicketPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -769,7 +769,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the ticket properties to display them to user so that he can
+			// Get all the ticket properties to display them to user so that they can
 			// select them easily
 			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -786,7 +786,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the ticket resolutions to display them to user so that he can
+			// Get all the ticket resolutions to display them to user so that they can
 			// select them easily
 			async getTicketResolutions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -807,7 +807,7 @@ export class Hubspot implements INodeType {
 				return returnData.sort((a, b) => (a.name < b.name ? 0 : 1));
 			},
 
-			// Get all the ticket sources to display them to user so that he can
+			// Get all the ticket sources to display them to user so that they can
 			// select them easily
 			async getTicketSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -828,7 +828,7 @@ export class Hubspot implements INodeType {
 				return returnData.sort((a, b) => (a.name < b.name ? 0 : 1));
 			},
 
-			// Get all the ticket stages to display them to user so that he can
+			// Get all the ticket stages to display them to user so that they can
 			// select them easily
 			async getTicketStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				let currentPipelineId = this.getCurrentNodeParameter('pipelineId') as string;
@@ -857,7 +857,7 @@ export class Hubspot implements INodeType {
 			/*                                 COMMON                                     */
 			/* -------------------------------------------------------------------------- */
 
-			// Get all the owners to display them to user so that he can
+			// Get all the owners to display them to user so that they can
 			// select them easily
 			async getOwners(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -874,7 +874,7 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
-			// Get all the companies to display them to user so that he can
+			// Get all the companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -903,7 +903,7 @@ export class Hubspot implements INodeType {
 				return returnData.sort((a, b) => (a.name < b.name ? 0 : 1));
 			},
 
-			// Get all the companies to display them to user so that he can
+			// Get all the companies to display them to user so that they can
 			// select them easily
 			async getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

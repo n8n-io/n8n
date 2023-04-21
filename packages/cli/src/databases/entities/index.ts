@@ -2,7 +2,7 @@
 import { AuthIdentity } from './AuthIdentity';
 import { AuthProviderSyncHistory } from './AuthProviderSyncHistory';
 import { CredentialsEntity } from './CredentialsEntity';
-import { EventDestinations } from './MessageEventBusDestinationEntity';
+import { EventDestinations } from './EventDestinations';
 import { ExecutionEntity } from './ExecutionEntity';
 import { InstalledNodes } from './InstalledNodes';
 import { InstalledPackages } from './InstalledPackages';
@@ -12,6 +12,7 @@ import { SharedCredentials } from './SharedCredentials';
 import { SharedWorkflow } from './SharedWorkflow';
 import { TagEntity } from './TagEntity';
 import { User } from './User';
+import { Variables } from './Variables';
 import { WebhookEntity } from './WebhookEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 import { WorkflowTagMapping } from './WorkflowTagMapping';
@@ -32,6 +33,7 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	Variables,
 	WebhookEntity,
 	WorkflowEntity,
 	WorkflowTagMapping,
