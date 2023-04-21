@@ -39,7 +39,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 
 import { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
@@ -56,7 +56,7 @@ interface TagEl extends ITag {
 	isCount?: boolean;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
