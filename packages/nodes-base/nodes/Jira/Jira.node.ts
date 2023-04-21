@@ -133,7 +133,7 @@ export class Jira implements INodeType {
 
 	methods = {
 		listSearch: {
-			// Get all the projects to display them to user so that he can
+			// Get all the projects to display them to user so that they can
 			// select them easily
 			async getProjects(
 				this: ILoadOptionsFunctions,
@@ -172,7 +172,7 @@ export class Jira implements INodeType {
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
 
-			// Get all the issue types to display them to user so that he can
+			// Get all the issue types to display them to user so that they can
 			// select them easily
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
@@ -203,7 +203,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
@@ -232,7 +232,7 @@ export class Jira implements INodeType {
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
 
-			// Get all the priorities to display them to user so that he can
+			// Get all the priorities to display them to user so that they can
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -262,7 +262,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the transitions (status) to display them to user so that he can
+			// Get all the transitions (status) to display them to user so that they can
 			// select them easily
 			async getTransitions(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -294,7 +294,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -340,7 +340,7 @@ export class Jira implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -370,7 +370,7 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
@@ -399,7 +399,7 @@ export class Jira implements INodeType {
 					});
 			},
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -429,7 +429,7 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the components to display them to user so that he can
+			// Get all the components to display them to user so that they can
 			// select them easily
 			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

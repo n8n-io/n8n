@@ -241,7 +241,7 @@ import {
 	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
-import {
+import type {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -277,7 +277,8 @@ import { useCredentialsStore } from '@/stores/credentials';
 import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useCanvasStore } from '@/stores/canvas';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useEnvironmentsStore } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
@@ -470,6 +471,7 @@ export default mixins(
 			useWorkflowsStore,
 			useUsersStore,
 			useNodeCreatorStore,
+			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
 		),
@@ -2514,6 +2516,20 @@ export default mixins(
 				}
 			}
 		},
+		onBeforeUnload(e) {
+			if (this.isDemo || window.preventNodeViewBeforeUnload) {
+				return;
+			} else if (this.uiStore.stateIsDirty) {
+				const confirmationMessage = this.$locale.baseText(
+					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
+				);
+				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+			} else {
+				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				return;
+			}
+		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
 			await this.resetWorkspace();
@@ -2531,35 +2547,7 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
-				// For novice users (onboardingFlowEnabled == true)
-				// Inject welcome sticky note and zoom to fit
-
-				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					// Position the welcome sticky left to the added trigger node
-					const position: XYPosition = [50, 250];
-
-					await this.addNodes([
-						{
-							id: uuid(),
-							...NodeViewUtils.WELCOME_STICKY_NODE,
-							parameters: {
-								// Use parameters from the template but add translated content
-								...NodeViewUtils.WELCOME_STICKY_NODE.parameters,
-								content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
-							},
-							position,
-						},
-					]);
-					setTimeout(() => {
-						this.canvasStore.zoomToFit();
-						this.canvasStore.canvasAddButtonPosition = [500, 350];
-						this.$telemetry.track('welcome note inserted');
-					}, 0);
-				}
-			} else {
-				this.canvasStore.zoomToFit();
-			}
+			this.canvasStore.zoomToFit();
 		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
@@ -2623,23 +2611,7 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			// allow to be overriden in e2e tests
-			// @ts-ignore
-			window.onBeforeUnloadNodeView = (e) => {
-				if (this.isDemo) {
-					return;
-				} else if (this.uiStore.stateIsDirty) {
-					const confirmationMessage = this.$locale.baseText(
-						'nodeView.itLooksLikeYouHaveBeenEditingSomething',
-					);
-					(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-					return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
-				} else {
-					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
-					return;
-				}
-			};
-			window.addEventListener('beforeunload', window.onBeforeUnloadNodeView);
+			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3627,6 +3599,9 @@ export default mixins(
 		async loadCredentials(): Promise<void> {
 			await this.credentialsStore.fetchAllCredentials();
 		},
+		async loadVariables(): Promise<void> {
+			await this.environmentsStore.fetchAllVariables();
+		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
@@ -3882,6 +3857,7 @@ export default mixins(
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
 		];
+		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -3994,6 +3970,7 @@ export default mixins(
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
+		window.removeEventListener('beforeunload', this.onBeforeUnload);
 
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);

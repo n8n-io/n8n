@@ -5,8 +5,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-export default Vue.extend({
+import { defineComponent } from 'vue';
+export default defineComponent({
 	name: 'n8n-text',
 	props: {
 		bold: {

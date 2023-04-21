@@ -131,7 +131,7 @@ export class WaitTracker {
 			executionId,
 			ResponseHelper.flattenExecutionData({
 				...fullExecutionData,
-			}),
+			}) as IExecutionFlattedDb,
 		);
 
 		return {

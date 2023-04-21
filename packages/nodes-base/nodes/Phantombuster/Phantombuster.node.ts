@@ -72,7 +72,7 @@ export class Phantombuster implements INodeType {
 				return returnData;
 			},
 
-			// Get all the arguments to display them to user so that he can
+			// Get all the arguments to display them to user so that they can
 			// select them easily
 			// async getArguments(
 			// 	this: ILoadOptionsFunctions,

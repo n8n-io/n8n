@@ -1,7 +1,7 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="uiStore.isModalOpen(this.$props.name)"
+		:visible="uiStore.isModalOpen(this.name)"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
@@ -53,12 +53,7 @@ export default Vue.extend({
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.on('close', () => {
-				this.close();
-			});
-		}
+		this.eventBus?.on('close', this.close);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -66,6 +61,7 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
+		this.eventBus?.off('close', this.close);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
 	computed: {
@@ -73,7 +69,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.$props.name)) {
+			if (!this.uiStore.isModalActive(this.name)) {
 				return;
 			}
 
@@ -82,7 +78,7 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.$props.name)) {
+			if (this.uiStore.isModalActive(this.name)) {
 				this.$emit('enter');
 			}
 		},
@@ -94,7 +90,7 @@ export default Vue.extend({
 					return;
 				}
 			}
-			this.uiStore.closeModal(this.$props.name);
+			this.uiStore.closeModal(this.name);
 		},
 	},
 });

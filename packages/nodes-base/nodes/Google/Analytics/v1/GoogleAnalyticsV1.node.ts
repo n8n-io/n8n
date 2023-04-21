@@ -79,7 +79,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the dimensions to display them to user so that he can
+			// Get all the dimensions to display them to user so that they can
 			// select them easily
 			async getDimensions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -119,7 +119,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the views to display them to user so that he can
+			// Get all the views to display them to user so that they can
 			// select them easily
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
