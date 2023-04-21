@@ -107,6 +107,7 @@
 						v-for="(row, index1) in tableData.data"
 						:key="index1"
 						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 					>
 						<td
 							v-for="(data, index2) in row"

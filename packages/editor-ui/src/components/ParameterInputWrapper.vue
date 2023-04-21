@@ -28,7 +28,7 @@
 			:class="$style.hint"
 			data-test-id="parameter-expression-preview"
 			class="ph-no-capture"
-			:highlight="!!(expressionOutput && targetItem)"
+			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
 			:hint="expressionOutput"
 			:singleLine="true"
 		/>
@@ -153,25 +153,29 @@ export default mixins(showMessage, workflowHelpers).extend({
 		targetItem(): TargetItem | null {
 			return this.ndvStore.hoveringItem;
 		},
+		isInputParentOfActiveNode(): boolean {
+			return this.ndvStore.isInputParentOfActiveNode;
+		},
 		expressionValueComputed(): string | null {
-			const inputNodeName: string | undefined = this.ndvStore.ndvInputNodeName;
 			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
-			if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
+			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return null;
 			}
 
-			const inputRunIndex: number | undefined = this.ndvStore.ndvInputRunIndex;
-			const inputBranchIndex: number | undefined = this.ndvStore.ndvInputBranchIndex;
-
 			let computedValue: NodeParameterValue;
 			try {
-				const targetItem = this.targetItem ?? undefined;
-				computedValue = this.resolveExpression(value, undefined, {
-					targetItem,
-					inputNodeName,
-					inputRunIndex,
-					inputBranchIndex,
-				});
+				let opts;
+				if (this.ndvStore.isInputParentOfActiveNode) {
+					opts = {
+						targetItem: this.targetItem ?? undefined,
+						inputNodeName: this.ndvStore.ndvInputNodeName,
+						inputRunIndex: this.ndvStore.ndvInputRunIndex,
+						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+					};
+				}
+
+				computedValue = this.resolveExpression(value, undefined, opts);
+
 				if (computedValue === null) {
 					return null;
 				}
