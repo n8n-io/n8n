@@ -2,7 +2,7 @@ import { License } from '@/License';
 import { Container } from 'typedi';
 import { BaseCommand } from '../BaseCommand';
 
-export class ClearLicenseCommand extends BaseCommand {
+export class LicenseInfoCommand extends BaseCommand {
 	static description = 'Print license information';
 
 	static examples = ['$ n8n license:info'];
