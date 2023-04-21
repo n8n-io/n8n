@@ -98,13 +98,13 @@ describe('Webhook Trigger node', async () => {
 
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		cy.waitForLoad();
 
-		cy.window()
-			// @ts-ignore
-			.then(
-				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
-			);
+		cy.window().then(
+			(win) => {
+				// @ts-ignore
+				win.preventNodeViewBeforeUnload = true;
+			},
+		);
 	});
 
 	it('should listen for a GET request', () => {

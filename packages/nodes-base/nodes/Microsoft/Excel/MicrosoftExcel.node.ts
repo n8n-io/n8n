@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -81,7 +80,7 @@ export class MicrosoftExcel implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the workbooks to display them to user so that he can
+			// Get all the workbooks to display them to user so that they can
 			// select them easily
 			async getWorkbooks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const qs: IDataObject = {
@@ -106,7 +105,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the worksheets to display them to user so that he can
+			// Get all the worksheets to display them to user so that they can
 			// select them easily
 			async getworksheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workbookId = this.getCurrentNodeParameter('workbook');
@@ -132,7 +131,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tables to display them to user so that he can
+			// Get all the tables to display them to user so that they can
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workbookId = this.getCurrentNodeParameter('workbook');

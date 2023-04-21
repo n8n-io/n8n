@@ -11,14 +11,14 @@ import {
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { Role } from '@/databases/entities/Role';
-import { User } from '@/databases/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { randomEmail, randomName } from '../integration/shared/random';
 import * as Helpers from './Helpers';
-import { WorkflowExecuteAdditionalData } from '@/index';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
@@ -27,6 +27,8 @@ import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';
 import { Push } from '@/push';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import { NodeTypes } from '@/NodeTypes';
 
 /**
  * TODO:
@@ -119,6 +121,9 @@ jest.mock('@/Db', () => {
 				clear: jest.fn(),
 				delete: jest.fn(),
 			},
+			Variables: {
+				find: jest.fn(() => []),
+			},
 		},
 	};
 });
@@ -157,12 +162,17 @@ describe('ActiveWorkflowRunner', () => {
 
 	beforeEach(() => {
 		externalHooks = mock();
-		activeWorkflowRunner = new ActiveWorkflowRunner(externalHooks);
+		activeWorkflowRunner = new ActiveWorkflowRunner(
+			new ActiveExecutions(),
+			externalHooks,
+			Container.get(NodeTypes),
+		);
 	});
 
 	afterEach(async () => {
 		await activeWorkflowRunner.removeAll();
 		databaseActiveWorkflowsCount = 0;
+		databaseActiveWorkflowsList = [];
 		jest.clearAllMocks();
 	});
 

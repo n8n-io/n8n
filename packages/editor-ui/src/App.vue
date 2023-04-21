@@ -45,9 +45,11 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
-import { historyHelper } from '@/mixins/history';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { newVersions } from '@/mixins/newVersions';
+import { useRoute } from 'vue-router/composables';
 
-export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
+export default mixins(newVersions, showMessage, userHelpers, restApi).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -55,10 +57,9 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		Modals,
 	},
 	setup() {
-		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 		return {
-			registerCustomAction,
-			unregisterCustomAction,
+			...useGlobalLinkActions(),
+			...useHistoryHelper(useRoute()),
 		};
 	},
 	computed: {
@@ -186,6 +187,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
+		this.checkForNewVersions();
 
 		this.loading = false;
 

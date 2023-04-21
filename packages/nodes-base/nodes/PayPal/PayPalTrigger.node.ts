@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -58,7 +58,7 @@ export class PayPalTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the events types to display them to user so that he can
+			// Get all the events types to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [

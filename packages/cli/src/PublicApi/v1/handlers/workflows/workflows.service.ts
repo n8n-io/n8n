@@ -18,9 +18,12 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
+	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: { userId: user.id },
+		where,
+		select: ['workflowId'],
 	});
+	return sharedWorkflows.map(({ workflowId }) => workflowId);
 
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
@@ -109,14 +112,10 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return Db.collections.Workflow.remove(workflow);
 }
 
-export async function getWorkflows(
+export async function getWorkflowsAndCount(
 	options: FindManyOptions<WorkflowEntity>,
-): Promise<WorkflowEntity[]> {
-	return Db.collections.Workflow.find(options);
-}
-
-export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>): Promise<number> {
-	return Db.collections.Workflow.count(options);
+): Promise<[WorkflowEntity[], number]> {
+	return Db.collections.Workflow.findAndCount(options);
 }
 
 export async function updateWorkflow(

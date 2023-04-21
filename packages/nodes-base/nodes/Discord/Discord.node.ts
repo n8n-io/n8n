@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import type { DiscordAttachment, DiscordWebhook } from './Interfaces';

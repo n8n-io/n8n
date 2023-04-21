@@ -1,10 +1,6 @@
 <template>
 	<div class="n8n-tree">
-		<div
-			v-for="(label, i) in Object.keys(value || {})"
-			:key="i"
-			:class="{ [nodeClass]: !!nodeClass, [$style.indent]: depth > 0 }"
-		>
+		<div v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
 			<div :class="$style.simple" v-if="isSimple(value[label])">
 				<slot
 					v-if="$scopedSlots.label"
@@ -41,15 +37,18 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent, PropType } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-tree',
 	components: {},
 	props: {
-		value: {},
+		value: {
+			type: Object as PropType<Record<string, unknown>>,
+			default: () => ({}),
+		},
 		path: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			default: () => [],
 		},
 		depth: {
@@ -58,6 +57,12 @@ export default Vue.extend({
 		},
 		nodeClass: {
 			type: String,
+			default: '',
+		},
+	},
+	computed: {
+		classes(): Record<string, boolean> {
+			return { [this.nodeClass]: !!this.nodeClass, [this.$style.indent]: this.depth > 0 };
 		},
 	},
 	methods: {

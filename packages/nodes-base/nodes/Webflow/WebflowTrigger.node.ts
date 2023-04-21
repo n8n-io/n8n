@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -165,7 +165,7 @@ export class WebflowTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the sites to display them to user so that he can
+			// Get all the sites to display them to user so that they can
 			// select them easily
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

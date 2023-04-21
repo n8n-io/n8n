@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -161,7 +161,7 @@ export class FacebookTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available organizations to display them to user so that he can
+			// Get all the available organizations to display them to user so that they can
 			// select them easily
 			async getObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const object = this.getCurrentNodeParameter('object') as string;
@@ -170,7 +170,6 @@ export class FacebookTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

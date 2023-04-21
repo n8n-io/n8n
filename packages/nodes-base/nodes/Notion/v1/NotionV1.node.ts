@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -203,7 +202,7 @@ export class NotionV1 implements INodeType {
 				}));
 			},
 
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

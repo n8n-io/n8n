@@ -1,7 +1,6 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { JsonObject } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(

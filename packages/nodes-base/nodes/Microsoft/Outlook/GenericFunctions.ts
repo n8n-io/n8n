@@ -1,10 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
-
-import type { IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	JsonObject,
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -228,24 +232,8 @@ export async function binaryToAttachments(
 ) {
 	return Promise.all(
 		attachments.map(async (attachment) => {
-			const { binary } = items[i];
-
-			if (binary === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-					itemIndex: i,
-				});
-			}
-
 			const binaryPropertyName = attachment.binaryPropertyName as string;
-			if (binary[binaryPropertyName] === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Item has no binary property called "${binaryPropertyName}"`,
-					{ itemIndex: i },
-				);
-			}
-
-			const binaryData = binary[binaryPropertyName];
+			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',

@@ -35,7 +35,6 @@
 </template>
 
 <script>
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import {
@@ -45,6 +44,7 @@ import {
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'CommunityPackageManageConfirmModal',
@@ -67,7 +67,7 @@ export default mixins(showMessage).extend({
 	data() {
 		return {
 			loading: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 			COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 		};
@@ -151,7 +151,7 @@ export default mixins(showMessage).extend({
 				);
 			} finally {
 				this.loading = false;
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			}
 		},
 		async onUpdate() {
@@ -187,7 +187,7 @@ export default mixins(showMessage).extend({
 				);
 			} finally {
 				this.loading = false;
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			}
 		},
 	},

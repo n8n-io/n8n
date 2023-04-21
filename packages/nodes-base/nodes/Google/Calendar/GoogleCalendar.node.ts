@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -80,7 +79,7 @@ export class GoogleCalendar implements INodeType {
 			getTimezones,
 		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
 			async getConferenceSolutations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -105,7 +104,7 @@ export class GoogleCalendar implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the colors to display them to user so that he can
+			// Get all the colors to display them to user so that they can
 			// select them easily
 			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

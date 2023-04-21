@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -81,7 +80,7 @@ export class MicrosoftTeams implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the team's channels to display them to user so that he can
+			// Get all the team's channels to display them to user so that they can
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -101,7 +100,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the teams to display them to user so that he can
+			// Get all the teams to display them to user so that they can
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -116,7 +115,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -135,7 +134,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the plans to display them to user so that he can
+			// Get all the plans to display them to user so that they can
 			// select them easily
 			async getPlans(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -158,7 +157,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the plans to display them to user so that he can
+			// Get all the plans to display them to user so that they can
 			// select them easily
 			async getBuckets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -181,7 +180,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the plans to display them to user so that he can
+			// Get all the plans to display them to user so that they can
 			// select them easily
 			async getMembers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -204,7 +203,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

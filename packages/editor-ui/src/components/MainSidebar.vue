@@ -227,6 +227,14 @@ export default mixins(
 					activateOnRouteNames: [VIEWS.CREDENTIALS],
 				},
 				{
+					id: 'variables',
+					icon: 'variable',
+					label: this.$locale.baseText('mainSidebar.variables'),
+					customIconSize: 'medium',
+					position: 'top',
+					activateOnRouteNames: [VIEWS.VARIABLES],
+				},
+				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
@@ -371,6 +379,12 @@ export default mixins(
 				case 'credentials': {
 					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
 						this.goToRoute({ name: VIEWS.CREDENTIALS });
+					}
+					break;
+				}
+				case 'variables': {
+					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
+						this.goToRoute({ name: VIEWS.VARIABLES });
 					}
 					break;
 				}

@@ -1,6 +1,6 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -174,7 +174,7 @@ export class Harvest implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available accounts to display them to user so that he can
+			// Get all the available accounts to display them to user so that they can
 			// select them easily
 			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

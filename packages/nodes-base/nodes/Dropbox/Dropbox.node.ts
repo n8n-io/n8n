@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -760,26 +759,9 @@ export class Dropbox implements INodeType {
 						options = { json: false };
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${propertyNameUpload}"`,
-									{ itemIndex: i },
-								);
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');

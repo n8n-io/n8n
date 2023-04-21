@@ -1,4 +1,5 @@
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -7,8 +8,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import type { IExecuteFunctions } from 'n8n-core';
 
 import {
 	capitalize,
@@ -1020,7 +1019,7 @@ export class Freshdesk implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the agents to display them to user so that he can
+			// Get all the agents to display them to user so that they can
 			// select them easily
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1037,7 +1036,7 @@ export class Freshdesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1054,7 +1053,7 @@ export class Freshdesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the products to display them to user so that he can
+			// Get all the products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1071,7 +1070,7 @@ export class Freshdesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the companies to display them to user so that he can
+			// Get all the companies to display them to user so that they can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

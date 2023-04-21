@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -138,7 +138,7 @@ export class GetResponseTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available teams to display them to user so that he can
+			// Get all the available teams to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -155,7 +155,6 @@ export class GetResponseTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

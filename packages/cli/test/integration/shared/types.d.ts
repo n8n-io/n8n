@@ -22,8 +22,11 @@ type EndpointGroup =
 	| 'publicApi'
 	| 'nodes'
 	| 'ldap'
+	| 'saml'
+	| 'versionControl'
 	| 'eventBus'
-	| 'license';
+	| 'license'
+	| 'variables';
 
 export type CredentialPayload = {
 	name: string;

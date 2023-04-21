@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -122,7 +121,7 @@ export class PagerDuty implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available escalation policies to display them to user so that he can
+			// Get all the available escalation policies to display them to user so that they can
 			// select them easily
 			async getEscalationPolicies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -142,7 +141,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available priorities to display them to user so that he can
+			// Get all the available priorities to display them to user so that they can
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -164,7 +163,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available services to display them to user so that he can
+			// Get all the available services to display them to user so that they can
 			// select them easily
 			async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -184,7 +183,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

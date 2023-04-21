@@ -9,13 +9,11 @@ import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
-	ICredentialTypes,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -31,11 +29,8 @@ import { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { NodeTypes } from '@/NodeTypes';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
@@ -44,7 +39,7 @@ import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
 import { issueJWT } from '@/auth/jwt';
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -61,11 +56,12 @@ import type {
 	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { registerController } from '@/decorators';
 import {
 	AuthController,
+	LdapController,
 	MeController,
+	NodesController,
 	OwnerController,
 	PasswordResetController,
 	UsersController,
@@ -74,11 +70,20 @@ import { setupAuthMiddlewares } from '@/middlewares';
 import * as testDb from '../shared/testDb';
 
 import { v4 as uuid } from 'uuid';
-import { handleLdapInit } from '@/Ldap/helpers';
-import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { variablesController } from '@/environments/variables/variables.controller';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
+import { handleLdapInit } from '@/Ldap/helpers';
+import { Push } from '@/push';
+import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
+import { SamlService } from '@/sso/saml/saml.service.ee';
+import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
+import { EventBusController } from '@/eventbus/eventBus.controller';
+import { License } from '@/License';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -88,13 +93,6 @@ export const mockInstance = <T>(
 	Container.set(ctor, instance);
 	return instance;
 };
-
-const loadNodesAndCredentials: INodesAndCredentials = {
-	loaded: { nodes: {}, credentials: {} },
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
-};
-Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -155,10 +153,8 @@ export async function initTestServer({
 		const map: Record<string, express.Router | express.Router[] | any> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
-			nodes: { controller: nodesController, path: 'nodes' },
 			license: { controller: licenseController, path: 'license' },
-			eventBus: { controller: eventBusRouter, path: 'eventbus' },
-			ldap: { controller: ldapController, path: 'ldap' },
+			variables: { controller: variablesController, path: 'variables' },
 		};
 
 		if (enablePublicAPI) {
@@ -178,11 +174,14 @@ export async function initTestServer({
 	if (functionEndpoints.length) {
 		const externalHooks = Container.get(ExternalHooks);
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = UserManagementMailer.getInstance();
+		const mailer = Container.get(UserManagementMailer);
 		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
 			switch (group) {
+				case 'eventBus':
+					registerController(testServer.app, config, new EventBusController());
+					break;
 				case 'auth':
 					registerController(
 						testServer.app,
@@ -190,6 +189,40 @@ export async function initTestServer({
 						new AuthController({ config, logger, internalHooks, repositories }),
 					);
 					break;
+				case 'ldap':
+					Container.get(License).isLdapEnabled = () => true;
+					await handleLdapInit();
+					const { service, sync } = LdapManager.getInstance();
+					registerController(
+						testServer.app,
+						config,
+						new LdapController(service, sync, internalHooks),
+					);
+					break;
+				case 'saml':
+					await setSamlLoginEnabled(true);
+					const samlService = Container.get(SamlService);
+					registerController(testServer.app, config, new SamlController(samlService));
+					break;
+				case 'versionControl':
+					const versionControlService = Container.get(VersionControlService);
+					registerController(
+						testServer.app,
+						config,
+						new VersionControlController(versionControlService),
+					);
+					break;
+				case 'nodes':
+					registerController(
+						testServer.app,
+						config,
+						new NodesController(
+							config,
+							Container.get(LoadNodesAndCredentials),
+							Container.get(Push),
+							internalHooks,
+						),
+					);
 				case 'me':
 					registerController(
 						testServer.app,
@@ -206,6 +239,7 @@ export async function initTestServer({
 							logger,
 							externalHooks,
 							internalHooks,
+							mailer,
 							repositories,
 						}),
 					);
@@ -246,15 +280,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = [
-		'credentials',
-		'nodes',
-		'workflows',
-		'publicApi',
-		'ldap',
-		'eventBus',
-		'license',
-	];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -318,13 +344,6 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	};
-}
-
-/**
- * Initialize LDAP manager.
- */
-export async function initLdapManager(): Promise<void> {
-	await handleLdapInit();
 }
 
 /**
@@ -733,6 +752,15 @@ export async function isInstanceOwnerSetUp() {
 
 	return Boolean(value);
 }
+
+export const setInstanceOwnerSetUp = async (value: boolean) => {
+	config.set('userManagement.isInstanceOwnerSetUp', value);
+
+	await Db.collections.Settings.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: JSON.stringify(value) },
+	);
+};
 
 // ----------------------------------
 //              misc
