@@ -88,6 +88,4 @@ describe('useKeyboardNavigation', () => {
 		await userEvent.keyboard('{escape}');
 		expect(eventHookSpy).toHaveBeenCalledWith('item1', 'Escape');
 	});
-
-	// Add more tests for other scenarios.
 });

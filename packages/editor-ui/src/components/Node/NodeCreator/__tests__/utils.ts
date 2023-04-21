@@ -9,7 +9,7 @@ import {
 	ViewCreateElement,
 	LabelCreateElement,
 	ActionCreateElement,
-} from '@/Interface'; // Import your types from the file
+} from '@/Interface';
 import { v4 as uuidv4 } from 'uuid';
 
 export const mockSimplifiedNodeType = (
