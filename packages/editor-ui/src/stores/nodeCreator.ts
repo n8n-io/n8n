@@ -20,11 +20,12 @@ import {
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
-import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
-import { BaseTextKey, i18n } from '@/plugins/i18n';
-import { externalHooks } from '@/mixins/externalHooks';
+import { i18n } from '@/plugins/i18n';
 import { Telemetry } from '@/plugins/telemetry';
+import { runExternalHook } from '@/utils';
+import { useWebhooksStore } from '@/stores/webhooks';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -286,14 +287,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return storeWatcher;
 		},
 		trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
-			const { $externalHooks } = new externalHooks();
-
 			const payload = {
 				node_type: action.key,
 				action: action.name,
 				resource: (action.value as INodeParameters).resource || '',
 			};
-			$externalHooks().run('nodeCreateList.addAction', payload);
+			runExternalHook('nodeCreateList.addAction', useWebhooksStore(), payload);
 			telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 		},
 	},
