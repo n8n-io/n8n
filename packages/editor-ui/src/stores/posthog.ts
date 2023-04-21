@@ -1,12 +1,15 @@
-import { ref, Ref, watch } from 'vue';
+import { ref, Ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { FeatureFlags } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	TEMPLATE_EXPERIMENT,
+} from '@/constants';
 import { useTelemetryStore } from './telemetry';
-import { useSegment } from './segment';
 import { debounce } from 'lodash-es';
 
 const EVENTS = {
@@ -18,7 +21,6 @@ export const usePostHog = defineStore('posthog', () => {
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
-	const segmentStore = useSegment();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -44,8 +46,11 @@ export const usePostHog = defineStore('posthog', () => {
 		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
 		if (cachedOverrdies) {
 			try {
+				console.log('Overriding feature flags', cachedOverrdies);
 				overrides.value = JSON.parse(cachedOverrdies);
-			} catch (e) {}
+			} catch (e) {
+				console.log('Could not override experiment', e);
+			}
 		}
 
 		window.featureFlags = {
@@ -121,21 +126,38 @@ export const usePostHog = defineStore('posthog', () => {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
-			trackExperiments(evaluatedFeatureFlags);
+
+			// does not need to be debounced really, but tracking does not fire without delay on page load
 			addExperimentOverrides();
+			trackExperimentsDebounced(featureFlags.value);
+			evaluateExperiments(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
 				addExperimentOverrides();
-				trackExperiments(map);
+
+				// must be debounced because it is called multiple times by posthog
+				trackExperimentsDebounced(featureFlags.value);
+				evaluateExperimentsDebounced(featureFlags.value);
 			});
 		}
 	};
 
-	const trackExperiments = debounce((featureFlags: FeatureFlags) => {
+	const evaluateExperiments = (featureFlags: FeatureFlags) => {
+		Object.keys(featureFlags).forEach((name) => {
+			const variant = featureFlags[name];
+			if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
+				settingsStore.disableTemplates();
+			}
+		});
+	};
+	const evaluateExperimentsDebounced = debounce(evaluateExperiments, 2000);
+
+	const trackExperiments = (featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	}, 2000);
+	};
+	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
 
 	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
 		const variant = featureFlags[name];
