@@ -55,5 +55,8 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 		await queryRunner.query(
 			`UPDATE "${tablePrefix}user" SET settings = settings::jsonb - 'userActivated'`,
 		);
+		await queryRunner.query(
+			`UPDATE "${tablePrefix}user" SET settings = NULL WHERE settings::jsonb = '{}'::jsonb`,
+		);
 	}
 }
