@@ -97,7 +97,6 @@ import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import { titleChange } from '@/mixins/titleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -119,7 +118,6 @@ import { isNavigationFailure, NavigationFailureType, Route } from 'vue-router';
 
 export default mixins(
 	genericHelpers,
-	restApi,
 	showMessage,
 	titleChange,
 	workflowHelpers,

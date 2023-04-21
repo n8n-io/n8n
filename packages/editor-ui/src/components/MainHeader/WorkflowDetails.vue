@@ -505,7 +505,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					}
 
 					try {
-						await this.restApi().deleteWorkflow(this.currentWorkflowId);
+						await this.workflowsStore.deleteWorkflowAPI(this.currentWorkflowId);
 					} catch (error) {
 						this.$showError(
 							error,
