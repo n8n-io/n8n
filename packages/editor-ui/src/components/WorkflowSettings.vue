@@ -348,7 +348,7 @@ import {
 
 import mixins from 'vue-typed-mixins';
 
-import { deepCopy } from 'n8n-workflow';
+import { WorkflowSettings, deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useSettingsStore } from '@/stores/settings';
@@ -504,7 +504,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		}
 		if (workflowSettings.callerPolicy === undefined) {
 			workflowSettings.callerPolicy = this.defaultValues
-				.workflowCallerPolicy as WorkflowCallerPolicyDefaultOption;
+				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
 			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
