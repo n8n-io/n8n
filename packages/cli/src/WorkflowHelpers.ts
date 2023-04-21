@@ -567,11 +567,7 @@ export function validateWorkflowCredentialUsage(
 	return newWorkflowVersion;
 }
 
-//get starting node, overwise return undefined
-export function getStartNode(
-	data: IWorkflowExecutionDataProcess,
-	workflow: Workflow,
-): INode | undefined {
+export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workflow: Workflow) {
 	let startNode;
 	if (
 		data.startNodes?.length === 1 &&

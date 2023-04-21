@@ -296,7 +296,7 @@ class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
-			const startNode = WorkflowHelpers.getStartNode(this.data, this.workflow);
+			const startNode = WorkflowHelpers.getExecutionStartNode(this.data, this.workflow);
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
