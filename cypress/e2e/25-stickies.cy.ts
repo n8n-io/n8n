@@ -49,6 +49,7 @@ describe('Canvas Actions', () => {
 		moveSticky({ top: 500, left: 500 });
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		cy.wait('@createWorkflow');
 
 		cy.reload();
 		cy.waitForLoad();
