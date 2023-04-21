@@ -136,7 +136,6 @@ import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
 import { addCredentialTranslation } from '@/plugins/i18n';
-import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
@@ -147,7 +146,6 @@ import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialsResponse } from '@/Interface';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import Vue from 'vue';
@@ -160,7 +158,6 @@ export default Vue.extend({
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
-		ParameterInputFull,
 		GoogleAuthButton,
 	},
 	props: {

@@ -32,7 +32,6 @@ import {
 	IUser,
 } from '@/Interface';
 
-
 import { get } from 'lodash-es';
 
 import { isObjectLiteral } from '@/utils';

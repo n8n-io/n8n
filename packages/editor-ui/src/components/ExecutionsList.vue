@@ -907,8 +907,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			}
 		},
 	},
-	},
-);
+});
 </script>
 
 <style module lang="scss">
