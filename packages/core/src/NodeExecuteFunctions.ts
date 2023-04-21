@@ -1207,6 +1207,11 @@ export async function requestOAuth2(
 			throw error;
 		});
 	}
+	const tokenExpiredStatusCode =
+		oAuth2Options?.tokenExpiredStatusCode === undefined
+			? 401
+			: oAuth2Options?.tokenExpiredStatusCode;
+
 	return this.helpers
 		.request(newRequestOptions)
 		.then((response) => {
@@ -1214,21 +1219,14 @@ export async function requestOAuth2(
 			if (
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
-				response.statusCode ===
-					(oAuth2Options?.tokenExpiredStatusCode === undefined
-						? 401
-						: oAuth2Options?.tokenExpiredStatusCode)
+				response.statusCode === tokenExpiredStatusCode
 			) {
 				throw response;
 			}
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			const statusCodeReturned =
-				oAuth2Options?.tokenExpiredStatusCode === undefined
-					? 401
-					: oAuth2Options?.tokenExpiredStatusCode;
-			if (error.statusCode === statusCodeReturned) {
+			if (error.statusCode === tokenExpiredStatusCode) {
 				// Token is probably not valid anymore. So try refresh it.
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
