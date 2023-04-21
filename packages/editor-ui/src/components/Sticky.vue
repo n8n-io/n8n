@@ -5,6 +5,7 @@
 		:ref="data.name"
 		:style="stickyPosition"
 		:data-name="data.name"
+		data-test-id="sticky"
 	>
 		<div
 			:class="{
@@ -41,7 +42,12 @@
 			</div>
 
 			<div v-show="showActions" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					data-test-id="delete-sticky"
+					:title="$locale.baseText('node.deleteNode')"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
 			</div>
