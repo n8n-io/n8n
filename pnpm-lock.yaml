@@ -254,8 +254,8 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7
       google-timezones-json:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^1.1.0
+        version: 1.1.0
       handlebars:
         specifier: 4.7.7
         version: 4.7.7
@@ -1420,8 +1420,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       vm2:
-        specifier: ~3.9.15
-        version: 3.9.15
+        specifier: ~3.9.17
+        version: 3.9.17
       xlsx:
         specifier: ^0.17.0
         version: 0.17.5
@@ -10395,7 +10395,7 @@ packages:
       ast-types: 0.13.4
       escodegen: 1.14.3
       esprima: 4.0.1
-      vm2: 3.9.15
+      vm2: 3.9.17
     dev: false
 
   /del@6.1.1:
@@ -12664,8 +12664,8 @@ packages:
       - supports-color
     dev: false
 
-  /google-timezones-json@1.0.2:
-    resolution: {integrity: sha512-UWXQ7BpSCW8erDespU2I4cri22xsKgwOCyhsJal0OJhi2tFpwJpsYNJt4vCiFPL1p2HzCGiS713LKpNR25n9Kg==}
+  /google-timezones-json@1.1.0:
+    resolution: {integrity: sha512-6BmBx9gJVALV2jsfMks8PwmkWT5ip3+bmMyTgXu4PY+G8nKjHi61yrL7rSXpMYRsIzUXhVKpj+MnjhnwG9nung==}
     dev: false
 
   /gopd@1.0.1:
@@ -21449,8 +21449,8 @@ packages:
       - terser
     dev: true
 
-  /vm2@3.9.15:
-    resolution: {integrity: sha512-XqNqknHGw2avJo13gbIwLNZUumvrSHc9mLqoadFZTpo3KaNEJoe1I0lqTFhRXmXD7WkLyG01aaraXdXT0pa4ag==}
+  /vm2@3.9.17:
+    resolution: {integrity: sha512-AqwtCnZ/ERcX+AVj9vUsphY56YANXxRuqMb7GsDtAr0m0PcQX3u0Aj3KWiXM0YAHy7i6JEeHrwOnwXbGYgRpAw==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:
