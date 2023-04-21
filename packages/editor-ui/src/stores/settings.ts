@@ -229,6 +229,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		stopShowingSetupPage(): void {
 			Vue.set(this.userManagement, 'showSetupOnFirstLoad', false);
 		},
+		disableTemplates(): void {
+			Vue.set(this.settings.templates, 'enabled', false);
+		},
 		setPromptsData(promptsData: IN8nPrompts): void {
 			Vue.set(this, 'promptsData', promptsData);
 		},
