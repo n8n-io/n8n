@@ -169,6 +169,7 @@ export class WorkflowPage extends BasePage {
 			this.getters.shareButton().click();
 		},
 		saveWorkflowOnButtonClick: () => {
+			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
 			this.getters.saveButton().should('contain', 'Saved');
