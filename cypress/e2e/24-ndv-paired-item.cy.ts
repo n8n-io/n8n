@@ -200,6 +200,7 @@ describe('NDV', () => {
 		ndv.actions.switchOutputMode('Table');
 		cy.wait(50);
 
+		ndv.getters.backToCanvas().realHover(); // reset to default hover
 		ndv.getters.inputHoveringItem().should('have.text', '1111').realHover();
 		ndv.getters.outputHoveringItem().should('not.exist');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
