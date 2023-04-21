@@ -32,7 +32,7 @@ import VariablesView from '@/views/VariablesView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
-import { VIEWS } from './constants';
+import { TEMPLATE_EXPERIMENT, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import { useSSOStore } from './stores/sso';
@@ -40,6 +40,8 @@ import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
+import SettingsVersionControl from './views/SettingsVersionControl.vue';
+import { usePostHog } from './stores/posthog';
 
 Vue.use(Router);
 
@@ -59,8 +61,12 @@ interface IRouteConfig extends RouteConfigSingleView {
 
 function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
+	const posthog = usePostHog();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
-	if (!isTemplatesEnabled) {
+	if (
+		!posthog.isVariantEnabled(TEMPLATE_EXPERIMENT.name, TEMPLATE_EXPERIMENT.variant) &&
+		!isTemplatesEnabled
+	) {
 		return { name: VIEWS.NOT_FOUND };
 	}
 
@@ -573,6 +579,31 @@ export const routes = [
 				},
 			},
 			{
+				path: 'version-control',
+				name: VIEWS.VERSION_CONTROL,
+				components: {
+					settingsView: SettingsVersionControl,
+				},
+				meta: {
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties(route: Route) {
+							return {
+								feature: 'vc',
+							};
+						},
+					},
+					permissions: {
+						allow: {
+							role: [ROLE.Owner],
+						},
+						deny: {
+							shouldDeny: () => !window.localStorage.getItem('version-control'),
+						},
+					},
+				},
+			},
+			{
 				path: 'sso',
 				name: VIEWS.SSO_SETTINGS,
 				components: {
@@ -612,11 +643,10 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
-							role: [ROLE.Owner],
+							role: [ROLE.Default, ROLE.Owner],
 						},
 						deny: {
-							role: [ROLE.Default],
+							role: [ROLE.Member],
 						},
 					},
 				},
@@ -675,7 +705,10 @@ export const routes = [
 				meta: {
 					permissions: {
 						allow: {
-							role: [ROLE.Owner],
+							role: [ROLE.Default, ROLE.Owner],
+						},
+						deny: {
+							role: [ROLE.Member],
 						},
 					},
 				},

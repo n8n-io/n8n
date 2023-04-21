@@ -182,7 +182,7 @@ export class EventbriteTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available organizations to display them to user so that he can
+			// Get all the available organizations to display them to user so that they can
 			// select them easily
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -202,7 +202,7 @@ export class EventbriteTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available events to display them to user so that he can
+			// Get all the available events to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [{ name: 'All', value: 'all' }];
