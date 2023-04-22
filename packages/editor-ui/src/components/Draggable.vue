@@ -19,12 +19,12 @@
 import { XYPosition } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 // @ts-ignore
 import Teleport from 'vue2-teleport';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'draggable',
 	components: {
 		Teleport,

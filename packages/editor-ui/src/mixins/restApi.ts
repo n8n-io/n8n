@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { parse } from 'flatted';
 
 import { Method } from 'axios';
@@ -55,7 +55,7 @@ function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse): I
 	return returnData;
 }
 
-export const restApi = Vue.extend({
+export const restApi = defineComponent({
 	computed: {
 		...mapStores(useRootStore),
 	},

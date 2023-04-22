@@ -115,9 +115,9 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			this.dropdownBus.emit('focus');
 		},
 		focusOnNameInput() {
-			const input = this.$refs.nameInput as HTMLElement;
-			if (input && input.focus) {
-				input.focus();
+			const inputRef = this.$refs.nameInput as HTMLElement | undefined;
+			if (inputRef && inputRef.focus) {
+				inputRef.focus();
 			}
 		},
 		onTagsBlur() {
