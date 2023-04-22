@@ -63,6 +63,7 @@ import { IWorkflowDataUpdate } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 import { createEventBus } from '@/event-bus';
+import { useCredentialsStore } from '@/stores';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
@@ -86,7 +87,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore, useWorkflowsStore),
+		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
 		workflowPermissions(): IPermissions {
 			const isEmptyWorkflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 			const isCurrentWorkflowEmpty =
