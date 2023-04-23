@@ -196,7 +196,8 @@ import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { DatatableColumn } from 'n8n-design-system';
+import { N8nInput } from 'n8n-design-system';
+import type { DatatableColumn } from 'n8n-design-system';
 
 export interface IResource {
 	id: string;
@@ -216,6 +217,7 @@ interface IFilters {
 }
 
 type IResourceKeyType = 'credentials' | 'workflows';
+type SearchRef = InstanceType<typeof N8nInput>;
 
 const filterKeys = ['ownedBy', 'sharedWith'];
 
@@ -405,7 +407,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {
-				(this.$refs.search as Vue & { focus: () => void }).focus();
+				(this.$refs.search as SearchRef).focus();
 			}
 		},
 		setOwnerSubview(active: boolean) {

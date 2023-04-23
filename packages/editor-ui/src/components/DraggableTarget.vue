@@ -7,9 +7,10 @@
 <script lang="ts">
 import { useNDVStore } from '@/stores/ndv';
 import { mapStores } from 'pinia';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,
@@ -55,10 +56,10 @@ export default Vue.extend({
 	},
 	methods: {
 		onMouseMove(e: MouseEvent) {
-			const target = this.$refs.target as HTMLElement;
+			const targetRef = this.$refs.target as HTMLElement | undefined;
 
-			if (target && this.isDragging) {
-				const dim = target.getBoundingClientRect();
+			if (targetRef && this.isDragging) {
+				const dim = targetRef.getBoundingClientRect();
 
 				this.hovering =
 					e.clientX >= dim.left &&

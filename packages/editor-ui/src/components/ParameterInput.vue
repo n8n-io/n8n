@@ -375,6 +375,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus';
 
+type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
+
 export default mixins(
 	externalHooks,
 	nodeHelpers,
@@ -1099,10 +1101,9 @@ export default mixins(
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocator = this.$refs.resourceLocator;
-					if (resourceLocator) {
-						(resourceLocator as Vue).$emit('refreshList');
-					}
+					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
+
+					resourceLocatorRef?.$emit('refreshList');
 				}
 				this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {

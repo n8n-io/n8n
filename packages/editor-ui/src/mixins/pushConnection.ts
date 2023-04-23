@@ -8,7 +8,7 @@ import {
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import {
@@ -39,9 +39,13 @@ export const pushConnection = mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 ).extend({
+	setup() {
+		return {
+			...useTitleChange(),
+		};
+	},
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
@@ -362,7 +366,7 @@ export const pushConnection = mixins(
 					}
 
 					// Workflow did start but had been put to wait
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 					this.$showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
@@ -370,7 +374,7 @@ export const pushConnection = mixins(
 						duration: 0,
 					});
 				} else if (runDataExecuted.finished !== true) {
-					this.$titleSet(workflow.name as string, 'ERROR');
+					this.titleSet(workflow.name as string, 'ERROR');
 
 					if (
 						runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -441,7 +445,7 @@ export const pushConnection = mixins(
 					}
 				} else {
 					// Workflow did execute without a problem
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
 					if (execution && execution.executedNode) {

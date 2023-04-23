@@ -11,17 +11,6 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
-		<template #callout v-if="!hasActiveWorkflows">
-			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-xs">
-				{{ $locale.baseText('workflows.viewDemoNotice') }}
-
-				<template #trailingContent>
-					<n8n-link size="small" theme="secondary" bold underline @click="goToTemplates">
-						{{ $locale.baseText('workflows.viewDemo') }}
-					</n8n-link>
-				</template>
-			</n8n-callout>
-		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
 				data-test-id="resources-list-item"
@@ -57,17 +46,6 @@
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
-					</n8n-text>
-				</n8n-card>
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					@click="goToTemplates"
-					data-test-id="new-workflow-template-card"
-				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.viewDemo') }}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -208,9 +186,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
-		},
-		goToTemplates() {
-			this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
 			await Promise.all([

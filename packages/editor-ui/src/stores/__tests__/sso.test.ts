@@ -2,8 +2,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useSSOStore } from '@/stores/sso';
 import { merge } from 'lodash-es';
-import { IN8nUISettings } from '@/Interface';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { IN8nUISettings } from 'n8n-workflow';
 
 let ssoStore: ReturnType<typeof useSSOStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
