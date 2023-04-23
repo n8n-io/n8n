@@ -1424,22 +1424,25 @@ export function cleanupParameterData(inputData: NodeParameterValueType | IDataOb
 	}
 
 	if (typeof inputData === 'object') {
-		Object.keys(inputData).forEach((key) => {
+		for (const key of Object.keys(inputData)) {
 			const value = inputData[key as keyof typeof inputData];
 			if (value !== undefined && value !== null && typeof value === 'object') {
-				if (value.constructor.name !== 'Object') {
-					// Is a custom object so convert it to a string
-					inputData[key as keyof typeof inputData] =
-						'toJSON' in (value as IDataObject) &&
-						typeof (value as IDataObject).toJSON === 'function'
-							? // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any
-							  (value as any).toJSON()
-							: value.toString();
-				} else {
-					cleanupParameterData(inputData[key as keyof NodeParameterValueType]);
+				if (Array.isArray(value)) {
+					value.forEach((v) => cleanupParameterData(v));
+				} else if (value?.constructor?.name !== 'Object') {
+					// Is a custom object so convert
+					if (Object.prototype.hasOwnProperty.call(value, 'toJSON')) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						inputData[key as keyof typeof inputData] = (value as any).toJSON();
+					} else if (Object.prototype.hasOwnProperty.call(value, 'toString')) {
+						inputData[key as keyof typeof inputData] = value.toString();
+					} else {
+						// For [Object: null prototype]
+						inputData[key as keyof typeof inputData] = deepCopy(value);
+					}
 				}
 			}
-		});
+		}
 	}
 }
 
