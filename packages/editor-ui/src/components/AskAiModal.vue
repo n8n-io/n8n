@@ -23,12 +23,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { ASK_AI_MODAL_KEY, ASK_AI_WAITLIST_URL } from '../constants';
 import { createEventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'AskAI',
 	components: {
 		Modal,

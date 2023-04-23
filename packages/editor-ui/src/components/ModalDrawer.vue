@@ -21,11 +21,11 @@
 <script lang="ts">
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import Vue from 'vue';
 import type { EventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ModalDrawer',
 	props: {
 		name: {

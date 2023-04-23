@@ -3,10 +3,10 @@
 </template>
 
 <script lang="ts">
-import type { PropType } from 'vue';
-import Vue from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { outputTheme } from './theme';
@@ -14,7 +14,7 @@ import { outputTheme } from './theme';
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { forceParse } from '@/utils/forceParse';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ExpressionEditorModalOutput',
 	props: {
 		segments: {

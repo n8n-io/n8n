@@ -7,10 +7,10 @@
 <script lang="ts">
 import { useNDVStore } from '@/stores/ndv';
 import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import Vue from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,

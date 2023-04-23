@@ -47,15 +47,16 @@
 	</div>
 </template>
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import Vue from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { abbreviateNumber, filterTemplateNodes } from '@/utils';
 import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';
-export default Vue.extend({
+
+export default defineComponent({
 	name: 'TemplateDetails',
 	props: {
 		blockTitle: {

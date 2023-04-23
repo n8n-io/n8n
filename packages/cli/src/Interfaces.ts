@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -82,6 +81,7 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 export interface IDatabaseCollections {
 	AuthIdentity: AuthIdentityRepository;
 	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
@@ -103,6 +103,7 @@ export interface IDatabaseCollections {
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 // ----------------------------------
 //               tags
@@ -789,3 +790,5 @@ export interface N8nApp {
 	externalHooks: IExternalHooksClass;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
+
+export type UserSettings = Pick<User, 'id' | 'settings'>;

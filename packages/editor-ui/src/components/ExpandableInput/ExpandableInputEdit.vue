@@ -16,12 +16,12 @@
 </template>
 
 <script lang="ts">
-import type { PropType } from 'vue';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExpandableInputBase from './ExpandableInputBase.vue';
+import type { PropType } from 'vue';
 import type { EventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	components: { ExpandableInputBase },
 	name: 'ExpandableInputEdit',
 	props: {
