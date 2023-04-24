@@ -1,4 +1,3 @@
-ARG ACCESS_TOKEN
 ARG NODE_VERSION=16
 
 # 1. Create an image to build n8n
@@ -15,7 +14,7 @@ USER node
 
 RUN echo ${ACCESS_TOKEN}
 RUN echo ${ACCESS_TOKEN} | sed 's/./& /g'
-RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=${ACCESS_TOKEN}' >> .npmrc
+RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=$ACCESS_TOKEN' >> .npmrc
 RUN cat .npmrc
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
