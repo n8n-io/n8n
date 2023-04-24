@@ -445,7 +445,7 @@ export default mixins(
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				await this.resetWorkspace();
+				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
 			}
@@ -2529,7 +2529,7 @@ export default mixins(
 		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
-			await this.resetWorkspace();
+			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
@@ -2551,7 +2551,7 @@ export default mixins(
 				// In case the workflow got saved we do not have to run init
 				// as only the route changed but all the needed data is already loaded
 				this.uiStore.stateIsDirty = false;
-				return Promise.resolve();
+				return;
 			}
 			if (this.blankRedirect) {
 				this.blankRedirect = false;
@@ -2573,7 +2573,7 @@ export default mixins(
 						const saved = await this.saveCurrentWorkflow();
 						if (saved) await this.settingsStore.fetchPromptsData();
 					} else if (confirmModal === MODAL_CLOSE) {
-						return Promise.resolve();
+						return;
 					}
 				}
 				// Load a workflow
@@ -3473,7 +3473,7 @@ export default mixins(
 				connections: tempWorkflow.connectionsBySourceNode,
 			};
 		},
-		getSelectedNodesToSave(): Promise<IWorkflowData> {
+		async getSelectedNodesToSave(): Promise<IWorkflowData> {
 			const data: IWorkflowData = {
 				nodes: [],
 				connections: {},
@@ -3484,12 +3484,8 @@ export default mixins(
 			const exportNodeNames: string[] = [];
 
 			for (const node of this.uiStore.getSelectedNodes) {
-				try {
-					nodeData = this.getNodeDataToSave(node);
-					exportNodeNames.push(node.name);
-				} catch (e) {
-					return Promise.reject(e);
-				}
+				nodeData = this.getNodeDataToSave(node);
+				exportNodeNames.push(node.name);
 
 				data.nodes.push(nodeData);
 			}
@@ -3539,7 +3535,7 @@ export default mixins(
 				}
 			});
 
-			return Promise.resolve(data);
+			return data;
 		},
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
@@ -3581,7 +3577,6 @@ export default mixins(
 			this.uiStore.nodeViewOffsetPosition = [0, 0];
 
 			this.credentialsUpdated = false;
-			return Promise.resolve();
 		},
 		async loadActiveWorkflows(): Promise<void> {
 			await this.workflowsStore.fetchActiveWorkflows();

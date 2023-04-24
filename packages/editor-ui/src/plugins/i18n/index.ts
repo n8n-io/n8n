@@ -535,14 +535,16 @@ function setLanguage(language: string) {
 }
 
 export async function loadLanguage(language?: string) {
-	if (!language) return Promise.resolve();
+	if (!language) return;
 
 	if (i18nInstance.locale === language) {
-		return Promise.resolve(setLanguage(language));
+		setLanguage(language);
+		return;
 	}
 
 	if (loadedLanguages.includes(language)) {
-		return Promise.resolve(setLanguage(language));
+		setLanguage(language);
+		return;
 	}
 
 	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;

@@ -208,14 +208,14 @@ return item;`,
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber as number)) {
 									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
-									return Promise.reject(error);
+									throw error;
 								}
 							}
 						}
 
 						error.message = `${error.message} [Item Index: ${itemIndex}]`;
 
-						return Promise.reject(error);
+						throw error;
 					}
 				}
 
