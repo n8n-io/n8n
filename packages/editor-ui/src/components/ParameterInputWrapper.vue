@@ -23,21 +23,23 @@
 			@textInput="onTextInput"
 			@valueChanged="onValueChanged"
 		/>
-		<input-hint
-			v-if="expressionOutput"
-			:class="$style.hint"
-			data-test-id="parameter-expression-preview"
-			class="ph-no-capture"
-			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-			:hint="expressionOutput"
-			:singleLine="true"
-		/>
-		<input-hint
-			v-else-if="parameterHint"
-			:class="$style.hint"
-			:renderHTML="true"
-			:hint="parameterHint"
-		/>
+		<div data-test-id="parameter-input-hint">
+			<input-hint
+				v-if="expressionOutput"
+				:class="$style.hint"
+				data-test-id="parameter-expression-preview"
+				class="ph-no-capture"
+				:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+				:hint="expressionOutput"
+				:singleLine="true"
+			/>
+			<input-hint
+				v-else-if="parameterHint"
+				:class="$style.hint"
+				:renderHTML="true"
+				:hint="parameterHint"
+			/>
+		</div>
 	</div>
 </template>
 
