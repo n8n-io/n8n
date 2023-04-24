@@ -1,6 +1,6 @@
 <template>
 	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
-		<div v-if="!renderHTML" :class="style">{{ hint }}</div>
+		<div v-if="!renderHTML" :class="classes">{{ hint }}</div>
 		<div
 			v-else
 			ref="hint"
@@ -35,7 +35,7 @@ export default defineComponent({
 		sanitizeHtml,
 	},
 	computed: {
-		style() {
+		classes() {
 			return {
 				[this.$style.singleline]: this.singleLine,
 				[this.$style.highlight]: this.highlight,
