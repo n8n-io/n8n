@@ -28,8 +28,7 @@ import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
-import { json, jsonParseLinter } from '@codemirror/lang-json';
-import { linter as createLinter } from '@codemirror/lint';
+import { json } from '@codemirror/lang-json';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { linterExtension } from './linter';
