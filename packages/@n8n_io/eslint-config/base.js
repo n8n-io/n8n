@@ -35,6 +35,11 @@ const config = (module.exports = {
 		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
 		 */
 		'eslint-plugin-n8n-local-rules',
+
+		/**
+		 * https://github.com/sweepline/eslint-plugin-unused-imports
+		 */
+		'unused-imports',
 	],
 
 	extends: [
@@ -422,6 +427,15 @@ const config = (module.exports = {
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
 		 */
 		'import/prefer-default-export': 'off',
+
+		// ----------------------------------
+		//         no-unused-imports
+		// ----------------------------------
+
+		/**
+		 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
+		 */
+		'unused-imports/no-unused-imports': 'error',
 	},
 
 	overrides: [
