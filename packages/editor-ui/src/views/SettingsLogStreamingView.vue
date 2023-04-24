@@ -6,7 +6,7 @@
 					{{ $locale.baseText(`settings.log-streaming.heading`) }}
 				</n8n-heading>
 				<template v-if="environment !== 'production'">
-					<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License ({{ environment }})&nbsp;</strong>
+					<strong class="ml-m">Disable License ({{ environment }})&nbsp;</strong>
 					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
 				</template>
 			</div>
@@ -43,7 +43,7 @@
 				</div>
 			</template>
 			<template v-else>
-				<div :class="$style.actionBoxContainer" data-test-id="action-box-licensed">
+				<div data-test-id="action-box-licensed">
 					<n8n-action-box
 						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
 						@click="addDestination"
@@ -63,11 +63,11 @@
 					</template>
 				</n8n-info-tip>
 			</div>
-			<div :class="$style.actionBoxContainer" data-test-id="action-box-unlicensed">
+			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
 					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
 					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
-					@click="onContactUsClicked"
+					@click="goToUpgrade"
 				>
 					<template #heading>
 						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
@@ -195,11 +195,8 @@ export default mixins().extend({
 			}
 			this.$forceUpdate();
 		},
-		onContactUsClicked() {
-			window.open('mailto:sales@n8n.io', '_blank');
-			this.$telemetry.track('user clicked contact us button', {
-				feature: EnterpriseEditionFeature.LogStreaming,
-			});
+		goToUpgrade() {
+			this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
