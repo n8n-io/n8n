@@ -1,6 +1,5 @@
-import type { NewCredentialsModal } from './../Interface';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import type { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project
