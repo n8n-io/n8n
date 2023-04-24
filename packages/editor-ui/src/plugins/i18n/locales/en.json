@@ -19,6 +19,7 @@
 	"generic.any": "Any",
 	"generic.cancel": "Cancel",
 	"generic.confirm": "Confirm",
+	"generic.deleteWorkflowError": "Problem deleting workflow",
 	"generic.filtersApplied": "Filters are currently applied.",
 	"generic.learnMore": "Learn more",
 	"generic.reset": "Reset",
