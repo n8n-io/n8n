@@ -435,7 +435,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
 		 */
-		'unused-imports/no-unused-imports': 'error',
+		'unused-imports/no-unused-imports': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 	},
 
 	overrides: [
