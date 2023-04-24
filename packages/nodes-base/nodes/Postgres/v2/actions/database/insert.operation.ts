@@ -108,18 +108,21 @@ const properties: INodeProperties[] = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
-		default: {},
+		default: {
+			mappingMode: 'defineBelow',
+			value: {},
+		},
 		required: true,
 		typeOptions: {
+			loadOptionsDependsOn: ['table.value'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
 				mode: 'add',
 				fieldWords: {
 					singular: 'column',
-					plural: 'columns,',
+					plural: 'columns',
 				},
 				addAllFields: true,
-				noFieldsError: 'No columns found in the database',
 				multiKeyMatch: true,
 			},
 		},
@@ -178,7 +181,7 @@ export async function execute(
 		const dataMode =
 			nodeVersion === 2
 				? (this.getNodeParameter('dataMode', i) as string)
-				: (this.getNodeParameter('columns.mode', i) as string);
+				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 
@@ -193,7 +196,11 @@ export async function execute(
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			item = prepareItem(valuesToSend);
+			if (nodeVersion === 2) {
+				item = prepareItem(valuesToSend);
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 		}
 
 		const tableSchema = await getTableSchema(db, schema, table);

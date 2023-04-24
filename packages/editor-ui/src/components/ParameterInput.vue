@@ -33,12 +33,6 @@
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
-			<resource-mapper
-				v-else-if="parameter.type === 'resourceMapper'"
-				:parameter="parameter"
-				:node="node"
-				:path="path"
-			/>
 			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
 				:value="expressionDisplayValue"
@@ -346,6 +340,7 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	IParameterLabel,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
@@ -358,7 +353,7 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -371,7 +366,11 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	HTML_NODE_TYPE,
+	PARAMETER_TYPES_WITH_CUSTOM_LOADING,
+} from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -403,7 +402,6 @@ export default mixins(
 		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
-		ResourceMapper,
 		TextEdit,
 		ImportParameter,
 	},
@@ -456,6 +454,12 @@ export default mixins(
 		expressionEvaluated: {
 			type: String as PropType<string | undefined>,
 		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
+		},
 	},
 	data() {
 		return {
@@ -507,9 +511,11 @@ export default mixins(
 	},
 	watch: {
 		dependentParametersValues() {
-			// Reload the remote parameters whenever a parameter
-			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			if (!PARAMETER_TYPES_WITH_CUSTOM_LOADING.includes(this.parameter.type)) {
+				// Reload the remote parameters whenever a parameter
+				// on which the current field depends on changes
+				this.loadRemoteParameterOptions();
+			}
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {

@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -13,6 +14,7 @@ import type {
 import {
 	addReturning,
 	checkItemAgainstSchema,
+	doesRowExist,
 	getTableSchema,
 	prepareItem,
 	replaceEmptyStringsByNulls,
@@ -142,18 +144,21 @@ const properties: INodeProperties[] = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
-		default: {},
+		default: {
+			mappingMode: 'defineBelow',
+			value: {},
+		},
 		required: true,
 		typeOptions: {
+			loadOptionsDependsOn: ['table.value'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
-				mode: 'add',
+				mode: 'update',
 				fieldWords: {
 					singular: 'column',
-					plural: 'columns,',
+					plural: 'columns',
 				},
 				addAllFields: true,
-				noFieldsError: 'No columns found in the database',
 				multiKeyMatch: true,
 			},
 		},
@@ -199,22 +204,27 @@ export async function execute(
 		}) as string;
 
 		const nodeVersion = this.getNode().typeVersion;
-		const columnToMatchOn =
+		const columnsToMatchOn: string[] =
 			nodeVersion === 2
-				? (this.getNodeParameter('columnToMatchOn', i) as string)
-				: (this.getNodeParameter('columns.match', i) as string);
+				? [this.getNodeParameter('columnToMatchOn', i) as string]
+				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
 			nodeVersion === 2
 				? (this.getNodeParameter('dataMode', i) as string)
-				: (this.getNodeParameter('columns.mode', i) as string);
+				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 		let valueToMatchOn: string | IDataObject = '';
+		if (nodeVersion === 2) {
+			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+		}
 
 		if (dataMode === 'autoMapInputData') {
 			item = items[i].json;
-			valueToMatchOn = item[columnToMatchOn] as string;
+			if (nodeVersion === 2) {
+				valueToMatchOn = item[columnsToMatchOn[0]] as string;
+			}
 		}
 
 		if (dataMode === 'defineBelow') {
@@ -224,11 +234,44 @@ export async function execute(
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			item = prepareItem(valuesToSend);
-
-			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+			if (nodeVersion === 2) {
+				item = prepareItem(valuesToSend);
+				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 		}
 
+		const matchValues: string[] = [];
+		if (nodeVersion === 2) {
+			matchValues.push(columnsToMatchOn[0]);
+			matchValues.push(valueToMatchOn);
+		} else {
+			columnsToMatchOn.forEach((column) => {
+				matchValues.push(column);
+				matchValues.push(item[column] as string);
+			});
+			const rowExists = await doesRowExist(db, schema, table, matchValues);
+			if (!rowExists) {
+				const descriptionValues: string[] = [];
+				matchValues.forEach((val, index) => {
+					if (index % 2 === 0) {
+						descriptionValues.push(`${matchValues[index]}=${matchValues[index + 1]}`);
+					}
+				});
+
+				throw new NodeOperationError(
+					this.getNode(),
+					"The row you are trying to update doesn't exist",
+					{
+						description: `No rows matching the provided values (${descriptionValues.join(
+							', ',
+						)}) were found in the table "${table}".`,
+						itemIndex: i,
+					},
+				);
+			}
+		}
 		const tableSchema = await getTableSchema(db, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
@@ -237,11 +280,22 @@ export async function execute(
 
 		let valuesLength = values.length + 1;
 
-		const condition = `$${valuesLength}:name = $${valuesLength + 1}`;
-		valuesLength = valuesLength + 2;
-		values.push(columnToMatchOn, valueToMatchOn);
+		let condition = '';
+		if (nodeVersion === 2) {
+			condition = `$${valuesLength}:name = $${valuesLength + 1}`;
+			valuesLength = valuesLength + 2;
+			values.push(columnsToMatchOn[0], valueToMatchOn);
+		} else {
+			const conditions: string[] = [];
+			for (const column of columnsToMatchOn) {
+				conditions.push(`$${valuesLength}:name = $${valuesLength + 1}`);
+				valuesLength = valuesLength + 2;
+				values.push(column, item[column] as string);
+			}
+			condition = conditions.join(' AND ');
+		}
 
-		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
+		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
 
 		const updates: string[] = [];
 
@@ -260,5 +314,6 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	const results = await runQueries(queries, items, nodeOptions);
+	return results;
 }

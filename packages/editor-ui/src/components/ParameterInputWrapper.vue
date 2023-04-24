@@ -16,6 +16,7 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
 			@blur="onBlur"
@@ -51,7 +52,7 @@ import { showMessage } from '@/mixins/showMessage';
 import {
 	INodeProperties,
 	INodePropertyMode,
-	IRunData,
+	IParameterLabel,
 	isResourceLocatorValue,
 	NodeParameterValue,
 	NodeParameterValueType,
@@ -114,6 +115,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 		eventSource: {
 			type: String,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	computed: {

@@ -331,6 +331,45 @@ export async function getTableSchema(
 	return columns;
 }
 
+export async function isColumnUnique(
+	db: PgpDatabase,
+	table: string,
+	column: string,
+): Promise<boolean> {
+	const unique = await db.any(
+		`
+			SELECT *
+			FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+					inner join INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cu
+							on cu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+			where
+					tc.CONSTRAINT_TYPE = 'UNIQUE'
+					or tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+					and tc.TABLE_NAME = $1
+					and cu.COLUMN_NAME = $2
+		`,
+		[table, column],
+	);
+	return unique.some((u) => u.column_name === column);
+}
+
+export async function doesRowExist(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	values: string[],
+): Promise<boolean> {
+	const where = [];
+	for (let i = 3; i < 3 + values.length; i += 2) {
+		where.push(`$${i}:name=$${i + 1}`);
+	}
+	const exists = await db.any(
+		`SELECT EXISTS(SELECT 1 FROM $1:name.$2:name WHERE ${where.join(' AND ')})`,
+		[schema, table, ...values],
+	);
+	return exists[0].exists;
+}
+
 export function checkItemAgainstSchema(
 	node: INode,
 	item: IDataObject,

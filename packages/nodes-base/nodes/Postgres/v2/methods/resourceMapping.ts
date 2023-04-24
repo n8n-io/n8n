@@ -3,8 +3,9 @@ import type {
 	ResourceMapperFields,
 	ResourceMapperFieldType,
 } from 'n8n-workflow';
-import { getTableSchema } from '../helpers/utils';
-import { configurePostgres } from '../transport';
+import { getTableSchema, isColumnUnique } from '../helpers/utils';
+import { Connections } from '../transport';
+import type { ConnectionsData } from '../helpers/interfaces';
 
 const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
@@ -21,7 +22,13 @@ const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 		'bigserial',
 	],
 	boolean: ['boolean'],
-	datetime: ['timestamp', 'date', 'time'],
+	dateTime: [
+		'timestamp',
+		'date',
+		'timestampz',
+		'timestamp without time zone',
+		'timestamp with time zone',
+	],
 };
 
 function mapPostgresType(postgresType: string): ResourceMapperFieldType {
@@ -41,9 +48,9 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
-	const fieldsToMatch = (this.getNodeParameter('columns.match', 0) as string[]) || [];
+	const fieldsToMatch = (this.getNodeParameter('columns.matchingColumns', 0) as string[]) || [];
 
-	const { db, pgp, sshClient } = await configurePostgres(credentials);
+	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -55,25 +62,23 @@ export async function getMappingColumns(
 
 	try {
 		const columns = await getTableSchema(db, schema, table);
-
-		const columnData: ResourceMapperFields = {
-			fields: columns.map((col) => ({
-				id: col.column_name,
-				displayName: col.column_name,
-				match: fieldsToMatch.includes(col.column_name),
-				required: col.is_nullable !== 'YES',
-				defaultMatch: col.column_name === 'id',
-				display: true,
-				type: mapPostgresType(col.data_type),
-			})),
-		};
-		return columnData;
+		const fields = await Promise.all(
+			columns.map(async (col) => {
+				const canBeUsedToMatch = await isColumnUnique(db, table, col.column_name);
+				return {
+					id: col.column_name,
+					displayName: col.column_name,
+					match: fieldsToMatch.includes(col.column_name),
+					required: col.is_nullable !== 'YES',
+					defaultMatch: col.column_name === 'id',
+					display: true,
+					type: mapPostgresType(col.data_type),
+					canBeUsedToMatch,
+				};
+			}),
+		);
+		return { fields };
 	} catch (error) {
 		throw error;
-	} finally {
-		if (sshClient) {
-			sshClient.end();
-		}
-		pgp.end();
 	}
 }

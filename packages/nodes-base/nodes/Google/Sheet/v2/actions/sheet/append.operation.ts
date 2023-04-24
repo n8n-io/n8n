@@ -108,19 +108,24 @@ export const description: SheetProperties = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
-		default: {},
+		default: {
+			mappingMode: 'defineBelow',
+			value: {},
+		},
 		required: true,
 		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
 				mode: 'add',
 				fieldWords: {
 					singular: 'column',
-					plural: 'columns,',
+					plural: 'columns',
 				},
-				addAllFields: true,
-				noFieldsError: 'No columns found in sheet',
-				multiKeyMatch: true,
+				addAllFields: false,
+				noFieldsError: 'No columns found in sheet.',
+				multiKeyMatch: false,
+				supportAutoMap: false,
 			},
 		},
 		displayOptions: {
@@ -193,7 +198,7 @@ export async function execute(
 	const dataMode =
 		nodeVersion === 3
 			? (this.getNodeParameter('dataMode', 0) as string)
-			: (this.getNodeParameter('columns.mode', 0) as string);
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 

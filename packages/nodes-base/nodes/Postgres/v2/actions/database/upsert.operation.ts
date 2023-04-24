@@ -142,18 +142,21 @@ const properties: INodeProperties[] = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
-		default: {},
+		default: {
+			mappingMode: 'defineBelow',
+			value: {},
+		},
 		required: true,
 		typeOptions: {
+			loadOptionsDependsOn: ['table.value'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
-				mode: 'add',
+				mode: 'upsert',
 				fieldWords: {
 					singular: 'column',
-					plural: 'columns,',
+					plural: 'columns',
 				},
 				addAllFields: true,
-				noFieldsError: 'No columns found in the database',
 				multiKeyMatch: true,
 			},
 		},
@@ -199,15 +202,15 @@ export async function execute(
 		}) as string;
 
 		const nodeVersion = this.getNode().typeVersion;
-		const columnToMatchOn =
+		const columnsToMatchOn: string[] =
 			nodeVersion === 2
-				? (this.getNodeParameter('columnToMatchOn', i) as string)
-				: (this.getNodeParameter('columns.match', i) as string);
+				? [this.getNodeParameter('columnToMatchOn', i) as string]
+				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
 			nodeVersion === 2
 				? (this.getNodeParameter('dataMode', i) as string)
-				: (this.getNodeParameter('columns.mode', i) as string);
+				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 
@@ -222,9 +225,12 @@ export async function execute(
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			item = prepareItem(valuesToSend);
-
-			item[columnToMatchOn] = this.getNodeParameter('valueToMatchOn', i) as string;
+			if (nodeVersion === 2) {
+				item = prepareItem(valuesToSend);
+				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
+			} else {
+				item = this.getNodeParameter('columns.value', i) as IDataObject;
+			}
 		}
 
 		const tableSchema = await getTableSchema(db, schema, table);
@@ -234,16 +240,19 @@ export async function execute(
 		let values: QueryValues = [schema, table];
 
 		let valuesLength = values.length + 1;
-		const onConflict = ` ON CONFLICT ($${valuesLength}:name) DO UPDATE `;
-		valuesLength = valuesLength + 1;
-		values.push(columnToMatchOn);
+		const conflictColumns: string[] = [];
+		columnsToMatchOn.forEach((column) => {
+			conflictColumns.push(`$${valuesLength}:name`);
+			valuesLength = valuesLength + 1;
+			values.push(column);
+		});
+		const onConflict = ` ON CONFLICT (${conflictColumns.join(',')}) DO UPDATE `;
 
 		const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
 		valuesLength = valuesLength + 1;
 		values.push(item);
 
-		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
-
+		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
 		const updates: string[] = [];
 
 		for (const column of updateColumns) {
