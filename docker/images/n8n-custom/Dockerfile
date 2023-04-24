@@ -12,6 +12,9 @@ RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
+RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=${ACCESS_TOKEN}' > .npmrc && \
+    yarn && \
+    rm -f .npmrc
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
