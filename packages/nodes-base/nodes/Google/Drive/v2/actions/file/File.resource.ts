@@ -5,13 +5,12 @@ import * as copy from './copy.operation';
 import * as createFromText from './createFromText.operation';
 import * as deleteFile from './deleteFile.operation';
 import * as download from './download.operation';
-import * as list from './list.operation';
 import * as move from './move.operation';
 import * as share from './share.operation';
 import * as update from './update.operation';
 import * as upload from './upload.operation';
 
-export { copy, createFromText, deleteFile, download, list, move, share, update, upload };
+export { copy, createFromText, deleteFile, download, move, share, update, upload };
 
 export const description: INodeProperties[] = [
 	{
@@ -48,12 +47,6 @@ export const description: INodeProperties[] = [
 				value: 'download',
 				description: 'Download a file',
 				action: 'Download a file',
-			},
-			{
-				name: 'List',
-				value: 'list',
-				description: 'List files and folders',
-				action: 'List a file',
 			},
 			{
 				name: 'Move',
@@ -95,7 +88,6 @@ export const description: INodeProperties[] = [
 	...deleteFile.description,
 	...createFromText.description,
 	...download.description,
-	...list.description,
 	...move.description,
 	...share.description,
 	...update.description,
@@ -104,7 +96,7 @@ export const description: INodeProperties[] = [
 		...fileAndFolderOptions,
 		displayOptions: {
 			show: {
-				operation: ['list', 'share', 'create'],
+				operation: ['share', 'create'],
 				resource: ['file'],
 			},
 		},

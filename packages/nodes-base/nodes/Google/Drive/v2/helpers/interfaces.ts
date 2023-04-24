@@ -13,5 +13,5 @@ export type SearchFilter = {
 
 export const enum RlcDefaults {
 	Drive = 'My Drive',
-	Folder = '/',
+	Folder = 'root',
 }

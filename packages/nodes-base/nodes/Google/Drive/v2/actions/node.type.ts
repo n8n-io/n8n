@@ -10,8 +10,7 @@ type NodeMap = {
 		| 'move'
 		| 'share'
 		| 'upload'
-		| 'update'
-		| 'list';
+		| 'update';
 	folder: 'create' | 'deleteFolder' | 'share';
 	fileFolder: 'search';
 };
