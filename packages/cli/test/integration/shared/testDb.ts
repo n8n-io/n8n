@@ -490,6 +490,33 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 }
 
 // ----------------------------------
+//             variables
+// ----------------------------------
+
+export async function createVariable(key: string, value: string) {
+	return Db.collections.Variables.save({
+		key,
+		value,
+	});
+}
+
+export async function getVariableByKey(key: string) {
+	return Db.collections.Variables.findOne({
+		where: {
+			key,
+		},
+	});
+}
+
+export async function getVariableById(id: number) {
+	return Db.collections.Variables.findOne({
+		where: {
+			id,
+		},
+	});
+}
+
+// ----------------------------------
 //        connection options
 // ----------------------------------
 

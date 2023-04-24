@@ -12,9 +12,9 @@
 
 <script lang="ts">
 import { sanitizeHtml } from '@/utils';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'InputHint',
 	props: {
 		hint: {

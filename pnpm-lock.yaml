@@ -25,6 +25,9 @@ patchedDependencies:
   '@sentry/cli@2.17.0':
     hash: nchnoezkq6p37qaiku3vrpwraq
     path: patches/@sentry__cli@2.17.0.patch
+  '@typescript-eslint/eslint-plugin@5.45.0':
+    hash: dd54h3bsflbrys5h3bbkqmbvea
+    path: patches/@typescript-eslint__eslint-plugin@5.45.0.patch
   element-ui@2.15.12:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
@@ -117,7 +120,7 @@ importers:
         version: 8.4.6
       '@typescript-eslint/eslint-plugin':
         specifier: ~5.45
-        version: 5.45.0(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3)
+        version: 5.45.0(patch_hash=dd54h3bsflbrys5h3bbkqmbvea)(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3)
       '@typescript-eslint/parser':
         specifier: ~5.45
         version: 5.45.0(eslint@8.28.0)(typescript@5.0.3)
@@ -155,8 +158,8 @@ importers:
   packages/cli:
     dependencies:
       '@n8n_io/license-sdk':
-        specifier: ~2.1.0
-        version: 2.1.0
+        specifier: ~2.3.0
+        version: 2.3.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -254,8 +257,8 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7
       google-timezones-json:
-        specifier: ^1.0.2
-        version: 1.0.2
+        specifier: ^1.1.0
+        version: 1.1.0
       handlebars:
         specifier: 4.7.7
         version: 4.7.7
@@ -406,6 +409,9 @@ importers:
       sse-channel:
         specifier: ^4.0.0
         version: 4.0.0
+      sshpk:
+        specifier: ^1.17.0
+        version: 1.17.0
       swagger-ui-express:
         specifier: ^4.3.0
         version: 4.5.0(express@4.18.2)
@@ -536,6 +542,9 @@ importers:
       '@types/shelljs':
         specifier: ^0.8.11
         version: 0.8.11
+      '@types/sshpk':
+        specifier: ^1.17.1
+        version: 1.17.1
       '@types/superagent':
         specifier: 4.1.13
         version: 4.1.13
@@ -880,6 +889,9 @@ importers:
       codemirror-lang-n8n-expression:
         specifier: ^0.2.0
         version: 0.2.0(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      copy-to-clipboard:
+        specifier: ^3.3.3
+        version: 3.3.3
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -1411,8 +1423,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       vm2:
-        specifier: ~3.9.15
-        version: 3.9.15
+        specifier: ~3.9.17
+        version: 3.9.17
       xlsx:
         specifier: ^0.17.0
         version: 0.17.5
@@ -4288,8 +4300,8 @@ packages:
     dev: false
     optional: true
 
-  /@n8n_io/license-sdk@2.1.0:
-    resolution: {integrity: sha512-SwIm9b6a30/fAvl1aY0a6cgoSyQBgKHX44M4Ykesn45VSGBKlzO5uuIiIcEPdVjjLEelm7u6wLoDFdIVG37b7Q==}
+  /@n8n_io/license-sdk@2.3.0:
+    resolution: {integrity: sha512-1qOg4VEi2mZzhAJ5Uh9IT9Jn/b3xCaxyFbovYLtymzy3ObafUyWieUrSQri3BrCbW1dwQHz99DEVFxYCq1Je0Q==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -5956,7 +5968,6 @@ packages:
     resolution: {integrity: sha512-5TMxIpYbIA9c1J0hYQjQDX3wr+rTgQEAXaW2BI8ECM8FO53wSW4HFZplTalrKSHuZUc76NtXcePRhwuOHqGD5g==}
     dependencies:
       '@types/node': 16.18.12
-    dev: false
 
   /@types/aws4@1.11.2:
     resolution: {integrity: sha512-x0f96eBPrCCJzJxdPbUvDFRva4yPpINJzTuXXpmS2j9qLUpF2nyGzvXPlRziuGbCsPukwY4JfuO+8xwsoZLzGw==}
@@ -6879,6 +6890,13 @@ packages:
       '@types/node': 16.18.12
     dev: true
 
+  /@types/sshpk@1.17.1:
+    resolution: {integrity: sha512-bOJek/W++DvWRNAeHmpvgX8Q1ypAq4nmeVi3nJ+pjDcMB214S8kSGkxRUw/Uz+zau4VwxcfNp0xUq4s/3DLjLw==}
+    dependencies:
+      '@types/asn1': 0.2.0
+      '@types/node': 16.18.12
+    dev: true
+
   /@types/stack-utils@2.0.1:
     resolution: {integrity: sha512-Hl219/BT5fLAaz6NDkSuhzasy49dwQS/DSdu4MdggFB8zcXv7vflBI3xp7FEmkmdDkBUI2bPUNeMttp2knYdxw==}
     dev: true
@@ -7027,7 +7045,7 @@ packages:
     dev: true
     optional: true
 
-  /@typescript-eslint/eslint-plugin@5.45.0(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3):
+  /@typescript-eslint/eslint-plugin@5.45.0(patch_hash=dd54h3bsflbrys5h3bbkqmbvea)(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3):
     resolution: {integrity: sha512-CXXHNlf0oL+Yg021cxgOdMHNTXD17rHkq7iW6RFHoybdFgQBjU3yIXhhcPpGwr1CjZlo6ET8C6tzX5juQoXeGA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     peerDependencies:
@@ -7053,6 +7071,7 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
+    patched: true
 
   /@typescript-eslint/parser@5.45.0(eslint@8.28.0)(typescript@5.0.3):
     resolution: {integrity: sha512-brvs/WSM4fKUmF5Ot/gEve6qYiCMjm6w4HkHPfS6ZNmxTS0m0iNN4yOChImaCkqc1hRwFGqUyanMXuGal6oyyQ==}
@@ -7426,7 +7445,7 @@ packages:
       typescript:
         optional: true
     dependencies:
-      '@typescript-eslint/eslint-plugin': 5.45.0(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3)
+      '@typescript-eslint/eslint-plugin': 5.45.0(patch_hash=dd54h3bsflbrys5h3bbkqmbvea)(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3)
       '@typescript-eslint/parser': 5.45.0(eslint@8.28.0)(typescript@5.0.3)
       eslint: 8.28.0
       eslint-plugin-vue: 7.17.0(eslint@8.28.0)
@@ -9831,6 +9850,12 @@ packages:
       is-plain-object: 5.0.0
     dev: true
 
+  /copy-to-clipboard@3.3.3:
+    resolution: {integrity: sha512-2KV8NhB5JqC3ky0r9PMCAZKbUHSwtEo4CwCs0KXgruG43gX5PMqDEBbVU4OUzw2MuAWUfsuFmWvEKG5QRfSnJA==}
+    dependencies:
+      toggle-selection: 1.0.6
+    dev: false
+
   /copy-to@2.0.1:
     resolution: {integrity: sha512-3DdaFaU/Zf1AnpLiFDeNCD4TOWe3Zl2RZaTzUvWiIk5ERzcCodOE20Vqq4fzCbNoHURFHT4/us/Lfq+S2zyY4w==}
     dev: false
@@ -10374,7 +10399,7 @@ packages:
       ast-types: 0.13.4
       escodegen: 1.14.3
       esprima: 4.0.1
-      vm2: 3.9.15
+      vm2: 3.9.17
     dev: false
 
   /del@6.1.1:
@@ -11112,7 +11137,7 @@ packages:
       eslint: ^7.32.0 || ^8.2.0
       eslint-plugin-import: ^2.25.3
     dependencies:
-      '@typescript-eslint/eslint-plugin': 5.45.0(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3)
+      '@typescript-eslint/eslint-plugin': 5.45.0(patch_hash=dd54h3bsflbrys5h3bbkqmbvea)(@typescript-eslint/parser@5.45.0)(eslint@8.28.0)(typescript@5.0.3)
       '@typescript-eslint/parser': 5.45.0(eslint@8.28.0)(typescript@5.0.3)
       eslint: 8.28.0
       eslint-config-airbnb-base: 15.0.0(eslint-plugin-import@2.26.0)(eslint@8.28.0)
@@ -12643,8 +12668,8 @@ packages:
       - supports-color
     dev: false
 
-  /google-timezones-json@1.0.2:
-    resolution: {integrity: sha512-UWXQ7BpSCW8erDespU2I4cri22xsKgwOCyhsJal0OJhi2tFpwJpsYNJt4vCiFPL1p2HzCGiS713LKpNR25n9Kg==}
+  /google-timezones-json@1.1.0:
+    resolution: {integrity: sha512-6BmBx9gJVALV2jsfMks8PwmkWT5ip3+bmMyTgXu4PY+G8nKjHi61yrL7rSXpMYRsIzUXhVKpj+MnjhnwG9nung==}
     dev: false
 
   /gopd@1.0.1:
@@ -20304,6 +20329,10 @@ packages:
       through2: 2.0.5
     dev: true
 
+  /toggle-selection@1.0.6:
+    resolution: {integrity: sha512-BiZS+C1OS8g/q2RRbJmy59xpyghNBqrr6k5L/uKBGRsTfxmu3ffiRnd8mlGPUVayg8pvfi5urfnu8TU7DVOkLQ==}
+    dev: false
+
   /toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
@@ -21424,8 +21453,8 @@ packages:
       - terser
     dev: true
 
-  /vm2@3.9.15:
-    resolution: {integrity: sha512-XqNqknHGw2avJo13gbIwLNZUumvrSHc9mLqoadFZTpo3KaNEJoe1I0lqTFhRXmXD7WkLyG01aaraXdXT0pa4ag==}
+  /vm2@3.9.17:
+    resolution: {integrity: sha512-AqwtCnZ/ERcX+AVj9vUsphY56YANXxRuqMb7GsDtAr0m0PcQX3u0Aj3KWiXM0YAHy7i6JEeHrwOnwXbGYgRpAw==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:

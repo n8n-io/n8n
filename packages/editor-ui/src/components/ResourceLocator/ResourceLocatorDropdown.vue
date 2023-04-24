@@ -79,12 +79,13 @@
 
 <script lang="ts">
 import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
 		value: {
@@ -167,18 +168,21 @@ export default Vue.extend({
 			window.open(url, '_blank');
 		},
 		onKeyDown(e: KeyboardEvent) {
-			const container = this.$refs.resultsContainer as HTMLElement;
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
 
 			if (e.key === 'ArrowDown') {
 				if (this.hoverIndex < this.sortedResources.length - 1) {
 					this.hoverIndex++;
 
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop + item.clientHeight > container.scrollTop + container.offsetHeight) {
-							const top = item.offsetTop - container.offsetHeight + item.clientHeight;
-							container.scrollTo({ top });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (
+							item.offsetTop + item.clientHeight >
+							containerRef.scrollTop + containerRef.offsetHeight
+						) {
+							const top = item.offsetTop - containerRef.offsetHeight + item.clientHeight;
+							containerRef.scrollTo({ top });
 						}
 					}
 				}
@@ -187,11 +191,11 @@ export default Vue.extend({
 					this.hoverIndex--;
 
 					const searchOffset = this.filterable ? SEARCH_BAR_HEIGHT_PX : 0;
-					const items = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[];
-					if (container && Array.isArray(items) && items.length === 1) {
-						const item = items[0];
-						if (item.offsetTop <= container.scrollTop + searchOffset) {
-							container.scrollTo({ top: item.offsetTop - searchOffset });
+					const itemRefs = this.$refs[`item-${this.hoverIndex}`] as HTMLElement[] | undefined;
+					if (containerRef && Array.isArray(itemRefs) && itemRefs.length === 1) {
+						const item = itemRefs[0];
+						if (item.offsetTop <= containerRef.scrollTop + searchOffset) {
+							containerRef.scrollTo({ top: item.offsetTop - searchOffset });
 						}
 					}
 				}
@@ -225,9 +229,10 @@ export default Vue.extend({
 				return;
 			}
 
-			const container = this.$refs.resultsContainer as HTMLElement;
-			if (container) {
-				const diff = container.offsetHeight - (container.scrollHeight - container.scrollTop);
+			const containerRef = this.$refs.resultsContainer as HTMLElement | undefined;
+			if (containerRef) {
+				const diff =
+					containerRef.offsetHeight - (containerRef.scrollHeight - containerRef.scrollTop);
 				if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
 					this.$emit('loadMore');
 				}

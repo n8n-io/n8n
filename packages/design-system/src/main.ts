@@ -1,6 +1,7 @@
 import * as locale from './locale';
-import designSystemComponents from './plugins/n8nComponents';
 
+export * from './components';
+export * from './plugin';
 export * from './types';
 export * from './utils';
-export { locale, designSystemComponents };
+export { locale };

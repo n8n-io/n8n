@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
@@ -47,7 +47,7 @@ const executionsData = Array.from({ length: 2 }, () => ({
 
 let getPastExecutionsSpy = vi.fn().mockResolvedValue({ count: 0, results: [], estimated: false });
 
-const mockRestApiMixin = Vue.extend({
+const mockRestApiMixin = defineComponent({
 	methods: {
 		restApi() {
 			return {

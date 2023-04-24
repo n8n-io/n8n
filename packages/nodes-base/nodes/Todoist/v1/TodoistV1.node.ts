@@ -13,7 +13,8 @@ import type {
 
 import { todoistApiRequest } from '../GenericFunctions';
 
-import { OperationType, TodoistService } from './Service';
+import type { OperationType } from './Service';
+import { TodoistService } from './Service';
 
 // interface IBodyCreateTask {
 // 	content?: string;
@@ -586,7 +587,7 @@ export class TodoistV1 implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so that they can
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -605,7 +606,7 @@ export class TodoistV1 implements INodeType {
 			},
 
 			// Get all the available sections in the selected project, to display them
-			// to user so that he can select one easily
+			// to user so that they can select one easily
 			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
@@ -675,7 +676,7 @@ export class TodoistV1 implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available labels to display them to user so that he can
+			// Get all the available labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -702,15 +703,11 @@ export class TodoistV1 implements INodeType {
 		const service = new TodoistService();
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
+		const operation = this.getNodeParameter('operation', 0) as OperationType;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'task') {
-					responseData = await service.execute(
-						this,
-						OperationType[operation as keyof typeof OperationType],
-						i,
-					);
+					responseData = await service.execute(this, operation, i);
 				}
 				if (Array.isArray(responseData?.data)) {
 					returnData.push.apply(returnData, responseData?.data as IDataObject[]);
