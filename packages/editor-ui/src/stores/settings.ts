@@ -243,27 +243,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async fetchPromptsData(): Promise<void> {
 			if (!this.isTelemetryEnabled) {
-				Promise.resolve();
+				return;
 			}
-			try {
-				const uiStore = useUIStore();
-				const usersStore = useUsersStore();
-				const promptsData: IN8nPrompts = await getPromptsData(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-				);
 
-				if (promptsData && promptsData.showContactPrompt) {
-					uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-				} else if (promptsData && promptsData.showValueSurvey) {
-					uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
-				}
+			const uiStore = useUIStore();
+			const usersStore = useUsersStore();
+			const promptsData: IN8nPrompts = await getPromptsData(
+				this.settings.instanceId,
+				usersStore.currentUserId || '',
+			);
 
-				this.setPromptsData(promptsData);
-				Promise.resolve();
-			} catch (error) {
-				Promise.reject(error);
+			if (promptsData && promptsData.showContactPrompt) {
+				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
+			} else if (promptsData && promptsData.showValueSurvey) {
+				uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
 			}
+
+			this.setPromptsData(promptsData);
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {

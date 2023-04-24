@@ -13,17 +13,13 @@ async function processCampaignSearchResponse(
 ): Promise<INodeExecutionData[]> {
 	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
 
-	return Promise.resolve(
-		results.map((result) => {
-			return {
-				json: {
-					...result.campaign,
-					...result.metrics,
-					...result.campaignBudget,
-				},
-			};
-		}),
-	);
+	return results.map((result) => ({
+		json: {
+			...result.campaign,
+			...result.metrics,
+			...result.campaignBudget,
+		},
+	}));
 }
 
 export const campaignOperations: INodeProperties[] = [
