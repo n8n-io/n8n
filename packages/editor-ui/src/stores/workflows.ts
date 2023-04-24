@@ -36,6 +36,7 @@ import type {
 	IAbstractEventMessage,
 	IConnection,
 	IConnections,
+	IDataObject,
 	IExecutionsSummary,
 	INode,
 	INodeConnections,
@@ -53,7 +54,6 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import type { IDataObject } from 'n8n-workflow';
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import Vue from 'vue';
 
