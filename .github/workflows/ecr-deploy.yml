@@ -22,7 +22,7 @@ jobs:
       shell: bash
       
       run: |
-        docker build -e "ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }}" -t "${{ github.ref_name }}" -f docker/images/n8n-custom/Dockerfile .
+        docker build --env ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} -t "${{ github.ref_name }}" -f docker/images/n8n-custom/Dockerfile .
 
     - name: push ecr
       uses: Deep-Consulting-Solutions/ecr-deploy-action@main

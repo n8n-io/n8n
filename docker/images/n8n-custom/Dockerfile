@@ -2,6 +2,7 @@ ARG NODE_VERSION=16
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
+ENV ACCESS_TOKEN=12344
 
 COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
 COPY --chown=node:node scripts ./scripts
