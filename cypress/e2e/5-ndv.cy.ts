@@ -163,5 +163,68 @@ describe('NDV', () => {
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
 			ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item] [data-test-id=run-data-schema-item]').should('have.length', 20);
 		})
-	})
+	});
+
+	it('can link and unlink run selectors between input and output', () => {
+		cy.createFixtureWorkflow('Test_workflow_5.json', 'Test');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Set3');
+
+		ndv.getters.inputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
+		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.inputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+		ndv.getters.inputTbodyCell(1, 0).should('have.text', '1111');
+		ndv.getters.outputTbodyCell(1, 0).should('have.text', '1111');
+
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		// unlink
+		ndv.actions.toggleOutputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.inputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		// link again
+		ndv.actions.toggleOutputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.getters.inputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+		
+		// unlink again
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+
+		// link again
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+	});
 });
