@@ -448,7 +448,7 @@ export default mixins(showMessage).extend({
 					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
 					!this.workflow.sharedWith?.length // Sharing info already loaded
 				) {
-					await this.workflowsStore.fetchWorkflow(this.workflow.id);
+					await this.workflowsStore.fetchAndSetWorkflow(this.workflow.id);
 				}
 			}
 

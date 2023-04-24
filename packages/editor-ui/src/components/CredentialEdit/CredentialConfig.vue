@@ -135,9 +135,7 @@ import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
-import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
-import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
@@ -147,12 +145,12 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialsResponse, IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import { ICredentialsResponse } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
+import Vue from 'vue';
 
-export default mixins(restApi).extend({
+export default Vue.extend({
 	name: 'CredentialConfig',
 	components: {
 		AuthTypeSelector,
@@ -160,7 +158,6 @@ export default mixins(restApi).extend({
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
-		ParameterInputFull,
 		GoogleAuthButton,
 	},
 	props: {
@@ -226,7 +223,9 @@ export default mixins(restApi).extend({
 
 		if (this.$locale.exists(key)) return;
 
-		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
+		const credTranslation = await this.credentialsStore.getCredentialTranslation(
+			this.credentialType.name,
+		);
 
 		addCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },
