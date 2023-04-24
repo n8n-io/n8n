@@ -1,3 +1,17 @@
+## [0.224.3](https://github.com/n8n-io/n8n/compare/n8n@0.224.2...n8n@0.224.3) (2023-04-24)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-30547 ([#6039](https://github.com/n8n-io/n8n/issues/6039)) ([e38911b](https://github.com/n8n-io/n8n/commit/e38911b0584ed7eb49619b677871abd99af58c9f))
+
+
+### Features
+
+* **core:** Upgrade google-timezones-json to use the correct timezone for Sao Paulo ([#6042](https://github.com/n8n-io/n8n/issues/6042)) ([769c4c4](https://github.com/n8n-io/n8n/commit/769c4c431ecd16a86c950220619c1fb078a68634)), closes [#2647](https://github.com/n8n-io/n8n/issues/2647)
+
+
+
 ## [0.224.2](https://github.com/n8n-io/n8n/compare/n8n@0.224.1...n8n@0.224.2) (2023-04-20)
 
 
