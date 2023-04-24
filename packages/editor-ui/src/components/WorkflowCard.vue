@@ -234,13 +234,9 @@ export default mixins(showMessage).extend({
 				}
 
 				try {
-					await this.workflowsStore.deleteWorkflowAPI(this.data.id);
-					this.workflowsStore.deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-					);
+					this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 					return;
 				}
 
