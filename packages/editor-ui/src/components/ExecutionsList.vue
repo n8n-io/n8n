@@ -274,7 +274,7 @@ import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,

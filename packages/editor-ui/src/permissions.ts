@@ -4,13 +4,8 @@
  * @usage getCredentialPermissions(user, credential).isOwner;
  */
 
-import {
-	IUser,
-	ICredentialsResponse,
-	IRootState,
-	IWorkflowDb,
-	EnvironmentVariable,
-} from '@/Interface';
+import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
+import { IRootState, EnvironmentVariable } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from './stores/settings';
 

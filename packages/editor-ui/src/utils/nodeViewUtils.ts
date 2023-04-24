@@ -1,12 +1,13 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber } from '@/utils';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
-import { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
-import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import { Endpoint, Connection, ConnectionEstablishedParams } from '@jsplumb/core';
+import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
+import type { Endpoint, Connection } from '@jsplumb/core';
+import { ConnectionEstablishedParams } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
-import {
+import type {
 	IConnection,
 	INode,
 	ITaskData,

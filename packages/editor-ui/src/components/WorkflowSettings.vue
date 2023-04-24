@@ -329,15 +329,15 @@ import Vue from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ITimeoutHMS,
 	IUser,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
+import { WorkflowCallerPolicyDefaultOption } from '@/Interface';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -347,7 +347,8 @@ import {
 
 import mixins from 'vue-typed-mixins';
 
-import { WorkflowSettings, deepCopy } from 'n8n-workflow';
+import type { WorkflowSettings } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useSettingsStore } from '@/stores/settings';
