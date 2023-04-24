@@ -96,7 +96,6 @@ import {
 	nextTick,
 } from 'vue';
 import { camelCase } from 'lodash-es';
-import { externalHooks } from '@/mixins/externalHooks';
 import { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
 import SearchBar from './SearchBar.vue';
@@ -114,6 +113,7 @@ import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useExternalHooks } from '@/composables';
 
 export interface Props {
 	showSubcategoryIcon?: boolean;
@@ -148,7 +148,7 @@ const emit = defineEmits<{
 }>();
 
 const instance = getCurrentInstance();
-const { $externalHooks } = new externalHooks();
+const externalHooks = useExternalHooks();
 
 const { defaultLocale } = useRootStore();
 const { workflowId } = useWorkflowsStore();
@@ -549,7 +549,7 @@ onUnmounted(() => {
 });
 
 watch(filteredNodeTypes, (returnItems) => {
-	$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
+	externalHooks.run('nodeCreateList.filteredNodeTypesComputed', {
 		nodeFilter: nodeCreatorStore.itemsFilter,
 		result: returnItems,
 		selectedType: nodeCreatorStore.selectedView,
@@ -569,7 +569,7 @@ watch(
 		// Reset the index whenver the filter-value changes
 		state.activeIndex = 0;
 		state.activeSubcategoryIndex = 0;
-		$externalHooks().run('nodeCreateList.nodeFilterChanged', {
+		externalHooks.run('nodeCreateList.nodeFilterChanged', {
 			oldValue,
 			newValue,
 			selectedType: nodeCreatorStore.selectedView,

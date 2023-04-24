@@ -73,7 +73,6 @@ import {
 import { showMessage } from '@/mixins/showMessage';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import dateformat from 'dateformat';
-import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
@@ -82,6 +81,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 
+type ActivatorRef = InstanceType<typeof WorkflowActivator>;
+
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -89,7 +90,7 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -165,7 +166,7 @@ export default mixins(showMessage, restApi).extend({
 	methods: {
 		async onClick(event?: PointerEvent) {
 			if (event) {
-				if ((this.$refs.activator as Vue)?.$el.contains(event.target as HTMLElement)) {
+				if ((this.$refs.activator as ActivatorRef)?.$el.contains(event.target as HTMLElement)) {
 					return;
 				}
 
@@ -232,7 +233,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				try {
-					await this.restApi().deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflowAPI(this.data.id);
 					this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
 					this.$showError(

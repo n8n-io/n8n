@@ -18,7 +18,7 @@ import { IVersionNode } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 interface NodeIconSource {
 	path?: string;
@@ -26,7 +26,7 @@ interface NodeIconSource {
 	icon?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'NodeIcon',
 	props: {
 		nodeType: {},
