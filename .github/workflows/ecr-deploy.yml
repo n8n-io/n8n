@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: build
-      run: docker build -t "${{ github.ref_name }}"  .
+      run: docker build -t  "${{ github.ref_name }}" -f docker/images/n8n-custom/Dockerfile .
 
     - name: push ecr
       uses: Deep-Consulting-Solutions/ecr-deploy-action@main
