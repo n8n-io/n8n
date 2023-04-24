@@ -1,7 +1,9 @@
 import type { IDataObject } from 'n8n-workflow';
 
 export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
-	return typeof maybe === 'object' && maybe !== null && !Array.isArray(maybe);
+	return (
+		typeof maybe === 'object' && maybe !== null && !Array.isArray(maybe) && !(maybe instanceof Date)
+	);
 }
 
 function isTraversable(maybe: unknown): maybe is IDataObject {

@@ -165,17 +165,19 @@
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 
-import {
+import type {
 	Endpoint,
 	Connection,
-	EVENT_CONNECTION,
 	ConnectionEstablishedParams,
-	EVENT_CONNECTION_DETACHED,
-	EVENT_CONNECTION_MOVED,
-	INTERCEPT_BEFORE_DROP,
 	BeforeDropParams,
 	ConnectionDetachedParams,
 	ConnectionMovedParams,
+} from '@jsplumb/core';
+import {
+	EVENT_CONNECTION,
+	EVENT_CONNECTION_DETACHED,
+	EVENT_CONNECTION_MOVED,
+	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
@@ -205,11 +207,10 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
-import { restApi } from '@/mixins/restApi';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
@@ -221,11 +222,11 @@ import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import {
-	deepCopy,
+import type {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IExecutionsSummary,
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
@@ -237,11 +238,10 @@ import {
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	NodeHelpers,
-	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
-import {
+import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import type {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -254,7 +254,6 @@ import {
 	ITag,
 	INewWorkflowData,
 	IWorkflowTemplate,
-	IExecutionsSummary,
 	IWorkflowToShare,
 	IUser,
 	INodeUpdatePropertiesInformation,
@@ -265,7 +264,7 @@ import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { Route, RawLocation } from 'vue-router';
+import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -277,7 +276,8 @@ import { useCredentialsStore } from '@/stores/credentials';
 import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useCanvasStore } from '@/stores/canvas';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useEnvironmentsStore } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
@@ -290,6 +290,7 @@ import {
 	RenameNodeCommand,
 	historyBus,
 } from '@/models/history';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import {
 	EVENT_ENDPOINT_MOUSEOVER,
 	EVENT_ENDPOINT_MOUSEOUT,
@@ -298,15 +299,13 @@ import {
 	EVENT_CONNECTION_ABORT,
 	EVENT_CONNECTION_MOUSEOUT,
 	EVENT_CONNECTION_MOUSEOVER,
-	BrowserJsPlumbInstance,
 	ready,
 } from '@jsplumb/browser-ui';
+import type { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
 import {
-	N8nPlusEndpoint,
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
-import { usePostHog } from '@/stores/posthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -322,9 +321,7 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	moveNodeWorkflow,
-	restApi,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 	workflowRun,
 	debounceHelper,
@@ -344,6 +341,7 @@ export default mixins(
 		return {
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
+			...useTitleChange(),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -402,9 +400,9 @@ export default mixins(
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 		},
 		nodeViewScale(newScale) {
-			const element = this.$refs.nodeView as HTMLDivElement;
-			if (element) {
-				element.style.transform = `scale(${newScale})`;
+			const elementRef = this.$refs.nodeView as HTMLDivElement | undefined;
+			if (elementRef) {
+				elementRef.style.transform = `scale(${newScale})`;
 			}
 		},
 	},
@@ -470,6 +468,7 @@ export default mixins(
 			useWorkflowsStore,
 			useUsersStore,
 			useNodeCreatorStore,
+			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
 		),
@@ -782,7 +781,7 @@ export default mixins(
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
 			try {
-				data = await this.restApi().getExecution(executionId);
+				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
 				return;
@@ -1402,14 +1401,14 @@ export default mixins(
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.restApi().stopCurrentExecution(executionId);
+				await this.workflowsStore.stopCurrentExecution(executionId);
 				this.$showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
-				const execution = await this.restApi().getExecution(executionId);
+				const execution = await this.workflowsStore.getExecution(executionId);
 
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
@@ -1421,7 +1420,7 @@ export default mixins(
 					this.workflowsStore.executingNode = null;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
@@ -1445,7 +1444,7 @@ export default mixins(
 						retryOf: execution.retryOf,
 					} as IPushDataExecutionFinished;
 					this.workflowsStore.finishActiveExecution(pushData);
-					this.$titleSet(execution.workflowData.name, 'IDLE');
+					this.titleSet(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode = null;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
@@ -1475,7 +1474,7 @@ export default mixins(
 
 		async stopWaitingForWebhook() {
 			try {
-				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
+				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
 				this.$showError(
 					error,
@@ -1548,7 +1547,7 @@ export default mixins(
 
 			this.startLoading();
 			try {
-				workflowData = await this.restApi().getWorkflowFromUrl(url);
+				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
 				this.stopLoading();
 				this.$showError(
@@ -2514,6 +2513,20 @@ export default mixins(
 				}
 			}
 		},
+		onBeforeUnload(e) {
+			if (this.isDemo || window.preventNodeViewBeforeUnload) {
+				return;
+			} else if (this.uiStore.stateIsDirty) {
+				const confirmationMessage = this.$locale.baseText(
+					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
+				);
+				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+			} else {
+				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				return;
+			}
+		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
 			await this.resetWorkspace();
@@ -2531,35 +2544,7 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (usePostHog().isVariantEnabled(ASSUMPTION_EXPERIMENT.name, ASSUMPTION_EXPERIMENT.video)) {
-				// For novice users (onboardingFlowEnabled == true)
-				// Inject welcome sticky note and zoom to fit
-
-				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					// Position the welcome sticky left to the added trigger node
-					const position: XYPosition = [50, 250];
-
-					await this.addNodes([
-						{
-							id: uuid(),
-							...NodeViewUtils.WELCOME_STICKY_NODE,
-							parameters: {
-								// Use parameters from the template but add translated content
-								...NodeViewUtils.WELCOME_STICKY_NODE.parameters,
-								content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
-							},
-							position,
-						},
-					]);
-					setTimeout(() => {
-						this.canvasStore.zoomToFit();
-						this.canvasStore.canvasAddButtonPosition = [500, 350];
-						this.$telemetry.track('welcome note inserted');
-					}, 0);
-				}
-			} else {
-				this.canvasStore.zoomToFit();
-			}
+			this.canvasStore.zoomToFit();
 		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
@@ -2599,7 +2584,7 @@ export default mixins(
 				if (workflowId !== null) {
 					let workflow: IWorkflowDb | undefined = undefined;
 					try {
-						workflow = await this.restApi().getWorkflow(workflowId);
+						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
 					} catch (error) {
 						this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
 
@@ -2609,7 +2594,7 @@ export default mixins(
 					}
 
 					if (workflow) {
-						this.$titleSet(workflow.name, 'IDLE');
+						this.titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflow);
 					}
@@ -2623,23 +2608,7 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			// allow to be overriden in e2e tests
-			// @ts-ignore
-			window.onBeforeUnloadNodeView = (e) => {
-				if (this.isDemo) {
-					return;
-				} else if (this.uiStore.stateIsDirty) {
-					const confirmationMessage = this.$locale.baseText(
-						'nodeView.itLooksLikeYouHaveBeenEditingSomething',
-					);
-					(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-					return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
-				} else {
-					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
-					return;
-				}
-			};
-			window.addEventListener('beforeunload', window.onBeforeUnloadNodeView);
+			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3615,8 +3584,7 @@ export default mixins(
 			return Promise.resolve();
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			await this.workflowsStore.fetchActiveWorkflows();
 		},
 		async loadNodeTypes(): Promise<void> {
 			await this.nodeTypesStore.getNodeTypes();
@@ -3626,6 +3594,9 @@ export default mixins(
 		},
 		async loadCredentials(): Promise<void> {
 			await this.credentialsStore.fetchAllCredentials();
+		},
+		async loadVariables(): Promise<void> {
+			await this.environmentsStore.fetchAllVariables();
 		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
@@ -3873,7 +3844,7 @@ export default mixins(
 	async mounted() {
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
-		this.$titleReset();
+		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.startLoading();
@@ -3882,6 +3853,7 @@ export default mixins(
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
 		];
+		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -3994,6 +3966,7 @@ export default mixins(
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
+		window.removeEventListener('beforeunload', this.onBeforeUnload);
 
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);

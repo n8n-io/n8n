@@ -105,7 +105,7 @@ export default mixins(showMessage, workflowActivate).extend({
 		async displayActivationError() {
 			let errorMessage: string;
 			try {
-				const errorData = await this.restApi().getActivationError(this.workflowId);
+				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
 
 				if (errorData === undefined) {
 					errorMessage = this.$locale.baseText(

@@ -8,30 +8,30 @@ import {
 } from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	EnterpriseEditionFeature,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-} from '@/constants';
-import {
+import type { EnterpriseEditionFeature } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import type {
 	ILdapConfig,
-	ILogLevel,
 	IN8nPromptResponse,
 	IN8nPrompts,
-	IN8nUISettings,
 	IN8nValueSurveyData,
 	ISettingsState,
-	UserManagementAuthenticationMethod,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
-import { IDataObject, ITelemetrySettings } from 'n8n-workflow';
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import type {
+	IDataObject,
+	ILogLevel,
+	IN8nUISettings,
+	ITelemetrySettings,
+	WorkflowSettings,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useRootStore } from './n8nRootStore';
 import { useUIStore } from './ui';
 import { useUsersStore } from './users';
 import { useVersionsStore } from './versions';
+import { makeRestApiRequest } from '@/utils';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -127,6 +127,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.settings.personalizationSurveyEnabled
 			);
 		},
+		isUserActivationSurveyEnabled(): boolean {
+			return (
+				this.settings.telemetry &&
+				this.settings.telemetry.enabled &&
+				this.settings.userActivationSurveyEnabled
+			);
+		},
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},
@@ -168,7 +175,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isQueueModeEnabled(): boolean {
 			return this.settings.executionMode === 'queue';
 		},
-		workflowCallerPolicyDefaultOption(): WorkflowCallerPolicyDefaultOption {
+		workflowCallerPolicyDefaultOption(): WorkflowSettings.CallerPolicy {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
 		isDefaultAuthenticationSaml(): boolean {
@@ -221,6 +228,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		stopShowingSetupPage(): void {
 			Vue.set(this.userManagement, 'showSetupOnFirstLoad', false);
+		},
+		disableTemplates(): void {
+			Vue.set(this.settings.templates, 'enabled', false);
 		},
 		setPromptsData(promptsData: IN8nPrompts): void {
 			Vue.set(this, 'promptsData', promptsData);
@@ -326,6 +336,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		setSaveManualExecutions(saveManualExecutions: boolean) {
 			Vue.set(this, 'saveManualExecutions', saveManualExecutions);
+		},
+		async getTimezones(): Promise<IDataObject> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
 		},
 	},
 });

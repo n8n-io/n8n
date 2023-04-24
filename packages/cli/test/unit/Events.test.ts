@@ -1,19 +1,20 @@
 import { IRun, LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
-import { QueryFailedError, Repository } from 'typeorm';
+import { QueryFailedError } from 'typeorm';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 import { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import { WorkflowStatisticsRepository } from '@db/repositories';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { getLogger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../integration/shared/utils';
+import { UserService } from '@/user/user.service';
 
-type WorkflowStatisticsRepository = Repository<WorkflowStatistics>;
 jest.mock('@/Db', () => {
 	return {
 		collections: {
@@ -23,6 +24,8 @@ jest.mock('@/Db', () => {
 		},
 	};
 });
+
+jest.spyOn(UserService, 'updateUserSettings').mockImplementation();
 
 describe('Events', () => {
 	const dbType = config.getEnv('database.type');

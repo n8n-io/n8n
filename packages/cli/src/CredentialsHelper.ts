@@ -224,7 +224,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): string {
-		if (parameterValue.charAt(0) !== '=') {
+		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
 		}
 

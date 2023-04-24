@@ -329,10 +329,8 @@
 
 import { get } from 'lodash-es';
 
-import { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import {
-	NodeHelpers,
-	NodeParameterValue,
+import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import type {
 	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
@@ -341,6 +339,7 @@ import {
 	INodePropertyCollection,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { NodeHelpers, NodeParameterValue } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -366,7 +365,7 @@ import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -374,6 +373,8 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus';
+
+type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
 export default mixins(
 	externalHooks,
@@ -1099,10 +1100,9 @@ export default mixins(
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocator = this.$refs.resourceLocator;
-					if (resourceLocator) {
-						(resourceLocator as Vue).$emit('refreshList');
-					}
+					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
+
+					resourceLocatorRef?.$emit('refreshList');
 				}
 				this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {

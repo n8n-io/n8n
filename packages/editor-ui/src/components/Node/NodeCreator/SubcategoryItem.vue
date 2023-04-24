@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ISubcategoryItemProps } from '@/Interface';
+import type { ISubcategoryItemProps } from '@/Interface';
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
 export interface Props {

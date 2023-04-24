@@ -122,13 +122,14 @@ import {
 	REPORTED_SOURCE_EVENT,
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
-} from '../constants';
+	VIEWS,
+} from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
+import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils';
-import { GenericValue } from 'n8n-workflow';
+import type { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -606,6 +607,11 @@ export default mixins(showMessage, workflowHelpers).extend({
 	methods: {
 		closeDialog() {
 			this.modalBus.emit('close');
+			// In case the redirect to canvas for new users didn't happen
+			// we try again after closing the modal
+			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
+				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			}
 		},
 		onSave() {
 			this.formBus.emit('submit');

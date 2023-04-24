@@ -17,11 +17,12 @@ describe('Data mapping', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 
-		cy.window()
-			// @ts-ignore
-			.then(
-				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
-			);
+		cy.window().then(
+			(win) => {
+				// @ts-ignore
+				win.preventNodeViewBeforeUnload = true;
+			},
+		);
 	});
 
 	it('maps expressions from table header', () => {
@@ -204,7 +205,7 @@ describe('Data mapping', () => {
 				'have.text',
 				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
 			);
-		ndv.getters.parameterExpressionPreview('value').should('not.exist');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '[empty]');
 
 		ndv.actions.selectInputNode('Set');
 

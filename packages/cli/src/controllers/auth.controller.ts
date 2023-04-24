@@ -1,5 +1,5 @@
 import validator from 'validator';
-import { Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
@@ -8,7 +8,6 @@ import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type {
@@ -23,6 +22,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
+import type { UserRepository } from '@db/repositories';
 
 @RestController()
 export class AuthController {
@@ -32,7 +32,7 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	private readonly postHog?: PostHogClient;
 
@@ -58,7 +58,6 @@ export class AuthController {
 
 	/**
 	 * Log in a user.
-	 * Authless endpoint.
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
@@ -135,7 +134,6 @@ export class AuthController {
 
 	/**
 	 * Validate invite token to enable invitee to set up their account.
-	 * Authless endpoint.
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
@@ -196,8 +194,8 @@ export class AuthController {
 
 	/**
 	 * Log out a user.
-	 * Authless endpoint.
 	 */
+	@Authorized()
 	@Post('/logout')
 	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);

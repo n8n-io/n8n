@@ -43,7 +43,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
@@ -51,9 +51,9 @@ import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
 import { useVersionsStore } from '@/stores/versions';
-import { IVersion } from '@/Interface';
+import type { IVersion } from '@/Interface';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'UpdatesPanel',
 	components: {
 		ModalDrawer,

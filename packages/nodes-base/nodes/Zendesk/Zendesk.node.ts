@@ -120,7 +120,7 @@ export class Zendesk implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -152,7 +152,7 @@ export class Zendesk implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -167,7 +167,7 @@ export class Zendesk implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -183,7 +183,7 @@ export class Zendesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the locales to display them to user so that he can
+			// Get all the locales to display them to user so that they can
 			// select them easily
 			async getLocales(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -199,7 +199,7 @@ export class Zendesk implements INodeType {
 				return returnData;
 			},
 
-			// Get all the user fields to display them to user so that he can
+			// Get all the user fields to display them to user so that they can
 			// select them easily
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

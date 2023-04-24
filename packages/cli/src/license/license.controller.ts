@@ -75,6 +75,7 @@ licenseController.post(
 		} catch (e) {
 			const error = e as Error & { errorId?: string };
 
+			//override specific error messages (to map License Server vocabulary to n8n terms)
 			switch (error.errorId ?? 'UNSPECIFIED') {
 				case 'SCHEMA_VALIDATION':
 					error.message = 'Activation key is in the wrong format';
@@ -92,7 +93,7 @@ licenseController.post(
 					break;
 			}
 
-			throw new ResponseHelper.BadRequestError((e as Error).message);
+			throw new ResponseHelper.BadRequestError(error.message);
 		}
 
 		// Return the read data, plus the management JWT
@@ -115,10 +116,12 @@ licenseController.post(
 		try {
 			await license.renew();
 		} catch (e) {
+			const error = e as Error & { errorId?: string };
+
 			// not awaiting so as not to make the endpoint hang
 			void Container.get(InternalHooks).onLicenseRenewAttempt({ success: false });
-			if (e instanceof Error) {
-				throw new ResponseHelper.BadRequestError(e.message);
+			if (error instanceof Error) {
+				throw new ResponseHelper.BadRequestError(error.message);
 			}
 		}
 

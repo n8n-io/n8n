@@ -1,5 +1,5 @@
-import { ExecutionStatus, IDataObject } from 'n8n-workflow';
-import { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
+import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 
 export const executionFilterToQueryFilter = (

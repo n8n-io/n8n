@@ -16,10 +16,16 @@ import {
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
+	updateCurrentUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import {
+	PERSONALIZATION_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
+	STORES,
+	LOCAL_STORAGE_ACTIVE_MODAL,
+} from '@/constants';
 import type {
 	ICredentialsResponse,
 	IInviteResponse,
@@ -54,6 +60,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 	getters: {
 		allUsers(): IUser[] {
 			return Object.values(this.users);
+		},
+		userActivated(): boolean {
+			return Boolean(this.currentUser?.settings?.userActivated);
 		},
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
@@ -236,6 +245,17 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const user = await updateCurrentUser(rootStore.getRestApiContext, params);
 			this.addUsers([user]);
 		},
+		async updateUserSettings(settings: IUserResponse['settings']): Promise<void> {
+			const rootStore = useRootStore();
+			const updatedSettings = await updateCurrentUserSettings(
+				rootStore.getRestApiContext,
+				settings,
+			);
+			if (this.currentUser) {
+				this.currentUser.settings = updatedSettings;
+				this.addUsers([this.currentUser]);
+			}
+		},
 		async updateCurrentUserPassword({
 			password,
 			currentPassword,
@@ -285,6 +305,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
+			}
+		},
+		async showUserActivationSurveyModal() {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.isUserActivationSurveyEnabled) {
+				const currentUser = this.currentUser;
+				if (currentUser?.settings?.showUserActivationSurvey) {
+					const uiStore = useUIStore();
+					uiStore.openModal(USER_ACTIVATION_SURVEY_MODAL);
+				}
 			}
 		},
 		async skipOwnerSetup(): Promise<void> {
