@@ -97,8 +97,8 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,

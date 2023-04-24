@@ -145,7 +145,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialsResponse } from '@/Interface';
+import type { ICredentialsResponse } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import Vue from 'vue';

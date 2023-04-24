@@ -32,8 +32,7 @@ import type {
 	WorkflowsState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import {
-	deepCopy,
+import type {
 	IAbstractEventMessage,
 	IConnection,
 	IConnections,
@@ -54,7 +53,8 @@ import {
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { deepCopy, IDataObject, NodeHelpers, Workflow } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import Vue from 'vue';
 
 import { useRootStore } from './n8nRootStore';
