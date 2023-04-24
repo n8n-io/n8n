@@ -19,6 +19,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
+	IExecuteContextData,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
@@ -324,7 +325,7 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				let runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
 
 				if (pushData.data.status === 'crashed') {
 					runDataExecutedErrorMessage = this.$locale.baseText(
@@ -581,6 +582,29 @@ export const pushConnection = mixins(
 				this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
+		},
+		getExecutionError(data: IRunExecutionData | IExecuteContextData) {
+			const error = data.resultData.error;
+
+			let errorMessage: string;
+
+			if (data.resultData.lastNodeExecuted && error) {
+				errorMessage = error.message || error.description;
+			} else {
+				errorMessage = 'There was a problem executing the workflow!';
+
+				if (error && error.message) {
+					let nodeName: string | undefined;
+					if ('node' in error) {
+						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
+					}
+
+					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
+				}
+			}
+
+			return errorMessage;
 		},
 	},
 });

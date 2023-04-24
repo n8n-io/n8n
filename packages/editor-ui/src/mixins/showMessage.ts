@@ -89,30 +89,6 @@ export const showMessage = mixins(externalHooks).extend({
 			return this.$message(config);
 		},
 
-		$getExecutionError(data: IRunExecutionData | IExecuteContextData) {
-			const error = data.resultData.error;
-
-			let errorMessage: string;
-
-			if (data.resultData.lastNodeExecuted && error) {
-				errorMessage = error.message || error.description;
-			} else {
-				errorMessage = 'There was a problem executing the workflow!';
-
-				if (error && error.message) {
-					let nodeName: string | undefined;
-					if ('node' in error) {
-						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
-					}
-
-					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
-					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
-				}
-			}
-
-			return errorMessage;
-		},
-
 		$showError(e: Error | unknown, title: string, message?: string) {
 			const error = e as Error;
 			const messageLine = message ? `${message}<br/>` : '';
