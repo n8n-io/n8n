@@ -166,6 +166,8 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
+type ResourceLocatorDropdownRef = InstanceType<typeof ResourceLocatorDropdown>;
+
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
 	nextPageToken: unknown;
@@ -407,9 +409,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	watch: {
 		currentQueryError(curr: boolean, prev: boolean) {
 			if (this.showResourceDropdown && curr && !prev) {
-				const input = this.$refs.input;
-				if (input) {
-					(input as HTMLElement).focus();
+				const inputRef = this.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}
 		},
@@ -445,7 +447,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	methods: {
 		setWidth() {
-			const containerRef = this.$refs.container as HTMLElement;
+			const containerRef = this.$refs.container as HTMLElement | undefined;
 			if (containerRef) {
 				this.width = containerRef?.offsetWidth;
 			}
@@ -465,9 +467,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.trackEvent('User refreshed resource locator list');
 		},
 		onKeyDown(e: MouseEvent) {
-			const dropdown = this.$refs.dropdown;
-			if (dropdown && this.showResourceDropdown && !this.isSearchable) {
-				(dropdown as Vue).$emit('keyDown', e);
+			const dropdownRef = this.$refs.dropdown as ResourceLocatorDropdownRef | undefined;
+			if (dropdownRef && this.showResourceDropdown && !this.isSearchable) {
+				dropdownRef.$emit('keyDown', e);
 			}
 		},
 		openResource(url: string) {
