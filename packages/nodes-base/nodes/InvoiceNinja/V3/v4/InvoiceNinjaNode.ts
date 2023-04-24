@@ -111,7 +111,7 @@ export const InvoiceNinjaV4 = {
 
 	methods: {
 		loadOptions: {
-			// Get all the available clients to display them to user so this he can
+			// Get all the available clients to display them to user so this they can
 			// select them easily
 			async getClientsV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -126,7 +126,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available projects to display them to user so this he can
+			// Get all the available projects to display them to user so this they can
 			// select them easily
 			async getProjectsV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -146,7 +146,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available invoices to display them to user so this he can
+			// Get all the available invoices to display them to user so this they can
 			// select them easily
 			async getInvoicesV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -166,7 +166,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so this he can
+			// Get all the available country codes to display them to user so this they can
 			// select them easily
 			async getCountryCodesV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -180,7 +180,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available vendors to display them to user so this he can
+			// Get all the available vendors to display them to user so this they can
 			// select them easily
 			async getVendorsV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -195,7 +195,7 @@ export const InvoiceNinjaV4 = {
 				}
 				return returnData;
 			},
-			// Get all the available expense categories to display them to user so this he can
+			// Get all the available expense categories to display them to user so this they can
 			// select them easily
 			async getExpenseCategoriesV4(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

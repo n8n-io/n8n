@@ -164,7 +164,7 @@ export class InvoiceNinjaV1u2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available clients to display them to user so that he can
+			// Get all the available clients to display them to user so that they can
 			// select them easily
 			async getClients(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -179,7 +179,7 @@ export class InvoiceNinjaV1u2 implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so that they can
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -199,7 +199,7 @@ export class InvoiceNinjaV1u2 implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available invoices to display them to user so that he can
+			// Get all the available invoices to display them to user so that they can
 			// select them easily
 			async getInvoices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -219,7 +219,7 @@ export class InvoiceNinjaV1u2 implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so that he can
+			// Get all the available country codes to display them to user so that they can
 			// select them easily
 			async getCountryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -233,7 +233,7 @@ export class InvoiceNinjaV1u2 implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available vendors to display them to user so that he can
+			// Get all the available vendors to display them to user so that they can
 			// select them easily
 			async getVendors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -248,7 +248,7 @@ export class InvoiceNinjaV1u2 implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available expense categories to display them to user so that he can
+			// Get all the available expense categories to display them to user so that they can
 			// select them easily
 			async getExpenseCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

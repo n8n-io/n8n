@@ -178,7 +178,7 @@ export const InvoiceNinjaV5 = {
 
 	methods: {
 		loadOptions: {
-			// Get all the available bank integrations to display them to user so that he can
+			// Get all the available bank integrations to display them to user so that they can
 			// select them easily
 			async getBankIntegrationsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -203,7 +203,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available clients to display them to user so that he can
+			// Get all the available clients to display them to user so that they can
 			// select them easily
 			async getClientsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -218,7 +218,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so that he can
+			// Get all the available country codes to display them to user so that they can
 			// select them easily
 			async getCountryCodesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -232,7 +232,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so that he can
+			// Get all the available country codes to display them to user so that they can
 			// select them easily
 			async getCurrenciesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -246,7 +246,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available designs to display them to user so that he can
+			// Get all the available designs to display them to user so that they can
 			// select them easily
 			async getDesignsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -262,7 +262,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available expense categories to display them to user so that he can
+			// Get all the available expense categories to display them to user so that they can
 			// select them easily
 			async getExpenseCategoriesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -283,7 +283,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so that he can
+			// Get all the available country codes to display them to user so that they can
 			// select them easily
 			async getFrequenciesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -297,7 +297,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available country codes to display them to user so that he can
+			// Get all the available country codes to display them to user so that they can
 			// select them easily
 			async getPaymentTypesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -311,7 +311,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available projects to display them to user so that he can
+			// Get all the available projects to display them to user so that they can
 			// select them easily
 			async getProjectsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -328,7 +328,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available invoices to display them to user so that he can
+			// Get all the available invoices to display them to user so that they can
 			// select them easily
 			async getInvoicesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -345,7 +345,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available task_statuses to display them to user so that he can
+			// Get all the available task_statuses to display them to user so that they can
 			// select them easily
 			async getTaskStatusesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -366,7 +366,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available recuring expenses to display them to user so that he can
+			// Get all the available recuring expenses to display them to user so that they can
 			// select them easily
 			async getRecuringExpensesV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -385,7 +385,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available users to display them to user so that he can
+			// Get all the available users to display them to user so that they can
 			// select them easily
 			async getUsersV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -402,7 +402,7 @@ export const InvoiceNinjaV5 = {
 				}
 				return returnData;
 			},
-			// Get all the available vendors to display them to user so that he can
+			// Get all the available vendors to display them to user so that they can
 			// select them easily
 			async getVendorsV5(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
