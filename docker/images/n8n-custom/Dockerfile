@@ -1,4 +1,5 @@
 ARG NODE_VERSION=16
+ARG ACCESS_TOKEN
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
