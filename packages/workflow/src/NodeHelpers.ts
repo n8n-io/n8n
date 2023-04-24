@@ -17,7 +17,6 @@ import isEqual from 'lodash.isequal';
 
 import type {
 	IContextObject,
-	IDataObject,
 	INode,
 	INodeCredentialDescription,
 	INodeExecutionData,
@@ -37,7 +36,6 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	NodeParameterValueType,
 	WebhookHttpMethod,
 } from './Interfaces';
 import { isValidResourceLocatorParameterValue } from './type-guards';
@@ -1411,47 +1409,4 @@ export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType):
 		});
 	}
 	return [object];
-}
-
-export function cleanupParameterData(inputData: NodeParameterValueType | IDataObject): void {
-	if (typeof inputData !== 'object' || inputData === null) {
-		return;
-	}
-
-	if (Array.isArray(inputData)) {
-		inputData.forEach((value) => cleanupParameterData(value));
-		return;
-	}
-
-	if (typeof inputData === 'object') {
-		for (const key of Object.keys(inputData)) {
-			const value = inputData[key as keyof typeof inputData];
-			if (value !== undefined && value !== null && typeof value === 'object') {
-				if (Array.isArray(value)) {
-					value.forEach((v) => cleanupParameterData(v));
-				} else if (value?.constructor?.name !== 'Object') {
-					// Is a custom object so convert
-					if (Object.prototype.hasOwnProperty.call(value, 'toJSON')) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						inputData[key as keyof typeof inputData] = (value as any).toJSON();
-					} else if (Object.prototype.hasOwnProperty.call(value, 'toString')) {
-						inputData[key as keyof typeof inputData] = value.toString();
-					} else {
-						// For [Object: null prototype]
-						inputData[key as keyof typeof inputData] = deepCopy(value);
-					}
-				}
-			}
-		}
-	}
-}
-
-export function cleanupNodeData(data: INodeExecutionData[][]): INodeExecutionData[][] {
-	for (const inputData of data) {
-		for (const itemData of inputData) {
-			cleanupParameterData(itemData.json);
-		}
-	}
-
-	return data;
 }
