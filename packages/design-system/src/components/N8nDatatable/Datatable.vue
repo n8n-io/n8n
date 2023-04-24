@@ -1,6 +1,7 @@
 <script lang="ts">
-import { computed, defineComponent, PropType, ref, useCssModule } from 'vue';
-import { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
+import type { PropType } from 'vue';
+import { computed, defineComponent, ref, useCssModule } from 'vue';
+import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
 import { useI18n } from '../../composables';
 import N8nSelect from '../N8nSelect';

@@ -63,7 +63,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { IWorkflowDb, IUser, ITag } from '@/Interface';
+import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -71,11 +71,11 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
-import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import Vue from 'vue';
+import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -91,7 +91,7 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -234,7 +234,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				try {
-					await this.restApi().deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflowAPI(this.data.id);
 					this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
 					this.$showError(

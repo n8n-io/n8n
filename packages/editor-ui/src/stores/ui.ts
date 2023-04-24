@@ -32,7 +32,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
-import {
+import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,
@@ -49,7 +49,8 @@ import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows';
 import { useSettingsStore } from './settings';
 import { useUsageStore } from './usage';
-import { i18n as locale, BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { i18n as locale } from '@/plugins/i18n';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({

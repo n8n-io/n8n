@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
-import { EventBus } from '@/event-bus';
+import type { EventBus } from '@/event-bus';
 import { useExternalHooks } from '@/composables';
 
 export interface Props {

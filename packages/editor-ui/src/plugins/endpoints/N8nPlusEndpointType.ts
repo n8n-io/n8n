@@ -1,5 +1,6 @@
-import { EndpointHandler, Endpoint, EndpointRepresentation, Overlay } from '@jsplumb/core';
-import { AnchorPlacement, EndpointRepresentationParams } from '@jsplumb/common';
+import type { EndpointHandler, Endpoint, Overlay } from '@jsplumb/core';
+import { EndpointRepresentation } from '@jsplumb/core';
+import type { AnchorPlacement, EndpointRepresentationParams } from '@jsplumb/common';
 import {
 	createElement,
 	EVENT_ENDPOINT_MOUSEOVER,

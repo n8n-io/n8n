@@ -8,25 +8,32 @@ import {
 	START_NODE_TYPE,
 	STORES,
 } from '@/constants';
-import {
+import type {
 	ExecutionsQueryFilter,
+	IActivationError,
+	IExecutionDeleteFilter,
+	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
+	IExecutionsListResponse,
+	IExecutionsStopData,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
 	IPushDataUnsavedExecutionFinished,
+	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
+	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import {
-	deepCopy,
+import type {
+	IAbstractEventMessage,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -46,9 +53,8 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
-	NodeHelpers,
-	Workflow,
 } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import Vue from 'vue';
 
 import { useRootStore } from './n8nRootStore';
@@ -69,6 +75,8 @@ import {
 	stringSizeInBytes,
 	isObjectLiteral,
 	isEmpty,
+	makeRestApiRequest,
+	unflattenExecutionData,
 } from '@/utils';
 import { useNDVStore } from './ndv';
 import { useNodeTypesStore } from './nodeTypes';
@@ -345,6 +353,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return this.getWorkflow(nodes, connections, copyData);
 		},
 
+		// Returns a workflow from a given URL
+		async getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
+				url,
+			});
+		},
+
+		async getActivationError(id: string): Promise<IActivationError | undefined> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
+		},
+
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
 			const rootStore = useRootStore();
 			const workflows = await getWorkflows(rootStore.getRestApiContext);
@@ -352,7 +373,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflows;
 		},
 
-		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
+		async fetchAndSetWorkflow(id: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
 			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
 			this.addWorkflow(workflow);
@@ -1025,6 +1046,144 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(this, 'activeExecutions', newActiveExecutions);
 		},
 
+		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
+			let sendData;
+			if (loadWorkflow === true) {
+				sendData = {
+					loadWorkflow: true,
+				};
+			}
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				`/executions/${id}/retry`,
+				sendData,
+			);
+		},
+
+		// Deletes executions
+		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/executions/delete',
+				sendData as unknown as IDataObject,
+			);
+		},
+
+		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
+		async getPastExecutions(
+			filter: IDataObject,
+			limit: number,
+			lastId?: string,
+			firstId?: string,
+		): Promise<IExecutionsListResponse> {
+			let sendData = {};
+			if (filter) {
+				sendData = {
+					filter,
+					firstId,
+					lastId,
+					limit,
+				};
+			}
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
+		},
+
+		async getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
+			let sendData = {};
+			if (filter) {
+				sendData = {
+					filter,
+				};
+			}
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/executions-current',
+				sendData,
+			);
+		},
+
+		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
+			const rootStore = useRootStore();
+			const response = await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/executions/${id}`,
+			);
+			return response && unflattenExecutionData(response);
+		},
+
+		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/workflows/${id}`);
+		},
+
+		// Creates a new workflow
+		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/workflows',
+				sendData as unknown as IDataObject,
+			);
+		},
+
+		// Deletes a workflow
+		async deleteWorkflowAPI(name: string): Promise<void> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'DELETE', `/workflows/${name}`);
+		},
+
+		// Updates an existing workflow
+		async updateWorkflow(
+			id: string,
+			data: IWorkflowDataUpdate,
+			forceSave = false,
+		): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'PATCH',
+				`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
+				data as unknown as IDataObject,
+			);
+		},
+
+		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/workflows/run',
+				startRunData as unknown as IDataObject,
+			);
+		},
+
+		async removeTestWebhook(workflowId: string): Promise<boolean> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'DELETE',
+				`/test-webhook/${workflowId}`,
+			);
+		},
+
+		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				`/executions-current/${executionId}/stop`,
+			);
+		},
+
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
 		): Promise<IExecutionsSummary[]> {
@@ -1047,13 +1206,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				throw error;
 			}
 		},
+
 		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 			const rootStore = useRootStore();
 			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
+
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
+
 		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
 			executions.forEach((execution) => {
 				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
@@ -1062,6 +1224,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}
 			});
 		},
+		// Returns all the available timezones
+		async getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/eventbus/execution/' + id);
+		},
+		// Binary data
+		async getBinaryUrl(dataPath, mode, fileName, mimeType): string {
+			const rootStore = useRootStore();
+			let restUrl = rootStore.getRestUrl;
+			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
+			const url = new URL(`${restUrl}/data/${dataPath}`);
+			url.searchParams.append('mode', mode);
+			if (fileName) url.searchParams.append('fileName', fileName);
+			if (mimeType) url.searchParams.append('mimeType', mimeType);
+			return url.toString();
+		},
+
 		setNodePristine(nodeName: string, isPristine: boolean): void {
 			Vue.set(this.nodeMetadata[nodeName], 'pristine', isPristine);
 		},
