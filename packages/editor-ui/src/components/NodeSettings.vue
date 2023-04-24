@@ -895,17 +895,19 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		onStopExecution() {
 			this.$emit('stopExecution');
 		},
+		openSettings() {
+			this.openPanel = 'settings';
+		},
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
-		if (this.eventBus) {
-			this.eventBus.on('openSettings', () => {
-				this.openPanel = 'settings';
-			});
-		}
+		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+	},
+	destroyed() {
+		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
 </script>

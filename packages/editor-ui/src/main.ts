@@ -19,16 +19,14 @@ import '@fontsource/open-sans/latin-700.css';
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from '@/mixins/externalHooks';
+import { runExternalHook } from '@/utils';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { useWebhooksStore } from './stores/webhooks';
-import { useUsersStore } from './stores/users';
+import { useWebhooksStore, useUsersStore } from '@/stores';
 import { VIEWS } from '@/constants';
-import { useUIStore } from './stores/ui';
 
 Vue.config.productionTip = false;
 

@@ -24,12 +24,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { IParameterLabel } from 'n8n-workflow';
 import { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'CredentialsInput',
 	props: [
 		'credentialProperties',

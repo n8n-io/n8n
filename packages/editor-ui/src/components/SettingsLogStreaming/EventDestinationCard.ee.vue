@@ -92,15 +92,10 @@ export default mixins(showMessage).extend({
 			deepCopy(defaultMessageEventBusDestinationOptions),
 			this.destination,
 		);
-		this.eventBus.on('destinationWasSaved', () => {
-			const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
-			if (updatedDestination) {
-				this.nodeParameters = Object.assign(
-					deepCopy(defaultMessageEventBusDestinationOptions),
-					this.destination,
-				);
-			}
-		});
+		this.eventBus?.on('destinationWasSaved', this.onDestinationWasSaved);
+	},
+	destroyed() {
+		this.eventBus?.off('destinationWasSaved', this.onDestinationWasSaved);
 	},
 	computed: {
 		...mapStores(useLogStreamingStore),
@@ -124,6 +119,15 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
+		onDestinationWasSaved() {
+			const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
+			if (updatedDestination) {
+				this.nodeParameters = Object.assign(
+					deepCopy(defaultMessageEventBusDestinationOptions),
+					this.destination,
+				);
+			}
+		},
 		async onClick(event?: PointerEvent) {
 			if (
 				event &&

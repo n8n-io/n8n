@@ -62,7 +62,7 @@ export = {
 
 			const workflow = await WorkflowsService.delete(req.user, workflowId);
 			if (!workflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -78,7 +78,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -158,7 +158,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -212,7 +212,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -246,7 +246,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}

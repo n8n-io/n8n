@@ -14,7 +14,7 @@ import {
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from './stores/settings';
 
-export enum UserRole {
+export const enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
 	ResourceOwner = 'isOwner',
 	ResourceEditor = 'isEditor',

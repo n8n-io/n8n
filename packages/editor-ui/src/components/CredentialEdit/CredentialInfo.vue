@@ -68,12 +68,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'CredentialInfo',
 	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	components: {

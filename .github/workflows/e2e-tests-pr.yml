@@ -26,7 +26,7 @@ jobs:
     if: always()
     steps:
       - name: E2E success comment
-        if: ${{!contains(github.event.pull_request.labels.*.name, 'community') || needs.run-e2e-tests.result == 'success' }}
+        if: ${{!contains(github.event.pull_request.labels.*.name, 'community') && needs.run-e2e-tests.outputs.tests_passed == 'true' }}
         uses: peter-evans/create-or-update-comment@v3
         with:
           issue-number: ${{ github.event.pull_request.number }}

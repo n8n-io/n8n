@@ -13,6 +13,8 @@ const classToTypeMap = {
 	'el-picker-panel__link-btn': 'secondary',
 };
 
+type ButtonRef = InstanceType<typeof N8nButton>;
+
 export default defineComponent({
 	components: {
 		N8nButton,
@@ -32,7 +34,7 @@ export default defineComponent({
 			}
 
 			Object.entries(classToTypeMap).forEach(([className, mappedType]) => {
-				if (this.$refs.button && (this.$refs.button as Vue).$el.classList.contains(className)) {
+				if ((this.$refs.button as ButtonRef)?.$el.classList.contains(className)) {
 					type = mappedType;
 				}
 			});

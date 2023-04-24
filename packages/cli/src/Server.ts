@@ -51,6 +51,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	ResourceMapperFields,
+	IN8nUISettings,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
@@ -115,7 +116,6 @@ import type {
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IN8nUISettings,
 } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import {
@@ -159,11 +159,13 @@ import {
 import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
-import { variablesController } from './environments/variables.controller';
+import { variablesController } from './environments/variables/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
-import { getVariablesLimit, isVariablesEnabled } from '@/environments/enviromentHelpers';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
 import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
-import { isVersionControlEnabled } from './environment/versionControl/versionControlHelper';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -314,8 +316,8 @@ class Server extends AbstractServer {
 			},
 			isNpmAvailable: false,
 			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
@@ -359,7 +361,7 @@ class Server extends AbstractServer {
 			saml: isSamlLicensed(),
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
-			versionControl: isVersionControlEnabled(),
+			versionControl: isVersionControlLicensed(),
 		});
 
 		if (isLdapEnabled()) {
@@ -396,6 +398,7 @@ class Server extends AbstractServer {
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
+		const versionControlService = Container.get(VersionControlService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -424,6 +427,7 @@ class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
+			new VersionControlController(versionControlService),
 		];
 
 		if (isLdapEnabled()) {
@@ -548,12 +552,10 @@ class Server extends AbstractServer {
 
 		// initialize SamlService if it is licensed, even if not enabled, to
 		// set up the initial environment
-		if (isSamlLicensed()) {
-			try {
-				await Container.get(SamlService).init();
-			} catch (error) {
-				LoggerProxy.error(`SAML initialization failed: ${error.message}`);
-			}
+		try {
+			await Container.get(SamlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
@@ -561,6 +563,18 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 
 		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+		// Version Control
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			await Container.get(VersionControlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`Version Control initialization failed: ${error.message}`);
+		}
 
 		// ----------------------------------------
 

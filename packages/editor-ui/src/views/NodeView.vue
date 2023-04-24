@@ -209,7 +209,7 @@ import { restApi } from '@/mixins/restApi';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
@@ -226,6 +226,7 @@ import {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IExecutionsSummary,
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
@@ -254,7 +255,6 @@ import type {
 	ITag,
 	INewWorkflowData,
 	IWorkflowTemplate,
-	IExecutionsSummary,
 	IWorkflowToShare,
 	IUser,
 	INodeUpdatePropertiesInformation,
@@ -307,7 +307,6 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
-import { usePostHog } from '@/stores/posthog';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -325,7 +324,6 @@ export default mixins(
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 	workflowRun,
 	debounceHelper,
@@ -345,6 +343,7 @@ export default mixins(
 		return {
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
+			...useTitleChange(),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -403,9 +402,9 @@ export default mixins(
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 		},
 		nodeViewScale(newScale) {
-			const element = this.$refs.nodeView as HTMLDivElement;
-			if (element) {
-				element.style.transform = `scale(${newScale})`;
+			const elementRef = this.$refs.nodeView as HTMLDivElement | undefined;
+			if (elementRef) {
+				elementRef.style.transform = `scale(${newScale})`;
 			}
 		},
 	},
@@ -1423,7 +1422,7 @@ export default mixins(
 					this.workflowsStore.executingNode = null;
 					this.uiStore.removeActiveAction('workflowRunning');
 
-					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
 					this.$showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
@@ -1447,7 +1446,7 @@ export default mixins(
 						retryOf: execution.retryOf,
 					} as IPushDataExecutionFinished;
 					this.workflowsStore.finishActiveExecution(pushData);
-					this.$titleSet(execution.workflowData.name, 'IDLE');
+					this.titleSet(execution.workflowData.name, 'IDLE');
 					this.workflowsStore.executingNode = null;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
@@ -2516,6 +2515,20 @@ export default mixins(
 				}
 			}
 		},
+		onBeforeUnload(e) {
+			if (this.isDemo || window.preventNodeViewBeforeUnload) {
+				return;
+			} else if (this.uiStore.stateIsDirty) {
+				const confirmationMessage = this.$locale.baseText(
+					'nodeView.itLooksLikeYouHaveBeenEditingSomething',
+				);
+				(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+				return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+			} else {
+				this.startLoading(this.$locale.baseText('nodeView.redirecting'));
+				return;
+			}
+		},
 		async newWorkflow(): Promise<void> {
 			this.startLoading();
 			await this.resetWorkspace();
@@ -2583,7 +2596,7 @@ export default mixins(
 					}
 
 					if (workflow) {
-						this.$titleSet(workflow.name, 'IDLE');
+						this.titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflow);
 					}
@@ -2597,23 +2610,7 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			// allow to be overriden in e2e tests
-			// @ts-ignore
-			window.onBeforeUnloadNodeView = (e) => {
-				if (this.isDemo) {
-					return;
-				} else if (this.uiStore.stateIsDirty) {
-					const confirmationMessage = this.$locale.baseText(
-						'nodeView.itLooksLikeYouHaveBeenEditingSomething',
-					);
-					(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-					return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
-				} else {
-					this.startLoading(this.$locale.baseText('nodeView.redirecting'));
-					return;
-				}
-			};
-			window.addEventListener('beforeunload', window.onBeforeUnloadNodeView);
+			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3850,7 +3847,7 @@ export default mixins(
 	async mounted() {
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
-		this.$titleReset();
+		this.titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.startLoading();
@@ -3972,6 +3969,7 @@ export default mixins(
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
+		window.removeEventListener('beforeunload', this.onBeforeUnload);
 
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
