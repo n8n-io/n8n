@@ -107,6 +107,7 @@
 						v-for="(row, index1) in tableData.data"
 						:key="index1"
 						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 					>
 						<td
 							v-for="(data, index2) in row"
@@ -177,6 +178,8 @@ import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
 
+type DraggableRef = InstanceType<typeof Draggable>;
+
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
 	components: { Draggable, MappingPill },
@@ -224,7 +227,7 @@ export default mixins(externalHooks).extend({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
+			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,

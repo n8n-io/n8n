@@ -67,9 +67,6 @@ import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
 import { useEnvironmentsStore } from '@/stores';
 
-let cachedWorkflowKey: string | null = '';
-let cachedWorkflow: Workflow | null = null;
-
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: {
@@ -88,10 +85,6 @@ export function resolveParameter(
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
-
-	if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {
-		return null;
-	}
 
 	let runIndexParent = opts?.inputRunIndex ?? 0;
 	const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
@@ -184,84 +177,20 @@ export function resolveParameter(
 }
 
 function getCurrentWorkflow(copyData?: boolean): Workflow {
-	const nodes = getNodes();
-	const connections = useWorkflowsStore().allConnections;
-	const cacheKey = JSON.stringify({ nodes, connections });
-	if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
-		return cachedWorkflow;
-	}
-	cachedWorkflowKey = cacheKey;
-
-	return getWorkflow(nodes, connections, copyData);
+	return useWorkflowsStore().getCurrentWorkflow(copyData);
 }
 
-// Returns a shallow copy of the nodes which means that all the data on the lower
-// levels still only gets referenced but the top level object is a different one.
-// This has the advantage that it is very fast and does not cause problems with vuex
-// when the workflow replaces the node-parameters.
 function getNodes(): INodeUi[] {
-	const nodes = useWorkflowsStore().allNodes;
-	const returnNodes: INodeUi[] = [];
-
-	for (const node of nodes) {
-		returnNodes.push(Object.assign({}, node));
-	}
-
-	return returnNodes;
+	return useWorkflowsStore().getNodes();
 }
 
 // Returns a workflow instance.
 function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
-	const nodeTypes = getNodeTypes();
-	let workflowId: string | undefined = useWorkflowsStore().workflowId;
-	if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		workflowId = undefined;
-	}
-
-	const workflowName = useWorkflowsStore().workflowName;
-
-	cachedWorkflow = new Workflow({
-		id: workflowId,
-		name: workflowName,
-		nodes: copyData ? deepCopy(nodes) : nodes,
-		connections: copyData ? deepCopy(connections) : connections,
-		active: false,
-		nodeTypes,
-		settings: useWorkflowsStore().workflowSettings,
-		// @ts-ignore
-		pinData: useWorkflowsStore().getPinData,
-	});
-
-	return cachedWorkflow;
+	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 
 function getNodeTypes(): INodeTypes {
-	const nodeTypes: INodeTypes = {
-		nodeTypes: {},
-		init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-		// @ts-ignore
-		getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-			const nodeTypeDescription = useNodeTypesStore().getNodeType(nodeType, version);
-
-			if (nodeTypeDescription === null) {
-				return undefined;
-			}
-
-			return {
-				description: nodeTypeDescription,
-				// As we do not have the trigger/poll functions available in the frontend
-				// we use the information available to figure out what are trigger nodes
-				// @ts-ignore
-				trigger:
-					(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
-						nodeTypeDescription.inputs.length === 0 &&
-						!nodeTypeDescription.webhooks) ||
-					undefined,
-			};
-		},
-	};
-
-	return nodeTypes;
+	return useWorkflowsStore().getNodeTypes();
 }
 
 // Returns connectionInputData to be able to execute an expression.

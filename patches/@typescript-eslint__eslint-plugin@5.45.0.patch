@@ -1,0 +1,13 @@
+diff --git a/dist/rules/consistent-type-imports.js b/dist/rules/consistent-type-imports.js
+index fe6eaf80a1285b62ed93b0c32b74c889788c5164..de4e2ca30c131948e030b7d6dbce4ff50e3eff26 100644
+--- a/dist/rules/consistent-type-imports.js
++++ b/dist/rules/consistent-type-imports.js
+@@ -87,6 +87,8 @@ exports.default = util.createRule({
+                 ImportDeclaration(node) {
+                     var _a;
+                     const source = node.source.value;
++                    if (source.endsWith('.vue')) return;
++                    
+                     // sourceImports is the object containing all the specifics for a particular import source, type or value
+                     const sourceImports = (_a = sourceImportsMap[source]) !== null && _a !== void 0 ? _a : (sourceImportsMap[source] = {
+                         source,

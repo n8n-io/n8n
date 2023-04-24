@@ -1,10 +1,10 @@
-import { IPermissions, IUser } from '@/Interface';
+import type { IPermissions } from '@/Interface';
 import { isAuthorized } from '@/utils';
 import { useUsersStore } from '@/stores/users';
-import Vue from 'vue';
-import { Route } from 'vue-router';
+import { defineComponent } from 'vue';
+import type { Route } from 'vue-router';
 
-export const userHelpers = Vue.extend({
+export const userHelpers = defineComponent({
 	methods: {
 		canUserAccessRouteByName(name: string): boolean {
 			const { route } = this.$router.resolve({ name });

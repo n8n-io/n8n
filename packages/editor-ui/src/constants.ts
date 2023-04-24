@@ -356,7 +356,7 @@ Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_sou
 
 export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
-export enum VIEWS {
+export const enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
@@ -392,7 +392,7 @@ export enum VIEWS {
 	VERSION_CONTROL = 'VersionControl',
 }
 
-export enum FAKE_DOOR_FEATURES {
+export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
 	SSO = 'sso',
@@ -437,7 +437,7 @@ export const MAPPING_PARAMS = [
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
 
-export enum WORKFLOW_MENU_ACTIONS {
+export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
@@ -449,7 +449,7 @@ export enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export enum EnterpriseEditionFeature {
+export const enum EnterpriseEditionFeature {
 	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
@@ -460,7 +460,7 @@ export enum EnterpriseEditionFeature {
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
-export enum MAIN_HEADER_TABS {
+export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
@@ -498,7 +498,7 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export enum STORES {
+export const enum STORES {
 	COMMUNITY_NODES = 'communityNodes',
 	ROOT = 'root',
 	SETTINGS = 'settings',
@@ -517,7 +517,7 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
-export enum SignInType {
+export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
 }
@@ -538,6 +538,12 @@ export const AUTO_INSERT_ACTION_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [AUTO_INSERT_ACTION_EXPERIMENT.name];
+export const TEMPLATE_EXPERIMENT = {
+	name: '002_remove_templates',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];

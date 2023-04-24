@@ -1,6 +1,6 @@
 import { Response, Server } from 'miragejs';
 import { AppSchema } from '../types';
-import { IN8nUISettings, ISettingsState } from '@/Interface';
+import { IN8nUISettings } from 'n8n-workflow';
 
 const defaultSettings: IN8nUISettings = {
 	allowedModules: {},
@@ -9,9 +9,15 @@ const defaultSettings: IN8nUISettings = {
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	enterprise: {
+		sharing: false,
+		ldap: false,
+		saml: false,
+		logStreaming: false,
+		advancedExecutionFilters: false,
 		variables: true,
+		versionControl: false,
 	},
-	executionMode: '',
+	executionMode: 'regular',
 	executionTimeout: 0,
 	hideUsagePage: false,
 	hiringBannerEnabled: false,
@@ -33,8 +39,8 @@ const defaultSettings: IN8nUISettings = {
 	},
 	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 	pushBackend: 'websocket',
-	saveDataErrorExecution: '',
-	saveDataSuccessExecution: '',
+	saveDataErrorExecution: 'DEFAULT',
+	saveDataSuccessExecution: 'DEFAULT',
 	saveManualExecutions: false,
 	sso: {
 		ldap: { loginEnabled: false, loginLabel: '' },
@@ -51,6 +57,7 @@ const defaultSettings: IN8nUISettings = {
 		enabled: true,
 		showSetupOnFirstLoad: true,
 		smtpSetup: true,
+		authenticationMethod: 'email',
 	},
 	versionCli: '',
 	versionNotifications: {
@@ -60,6 +67,13 @@ const defaultSettings: IN8nUISettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
+	variables: {
+		limit: -1,
+	},
+	userActivationSurveyEnabled: false,
+	deployment: {
+		type: 'default',
+	},
 };
 
 export function routesForSettings(server: Server) {
