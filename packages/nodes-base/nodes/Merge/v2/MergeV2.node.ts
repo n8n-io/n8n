@@ -35,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	icon: 'fa:code-branch',
 	group: ['transform'],
-	version: [2, 3],
+	version: [2, 2.1],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merges data of multiple streams once data from both is available',
 	defaults: {
@@ -49,8 +49,8 @@ const versionDescription: INodeTypeDescription = {
 	// If the node is of version 2 or if mode is chooseBranch data from both branches is required
 	// to continue, else data from any input suffices
 	requiredInputs:
-		'={{ $version === 2 ? undefined : ($parameter["mode"] === "chooseBranch" ? [0, 1] : 1) }}',
-	forceInputNodeExecution: '={{ $version === 2 }}',
+		'={{ $version < 2.1 ? undefined : ($parameter["mode"] === "chooseBranch" ? [0, 1] : 1) }}',
+	forceInputNodeExecution: '={{ $version < 2.1 }}',
 	properties: [
 		{
 			displayName: 'Mode',
