@@ -10,7 +10,7 @@
 import { useCredentialsStore } from '@/stores/credentials';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 

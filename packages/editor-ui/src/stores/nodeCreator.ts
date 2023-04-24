@@ -1,15 +1,15 @@
 import { startCase } from 'lodash-es';
 import { defineStore } from 'pinia';
-import {
+import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	IDataObject,
 	INodeProperties,
 	INodeTypeDescription,
-	deepCopy,
 	INodeParameters,
 	INodeActionTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import {
 	STORES,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -21,9 +21,9 @@ import {
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
+import type { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
 import { i18n } from '@/plugins/i18n';
-import { Telemetry } from '@/plugins/telemetry';
+import type { Telemetry } from '@/plugins/telemetry';
 import { runExternalHook } from '@/utils';
 import { useWebhooksStore } from '@/stores/webhooks';
 

@@ -32,26 +32,26 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import {
+import type {
 	ExecutionFilterType,
 	IExecutionsListResponse,
 	INodeUi,
 	ITag,
 	IWorkflowDb,
 } from '@/Interface';
-import {
+import type {
 	IExecutionsSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';

@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import { IFakeDoor } from '@/Interface';
+import type { IFakeDoor } from '@/Interface';
 import { defineComponent } from 'vue';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import { mapStores } from 'pinia';

@@ -1,7 +1,8 @@
 import type { Telemetry } from '@/plugins/telemetry';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { ref, Ref } from 'vue';
+import type { Ref } from 'vue';
+import { ref } from 'vue';
 
 export const useTelemetryStore = defineStore('telemetry', () => {
 	const telemetry: Ref<Telemetry | undefined> = ref();

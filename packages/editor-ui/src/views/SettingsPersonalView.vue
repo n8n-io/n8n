@@ -60,7 +60,7 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
-import { IFormInputs, IUser } from '@/Interface';
+import type { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
