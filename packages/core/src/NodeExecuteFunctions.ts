@@ -2339,7 +2339,8 @@ export function getExecuteFunctions(
 				}
 
 				if (inputData[inputName][inputIndex] === null) {
-					return [];
+					// return [];
+					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
 				}
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
