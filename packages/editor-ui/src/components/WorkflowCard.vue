@@ -63,7 +63,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { IWorkflowDb, IUser, ITag } from '@/Interface';
+import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -71,10 +71,11 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import Vue from 'vue';
+import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -233,13 +234,9 @@ export default mixins(showMessage).extend({
 				}
 
 				try {
-					await this.workflowsStore.deleteWorkflowAPI(this.data.id);
-					this.workflowsStore.deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-					);
+					this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 					return;
 				}
 

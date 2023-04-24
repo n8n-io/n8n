@@ -1,4 +1,4 @@
-import { IVersion } from '@/Interface';
+import type { IVersion } from '@/Interface';
 import { INSTANCE_ID_HEADER } from '@/constants';
 import { get } from '@/utils';
 

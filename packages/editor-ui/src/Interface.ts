@@ -1,7 +1,7 @@
-import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IMenuItem } from 'n8n-design-system';
-import {
+import type { IMenuItem } from 'n8n-design-system';
+import type {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -36,10 +36,10 @@ import {
 	IUserManagementSettings,
 	WorkflowSettings,
 } from 'n8n-workflow';
-import { SignInType } from './constants';
-import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
-import { BulkCommand, Undoable } from '@/models/history';
-import { PartialBy } from '@/utils/typeHelpers';
+import type { SignInType } from './constants';
+import type { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
+import type { BulkCommand, Undoable } from '@/models/history';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 

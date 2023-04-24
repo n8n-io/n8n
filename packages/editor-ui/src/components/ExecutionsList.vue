@@ -274,7 +274,7 @@ import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
@@ -527,15 +527,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			// Suppose 504 finishes before 500, 501, 502 and 503.
 			// iF you use firstId, filtering id >= 504 you won't
 			// ever get ids 500, 501, 502 and 503 when they finish
-			const pastExecutionsPromise: Promise<IExecutionsListResponse> =
-				this.workflowsStore.getPastExecutions(filter, this.requestItemsPerRequest);
-			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = isEmpty(
-				filter.metadata,
-			)
-				? this.workflowsStore.getCurrentExecutions({})
-				: Promise.resolve([]);
+			const promises = [this.workflowsStore.getPastExecutions(filter, this.requestItemsPerRequest)];
+			if (isEmpty(filter.metadata)) {
+				promises.push(this.workflowsStore.getCurrentExecutions({}));
+			}
 
-			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
+			const results = await Promise.all(promises);
 
 			for (const activeExecution of results[1]) {
 				if (

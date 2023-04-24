@@ -1,9 +1,10 @@
-import { ref, Ref } from 'vue';
+import type { Ref } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
-import { FeatureFlags } from 'n8n-workflow';
+import type { FeatureFlags } from 'n8n-workflow';
 import {
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,

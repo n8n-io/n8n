@@ -74,7 +74,7 @@ import mixins from 'vue-typed-mixins';
 
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IUser } from '../Interface';
+import type { IUser } from '../Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { createEventBus } from '@/event-bus';

@@ -7,7 +7,7 @@ import {
 	getResourceMapperFields,
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
-import {
+import type {
 	ICategoriesWithNodes,
 	INodeCreateElement,
 	INodeTypesState,
@@ -16,7 +16,7 @@ import {
 } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit, getCategoriesWithNodes, getCategorizedList } from '@/utils';
-import {
+import type {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchResult,

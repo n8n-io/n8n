@@ -76,7 +76,7 @@ export class Telemetry {
 
 	private async pulse(): Promise<unknown> {
 		if (!this.rudderStack) {
-			return Promise.resolve();
+			return;
 		}
 
 		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {

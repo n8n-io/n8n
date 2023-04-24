@@ -329,10 +329,8 @@
 
 import { get } from 'lodash-es';
 
-import { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import {
-	NodeHelpers,
-	NodeParameterValue,
+import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import type {
 	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
@@ -342,6 +340,7 @@ import {
 	NodeParameterValueType,
 	IParameterLabel,
 } from 'n8n-workflow';
+import { NodeHelpers, NodeParameterValue } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
@@ -372,7 +371,7 @@ import {
 	PARAMETER_TYPES_WITH_CUSTOM_LOADING,
 } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';

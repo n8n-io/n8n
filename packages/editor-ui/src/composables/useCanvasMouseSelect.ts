@@ -1,4 +1,4 @@
-import { INodeUi, XYPosition } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 
 import useDeviceSupport from './useDeviceSupport';
 import { useUIStore } from '@/stores/ui';

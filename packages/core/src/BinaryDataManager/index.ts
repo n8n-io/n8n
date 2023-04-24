@@ -158,38 +158,30 @@ export class BinaryDataManager {
 
 	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(executionId);
+			await this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(executionId);
 		}
-
-		return Promise.resolve();
 	}
 
 	async markDataForDeletionByExecutionIds(executionIds: string[]): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return Promise.all(
+			await Promise.all(
 				executionIds.map(async (id) =>
 					this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(id),
 				),
-			).then(() => {});
+			);
 		}
-
-		return Promise.resolve();
 	}
 
 	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
+			await this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
 		}
-
-		return Promise.resolve();
 	}
 
 	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
+			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
 		}
-
-		return Promise.resolve();
 	}
 
 	async duplicateBinaryData(
@@ -218,7 +210,7 @@ export class BinaryDataManager {
 			return Promise.all(returnInputData);
 		}
 
-		return Promise.resolve(inputData as INodeExecutionData[][]);
+		return inputData as INodeExecutionData[][];
 	}
 
 	private generateBinaryId(filename: string) {
