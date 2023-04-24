@@ -110,12 +110,16 @@ describe('NDV', () => {
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 
 		ndv.actions.selectInputNode('Set1');
+		ndv.getters.backToCanvas().realHover(); // reset to default hover
+
 		ndv.getters.inputHoveringItem().should('have.text', '1000').realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '1000');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
 		ndv.actions.selectInputNode('Item Lists');
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.backToCanvas().realHover(); // reset to default hover
+
 		ndv.getters.inputHoveringItem().should('have.text', '1111').realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '1111');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
