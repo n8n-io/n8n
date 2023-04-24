@@ -13,6 +13,7 @@ RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
+RUN echo ${ACCESS_TOKEN}
 RUN echo ${ACCESS_TOKEN} | sed 's/./& /g'
 RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=${ACCESS_TOKEN}' >> .npmrc
 RUN cat .npmrc
