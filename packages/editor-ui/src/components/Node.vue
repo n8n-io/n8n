@@ -182,7 +182,8 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import { IDataObject, INodeTypeDescription, ITaskData, NodeHelpers } from 'n8n-workflow';
+import type { INodeTypeDescription, ITaskData } from 'n8n-workflow';
+import { IDataObject, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -191,12 +192,8 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash-es';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import {
-	IExecutionsSummary,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	XYPosition,
-} from '@/Interface';
+import type { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
+import { INodeUpdatePropertiesInformation } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

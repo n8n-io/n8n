@@ -182,21 +182,22 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import type Vue from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { N8nInput } from 'n8n-design-system';
+import type { N8nInput } from 'n8n-design-system';
 import type { DatatableColumn } from 'n8n-design-system';
 
 export interface IResource {
@@ -249,7 +250,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
-			default: () => () => Promise.resolve(),
+			default: () => async () => {},
 		},
 		filters: {
 			type: Object,

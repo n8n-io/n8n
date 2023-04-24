@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { computed, ref } from 'vue';
-import { EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/Interface';
 import * as environmentsApi from '@/api/environments.ee';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { createVariable } from '@/api/environments.ee';

@@ -1,4 +1,4 @@
-import {
+import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
 	ITemplatesQuery,
@@ -7,7 +7,7 @@ import {
 	ITemplatesWorkflowResponse,
 	IWorkflowTemplate,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { get } from '@/utils';
 
 function stringifyArray(arr: number[]) {

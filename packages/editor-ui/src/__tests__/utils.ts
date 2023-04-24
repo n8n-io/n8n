@@ -1,4 +1,5 @@
-import { ISettingsState, UserManagementAuthenticationMethod } from '@/Interface';
+import type { ISettingsState } from '@/Interface';
+import { UserManagementAuthenticationMethod } from '@/Interface';
 import { render } from '@testing-library/vue';
 import { PiniaVuePlugin } from 'pinia';
 

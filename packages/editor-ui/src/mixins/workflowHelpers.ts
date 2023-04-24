@@ -8,7 +8,7 @@ import {
 	EnterpriseEditionFeature,
 } from '@/constants';
 
-import {
+import type {
 	IConnections,
 	IDataObject,
 	INode,
@@ -19,20 +19,17 @@ import {
 	INodeCredentials,
 	INodeType,
 	INodeTypes,
-	INodeTypeData,
-	IPinData,
 	IRunExecutionData,
 	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	NodeHelpers,
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	deepCopy,
 } from 'n8n-workflow';
+import { INodeTypeData, IPinData, NodeHelpers, deepCopy } from 'n8n-workflow';
 
-import {
+import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
@@ -56,14 +53,15 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import { ICredentialsResponse } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import type { ICredentialsResponse } from '@/Interface';
 import { useEnvironmentsStore } from '@/stores';
 
 export function resolveParameter(
@@ -462,7 +460,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 		},
 
 		// Returns the currently loaded workflow as JSON.
-		getWorkflowDataToSave(): Promise<IWorkflowData> {
+		async getWorkflowDataToSave(): Promise<IWorkflowData> {
 			const workflowNodes = this.workflowsStore.allNodes;
 			const workflowConnections = this.workflowsStore.allConnections;
 
@@ -470,12 +468,8 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 
 			const nodes = [];
 			for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-				try {
-					// @ts-ignore
-					nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
-				} catch (e) {
-					return Promise.reject(e);
-				}
+				// @ts-ignore
+				nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
 
 				nodes.push(nodeData);
 			}
@@ -496,7 +490,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 				data.id = workflowId;
 			}
 
-			return Promise.resolve(data);
+			return data;
 		},
 
 		// Returns all node-types

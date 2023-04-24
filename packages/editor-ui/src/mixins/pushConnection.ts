@@ -1,4 +1,4 @@
-import {
+import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
@@ -11,7 +11,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import {
+import type {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
@@ -19,8 +19,8 @@ import {
 	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
-	TelemetryHelpers,
 } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';

@@ -116,13 +116,13 @@ import { defineComponent } from 'vue';
 import type { Component, PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
-import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 import type {
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValue,
 } from 'n8n-workflow';
+import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
 
