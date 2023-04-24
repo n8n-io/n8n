@@ -42,9 +42,9 @@ import N8nButton from '../N8nButton';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 import N8nCallout from '../N8nCallout';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-box',
 	components: {
 		N8nButton,

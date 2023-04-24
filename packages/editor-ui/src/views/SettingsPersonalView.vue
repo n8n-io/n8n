@@ -60,13 +60,13 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
-import { IFormInputs, IUser } from '@/Interface';
+import type { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsPersonalView',
@@ -74,7 +74,7 @@ export default mixins(showMessage).extend({
 		return {
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			readyToSubmit: false,
 		};
 	},
@@ -160,7 +160,7 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		openPasswordModal() {
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);

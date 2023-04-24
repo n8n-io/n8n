@@ -37,7 +37,6 @@ import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -45,10 +44,11 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
-import { historyHelper } from '@/mixins/history';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
+import { useRoute } from 'vue-router/composables';
 
-export default mixins(newVersions, showMessage, userHelpers, restApi, historyHelper).extend({
+export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -56,10 +56,9 @@ export default mixins(newVersions, showMessage, userHelpers, restApi, historyHel
 		Modals,
 	},
 	setup() {
-		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 		return {
-			registerCustomAction,
-			unregisterCustomAction,
+			...useGlobalLinkActions(),
+			...useHistoryHelper(useRoute()),
 		};
 	},
 	computed: {

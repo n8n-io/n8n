@@ -1,16 +1,16 @@
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE } from '@/constants';
 
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { Endpoint, EndpointOptions } from '@jsplumb/core';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history';
 import { useCanvasStore } from '@/stores/canvas';

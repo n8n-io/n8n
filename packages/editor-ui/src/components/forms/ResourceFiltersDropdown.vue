@@ -63,15 +63,16 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import type { PropType } from 'vue';
+import type { IUser } from '@/Interface';
 
 export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		value: {
 			type: Object as PropType<IResourceFiltersType>,

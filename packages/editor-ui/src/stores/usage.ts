@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import { UsageState } from '@/Interface';
+import type { UsageState } from '@/Interface';
 import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';

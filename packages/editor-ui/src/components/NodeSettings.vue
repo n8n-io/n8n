@@ -157,23 +157,22 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import Vue from 'vue';
+import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
-	NodeHelpers,
 	NodeParameterValue,
-	deepCopy,
 } from 'n8n-workflow';
-import {
-	ICredentialsResponse,
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	IUsedCredential,
-	IUser,
 } from '@/Interface';
+import { ICredentialsResponse, IUser } from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -205,6 +204,7 @@ import { useHistoryStore } from '@/stores/history';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
 import { useCredentialsStore } from '@/stores/credentials';
+import type { EventBus } from '@/event-bus';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -322,7 +322,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 	},
 	props: {
-		eventBus: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
 		dragging: {
 			type: Boolean,
 		},
@@ -892,17 +894,19 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		onStopExecution() {
 			this.$emit('stopExecution');
 		},
+		openSettings() {
+			this.openPanel = 'settings';
+		},
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
-		if (this.eventBus) {
-			(this.eventBus as Vue).$on('openSettings', () => {
-				this.openPanel = 'settings';
-			});
-		}
+		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+	},
+	destroyed() {
+		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
 </script>

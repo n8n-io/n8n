@@ -13,7 +13,7 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
+import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
@@ -44,7 +44,6 @@ export default mixins(showMessage).extend({
 			title: this.$locale.baseText('auth.signin'),
 			buttonText: this.$locale.baseText('auth.signin'),
 			redirectText: this.$locale.baseText('forgotPassword'),
-			redirectLink: '/forgot-password',
 			inputs: [
 				{
 					name: 'email',
@@ -73,6 +72,10 @@ export default mixins(showMessage).extend({
 				},
 			],
 		};
+
+		if (!this.settingsStore.isDesktopDeployment || this.settingsStore.isUserManagementEnabled) {
+			this.FORM_CONFIG.redirectLink = '/forgot-password';
+		}
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string }) {

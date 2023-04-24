@@ -6,9 +6,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ExpandableInputBase',
 	props: ['value', 'placeholder', 'staticSize'],
 	computed: {
@@ -16,7 +16,7 @@ export default Vue.extend({
 			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
 			if (!value) {
 				// @ts-ignore
-				value = this.$props.placeholder;
+				value = this.placeholder;
 			}
 
 			return `${value}`; // adjust for padding

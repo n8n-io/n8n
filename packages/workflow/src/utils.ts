@@ -67,17 +67,16 @@ type JSONStringifyOptions = {
 };
 
 const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
-	if (value && typeof value === 'object') {
-		if (knownObjects.has(value)) return '[Circular Reference]' as T;
-		knownObjects.add(value);
-		const copy = (Array.isArray(value) ? [] : {}) as T;
-		for (const key in value) {
-			copy[key] = replaceCircularReferences(value[key], knownObjects);
-		}
-		knownObjects.delete(value);
-		return copy;
+	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
+	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
+	if (knownObjects.has(value)) return '[Circular Reference]' as T;
+	knownObjects.add(value);
+	const copy = (Array.isArray(value) ? [] : {}) as T;
+	for (const key in value) {
+		copy[key] = replaceCircularReferences(value[key], knownObjects);
 	}
-	return value;
+	knownObjects.delete(value);
+	return copy;
 };
 
 export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}): string => {

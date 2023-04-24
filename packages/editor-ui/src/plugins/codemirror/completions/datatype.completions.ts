@@ -1,4 +1,5 @@
-import { ExpressionExtensions, NativeMethods, IDataObject, DocMetadata } from 'n8n-workflow';
+import type { IDataObject, DocMetadata } from 'n8n-workflow';
+import { ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -16,10 +17,11 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import { sanitizeHtml } from '@/utils';
-import { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
+import type { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
 import { isFunctionOption } from './typeGuards';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
+import { useEnvironmentsStore } from '@/stores';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -31,7 +33,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	const [base, tail] = splitBaseTail(word.text);
+	// eslint-disable-next-line prefer-const
+	let [base, tail] = splitBaseTail(word.text);
 
 	let options: Completion[] = [];
 
@@ -39,6 +42,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = luxonStaticOptions().map(stripExcessParens(context));
 	} else if (base === 'Object') {
 		options = objectGlobalOptions().map(stripExcessParens(context));
+	} else if (base === '$vars') {
+		options = variablesOptions();
 	} else {
 		let resolved: Resolved;
 
@@ -330,6 +335,22 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 		throw new Error('Cannot generate options', { cause: error });
 	}
 }
+
+export const variablesOptions = () => {
+	const environmentsStore = useEnvironmentsStore();
+	const variables = environmentsStore.variables;
+
+	return variables.map((variable) =>
+		createCompletionOption('Object', variable.key, 'keyword', {
+			doc: {
+				name: variable.key,
+				returnType: 'string',
+				description: i18n.baseText('codeNodeEditor.completer.$vars.varName'),
+				docURL: 'https://docs.n8n.io/environments/variables/',
+			},
+		}),
+	);
+};
 
 /**
  * Methods and fields defined on a Luxon `DateTime` class instance.

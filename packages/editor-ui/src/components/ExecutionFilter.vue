@@ -13,6 +13,7 @@ import { getObjectKeys, isEmpty } from '@/utils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsageStore } from '@/stores/usage';
+import { useUIStore } from '@/stores/ui';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
@@ -20,10 +21,10 @@ export type ExecutionFilterProps = {
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
-const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
+const uiStore = useUIStore();
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	popoverPlacement: 'bottom',
 });
@@ -32,11 +33,6 @@ const emit = defineEmits<{
 }>();
 const debouncedEmit = debounce(emit, 500);
 
-const viewPlansLink = computed(() =>
-	settingsStore.isCloudDeployment
-		? CLOUD_UPGRADE_LINK
-		: `${usageStore.viewPlansUrl}&source=custom-data-filter`,
-);
 const isAdvancedExecutionFilterEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
 );
@@ -74,6 +70,7 @@ const vModel = reactive(
 const statuses = computed(() => [
 	{ id: 'all', name: locale.baseText('executionsList.anyStatus') },
 	{ id: 'error', name: locale.baseText('executionsList.error') },
+	{ id: 'canceled', name: locale.baseText('executionsList.canceled') },
 	{ id: 'running', name: locale.baseText('executionsList.running') },
 	{ id: 'success', name: locale.baseText('executionsList.success') },
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
@@ -127,6 +124,10 @@ const onFilterReset = () => {
 	emit('filterChanged', filter);
 };
 
+const goToUpgrade = () => {
+	uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
+};
+
 onBeforeMount(() => {
 	emit('filterChanged', filter);
 });
@@ -140,19 +141,19 @@ onBeforeMount(() => {
 					type="tertiary"
 					size="medium"
 					:active="!!countSelectedFilterProps"
-					data-testid="executions-filter-button"
+					data-test-id="executions-filter-button"
 				>
 					<n8n-badge
 						v-if="!!countSelectedFilterProps"
 						theme="primary"
 						class="mr-4xs"
-						data-testid="execution-filter-badge"
+						data-test-id="execution-filter-badge"
 						>{{ countSelectedFilterProps }}</n8n-badge
 					>
 					{{ $locale.baseText('executionsList.filters') }}
 				</n8n-button>
 			</template>
-			<div data-testid="execution-filter-form">
+			<div data-test-id="execution-filter-form">
 				<div v-if="workflows?.length" :class="$style.group">
 					<label for="execution-filter-workflows">{{
 						$locale.baseText('workflows.heading')
@@ -163,7 +164,7 @@ onBeforeMount(() => {
 						:placeholder="$locale.baseText('executionsFilter.selectWorkflow')"
 						size="medium"
 						filterable
-						data-testid="executions-filter-workflows-select"
+						data-test-id="executions-filter-workflows-select"
 					>
 						<div class="ph-no-capture">
 							<n8n-option
@@ -185,7 +186,7 @@ onBeforeMount(() => {
 						:currentTagIds="filter.tags"
 						:createEnabled="false"
 						@update="onTagsChange"
-						data-testid="executions-filter-tags-select"
+						data-test-id="executions-filter-tags-select"
 					/>
 				</div>
 				<div :class="$style.group">
@@ -198,7 +199,7 @@ onBeforeMount(() => {
 						:placeholder="$locale.baseText('executionsFilter.selectStatus')"
 						size="medium"
 						filterable
-						data-testid="executions-filter-status-select"
+						data-test-id="executions-filter-status-select"
 					>
 						<n8n-option
 							v-for="item in statuses"
@@ -219,7 +220,7 @@ onBeforeMount(() => {
 							v-model="vModel.startDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.startDate')"
-							data-testid="executions-filter-start-date-picker"
+							data-test-id="executions-filter-start-date-picker"
 						/>
 						<span :class="$style.divider">to</span>
 						<el-date-picker
@@ -228,7 +229,7 @@ onBeforeMount(() => {
 							v-model="vModel.endDate"
 							:format="DATE_TIME_MASK"
 							:placeholder="$locale.baseText('executionsFilter.endDate')"
-							data-testid="executions-filter-end-date-picker"
+							data-test-id="executions-filter-end-date-picker"
 						/>
 					</div>
 				</div>
@@ -260,9 +261,9 @@ onBeforeMount(() => {
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a
-											target="_blank"
-											:href="viewPlansLink"
-											data-testid="executions-filter-view-plans-link"
+											href="#"
+											@click.prevent="goToUpgrade"
+											data-test-id="executions-filter-view-plans-link"
 											>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 										>
 									</template>
@@ -277,7 +278,7 @@ onBeforeMount(() => {
 								:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 								:value="filter.metadata[0]?.key"
 								@input="onFilterMetaChange(0, 'key', $event)"
-								data-testid="execution-filter-saved-data-key-input"
+								data-test-id="execution-filter-saved-data-key-input"
 							/>
 						</n8n-tooltip>
 						<label for="execution-filter-saved-data-value">{{
@@ -287,7 +288,7 @@ onBeforeMount(() => {
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
-										<a target="_blank" :href="viewPlansLink">{{
+										<a href="#" @click.prevent="goToUpgrade">{{
 											$locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>
@@ -302,7 +303,7 @@ onBeforeMount(() => {
 								:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 								:value="filter.metadata[0]?.value"
 								@input="onFilterMetaChange(0, 'value', $event)"
-								data-testid="execution-filter-saved-data-value-input"
+								data-test-id="execution-filter-saved-data-value-input"
 							/>
 						</n8n-tooltip>
 					</div>
@@ -313,7 +314,7 @@ onBeforeMount(() => {
 					@click="onFilterReset"
 					size="large"
 					text
-					data-testid="executions-filter-reset-button"
+					data-test-id="executions-filter-reset-button"
 				>
 					{{ $locale.baseText('executionsFilter.reset') }}
 				</n8n-button>
