@@ -1,7 +1,7 @@
-import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IMenuItem } from 'n8n-design-system';
-import {
+import type { IMenuItem } from 'n8n-design-system';
+import type {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -17,7 +17,6 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
-	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
@@ -33,11 +32,14 @@ import {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
+	IN8nUISettings,
+	IUserManagementSettings,
+	WorkflowSettings,
 } from 'n8n-workflow';
-import { SignInType } from './constants';
-import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
-import { BulkCommand, Undoable } from '@/models/history';
-import { PartialBy } from '@/utils/typeHelpers';
+import type { SignInType } from './constants';
+import type { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
+import type { BulkCommand, Undoable } from '@/models/history';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 
@@ -135,43 +137,6 @@ export interface INodeTypesMaxCount {
 
 export interface IExternalHooks {
 	run(eventName: string, metadata?: IDataObject): Promise<void>;
-}
-
-/**
- * @deprecated Do not add methods to this interface.
- */
-export interface IRestApi {
-	getActiveWorkflows(): Promise<string[]>;
-	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: ExecutionsQueryFilter): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(
-		filter: ExecutionsQueryFilter,
-		limit: number,
-		lastId?: string,
-		firstId?: string,
-	): Promise<IExecutionsListResponse>;
-	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
-	getCredentialTranslation(credentialType: string): Promise<object>;
-	removeTestWebhook(workflowId: string): Promise<boolean>;
-	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
-	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
-	updateWorkflow(id: string, data: IWorkflowDataUpdate, forceSave?: boolean): Promise<IWorkflowDb>;
-	deleteWorkflow(name: string): Promise<void>;
-	getWorkflow(id: string): Promise<IWorkflowDb>;
-	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
-	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	getExecution(id: string): Promise<IExecutionResponse | undefined>;
-	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
-	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
-	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(
-		dataPath: string,
-		mode: 'view' | 'download',
-		fileName?: string,
-		mimeType?: string,
-	): string;
-	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
 export interface INodeTranslationHeaders {
@@ -638,17 +603,10 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
-export enum UserManagementAuthenticationMethod {
+export const enum UserManagementAuthenticationMethod {
 	Email = 'email',
 	Ldap = 'ldap',
 	Saml = 'saml',
-}
-
-export interface IUserManagementConfig {
-	enabled: boolean;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
-	authenticationMethod: UserManagementAuthenticationMethod;
 }
 
 export interface IPermissionGroup {
@@ -819,13 +777,12 @@ export interface IN8nUISettings {
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveDataErrorExecution?: string;
-	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+	maxExecutionTimeout?: number;
 	callerIds?: string;
-	callerPolicy?: WorkflowCallerPolicyDefaultOption;
+	callerPolicy?: WorkflowSettings.CallerPolicy;
 }
 
 export interface ITimeoutHMS {
@@ -1183,9 +1140,6 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 }
-
-export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
-
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;
@@ -1227,7 +1181,7 @@ export interface INodeCreatorState {
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
-	userManagement: IUserManagementConfig;
+	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {
 		enabled: boolean;
@@ -1478,6 +1432,16 @@ export type NodeAuthenticationOption = {
 	value: string;
 	displayOptions?: IDisplayOptions;
 };
+
+export interface EnvironmentVariable {
+	id: number;
+	key: string;
+	value: string;
+}
+
+export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
+	id: string;
+}
 
 export type ExecutionFilterMetadata = {
 	key: string;

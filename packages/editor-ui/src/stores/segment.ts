@@ -6,15 +6,13 @@ import {
 	SET_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
-import { INodeTypeDescription, IRun } from 'n8n-workflow';
+import type { INodeTypeDescription, IRun, ITelemetryTrackProperties } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 const EVENTS = {
-	SHOW_CHECKLIST: 'Show checklist',
 	ADDED_MANUAL_TRIGGER: 'User added manual trigger',
 	ADDED_SCHEDULE_TRIGGER: 'User added schedule trigger',
 	ADDED_DATA_TRIGGER: 'User added data trigger',
@@ -41,8 +39,6 @@ export const useSegment = defineStore('segment', () => {
 		if (isInIframe) {
 			return;
 		}
-
-		track(EVENTS.SHOW_CHECKLIST);
 	};
 
 	const trackAddedTrigger = (nodeTypeName: string) => {

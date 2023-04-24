@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
 import {
 	compareHash,
 	hashPassword,
@@ -31,6 +31,7 @@ import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import { UserService } from '@/user/user.service';
 import type { MfaService } from '@/Mfa/mfa.service';
 
+@Authorized()
 @RestController('/me')
 export class MeController {
 	private readonly logger: ILogger;

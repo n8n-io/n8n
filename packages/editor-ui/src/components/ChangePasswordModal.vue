@@ -33,8 +33,8 @@ import mixins from 'vue-typed-mixins';
 
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH } from '../constants';
+import type { IFormInputs } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { createEventBus } from '@/event-bus';

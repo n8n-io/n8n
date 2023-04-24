@@ -224,7 +224,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): string {
-		if (parameterValue.charAt(0) !== '=') {
+		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
 		}
 
@@ -542,10 +542,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {

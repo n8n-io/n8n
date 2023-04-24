@@ -22,7 +22,8 @@
 import mixins from 'vue-typed-mixins';
 
 import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView, ViewUpdate } from '@codemirror/view';
+import type { ViewUpdate } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 
 import { baseExtensions } from './baseExtensions';
@@ -95,15 +96,15 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	methods: {
 		onMouseOver(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
 
-			if (!ref.contains(fromElement)) this.isEditorHovered = true;
+			if (!ref?.contains(fromElement)) this.isEditorHovered = true;
 		},
 		onMouseOut(event: MouseEvent) {
 			const fromElement = event.relatedTarget as HTMLElement;
-			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement;
+			const ref = this.$refs.codeNodeEditorContainer as HTMLDivElement | undefined;
 
-			if (!ref.contains(fromElement)) this.isEditorHovered = false;
+			if (!ref?.contains(fromElement)) this.isEditorHovered = false;
 		},
 		onAskAiButtonClick() {
 			this.$telemetry.track('User clicked ask ai button', { source: 'code' });

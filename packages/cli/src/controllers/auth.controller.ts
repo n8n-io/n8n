@@ -1,5 +1,5 @@
 import validator from 'validator';
-import { Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
@@ -64,7 +64,6 @@ export class AuthController {
 
 	/**
 	 * Log in a user.
-	 * Authless endpoint.
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
@@ -156,7 +155,6 @@ export class AuthController {
 
 	/**
 	 * Validate invite token to enable invitee to set up their account.
-	 * Authless endpoint.
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
@@ -217,8 +215,8 @@ export class AuthController {
 
 	/**
 	 * Log out a user.
-	 * Authless endpoint.
 	 */
+	@Authorized()
 	@Post('/logout')
 	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);

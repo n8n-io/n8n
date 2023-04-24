@@ -12,7 +12,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 				pinia: createTestingPinia(),
 				stubs: {
 					SSOLogin: {
-						template: '<div data-testid="sso-login"></div>',
+						template: '<div data-test-id="sso-login"></div>',
 					},
 				},
 			},

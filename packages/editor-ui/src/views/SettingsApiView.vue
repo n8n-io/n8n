@@ -76,7 +76,7 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import CopyInput from '@/components/CopyInput.vue';

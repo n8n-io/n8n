@@ -21,16 +21,95 @@ const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
 // All symbols from https://www.xe.com/symbols/ as for 2022/11/09
 const CURRENCY_REGEXP =
 	/(\u004c\u0065\u006b|\u060b|\u0024|\u0192|\u20bc|\u0042\u0072|\u0042\u005a\u0024|\u0024\u0062|\u004b\u004d|\u0050|\u043b\u0432|\u0052\u0024|\u17db|\u00a5|\u20a1|\u006b\u006e|\u20b1|\u004b\u010d|\u006b\u0072|\u0052\u0044\u0024|\u00a3|\u20ac|\u00a2|\u0051|\u004c|\u0046\u0074|\u20b9|\u0052\u0070|\ufdfc|\u20aa|\u004a\u0024|\u20a9|\u20ad|\u0434\u0435\u043d|\u0052\u004d|\u20a8|\u20ae|\u004d\u0054|\u0043\u0024|\u20a6|\u0042\u002f\u002e|\u0047\u0073|\u0053\u002f\u002e|\u007a\u0142|\u006c\u0065\u0069|\u20bd|\u0414\u0438\u043d\u002e|\u0053|\u0052|\u0043\u0048\u0046|\u004e\u0054\u0024|\u0e3f|\u0054\u0054\u0024|\u20ba|\u20b4|\u0024\u0055|\u0042\u0073|\u20ab|\u005a\u0024)/gu;
-const DOMAIN_REGEXP = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/;
 
-// This won't validate or catch literally valid email address, just what most people
-// would expect
+/*
+	Extract the domain part from various inputs, including URLs, email addresses, and plain domains.
+
+	/^(?:(?:https?|ftp):\/\/)? 								// Match optional http, https, or ftp protocols
+  (?:mailto:)?               								// Match optional mailto:
+  (?:\/\/)?                  								// Match optional double slashes
+  (?:www\.)?                 								// Match optional www prefix
+  (?:[-\w]*\.)?              								// Match any optional subdomain
+  (                           							// Capture the domain part
+    (?:(?:[-\w]+\.)+          							// Match one or more subdomains
+      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN(xn--80aswg.xn--p1ai)
+      |localhost              							// Match localhost
+      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
+    )
+  )
+  (?::\d+)?                   							// Match optional port number
+  (?:\/[^\s?]*)?              							// Match optional path
+  (?:\?[^\s#]*)?              							// Match optional query string
+  (?:#[^\s]*)?$/i;            							// Match optional hash fragment
+*/
+const DOMAIN_EXTRACT_REGEXP =
+	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+
+/*
+	Matches domain names without the protocol or optional subdomains
+
+	/^(?:www\.)? 															// Match optional www prefix
+  (                         								// Capture the domain part
+    (?:(?:[-\w]+\.)+        								// Match one or more subdomains
+      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 		// Match top-level domain or Punycode encoded IDN
+      |localhost            								// Match localhost
+      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} 	// Match IPv4 addresses
+    )
+  )
+  (?::\d+)?                 								// Match optional port number
+  (?:\/[^\s?]*)?            								// Match optional path
+  (?:\?[^\s#]*)?            								// Match optional query string
+  (?:#[^\s]*)?$/i;          								// Match optional fragment at the end of the string
+*/
+const DOMAIN_REGEXP =
+	/^(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+
+/*
+	Matches email addresses
+
+	/(
+    ( 																											// Capture local part of the email address
+      ([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*) 	// One or more characters not in the set, followed by
+																														a	period, followed by one or more characters not in the set
+      |(".+") 																							// Or one or more characters inside quotes
+    )
+  )
+  @                             														// Match @ symbol
+  (?<domain>(                   														// Capture the domain part of the email address
+    \[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\] 			// Match IPv4 address inside brackets
+    |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}) 											// Or match domain with at least two subdomains and TLD
+  ))/;
+*/
 const EMAIL_REGEXP =
 	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
 
-// This also might not catch every possible URL
+/*
+	Matches URLs with strict beginning and end of the string checks
+
+	/^(?:(?:https?|ftp):\/\/) 							// Match http, https, or ftp protocols at the start of the string
+  (?:www\.)?               								// Match optional www prefix
+  (                        								// Capture the domain part
+    (?:(?:[-\w]+\.)+       								// Match one or more subdomains
+      (?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+) 	// Match top-level domain or Punycode encoded IDN
+      |localhost           								// Match localhost
+      |\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} // Match IPv4 addresses
+    )
+  )
+  (?::\d+)?                								// Match optional port number
+  (?:\/[^\s?#]*)?          								// Match optional path
+  (?:\?[^\s#]*)?           								// Match optional query string
+  (?=([^\s]+#.*)?)         								// Positive lookahead for the fragment identifier
+  #?[^\s]*$/i;              							// Match optional fragment at the end of the string
+*/
+const URL_REGEXP_EXACT =
+	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
+
+/*
+	Same as URL_REGEXP_EXACT but without the strict beginning and end of the string checks to allow for
+	matching URLs in the middle of a string
+*/
 const URL_REGEXP =
-	/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{2,}\b([-a-zA-Z0-9()\[\]@:%_\+.~#?&//=]*)/;
+	/(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*/i;
 
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
@@ -182,24 +261,7 @@ function isNumeric(value: string) {
 }
 
 function isUrl(value: string) {
-	let url: URL;
-	try {
-		url = new URL(value);
-	} catch {
-		return false;
-	}
-
-	// URL constructor tolerates missing `//` after protocol so check manually
-	for (const scheme of ['http:', 'https:']) {
-		if (
-			url.protocol === scheme &&
-			value.slice(scheme.length, scheme.length + '//'.length) === '//'
-		) {
-			return true;
-		}
-	}
-
-	return false;
+	return URL_REGEXP_EXACT.test(value);
 }
 
 function isDomain(value: string) {
@@ -272,9 +334,13 @@ function extractDomain(value: string) {
 			return undefined;
 		}
 		return matched.groups?.domain;
-	} else if (isUrl(value)) {
-		return new URL(value).hostname;
 	}
+
+	const domainMatch = value.match(DOMAIN_EXTRACT_REGEXP);
+	if (domainMatch) {
+		return domainMatch[1];
+	}
+
 	return undefined;
 }
 

@@ -2,13 +2,11 @@
 import { computed, ref, onBeforeMount } from 'vue';
 import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
-import { useUsageStore } from '@/stores/usage';
 import { useUIStore } from '@/stores/ui';
-import { BaseTextKey, i18n as locale } from '@/plugins/i18n';
+import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 
 const ssoStore = useSSOStore();
-const usageStore = useUsageStore();
 const uiStore = useUIStore();
 
 const ssoActivatedLabel = computed(() =>
@@ -56,16 +54,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	const linkUrlTranslationKey = uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey;
-	let linkUrl = locale.baseText(linkUrlTranslationKey);
-
-	if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-		linkUrl = `${usageStore.viewPlansUrl}&source=sso`;
-	} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-		linkUrl = `${linkUrl}&utm_campaign=upgrade-sso`;
-	}
-
-	window.open(linkUrl, '_blank');
+	uiStore.goToUpgrade('sso', 'upgrade-sso');
 };
 
 onBeforeMount(async () => {
@@ -104,7 +93,7 @@ onBeforeMount(async () => {
 			</n8n-tooltip>
 		</div>
 		<n8n-info-tip>
-			<i18n :class="$style.count" path="settings.sso.info">
+			<i18n path="settings.sso.info">
 				<template #link>
 					<a href="https://docs.n8n.io/user-management/saml/" target="_blank">
 						{{ locale.baseText('settings.sso.info.link') }}
@@ -112,11 +101,10 @@ onBeforeMount(async () => {
 				</template>
 			</i18n>
 		</n8n-info-tip>
-		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-testid="sso-content-licensed">
+		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 				<CopyInput
-					:class="$style.copyInput"
 					:value="redirectUrl"
 					:copy-button-text="locale.baseText('generic.clickToCopy')"
 					:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')"
@@ -126,7 +114,6 @@ onBeforeMount(async () => {
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
 				<CopyInput
-					:class="$style.copyInput"
 					:value="entityId"
 					:copy-button-text="locale.baseText('generic.clickToCopy')"
 					:toast-title="locale.baseText('settings.sso.settings.entityId.copied')"
@@ -143,18 +130,18 @@ onBeforeMount(async () => {
 					:disabled="!ssoSettingsSaved"
 					type="tertiary"
 					@click="onTest"
-					data-testid="sso-test"
+					data-test-id="sso-test"
 				>
 					{{ locale.baseText('settings.sso.settings.test') }}
 				</n8n-button>
-				<n8n-button :disabled="!metadata" @click="onSave" data-testid="sso-save">
+				<n8n-button :disabled="!metadata" @click="onSave" data-test-id="sso-save">
 					{{ locale.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 			</div>
 		</div>
 		<n8n-action-box
 			v-else
-			data-testid="sso-content-unlicensed"
+			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sso.actionBox.description')"
 			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"

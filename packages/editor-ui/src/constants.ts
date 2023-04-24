@@ -1,4 +1,4 @@
-import { NodeCreatorOpenSource } from './Interface';
+import type { NodeCreatorOpenSource } from './Interface';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -364,7 +364,7 @@ export const NODE_TYPE_COUNT_MAPPER = {
 };
 export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
-export enum VIEWS {
+export const enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
@@ -373,6 +373,7 @@ export enum VIEWS {
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
@@ -396,10 +397,11 @@ export enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
+	VERSION_CONTROL = 'VersionControl',
 	MFA_VIEW = 'MfaView',
 }
 
-export enum FAKE_DOOR_FEATURES {
+export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
 	SSO = 'sso',
@@ -437,13 +439,14 @@ export const MAPPING_PARAMS = [
 	'$resumeWebhookUrl',
 	'$runIndex',
 	'$today',
+	'$vars',
 	'$workflow',
 ];
 
 export const DEFAULT_STICKY_HEIGHT = 160;
 export const DEFAULT_STICKY_WIDTH = 240;
 
-export enum WORKFLOW_MENU_ACTIONS {
+export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
@@ -455,16 +458,18 @@ export enum WORKFLOW_MENU_ACTIONS {
 /**
  * Enterprise edition
  */
-export enum EnterpriseEditionFeature {
+export const enum EnterpriseEditionFeature {
 	AdvancedExecutionFilters = 'advancedExecutionFilters',
 	Sharing = 'sharing',
 	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
+	Variables = 'variables',
 	Saml = 'saml',
+	VersionControl = 'versionControl',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
-export enum MAIN_HEADER_TABS {
+export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
@@ -502,7 +507,7 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	imaps: 'IMAP',
 };
 
-export enum STORES {
+export const enum STORES {
 	COMMUNITY_NODES = 'communityNodes',
 	ROOT = 'root',
 	SETTINGS = 'settings',
@@ -521,7 +526,7 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
-export enum SignInType {
+export const enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',
 }
@@ -536,20 +541,13 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const ASSUMPTION_EXPERIMENT = {
-	name: 'adore-assumption-tests-1',
-	control: 'control',
-	demo: 'assumption-demo',
-	video: 'assumption-video',
-};
-
-export const ONBOARDING_EXPERIMENT = {
-	name: 'checklist_001',
+export const TEMPLATE_EXPERIMENT = {
+	name: '002_remove_templates',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [ASSUMPTION_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name];
 
 export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
 

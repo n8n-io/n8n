@@ -315,7 +315,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the survey's collectors to display them to user so that he can
+			// Get all the survey's collectors to display them to user so that they can
 			// select them easily
 			async getCollectors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const surveyId = this.getCurrentNodeParameter('surveyId');
@@ -337,7 +337,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				return returnData;
 			},
 
-			// Get all the surveys to display them to user so that he can
+			// Get all the surveys to display them to user so that they can
 			// select them easily
 			async getSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

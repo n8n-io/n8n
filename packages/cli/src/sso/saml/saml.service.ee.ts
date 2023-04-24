@@ -73,9 +73,8 @@ export class SamlService {
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					return Promise.reject(new Error('Invalid SAML response'));
+					throw new Error('Invalid SAML response');
 				}
-				return Promise.resolve();
 			},
 		});
 	}
@@ -139,14 +138,11 @@ export class SamlService {
 	async handleSamlLogin(
 		req: express.Request,
 		binding: SamlLoginBinding,
-	): Promise<
-		| {
-				authenticatedUser: User | undefined;
-				attributes: SamlUserAttributes;
-				onboardingRequired: boolean;
-		  }
-		| undefined
-	> {
+	): Promise<{
+		authenticatedUser: User | undefined;
+		attributes: SamlUserAttributes;
+		onboardingRequired: boolean;
+	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const user = await Db.collections.User.findOne({
@@ -187,7 +183,11 @@ export class SamlService {
 				}
 			}
 		}
-		return undefined;
+		return {
+			authenticatedUser: undefined,
+			attributes,
+			onboardingRequired: false,
+		};
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
@@ -301,7 +301,9 @@ export class SamlService {
 			);
 		} catch (error) {
 			// throw error;
-			throw new AuthError('SAML Authentication failed. Could not parse SAML response.');
+			throw new AuthError(
+				`SAML Authentication failed. Could not parse SAML response. ${(error as Error).message}`,
+			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

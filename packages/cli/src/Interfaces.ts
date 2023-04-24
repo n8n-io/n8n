@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -13,7 +12,6 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
@@ -23,8 +21,6 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
-	WorkflowSettings,
-	AuthenticationMethod,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -56,6 +52,7 @@ import type {
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
+	VariablesRepository,
 	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
@@ -84,6 +81,7 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
+/* eslint-disable @typescript-eslint/naming-convention */
 export interface IDatabaseCollections {
 	AuthIdentity: AuthIdentityRepository;
 	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
@@ -99,11 +97,13 @@ export interface IDatabaseCollections {
 	SharedWorkflow: SharedWorkflowRepository;
 	Tag: TagRepository;
 	User: UserRepository;
+	Variables: VariablesRepository;
 	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 // ----------------------------------
 //               tags
@@ -458,6 +458,7 @@ export interface IInternalHooksClass {
 	}): Promise<void>;
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
+	onVariableCreated(createData: { variable_type: string }): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
@@ -565,22 +566,8 @@ export interface IUserSettings {
 	userActivated?: boolean;
 }
 
-export interface IUserManagementSettings {
-	enabled: boolean;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
-	authenticationMethod: AuthenticationMethod;
-}
 export interface IActiveDirectorySettings {
 	enabled: boolean;
-}
-export interface IPublicApiSettings {
-	enabled: boolean;
-	latestVersion: number;
-	path: string;
-	swaggerUi: {
-		enabled: boolean;
-	};
 }
 
 export interface IPackageVersions {
@@ -886,3 +873,5 @@ export interface N8nApp {
 	externalHooks: IExternalHooksClass;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
+
+export type UserSettings = Pick<User, 'id' | 'settings'>;

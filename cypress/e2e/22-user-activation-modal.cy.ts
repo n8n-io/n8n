@@ -45,13 +45,20 @@ describe('User activation survey', () => {
 
 		workflowPage.actions.activateWorkflow();
 
+		cy.intercept('GET', '/rest/workflows').as('getWorkflows');
+		cy.intercept('GET', '/rest/credentials').as('getCredentials');
+		cy.intercept('GET', '/rest/active').as('getActive');
+
 		cy.request(method, `${BASE_WEBHOOK_URL}/${path}`).then((response) => {
 			expect(response.status).to.eq(200);
 			cy.visit('/');
 			cy.reload();
 
+			cy.wait(['@getWorkflows', '@getCredentials', '@getActive']);
 			userActivationSurveyModal.getters.modalContainer().should('be.visible');
+			userActivationSurveyModal.getters.feedbackInput().should('be.visible');
 			userActivationSurveyModal.getters.feedbackInput().type('testing');
+			userActivationSurveyModal.getters.feedbackInput().should('have.value', 'testing');
 			userActivationSurveyModal.getters.sendFeedbackButton().click();
 		});
 	});

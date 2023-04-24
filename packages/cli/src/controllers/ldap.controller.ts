@@ -1,5 +1,5 @@
 import pick from 'lodash.pick';
-import { Get, Post, Put, RestController } from '@/decorators';
+import { Authorized, Get, Post, Put, RestController } from '@/decorators';
 import { getLdapConfig, getLdapSynchronizations, updateLdapConfig } from '@/Ldap/helpers';
 import { LdapService } from '@/Ldap/LdapService.ee';
 import { LdapSync } from '@/Ldap/LdapSync.ee';
@@ -8,6 +8,7 @@ import { BadRequestError } from '@/ResponseHelper';
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '@/Ldap/constants';
 import { InternalHooks } from '@/InternalHooks';
 
+@Authorized(['global', 'owner'])
 @RestController('/ldap')
 export class LdapController {
 	constructor(

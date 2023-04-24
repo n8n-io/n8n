@@ -71,7 +71,6 @@ export class PasswordResetController {
 
 	/**
 	 * Send a password reset email.
-	 * Authless endpoint.
 	 */
 	@Post('/forgot-password')
 	async forgotPassword(req: PasswordResetRequest.Email) {
@@ -178,7 +177,6 @@ export class PasswordResetController {
 
 	/**
 	 * Verify password reset token and user ID.
-	 * Authless endpoint.
 	 */
 	@Get('/resolve-password-token')
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
@@ -220,7 +218,6 @@ export class PasswordResetController {
 
 	/**
 	 * Verify password reset token and user ID and update password.
-	 * Authless endpoint.
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
