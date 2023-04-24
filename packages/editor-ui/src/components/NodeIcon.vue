@@ -14,9 +14,9 @@
 </template>
 
 <script lang="ts">
-import { IVersionNode } from '@/Interface';
+import type { IVersionNode } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 

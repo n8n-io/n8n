@@ -45,7 +45,8 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { ICredentialsResponse, ICredentialTypeMap, IUser } from '@/Interface';
+import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -53,13 +54,13 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
-import { ICredentialType } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow';
 import TemplateCard from '@/components/TemplateCard.vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import Vue from 'vue';
+import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';

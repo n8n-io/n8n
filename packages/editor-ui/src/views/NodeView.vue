@@ -165,17 +165,19 @@
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 
-import {
+import type {
 	Endpoint,
 	Connection,
-	EVENT_CONNECTION,
 	ConnectionEstablishedParams,
-	EVENT_CONNECTION_DETACHED,
-	EVENT_CONNECTION_MOVED,
-	INTERCEPT_BEFORE_DROP,
 	BeforeDropParams,
 	ConnectionDetachedParams,
 	ConnectionMovedParams,
+} from '@jsplumb/core';
+import {
+	EVENT_CONNECTION,
+	EVENT_CONNECTION_DETACHED,
+	EVENT_CONNECTION_MOVED,
+	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 
@@ -220,8 +222,7 @@ import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import {
-	deepCopy,
+import type {
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -237,10 +238,9 @@ import {
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	NodeHelpers,
-	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -264,7 +264,7 @@ import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { Route, RawLocation } from 'vue-router';
+import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -290,6 +290,7 @@ import {
 	RenameNodeCommand,
 	historyBus,
 } from '@/models/history';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import {
 	EVENT_ENDPOINT_MOUSEOVER,
 	EVENT_ENDPOINT_MOUSEOUT,
@@ -298,11 +299,10 @@ import {
 	EVENT_CONNECTION_ABORT,
 	EVENT_CONNECTION_MOUSEOUT,
 	EVENT_CONNECTION_MOUSEOVER,
-	BrowserJsPlumbInstance,
 	ready,
 } from '@jsplumb/browser-ui';
+import type { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
 import {
-	N8nPlusEndpoint,
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';

@@ -149,7 +149,7 @@
 <script lang="ts">
 import { convertToDisplayDate } from '@/utils';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ILdapConfig,
 	ILdapSyncData,
 	ILdapSyncTable,
@@ -170,7 +170,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { getLdapSynchronizations } from '@/api/ldap';
 import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
 import { createEventBus } from '@/event-bus';
-import { N8nFormInputs } from 'n8n-design-system';
+import type { N8nFormInputs } from 'n8n-design-system';
 
 type N8nFormInputsRef = InstanceType<typeof N8nFormInputs>;
 

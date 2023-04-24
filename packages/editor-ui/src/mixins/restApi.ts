@@ -1,8 +1,8 @@
 import { defineComponent } from 'vue';
 import { parse } from 'flatted';
 
-import { Method } from 'axios';
-import {
+import type { Method } from 'axios';
+import type {
 	IActivationError,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -16,11 +16,10 @@ import {
 	IWorkflowShortResponse,
 	IRestApi,
 	IWorkflowDataUpdate,
-	INodeTranslationHeaders,
 } from '@/Interface';
+import { INodeTranslationHeaders } from '@/Interface';
+import type { IAbstractEventMessage, IDataObject } from 'n8n-workflow';
 import {
-	IAbstractEventMessage,
-	IDataObject,
 	ILoadOptions,
 	INodeCredentials,
 	INodeParameters,

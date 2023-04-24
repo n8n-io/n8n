@@ -25,8 +25,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { IParameterLabel } from 'n8n-workflow';
-import { IUpdateInformation } from '@/Interface';
+import type { IParameterLabel } from 'n8n-workflow';
+import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
 
 export default defineComponent({
