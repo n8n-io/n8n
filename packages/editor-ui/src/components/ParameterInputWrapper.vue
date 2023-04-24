@@ -43,7 +43,6 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import type Vue from 'vue';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
@@ -55,7 +54,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { IRunData, isResourceLocatorValue } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';

@@ -123,7 +123,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import {
 	DUPLICATE_MODAL_KEY,

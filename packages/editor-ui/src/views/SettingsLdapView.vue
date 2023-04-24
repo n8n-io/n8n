@@ -157,7 +157,6 @@ import type {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import humanizeDuration from 'humanize-duration';
@@ -167,7 +166,6 @@ import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
-import { getLdapSynchronizations } from '@/api/ldap';
 import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
 import { createEventBus } from '@/event-bus';
 import type { N8nFormInputs } from 'n8n-design-system';

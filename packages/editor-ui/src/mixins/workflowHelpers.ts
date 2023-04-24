@@ -1,8 +1,6 @@
 import {
-	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
@@ -27,7 +25,7 @@ import type {
 	INodeConnection,
 	IWebhookDescription,
 } from 'n8n-workflow';
-import { INodeTypeData, IPinData, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type {
 	INodeTypesMaxCount,
