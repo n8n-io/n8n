@@ -20,7 +20,6 @@ import { useUsersStore } from '@/stores/users';
 import { useWebhooksStore } from '@/stores/webhooks';
 import { runExternalHook } from '@/utils';
 
-
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
@@ -199,7 +198,9 @@ function addHttpNode() {
 	if (telemetry) setAddedNodeActionParameters(updateData, telemetry, false);
 
 	const app_identifier = actions.value[0].key;
-	runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), { app_identifier });
+	runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
+		app_identifier,
+	});
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 }
 
