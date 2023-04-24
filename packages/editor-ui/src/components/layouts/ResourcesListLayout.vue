@@ -250,7 +250,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
-			default: () => () => Promise.resolve(),
+			default: () => async () => {},
 		},
 		filters: {
 			type: Object,
