@@ -23,6 +23,7 @@ export class VersionControlController {
 			privateKey: undefined,
 			publicKey: undefined,
 		};
+		await this.versionControlService.validateVersionControlPreferences(sanitizedPreferences);
 		return this.versionControlService.setPreferences(sanitizedPreferences);
 	}
 

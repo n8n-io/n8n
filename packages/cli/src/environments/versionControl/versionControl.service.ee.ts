@@ -4,6 +4,8 @@ import { VersionControlPreferences } from './types/versionControlPreferences';
 import { VERSION_CONTROL_PREFERENCES_DB_KEY } from './constants';
 import * as Db from '@/Db';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import type { ValidationError } from 'class-validator';
+import { validate } from 'class-validator';
 
 @Service()
 export class VersionControlService {
@@ -42,6 +44,24 @@ export class VersionControlService {
 			LoggerProxy.error('Failed to generate key pair');
 		}
 		return keyPair;
+	}
+
+	async validateVersionControlPreferences(
+		preferences: Partial<VersionControlPreferences>,
+	): Promise<ValidationError[]> {
+		const preferencesObject = new VersionControlPreferences(preferences);
+		const validationResult = await validate(preferencesObject, {
+			forbidUnknownValues: false,
+			skipMissingProperties: true,
+			stopAtFirstError: false,
+			validationError: { target: false },
+		});
+		if (validationResult.length > 0) {
+			throw new Error(`Invalid version control preferences: ${JSON.stringify(validationResult)}`);
+		}
+		// TODO: if repositoryUrl is changed, check if it is valid
+		// TODO: if branchName is changed, check if it is valid
+		return validationResult;
 	}
 
 	async setPreferences(

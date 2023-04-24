@@ -1,17 +1,19 @@
 import { IsBoolean, IsEmail, IsHexColor, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class VersionControlPreferences {
+	constructor(preferences: Partial<VersionControlPreferences> | undefined = undefined) {
+		if (preferences) Object.assign(this, preferences);
+	}
+
 	@IsBoolean()
 	connected: boolean;
 
 	@IsString()
-	@IsUrl()
 	repositoryUrl: string;
 
 	@IsString()
 	authorName: string;
 
-	@IsString()
 	@IsEmail()
 	authorEmail: string;
 
@@ -21,7 +23,6 @@ export class VersionControlPreferences {
 	@IsBoolean()
 	branchReadOnly: boolean;
 
-	@IsString()
 	@IsHexColor()
 	branchColor: string;
 
