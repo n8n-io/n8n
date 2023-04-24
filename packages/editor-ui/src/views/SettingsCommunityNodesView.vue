@@ -61,7 +61,7 @@ import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { showMessage } from '@/mixins/showMessage';
 import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 import { useUIStore } from '@/stores/ui';

@@ -129,7 +129,8 @@
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

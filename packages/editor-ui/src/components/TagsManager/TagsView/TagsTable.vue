@@ -107,11 +107,11 @@
 </template>
 
 <script lang="ts">
-import { Table as ElTable } from 'element-ui';
+import type { Table as ElTable } from 'element-ui';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { ITagRow } from '@/Interface';
+import type { ITagRow } from '@/Interface';
 import { defineComponent } from 'vue';
-import { N8nInput } from 'n8n-design-system';
+import type { N8nInput } from 'n8n-design-system';
 
 type TableRef = InstanceType<typeof ElTable>;
 type N8nInputRef = InstanceType<typeof N8nInput>;

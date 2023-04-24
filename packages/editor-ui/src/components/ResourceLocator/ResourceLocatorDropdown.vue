@@ -78,7 +78,7 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 

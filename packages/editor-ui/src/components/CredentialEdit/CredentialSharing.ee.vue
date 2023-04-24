@@ -80,7 +80,8 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction, UIState } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
+import { UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';

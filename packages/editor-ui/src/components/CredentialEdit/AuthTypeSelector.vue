@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
+import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import {
@@ -9,7 +9,7 @@ import {
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
 } from '@/utils';
-import { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
+import type { INodeProperties, INodeTypeDescription, NodeParameterValue } from 'n8n-workflow';
 import { computed, onMounted, ref } from 'vue';
 import Vue from 'vue';
 

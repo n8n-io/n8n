@@ -35,7 +35,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { IN8nPromptResponse } from '@/Interface';
+import type { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from './Modal.vue';

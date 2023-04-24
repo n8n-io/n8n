@@ -8,21 +8,17 @@ import {
 } from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	EnterpriseEditionFeature,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-} from '@/constants';
-import {
+import type { EnterpriseEditionFeature } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import type {
 	ILdapConfig,
 	IN8nPromptResponse,
 	IN8nPrompts,
 	IN8nValueSurveyData,
 	ISettingsState,
-	UserManagementAuthenticationMethod,
 } from '@/Interface';
-import {
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import type {
 	IDataObject,
 	ILogLevel,
 	IN8nUISettings,
@@ -247,27 +243,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async fetchPromptsData(): Promise<void> {
 			if (!this.isTelemetryEnabled) {
-				Promise.resolve();
+				return;
 			}
-			try {
-				const uiStore = useUIStore();
-				const usersStore = useUsersStore();
-				const promptsData: IN8nPrompts = await getPromptsData(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-				);
 
-				if (promptsData && promptsData.showContactPrompt) {
-					uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-				} else if (promptsData && promptsData.showValueSurvey) {
-					uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
-				}
+			const uiStore = useUIStore();
+			const usersStore = useUsersStore();
+			const promptsData: IN8nPrompts = await getPromptsData(
+				this.settings.instanceId,
+				usersStore.currentUserId || '',
+			);
 
-				this.setPromptsData(promptsData);
-				Promise.resolve();
-			} catch (error) {
-				Promise.reject(error);
+			if (promptsData && promptsData.showContactPrompt) {
+				uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
+			} else if (promptsData && promptsData.showValueSurvey) {
+				uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
 			}
+
+			this.setPromptsData(promptsData);
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {

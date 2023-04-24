@@ -8,7 +8,7 @@ import {
 	START_NODE_TYPE,
 	STORES,
 } from '@/constants';
-import {
+import type {
 	ExecutionsQueryFilter,
 	IActivationError,
 	IExecutionDeleteFilter,
@@ -32,12 +32,10 @@ import {
 	WorkflowsState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import {
-	deepCopy,
+import type {
 	IAbstractEventMessage,
 	IConnection,
 	IConnections,
-	IDataObject,
 	IExecutionsSummary,
 	INode,
 	INodeConnections,
@@ -54,9 +52,9 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
-	NodeHelpers,
-	Workflow,
 } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import Vue from 'vue';
 
 import { useRootStore } from './n8nRootStore';
