@@ -124,16 +124,20 @@
 					@update:modelValue="valueChangedDebounced"
 				/>
 
-				<code-node-editor
-					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
-					:mode="node.parameters.mode"
+				<js-editor
+					v-else-if="editorType === 'jsEditor'"
 					:modelValue="modelValue"
-					:defaultValue="parameter.default"
-					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
-					:aiButtonEnabled="false"
-					@update:modelValue="valueChangedDebounced"
 					:rows="getArgument('rows')"
+					@update:modelValue="valueChangedDebounced"
+				/>
+
+				<json-editor
+					v-else-if="parameter.type === 'json'"
+					:modelValue="modelValue"
+					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
@@ -396,6 +400,8 @@ import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue'
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import JsEditor from '@/components/JsEditor/JsEditor.vue';
+import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -433,6 +439,8 @@ export default defineComponent({
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
+		JsEditor,
+		JsonEditor,
 		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
@@ -1066,9 +1074,6 @@ export default defineComponent({
 		},
 		isHtmlNode(node: INodeUi): boolean {
 			return node.type === HTML_NODE_TYPE;
-		},
-		isExecuteWorkflowNode(node: INodeUi): boolean {
-			return node.type === EXECUTE_WORKFLOW_NODE_TYPE;
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
