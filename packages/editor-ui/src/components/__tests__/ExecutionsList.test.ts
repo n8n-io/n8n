@@ -12,17 +12,21 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import { i18nInstance } from '@/plugins/i18n';
-import type { IWorkflowShortResponse } from '@/Interface';
+import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { waitAllPromises } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/stores';
 
-const workflowDataFactory = (): IWorkflowShortResponse => ({
+const workflowDataFactory = (): IWorkflowDb => ({
 	createdAt: faker.date.past().toDateString(),
 	updatedAt: faker.date.past().toDateString(),
 	id: faker.datatype.uuid(),
 	name: faker.datatype.string(),
 	active: faker.datatype.boolean(),
 	tags: [],
+	nodes: [],
+	connections: {},
+	versionId: faker.datatype.number().toString(),
 });
 
 const executionDataFactory = (): IExecutionsSummary => ({
@@ -44,20 +48,6 @@ const executionsData = Array.from({ length: 2 }, () => ({
 	results: Array.from({ length: 10 }, executionDataFactory),
 	estimated: false,
 }));
-
-let getPastExecutionsSpy = vi.fn().mockResolvedValue({ count: 0, results: [], estimated: false });
-
-const mockRestApiMixin = defineComponent({
-	methods: {
-		restApi() {
-			return {
-				getWorkflows: vi.fn().mockResolvedValue(workflowsData),
-				getCurrentExecutions: vi.fn().mockResolvedValue([]),
-				getPastExecutions: getPastExecutionsSpy,
-			};
-		},
-	},
-});
 
 const renderOptions = {
 	pinia: createTestingPinia({
@@ -83,7 +73,7 @@ const renderOptions = {
 	}),
 	i18n: i18nInstance,
 	stubs: ['font-awesome-icon'],
-	mixins: [externalHooks, genericHelpers, executionHelpers, showMessage, mockRestApiMixin],
+	mixins: [externalHooks, genericHelpers, executionHelpers, showMessage],
 };
 
 function TelemetryPlugin(vue: typeof Vue): void {
@@ -113,7 +103,22 @@ Vue.use(TelemetryPlugin);
 Vue.use(PiniaVuePlugin);
 
 describe('ExecutionsList.vue', () => {
+	const workflowsStore: ReturnType<typeof useWorkflowsStore> = useWorkflowsStore();
+	beforeEach(() => {
+		vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue(workflowsData);
+		vi.spyOn(workflowsStore, 'getCurrentExecutions').mockResolvedValue([]);
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
 	it('should render empty list', async () => {
+		vi.spyOn(workflowsStore, 'getPastExecutions').mockResolvedValueOnce({
+			count: 0,
+			results: [],
+			estimated: false,
+		});
 		const { queryAllByTestId, queryByTestId, getByTestId } = await renderComponent();
 		await userEvent.click(getByTestId('execution-auto-refresh-checkbox'));
 
@@ -124,8 +129,8 @@ describe('ExecutionsList.vue', () => {
 	});
 
 	it('should handle selection flow when loading more items', async () => {
-		getPastExecutionsSpy = vi
-			.fn()
+		const storeSpy = vi
+			.spyOn(workflowsStore, 'getPastExecutions')
 			.mockResolvedValueOnce(executionsData[0])
 			.mockResolvedValueOnce(executionsData[1]);
 
@@ -134,7 +139,7 @@ describe('ExecutionsList.vue', () => {
 
 		await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
-		expect(getPastExecutionsSpy).toHaveBeenCalledTimes(1);
+		expect(storeSpy).toHaveBeenCalledTimes(1);
 		expect(
 			getAllByTestId('select-execution-checkbox').filter((el) =>
 				el.contains(el.querySelector(':checked')),
@@ -145,7 +150,7 @@ describe('ExecutionsList.vue', () => {
 
 		await userEvent.click(getByTestId('load-more-button'));
 
-		expect(getPastExecutionsSpy).toHaveBeenCalledTimes(2);
+		expect(storeSpy).toHaveBeenCalledTimes(2);
 		expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
 		expect(
 			getAllByTestId('select-execution-checkbox').filter((el) =>
