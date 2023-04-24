@@ -73,7 +73,6 @@ import {
 import { showMessage } from '@/mixins/showMessage';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import dateformat from 'dateformat';
-import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
@@ -91,7 +90,7 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -234,7 +233,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				try {
-					await this.restApi().deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflowAPI(this.data.id);
 					this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
 					this.$showError(
