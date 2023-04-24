@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
+import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import {
+import type {
 	INode,
 	INodeParameters,
 	INodeProperties,
@@ -14,9 +14,10 @@ import {
 import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
-import ParameterInputList from '@/components/ParameterInputList.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { isResourceMapperValue } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
+import { get } from 'lodash-es';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -78,17 +79,19 @@ onMounted(async () => {
 });
 
 const fieldsUi = computed<INodeProperties[]>(() => {
-	return state.fieldsToMap.map((field) => {
-		return {
-			displayName: getFieldLabel(field),
-			// Set part of the path to each param name so value can be fetched properly by input parameter list component
-			name: `value["${field.id}"]`,
-			type: (field.type as NodePropertyTypes) || 'string',
-			default: '',
-			required: field.required,
-			description: getFieldDescription(field),
-		};
-	});
+	return state.fieldsToMap
+		.filter((field) => field.display !== false)
+		.map((field) => {
+			return {
+				displayName: getFieldLabel(field),
+				// Set part of the path to each param name so value can be fetched properly by input parameter list component
+				name: `value["${field.id}"]`,
+				type: (field.type as NodePropertyTypes) || 'string',
+				default: '',
+				required: field.required,
+				description: getFieldDescription(field),
+			};
+		});
 });
 
 const orderedFields = computed<INodeProperties[]>(() => {
@@ -190,7 +193,7 @@ async function loadFieldsToMap(): Promise<void> {
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	if (fetchedFields !== null) {
-		state.fieldsToMap = fetchedFields.fields.filter((field) => field.display !== false);
+		state.fieldsToMap = fetchedFields.fields;
 	}
 }
 
@@ -265,12 +268,31 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	}
 }
 
+function deleteOption(name: string): void {
+	const match = name.match(FIELD_NAME_REGEX);
+	if (match) {
+		const fieldName = match.pop();
+		const field = state.fieldsToMap.find((field) => field.id === fieldName);
+		if (field) {
+			field.display = false;
+		}
+	}
+}
+
 function emitValueChanged(): void {
 	emit('valueChanged', {
 		name: `${props.path}`,
 		value: state.paramValue,
 		node: props.node?.name,
 	});
+}
+
+function getParameterValue(
+	nodeValues: INodeParameters | undefined,
+	parameterName: string,
+	path: string,
+) {
+	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
 }
 
 defineExpose({
@@ -304,6 +326,7 @@ defineExpose({
 			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
+		<!-- TODO: Move to separate component -->
 		<div class="mt-xs" data-test-id="mapping-fields-container" v-if="showMappingFields">
 			<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
@@ -324,14 +347,37 @@ defineExpose({
 				:size="labelSize"
 				color="text-dark"
 			/>
-			<parameter-input-list
-				:parameters="orderedFields"
-				:nodeValues="nodeValues"
-				:isReadOnly="false"
-				@valueChanged="fieldValueChanged"
-				:hideDelete="true"
-				:path="`${props.path}`"
-			/>
+			<div
+				v-for="field in orderedFields"
+				:key="field.name"
+				:class="['parameter-item', $style.parameterItem]"
+			>
+				<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')">
+					<font-awesome-icon
+						icon="trash"
+						class="reset-icon clickable"
+						:title="$locale.baseText('parameterInputList.deleteParameter')"
+						@click="deleteOption(field.name)"
+					/>
+				</div>
+				<parameter-input-full
+					:parameter="field"
+					:value="getParameterValue(nodeValues, field.name, path)"
+					:displayOptions="true"
+					:path="`${props.path}.${field.name}}`"
+					:isReadOnly="false"
+					:hideLabel="false"
+					:nodeValues="nodeValues"
+					@valueChanged="fieldValueChanged"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.parameterItem {
+	position: relative;
+	padding: 0 0 0 1em;
+}
+</style>
