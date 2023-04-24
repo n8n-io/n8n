@@ -193,7 +193,7 @@ export class BinaryDataManager {
 				async (executionDataArray) => {
 					if (executionDataArray) {
 						return Promise.all(
-							executionDataArray.map((executionData) => {
+							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
 									return this.duplicateBinaryDataInExecData(executionData, executionId);
 								}
