@@ -103,7 +103,6 @@ describe('NDV', () => {
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.switchOutputMode('Table');
-		cy.wait(50);
 
 		ndv.getters.backToCanvas().realHover(); // reset to default hover
 		ndv.getters.outputHoveringItem().should('not.exist');
@@ -112,7 +111,11 @@ describe('NDV', () => {
 		ndv.actions.selectInputNode('Set1');
 		ndv.getters.backToCanvas().realHover(); // reset to default hover
 
-		ndv.getters.inputHoveringItem().should('have.text', '1000').realHover();
+		ndv.getters.inputTableRow(1)
+			.should('have.text', '1000')
+			.invoke('attr', 'data-test-id')
+			.should('equal', 'hovering-item');
+		ndv.getters.inputTableRow(1).realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '1000');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
@@ -120,7 +123,11 @@ describe('NDV', () => {
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.backToCanvas().realHover(); // reset to default hover
 
-		ndv.getters.inputHoveringItem().should('have.text', '1111').realHover();
+		ndv.getters.inputTableRow(1)
+			.should('have.text', '1111')
+			.invoke('attr', 'data-test-id')
+			.should('equal', 'hovering-item');
+		ndv.getters.inputTableRow(1).realHover();
 		ndv.getters.outputHoveringItem().should('have.text', '1111');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 	});
@@ -204,7 +211,11 @@ describe('NDV', () => {
 		ndv.actions.switchOutputMode('Table');
 
 		ndv.getters.backToCanvas().realHover(); // reset to default hover
-		ndv.getters.inputHoveringItem().should('have.text', '1111').realHover();
+		ndv.getters.inputTableRow(1)
+			.should('have.text', '1111')
+			.invoke('attr', 'data-test-id')
+			.should('equal', 'hovering-item');
+		ndv.getters.inputTableRow(1).realHover();
 		ndv.getters.outputHoveringItem().should('not.exist');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 
