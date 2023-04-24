@@ -1684,7 +1684,7 @@
 	"contextual.communityNodes.unavailable.button.desktop": "View plans",
 
 	"contextual.upgradeLinkUrl": "https://subscription.n8n.io/",
-	"contextual.upgradeLinkUrl.cloud": "https://app.n8n.cloud/manage?edition=cloud",
+	"contextual.upgradeLinkUrl.cloud": "https://app.n8n.cloud/account/change-plan",
 	"contextual.upgradeLinkUrl.desktop": "https://n8n.io/pricing/?utm_source=n8n-internal&utm_medium=desktop",
 
 	"settings.ldap": "LDAP",
