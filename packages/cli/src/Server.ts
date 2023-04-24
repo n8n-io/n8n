@@ -444,13 +444,15 @@ class Server extends AbstractServer {
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
 
+		this.instanceId = await UserSettings.getInstanceId();
+
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
 			.catch(() => false);
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = this.instanceId;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
