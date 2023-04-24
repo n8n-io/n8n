@@ -5,6 +5,9 @@ on:
 
 
 name: Deploy to Amazon ECR in the dev environment
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -17,7 +20,7 @@ jobs:
 
     - name: build
       shell: bash
-      run: docker build -t  "${{ github.ref_name }}" -f docker/images/n8n-custom/Dockerfile .
+      run: docker build --build-arg ACCESS_TOKEN=${{ secrets.ACCESS_TOKEN }} -t "${{ github.ref_name }}" -f docker/images/n8n-custom/Dockerfile .
 
     - name: push ecr
       uses: Deep-Consulting-Solutions/ecr-deploy-action@main
