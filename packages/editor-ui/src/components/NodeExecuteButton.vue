@@ -171,7 +171,7 @@ export default mixins(workflowRun, pinData).extend({
 	methods: {
 		async stopWaitingForWebhook() {
 			try {
-				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
+				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;

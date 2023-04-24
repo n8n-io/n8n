@@ -56,7 +56,6 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from './Modal.vue';
-import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -65,8 +64,9 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 import { createEventBus } from '@/event-bus';
+import { useCredentialsStore } from '@/stores';
 
-export default mixins(showMessage, workflowHelpers, restApi).extend({
+export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: 'DuplicateWorkflow',
 	props: ['modalName', 'isActive', 'data'],
@@ -88,7 +88,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore, useWorkflowsStore),
+		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
 		workflowPermissions(): IPermissions {
 			const isEmptyWorkflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 			const isCurrentWorkflowEmpty =
@@ -151,7 +151,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					const { createdAt, updatedAt, usedCredentials, ...workflow } =
-						await this.restApi().getWorkflow(this.data.id);
+						await this.workflowsStore.fetchWorkflow(this.data.id);
 					workflowToUpdate = workflow;
 
 					this.removeForeignCredentialsFromWorkflow(

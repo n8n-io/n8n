@@ -4,7 +4,6 @@ import type { IRunData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
@@ -15,7 +14,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export const workflowRun = mixins(externalHooks, restApi, workflowHelpers, showMessage).extend({
+export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).extend({
 	setup() {
 		return {
 			...useTitleChange(),
@@ -40,7 +39,7 @@ export const workflowRun = mixins(externalHooks, restApi, workflowHelpers, showM
 			let response: IExecutionPushResponse;
 
 			try {
-				response = await this.restApi().runWorkflow(runData);
+				response = await this.workflowsStore.runWorkflow(runData);
 			} catch (error) {
 				this.uiStore.removeActiveAction('workflowRunning');
 				throw error;

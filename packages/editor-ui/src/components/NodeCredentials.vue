@@ -97,9 +97,8 @@
 </template>
 
 <script lang="ts">
-import type { PropType } from 'vue';
-import { restApi } from '@/mixins/restApi';
-import type {
+import { PropType } from 'vue';
+import {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -142,7 +141,7 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
+export default mixins(genericHelpers, nodeHelpers, showMessage).extend({
 	name: 'NodeCredentials',
 	props: {
 		readonly: {

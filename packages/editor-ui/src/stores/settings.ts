@@ -31,6 +31,7 @@ import { useRootStore } from './n8nRootStore';
 import { useUIStore } from './ui';
 import { useUsersStore } from './users';
 import { useVersionsStore } from './versions';
+import { makeRestApiRequest } from '@/utils';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -335,6 +336,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		setSaveManualExecutions(saveManualExecutions: boolean) {
 			Vue.set(this, 'saveManualExecutions', saveManualExecutions);
+		},
+		async getTimezones(): Promise<IDataObject> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
 		},
 	},
 });
