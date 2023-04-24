@@ -132,7 +132,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		reloadLinter() {
 			if (!this.editor) return;
 
-			const linter = this.linterExtension(this.language);
+			const linter = this.createLinter(this.language);
 			if (linter) {
 				this.editor.dispatch({
 					effects: this.linterCompartment.reconfigure(linter),
@@ -210,7 +210,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			codeNodeEditorTheme({ maxHeight: this.maxHeight }),
 		];
 
-		const linter = this.linterExtension(this.language);
+		const linter = this.createLinter(this.language);
 		if (linter) {
 			extensions.push(this.linterCompartment.of(linter));
 		}

@@ -17,13 +17,14 @@ import type { CodeLanguage, CodeNodeEditorMixin, RangeNode } from './types';
 
 export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
-		linterExtension(language: CodeLanguage) {
+		createLinter(language: CodeLanguage) {
 			switch (language) {
 				case 'javaScript':
 					return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
 				case 'json':
 					return createLinter(jsonParseLinter());
 			}
+			return undefined;
 		},
 
 		lintSource(editorView: EditorView): Diagnostic[] {
