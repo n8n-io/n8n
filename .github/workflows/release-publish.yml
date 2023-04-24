@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: write
 
-    timeout-minutes: 10
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
