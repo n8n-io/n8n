@@ -373,11 +373,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflows;
 		},
 
-		// async fetchWorkflow(id: string): Promise<IWorkflowDb> {
-		// 	const rootStore = useRootStore();
-		// 	return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/workflows/${id}`);
-		// },
-
 		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
 			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
