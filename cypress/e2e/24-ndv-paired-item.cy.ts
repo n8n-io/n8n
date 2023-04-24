@@ -116,6 +116,7 @@ describe('NDV', () => {
 			.invoke('attr', 'data-test-id')
 			.should('equal', 'hovering-item');
 		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(50);
 		ndv.getters.outputHoveringItem().should('have.text', '1000');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1000');
 
@@ -128,6 +129,7 @@ describe('NDV', () => {
 			.invoke('attr', 'data-test-id')
 			.should('equal', 'hovering-item');
 		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(50);
 		ndv.getters.outputHoveringItem().should('have.text', '1111');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 	});
