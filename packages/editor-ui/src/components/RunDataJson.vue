@@ -70,13 +70,13 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson, isString, shorten } from '@/utils';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';

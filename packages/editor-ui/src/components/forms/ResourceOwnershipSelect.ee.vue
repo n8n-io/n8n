@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { IMenuItem } from 'n8n-design-system';
+import type { IMenuItem } from 'n8n-design-system';
 
 export default defineComponent({
 	props: {

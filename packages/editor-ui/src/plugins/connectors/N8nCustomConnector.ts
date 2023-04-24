@@ -1,16 +1,15 @@
-import { PointXY, log, extend, quadrant } from '@jsplumb/util';
+import type { PointXY } from '@jsplumb/util';
+import { log, extend, quadrant } from '@jsplumb/util';
 
-import {
+import type {
 	Connection,
-	ArcSegment,
-	AbstractConnector,
 	ConnectorComputeParams,
 	PaintGeometry,
 	Endpoint,
-	StraightSegment,
 	Orientation,
 } from '@jsplumb/core';
-import { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis } from '@jsplumb/common';
+import { ArcSegment, AbstractConnector, StraightSegment } from '@jsplumb/core';
+import type { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis } from '@jsplumb/common';
 import { BezierSegment } from '@jsplumb/connector-bezier';
 import { isArray } from 'lodash-es';
 import { deepCopy } from 'n8n-workflow';

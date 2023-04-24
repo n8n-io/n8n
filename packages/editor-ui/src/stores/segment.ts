@@ -6,10 +6,10 @@ import {
 	SET_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
-import { INodeTypeDescription, IRun } from 'n8n-workflow';
+import type { INodeTypeDescription, IRun } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 

@@ -69,9 +69,10 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import type Vue from 'vue';
 
-import { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -84,8 +85,13 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
-import { BaseTextKey } from '@/plugins/i18n';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+} from 'n8n-workflow';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useSegment } from '@/stores/segment';
