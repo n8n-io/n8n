@@ -69,9 +69,9 @@ import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoA
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '@/constants';
 import type { IExecutionsSummary } from 'n8n-workflow';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 import { defineComponent } from 'vue';
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

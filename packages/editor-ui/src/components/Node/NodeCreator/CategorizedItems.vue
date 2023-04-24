@@ -96,7 +96,7 @@ import {
 	nextTick,
 } from 'vue';
 import { camelCase } from 'lodash-es';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
 import SearchBar from './SearchBar.vue';
 import type {

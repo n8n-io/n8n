@@ -157,7 +157,7 @@ import type {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import type Vue from 'vue';
+import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import humanizeDuration from 'humanize-duration';
