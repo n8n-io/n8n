@@ -1,8 +1,9 @@
 ARG NODE_VERSION=16
+ARG ACCESS_TOKEN
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
-ENV ACCESS_TOKEN=12344
+ENV TOKEN_FOR_PACKAGES=${ACCESS_TOKEN}
 
 COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
 COPY --chown=node:node scripts ./scripts
@@ -13,9 +14,9 @@ RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
-RUN echo ${ACCESS_TOKEN}
-RUN echo ${ACCESS_TOKEN} | sed 's/./& /g'
-RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=$ACCESS_TOKEN' >> .npmrc
+RUN echo $TOKEN_FOR_PACKAGES
+RUN echo $TOKEN_FOR_PACKAGES | sed 's/./& /g'
+RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=$TOKEN_FOR_PACKAGES' >> .npmrc
 RUN cat .npmrc
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
