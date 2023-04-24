@@ -86,7 +86,7 @@ const workflowName = ref('');
 onMounted(async () => {
 	const currentSettings = getCurrentSettings();
 	try {
-		const { name } = await workflowStore.fetchWorkflow(
+		const { name } = await workflowStore.fetchAndSetWorkflow(
 			currentSettings?.firstSuccessfulWorkflowId ?? '',
 		);
 		workflowName.value = name;

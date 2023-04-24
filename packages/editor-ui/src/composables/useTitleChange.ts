@@ -1,4 +1,4 @@
-import { WorkflowTitleStatus } from '@/Interface';
+import type { WorkflowTitleStatus } from '@/Interface';
 
 export function useTitleChange() {
 	return {

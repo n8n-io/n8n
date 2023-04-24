@@ -542,10 +542,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {

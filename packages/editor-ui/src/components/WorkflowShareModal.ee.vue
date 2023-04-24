@@ -130,8 +130,10 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, UIState } from '@/Interface';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IUser, IWorkflowDb } from '@/Interface';
+import { UIState } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { createEventBus, nodeViewEventBus } from '@/event-bus';
@@ -141,9 +143,9 @@ import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
 export default mixins(showMessage).extend({
@@ -448,7 +450,7 @@ export default mixins(showMessage).extend({
 					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
 					!this.workflow.sharedWith?.length // Sharing info already loaded
 				) {
-					await this.workflowsStore.fetchWorkflow(this.workflow.id);
+					await this.workflowsStore.fetchAndSetWorkflow(this.workflow.id);
 				}
 			}
 

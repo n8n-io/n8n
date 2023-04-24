@@ -62,7 +62,7 @@
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
-import { IUser, IUserListAction } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';

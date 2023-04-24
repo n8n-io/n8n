@@ -10,7 +10,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 function hslToHex(h: number, s: number, l: number): string {
 	l /= 100;

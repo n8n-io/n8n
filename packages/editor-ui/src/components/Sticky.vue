@@ -64,14 +64,15 @@ import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { getStyleTokenValue, isNumber, isString } from '@/utils';
-import {
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
 
-import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
