@@ -2,8 +2,10 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
+	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	START_NODE_TYPE,
 	STORES,
 } from '@/constants';
 import {
@@ -36,6 +38,8 @@ import {
 	INodeExecutionData,
 	INodeIssueData,
 	INodeParameters,
+	INodeTypeData,
+	INodeTypes,
 	IPinData,
 	IRun,
 	IRunData,
@@ -43,6 +47,7 @@ import {
 	ITaskData,
 	IWorkflowSettings,
 	NodeHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import Vue from 'vue';
 
@@ -85,6 +90,9 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	versionId: '',
 	usedCredentials: [],
 });
+
+let cachedWorkflowKey: string | null = '';
+let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -256,7 +264,86 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 	actions: {
-		// Workflow actions
+		getNodeTypes(): INodeTypes {
+			const nodeTypes: INodeTypes = {
+				nodeTypes: {},
+				init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
+				// @ts-ignore
+				getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+					const nodeTypeDescription = useNodeTypesStore().getNodeType(nodeType, version);
+
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+
+					return {
+						description: nodeTypeDescription,
+						// As we do not have the trigger/poll functions available in the frontend
+						// we use the information available to figure out what are trigger nodes
+						// @ts-ignore
+						trigger:
+							(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
+								nodeTypeDescription.inputs.length === 0 &&
+								!nodeTypeDescription.webhooks) ||
+							undefined,
+					};
+				},
+			};
+
+			return nodeTypes;
+		},
+
+		// Returns a shallow copy of the nodes which means that all the data on the lower
+		// levels still only gets referenced but the top level object is a different one.
+		// This has the advantage that it is very fast and does not cause problems with vuex
+		// when the workflow replaces the node-parameters.
+		getNodes(): INodeUi[] {
+			const nodes = useWorkflowsStore().allNodes;
+			const returnNodes: INodeUi[] = [];
+
+			for (const node of nodes) {
+				returnNodes.push(Object.assign({}, node));
+			}
+
+			return returnNodes;
+		},
+
+		// Returns a workflow instance.
+		getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+			const nodeTypes = this.getNodeTypes();
+			let workflowId: string | undefined = useWorkflowsStore().workflowId;
+			if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				workflowId = undefined;
+			}
+
+			const workflowName = useWorkflowsStore().workflowName;
+
+			cachedWorkflow = new Workflow({
+				id: workflowId,
+				name: workflowName,
+				nodes: copyData ? deepCopy(nodes) : nodes,
+				connections: copyData ? deepCopy(connections) : connections,
+				active: false,
+				nodeTypes,
+				settings: useWorkflowsStore().workflowSettings,
+				// @ts-ignore
+				pinData: useWorkflowsStore().getPinData,
+			});
+
+			return cachedWorkflow;
+		},
+
+		getCurrentWorkflow(copyData?: boolean): Workflow {
+			const nodes = this.getNodes();
+			const connections = this.allConnections;
+			const cacheKey = JSON.stringify({ nodes, connections });
+			if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
+				return cachedWorkflow;
+			}
+			cachedWorkflowKey = cacheKey;
+
+			return this.getWorkflow(nodes, connections, copyData);
+		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
 			const rootStore = useRootStore();

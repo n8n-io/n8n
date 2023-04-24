@@ -3,58 +3,41 @@
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "d24d60c0-fe08-4c95-afc2-51b92890667b",
+			"id": "76e5dcfd-fdc7-472f-8832-bccc0eb122c0",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [500, 400]
+			"position": [120, 420]
 		},
 		{
 			"parameters": {
-				"amount": 2,
+				"amount": 42,
 				"unit": "seconds"
 			},
-			"id": "244f011e-bf10-4745-9dac-1ef0a1ac8167",
+			"id": "37f2c758-6fb2-43ce-86ae-ca11ec957cbd",
 			"name": "Wait",
 			"type": "n8n-nodes-base.wait",
 			"typeVersion": 1,
-			"position": [900, 400],
+			"position": [560, 420],
 			"webhookId": "35edc971-c3e4-48cf-835d-4d73a4fd1fd8"
 		},
 		{
 			"parameters": {
 				"conditions": {
-					"string": [
+					"number": [
 						{
-							"value1": "={{ $now.toFormat('ss') }}",
-							"value2": "={{ $json.start }}"
+							"value1": "={{ parseInt($json.afterTimestamp) }}",
+							"operation": "largerEqual",
+							"value2": "={{ parseInt($json.startTimestamp) + 42 }}"
 						}
 					]
 				}
 			},
-			"id": "d5977620-7f73-4cbe-a354-03658462167f",
+			"id": "c5c53934-2677-4adf-a4df-b32f3b0642a2",
 			"name": "IF",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [1120, 400]
-		},
-		{
-			"parameters": {
-				"values": {
-					"number": [
-						{
-							"name": "start",
-							"value": "={{ $now.plus({seconds: 2}).toFormat('ss') }}"
-						}
-					]
-				},
-				"options": {}
-			},
-			"id": "7f88ca0b-b743-414e-ae03-d85c0efcbece",
-			"name": "Set",
-			"type": "n8n-nodes-base.set",
-			"typeVersion": 1,
-			"position": [700, 400]
+			"position": [960, 420]
 		},
 		{
 			"parameters": {
@@ -69,11 +52,37 @@
 				},
 				"options": {}
 			},
-			"id": "d55dc8cf-7e5e-4282-854b-9047e179a06b",
+			"id": "a78417b6-d3f5-4bbc-916a-d4b9d46961cc",
 			"name": "Set1",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [1340, 380]
+			"position": [1180, 400]
+		},
+		{
+			"parameters": {
+				"value": "={{ $now }}",
+				"dataPropertyName": "afterTimestamp",
+				"toFormat": "X",
+				"options": {}
+			},
+			"id": "94f042ea-49d5-44ea-9ccf-93dac8d27d4a",
+			"name": "After",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [760, 420]
+		},
+		{
+			"parameters": {
+				"value": "={{ $now }}",
+				"dataPropertyName": "startTimestamp",
+				"toFormat": "X",
+				"options": {}
+			},
+			"id": "43f8a396-1bf7-484e-962c-120f677dfa51",
+			"name": "Before",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 420]
 		}
 	],
 	"pinData": {
@@ -90,7 +99,7 @@
 			"main": [
 				[
 					{
-						"node": "Set",
+						"node": "Before",
 						"type": "main",
 						"index": 0
 					}
@@ -101,18 +110,7 @@
 			"main": [
 				[
 					{
-						"node": "IF",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Set": {
-			"main": [
-				[
-					{
-						"node": "Wait",
+						"node": "After",
 						"type": "main",
 						"index": 0
 					}
@@ -127,17 +125,38 @@
 						"type": "main",
 						"index": 0
 					}
-				],
-				[]
+				]
+			]
+		},
+		"After": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Before": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
 			]
 		}
 	},
 	"active": false,
 	"settings": {},
-	"versionId": "1bd65d2e-3a90-478d-89ae-319ceed2dbf8",
-	"id": "391",
+	"versionId": "8ed794a0-5c04-4b8a-9a49-02c2c7f8003f",
+	"id": "500",
 	"meta": {
-		"instanceId": "REMOVED"
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
 	},
 	"tags": []
 }
