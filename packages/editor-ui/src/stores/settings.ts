@@ -8,21 +8,17 @@ import {
 } from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import {
-	CONTACT_PROMPT_MODAL_KEY,
-	EnterpriseEditionFeature,
-	STORES,
-	VALUE_SURVEY_MODAL_KEY,
-} from '@/constants';
-import {
+import type { EnterpriseEditionFeature } from '@/constants';
+import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import type {
 	ILdapConfig,
 	IN8nPromptResponse,
 	IN8nPrompts,
 	IN8nValueSurveyData,
 	ISettingsState,
-	UserManagementAuthenticationMethod,
 } from '@/Interface';
-import {
+import { UserManagementAuthenticationMethod } from '@/Interface';
+import type {
 	IDataObject,
 	ILogLevel,
 	IN8nUISettings,

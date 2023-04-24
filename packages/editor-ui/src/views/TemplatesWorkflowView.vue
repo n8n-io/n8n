@@ -59,7 +59,7 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
-import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import type { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/utils';

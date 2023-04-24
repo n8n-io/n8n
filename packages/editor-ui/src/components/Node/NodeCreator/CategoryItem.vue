@@ -7,7 +7,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ICategoryItemProps } from '@/Interface';
+import type { ICategoryItemProps } from '@/Interface';
 
 export interface Props {
 	item: ICategoryItemProps;

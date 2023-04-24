@@ -1,4 +1,4 @@
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore, useUsageStore } from '@/stores';
 import { useI18n } from '@/composables';
 import { computed } from 'vue';

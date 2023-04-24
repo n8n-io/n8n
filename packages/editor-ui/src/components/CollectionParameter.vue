@@ -46,16 +46,17 @@
 </template>
 
 <script lang="ts">
-import { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import { deepCopy, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
-import { Component } from 'vue';
+import type { Component } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 

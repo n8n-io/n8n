@@ -1,6 +1,7 @@
-import { Response, Server } from 'miragejs';
-import { AppSchema } from '../types';
-import { IN8nUISettings } from 'n8n-workflow';
+import type { Server } from 'miragejs';
+import { Response } from 'miragejs';
+import type { AppSchema } from '../types';
+import type { IN8nUISettings } from 'n8n-workflow';
 
 const defaultSettings: IN8nUISettings = {
 	allowedModules: {},
