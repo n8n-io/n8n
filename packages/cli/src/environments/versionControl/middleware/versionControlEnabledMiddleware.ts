@@ -1,5 +1,4 @@
 import type { RequestHandler } from 'express';
-import type { AuthenticatedRequest } from '@/requests';
 import {
 	isVersionControlLicensed,
 	isVersionControlLicensedAndEnabled,

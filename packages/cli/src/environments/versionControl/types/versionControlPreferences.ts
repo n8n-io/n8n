@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsHexColor, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsBoolean, IsEmail, IsHexColor, IsOptional, IsString } from 'class-validator';
 
 export class VersionControlPreferences {
 	constructor(preferences: Partial<VersionControlPreferences> | undefined = undefined) {
