@@ -20,7 +20,8 @@ import { Telemetry } from '@/plugins/telemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { externalHooks } from '@/mixins/externalHooks';
+import { runExternalHook } from '@/utils';
+import { useWebhooksStore } from '@/stores/webhooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 
@@ -195,15 +196,13 @@ export const useActions = () => {
 	}
 
 	function trackActionSelected(action: IUpdateInformation, telemetry: Telemetry, rootView: string) {
-		const { $externalHooks } = new externalHooks();
-
 		const payload = {
 			node_type: action.key,
 			action: action.name,
 			source_mode: rootView.toLowerCase(),
 			resource: (action.value as INodeParameters).resource || '',
 		};
-		$externalHooks().run('nodeCreateList.addAction', payload);
+		runExternalHook('nodeCreateList.addAction', useWebhooksStore(), payload);
 		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 	}
 

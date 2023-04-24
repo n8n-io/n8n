@@ -17,7 +17,9 @@ import {
 
 import { usePostHog } from '@/stores/posthog';
 import { useUsersStore } from '@/stores/users';
-import { externalHooks } from '@/mixins/externalHooks';
+import { useWebhooksStore } from '@/stores/webhooks';
+import { runExternalHook } from '@/utils';
+
 
 import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
@@ -32,7 +34,6 @@ const emit = defineEmits({
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
 
-const { $externalHooks } = new externalHooks();
 const { userActivated } = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
@@ -177,7 +178,7 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 
@@ -198,7 +199,7 @@ function addHttpNode() {
 	if (telemetry) setAddedNodeActionParameters(updateData, telemetry, false);
 
 	const app_identifier = actions.value[0].key;
-	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), { app_identifier });
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 }
 

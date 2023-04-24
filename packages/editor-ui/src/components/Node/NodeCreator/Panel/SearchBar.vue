@@ -25,7 +25,8 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
-import { useExternalHooks } from '@/composables';
+import { useWebhooksStore } from '@/stores/webhooks';
+import { runExternalHook } from '@/utils';
 
 export interface Props {
 	placeholder: string;
@@ -40,8 +41,6 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	(event: 'input', value: string): void;
 }>();
-
-const externalHooks = useExternalHooks();
 
 const state = reactive({
 	inputRef: null as HTMLInputElement | null,
@@ -61,7 +60,7 @@ function clear() {
 }
 
 onMounted(() => {
-	externalHooks.run('nodeCreator_searchBar.mount', { inputRef: state.inputRef });
+	runExternalHook('nodeCreator_searchBar.mount', useWebhooksStore(), { inputRef: state.inputRef });
 	setTimeout(focus, 0);
 });
 
