@@ -1,4 +1,5 @@
 import express from 'express';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
@@ -125,9 +126,9 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(SamlUrls.samlOnboarding);
+						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
-						return res.redirect(SamlUrls.defaultRedirect);
+						return res.redirect(getInstanceBaseUrl() + SamlUrls.defaultRedirect);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
