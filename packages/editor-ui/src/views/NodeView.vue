@@ -205,7 +205,6 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
-import { restApi } from '@/mixins/restApi';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { showMessage } from '@/mixins/showMessage';
@@ -322,7 +321,6 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	moveNodeWorkflow,
-	restApi,
 	showMessage,
 	workflowHelpers,
 	workflowRun,
@@ -783,7 +781,7 @@ export default mixins(
 			this.resetWorkspace();
 			let data: IExecutionResponse | undefined;
 			try {
-				data = await this.restApi().getExecution(executionId);
+				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
 				return;
@@ -1403,14 +1401,14 @@ export default mixins(
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.restApi().stopCurrentExecution(executionId);
+				await this.workflowsStore.stopCurrentExecution(executionId);
 				this.$showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
-				const execution = await this.restApi().getExecution(executionId);
+				const execution = await this.workflowsStore.getExecution(executionId);
 
 				if (execution === undefined) {
 					// execution finished but was not saved (e.g. due to low connectivity)
@@ -1476,7 +1474,7 @@ export default mixins(
 
 		async stopWaitingForWebhook() {
 			try {
-				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
+				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
 				this.$showError(
 					error,
@@ -1549,7 +1547,7 @@ export default mixins(
 
 			this.startLoading();
 			try {
-				workflowData = await this.restApi().getWorkflowFromUrl(url);
+				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
 				this.stopLoading();
 				this.$showError(
@@ -2586,7 +2584,7 @@ export default mixins(
 				if (workflowId !== null) {
 					let workflow: IWorkflowDb | undefined = undefined;
 					try {
-						workflow = await this.restApi().getWorkflow(workflowId);
+						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
 					} catch (error) {
 						this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
 
@@ -3586,8 +3584,7 @@ export default mixins(
 			return Promise.resolve();
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.workflowsStore.activeWorkflows = activeWorkflows;
+			await this.workflowsStore.fetchActiveWorkflows();
 		},
 		async loadNodeTypes(): Promise<void> {
 			await this.nodeTypesStore.getNodeTypes();

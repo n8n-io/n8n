@@ -44,7 +44,6 @@ import {
 } from '../Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
@@ -325,7 +324,7 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showMessage).extend({
+export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).extend({
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -664,7 +663,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 			if (isCurrentWorkflow) {
 				data = await this.getWorkflowDataToSave();
 			} else {
-				const { versionId } = await this.restApi().getWorkflow(workflowId);
+				const { versionId } = await this.workflowsStore.fetchWorkflow(workflowId);
 				data.versionId = versionId;
 			}
 
@@ -672,7 +671,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				data.active = active;
 			}
 
-			const workflow = await this.restApi().updateWorkflow(workflowId, data);
+			const workflow = await this.workflowsStore.updateWorkflow(workflowId, data);
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 			if (isCurrentWorkflow) {
@@ -714,7 +713,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 				workflowDataRequest.versionId = this.workflowsStore.workflowVersionId;
 
-				const workflowData = await this.restApi().updateWorkflow(
+				const workflowData = await this.workflowsStore.updateWorkflow(
 					currentWorkflow,
 					workflowDataRequest,
 					forceSave,
@@ -831,7 +830,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				if (tags) {
 					workflowDataRequest.tags = tags;
 				}
-				const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
 
@@ -944,7 +943,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		async dataHasChanged(id: string) {
 			const currentData = await this.getWorkflowDataToSave();
 
-			const data: IWorkflowDb = await this.restApi().getWorkflow(id);
+			const data: IWorkflowDb = await this.workflowsStore.fetchWorkflow(id);
 
 			if (data !== undefined) {
 				const x = {

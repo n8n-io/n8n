@@ -139,43 +139,6 @@ export interface IExternalHooks {
 	run(eventName: string, metadata?: IDataObject): Promise<void>;
 }
 
-/**
- * @deprecated Do not add methods to this interface.
- */
-export interface IRestApi {
-	getActiveWorkflows(): Promise<string[]>;
-	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: ExecutionsQueryFilter): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(
-		filter: ExecutionsQueryFilter,
-		limit: number,
-		lastId?: string,
-		firstId?: string,
-	): Promise<IExecutionsListResponse>;
-	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
-	getCredentialTranslation(credentialType: string): Promise<object>;
-	removeTestWebhook(workflowId: string): Promise<boolean>;
-	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
-	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
-	updateWorkflow(id: string, data: IWorkflowDataUpdate, forceSave?: boolean): Promise<IWorkflowDb>;
-	deleteWorkflow(name: string): Promise<void>;
-	getWorkflow(id: string): Promise<IWorkflowDb>;
-	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
-	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	getExecution(id: string): Promise<IExecutionResponse | undefined>;
-	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
-	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
-	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(
-		dataPath: string,
-		mode: 'view' | 'download',
-		fileName?: string,
-		mimeType?: string,
-	): string;
-	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
-}
-
 export interface INodeTranslationHeaders {
 	data: {
 		[key: string]: {
