@@ -195,6 +195,11 @@ const config = (module.exports = {
 		'@typescript-eslint/consistent-type-assertions': 'error',
 
 		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
+		 */
+		'@typescript-eslint/consistent-type-imports': 'error',
+
+		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 		 */
 		'@typescript-eslint/member-delimiter-style': [
@@ -394,6 +399,18 @@ const config = (module.exports = {
 				destructuredArrayIgnorePattern: '^_',
 				varsIgnorePattern: '^_',
 				ignoreRestSiblings: true,
+			},
+		],
+
+		/**
+		 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
+		 */
+		'no-restricted-syntax': [
+			'error',
+			{
+				selector: 'TSEnumDeclaration:not([const=true])',
+				message:
+					'Do not declare raw enums as it leads to runtime overhead. Use const enum instead. See https://www.typescriptlang.org/docs/handbook/enums.html#const-enums',
 			},
 		],
 

@@ -1,10 +1,10 @@
 import express from 'express';
-import { Get, Post, RestController } from '@/decorators';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Authorized, Get, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
-	samlLicensedOwnerMiddleware,
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
@@ -39,7 +39,8 @@ export class SamlController {
 	 * GET /sso/saml/config
 	 * Return SAML config
 	 */
-	@Get(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Get(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
 	async configGet() {
 		const prefs = this.samlService.samlPreferences;
 		return {
@@ -53,7 +54,8 @@ export class SamlController {
 	 * POST /sso/saml/config
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.config, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Post(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
 	async configPost(req: SamlConfiguration.Update) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
@@ -71,7 +73,8 @@ export class SamlController {
 	 * POST /sso/saml/config/toggle
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedMiddleware] })
 	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
@@ -123,9 +126,9 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(SamlUrls.samlOnboarding);
+						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
-						return res.redirect(SamlUrls.defaultRedirect);
+						return res.redirect(getInstanceBaseUrl() + SamlUrls.defaultRedirect);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
@@ -155,7 +158,8 @@ export class SamlController {
 	 * Test SAML config
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
-	@Get(SamlUrls.configTest, { middlewares: [samlLicensedOwnerMiddleware] })
+	@Authorized(['global', 'owner'])
+	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
 	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
 		return this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
 	}

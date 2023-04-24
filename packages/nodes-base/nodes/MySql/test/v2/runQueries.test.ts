@@ -23,7 +23,7 @@ const fakeConnection = {
 	format(query: string, values: any[]) {
 		return mysql2.format(query, values);
 	},
-	query: jest.fn(async () => Promise.resolve([{}])),
+	query: jest.fn(async () => [{}]),
 	release: jest.fn(),
 	beginTransaction: jest.fn(),
 	commit: jest.fn(),
@@ -35,7 +35,7 @@ const createFakePool = (connection: IDataObject) => {
 		getConnection() {
 			return connection;
 		},
-		query: jest.fn(async () => Promise.resolve([{}])),
+		query: jest.fn(async () => [{}]),
 	} as unknown as Mysql2Pool;
 };
 

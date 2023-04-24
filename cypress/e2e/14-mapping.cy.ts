@@ -205,7 +205,7 @@ describe('Data mapping', () => {
 				'have.text',
 				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
 			);
-		ndv.getters.parameterExpressionPreview('value').should('not.exist');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '[empty]');
 
 		ndv.actions.selectInputNode('Set');
 

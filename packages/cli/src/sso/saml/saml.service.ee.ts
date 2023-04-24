@@ -73,9 +73,8 @@ export class SamlService {
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					return Promise.reject(new Error('Invalid SAML response'));
+					throw new Error('Invalid SAML response');
 				}
-				return Promise.resolve();
 			},
 		});
 	}

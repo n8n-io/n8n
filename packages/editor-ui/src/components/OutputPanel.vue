@@ -98,9 +98,9 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, INodeUi } from '@/Interface';
-import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import Vue from 'vue';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { pinData } from '@/mixins/pinData';
@@ -111,7 +111,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = InstanceType<typeof RunData>;
 
 export default mixins(pinData).extend({
 	name: 'OutputPanel',
@@ -242,8 +242,9 @@ export default mixins(pinData).extend({
 	},
 	methods: {
 		insertTestData() {
-			if (this.$refs.runData) {
-				(this.$refs.runData as RunDataRef).enterEditMode({
+			const runDataRef = this.$refs.runData as RunDataRef | undefined;
+			if (runDataRef) {
+				runDataRef.enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 

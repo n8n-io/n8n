@@ -52,7 +52,7 @@ const createMockDb = (columnInfo: ColumnInfo[]) => {
 	} as unknown as PgpDatabase;
 };
 
-// if node parameters copied from canvas all default parameters has to be added manualy as JSON would not have them
+// if node parameters copied from canvas all default parameters has to be added manually as JSON would not have them
 describe('Test PostgresV2, deleteTable operation', () => {
 	afterEach(() => {
 		jest.clearAllMocks();
