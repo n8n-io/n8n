@@ -32,7 +32,6 @@ import type {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
 } from 'n8n-workflow';

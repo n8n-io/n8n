@@ -72,10 +72,9 @@
 import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import Vue from 'vue';
 
 import mixins from 'vue-typed-mixins';
-import { IFormInputs } from '@/Interface';
+import type { IFormInputs } from '@/Interface';
 
 import Logo from '../components/Logo.vue';
 import {
