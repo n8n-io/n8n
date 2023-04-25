@@ -1,6 +1,6 @@
 import { getCurrentInstance, computed } from 'vue';
-import { IDataObject, INodeParameters } from 'n8n-workflow';
-import {
+import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import type {
 	ActionTypeDescription,
 	INodeCreateElement,
 	IUpdateInformation,
@@ -15,8 +15,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import { BaseTextKey } from '@/plugins/i18n';
-import { Telemetry } from '@/plugins/telemetry';
+import type { BaseTextKey } from '@/plugins/i18n';
+import type { Telemetry } from '@/plugins/telemetry';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';

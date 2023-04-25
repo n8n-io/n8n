@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue';
-import { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement } from '@/Interface';
 import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator';

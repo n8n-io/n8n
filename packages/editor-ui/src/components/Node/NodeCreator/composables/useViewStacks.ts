@@ -1,7 +1,7 @@
 import { computed, ref, set } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
+import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator';

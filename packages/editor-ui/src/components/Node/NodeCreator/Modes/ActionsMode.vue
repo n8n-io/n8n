@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, VNode, PropType, onMounted, defineComponent } from 'vue';
-import {
+import { computed, getCurrentInstance, onMounted, defineComponent } from 'vue';
+import type { VNode, PropType } from 'vue';
+import type {
 	INodeCreateElement,
 	ActionTypeDescription,
 	NodeFilterType,

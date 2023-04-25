@@ -1,7 +1,7 @@
 import Vue from 'vue';
-import { PiniaVuePlugin, createPinia } from 'pinia';
+import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { render, screen, fireEvent, waitFor } from '@testing-library/vue';
+import { render, fireEvent } from '@testing-library/vue';
 import {
 	mockSubcategoryCreateElement,
 	mockLabelCreateElement,

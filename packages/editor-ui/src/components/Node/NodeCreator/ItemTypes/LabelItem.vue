@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts" setup>
-import { LabelItemProps } from '@/Interface';
+import type { LabelItemProps } from '@/Interface';
 
 export interface Props {
 	item: LabelItemProps;

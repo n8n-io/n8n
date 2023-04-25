@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, ref, getCurrentInstance } from 'vue';
-import { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement } from '@/Interface';
 
 import { useWorkflowsStore } from '@/stores/workflows';
 

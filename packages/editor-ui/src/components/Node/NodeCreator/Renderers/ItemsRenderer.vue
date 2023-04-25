@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement } from '@/Interface';
 import { onMounted, watch, onUnmounted, ref, computed } from 'vue';
 
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';

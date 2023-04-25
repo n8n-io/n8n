@@ -1,12 +1,13 @@
-import Vue, { defineComponent, PropType, watch } from 'vue';
+import Vue, { defineComponent, watch } from 'vue';
+import type { PropType } from 'vue';
 import { PiniaVuePlugin, createPinia } from 'pinia';
 import { render, screen, fireEvent } from '@testing-library/vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { mockSimplifiedNodeType } from './utils';
 import NodesListPanel from '../Panel/NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
-import { NodeFilterType } from '@/Interface';
+import type { NodeFilterType } from '@/Interface';
 
 function TelemetryPlugin(vue: typeof Vue): void {
 	Object.defineProperty(vue, '$telemetry', {

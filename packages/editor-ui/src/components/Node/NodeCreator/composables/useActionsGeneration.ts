@@ -1,13 +1,13 @@
 import { startCase } from 'lodash-es';
-import {
+import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeProperties,
 	INodeTypeDescription,
-	deepCopy,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
+import type { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
 
 import { i18n } from '@/plugins/i18n';
 

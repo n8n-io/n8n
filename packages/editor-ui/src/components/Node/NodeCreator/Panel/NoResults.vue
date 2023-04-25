@@ -47,7 +47,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/constants';
-import { NodeFilterType } from '@/Interface';
+import type { NodeFilterType } from '@/Interface';
 
 import NoResultsIcon from './NoResultsIcon.vue';
 

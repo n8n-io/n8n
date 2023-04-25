@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
 import { getCurrentInstance, computed } from 'vue';
-import { INodeCreateElement, NodeFilterType } from '@/Interface';
+import type { INodeCreateElement, NodeFilterType } from '@/Interface';
 import { TRIGGER_NODE_CREATOR_VIEW, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
