@@ -35,6 +35,9 @@ const config = (module.exports = {
 		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
 		 */
 		'eslint-plugin-n8n-local-rules',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn */
+		'eslint-plugin-unicorn',
 	],
 
 	extends: [
@@ -193,6 +196,11 @@ const config = (module.exports = {
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-assertions.md
 		 */
 		'@typescript-eslint/consistent-type-assertions': 'error',
+
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
+		 */
+		'@typescript-eslint/consistent-type-imports': 'error',
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -417,6 +425,12 @@ const config = (module.exports = {
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
 		 */
 		'import/prefer-default-export': 'off',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
+		'unicorn/no-unnecessary-await': 'error',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
+		'unicorn/no-useless-promise-resolve-reject': 'error',
 	},
 
 	overrides: [

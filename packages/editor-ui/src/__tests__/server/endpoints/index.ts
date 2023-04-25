@@ -1,4 +1,4 @@
-import { Server } from 'miragejs';
+import type { Server } from 'miragejs';
 import { routesForUsers } from './user';
 import { routesForCredentials } from './credential';
 import { routesForCredentialTypes } from './credentialType';

@@ -13,7 +13,8 @@ import {
 } from '@/plugins/codemirror/completions/datatype.completions';
 
 import { mockNodes, mockProxy } from './mock';
-import { CompletionContext, CompletionSource, CompletionResult } from '@codemirror/autocomplete';
+import type { CompletionSource, CompletionResult } from '@codemirror/autocomplete';
+import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 
