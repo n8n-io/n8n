@@ -79,12 +79,9 @@
 
 <script setup lang="ts">
 import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
-import {
-	INodeTypeDescription,
-	INodeActionTypeDescription,
-	INodeTypeNameVersion,
-} from 'n8n-workflow';
-import {
+import type { INodeTypeDescription, INodeActionTypeDescription } from 'n8n-workflow';
+import { INodeTypeNameVersion } from 'n8n-workflow';
+import type {
 	INodeCreateElement,
 	NodeCreateElement,
 	IActionItemProps,
@@ -105,12 +102,12 @@ import {
 import CategorizedItems from './CategorizedItems.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
-import { externalHooks } from '@/mixins/externalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import NoResults from './NoResults.vue';
 import { useRootStore } from '@/stores/n8nRootStore';
 import useMainPanelView from './useMainPanelView';
+import { useExternalHooks } from '@/composables';
 
 const instance = getCurrentInstance();
 
@@ -124,7 +121,8 @@ const state = reactive({
 	activeNodeActions: null as INodeTypeDescription | null,
 });
 const { baseUrl } = useRootStore();
-const { $externalHooks } = new externalHooks();
+const externalHooks = useExternalHooks();
+
 const {
 	mergedAppNodes,
 	getActionData,
@@ -324,7 +322,7 @@ function addHttpNode(isAction: boolean) {
 		setAddedNodeActionParameters(updateData, telemetry, false);
 
 		const app_identifier = state.activeNodeActions?.name;
-		$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+		externalHooks.run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 		telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 	}
 }
@@ -362,7 +360,7 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	externalHooks.run('nodeCreateList.onViewActions', trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 

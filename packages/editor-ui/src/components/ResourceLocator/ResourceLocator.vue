@@ -135,25 +135,27 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import {
+import type {
 	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeListSearchItems,
-	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
+import { INodeListSearchResult } from 'n8n-workflow';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import type { PropType } from 'vue';
+import type Vue from 'vue';
+import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import { INodeUi } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -165,6 +167,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+
+type ResourceLocatorDropdownRef = InstanceType<typeof ResourceLocatorDropdown>;
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -407,9 +411,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	watch: {
 		currentQueryError(curr: boolean, prev: boolean) {
 			if (this.showResourceDropdown && curr && !prev) {
-				const input = this.$refs.input;
-				if (input) {
-					(input as HTMLElement).focus();
+				const inputRef = this.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}
 		},
@@ -445,7 +449,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	methods: {
 		setWidth() {
-			const containerRef = this.$refs.container as HTMLElement;
+			const containerRef = this.$refs.container as HTMLElement | undefined;
 			if (containerRef) {
 				this.width = containerRef?.offsetWidth;
 			}
@@ -465,9 +469,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			this.trackEvent('User refreshed resource locator list');
 		},
 		onKeyDown(e: MouseEvent) {
-			const dropdown = this.$refs.dropdown;
-			if (dropdown && this.showResourceDropdown && !this.isSearchable) {
-				(dropdown as Vue).$emit('keyDown', e);
+			const dropdownRef = this.$refs.dropdown as ResourceLocatorDropdownRef | undefined;
+			if (dropdownRef && this.showResourceDropdown && !this.isSearchable) {
+				dropdownRef.$emit('keyDown', e);
 			}
 		},
 		openResource(url: string) {

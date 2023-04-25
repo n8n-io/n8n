@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { INodeCreateElement, NodeCreateElement } from '@/Interface';
+import type { INodeCreateElement, NodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';

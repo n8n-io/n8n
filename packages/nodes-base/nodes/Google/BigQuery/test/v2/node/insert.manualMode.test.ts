@@ -17,7 +17,7 @@ jest.mock('../../../v2/transport', () => {
 					'/v2/projects/test-project/datasets/bigquery_node_dev_test_dataset/tables/test_json' &&
 				method === 'GET'
 			) {
-				return Promise.resolve({
+				return {
 					schema: {
 						fields: [
 							{ name: 'json', type: 'JSON' },
@@ -25,22 +25,21 @@ jest.mock('../../../v2/transport', () => {
 							{ name: 'active', type: 'BOOLEAN' },
 						],
 					},
-				});
+				};
 			}
 			if (
 				resource ===
 					'/v2/projects/test-project/datasets/bigquery_node_dev_test_dataset/tables/test_json/insertAll' &&
 				method === 'POST'
 			) {
-				return Promise.resolve({ kind: 'bigquery#tableDataInsertAllResponse' });
+				return { kind: 'bigquery#tableDataInsertAllResponse' };
 			}
-			return Promise.resolve();
 		}),
-		googleApiRequestAllItems: jest.fn(async () => Promise.resolve()),
+		googleApiRequestAllItems: jest.fn(async () => {}),
 	};
 });
 
-describe('Test Google BigQuery V2, insert define manualy', () => {
+describe('Test Google BigQuery V2, insert define manually', () => {
 	const workflows = ['nodes/Google/BigQuery/test/v2/node/insert.manualMode.workflow.json'];
 	const tests = workflowToTests(workflows);
 

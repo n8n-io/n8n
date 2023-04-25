@@ -40,10 +40,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { ITemplatesNode } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { ITemplatesNode } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';
 
@@ -54,7 +54,7 @@ interface NodeIconData {
 	fileBuffer?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'HoverableNodeIcon',
 	props: {
 		circle: {

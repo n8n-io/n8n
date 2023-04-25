@@ -1,5 +1,5 @@
 import { makeRestApiRequest } from '@/utils';
-import {
+import type {
 	IRestApiContext,
 	SamlPreferencesLoginEnabled,
 	SamlPreferences,
