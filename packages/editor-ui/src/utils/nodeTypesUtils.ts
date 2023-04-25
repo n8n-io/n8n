@@ -1,4 +1,4 @@
-import { MAIN_AUTH_FIELD_NAME, NODE_RESOURCE_FIELD_NAME } from './../constants';
+import { MAIN_AUTH_FIELD_NAME } from './../constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from './../stores/nodeTypes';
 import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
@@ -38,7 +38,6 @@ import type {
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 import { useCredentialsStore } from '@/stores/credentials';
 import { i18n as locale } from '@/plugins/i18n';
-import { useSettingsStore } from '@/stores/settings';
 
 /*
 	Constants and utility functions mainly used to get information about

@@ -337,7 +337,6 @@ import type {
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import { WorkflowCallerPolicyDefaultOption } from '@/Interface';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
