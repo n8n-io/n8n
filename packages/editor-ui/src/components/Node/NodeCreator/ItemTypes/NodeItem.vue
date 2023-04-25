@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { computed, ref, getCurrentInstance } from 'vue';
-import { SimplifiedNodeType } from '@/Interface';
+import type { SimplifiedNodeType } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
 
 import { isCommunityPackageName } from '@/utils';

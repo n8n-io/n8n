@@ -1,5 +1,5 @@
 import VariablesRow from '../VariablesRow.vue';
-import { EnvironmentVariable } from '@/Interface';
+import type { EnvironmentVariable } from '@/Interface';
 import { fireEvent } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';

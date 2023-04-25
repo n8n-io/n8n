@@ -1,20 +1,20 @@
 import { MAIN_AUTH_FIELD_NAME } from './../constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from './../stores/nodeTypes';
-import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
+import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
 	MAPPING_PARAMS,
 } from '@/constants';
-import {
+import type {
 	INodeUi,
 	ITemplatesNode,
 	NodeAuthenticationOption,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,

@@ -4,7 +4,7 @@ import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useTelemetryStore } from '@/stores/telemetry';
-import { IN8nUISettings } from 'n8n-workflow';
+import type { IN8nUISettings } from 'n8n-workflow';
 
 const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,

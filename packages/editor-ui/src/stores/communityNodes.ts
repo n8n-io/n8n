@@ -7,9 +7,9 @@ import {
 import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import Vue from 'vue';
-import { CommunityNodesState, CommunityPackageMap } from '@/Interface';
+import type { CommunityNodesState, CommunityPackageMap } from '@/Interface';
 import { STORES } from '@/constants';
 
 const LOADER_DELAY = 300;

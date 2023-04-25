@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
-import type express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
@@ -12,7 +11,6 @@ import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories';
-import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';
@@ -194,30 +192,6 @@ export async function getUserById(userId: string): Promise<User> {
 		relations: ['globalRole'],
 	});
 	return user;
-}
-
-/**
- * Check if a URL contains an auth-excluded endpoint.
- */
-export function isAuthExcluded(url: string, ignoredEndpoints: Readonly<string[]>): boolean {
-	return !!ignoredEndpoints
-		.filter(Boolean) // skip empty paths
-		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
-}
-
-/**
- * Check if the endpoint is `POST /users/:id`.
- */
-export function isPostUsersId(req: express.Request, restEndpoint: string): boolean {
-	return (
-		req.method === 'POST' &&
-		new RegExp(`/${restEndpoint}/users/[\\w\\d-]*`).test(req.url) &&
-		!req.url.includes('reinvite')
-	);
-}
-
-export function isAuthenticatedRequest(request: express.Request): request is AuthenticatedRequest {
-	return request.user !== undefined;
 }
 
 // ----------------------------------

@@ -1,4 +1,5 @@
-import { EditorView, Decoration, DecorationSet } from '@codemirror/view';
+import type { DecorationSet } from '@codemirror/view';
+import { EditorView, Decoration } from '@codemirror/view';
 import { StateField, StateEffect } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';

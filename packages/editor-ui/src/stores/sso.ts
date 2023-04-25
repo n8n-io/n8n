@@ -1,10 +1,10 @@
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import * as ssoApi from '@/api/sso';
-import { SamlPreferences } from '@/Interface';
+import type { SamlPreferences } from '@/Interface';
 import { updateCurrentUser } from '@/api/users';
 import { useUsersStore } from '@/stores/users';
 

@@ -271,11 +271,10 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
-import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
@@ -292,625 +291,620 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { isEmpty, setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
-export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
-	{
-		name: 'ExecutionsList',
-		components: {
-			ExecutionTime,
-			WorkflowActivator,
-			ExecutionFilter,
+export default mixins(externalHooks, genericHelpers, executionHelpers, showMessage).extend({
+	name: 'ExecutionsList',
+	components: {
+		ExecutionTime,
+		WorkflowActivator,
+		ExecutionFilter,
+	},
+	data() {
+		return {
+			finishedExecutions: [] as IExecutionsSummary[],
+			finishedExecutionsCount: 0,
+			finishedExecutionsCountEstimated: false,
+
+			allVisibleSelected: false,
+			allExistingSelected: false,
+			autoRefresh: true,
+			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+
+			filter: {} as ExecutionFilterType,
+
+			isDataLoading: false,
+
+			requestItemsPerRequest: 10,
+
+			selectedItems: {} as { [key: string]: boolean },
+
+			stoppingExecutions: [] as string[],
+			workflows: [] as IWorkflowShortResponse[],
+		};
+	},
+	mounted() {
+		setPageTitle(`n8n - ${this.pageTitle}`);
+	},
+	async created() {
+		await this.loadWorkflows();
+		//await this.refreshData();
+		this.handleAutoRefreshToggle();
+
+		this.$externalHooks().run('executionsList.openDialog');
+		this.$telemetry.track('User opened Executions log', {
+			workflow_id: this.workflowsStore.workflowId,
+		});
+	},
+	beforeDestroy() {
+		if (this.autoRefreshInterval) {
+			clearInterval(this.autoRefreshInterval);
+			this.autoRefreshInterval = undefined;
+		}
+	},
+	computed: {
+		...mapStores(useUIStore, useWorkflowsStore),
+		activeExecutions(): IExecutionsCurrentSummaryExtended[] {
+			return this.workflowsStore.activeExecutions;
 		},
-		data() {
-			return {
-				finishedExecutions: [] as IExecutionsSummary[],
-				finishedExecutionsCount: 0,
-				finishedExecutionsCountEstimated: false,
+		combinedExecutions(): IExecutionsSummary[] {
+			const returnData: IExecutionsSummary[] = [];
 
-				allVisibleSelected: false,
-				allExistingSelected: false,
-				autoRefresh: true,
-				autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			if (['all', 'running'].includes(this.filter.status)) {
+				returnData.push(...this.activeExecutions);
+			}
+			if (['all', 'error', 'success', 'waiting'].includes(this.filter.status)) {
+				returnData.push(...this.finishedExecutions);
+			}
 
-				filter: {} as ExecutionFilterType,
-
-				isDataLoading: false,
-
-				requestItemsPerRequest: 10,
-
-				selectedItems: {} as { [key: string]: boolean },
-
-				stoppingExecutions: [] as string[],
-				workflows: [] as IWorkflowShortResponse[],
-			};
+			return returnData.filter(
+				(execution) =>
+					this.filter.workflowId === 'all' || execution.workflowId === this.filter.workflowId,
+			);
 		},
-		mounted() {
-			setPageTitle(`n8n - ${this.pageTitle}`);
-		},
-		async created() {
-			await this.loadWorkflows();
-			//await this.refreshData();
-			this.handleAutoRefreshToggle();
+		numSelected(): number {
+			if (this.allExistingSelected) {
+				return this.finishedExecutionsCount;
+			}
 
-			this.$externalHooks().run('executionsList.openDialog');
-			this.$telemetry.track('User opened Executions log', {
-				workflow_id: this.workflowsStore.workflowId,
+			return Object.keys(this.selectedItems).length;
+		},
+		workflowFilterCurrent(): ExecutionsQueryFilter {
+			const filter: ExecutionsQueryFilter = {};
+			if (this.filter.workflowId !== 'all') {
+				filter.workflowId = this.filter.workflowId;
+			}
+			return filter;
+		},
+		workflowFilterPast(): ExecutionsQueryFilter {
+			return executionFilterToQueryFilter(this.filter);
+		},
+		pageTitle() {
+			return this.$locale.baseText('executionsList.workflowExecutions');
+		},
+	},
+	methods: {
+		closeDialog() {
+			this.$emit('closeModal');
+		},
+		displayExecution(execution: IExecutionsSummary) {
+			const route = this.$router.resolve({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: execution.workflowId, executionId: execution.id },
 			});
+			window.open(route.href, '_blank');
 		},
-		beforeDestroy() {
+		handleAutoRefreshToggle() {
 			if (this.autoRefreshInterval) {
+				// Clear any previously existing intervals (if any - there shouldn't)
 				clearInterval(this.autoRefreshInterval);
 				this.autoRefreshInterval = undefined;
 			}
+
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
+			}
 		},
-		computed: {
-			...mapStores(useUIStore, useWorkflowsStore),
-			activeExecutions(): IExecutionsCurrentSummaryExtended[] {
-				return this.workflowsStore.activeExecutions;
-			},
-			combinedExecutions(): IExecutionsSummary[] {
-				const returnData: IExecutionsSummary[] = [];
-
-				if (['all', 'running'].includes(this.filter.status)) {
-					returnData.push(...this.activeExecutions);
-				}
-				if (['all', 'error', 'success', 'waiting'].includes(this.filter.status)) {
-					returnData.push(...this.finishedExecutions);
-				}
-
-				return returnData.filter(
-					(execution) =>
-						this.filter.workflowId === 'all' || execution.workflowId === this.filter.workflowId,
-				);
-			},
-			numSelected(): number {
-				if (this.allExistingSelected) {
-					return this.finishedExecutionsCount;
-				}
-
-				return Object.keys(this.selectedItems).length;
-			},
-			workflowFilterCurrent(): ExecutionsQueryFilter {
-				const filter: ExecutionsQueryFilter = {};
-				if (this.filter.workflowId !== 'all') {
-					filter.workflowId = this.filter.workflowId;
-				}
-				return filter;
-			},
-			workflowFilterPast(): ExecutionsQueryFilter {
-				return executionFilterToQueryFilter(this.filter);
-			},
-			pageTitle() {
-				return this.$locale.baseText('executionsList.workflowExecutions');
-			},
+		handleCheckAllExistingChange() {
+			this.allExistingSelected = !this.allExistingSelected;
+			this.allVisibleSelected = !this.allExistingSelected;
+			this.handleCheckAllVisibleChange();
 		},
-		methods: {
-			closeDialog() {
-				this.$emit('closeModal');
-			},
-			displayExecution(execution: IExecutionsSummary) {
-				const route = this.$router.resolve({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: execution.workflowId, executionId: execution.id },
-				});
-				window.open(route.href, '_blank');
-			},
-			handleAutoRefreshToggle() {
-				if (this.autoRefreshInterval) {
-					// Clear any previously existing intervals (if any - there shouldn't)
-					clearInterval(this.autoRefreshInterval);
-					this.autoRefreshInterval = undefined;
-				}
+		handleCheckAllVisibleChange() {
+			this.allVisibleSelected = !this.allVisibleSelected;
+			if (!this.allVisibleSelected) {
+				this.allExistingSelected = false;
+				Vue.set(this, 'selectedItems', {});
+			} else {
+				this.selectAllVisibleExecutions();
+			}
+		},
+		handleCheckboxChanged(executionId: string) {
+			if (this.selectedItems[executionId]) {
+				Vue.delete(this.selectedItems, executionId);
+			} else {
+				Vue.set(this.selectedItems, executionId, true);
+			}
+			this.allVisibleSelected =
+				Object.keys(this.selectedItems).length === this.combinedExecutions.length;
+			this.allExistingSelected =
+				Object.keys(this.selectedItems).length === this.finishedExecutionsCount;
+		},
+		async handleDeleteSelected() {
+			const deleteExecutions = await this.confirmMessage(
+				this.$locale.baseText('executionsList.confirmMessage.message', {
+					interpolate: { numSelected: this.numSelected.toString() },
+				}),
+				this.$locale.baseText('executionsList.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('executionsList.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
+			);
 
-				if (this.autoRefresh) {
-					this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
-				}
-			},
-			handleCheckAllExistingChange() {
-				this.allExistingSelected = !this.allExistingSelected;
-				this.allVisibleSelected = !this.allExistingSelected;
-				this.handleCheckAllVisibleChange();
-			},
-			handleCheckAllVisibleChange() {
-				this.allVisibleSelected = !this.allVisibleSelected;
-				if (!this.allVisibleSelected) {
-					this.allExistingSelected = false;
-					Vue.set(this, 'selectedItems', {});
-				} else {
-					this.selectAllVisibleExecutions();
-				}
-			},
-			handleCheckboxChanged(executionId: string) {
-				if (this.selectedItems[executionId]) {
-					Vue.delete(this.selectedItems, executionId);
-				} else {
-					Vue.set(this.selectedItems, executionId, true);
-				}
-				this.allVisibleSelected =
-					Object.keys(this.selectedItems).length === this.combinedExecutions.length;
-				this.allExistingSelected =
-					Object.keys(this.selectedItems).length === this.finishedExecutionsCount;
-			},
-			async handleDeleteSelected() {
-				const deleteExecutions = await this.confirmMessage(
-					this.$locale.baseText('executionsList.confirmMessage.message', {
-						interpolate: { numSelected: this.numSelected.toString() },
-					}),
-					this.$locale.baseText('executionsList.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('executionsList.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
-				);
+			if (!deleteExecutions) {
+				return;
+			}
 
-				if (!deleteExecutions) {
-					return;
-				}
+			this.isDataLoading = true;
 
-				this.isDataLoading = true;
+			const sendData: IExecutionDeleteFilter = {};
+			if (this.allExistingSelected) {
+				sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
+			} else {
+				sendData.ids = Object.keys(this.selectedItems);
+			}
 
-				const sendData: IExecutionDeleteFilter = {};
-				if (this.allExistingSelected) {
-					sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
-				} else {
-					sendData.ids = Object.keys(this.selectedItems);
-				}
+			sendData.filters = this.workflowFilterPast;
 
-				sendData.filters = this.workflowFilterPast;
-
-				try {
-					await this.restApi().deleteExecutions(sendData);
-				} catch (error) {
-					this.isDataLoading = false;
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
-					);
-
-					return;
-				}
+			try {
+				await this.workflowsStore.deleteExecutions(sendData);
+			} catch (error) {
 				this.isDataLoading = false;
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+				);
+
+				return;
+			}
+			this.isDataLoading = false;
+
+			this.$showMessage({
+				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+				type: 'success',
+			});
+
+			this.handleClearSelection();
+			this.refreshData();
+		},
+		handleClearSelection(): void {
+			this.allVisibleSelected = false;
+			this.allExistingSelected = false;
+			Vue.set(this, 'selectedItems', {});
+		},
+		onFilterChanged(filter: ExecutionFilterType) {
+			this.filter = filter;
+			this.refreshData();
+			this.handleClearSelection();
+		},
+		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
+			if (['currentlySaved', 'original'].includes(commandData.command)) {
+				let loadWorkflow = false;
+				if (commandData.command === 'currentlySaved') {
+					loadWorkflow = true;
+				}
+
+				this.retryExecution(commandData.execution, loadWorkflow);
+
+				this.$telemetry.track('User clicked retry execution button', {
+					workflow_id: this.workflowsStore.workflowId,
+					execution_id: commandData.execution.id,
+					retry_type: loadWorkflow ? 'current' : 'original',
+				});
+			}
+			if (commandData.command === 'delete') {
+				this.deleteExecution(commandData.execution);
+			}
+		},
+		getWorkflowName(workflowId: string): string | undefined {
+			return this.workflows.find((data) => data.id === workflowId)?.name;
+		},
+		async loadActiveExecutions(): Promise<void> {
+			const activeExecutions = isEmpty(this.workflowFilterCurrent.metadata)
+				? await this.workflowsStore.getCurrentExecutions(this.workflowFilterCurrent)
+				: [];
+			for (const activeExecution of activeExecutions) {
+				if (activeExecution.workflowId && !activeExecution.workflowName) {
+					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
+				}
+			}
+
+			this.workflowsStore.activeExecutions = activeExecutions;
+			this.workflowsStore.addToCurrentExecutions(activeExecutions);
+		},
+		async loadAutoRefresh(): Promise<void> {
+			const filter: ExecutionsQueryFilter = this.workflowFilterPast;
+			// We cannot use firstId here as some executions finish out of order. Let's say
+			// You have execution ids 500 to 505 running.
+			// Suppose 504 finishes before 500, 501, 502 and 503.
+			// iF you use firstId, filtering id >= 504 you won't
+			// ever get ids 500, 501, 502 and 503 when they finish
+			const promises = [this.workflowsStore.getPastExecutions(filter, this.requestItemsPerRequest)];
+			if (isEmpty(filter.metadata)) {
+				promises.push(this.workflowsStore.getCurrentExecutions({}));
+			}
+
+			const results = await Promise.all(promises);
+
+			for (const activeExecution of results[1]) {
+				if (
+					activeExecution.workflowId !== undefined &&
+					activeExecution.workflowName === undefined
+				) {
+					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
+				}
+			}
+
+			this.workflowsStore.activeExecutions = results[1];
+
+			// execution IDs are typed as string, int conversion is necessary so we can order.
+			const alreadyPresentExecutions = [...this.finishedExecutions];
+			const alreadyPresentExecutionIds = alreadyPresentExecutions.map((exec) =>
+				parseInt(exec.id, 10),
+			);
+			let lastId = 0;
+			const gaps = [] as number[];
+			for (let i = results[0].results.length - 1; i >= 0; i--) {
+				const currentItem = results[0].results[i];
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && !isNaN(currentId)) {
+					// We are doing this iteration to detect possible gaps.
+					// The gaps are used to remove executions that finished
+					// and were deleted from database but were displaying
+					// in this list while running.
+					if (currentId - lastId > 1) {
+						// We have some gaps.
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
+					}
+				}
+				lastId = parseInt(currentItem.id, 10) || 0;
+
+				// Check new results from end to start
+				// Add new items accordingly.
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
+				if (executionIndex !== -1) {
+					// Execution that we received is already present.
+
+					if (
+						alreadyPresentExecutions[executionIndex].finished === false &&
+						currentItem.finished === true
+					) {
+						// Concurrency stuff. This might happen if the execution finishes
+						// prior to saving all information to database. Somewhat rare but
+						// With auto refresh and several executions, it happens sometimes.
+						// So we replace the execution data so it displays correctly.
+						alreadyPresentExecutions[executionIndex] = currentItem;
+					}
+
+					continue;
+				}
+
+				// Find the correct position to place this newcomer
+				let j;
+				for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
+					if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
+						alreadyPresentExecutions.splice(j + 1, 0, currentItem);
+						break;
+					}
+				}
+				if (j === -1) {
+					alreadyPresentExecutions.unshift(currentItem);
+				}
+			}
+			const alreadyPresentExecutionsFiltered = alreadyPresentExecutions.filter(
+				(execution) =>
+					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
+			);
+			this.finishedExecutionsCount = results[0].count;
+			this.finishedExecutionsCountEstimated = results[0].estimated;
+
+			Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
+			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
+
+			this.adjustSelectionAfterMoreItemsLoaded();
+		},
+		async loadFinishedExecutions(): Promise<void> {
+			if (this.filter.status === 'running') {
+				this.finishedExecutions = [];
+				this.finishedExecutionsCount = 0;
+				this.finishedExecutionsCountEstimated = false;
+				return;
+			}
+			const data = await this.workflowsStore.getPastExecutions(
+				this.workflowFilterPast,
+				this.requestItemsPerRequest,
+			);
+			this.finishedExecutions = data.results;
+			this.finishedExecutionsCount = data.count;
+			this.finishedExecutionsCountEstimated = data.estimated;
+
+			this.workflowsStore.addToCurrentExecutions(data.results);
+
+			if (this.finishedExecutions.length === 0) {
+				this.handleClearSelection();
+			}
+		},
+		async loadMore() {
+			if (this.filter.status === 'running') {
+				return;
+			}
+
+			this.isDataLoading = true;
+
+			const filter = this.workflowFilterPast;
+			let lastId: string | undefined;
+
+			if (this.finishedExecutions.length !== 0) {
+				const lastItem = this.finishedExecutions.slice(-1)[0];
+				lastId = lastItem.id;
+			}
+
+			let data: IExecutionsListResponse;
+			try {
+				data = await this.workflowsStore.getPastExecutions(
+					filter,
+					this.requestItemsPerRequest,
+					lastId,
+				);
+			} catch (error) {
+				this.isDataLoading = false;
+				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
+				return;
+			}
+
+			data.results = data.results.map((execution) => {
+				// @ts-ignore
+				return { ...execution, mode: execution.mode };
+			});
+
+			this.finishedExecutions.push(...data.results);
+			this.finishedExecutionsCount = data.count;
+			this.finishedExecutionsCountEstimated = data.estimated;
+
+			this.isDataLoading = false;
+
+			this.workflowsStore.addToCurrentExecutions(data.results);
+
+			this.adjustSelectionAfterMoreItemsLoaded();
+		},
+		async loadWorkflows() {
+			try {
+				const workflows = await this.workflowsStore.fetchAllWorkflows();
+				workflows.sort((a, b) => {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
+						return -1;
+					}
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
+						return 1;
+					}
+					return 0;
+				});
+
+				// @ts-ignore
+				workflows.unshift({
+					id: 'all',
+					name: this.$locale.baseText('executionsList.allWorkflows'),
+				});
+
+				Vue.set(this, 'workflows', workflows);
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
+				);
+			}
+		},
+		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
+			this.isDataLoading = true;
+
+			try {
+				const retrySuccessful = await this.workflowsStore.retryExecution(
+					execution.id,
+					loadWorkflow,
+				);
+
+				if (retrySuccessful) {
+					this.$showMessage({
+						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
+						type: 'success',
+					});
+				} else {
+					this.$showMessage({
+						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
+						type: 'error',
+					});
+				}
+
+				this.isDataLoading = false;
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.retryExecution.title'),
+				);
+
+				this.isDataLoading = false;
+			}
+		},
+		async refreshData() {
+			this.isDataLoading = true;
+
+			try {
+				await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+			}
+
+			this.isDataLoading = false;
+		},
+		getStatus(execution: IExecutionsSummary): ExecutionStatus {
+			if (execution.status) {
+				return execution.status;
+			} else {
+				// this should not happen but just in case
+				let status: ExecutionStatus = 'unknown';
+				if (execution.waitTill) {
+					status = 'waiting';
+				} else if (execution.stoppedAt === undefined) {
+					status = 'running';
+				} else if (execution.finished) {
+					status = 'success';
+				} else if (execution.stoppedAt !== null) {
+					status = 'failed';
+				} else {
+					status = 'unknown';
+				}
+				return status;
+			}
+		},
+		getRowClass(execution: IExecutionsSummary): string {
+			return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
+		},
+		getStatusText(entry: IExecutionsSummary): string {
+			const status = this.getStatus(entry);
+			let text = '';
+
+			if (status === 'waiting') {
+				text = this.$locale.baseText('executionsList.waiting');
+			} else if (status === 'canceled') {
+				text = this.$locale.baseText('executionsList.canceled');
+			} else if (status === 'crashed') {
+				text = this.$locale.baseText('executionsList.error');
+			} else if (status === 'new') {
+				text = this.$locale.baseText('executionsList.running');
+			} else if (status === 'running') {
+				text = this.$locale.baseText('executionsList.running');
+			} else if (status === 'success') {
+				text = this.$locale.baseText('executionsList.succeeded');
+			} else if (status === 'failed') {
+				text = this.$locale.baseText('executionsList.error');
+			} else {
+				text = this.$locale.baseText('executionsList.unknown');
+			}
+
+			return text;
+		},
+		getStatusTextTranslationPath(entry: IExecutionsSummary): string {
+			const status = this.getStatus(entry);
+			let path = '';
+
+			if (status === 'waiting') {
+				path = 'executionsList.statusWaiting';
+			} else if (status === 'canceled') {
+				path = 'executionsList.statusCanceled';
+			} else if (status === 'crashed') {
+				path = 'executionsList.statusText';
+			} else if (status === 'new') {
+				path = 'executionsList.statusRunning';
+			} else if (status === 'running') {
+				path = 'executionsList.statusRunning';
+			} else if (status === 'success') {
+				path = 'executionsList.statusText';
+			} else if (status === 'failed') {
+				path = 'executionsList.statusText';
+			} else {
+				path = 'executionsList.statusUnknown';
+			}
+
+			return path;
+		},
+		getStatusTooltipText(entry: IExecutionsSummary): string {
+			const status = this.getStatus(entry);
+			let text = '';
+
+			if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
+				text = this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
+				);
+			}
+
+			return text;
+		},
+		async stopExecution(activeExecutionId: string) {
+			try {
+				// Add it to the list of currently stopping executions that we
+				// can show the user in the UI that it is in progress
+				this.stoppingExecutions.push(activeExecutionId);
+
+				await this.workflowsStore.stopCurrentExecution(activeExecutionId);
+
+				// Remove it from the list of currently stopping executions
+				const index = this.stoppingExecutions.indexOf(activeExecutionId);
+				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
-					title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
+					message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
+						interpolate: { activeExecutionId },
+					}),
 					type: 'success',
 				});
 
-				this.handleClearSelection();
 				this.refreshData();
-			},
-			handleClearSelection(): void {
-				this.allVisibleSelected = false;
-				this.allExistingSelected = false;
-				Vue.set(this, 'selectedItems', {});
-			},
-			onFilterChanged(filter: ExecutionFilterType) {
-				this.filter = filter;
-				this.refreshData();
-				this.handleClearSelection();
-			},
-			handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
-				if (['currentlySaved', 'original'].includes(commandData.command)) {
-					let loadWorkflow = false;
-					if (commandData.command === 'currentlySaved') {
-						loadWorkflow = true;
-					}
-
-					this.retryExecution(commandData.execution, loadWorkflow);
-
-					this.$telemetry.track('User clicked retry execution button', {
-						workflow_id: this.workflowsStore.workflowId,
-						execution_id: commandData.execution.id,
-						retry_type: loadWorkflow ? 'current' : 'original',
-					});
-				}
-				if (commandData.command === 'delete') {
-					this.deleteExecution(commandData.execution);
-				}
-			},
-			getWorkflowName(workflowId: string): string | undefined {
-				return this.workflows.find((data) => data.id === workflowId)?.name;
-			},
-			async loadActiveExecutions(): Promise<void> {
-				const activeExecutions = isEmpty(this.workflowFilterCurrent.metadata)
-					? await this.restApi().getCurrentExecutions(this.workflowFilterCurrent)
-					: [];
-				for (const activeExecution of activeExecutions) {
-					if (activeExecution.workflowId && !activeExecution.workflowName) {
-						activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
-					}
-				}
-
-				this.workflowsStore.activeExecutions = activeExecutions;
-				this.workflowsStore.addToCurrentExecutions(activeExecutions);
-			},
-			async loadAutoRefresh(): Promise<void> {
-				const filter: ExecutionsQueryFilter = this.workflowFilterPast;
-				// We cannot use firstId here as some executions finish out of order. Let's say
-				// You have execution ids 500 to 505 running.
-				// Suppose 504 finishes before 500, 501, 502 and 503.
-				// iF you use firstId, filtering id >= 504 you won't
-				// ever get ids 500, 501, 502 and 503 when they finish
-				const pastExecutionsPromise: Promise<IExecutionsListResponse> =
-					this.restApi().getPastExecutions(filter, this.requestItemsPerRequest);
-				const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = isEmpty(
-					filter.metadata,
-				)
-					? this.restApi().getCurrentExecutions({})
-					: Promise.resolve([]);
-
-				const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
-
-				for (const activeExecution of results[1]) {
-					if (
-						activeExecution.workflowId !== undefined &&
-						activeExecution.workflowName === undefined
-					) {
-						activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
-					}
-				}
-
-				this.workflowsStore.activeExecutions = results[1];
-
-				// execution IDs are typed as string, int conversion is necessary so we can order.
-				const alreadyPresentExecutions = [...this.finishedExecutions];
-				const alreadyPresentExecutionIds = alreadyPresentExecutions.map((exec) =>
-					parseInt(exec.id, 10),
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.stopExecution.title'),
 				);
-				let lastId = 0;
-				const gaps = [] as number[];
-				for (let i = results[0].results.length - 1; i >= 0; i--) {
-					const currentItem = results[0].results[i];
-					const currentId = parseInt(currentItem.id, 10);
-					if (lastId !== 0 && !isNaN(currentId)) {
-						// We are doing this iteration to detect possible gaps.
-						// The gaps are used to remove executions that finished
-						// and were deleted from database but were displaying
-						// in this list while running.
-						if (currentId - lastId > 1) {
-							// We have some gaps.
-							const range = _range(lastId + 1, currentId);
-							gaps.push(...range);
-						}
-					}
-					lastId = parseInt(currentItem.id, 10) || 0;
+			}
+		},
+		isExecutionRetriable(execution: IExecutionsSummary): boolean {
+			return (
+				execution.stoppedAt !== undefined &&
+				!execution.finished &&
+				execution.retryOf === undefined &&
+				execution.retrySuccessId === undefined &&
+				!execution.waitTill
+			);
+		},
+		async deleteExecution(execution: IExecutionsSummary) {
+			this.isDataLoading = true;
+			try {
+				await this.workflowsStore.deleteExecutions({ ids: [execution.id] });
+				await this.refreshData();
 
-					// Check new results from end to start
-					// Add new items accordingly.
-					const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
-					if (executionIndex !== -1) {
-						// Execution that we received is already present.
-
-						if (
-							alreadyPresentExecutions[executionIndex].finished === false &&
-							currentItem.finished === true
-						) {
-							// Concurrency stuff. This might happen if the execution finishes
-							// prior to saving all information to database. Somewhat rare but
-							// With auto refresh and several executions, it happens sometimes.
-							// So we replace the execution data so it displays correctly.
-							alreadyPresentExecutions[executionIndex] = currentItem;
-						}
-
-						continue;
-					}
-
-					// Find the correct position to place this newcomer
-					let j;
-					for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
-						if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
-							alreadyPresentExecutions.splice(j + 1, 0, currentItem);
-							break;
-						}
-					}
-					if (j === -1) {
-						alreadyPresentExecutions.unshift(currentItem);
-					}
-				}
-				const alreadyPresentExecutionsFiltered = alreadyPresentExecutions.filter(
-					(execution) =>
-						!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
-				);
-				this.finishedExecutionsCount = results[0].count;
-				this.finishedExecutionsCountEstimated = results[0].estimated;
-
-				Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
-				this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
-
-				this.adjustSelectionAfterMoreItemsLoaded();
-			},
-			async loadFinishedExecutions(): Promise<void> {
-				if (this.filter.status === 'running') {
-					this.finishedExecutions = [];
-					this.finishedExecutionsCount = 0;
-					this.finishedExecutionsCountEstimated = false;
-					return;
-				}
-				const data = await this.restApi().getPastExecutions(
-					this.workflowFilterPast,
-					this.requestItemsPerRequest,
-				);
-				this.finishedExecutions = data.results;
-				this.finishedExecutionsCount = data.count;
-				this.finishedExecutionsCountEstimated = data.estimated;
-
-				this.workflowsStore.addToCurrentExecutions(data.results);
-
-				if (this.finishedExecutions.length === 0) {
-					this.handleClearSelection();
-				}
-			},
-			async loadMore() {
-				if (this.filter.status === 'running') {
-					return;
-				}
-
-				this.isDataLoading = true;
-
-				const filter = this.workflowFilterPast;
-				let lastId: string | undefined;
-
-				if (this.finishedExecutions.length !== 0) {
-					const lastItem = this.finishedExecutions.slice(-1)[0];
-					lastId = lastItem.id;
-				}
-
-				let data: IExecutionsListResponse;
-				try {
-					data = await this.restApi().getPastExecutions(
-						filter,
-						this.requestItemsPerRequest,
-						lastId,
-					);
-				} catch (error) {
-					this.isDataLoading = false;
-					this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
-					return;
-				}
-
-				data.results = data.results.map((execution) => {
-					// @ts-ignore
-					return { ...execution, mode: execution.mode };
-				});
-
-				this.finishedExecutions.push(...data.results);
-				this.finishedExecutionsCount = data.count;
-				this.finishedExecutionsCountEstimated = data.estimated;
-
-				this.isDataLoading = false;
-
-				this.workflowsStore.addToCurrentExecutions(data.results);
-
-				this.adjustSelectionAfterMoreItemsLoaded();
-			},
-			async loadWorkflows() {
-				try {
-					const workflows = await this.restApi().getWorkflows();
-					workflows.sort((a, b) => {
-						if (a.name.toLowerCase() < b.name.toLowerCase()) {
-							return -1;
-						}
-						if (a.name.toLowerCase() > b.name.toLowerCase()) {
-							return 1;
-						}
-						return 0;
-					});
-
-					// @ts-ignore
-					workflows.unshift({
-						id: 'all',
-						name: this.$locale.baseText('executionsList.allWorkflows'),
-					});
-
-					Vue.set(this, 'workflows', workflows);
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
-					);
-				}
-			},
-			async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
-				this.isDataLoading = true;
-
-				try {
-					const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
-
-					if (retrySuccessful) {
-						this.$showMessage({
-							title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-							type: 'success',
-						});
-					} else {
-						this.$showMessage({
-							title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-							type: 'error',
-						});
-					}
-
-					this.isDataLoading = false;
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.retryExecution.title'),
-					);
-
-					this.isDataLoading = false;
-				}
-			},
-			async refreshData() {
-				this.isDataLoading = true;
-
-				try {
-					await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.refreshData.title'),
-					);
-				}
-
-				this.isDataLoading = false;
-			},
-			getStatus(execution: IExecutionsSummary): ExecutionStatus {
-				if (execution.status) {
-					return execution.status;
-				} else {
-					// this should not happen but just in case
-					let status: ExecutionStatus = 'unknown';
-					if (execution.waitTill) {
-						status = 'waiting';
-					} else if (execution.stoppedAt === undefined) {
-						status = 'running';
-					} else if (execution.finished) {
-						status = 'success';
-					} else if (execution.stoppedAt !== null) {
-						status = 'failed';
-					} else {
-						status = 'unknown';
-					}
-					return status;
-				}
-			},
-			getRowClass(execution: IExecutionsSummary): string {
-				return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
-			},
-			getStatusText(entry: IExecutionsSummary): string {
-				const status = this.getStatus(entry);
-				let text = '';
-
-				if (status === 'waiting') {
-					text = this.$locale.baseText('executionsList.waiting');
-				} else if (status === 'canceled') {
-					text = this.$locale.baseText('executionsList.canceled');
-				} else if (status === 'crashed') {
-					text = this.$locale.baseText('executionsList.error');
-				} else if (status === 'new') {
-					text = this.$locale.baseText('executionsList.running');
-				} else if (status === 'running') {
-					text = this.$locale.baseText('executionsList.running');
-				} else if (status === 'success') {
-					text = this.$locale.baseText('executionsList.succeeded');
-				} else if (status === 'failed') {
-					text = this.$locale.baseText('executionsList.error');
-				} else {
-					text = this.$locale.baseText('executionsList.unknown');
-				}
-
-				return text;
-			},
-			getStatusTextTranslationPath(entry: IExecutionsSummary): string {
-				const status = this.getStatus(entry);
-				let path = '';
-
-				if (status === 'waiting') {
-					path = 'executionsList.statusWaiting';
-				} else if (status === 'canceled') {
-					path = 'executionsList.statusCanceled';
-				} else if (status === 'crashed') {
-					path = 'executionsList.statusText';
-				} else if (status === 'new') {
-					path = 'executionsList.statusRunning';
-				} else if (status === 'running') {
-					path = 'executionsList.statusRunning';
-				} else if (status === 'success') {
-					path = 'executionsList.statusText';
-				} else if (status === 'failed') {
-					path = 'executionsList.statusText';
-				} else {
-					path = 'executionsList.statusUnknown';
-				}
-
-				return path;
-			},
-			getStatusTooltipText(entry: IExecutionsSummary): string {
-				const status = this.getStatus(entry);
-				let text = '';
-
-				if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
-					text = this.$locale.baseText(
-						'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
-					);
-				}
-
-				return text;
-			},
-			async stopExecution(activeExecutionId: string) {
-				try {
-					// Add it to the list of currently stopping executions that we
-					// can show the user in the UI that it is in progress
-					this.stoppingExecutions.push(activeExecutionId);
-
-					await this.restApi().stopCurrentExecution(activeExecutionId);
-
-					// Remove it from the list of currently stopping executions
-					const index = this.stoppingExecutions.indexOf(activeExecutionId);
-					this.stoppingExecutions.splice(index, 1);
-
-					this.$showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
-						message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
-							interpolate: { activeExecutionId },
-						}),
-						type: 'success',
-					});
-
-					this.refreshData();
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.stopExecution.title'),
-					);
-				}
-			},
-			isExecutionRetriable(execution: IExecutionsSummary): boolean {
-				return (
-					execution.stoppedAt !== undefined &&
-					!execution.finished &&
-					execution.retryOf === undefined &&
-					execution.retrySuccessId === undefined &&
-					!execution.waitTill
-				);
-			},
-			async deleteExecution(execution: IExecutionsSummary) {
-				this.isDataLoading = true;
-				try {
-					await this.restApi().deleteExecutions({ ids: [execution.id] });
-					await this.refreshData();
-
-					if (this.allVisibleSelected) {
-						Vue.set(this, 'selectedItems', {});
-						this.selectAllVisibleExecutions();
-					}
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
-					);
-				}
-				this.isDataLoading = true;
-			},
-			isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
-				if (!execution.waitTill) {
-					return false;
-				}
-				return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
-			},
-			isRunning(execution: IExecutionsSummary): boolean {
-				return this.getStatus(execution) === 'running';
-			},
-			selectAllVisibleExecutions() {
-				this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
-					Vue.set(this.selectedItems, execution.id, true);
-				});
-			},
-			adjustSelectionAfterMoreItemsLoaded() {
-				if (this.allExistingSelected) {
-					this.allVisibleSelected = true;
+				if (this.allVisibleSelected) {
+					Vue.set(this, 'selectedItems', {});
 					this.selectAllVisibleExecutions();
 				}
-			},
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+				);
+			}
+			this.isDataLoading = true;
+		},
+		isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
+			if (!execution.waitTill) {
+				return false;
+			}
+			return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
+		},
+		isRunning(execution: IExecutionsSummary): boolean {
+			return this.getStatus(execution) === 'running';
+		},
+		selectAllVisibleExecutions() {
+			this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+				Vue.set(this.selectedItems, execution.id, true);
+			});
+		},
+		adjustSelectionAfterMoreItemsLoaded() {
+			if (this.allExistingSelected) {
+				this.allVisibleSelected = true;
+				this.selectAllVisibleExecutions();
+			}
 		},
 	},
-);
+});
 </script>
 
 <style module lang="scss">

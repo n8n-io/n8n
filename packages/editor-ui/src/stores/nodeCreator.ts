@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { STORES, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
-
-import {
+import type {
 	NodeFilterType,
 	NodeCreatorOpenSource,
 	SimplifiedNodeType,

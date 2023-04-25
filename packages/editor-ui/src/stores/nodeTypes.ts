@@ -6,10 +6,10 @@ import {
 	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
-import { INodeTypesState, IResourceLocatorReqParams } from '@/Interface';
+import type { INodeTypesState, IResourceLocatorReqParams } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils';
-import {
+import type {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchResult,
@@ -22,6 +22,7 @@ import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useCredentialsStore } from './credentials';
 import { useRootStore } from './n8nRootStore';
+
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }

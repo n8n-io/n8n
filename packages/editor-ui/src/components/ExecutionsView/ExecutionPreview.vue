@@ -127,19 +127,18 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { Dropdown as ElDropdown } from 'element-ui';
-import { IAbstractEventMessage } from 'n8n-workflow';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+export default mixins(showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
 		ElDropdown,

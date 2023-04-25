@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
+import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE } from '@/constants';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';

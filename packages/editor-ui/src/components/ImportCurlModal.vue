@@ -48,7 +48,7 @@ import {
 } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';

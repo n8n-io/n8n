@@ -135,12 +135,11 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import {
+import type {
 	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeListSearchItems,
-	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
@@ -152,8 +151,8 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import type { PropType } from 'vue';
+import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '@/mixins/workflowHelpers';

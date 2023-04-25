@@ -82,7 +82,7 @@ export class LdapService {
 			await this.client.unbind();
 			return searchEntries;
 		}
-		return Promise.resolve([]);
+		return [];
 	}
 
 	/**

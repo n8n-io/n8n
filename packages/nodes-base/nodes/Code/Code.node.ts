@@ -88,7 +88,7 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeAllItems();
 			} catch (error) {
-				if (!this.continueOnFail()) return Promise.reject(error);
+				if (!this.continueOnFail()) throw error;
 				result = [{ json: { error: error.message } }];
 			}
 
@@ -122,7 +122,7 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem(index);
 			} catch (error) {
-				if (!this.continueOnFail()) return Promise.reject(error);
+				if (!this.continueOnFail()) throw error;
 				returnData.push({ json: { error: error.message } });
 			}
 
