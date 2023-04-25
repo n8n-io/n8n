@@ -84,7 +84,6 @@ function onDragStart(event: DragEvent): void {
 			state.storeWatcher = setAddedNodeActionParameters(
 				actionData.value,
 				telemetry,
-				true,
 				activeViewStack.rootView,
 			);
 		}

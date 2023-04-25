@@ -177,8 +177,7 @@ export const useActions = () => {
 	// Hook into addNode action to set the last node parameters & track the action selected
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
-		telemetry: Telemetry,
-		track = true,
+		telemetry?: Telemetry,
 		rootView?: string,
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
@@ -187,7 +186,7 @@ export const useActions = () => {
 				if (name !== 'addNode' || args[0].type !== action.key) return;
 				after(() => {
 					setLastNodeParameters(action);
-					if (track) trackActionSelected(action, telemetry, rootView || '');
+					if (telemetry) trackActionSelected(action, telemetry, rootView || '');
 					// Unsubscribe from the store watcher
 					storeWatcher();
 				});

@@ -155,7 +155,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 		emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
 	}
 
-	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, true, rootView.value);
+	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);
 }
 
 function trackActionsView() {
@@ -194,7 +194,7 @@ function addHttpNode() {
 	} as IUpdateInformation;
 
 	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
-	if (telemetry) setAddedNodeActionParameters(updateData, telemetry, false);
+	if (telemetry) setAddedNodeActionParameters(updateData);
 
 	const app_identifier = actions.value[0].key;
 	runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
