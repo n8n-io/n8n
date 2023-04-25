@@ -70,11 +70,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (
-				this.parameter.typeOptions &&
-				this.parameter.typeOptions.editor &&
-				this.parameter.typeOptions.editor === 'codeNodeEditor'
-			) {
+			if (this.parameter.typeOptions?.editor === 'codeNodeEditor') {
 				return false;
 			}
 

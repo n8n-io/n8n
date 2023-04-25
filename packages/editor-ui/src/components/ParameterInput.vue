@@ -51,17 +51,28 @@
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<code-edit
+				<el-dialog
 					v-if="codeEditDialogVisible"
-					:value="value"
-					:parameter="parameter"
-					:type="editorType"
-					:codeAutocomplete="codeAutocomplete"
-					:path="path"
-					:readonly="isReadOnly"
-					@closeDialog="closeCodeEditDialog"
-					@valueChanged="expressionUpdated"
-				></code-edit>
+					visible
+					append-to-body
+					:close-on-click-modal="false"
+					width="80%"
+					:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+						.nodeText()
+						.inputLabelDisplayName(parameter, path)}`"
+					:before-close="closeCodeEditDialog"
+				>
+					<div class="ignore-key-press">
+						<code-node-editor
+							:value="value"
+							:defaultValue="parameter.default"
+							:language="editorLanguage"
+							:isReadOnly="isReadOnly"
+							@valueChanged="expressionUpdated"
+						/>
+					</div>
+				</el-dialog>
+
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
 					:value="value"
@@ -73,15 +84,17 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCode="node.parameters.jsCode"
+					:value="node.parameters.jsCode"
+					:defaultValue="parameter.default"
+					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
 
 				<html-editor
-					v-else-if="getArgument('editor') === 'htmlEditor'"
+					v-else-if="editorType === 'htmlEditor'"
 					:html="node.parameters.html"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
@@ -91,17 +104,16 @@
 				/>
 
 				<div
-					v-else-if="isEditor === true"
-					class="code-edit clickable ph-no-capture"
+					v-else-if="editorType"
+					class="readonly-code clickable ph-no-capture"
 					@click="displayEditDialog()"
 				>
-					<prism-editor
+					<code-node-editor
 						v-if="!codeEditDialogVisible"
-						:lineNumbers="true"
-						:readonly="true"
-						:code="displayValue"
-						language="js"
-					></prism-editor>
+						:value="value"
+						:language="editorLanguage"
+						:isReadOnly="true"
+					/>
 				</div>
 
 				<n8n-input
@@ -338,10 +350,11 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	EditorType,
+	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -351,8 +364,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-// @ts-ignore
-import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
@@ -385,14 +396,12 @@ export default mixins(
 ).extend({
 	name: 'parameter-input',
 	components: {
-		CodeEdit,
 		CodeNodeEditor,
 		HtmlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
 		CredentialsSelect,
-		PrismEditor,
 		ScopesNotice,
 		ParameterOptions,
 		ParameterIssues,
@@ -554,8 +563,8 @@ export default mixins(
 				return null;
 			}
 		},
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
+		node(): INodeUi {
+			return this.ndvStore.activeNode!;
 		},
 		displayTitle(): string {
 			const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -636,7 +645,7 @@ export default mixins(
 				return 'textarea';
 			}
 
-			if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
+			if (this.editorType === 'code') {
 				return 'textarea';
 			}
 
@@ -719,11 +728,12 @@ export default mixins(
 
 			return [];
 		},
-		isEditor(): boolean {
-			return ['code', 'json'].includes(this.editorType);
+		editorType(): EditorType {
+			return this.getArgument('editor') as EditorType;
 		},
-		editorType(): string {
-			return this.getArgument('editor') as string;
+		editorLanguage(): CodeNodeEditorLanguage {
+			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
+			return 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -907,22 +917,14 @@ export default mixins(
 			this.textEditDialogVisible = false;
 		},
 		displayEditDialog() {
-			if (this.isEditor) {
+			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
 				this.textEditDialogVisible = true;
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
-			if (this.parameter.typeOptions === undefined) {
-				return undefined;
-			}
-
-			if (this.parameter.typeOptions[argumentName] === undefined) {
-				return undefined;
-			}
-
-			return this.parameter.typeOptions[argumentName];
+			return this.parameter.typeOptions?.[argumentName];
 		},
 		expressionUpdated(value: string) {
 			const val: NodeParameterValueType = this.isResourceLocatorParameter
@@ -1167,32 +1169,6 @@ export default mixins(
 				},
 				{ deep: true, immediate: true },
 			);
-
-			// Reload function on change element from
-			// displayOptions.typeOptions.reloadOnChange parameters
-			if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-				// Get all parameter in reloadOnChange property
-				// This reload when parameters in reloadOnChange is updated
-				const parametersOnChange: string[] = this.parameter.typeOptions.reloadOnChange;
-				for (let i = 0; i < parametersOnChange.length; i++) {
-					const parameter = parametersOnChange[i] as string;
-					if (parameter in this.node.parameters) {
-						this.$watch(
-							() => {
-								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
-									return this.node.parameters![parameter];
-								} else {
-									return null;
-								}
-							},
-							() => {
-								this.loadRemoteParameterOptions();
-							},
-							{ deep: true, immediate: true },
-						);
-					}
-				}
-			}
 		}
 
 		this.$externalHooks().run('parameterInput.mount', {
@@ -1204,7 +1180,7 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-.code-edit {
+.readonly-code {
 	font-size: var(--font-size-xs);
 }
 
