@@ -124,7 +124,6 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
-import { INodeUi } from '@/Interface';
 
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';

@@ -2,7 +2,6 @@
 import type { ComponentPublicInstance, PropType } from 'vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
-import { IValidator, Validatable } from '@/Interface';
 import { useI18n, useToast, useCopyToClipboard } from '@/composables';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore, useUsersStore } from '@/stores';

@@ -41,7 +41,6 @@ import { WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
-import { IExecutionResponse } from '@/Interface';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 

@@ -21,7 +21,6 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
-	WorkflowSettings,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
