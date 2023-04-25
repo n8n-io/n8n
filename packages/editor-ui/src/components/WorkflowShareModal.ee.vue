@@ -131,7 +131,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
-import { UIState } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';

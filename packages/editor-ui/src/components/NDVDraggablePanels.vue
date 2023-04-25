@@ -38,7 +38,6 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue from 'vue';
 import { get } from 'lodash-es';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -49,7 +48,6 @@ import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
-import { NodePanelType } from '@/Interface';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
