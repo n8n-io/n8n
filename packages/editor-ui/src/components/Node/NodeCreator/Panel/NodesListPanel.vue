@@ -5,7 +5,7 @@ import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
-import { TriggerView, RegularView } from '../VIEWS_DATA';
+import { TriggerView, RegularView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
@@ -67,7 +67,6 @@ watch(
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
 			items: view.items as INodeCreateElement[],
-			hasHeaderBg: false,
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
@@ -91,7 +90,7 @@ function onBackButton() {
 	>
 		<aside :class="$style.nodesListPanel" @keydown.capture.stop :key="`${activeViewStack.uuid}`">
 			<header
-				:class="{ [$style.header]: true, [$style.hasBg]: activeViewStack.hasHeaderBg }"
+				:class="{ [$style.header]: true, [$style.hasBg]: !activeViewStack.subtitle }"
 				data-test-id="nodes-list-header"
 			>
 				<div :class="$style.top">
@@ -112,7 +111,7 @@ function onBackButton() {
 					<p :class="$style.title" v-text="activeViewStack.title" v-if="activeViewStack.title" />
 				</div>
 				<p
-					v-if="activeViewStack.subtitle && !activeViewStack.hasHeaderBg"
+					v-if="activeViewStack.subtitle"
 					:class="{ [$style.subtitle]: true, [$style.offsetSubtitle]: viewStacks.length > 1 }"
 					v-text="activeViewStack.subtitle"
 				/>

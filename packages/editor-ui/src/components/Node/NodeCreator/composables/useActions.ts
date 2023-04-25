@@ -174,6 +174,7 @@ export const useActions = () => {
 		return nodeTypes;
 	}
 
+	// Hook into addNode action to set the last node parameters & track the action selected
 	function setAddedNodeActionParameters(
 		action: IUpdateInformation,
 		telemetry: Telemetry,
@@ -187,6 +188,7 @@ export const useActions = () => {
 				after(() => {
 					setLastNodeParameters(action);
 					if (track) trackActionSelected(action, telemetry, rootView || '');
+					// Unsubscribe from the store watcher
 					storeWatcher();
 				});
 			},

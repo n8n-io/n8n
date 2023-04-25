@@ -8,7 +8,6 @@ import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
-
 export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
@@ -16,6 +15,8 @@ export interface Props {
 	lazyRender?: boolean;
 }
 
+const LAZY_LOAD_THRESHOLD = 20;
+const LAZY_LOAD_ITEMS_PER_TICK = 5;
 const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 	lazyRender: true,
@@ -35,14 +36,14 @@ const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
-	if (props.elements.length <= 20 || props.lazyRender === false) {
+	if (props.elements.length <= LAZY_LOAD_THRESHOLD || props.lazyRender === false) {
 		renderedItems.value = props.elements;
 		return;
 	}
 
 	if (renderedItems.value.length < props.elements.length) {
 		renderedItems.value.push(
-			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + 5),
+			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + LAZY_LOAD_ITEMS_PER_TICK),
 		);
 		renderAnimationRequest.value = window.requestAnimationFrame(renderItems);
 	}

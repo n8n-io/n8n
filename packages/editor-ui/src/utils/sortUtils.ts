@@ -2,8 +2,6 @@
 	Constants and utility functions used for searching for node types in node creator component
 */
 
-import { add } from '@jsplumb/util';
-
 // based on https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.js
 
 const SEQUENTIAL_BONUS = 30; // bonus for adjacent matches
@@ -214,74 +212,7 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 	return result;
 }
 
-type KeyWeight = {
-	key: string;
-	weight: number;
-};
-
-type ValueWeight = {
-	value: string;
-	weight: number;
-};
-
-type MatchResult = {
-	matched: boolean;
-	outScore: number;
-};
-
-type SearchResult<T> = {
-	score: number;
-	item: T;
-};
-
 export function sublimeSearch<T extends object>(
-	filter: string,
-	data: readonly T[],
-	keys: KeyWeight[],
-): Array<SearchResult<T>> {
-	const results: Array<SearchResult<T>> = [];
-
-	for (const item of data) {
-		const values: ValueWeight[] = [];
-
-		for (const { key, weight } of keys) {
-			const value = getValue(item, key);
-
-			if (Array.isArray(value)) {
-				for (const v of value) {
-					values.push({ value: v, weight });
-				}
-			} else if (typeof value === 'string') {
-				values.push({ value, weight });
-			}
-		}
-
-		let maxMatch: MatchResult | null = null;
-
-		for (const { value, weight } of values) {
-			if (!fuzzyMatchSimple(filter, value)) {
-				continue;
-			}
-
-			const match = fuzzyMatch(filter, value);
-			match.outScore *= weight;
-
-			if (!maxMatch || (match.matched && match.outScore > maxMatch.outScore)) {
-				maxMatch = match;
-			}
-		}
-
-		if (maxMatch) {
-			results.push({ score: maxMatch.outScore, item });
-		}
-	}
-
-	results.sort((a, b) => b.score - a.score);
-
-	return results;
-}
-
-export function sublimeSearchSlow<T extends object>(
 	filter: string,
 	data: Readonly<T[]>,
 	keys: Array<{ key: string; weight: number }>,

@@ -1,8 +1,8 @@
-import { computed, nextTick, ref, set } from 'vue';
+import { computed, ref, set } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import { DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
@@ -28,7 +28,6 @@ interface ViewStack {
 	iconUrl?: string;
 	rootView?: NodeFilterType;
 	activeIndex?: number;
-	hasHeaderBg?: boolean;
 	transitionDirection?: 'in' | 'out';
 	hasSearch?: boolean;
 	items?: INodeCreateElement[];
@@ -102,7 +101,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		if (!stack || !activeViewStack.value.uuid) return;
 
 		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedNodes);
-		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? '*'] ?? [];
+		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
 
 		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched

@@ -165,27 +165,12 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	'': '',
 };
-
 export const CORE_NODES_CATEGORY = 'Core Nodes';
-export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
-export const RECOMMENDED_CATEGORY = 'Recommended';
-export const SUBCATEGORY_DESCRIPTIONS: {
-	[category: string]: { [subcategory: string]: string };
-} = {
-	'Core Nodes': {
-		// this - all subkeys are set from codex
-		Flow: 'Branches, core triggers, merge data',
-		Files: 'Work with CSV, XML, text, images etc.',
-		'Data Transformation': 'Manipulate data fields, run code',
-		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
-	},
-};
+export const DEFAULT_SUBCATEGORY = '*';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
-export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';

@@ -1,22 +1,3 @@
-<template>
-	<div
-		:class="$style.categoryWrapper"
-		v-on="$listeners"
-		data-keyboard-nav="true"
-		data-test-id="node-creator-category-item"
-	>
-		<div :class="{ [$style.category]: true, [$style.active]: active }">
-			<span :class="$style.name">
-				<span v-text="categoryName" />
-				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
-				<slot />
-			</span>
-			<font-awesome-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
-			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed } from 'vue';
 
@@ -36,6 +17,25 @@ const categoryName = computed(() => {
 	return itemsCount > 0 ? `${props.name} (${itemsCount})` : props.name;
 });
 </script>
+
+<template>
+	<div
+		:class="$style.categoryWrapper"
+		v-on="$listeners"
+		data-keyboard-nav="true"
+		data-test-id="node-creator-category-item"
+	>
+		<div :class="{ [$style.category]: true, [$style.active]: active }">
+			<span :class="$style.name">
+				<span v-text="categoryName" />
+				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
+				<slot />
+			</span>
+			<font-awesome-icon v-if="expanded" icon="chevron-down" :class="$style.arrow" />
+			<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .triggerIcon {
@@ -77,11 +77,5 @@ const categoryName = computed(() => {
 	font-size: var(--font-size-2xs);
 	width: 12px;
 	color: $node-creator-arrow-color;
-}
-
-:global(
-		[class*='_iteratorItem'][class*='_action_'] + [class*='_category_'] [class*='_categoryWrapper']
-	) {
-	margin-top: var(--spacing-l);
 }
 </style>

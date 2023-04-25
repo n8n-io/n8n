@@ -5,7 +5,7 @@ import {
 	SimplifiedNodeType,
 	INodeCreateElement,
 } from '@/Interface';
-import { CORE_NODES_CATEGORY } from '@/constants';
+import { CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 import { sublimeSearch } from '@/utils';
 
@@ -17,7 +17,7 @@ export function transformNodeType(
 	const createElement = {
 		uuid: uuidv4(),
 		key: node.name,
-		subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? '*',
+		subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? DEFAULT_SUBCATEGORY,
 		properties: {
 			...node,
 		},
@@ -35,7 +35,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 		const isCoreNodesCategory = item.codex?.categories?.includes(CORE_NODES_CATEGORY);
 		const subcategories = isCoreNodesCategory
 			? item?.codex?.subcategories?.[CORE_NODES_CATEGORY] ?? []
-			: ['*'];
+			: [DEFAULT_SUBCATEGORY];
 
 		subcategories.forEach((subcategory: string) => {
 			if (!acc[subcategory]) {

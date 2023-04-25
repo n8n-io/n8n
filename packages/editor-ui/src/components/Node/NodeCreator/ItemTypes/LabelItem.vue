@@ -28,9 +28,4 @@ defineProps<Props>();
 	color: var(--color-text-base);
 	cursor: default;
 }
-
-// Reduce top padding of the first label in a category
-:global([class*='_iteratorItem'][class*='_category_'] + [class*='_label_'] [class*='_label']) {
-	padding-top: var(--spacing-s);
-}
 </style>

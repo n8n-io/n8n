@@ -12,6 +12,7 @@ import {
 	HELPERS_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
+	DEFAULT_SUBCATEGORY
 } from '@/constants';
 
 export function TriggerView($locale: any) {
@@ -21,7 +22,7 @@ export function TriggerView($locale: any) {
 		subtitle: $locale.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
 			{
-				key: '*',
+				key: DEFAULT_SUBCATEGORY,
 				type: 'subcategory',
 				properties: {
 					forceIncludeNodes: [WEBHOOK_NODE_TYPE, EMAIL_IMAP_NODE_TYPE],
@@ -108,7 +109,7 @@ export function RegularView($locale: any) {
 		title: $locale.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
 			{
-				key: '*',
+				key: DEFAULT_SUBCATEGORY,
 				type: 'subcategory',
 				properties: {
 					title: 'App Regular Nodes',

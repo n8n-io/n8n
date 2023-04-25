@@ -45,7 +45,6 @@ describe('useKeyboardNavigation', () => {
 	};
 
 	afterAll(() => {
-		// Clean mocks
 		eventHookSpy.mockClear();
 	});
 

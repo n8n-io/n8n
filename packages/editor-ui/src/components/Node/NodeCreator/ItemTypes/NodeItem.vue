@@ -5,7 +5,7 @@
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		:class="$style.nodeItem"
-		:description="subcategory !== '*' ? description : ''"
+		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
@@ -40,7 +40,7 @@
 <script setup lang="ts">
 import { computed, ref, getCurrentInstance } from 'vue';
 import { SimplifiedNodeType } from '@/Interface';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
 
 import { isCommunityPackageName } from '@/utils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';

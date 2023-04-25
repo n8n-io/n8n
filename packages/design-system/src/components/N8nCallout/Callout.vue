@@ -75,12 +75,12 @@ export default defineComponent({
 .callout {
 	display: flex;
 	justify-content: space-between;
-	font-size: var(--callout-font-size, var(--font-size-2xs));
+	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
 	border-radius: var(--border-radius-base);
 	align-items: center;
-	line-height: var(--callout-line-height, var(--font-line-height-loose));
+	line-height: var(--font-line-height-loose);
 
 	&.slim {
 		line-height: var(--font-line-height-loose);
@@ -95,9 +95,9 @@ export default defineComponent({
 
 .info,
 .custom {
-	border-color: var(--callout-border-color, var(--color-foreground-base));
-	background-color: var(--callout-background-color, var(--color-background-light));
-	color: var(--callout-color, var(--color-info));
+	border-color: var(--color-foreground-base);
+	background-color: var(--color-background-light);
+	color: var(--color-info);
 }
 
 .warning {

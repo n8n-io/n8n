@@ -8,7 +8,7 @@ import { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
-import { TriggerView, RegularView } from '../VIEWS_DATA';
+import { TriggerView, RegularView } from '../viewsData';
 import { transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
@@ -52,7 +52,6 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			subcategory: item.key,
 			title,
-			hasHeaderBg: true,
 			mode: 'nodes',
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
@@ -90,7 +89,6 @@ function onSelected(item: INodeCreateElement) {
 			},
 
 			rootView: activeViewStack.value.rootView,
-			hasHeaderBg: true,
 			hasSearch: true,
 			mode: 'actions',
 			items: transformedActions,
@@ -107,7 +105,6 @@ function onSelected(item: INodeCreateElement) {
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
 			items: view.items as INodeCreateElement[],
-			hasHeaderBg: false,
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,
 			mode: 'nodes',

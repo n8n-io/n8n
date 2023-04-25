@@ -142,7 +142,6 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 	const isPlaceholderTriggerAction = placeholderTriggerActions.some(
 		(p) => p.key === actionCreateElement.key,
 	);
-	// TODO: This should be controlled by A/B experiment
 	const includeNodeWithPlaceholderTrigger = usePostHog().isVariantEnabled(
 		AUTO_INSERT_ACTION_EXPERIMENT.name,
 		AUTO_INSERT_ACTION_EXPERIMENT.variant,
