@@ -40,13 +40,6 @@ const properties: INodeProperties[] = [
 				description: 'Whether to create a Google Document (instead of the .txt default format)',
 				hint: 'Google Docs API has to be enabled in the <a href="https://console.developers.google.com/apis/library/docs.googleapis.com" target="_blank">Google API Console</a>.',
 			},
-			// {
-			// 	...driveRLC,
-			// 	displayName: 'Drive',
-			// 	required: false,
-			// 	description:
-			// 		'he Drive where you want to create the file in. By default, “My Drive“ is used.',
-			// },
 			{
 				...folderRLC,
 				displayName: 'Parent Folder',

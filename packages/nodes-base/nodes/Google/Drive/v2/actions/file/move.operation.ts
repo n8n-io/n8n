@@ -1,9 +1,19 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { fileRLC, folderRLC } from '../common.descriptions';
+import { googleApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	fileRLC,
+	{
+		...folderRLC,
+		displayName: 'Destination Folder',
+		name: 'destinationFolderId',
+		description: 'The folder where you want to save the copied file',
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -14,8 +24,40 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const fileId = this.getNodeParameter('fileId', i, undefined, {
+		extractValue: true,
+	});
 
-	return returnData;
+	const destinationFolderId = this.getNodeParameter('destinationFolderId', i, undefined, {
+		extractValue: true,
+	});
+
+	const { parents } = await googleApiRequest.call(
+		this,
+		'GET',
+		`/drive/v3/files/${fileId}`,
+		undefined,
+		{
+			fields: 'parents',
+		},
+	);
+
+	const response = await googleApiRequest.call(
+		this,
+		'PATCH',
+		`/drive/v3/files/${fileId}`,
+		undefined,
+		{
+			addParents: destinationFolderId,
+			removeParents: parents,
+		},
+	);
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(response as IDataObject[]),
+		{ itemData: { item: i } },
+	);
+
+	return executionData;
 }

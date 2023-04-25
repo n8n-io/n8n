@@ -11,26 +11,21 @@ import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Binary Property',
-		name: 'binaryPropertyName',
-		type: 'string',
-		required: true,
-		default: 'data',
-		displayOptions: {
-			show: {
-				operation: ['download'],
-				resource: ['file'],
-			},
-		},
-		description: 'Name of the binary property to which to write the data of the read file',
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
 		options: [
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				placeholder: 'e.g. data',
+				default: 'data',
+				description: 'Use this field name in the following nodes, to use the binary file data',
+				hint: 'The name of the output field to put the binary file data in',
+			},
 			{
 				displayName: 'Google File Conversion',
 				name: 'googleFileConversion',
@@ -178,11 +173,10 @@ export async function execute(
 	options: IDataObject,
 	item: INodeExecutionData,
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
-
 	const fileId = this.getNodeParameter('fileId', i, undefined, {
 		extractValue: true,
 	}) as string;
+
 	const downloadOptions = this.getNodeParameter('options', i);
 
 	const requestOptions = {
@@ -264,7 +258,7 @@ export async function execute(
 
 	item = newItem;
 
-	const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
+	const dataPropertyNameDownload = (downloadOptions.binaryPropertyName as string) || 'data';
 
 	item.binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 		response.body as Buffer,
@@ -272,5 +266,7 @@ export async function execute(
 		mimeType as string,
 	);
 
-	return returnData;
+	const executionData = this.helpers.constructExecutionMetaData([item], { itemData: { item: i } });
+
+	return executionData;
 }

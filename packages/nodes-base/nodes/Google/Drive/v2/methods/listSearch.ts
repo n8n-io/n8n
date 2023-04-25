@@ -65,6 +65,7 @@ export async function folderSearch(
 		{
 			name: RlcDefaults.Folder,
 			value: RlcDefaults.Folder,
+			url: 'https://drive.google.com/drive',
 		},
 	];
 
@@ -98,6 +99,7 @@ export async function driveSearch(
 		{
 			name: RlcDefaults.Drive,
 			value: RlcDefaults.Drive,
+			url: 'https://drive.google.com/drive/my-drive',
 		},
 	];
 

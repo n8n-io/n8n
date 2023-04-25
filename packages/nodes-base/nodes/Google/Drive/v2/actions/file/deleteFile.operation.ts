@@ -4,7 +4,16 @@ import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Delete Permanently',
+		name: 'deletePermanently',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to delete the file immediately. If false, the file will be moved to the trash.',
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -16,30 +25,35 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
-
 	const fileId = this.getNodeParameter('fileId', i, undefined, {
 		extractValue: true,
 	}) as string;
 
-	await googleApiRequest.call(
-		this,
-		'DELETE',
-		`/drive/v3/files/${fileId}`,
-		{},
-		{ supportsTeamDrives: true },
-	);
+	const deletePermanently = this.getNodeParameter('deletePermanently', i, false) as boolean;
 
-	// If we are still here it did succeed
+	if (deletePermanently) {
+		await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`, undefined, {
+			supportsAllDrives: true,
+		});
+	} else {
+		await googleApiRequest.call(
+			this,
+			'PATCH',
+			`/drive/v3/files/${fileId}`,
+			{ trashed: true },
+			{
+				supportsAllDrives: true,
+			},
+		);
+	}
+
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({
-			fileId,
+			id: fileId,
 			success: true,
 		}),
 		{ itemData: { item: i } },
 	);
 
-	returnData.push(...executionData);
-
-	return returnData;
+	return executionData;
 }

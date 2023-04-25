@@ -56,11 +56,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw error;
 		}
 	}
-	if (resource === 'file' && operation === 'download') {
-		// For file downloads the files get attached to the existing items
-		return this.prepareOutputData(items);
-	} else {
-		// For all other ones does the output items get replaced
-		return this.prepareOutputData(returnData);
-	}
+
+	return this.prepareOutputData(returnData);
 }

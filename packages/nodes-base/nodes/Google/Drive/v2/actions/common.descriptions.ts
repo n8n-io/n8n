@@ -502,3 +502,175 @@ export const fileAndFolderOptions: INodeProperties = {
 		},
 	],
 };
+
+export const shareOptions: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Email Message',
+			name: 'emailMessage',
+			type: 'string',
+			default: '',
+			description: 'A plain text custom message to include in the notification email',
+		},
+		{
+			displayName: 'Move To New Owners Root',
+			name: 'moveToNewOwnersRoot',
+			type: 'boolean',
+			default: false,
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+			description:
+				"<p>This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.</p><p>When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed.</p>",
+		},
+		{
+			displayName: 'Send Notification Email',
+			name: 'sendNotificationEmail',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to send a notification email when sharing to users or groups',
+		},
+		{
+			displayName: 'Supports All Drives',
+			name: 'supportsAllDrives',
+			type: 'boolean',
+			default: false,
+			description: 'Whether the requesting application supports both My Drives and shared drives',
+		},
+		{
+			displayName: 'Transfer Ownership',
+			name: 'transferOwnership',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to transfer ownership to the specified user and downgrade the current owner to a writer',
+		},
+		{
+			displayName: 'Use Domain Admin Access',
+			name: 'useDomainAdminAccess',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically.',
+		},
+	],
+};
+
+export const permissionsOptions: INodeProperties = {
+	displayName: 'Permissions',
+	name: 'permissionsUi',
+	placeholder: 'Add Permission',
+	type: 'fixedCollection',
+	default: {},
+	typeOptions: {
+		multipleValues: false,
+	},
+	options: [
+		{
+			displayName: 'Permission',
+			name: 'permissionsValues',
+			values: [
+				{
+					displayName: 'Role',
+					name: 'role',
+					type: 'options',
+					description: 'Defines what users can do with a file or folder',
+					options: [
+						{
+							name: 'Commenter',
+							value: 'commenter',
+						},
+						{
+							name: 'File Organizer',
+							value: 'fileOrganizer',
+						},
+						{
+							name: 'Organizer',
+							value: 'organizer',
+						},
+						{
+							name: 'Owner',
+							value: 'owner',
+						},
+						{
+							name: 'Reader',
+							value: 'reader',
+						},
+						{
+							name: 'Writer',
+							value: 'writer',
+						},
+					],
+					default: '',
+				},
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{
+							name: 'User',
+							value: 'user',
+						},
+						{
+							name: 'Group',
+							value: 'group',
+						},
+						{
+							name: 'Domain',
+							value: 'domain',
+						},
+						{
+							name: 'Anyone',
+							value: 'anyone',
+						},
+					],
+					default: '',
+					description:
+						'The scope of the permission. A permission with type=user applies to a specific user whereas a permission with type=domain applies to everyone in a specific domain.',
+				},
+				{
+					displayName: 'Email Address',
+					name: 'emailAddress',
+					type: 'string',
+					displayOptions: {
+						show: {
+							type: ['user', 'group'],
+						},
+					},
+					placeholder: '“e.g. name@mail.com',
+					default: '',
+					description: 'The email address of the user or group to which this permission refers',
+				},
+				{
+					displayName: 'Domain',
+					name: 'domain',
+					type: 'string',
+					displayOptions: {
+						show: {
+							type: ['domain'],
+						},
+					},
+					placeholder: 'e.g. mycompany.com',
+					default: '',
+					description: 'The domain to which this permission refers',
+				},
+				{
+					displayName: 'Allow File Discovery',
+					name: 'allowFileDiscovery',
+					type: 'boolean',
+					displayOptions: {
+						show: {
+							type: ['domain', 'anyone'],
+						},
+					},
+					default: false,
+					description: 'Whether to allow the file to be discovered through search',
+				},
+			],
+		},
+	],
+};
