@@ -70,13 +70,6 @@ const singularFieldWord = computed<string>(() => {
 	);
 });
 
-const pluralFieldWord = computed<string>(() => {
-	return (
-		props.parameter.typeOptions?.resourceMapper?.fieldWords?.plural ||
-		locale.baseText('generic.fields')
-	);
-});
-
 const resourceMapperMode = computed<string | undefined>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.mode;
 });
@@ -141,16 +134,6 @@ defineExpose({
 
 <template>
 	<div class="mt-xs" data-test-id="mapping-fields-container">
-		<n8n-text v-if="!showMappingModeSelect && loading" size="small">
-			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
-			{{
-				locale.baseText('resourceMapper.fetchingFields.message', {
-					interpolate: {
-						fieldWord: pluralFieldWord,
-					},
-				})
-			}}
-		</n8n-text>
 		<n8n-input-label
 			:label="locale.baseText('resourceMapper.valuesToSend.label')"
 			:underline="true"

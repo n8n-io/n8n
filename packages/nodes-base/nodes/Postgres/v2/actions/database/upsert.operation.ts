@@ -144,7 +144,7 @@ const properties: INodeProperties[] = [
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
-			value: {},
+			value: null,
 		},
 		required: true,
 		typeOptions: {

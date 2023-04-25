@@ -151,7 +151,7 @@ export const description: SheetProperties = [
 		type: 'resourceMapper',
 		default: {
 			mappingMode: 'defineBelow',
-			value: {},
+			value: null,
 		},
 		required: true,
 		typeOptions: {
