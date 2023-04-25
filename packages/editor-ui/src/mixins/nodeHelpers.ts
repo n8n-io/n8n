@@ -1,10 +1,6 @@
 import { EnableNodeToggleCommand } from './../models/history';
 import { useHistoryStore } from '@/stores/history';
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-} from '@/constants';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
 import type {
 	IBinaryKeyData,
