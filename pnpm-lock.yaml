@@ -1069,7 +1069,7 @@ importers:
         version: 0.28.5(sass@1.55.0)(terser@5.16.1)
       '@volar-plugins/eslint':
         specifier: ^0.0.4
-        version: 0.0.4(eslint@8.28.0)
+        version: 0.0.4(eslint@8.39.0)
       c8:
         specifier: ^7.12.0
         version: 7.12.0
@@ -7361,13 +7361,13 @@ packages:
       pretty-format: 27.5.1
     dev: true
 
-  /@volar-plugins/eslint@0.0.4(eslint@8.28.0):
+  /@volar-plugins/eslint@0.0.4(eslint@8.39.0):
     resolution: {integrity: sha512-CjvOHSPOyfMv4mgjFk0JOsnq0yWj4LaHb7n4bjNWqqhdwPWmaUEK5AbOloBRxix0736Z3OimH8GMjHNlMcbeiw==}
     peerDependencies:
       eslint: '*'
     dependencies:
       '@volar/shared': 1.0.24
-      eslint: 8.28.0
+      eslint: 8.39.0
     dev: true
 
   /@volar/language-core@1.0.24:
