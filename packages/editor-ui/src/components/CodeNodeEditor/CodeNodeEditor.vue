@@ -1,11 +1,11 @@
 <template>
 	<div
-		:class="$style['code-node-editor-container']"
+		:class="['code-node-editor', $style['code-node-editor-container']]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
 	>
-		<div ref="codeNodeEditor" class="ph-no-capture"></div>
+		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
 		<n8n-button
 			v-if="isCloud && (isEditorHovered || isEditorFocused)"
 			size="small"

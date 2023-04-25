@@ -41,6 +41,7 @@ export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
+			height: '100%',
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
@@ -78,7 +79,7 @@ export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			maxHeight: BASE_STYLING.maxHeight,
+			maxHeight: '100%',
 			...(isReadOnly ? {} : { minHeight: '10em' }),
 		},
 		'.cm-diagnosticAction': {
