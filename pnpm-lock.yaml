@@ -844,6 +844,9 @@ importers:
       '@codemirror/lang-json':
         specifier: ^6.0.1
         version: 6.0.1
+      '@codemirror/lang-sql':
+        specifier: ^6.4.1
+        version: 6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@codemirror/language':
         specifier: ^6.2.1
         version: 6.2.1
@@ -3365,6 +3368,19 @@ packages:
     dependencies:
       '@codemirror/language': 6.2.1
       '@lezer/json': 1.0.0
+    dev: false
+
+  /@codemirror/lang-sql@6.4.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+    resolution: {integrity: sha512-PFB56L+A0WGY35uRya+Trt5g19V9k2V9X3c55xoFW4RgiATr/yLqWsbbnEsdxuMn5tLpuikp7Kmj9smRsqBXAg==}
+    dependencies:
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/language': 6.2.1
+      '@codemirror/state': 6.1.4
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/view'
+      - '@lezer/common'
     dev: false
 
   /@codemirror/language@6.2.1:
