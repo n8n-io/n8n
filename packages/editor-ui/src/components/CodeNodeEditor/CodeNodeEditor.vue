@@ -252,8 +252,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
 			state,
 		});
-
-		this.$nextTick(() => this.editor?.focus());
 	},
 });
 </script>
