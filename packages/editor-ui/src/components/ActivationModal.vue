@@ -35,7 +35,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import Modal from '@/components/Modal.vue';
 import {
@@ -51,7 +51,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { createEventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ActivationModal',
 	components: {
 		Modal,

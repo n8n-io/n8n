@@ -106,6 +106,8 @@ export class WorkflowPage extends BasePage {
 			cy.get(
 				`.connection-actions[data-source-node="${sourceNodeName}"][data-target-node="${targetNodeName}"]`,
 			),
+		addStickyButton: () => cy.getByTestId('add-sticky-button'),
+		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
 	};
 	actions = {
@@ -167,11 +169,13 @@ export class WorkflowPage extends BasePage {
 			this.getters.shareButton().click();
 		},
 		saveWorkflowOnButtonClick: () => {
+			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
 			this.getters.saveButton().should('contain', 'Saved');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
+			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
 			cy.get('body').type('{meta}', { release: false }).type('s');
 		},
 		deleteNode: (name: string) => {
@@ -256,6 +260,24 @@ export class WorkflowPage extends BasePage {
 				.find('.delete')
 				.first()
 				.click({ force: true });
+		},
+		addSticky: () => {
+			this.getters.nodeCreatorPlusButton().realHover();
+			this.getters.addStickyButton().click();
+		},
+		deleteSticky: () => {
+			this.getters.stickies().eq(0)
+				.realHover()
+				.find('[data-test-id="delete-sticky"]')
+				.click();
+		},
+		editSticky: (content: string) => {
+			this.getters.stickies()
+				.dblclick()
+				.find('textarea')
+				.clear()
+				.type(content)
+				.type('{esc}');
 		},
 		turnOnManualExecutionSaving: () => {
 			this.getters.workflowMenu().click();

@@ -111,9 +111,9 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import type { ICredentialsResponse, IUser, NewCredentialsModal } from '@/Interface';
+import type { ICredentialsResponse, IUser } from '@/Interface';
 
-import {
+import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -125,8 +125,8 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
@@ -140,10 +140,12 @@ import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
-import { getCredentialPermissions, IPermissions } from '@/permissions';
-import { createEventBus, IMenuItem } from 'n8n-design-system';
+import type { IPermissions } from '@/permissions';
+import { getCredentialPermissions } from '@/permissions';
+import type { IMenuItem } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -672,18 +674,18 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		scrollToTop() {
 			setTimeout(() => {
-				const content = this.$refs.content as Element;
-				if (content) {
-					content.scrollTop = 0;
+				const contentRef = this.$refs.content as Element | undefined;
+				if (contentRef) {
+					contentRef.scrollTop = 0;
 				}
 			}, 0);
 		},
 
 		scrollToBottom() {
 			setTimeout(() => {
-				const content = this.$refs.content as Element;
-				if (content) {
-					content.scrollTop = content.scrollHeight;
+				const contentRef = this.$refs.content as Element | undefined;
+				if (contentRef) {
+					contentRef.scrollTop = contentRef.scrollHeight;
 				}
 			}, 0);
 		},

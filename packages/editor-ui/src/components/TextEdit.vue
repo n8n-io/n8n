@@ -30,9 +30,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { nextTick, defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TextEdit',
 	props: ['dialogVisible', 'parameter', 'path', 'value', 'isReadOnly'],
 	data() {
@@ -65,7 +65,7 @@ export default Vue.extend({
 	watch: {
 		dialogVisible() {
 			if (this.dialogVisible === true) {
-				Vue.nextTick(() => {
+				nextTick(() => {
 					(this.$refs.inputField as HTMLInputElement).focus();
 				});
 			}

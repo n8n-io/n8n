@@ -80,7 +80,7 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction, UIState } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
@@ -90,7 +90,6 @@ import { useUIStore } from '@/stores/ui';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useUsageStore } from '@/stores/usage';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(showMessage).extend({
 	name: 'CredentialSharing',

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount } from 'vue';
+import { computed, reactive, onBeforeMount, ref } from 'vue';
 import debounce from 'lodash/debounce';
 import type { PopoverPlacement } from 'element-ui/types/popover';
 import type {
@@ -14,6 +14,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsageStore } from '@/stores/usage';
 import { useUIStore } from '@/stores/ui';
+import { useTelemetry } from '@/composables';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
@@ -25,6 +26,9 @@ const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
 const uiStore = useUIStore();
+
+const telemetry = useTelemetry();
+
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	popoverPlacement: 'bottom',
 });
@@ -33,6 +37,7 @@ const emit = defineEmits<{
 }>();
 const debouncedEmit = debounce(emit, 500);
 
+const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
 );
@@ -109,6 +114,12 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 		};
 	}
 	filter.metadata[index][prop] = value;
+
+	if (!isCustomDataFilterTracked.value) {
+		telemetry.track('User filtered executions with custom data');
+		isCustomDataFilterTracked.value = true;
+	}
+
 	debouncedEmit('filterChanged', filter);
 };
 
@@ -129,6 +140,7 @@ const goToUpgrade = () => {
 };
 
 onBeforeMount(() => {
+	isCustomDataFilterTracked.value = false;
 	emit('filterChanged', filter);
 });
 </script>

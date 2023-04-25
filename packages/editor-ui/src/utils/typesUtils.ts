@@ -1,10 +1,9 @@
 import dateformat from 'dateformat';
-import { IDataObject, jsonParse } from 'n8n-workflow';
-import { Schema, Optional, Primitives } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { Schema, Optional, Primitives } from '@/Interface';
 import { isObj } from '@/utils/typeGuards';
 import { generatePath } from '@/utils/mappingUtils';
-import { DateTime } from 'luxon';
-import { useWorkflowsStore } from '@/stores/workflows';
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects

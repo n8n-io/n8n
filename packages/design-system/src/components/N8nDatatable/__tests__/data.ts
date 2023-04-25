@@ -1,5 +1,6 @@
-import { defineComponent, h, PropType } from 'vue';
-import { DatatableRow } from '../../../types';
+import type { PropType } from 'vue';
+import { defineComponent, h } from 'vue';
+import type { DatatableRow } from '../../../types';
 import N8nButton from '../../N8nButton';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

@@ -66,7 +66,7 @@
 
 <script lang="ts">
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import { useNDVStore } from '@/stores/ndv';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -79,7 +79,9 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
-export default Vue.extend({
+type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
+
+export default defineComponent({
 	name: 'ExpressionParameterInput',
 	components: {
 		InlineExpressionEditorInput,
@@ -127,9 +129,10 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const inlineInput = this.$refs.inlineInput as (Vue & HTMLElement) | undefined;
-
-			if (inlineInput?.$el) inlineInput.focus();
+			const inlineInputRef = this.$refs.inlineInput as InlineExpressionEditorInputRef | undefined;
+			if (inlineInputRef?.$el) {
+				inlineInputRef.focus();
+			}
 		},
 		onFocus() {
 			this.isFocused = true;

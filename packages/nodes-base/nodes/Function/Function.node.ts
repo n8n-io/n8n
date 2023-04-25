@@ -233,7 +233,7 @@ return items;`,
 					}
 				}
 
-				return Promise.reject(error);
+				throw error;
 			}
 		}
 

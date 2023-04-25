@@ -115,9 +115,10 @@
 </template>
 
 <script lang="ts">
-import { deepCopy, INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -127,7 +128,7 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import { get, set } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
-import { Component, PropType } from 'vue';
+import type { Component, PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';

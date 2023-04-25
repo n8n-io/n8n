@@ -1,16 +1,11 @@
 import { EnableNodeToggleCommand } from './../models/history';
 import { useHistoryStore } from '@/stores/history';
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-} from '@/constants';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
-	NodeHelpers,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
@@ -24,19 +19,17 @@ import {
 	INodePropertyOptions,
 	IDataObject,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import {
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
 
-import { restApi } from '@/mixins/restApi';
-
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { isObjectLiteral } from '@/utils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
@@ -45,8 +38,9 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import Vue from 'vue';
 
-export const nodeHelpers = mixins(restApi).extend({
+export const nodeHelpers = Vue.extend({
 	computed: {
 		...mapStores(
 			useCredentialsStore,

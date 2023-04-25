@@ -42,25 +42,26 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	INodeProperties,
 	INodePropertyMode,
-	IRunData,
-	isResourceLocatorValue,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import { isResourceLocatorValue } from 'n8n-workflow';
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+
+type ParamRef = InstanceType<typeof ParameterInput>;
 
 export default mixins(showMessage, workflowHelpers).extend({
 	name: 'parameter-input-wrapper',
@@ -208,9 +209,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$emit('drop', data);
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			const paramRef = this.$refs.param as ParamRef | undefined;
+
+			paramRef?.$emit('optionSelected', command);
 		},
 		onValueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);

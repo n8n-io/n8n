@@ -32,27 +32,26 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import {
+import type {
 	ExecutionFilterType,
 	IExecutionsListResponse,
 	INodeUi,
 	ITag,
 	IWorkflowDb,
 } from '@/Interface';
-import {
+import type {
 	IExecutionsSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
@@ -71,13 +70,7 @@ const MAX_LOADING_ATTEMPTS = 5;
 // Number of executions fetched on each page
 const LOAD_MORE_PAGE_SIZE = 100;
 
-export default mixins(
-	restApi,
-	showMessage,
-	executionHelpers,
-	debounceHelper,
-	workflowHelpers,
-).extend({
+export default mixins(showMessage, executionHelpers, debounceHelper, workflowHelpers).extend({
 	name: 'executions-list',
 	components: {
 		ExecutionsSidebar,
@@ -225,7 +218,7 @@ export default mixins(
 
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(this.requestFilter, limit, lastId);
+				data = await this.workflowsStore.getPastExecutions(this.requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
 				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
@@ -260,7 +253,7 @@ export default mixins(
 					this.executions[executionIndex - 1] ||
 					this.executions[0];
 
-				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
+				await this.workflowsStore.deleteExecutions({ ids: [this.$route.params.executionId] });
 				if (this.temporaryExecution?.id === this.$route.params.executionId) {
 					this.temporaryExecution = null;
 				}
@@ -300,7 +293,7 @@ export default mixins(
 			const activeExecutionId = this.$route.params.executionId;
 
 			try {
-				await this.restApi().stopCurrentExecution(activeExecutionId);
+				await this.workflowsStore.stopCurrentExecution(activeExecutionId);
 
 				this.$showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
@@ -498,7 +491,7 @@ export default mixins(
 
 			let data: IWorkflowDb | undefined;
 			try {
-				data = await this.restApi().getWorkflow(workflowId);
+				data = await this.workflowsStore.fetchWorkflow(workflowId);
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('nodeView.showError.openWorkflow.title'));
 				return;
@@ -644,7 +637,7 @@ export default mixins(
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
-			this.workflowsStore.activeWorkflows = await this.restApi().getActiveWorkflows();
+			await this.workflowsStore.fetchActiveWorkflows();
 		},
 		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
@@ -665,7 +658,10 @@ export default mixins(
 		},
 		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
 			try {
-				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
+				const retrySuccessful = await this.workflowsStore.retryExecution(
+					execution.id,
+					loadWorkflow,
+				);
 
 				if (retrySuccessful === true) {
 					this.$showMessage({

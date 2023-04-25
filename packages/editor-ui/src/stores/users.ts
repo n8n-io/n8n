@@ -20,12 +20,7 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import {
-	PERSONALIZATION_MODAL_KEY,
-	USER_ACTIVATION_SURVEY_MODAL,
-	STORES,
-	LOCAL_STORAGE_ACTIVE_MODAL,
-} from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, USER_ACTIVATION_SURVEY_MODAL, STORES } from '@/constants';
 import type {
 	ICredentialsResponse,
 	IInviteResponse,

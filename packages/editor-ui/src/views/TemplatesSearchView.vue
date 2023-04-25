@@ -81,14 +81,14 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import {
+import type {
 	ITemplatesCollection,
 	ITemplatesWorkflow,
 	ITemplatesQuery,
 	ITemplatesCategory,
 } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';

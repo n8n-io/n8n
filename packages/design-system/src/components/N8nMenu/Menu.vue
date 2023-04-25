@@ -54,7 +54,8 @@
 <script lang="ts">
 import { Menu as ElMenu } from 'element-ui';
 import N8nMenuItem from '../N8nMenuItem';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import type { IMenuItem, RouteObject } from '../../types';
 
 export default defineComponent({

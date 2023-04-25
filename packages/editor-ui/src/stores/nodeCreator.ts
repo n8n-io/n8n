@@ -1,30 +1,30 @@
 import { startCase } from 'lodash-es';
 import { defineStore } from 'pinia';
-import {
+import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 	IDataObject,
 	INodeProperties,
 	INodeTypeDescription,
-	deepCopy,
 	INodeParameters,
 	INodeActionTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import {
 	STORES,
 	MANUAL_TRIGGER_NODE_TYPE,
-	CORE_NODES_CATEGORY,
 	TRIGGER_NODE_FILTER,
 	STICKY_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
-import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
-import { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
-import { BaseTextKey, i18n } from '@/plugins/i18n';
-import { externalHooks } from '@/mixins/externalHooks';
-import { Telemetry } from '@/plugins/telemetry';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
+import type { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
+import { i18n } from '@/plugins/i18n';
+import type { Telemetry } from '@/plugins/telemetry';
+import { runExternalHook } from '@/utils';
+import { useWebhooksStore } from '@/stores/webhooks';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -286,14 +286,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return storeWatcher;
 		},
 		trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
-			const { $externalHooks } = new externalHooks();
-
 			const payload = {
 				node_type: action.key,
 				action: action.name,
 				resource: (action.value as INodeParameters).resource || '',
 			};
-			$externalHooks().run('nodeCreateList.addAction', payload);
+			runExternalHook('nodeCreateList.addAction', useWebhooksStore(), payload);
 			telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 		},
 	},

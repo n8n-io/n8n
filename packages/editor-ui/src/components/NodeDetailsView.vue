@@ -41,6 +41,7 @@
 				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
+				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
 				@close="close"
 				@init="onPanelsInit"
@@ -124,15 +125,15 @@
 </template>
 
 <script lang="ts">
-import {
+import type {
 	INodeConnections,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	Workflow,
-	jsonParse,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import { jsonParse } from 'n8n-workflow';
+import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';

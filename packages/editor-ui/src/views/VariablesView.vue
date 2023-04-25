@@ -7,7 +7,11 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature } from '@/constants';
-import { DatatableColumn, EnvironmentVariable, TemporaryEnvironmentVariable } from '@/Interface';
+import type {
+	DatatableColumn,
+	EnvironmentVariable,
+	TemporaryEnvironmentVariable,
+} from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
 import { getVariablesPermissions } from '@/permissions';
 

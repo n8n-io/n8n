@@ -157,22 +157,20 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import Vue from 'vue';
+import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
-	NodeHelpers,
 	NodeParameterValue,
-	deepCopy,
 } from 'n8n-workflow';
-import {
-	ICredentialsResponse,
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	IUsedCredential,
-	IUser,
 } from '@/Interface';
 
 import {
@@ -205,7 +203,7 @@ import { useHistoryStore } from '@/stores/history';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee';
 import { useCredentialsStore } from '@/stores/credentials';
-import { EventBus } from '@/event-bus';
+import type { EventBus } from '@/event-bus';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -964,7 +962,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	.node-parameters-wrapper {
 		height: 100%;
 		overflow-y: auto;
-		padding: 0 20px 200px 20px;
+		padding: 0 20px;
 	}
 
 	&.dragging {
