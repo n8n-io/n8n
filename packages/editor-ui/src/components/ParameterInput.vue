@@ -339,7 +339,7 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeParameterValue } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';

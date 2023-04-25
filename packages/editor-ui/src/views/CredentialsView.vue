@@ -46,7 +46,6 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';

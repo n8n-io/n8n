@@ -70,7 +70,6 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { BaseTextKey } from '@/plugins/i18n';
 import { useUsageStore } from '@/stores/usage';
 import { useSSOStore } from '@/stores/sso';
 
