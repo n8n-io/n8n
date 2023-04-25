@@ -942,7 +942,14 @@ export function getNodeWebhooks(
 			undefined,
 			false,
 		) as boolean;
-		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
+		const path = getNodeWebhookPath(
+			workflowId,
+			node,
+			nodeWebhookPath,
+			isFullPath,
+			restartWebhook,
+			true,
+		); /////////
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(
 			node,
@@ -991,18 +998,25 @@ export function getNodeWebhookPath(
 	path: string,
 	isFullPath?: boolean,
 	restartWebhook?: boolean,
+	withouthoutPathID?: boolean,
 ): string {
 	let webhookPath = '';
 	if (restartWebhook === true) {
 		return path;
 	}
 	if (node.webhookId === undefined) {
-		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`; //////
+		if (withouthoutPathID) {
+			webhookPath = `${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+		}
 	} else {
 		if (isFullPath === true) {
 			return path;
 		}
-		webhookPath = `${node.webhookId}/${path}`;
+		webhookPath = `${node.webhookId}/${path}`; ////////
+		if (withouthoutPathID) {
+			webhookPath = `${path}`;
+		}
 	}
 	return webhookPath;
 }
@@ -1017,6 +1031,7 @@ export function getNodeWebhookUrl(
 	node: INode,
 	path: string,
 	isFullPath?: boolean,
+	withouthoutPathID?: boolean,
 ): string {
 	if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
 		// setting this to false to prefix the webhookId
@@ -1025,7 +1040,14 @@ export function getNodeWebhookUrl(
 	if (path.startsWith('/')) {
 		path = path.slice(1);
 	}
-	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
+	return `${baseUrl}/${getNodeWebhookPath(
+		workflowId,
+		node,
+		path,
+		isFullPath,
+		undefined,
+		withouthoutPathID,
+	)}`;
 }
 
 /**

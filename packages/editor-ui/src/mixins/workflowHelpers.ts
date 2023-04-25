@@ -620,7 +620,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 			const isFullPath =
 				(this.getWebhookExpressionValue(webhookData, 'isFullPath') as unknown as boolean) || false;
 
-			return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
+			return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath, true);
 		},
 
 		resolveExpression(
