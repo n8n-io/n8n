@@ -68,8 +68,10 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	IPersonalizationSurveyVersions,
 	IUser,
+	ILogInStatus,
+	IRole,
+	IUserPermissions,
 } from '@/Interface';
-import type { ILogInStatus, IRole, IUserPermissions } from '@/Interface';
 
 /*
 	Utility functions used to handle users in n8n

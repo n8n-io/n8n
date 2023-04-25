@@ -18,7 +18,7 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Execution: {
-				save: jest.fn(async () => Promise.resolve({ id: FAKE_EXECUTION_ID })),
+				save: jest.fn(async () => ({ id: FAKE_EXECUTION_ID })),
 				update: jest.fn(),
 			},
 		},
