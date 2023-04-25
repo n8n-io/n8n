@@ -12,7 +12,7 @@ import {
 	HELPERS_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
-	DEFAULT_SUBCATEGORY
+	DEFAULT_SUBCATEGORY,
 } from '@/constants';
 
 export function TriggerView($locale: any) {

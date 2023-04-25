@@ -101,7 +101,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		if (!stack || !activeViewStack.value.uuid) return;
 
 		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedNodes);
-		let stackItems = stack?.items ?? subcategorizedItems[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
+		let stackItems =
+			stack?.items ?? subcategorizedItems[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
 
 		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched

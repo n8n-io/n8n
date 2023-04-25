@@ -43,7 +43,10 @@ function renderItems() {
 
 	if (renderedItems.value.length < props.elements.length) {
 		renderedItems.value.push(
-			...props.elements.slice(renderedItems.value.length, renderedItems.value.length + LAZY_LOAD_ITEMS_PER_TICK),
+			...props.elements.slice(
+				renderedItems.value.length,
+				renderedItems.value.length + LAZY_LOAD_ITEMS_PER_TICK,
+			),
 		);
 		renderAnimationRequest.value = window.requestAnimationFrame(renderItems);
 	}

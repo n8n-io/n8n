@@ -17,7 +17,8 @@ export function transformNodeType(
 	const createElement = {
 		uuid: uuidv4(),
 		key: node.name,
-		subcategory: subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? DEFAULT_SUBCATEGORY,
+		subcategory:
+			subcategory ?? node.codex?.subcategories?.[CORE_NODES_CATEGORY]?.[0] ?? DEFAULT_SUBCATEGORY,
 		properties: {
 			...node,
 		},
