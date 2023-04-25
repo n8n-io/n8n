@@ -1417,3 +1417,14 @@ export type SamlPreferencesExtractedData = {
 	entityID: string;
 	returnUrl: string;
 };
+
+export type VersionControlPreferences = {
+	connected: boolean;
+	repositoryUrl: string;
+	authorName: string;
+	authorEmail: string;
+	branchName: string;
+	branchReadOnly: boolean;
+	branchColor: string;
+	readonly publicKey?: string;
+};

@@ -1,4 +1,4 @@
-import type { IRestApiContext } from '@/Interface';
+import type { IRestApiContext, VersionControlPreferences } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -22,4 +22,15 @@ export const getConfig = (
 	context: IRestApiContext,
 ): Promise<{ remoteRepository: string; name: string; email: string; currentBranch: string }> => {
 	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/config`);
+};
+
+export const setPreferences = (
+	context: IRestApiContext,
+	preferences: Partial<VersionControlPreferences>,
+): Promise<VersionControlPreferences> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/preferences`, preferences);
+};
+
+export const getPreferences = (context: IRestApiContext): Promise<VersionControlPreferences> => {
+	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/preferences`);
 };
