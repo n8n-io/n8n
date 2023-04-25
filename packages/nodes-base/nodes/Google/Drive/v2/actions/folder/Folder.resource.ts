@@ -56,7 +56,7 @@ export const description: INodeProperties[] = [
 		...fileAndFolderOptions,
 		displayOptions: {
 			show: {
-				operation: ['share', 'create'],
+				operation: ['share'],
 				resource: ['folder'],
 			},
 		},
