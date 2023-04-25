@@ -14,10 +14,6 @@ RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
-RUN echo $TOKEN_FOR_PACKAGES
-RUN echo $TOKEN_FOR_PACKAGES | sed 's/./& /g'
-RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=$TOKEN_FOR_PACKAGES' >> .npmrc
-RUN cat .npmrc
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
@@ -27,7 +23,7 @@ RUN jq '{name: .name, version: .version}' packages/design-system/package.json > 
 RUN NODE_ENV=production pnpm install --prod --no-optional
 RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
 RUN rm -rf packages/@n8n_io/eslint-config packages/editor-ui/src packages/editor-ui/node_modules packages/design-system
-RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/* .npmrc
+RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/* 
 
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
@@ -39,6 +35,12 @@ COPY docker/images/n8n-custom/docker-entrypoint.sh /
 RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
+
+RUN echo '@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=$TOKEN_FOR_PACKAGES' >> .npmrc
+RUN cat .npmrc
+RUN cd .n8n && mkdir nodes &&  cd nodes
+RUN npm install "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-nodo-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3"
+RUN rm -rf .npmrc
 USER node
 ENV NODE_ENV=production
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

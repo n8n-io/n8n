@@ -808,6 +808,7 @@
     "n8n-core": "workspace:*"
   },
   "dependencies": {
+    "@deep-consulting-solutions/n8n-nodes-dcs-crm": "1.1.0",
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "amqplib": "^0.10.3",
     "aws4": "^1.8.0",
