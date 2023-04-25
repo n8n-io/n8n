@@ -50,7 +50,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		undefined,
 		{
 			addParents: destinationFolderId,
-			removeParents: parents,
+			removeParents: (parents as string[]).join(','),
 		},
 	);
 

@@ -9,69 +9,33 @@ import { UPLOAD_CHUNK_SIZE } from '../../helpers/interfaces';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { prepareQueryString } from '../../helpers/utils';
+import { folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Binary Data',
-		name: 'binaryData',
-		type: 'boolean',
-		default: false,
-		description: 'Whether the data to upload should be taken from binary field',
-	},
-	{
-		displayName: 'File Content',
-		name: 'fileContent',
+		displayName: 'Input data field name',
+		name: 'inputDataFieldName',
 		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				binaryData: [false],
-			},
-		},
-		placeholder: '',
-		description: 'The text content of the file to upload',
-	},
-	{
-		displayName: 'Binary Property',
-		name: 'binaryPropertyName',
-		type: 'string',
+		placeholder: '“e.g. data',
 		default: 'data',
 		required: true,
-		displayOptions: {
-			show: {
-				binaryData: [true],
-			},
-		},
-		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded',
+		hint: 'The name of the input field containing the binary file data to update the file',
+		description:
+			'Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab',
 	},
 	{
 		displayName: 'File Name',
 		name: 'name',
 		type: 'string',
 		default: '',
-		required: true,
-		placeholder: 'invoice_1.pdf',
-		description: 'The name the file should be saved as',
+		placeholder: 'e.g. My New File',
+		description: 'If not specified, the file name will be used',
 	},
 	{
-		displayName: 'Resolve Data',
-		name: 'resolveData',
-		type: 'boolean',
-		default: false,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-		description:
-			'By default the response only contain the ID of the file. If this option gets activated, it will resolve the data automatically.',
-	},
-	{
-		displayName: 'Parents',
-		name: 'parents',
-		type: 'string',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: [],
-		description: 'The IDs of the parent folders which contain the file',
+		...folderRLC,
+		displayName: 'Parent Folder',
+		name: 'parentFolder',
+		description: 'The Folder you want to upload the file in. By default, the root folder is used.',
 	},
 	{
 		displayName: 'Options',
@@ -147,6 +111,14 @@ const properties: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'Simplify Output',
+				name: 'simplifyOutput',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the all fields',
+			},
 		],
 	},
 ];
@@ -167,39 +139,31 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const resolveData = this.getNodeParameter('resolveData', 0);
-
 	let contentLength: number;
 	let fileContent: Buffer | Readable;
 	let originalFilename: string | undefined;
-	let mimeType = 'text/plain';
+	let mimeType;
 
-	if (this.getNodeParameter('binaryData', i)) {
-		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-		if (binaryData.id) {
-			// Stream data in 256KB chunks, and upload the via the resumable upload api
-			fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
-			const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
-			contentLength = metadata.fileSize;
-			originalFilename = metadata.fileName;
-			if (metadata.mimeType) mimeType = binaryData.mimeType;
-		} else {
-			fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-			contentLength = fileContent.length;
-			originalFilename = binaryData.fileName;
-			mimeType = binaryData.mimeType;
-		}
+	const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
+
+	const binaryData = this.helpers.assertBinaryData(i, inputDataFieldName);
+
+	if (binaryData.id) {
+		// Stream data in 256KB chunks, and upload the via the resumable upload api
+		fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+		const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
+		contentLength = metadata.fileSize;
+		originalFilename = metadata.fileName;
+		if (metadata.mimeType) mimeType = binaryData.mimeType;
 	} else {
-		// Is text file
-		fileContent = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
-		contentLength = fileContent.byteLength;
+		fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
+		contentLength = fileContent.length;
+		originalFilename = binaryData.fileName;
+		mimeType = binaryData.mimeType;
 	}
 
-	const name = this.getNodeParameter('name', i) as string;
-	const parents = this.getNodeParameter('parents', i) as string[];
-
-	const queryFields = prepareQueryString(options.fields as string[]);
+	const name = (this.getNodeParameter('name', i) as string) || originalFilename;
+	const parentFolder = this.getNodeParameter('parentFolder', i, undefined, { extractValue: true });
 
 	let uploadId;
 	if (Buffer.isBuffer(fileContent)) {
@@ -209,7 +173,6 @@ export async function execute(
 			'/upload/drive/v3/files',
 			fileContent,
 			{
-				fields: queryFields,
 				uploadType: 'media',
 			},
 			undefined,
@@ -294,27 +257,23 @@ export async function execute(
 		});
 	}
 
-	let response = await googleApiRequest.call(
+	const simplifyOutput = this.getNodeParameter('options.simplifyOutput', i, true) as boolean;
+	let fields;
+	if (simplifyOutput === false) {
+		fields = '*';
+	}
+
+	const response = await googleApiRequest.call(
 		this,
 		'PATCH',
 		`/drive/v3/files/${uploadId}`,
 		requestBody,
 		{
-			addParents: parents.join(','),
-			// When set to true shared drives can be used.
+			addParents: parentFolder,
 			supportsAllDrives: true,
+			fields,
 		},
 	);
-
-	if (resolveData) {
-		response = await googleApiRequest.call(
-			this,
-			'GET',
-			`/drive/v3/files/${response.id}`,
-			{},
-			{ fields: '*' },
-		);
-	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(response as IDataObject[]),
