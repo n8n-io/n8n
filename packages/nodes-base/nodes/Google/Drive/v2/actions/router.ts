@@ -39,7 +39,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					);
 					break;
 				case 'folder':
-					returnData.push(...(await folder[googleDrive.operation].execute.call(this, i, options)));
+					returnData.push(...(await folder[googleDrive.operation].execute.call(this, i)));
 					break;
 				default:
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);

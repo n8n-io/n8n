@@ -1,11 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import {
-	BINARY_ENCODING,
-	IDataObject,
-	INodeExecutionData,
-	INodeProperties,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { prepareQueryString } from '../../helpers/utils';
@@ -30,7 +25,7 @@ const properties: INodeProperties[] = [
 		description: 'Whether to send a new binary data to update the file',
 	},
 	{
-		displayName: 'Input data field name',
+		displayName: 'Input Data Field Name',
 		name: 'inputDataFieldName',
 		type: 'string',
 		placeholder: '“e.g. data',
@@ -205,7 +200,6 @@ export async function execute(
 	if (changeFileContent) {
 		let contentLength: number;
 		let fileContent: Buffer | Readable;
-		let originalFilename: string | undefined;
 
 		const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 
@@ -225,12 +219,10 @@ export async function execute(
 			fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 			const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 			contentLength = metadata.fileSize;
-			originalFilename = metadata.fileName;
 			if (metadata.mimeType) mimeType = binaryData.mimeType;
 		} else {
 			fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 			contentLength = fileContent.length;
-			originalFilename = binaryData.fileName;
 			mimeType = binaryData.mimeType;
 		}
 
@@ -280,7 +272,7 @@ export async function execute(
 					});
 				} catch (error) {
 					if (error.response?.status !== 308) {
-						throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
+						throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 					}
 				}
 				offset = nextOffset;

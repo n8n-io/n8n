@@ -8,12 +8,11 @@ import { UPLOAD_CHUNK_SIZE } from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { prepareQueryString } from '../../helpers/utils';
 import { folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Input data field name',
+		displayName: 'Input Data Field Name',
 		name: 'inputDataFieldName',
 		type: 'string',
 		placeholder: '“e.g. data',
@@ -132,11 +131,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	options: IDataObject,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
 	let contentLength: number;
@@ -259,7 +254,7 @@ export async function execute(
 
 	const simplifyOutput = this.getNodeParameter('options.simplifyOutput', i, true) as boolean;
 	let fields;
-	if (simplifyOutput === false) {
+	if (!simplifyOutput) {
 		fields = '*';
 	}
 

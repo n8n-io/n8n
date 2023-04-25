@@ -1,5 +1,4 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { fileAndFolderOptions, folderRLC } from '../common.descriptions';
 
 import * as create from './create.operation';
 import * as deleteFolder from './deleteFolder.operation';

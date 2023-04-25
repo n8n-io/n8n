@@ -12,7 +12,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. New Folder',
-		description: "The name of the new folder. If not set, 'Untitled' will be used",
+		description: "The name of the new folder. If not set, 'Untitled' will be used.",
 	},
 	{
 		...folderRLC,
@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 				type: 'color',
 				default: '',
 				description:
-					'The color of the folder as an RGB hex string. If an unsupported color is specified, the closest color in the palette will be used instead',
+					'The color of the folder as an RGB hex string. If an unsupported color is specified, the closest color in the palette will be used instead.',
 			},
 		],
 	},
@@ -56,11 +56,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	options: IDataObject,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const name = (this.getNodeParameter('name', i) as string) || 'Untitled';
 
 	const parentFolder = this.getNodeParameter('parentFolder', i, undefined, {
@@ -81,7 +77,7 @@ export async function execute(
 
 	const simplifyOutput = this.getNodeParameter('options.simplifyOutput', i, true) as boolean;
 	let fields;
-	if (simplifyOutput === false) {
+	if (!simplifyOutput) {
 		fields = '*';
 	}
 
