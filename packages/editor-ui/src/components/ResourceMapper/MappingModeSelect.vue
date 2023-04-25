@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
+import type { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 

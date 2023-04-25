@@ -7,17 +7,14 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodePropertyTypes,
 	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import MappingFields from './MappingFields.vue';
 import { isResourceMapperValue } from '@/utils';
-import { i18n as locale } from '@/plugins/i18n';
-import { get } from 'lodash-es';
 
 export interface Props {
 	parameter: INodeProperties;
@@ -78,43 +75,6 @@ onMounted(async () => {
 	}
 });
 
-const fieldsUi = computed<INodeProperties[]>(() => {
-	return state.fieldsToMap
-		.filter((field) => field.display !== false)
-		.map((field) => {
-			return {
-				displayName: getFieldLabel(field),
-				// Set part of the path to each param name so value can be fetched properly by input parameter list component
-				name: `value["${field.id}"]`,
-				type: (field.type as NodePropertyTypes) || 'string',
-				default: '',
-				required: field.required,
-				description: getFieldDescription(field),
-			};
-		});
-});
-
-const orderedFields = computed<INodeProperties[]>(() => {
-	// Sort so that matching columns are first
-	if (state.paramValue.matchingColumns) {
-		fieldsUi.value.forEach((field, i) => {
-			const match = field.name.match(FIELD_NAME_REGEX);
-			const fieldName = match ? match.pop() : field.name;
-			if (state.paramValue.matchingColumns.includes(fieldName || '')) {
-				fieldsUi.value.splice(i, 1);
-				fieldsUi.value.unshift(field);
-			}
-		});
-	}
-	return fieldsUi.value;
-});
-
-const availableMatchingFields = computed<ResourceMapperField[]>(() => {
-	return state.fieldsToMap.filter((field) => {
-		return field.canBeUsedToMatch !== false;
-	});
-});
-
 const nodeType = computed<INodeTypeDescription | null>(() => {
 	if (props.node) {
 		return nodeTypesStore.getNodeType(props.node.type, props.node.typeVersion);
@@ -122,13 +82,8 @@ const nodeType = computed<INodeTypeDescription | null>(() => {
 	return null;
 });
 
-const showMappingFields = computed<boolean>(() => {
-	return (
-		state.paramValue.mappingMode === 'defineBelow' &&
-		!state.loading &&
-		!state.loadingError &&
-		state.fieldsToMap.length > 0
-	);
+const showMappingModeSelect = computed<boolean>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
 });
 
 const showMatchingColumnsSelector = computed<boolean>(() => {
@@ -139,8 +94,13 @@ const showMatchingColumnsSelector = computed<boolean>(() => {
 	);
 });
 
-const showMappingModeSelect = computed<boolean>(() => {
-	return props.parameter.typeOptions?.resourceMapper?.supportAutoMap !== false;
+const showMappingFields = computed<boolean>(() => {
+	return (
+		state.paramValue.mappingMode === 'defineBelow' &&
+		!state.loading &&
+		!state.loadingError &&
+		state.fieldsToMap.length > 0
+	);
 });
 
 const matchingColumns = computed<string[]>(() => {
@@ -195,36 +155,6 @@ async function loadFieldsToMap(): Promise<void> {
 	if (fetchedFields !== null) {
 		state.fieldsToMap = fetchedFields.fields;
 	}
-}
-
-function getFieldLabel(field: ResourceMapperField): string {
-	if (isMatchingField(field.id)) {
-		const suffix = locale.baseText('resourceMapper.usingToMatch') || '';
-		return `${field.displayName} ${suffix}`;
-	}
-	return field.displayName;
-}
-
-function getFieldDescription(field: ResourceMapperField): string {
-	if (isMatchingField(field.id)) {
-		const singularFieldWord =
-			props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
-			locale.baseText('generic.field');
-		return (
-			locale.baseText('resourceMapper.usingToMatch.description', {
-				interpolate: {
-					fieldWord: singularFieldWord,
-				},
-			}) || ''
-		);
-	}
-	return '';
-}
-
-function isMatchingField(field: string): boolean {
-	return (
-		showMatchingColumnsSelector.value && (state.paramValue.matchingColumns || []).includes(field)
-	);
 }
 
 async function onModeChanged(mode: string): Promise<void> {
@@ -287,16 +217,7 @@ function emitValueChanged(): void {
 	});
 }
 
-function getParameterValue(
-	nodeValues: INodeParameters | undefined,
-	parameterName: string,
-	path: string,
-) {
-	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
-}
-
 defineExpose({
-	orderedFields,
 	state,
 });
 </script>
@@ -319,65 +240,27 @@ defineExpose({
 		<matching-columns-select
 			v-if="showMatchingColumnsSelector"
 			:label-size="labelSize"
-			:fieldsToMap="availableMatchingFields"
+			:fieldsToMap="state.fieldsToMap"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:inputSize="inputSize"
 			:loading="state.loading"
 			:initialValue="matchingColumns"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
-		<!-- TODO: Move to separate component -->
-		<div class="mt-xs" data-test-id="mapping-fields-container" v-if="showMappingFields">
-			<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
-				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
-				{{
-					locale.baseText('resourceMapper.fetchingFields.message', {
-						interpolate: {
-							fieldWord:
-								props.parameter.typeOptions?.fieldWords?.plural ||
-								locale.baseText('generic.fields') ||
-								'fields',
-						},
-					})
-				}}
-			</n8n-text>
-			<n8n-input-label
-				:label="locale.baseText('resourceMapper.valuesToSend.label')"
-				:underline="true"
-				:size="labelSize"
-				color="text-dark"
-			/>
-			<div
-				v-for="field in orderedFields"
-				:key="field.name"
-				:class="['parameter-item', $style.parameterItem]"
-			>
-				<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')">
-					<font-awesome-icon
-						icon="trash"
-						class="reset-icon clickable"
-						:title="$locale.baseText('parameterInputList.deleteParameter')"
-						@click="deleteOption(field.name)"
-					/>
-				</div>
-				<parameter-input-full
-					:parameter="field"
-					:value="getParameterValue(nodeValues, field.name, path)"
-					:displayOptions="true"
-					:path="`${props.path}.${field.name}}`"
-					:isReadOnly="false"
-					:hideLabel="false"
-					:nodeValues="nodeValues"
-					@valueChanged="fieldValueChanged"
-				/>
-			</div>
-		</div>
+		<mapping-fields
+			v-if="showMappingFields"
+			:parameter="props.parameter"
+			:path="props.path"
+			:nodeValues="props.nodeValues"
+			:fieldsToMap="state.fieldsToMap"
+			:paramValue="state.paramValue"
+			:FIELD_NAME_REGEX="FIELD_NAME_REGEX"
+			:labelSize="labelSize"
+			:showMatchingColumnsSelector="showMatchingColumnsSelector"
+			:showMappingModeSelect="showMappingModeSelect"
+			:loading="state.loading"
+			@fieldValueChanged="fieldValueChanged"
+			@removeField="deleteOption"
+		/>
 	</div>
 </template>
-
-<style module lang="scss">
-.parameterItem {
-	position: relative;
-	padding: 0 0 0 1em;
-}
-</style>

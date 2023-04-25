@@ -31,7 +31,7 @@ import { useCredentialsStore } from './credentials';
 import { useRootStore } from './n8nRootStore';
 import { useUsersStore } from './users';
 import { useNodeCreatorStore } from './nodeCreator';
-import { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
+import type { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }

@@ -2,7 +2,7 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
-import { ResourceMapperFields } from 'n8n-workflow';
+import type { ResourceMapperFields } from 'n8n-workflow';
 
 export const NODE_PARAMETER_VALUES = {
 	authentication: 'oAuth2',

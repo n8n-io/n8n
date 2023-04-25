@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
+import type {
+	ResourceMapperField,
+	ResourceMapperFields,
+	ResourceMapperTypeOptions,
+} from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 
@@ -30,6 +34,12 @@ watch(
 const emit = defineEmits<{
 	(event: 'matchingColumnsChanged', value: string[]): void;
 }>();
+
+const availableMatchingFields = computed<ResourceMapperField[]>(() => {
+	return props.fieldsToMap.filter((field) => {
+		return field.canBeUsedToMatch !== false;
+	});
+});
 
 // Field label and description: Labels here use field words defined in parameter type options
 const fieldLabel = computed<string>(() => {
@@ -92,7 +102,7 @@ defineExpose({
 				:disabled="loading"
 				@change="onSelectionChange"
 			>
-				<n8n-option v-for="field in fieldsToMap" :key="field.id" :value="field.id">
+				<n8n-option v-for="field in availableMatchingFields" :key="field.id" :value="field.id">
 					{{ field.displayName }}
 				</n8n-option>
 			</n8n-select>
