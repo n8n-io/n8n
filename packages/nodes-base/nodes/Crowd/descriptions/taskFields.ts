@@ -1,13 +1,14 @@
-import { INodeProperties } from "n8n-workflow";
-import { mapWith, showFor } from "./utils";
+import type { INodeProperties } from 'n8n-workflow';
+import { taskPresend } from '../GenericFunctions';
+import { mapWith, showFor } from './utils';
 
-const displayOpts = showFor(['task'])
+const displayOpts = showFor(['task']);
 
 const displayFor = {
 	resource: displayOpts(),
 	createOrUpdate: displayOpts(['create', 'update']),
 	id: displayOpts(['delete', 'find', 'update']),
-}
+};
 
 const taskOperations: INodeProperties = {
 	displayName: 'Operation',
@@ -21,24 +22,50 @@ const taskOperations: INodeProperties = {
 			name: 'Create',
 			value: 'create',
 			action: 'Create a task',
+			routing: {
+				send: { preSend: [taskPresend] },
+				request: {
+					method: 'POST',
+					url: '/task',
+				},
+			},
 		},
 		{
 			name: 'Delete',
 			value: 'delete',
 			action: 'Delete a task',
+			routing: {
+				request: {
+					method: 'DELETE',
+					url: '=/task/{{$parameter["id"]}}',
+				},
+			},
 		},
 		{
 			name: 'Find',
 			value: 'find',
 			action: 'Find a task',
+			routing: {
+				request: {
+					method: 'GET',
+					url: '=/task/{{$parameter["id"]}}',
+				},
+			},
 		},
 		{
 			name: 'Update',
 			value: 'update',
 			action: 'Update a task',
+			routing: {
+				send: { preSend: [taskPresend] },
+				request: {
+					method: 'PUT',
+					url: '=/task/{{$parameter["id"]}}',
+				},
+			},
 		},
-	]
-}
+	],
+};
 
 const idField: INodeProperties = {
 	displayName: 'ID',
@@ -46,8 +73,8 @@ const idField: INodeProperties = {
 	description: 'The ID of the task',
 	type: 'string',
 	required: true,
-	default: ''
-}
+	default: '',
+};
 
 const commonFields: INodeProperties[] = [
 	{
@@ -55,7 +82,7 @@ const commonFields: INodeProperties[] = [
 		name: 'name',
 		description: 'The name of the task',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Body',
@@ -63,24 +90,25 @@ const commonFields: INodeProperties[] = [
 		description: 'The body of the task',
 		type: 'string',
 		typeOptions: {
-			rows: 4
+			rows: 4,
 		},
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Status',
 		name: 'status',
 		description: 'The status of the task',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Members',
 		name: 'members',
-		description: 'Members associated with the task. Each element in the array is the ID of the member.',
+		description:
+			'Members associated with the task. Each element in the array is the ID of the member.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -92,19 +120,20 @@ const commonFields: INodeProperties[] = [
 						displayName: 'Member',
 						name: 'member',
 						type: 'string',
-						default: ''
-					}
-				]
-			}
-		]
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Activities',
 		name: 'activities',
-		description: 'Activities associated with the task. Each element in the array is the ID of the activity.',
+		description:
+			'Activities associated with the task. Each element in the array is the ID of the activity.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -116,27 +145,24 @@ const commonFields: INodeProperties[] = [
 						displayName: 'Activity',
 						name: 'activity',
 						type: 'string',
-						default: ''
-					}
-				]
-			}
-		]
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Assigneess',
 		name: 'assigneess',
 		description: 'Users assigned with the task. Each element in the array is the ID of the user.',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 ];
 
 const taskFields: INodeProperties[] = [
 	Object.assign({}, idField, displayFor.id),
-	...commonFields.map(mapWith(displayFor.createOrUpdate))
+	...commonFields.map(mapWith(displayFor.createOrUpdate)),
 ];
 
-export {
-	taskOperations,
-	taskFields,
-}
+export { taskOperations, taskFields };

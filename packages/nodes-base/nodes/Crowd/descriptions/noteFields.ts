@@ -1,13 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
-import { mapWith, showFor } from "./utils";
+import type { INodeProperties } from 'n8n-workflow';
+import { notePresend } from '../GenericFunctions';
+import { mapWith, showFor } from './utils';
 
-const displayOpts = showFor(['note'])
+const displayOpts = showFor(['note']);
 
 const displayFor = {
 	resource: displayOpts(),
 	createOrUpdate: displayOpts(['create', 'update']),
 	id: displayOpts(['delete', 'find', 'update']),
-}
+};
 
 const noteOperations: INodeProperties = {
 	displayName: 'Operation',
@@ -21,24 +22,50 @@ const noteOperations: INodeProperties = {
 			name: 'Create',
 			value: 'create',
 			action: 'Create a note',
+			routing: {
+				send: { preSend: [notePresend] },
+				request: {
+					method: 'POST',
+					url: '/note',
+				},
+			},
 		},
 		{
 			name: 'Delete',
 			value: 'delete',
 			action: 'Delete a note',
+			routing: {
+				request: {
+					method: 'DELETE',
+					url: '=/note/{{$parameter["id"]}}',
+				},
+			},
 		},
 		{
 			name: 'Find',
 			value: 'find',
 			action: 'Find a note',
+			routing: {
+				request: {
+					method: 'GET',
+					url: '=/note/{{$parameter["id"]}}',
+				},
+			},
 		},
 		{
 			name: 'Update',
 			value: 'update',
 			action: 'Update a note',
+			routing: {
+				send: { preSend: [notePresend] },
+				request: {
+					method: 'PUT',
+					url: '=/note/{{$parameter["id"]}}',
+				},
+			},
 		},
-	]
-}
+	],
+};
 
 const idField: INodeProperties = {
 	displayName: 'ID',
@@ -46,8 +73,8 @@ const idField: INodeProperties = {
 	description: 'The ID of the note',
 	type: 'string',
 	required: true,
-	default: ''
-}
+	default: '',
+};
 
 const commonFields: INodeProperties[] = [
 	{
@@ -58,16 +85,13 @@ const commonFields: INodeProperties[] = [
 		typeOptions: {
 			rows: 4,
 		},
-		default: ''
-	}
+		default: '',
+	},
 ];
 
 const noteFields: INodeProperties[] = [
 	Object.assign({}, idField, displayFor.id),
-	...commonFields.map(mapWith(displayFor.createOrUpdate))
+	...commonFields.map(mapWith(displayFor.createOrUpdate)),
 ];
 
-export {
-	noteOperations,
-	noteFields,
-}
+export { noteOperations, noteFields };

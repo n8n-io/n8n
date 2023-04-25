@@ -1,14 +1,15 @@
-import { INodeProperties } from "n8n-workflow";
-import { mapWith, showFor } from "./utils";
-import * as shared from "./shared";
+import type { INodeProperties } from 'n8n-workflow';
+import { mapWith, showFor } from './utils';
+import * as shared from './shared';
+import { memberPresend } from '../GenericFunctions';
 
-const displayOpts = showFor(['member'])
+const displayOpts = showFor(['member']);
 
 const displayFor = {
 	resource: displayOpts(),
 	createOrUpdate: displayOpts(['createOrUpdate', 'update']),
 	id: displayOpts(['delete', 'find', 'update']),
-}
+};
 
 const memberOperations: INodeProperties = {
 	displayName: 'Operation',
@@ -22,24 +23,50 @@ const memberOperations: INodeProperties = {
 			name: 'Create or Update',
 			value: 'createOrUpdate',
 			action: 'Create or update a member',
+			routing: {
+				send: { preSend: [memberPresend] },
+				request: {
+					method: 'POST',
+					url: '/member',
+				},
+			},
 		},
 		{
 			name: 'Delete',
 			value: 'delete',
 			action: 'Delete a member',
+			routing: {
+				request: {
+					method: 'DELETE',
+					url: '=/member/{{$parameter["id"]}}',
+				},
+			},
 		},
 		{
 			name: 'Find',
 			value: 'find',
 			action: 'Find a member',
+			routing: {
+				request: {
+					method: 'GET',
+					url: '=/member/{{$parameter["id"]}}',
+				},
+			},
 		},
 		{
 			name: 'Update',
 			value: 'update',
 			action: 'Update a member',
+			routing: {
+				send: { preSend: [memberPresend] },
+				request: {
+					method: 'PUT',
+					url: '=/member/{{$parameter["id"]}}',
+				},
+			},
 		},
-	]
-}
+	],
+};
 
 const idField: INodeProperties = {
 	displayName: 'ID',
@@ -47,8 +74,8 @@ const idField: INodeProperties = {
 	description: 'The ID of the member',
 	type: 'string',
 	required: true,
-	default: ''
-}
+	default: '',
+};
 
 const commonFields: INodeProperties[] = [
 	{
@@ -57,15 +84,22 @@ const commonFields: INodeProperties[] = [
 		description: 'Platform for which to check member existence',
 		type: 'string',
 		required: true,
-		default: ''
+		default: '',
 	},
-	shared.usernameField,
+	{
+		displayName: 'Username',
+		name: 'username',
+		description: 'Username of the member in platform',
+		type: 'string',
+		required: true,
+		default: '',
+	},
 	{
 		displayName: 'Display Name',
 		name: 'displayName',
 		description: 'UI friendly name of the member',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 	shared.emailsField,
 	{
@@ -73,24 +107,65 @@ const commonFields: INodeProperties[] = [
 		name: 'joinedAt',
 		description: 'Date of joining the community',
 		type: 'dateTime',
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Organizations',
 		name: 'organizations',
-		description: 'Organizations associated with the member. Each element in the array is the name of the organization, or an organization object. If the organization does not exist, it will be created.',
+		description:
+			'Organizations associated with the member. Each element in the array is the name of the organization, or an organization object. If the organization does not exist, it will be created.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
 			{
 				displayName: 'Item Choice',
 				name: 'itemChoice',
-				values: shared.organizationFields
-			}
-		]
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						description: 'The name of the organization',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Url',
+						name: 'url',
+						description: 'The URL of the organization',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						description: 'A short description of the organization',
+						type: 'string',
+						typeOptions: {
+							rows: 3,
+						},
+						default: '',
+					},
+					{
+						displayName: 'Logo',
+						name: 'logo',
+						description: 'A URL for logo of the organization',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Employees',
+						name: 'employees',
+						description: 'The number of employees of the organization',
+						type: 'number',
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Tags',
@@ -98,7 +173,7 @@ const commonFields: INodeProperties[] = [
 		description: 'Tags associated with the member. Each element in the array is the ID of the tag.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -110,19 +185,20 @@ const commonFields: INodeProperties[] = [
 						displayName: 'Tag',
 						name: 'tag',
 						type: 'string',
-						default: ''
-					}
-				]
-			}
-		]
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Tasks',
 		name: 'tasks',
-		description: 'Tasks associated with the member. Each element in the array is the ID of the task.',
+		description:
+			'Tasks associated with the member. Each element in the array is the ID of the task.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -134,19 +210,20 @@ const commonFields: INodeProperties[] = [
 						displayName: 'Task',
 						name: 'task',
 						type: 'string',
-						default: ''
-					}
-				]
-			}
-		]
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Notes',
 		name: 'notes',
-		description: 'Notes associated with the member. Each element in the array is the ID of the note.',
+		description:
+			'Notes associated with the member. Each element in the array is the ID of the note.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -158,19 +235,20 @@ const commonFields: INodeProperties[] = [
 						displayName: 'Note',
 						name: 'note',
 						type: 'string',
-						default: ''
-					}
-				]
-			}
-		]
+						default: '',
+					},
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Activities',
 		name: 'activities',
-		description: 'Activities associated with the member. Each element in the array is the ID of the activity.',
+		description:
+			'Activities associated with the member. Each element in the array is the ID of the activity.',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -182,20 +260,17 @@ const commonFields: INodeProperties[] = [
 						displayName: 'Activity',
 						name: 'activity',
 						type: 'string',
-						default: ''
-					}
-				]
-			}
-		]
+						default: '',
+					},
+				],
+			},
+		],
 	},
 ];
 
 const memberFields: INodeProperties[] = [
 	Object.assign({}, idField, displayFor.id),
-	...commonFields.map(mapWith(displayFor.createOrUpdate))
+	...commonFields.map(mapWith(displayFor.createOrUpdate)),
 ];
 
-export {
-	memberOperations,
-	memberFields
-}
+export { memberOperations, memberFields };

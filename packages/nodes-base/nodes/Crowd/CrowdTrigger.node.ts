@@ -6,31 +6,35 @@ import type {
 	IWebhookResponseData,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { ICrowdCreds } from './GenericFunctions';
+import type { ICrowdCreds } from './GenericFunctions';
 
 const credsName = 'crowdApi';
 
-const getCreds = async (hookFns: IHookFunctions) => hookFns.getCredentials(credsName) as unknown as ICrowdCreds;
+const getCreds = async (hookFns: IHookFunctions) =>
+	hookFns.getCredentials(credsName) as unknown as ICrowdCreds;
 
-const createRequest = (creds: ICrowdCreds, opts: Partial<IHttpRequestOptions>): IHttpRequestOptions => {
+const createRequest = (
+	creds: ICrowdCreds,
+	opts: Partial<IHttpRequestOptions>,
+): IHttpRequestOptions => {
 	const defaults: IHttpRequestOptions = {
 		baseURL: `${creds.domain}/api/tenant/${creds.tenantId}`,
 		url: '',
 		json: true,
-	}
+	};
 	return Object.assign(defaults, opts);
-}
+};
 
 export class CrowdTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Crowd.dev  Trigger',
+		displayName: 'crowd.dev Trigger',
 		name: 'crowdTrigger',
 		icon: 'file:crowd.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Crowd.dev events occur.',
+		description: 'Starts the workflow when crowd.dev events occur.',
 		defaults: {
-			name: 'Crowd.dev Trigger',
+			name: 'crowd.dev Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -59,20 +63,19 @@ export class CrowdTrigger implements INodeType {
 				options: [
 					{
 						name: 'New Activity',
-						value: 'new_activity'
+						value: 'new_activity',
 					},
 					{
 						name: 'New Member',
-						value: 'new_member'
-					}
-				]
+						value: 'new_member',
+					},
+				],
 			},
 		],
 	};
 
 	webhookMethods = {
 		default: {
-
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const creds = await getCreds(this);
 				const webhookData = this.getWorkflowStaticData('node');
@@ -84,7 +87,11 @@ export class CrowdTrigger implements INodeType {
 							url: `/automation/${webhookData.webhookId}`,
 							method: 'GET',
 						});
-						const data = await this.helpers.requestWithAuthentication.call(this, credsName, options);
+						const data = await this.helpers.requestWithAuthentication.call(
+							this,
+							credsName,
+							options,
+						);
 						if (data.settings.url === webhookUrl) {
 							return true;
 						}
@@ -92,7 +99,6 @@ export class CrowdTrigger implements INodeType {
 						return false;
 					}
 				}
-
 
 				// If it did not error then the webhook exists
 				return false;
@@ -116,11 +122,15 @@ export class CrowdTrigger implements INodeType {
 							},
 							type: 'webhook',
 							trigger: params.trigger,
-						}
+						},
 					},
 				});
 
-				const responseData = await this.helpers.requestWithAuthentication.call(this, 'crowdApi', options);
+				const responseData = await this.helpers.requestWithAuthentication.call(
+					this,
+					'crowdApi',
+					options,
+				);
 				if (responseData === undefined || responseData.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
@@ -136,7 +146,6 @@ export class CrowdTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-
 					try {
 						const options = createRequest(creds, {
 							url: `/automation/${webhookData.webhookId}`,

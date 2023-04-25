@@ -34,7 +34,7 @@ export class CrowdApi implements ICredentialType {
 		{
 			displayName: 'Debug',
 			name: 'debug',
-			description: 'Turn it on to see requiest options instead of making actual requests',
+			description: 'Turn it on to see request options instead of making actual requests',
 			type: 'boolean',
 			default: false,
 		},

@@ -1,14 +1,15 @@
-import { INodeProperties } from "n8n-workflow";
-import { emailsField, usernameField } from "./shared";
-import { mapWith, showFor } from "./utils";
+import type { INodeProperties } from 'n8n-workflow';
+import { activityPresend } from '../GenericFunctions';
+import { emailsField, usernameField } from './shared';
+import { mapWith, showFor } from './utils';
 
-const displayOpts = showFor(['activity'])
+const displayOpts = showFor(['activity']);
 
 const displayFor = {
 	resource: displayOpts(),
 	createWithMember: displayOpts(['createWithMember']),
-	createForMember: displayOpts(['createForMember'])
-}
+	createForMember: displayOpts(['createForMember']),
+};
 
 const activityOperations: INodeProperties = {
 	displayName: 'Operation',
@@ -22,14 +23,28 @@ const activityOperations: INodeProperties = {
 			name: 'Create or Update an Activity (with a Member)',
 			value: 'createWithMember',
 			action: 'Create or update an activity with a member',
+			routing: {
+				send: { preSend: [activityPresend] },
+				request: {
+					method: 'POST',
+					url: '/activity/with-member',
+				},
+			},
 		},
 		{
 			name: 'Create an Activity for a Member',
 			value: 'createForMember',
 			action: 'Create an activity for a member',
+			routing: {
+				send: { preSend: [activityPresend] },
+				request: {
+					method: 'POST',
+					url: '/activity',
+				},
+			},
 		},
-	]
-}
+	],
+};
 
 const memberField: INodeProperties = {
 	displayName: 'Member',
@@ -57,10 +72,10 @@ const memberField: INodeProperties = {
 					description: 'Date of joining the community',
 					type: 'dateTime',
 					default: '',
-				}
-			]
-		}
-	]
+				},
+			],
+		},
+	],
 };
 
 const memberIdField: INodeProperties = {
@@ -70,7 +85,7 @@ const memberIdField: INodeProperties = {
 	type: 'string',
 	required: true,
 	default: '',
-}
+};
 
 const createCommonFields: INodeProperties[] = [
 	{
@@ -79,7 +94,7 @@ const createCommonFields: INodeProperties[] = [
 		description: 'Type of activity',
 		type: 'string',
 		required: true,
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Timestamp',
@@ -87,7 +102,7 @@ const createCommonFields: INodeProperties[] = [
 		description: 'Date and time when the activity took place',
 		type: 'dateTime',
 		required: true,
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Platform',
@@ -95,28 +110,28 @@ const createCommonFields: INodeProperties[] = [
 		description: 'Platform on which the activity took place',
 		type: 'string',
 		required: true,
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Title',
 		name: 'title',
 		description: 'Title of the activity',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Body',
 		name: 'body',
 		description: 'Body of the activity',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Channel',
 		name: 'channel',
 		description: 'Channel of the activity',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Source ID',
@@ -124,14 +139,15 @@ const createCommonFields: INodeProperties[] = [
 		description: 'The ID of the activity in the platform (e.g. the ID of the message in Discord)',
 		type: 'string',
 		required: true,
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Source Parent ID',
 		name: 'sourceParentId',
-		description: 'The ID of the parent activity in the platform (e.g. the ID of the parent message in Discord)',
+		description:
+			'The ID of the parent activity in the platform (e.g. the ID of the parent message in Discord)',
 		type: 'string',
-		default: ''
+		default: '',
 	},
 ];
 
@@ -141,7 +157,4 @@ const activityFields: INodeProperties[] = [
 	...createCommonFields.map(mapWith(displayFor.resource)),
 ];
 
-export {
-	activityOperations,
-	activityFields
-}
+export { activityOperations, activityFields };
