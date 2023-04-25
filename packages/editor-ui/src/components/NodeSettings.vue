@@ -172,7 +172,6 @@ import type {
 	IUpdateInformation,
 	IUsedCredential,
 } from '@/Interface';
-import { ICredentialsResponse, IUser } from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,

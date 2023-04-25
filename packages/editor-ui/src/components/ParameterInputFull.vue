@@ -70,7 +70,6 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import type Vue from 'vue';
 
 import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 

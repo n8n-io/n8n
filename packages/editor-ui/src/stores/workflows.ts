@@ -373,7 +373,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflows;
 		},
 
-		async fetchAndSetWorkflow(id: string): Promise<IWorkflowDb> {
+		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
 			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
 			this.addWorkflow(workflow);
@@ -492,7 +492,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}, {});
 		},
 
-		deleteWorkflow(id: string): void {
+		async deleteWorkflow(id: string): Promise<void> {
+			const rootStore = useRootStore();
+			await makeRestApiRequest(rootStore.getRestApiContext, 'DELETE', `/workflows/${id}`);
 			const { [id]: deletedWorkflow, ...workflows } = this.workflowsById;
 			this.workflowsById = workflows;
 		},
@@ -1119,11 +1121,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return response && unflattenExecutionData(response);
 		},
 
-		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/workflows/${id}`);
-		},
-
 		// Creates a new workflow
 		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
@@ -1133,12 +1130,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				'/workflows',
 				sendData as unknown as IDataObject,
 			);
-		},
-
-		// Deletes a workflow
-		async deleteWorkflowAPI(name: string): Promise<void> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'DELETE', `/workflows/${name}`);
 		},
 
 		// Updates an existing workflow
