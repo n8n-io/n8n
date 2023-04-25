@@ -13,6 +13,7 @@ import { tags } from '@lezer/highlight';
 const BASE_STYLING = {
 	fontSize: '0.8em',
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
+	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '300px',
 		lineHeight: '1.3em',
@@ -28,7 +29,11 @@ const BASE_STYLING = {
 
 const cssStyleDeclaration = getComputedStyle(document.documentElement);
 
-export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
+interface ThemeSettings {
+	isReadOnly?: boolean;
+}
+
+export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
@@ -36,7 +41,6 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
-			height: settings.maxHeight ? '100%' : null,
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
@@ -46,7 +50,10 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 			borderLeftColor: 'var(--color-code-caret)',
 		},
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
-			backgroundColor: 'var(--color-code-selection)',
+			// backgroundColor: 'var(--color-code-selection)',
+		},
+		'&.cm-editor': {
+			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',
@@ -59,7 +66,9 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 			backgroundColor: 'var(--color-code-lineHighlight)',
 		},
 		'.cm-gutters': {
-			backgroundColor: 'var(--color-code-gutterBackground)',
+			backgroundColor: isReadOnly
+				? 'var(--color-code-background-readonly)'
+				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 			borderRadius: 'var(--border-radius-base)',
 		},
@@ -69,8 +78,8 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			minHeight: '100px',
-			maxHeight: settings.maxHeight ? null : '400px',
+			maxHeight: BASE_STYLING.maxHeight,
+			...(isReadOnly ? {} : { minHeight: '10em' }),
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,

@@ -66,9 +66,8 @@
 						<code-node-editor
 							:value="value"
 							:defaultValue="parameter.default"
-							:language="getArgument('editorLanguage') ?? 'json'"
+							:language="editorLanguage"
 							:isReadOnly="isReadOnly"
-							:maxHeight="true"
 							@valueChanged="expressionUpdated"
 						/>
 					</div>
@@ -85,17 +84,17 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
 					:value="node.parameters.jsCode"
 					:defaultValue="parameter.default"
-					:language="getArgument('editorLanguage')"
+					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
 
 				<html-editor
-					v-else-if="getArgument('editor') === 'htmlEditor'"
+					v-else-if="editorType === 'htmlEditor'"
 					:html="node.parameters.html"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
@@ -105,16 +104,15 @@
 				/>
 
 				<div
-					v-else-if="isEditor === true"
+					v-else-if="editorType"
 					class="readonly-code clickable ph-no-capture"
 					@click="displayEditDialog()"
 				>
 					<code-node-editor
 						v-if="!codeEditDialogVisible"
 						:value="value"
-						:language="getArgument('editorLanguage') ?? 'json'"
+						:language="editorLanguage"
 						:isReadOnly="true"
-						:maxHeight="true"
 					/>
 				</div>
 
@@ -352,8 +350,10 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	EditorType,
+	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeParameterValue } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
@@ -645,7 +645,7 @@ export default mixins(
 				return 'textarea';
 			}
 
-			if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
+			if (this.editorType === 'code') {
 				return 'textarea';
 			}
 
@@ -728,11 +728,12 @@ export default mixins(
 
 			return [];
 		},
-		isEditor(): boolean {
-			return ['code', 'json'].includes(this.editorType);
+		editorType(): EditorType {
+			return this.getArgument('editor') as EditorType;
 		},
-		editorType(): string {
-			return this.getArgument('editor') as string;
+		editorLanguage(): CodeNodeEditorLanguage {
+			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
+			return 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -916,7 +917,7 @@ export default mixins(
 			this.textEditDialogVisible = false;
 		},
 		displayEditDialog() {
-			if (this.isEditor) {
+			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
 				this.textEditDialogVisible = true;
@@ -1168,32 +1169,6 @@ export default mixins(
 				},
 				{ deep: true, immediate: true },
 			);
-
-			// Reload function on change element from
-			// displayOptions.typeOptions.reloadOnChange parameters
-			if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-				// Get all parameter in reloadOnChange property
-				// This reload when parameters in reloadOnChange is updated
-				const parametersOnChange: string[] = this.parameter.typeOptions.reloadOnChange;
-				for (let i = 0; i < parametersOnChange.length; i++) {
-					const parameter = parametersOnChange[i] as string;
-					if (parameter in this.node.parameters) {
-						this.$watch(
-							() => {
-								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
-									return this.node.parameters![parameter];
-								} else {
-									return null;
-								}
-							},
-							() => {
-								this.loadRemoteParameterOptions();
-							},
-							{ deep: true, immediate: true },
-						);
-					}
-				}
-			}
 		}
 
 		this.$externalHooks().run('parameterInput.mount', {

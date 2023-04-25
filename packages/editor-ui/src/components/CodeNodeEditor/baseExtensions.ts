@@ -26,11 +26,11 @@ export const readOnlyEditorExtensions: readonly Extension[] = [
 	lineNumbers(),
 	EditorView.lineWrapping,
 	highlightSpecialChars(),
-	lintGutter(),
 ];
 
 export const writableEditorExtensions: readonly Extension[] = [
 	history(),
+	lintGutter(),
 	foldGutter(),
 	codeInputHandler(),
 	dropCursor(),

@@ -75,10 +75,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		value: {
 			type: String,
 		},
-		maxHeight: {
-			type: Boolean,
-			default: false,
-		},
 	},
 	data() {
 		return {
@@ -204,20 +200,20 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			this.$emit('valueChanged', this.placeholder);
 		}
 
+		const { isReadOnly, language } = this;
 		const extensions: Extension[] = [
 			...readOnlyEditorExtensions,
-			EditorState.readOnly.of(this.isReadOnly),
-			codeNodeEditorTheme({ maxHeight: this.maxHeight }),
+			EditorState.readOnly.of(isReadOnly),
+			EditorView.editable.of(!isReadOnly),
+			codeNodeEditorTheme({ isReadOnly }),
 		];
 
-		const linter = this.createLinter(this.language);
-		if (linter) {
-			extensions.push(this.linterCompartment.of(linter));
-		}
+		if (!isReadOnly) {
+			const linter = this.createLinter(language);
+			if (linter) {
+				extensions.push(this.linterCompartment.of(linter));
+			}
 
-		if (this.isReadOnly) {
-			extensions.push(EditorView.editable.of(this.isReadOnly));
-		} else {
 			extensions.push(
 				...writableEditorExtensions,
 				EditorView.domEventHandlers({
@@ -238,7 +234,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			);
 		}
 
-		switch (this.language) {
+		switch (language) {
 			case 'json':
 				extensions.push(json());
 				break;
@@ -256,6 +252,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
 			state,
 		});
+
+		this.$nextTick(() => this.editor?.focus());
 	},
 });
 </script>
