@@ -1424,7 +1424,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 .dataContainer {
 	position: relative;
 	height: 100%;
-	//overflow-y: auto;
 
 	&:hover {
 		.actions-group {
