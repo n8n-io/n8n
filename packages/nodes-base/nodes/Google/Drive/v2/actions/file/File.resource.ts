@@ -79,7 +79,7 @@ export const description: INodeProperties[] = [
 		...fileRLC,
 		displayOptions: {
 			show: {
-				operation: ['download', 'update', 'deleteFile'],
+				operation: ['download', 'deleteFile'],
 				resource: ['file'],
 			},
 		},
