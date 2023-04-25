@@ -1,5 +1,5 @@
 import { vi, describe, it, expect } from 'vitest';
-import Vue, { defineComponent } from 'vue';
+import Vue from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';

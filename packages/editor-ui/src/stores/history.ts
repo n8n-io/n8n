@@ -1,6 +1,5 @@
-import { AddConnectionCommand, COMMANDS, RemoveConnectionCommand } from './../models/history';
 import type { Command, Undoable } from '@/models/history';
-import { BulkCommand, MoveNodeCommand } from '@/models/history';
+import { BulkCommand } from '@/models/history';
 import { STORES } from '@/constants';
 import type { HistoryState } from '@/Interface';
 import { defineStore } from 'pinia';

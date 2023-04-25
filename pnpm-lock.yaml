@@ -154,6 +154,9 @@ importers:
       eslint-plugin-unicorn:
         specifier: ~46.0
         version: 46.0.0(eslint@8.39.0)
+      eslint-plugin-unused-imports:
+        specifier: ~2.0
+        version: 2.0.0(@typescript-eslint/eslint-plugin@5.59.0)(eslint@8.39.0)
       eslint-plugin-vue:
         specifier: ~7.17
         version: 7.17.0(eslint@8.39.0)
@@ -945,7 +948,7 @@ importers:
         version: 2.8.3
       prismjs:
         specifier: ^1.17.1
-        version: 1.29.0
+        version: 1.17.1
       stream-browserify:
         specifier: ^3.0.0
         version: 3.0.0
@@ -1087,7 +1090,7 @@ importers:
         version: 4.0.4(@types/node@16.18.12)(sass@1.55.0)(terser@5.16.1)
       vite-plugin-monaco-editor:
         specifier: ^1.0.10
-        version: 1.1.0(monaco-editor@0.33.0)
+        version: 1.0.10(monaco-editor@0.33.0)
       vitest:
         specifier: ^0.28.5
         version: 0.28.5(sass@1.55.0)(terser@5.16.1)
@@ -9370,6 +9373,15 @@ packages:
       safe-buffer: 5.2.1
     dev: false
 
+  /clipboard@2.0.11:
+    resolution: {integrity: sha512-C+0bbOqkezLIsmWSvlsXS0Q0bmkugu7jcfMIACB+RDEntIzQIkdr148we28AfSloQLRdZlYL/QYyrq05j/3Faw==}
+    dependencies:
+      good-listener: 1.2.2
+      select: 1.1.2
+      tiny-emitter: 2.1.0
+    dev: false
+    optional: true
+
   /cliui@3.2.0:
     resolution: {integrity: sha512-0yayqDxWQbqk3ojkYqUKqaAQ6AfNKeKWRNA8kR0WXzAsdHpP4BIaOmMAG87JGuO6qcobyW4GjxHd9PmhEd+T9w==}
     dependencies:
@@ -10528,6 +10540,11 @@ packages:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
 
+  /delegate@3.2.0:
+    resolution: {integrity: sha512-IofjkYBZaZivn0V8nnsMJGBr4jVLxHDheKSW88PyxS5QC4Vo9ZbZVvhzlSxY87fVq3STR6r+4cGepyHkcWOQSw==}
+    dev: false
+    optional: true
+
   /delegates@1.0.0:
     resolution: {integrity: sha512-bd2L678uiWATM6m5Z1VzNCErI3jiGzt6HGY8OVICs40JQq/HALfbyNJmp0UDakEY4pMMaN0Ly5om/B1VI/+xfQ==}
 
@@ -11405,6 +11422,21 @@ packages:
       strip-indent: 3.0.0
     dev: true
 
+  /eslint-plugin-unused-imports@2.0.0(@typescript-eslint/eslint-plugin@5.59.0)(eslint@8.39.0):
+    resolution: {integrity: sha512-3APeS/tQlTrFa167ThtP0Zm0vctjr4M44HMpeg1P4bK6wItarumq0Ma82xorMKdFsWpphQBlRPzw/pxiVELX1A==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    peerDependencies:
+      '@typescript-eslint/eslint-plugin': ^5.0.0
+      eslint: ^8.0.0
+    peerDependenciesMeta:
+      '@typescript-eslint/eslint-plugin':
+        optional: true
+    dependencies:
+      '@typescript-eslint/eslint-plugin': 5.59.0(patch_hash=tk3n6hvmqwfzrfqe3awfxnqtuy)(@typescript-eslint/parser@5.59.0)(eslint@8.39.0)(typescript@5.0.3)
+      eslint: 8.39.0
+      eslint-rule-composer: 0.3.0
+    dev: true
+
   /eslint-plugin-vue@7.17.0(eslint@8.39.0):
     resolution: {integrity: sha512-Rq5R2QetDCgC+kBFQw1+aJ5B93tQ4xqZvoCUxuIzwTonngNArsdP8ChM8PowIzsJvRtWl4ltGh/bZcN3xhFWSw==}
     engines: {node: '>=8.10'}
@@ -11418,6 +11450,11 @@ packages:
       vue-eslint-parser: 7.11.0(eslint@8.39.0)
     transitivePeerDependencies:
       - supports-color
+    dev: true
+
+  /eslint-rule-composer@0.3.0:
+    resolution: {integrity: sha512-bt+Sh8CtDmn2OajxvNO+BX7Wn4CIWMpTRm3MaiKPCQcnnlm0CS2mhui6QaoeQugs+3Kj2ESKEEGJUdVafwhiCg==}
+    engines: {node: '>=4.0.0'}
     dev: true
 
   /eslint-scope@5.1.1:
@@ -12786,6 +12823,13 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: false
+
+  /good-listener@1.2.2:
+    resolution: {integrity: sha512-goW1b+d9q/HIwbVYZzZ6SsTr4IgE+WA44A0GmPIQstuOrgsFcT7VEJ48nmr9GaRtNu0XTKacFLGnBPAM6Afouw==}
+    dependencies:
+      delegate: 3.2.0
+    dev: false
+    optional: true
 
   /google-timezones-json@1.1.0:
     resolution: {integrity: sha512-6BmBx9gJVALV2jsfMks8PwmkWT5ip3+bmMyTgXu4PY+G8nKjHi61yrL7rSXpMYRsIzUXhVKpj+MnjhnwG9nung==}
@@ -17768,9 +17812,10 @@ packages:
     hasBin: true
     dev: false
 
-  /prismjs@1.29.0:
-    resolution: {integrity: sha512-Kx/1w86q/epKcmte75LNrEoT+lX8pBpavuAbvJWRXar7Hz8jrtF+e3vY751p0R8H9HdArwaCTNDDzHg/ScJK1Q==}
-    engines: {node: '>=6'}
+  /prismjs@1.17.1:
+    resolution: {integrity: sha512-PrEDJAFdUGbOP6xK/UsfkC5ghJsPJviKgnQOoxaDbBjwc8op68Quupwt1DeAFoG8GImPhiKXAvvsH7wDSLsu1Q==}
+    optionalDependencies:
+      clipboard: 2.0.11
     dev: false
 
   /process-nextick-args@2.0.1:
@@ -19029,6 +19074,11 @@ packages:
     dependencies:
       parseley: 0.7.0
     dev: false
+
+  /select@1.1.2:
+    resolution: {integrity: sha512-OwpTSOfy6xSs1+pwcNrv0RBMOzI39Lp3qQKUTPVVPRjCdNa5JH/oPRiqsesIskK8TVgmRiHwO4KXlV2Li9dANA==}
+    dev: false
+    optional: true
 
   /semver-greatest-satisfied-range@1.1.0:
     resolution: {integrity: sha512-Ny/iyOzSSa8M5ML46IAx3iXc6tfOsYU2R4AXi2UpHk60Zrgyq6eqPj/xiOfS0rRl/iiQ/rdJkVjw/5cdUyCntQ==}
@@ -20320,6 +20370,11 @@ packages:
     resolution: {integrity: sha512-a7wPxPdVlQL7lqvitHGGRsofhdwtkoSXPGATFuSOA2i1ZNQEPLrGnj68vOp2sOJTCFAQVXPeNMX/GctBaO9L2w==}
     dev: false
 
+  /tiny-emitter@2.1.0:
+    resolution: {integrity: sha512-NB6Dk1A9xgQPMoGqC5CVXn123gWyte215ONT5Pp5a0yt4nlEoO1ZWeCwpncaekPHXO60i47ihFnZPiRPjRMq4Q==}
+    dev: false
+    optional: true
+
   /tiny-glob@0.2.9:
     resolution: {integrity: sha512-g/55ssRPUjShh+xkfx9UPDXqhckHEsHr4Vd9zX55oSdGZc/MD0m3sferOkwWtp98bv+kcVfEHtRJgBVJzelrzg==}
     dependencies:
@@ -21403,10 +21458,10 @@ packages:
       - terser
     dev: true
 
-  /vite-plugin-monaco-editor@1.1.0(monaco-editor@0.33.0):
-    resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
+  /vite-plugin-monaco-editor@1.0.10(monaco-editor@0.33.0):
+    resolution: {integrity: sha512-7yTAFIE0SefjCmfnjrvXOl53wkxeSASc/ZIcB5tZeEK3vAmHhveV8y3f90Vp8b+PYdbUipjqf91mbFbSENkpcw==}
     peerDependencies:
-      monaco-editor: '>=0.33.0'
+      monaco-editor: 0.29.x
     dependencies:
       monaco-editor: 0.33.0
     dev: true
