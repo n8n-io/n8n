@@ -26,7 +26,7 @@ const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'ac
 const searchPlaceholder = computed(() =>
 	isActionsMode.value
 		? instance?.proxy?.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
-				interpolate: { node: activeViewStack.value.title },
+				interpolate: { node: activeViewStack.value.title as string },
 		  })
 		: instance?.proxy?.$locale.baseText('nodeCreator.searchBar.searchNodes'),
 );
@@ -41,7 +41,9 @@ function onSearch(value: string) {
 }
 
 function onTransitionEnd() {
-	setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+	// For actions, set the active focus to the first action, not category
+	const newStackIndex = activeViewStack.value.mode === 'actions' ? 1 : 0
+	setActiveItemIndex((activeViewStack.value.activeIndex || 0) || newStackIndex);
 }
 
 onMounted(() => {
