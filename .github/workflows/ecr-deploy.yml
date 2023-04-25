@@ -8,6 +8,7 @@ name: Deploy to Amazon ECR in the dev environment
 permissions:
   id-token: write
   contents: read
+  packages: read
 
 jobs:
   deploy:
