@@ -103,6 +103,14 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<sql-editor
+					v-else-if="editorType === 'sqlEditor'"
+					:query="node.parameters.query"
+					:dialect="getArgument('sqlDialect')"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<div
 					v-else-if="editorType"
 					class="readonly-code clickable ph-no-capture"
@@ -367,6 +375,7 @@ import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue'
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -374,8 +383,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
-import { CODE_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
@@ -398,6 +406,7 @@ export default mixins(
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
+		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
