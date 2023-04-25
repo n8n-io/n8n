@@ -7,7 +7,7 @@ import type {
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 
-export interface Props {
+interface Props {
 	initialValue: string[];
 	fieldsToMap: ResourceMapperFields['fields'];
 	typeOptions: ResourceMapperTypeOptions | undefined;

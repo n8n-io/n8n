@@ -16,7 +16,7 @@ import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import { isResourceMapperValue } from '@/utils';
 
-export interface Props {
+interface Props {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;

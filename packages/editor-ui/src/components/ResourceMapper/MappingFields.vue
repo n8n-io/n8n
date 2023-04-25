@@ -12,7 +12,7 @@ import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { get } from 'lodash-es';
 
-export interface Props {
+interface Props {
 	parameter: INodeProperties;
 	path: string;
 	nodeValues: INodeParameters | undefined;
@@ -63,6 +63,24 @@ const orderedFields = computed<INodeProperties[]>(() => {
 	return fieldsUi.value;
 });
 
+const singularFieldWord = computed<string>(() => {
+	return (
+		props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
+		locale.baseText('generic.field')
+	);
+});
+
+const pluralFieldWord = computed<string>(() => {
+	return (
+		props.parameter.typeOptions?.resourceMapper?.fieldWords?.plural ||
+		locale.baseText('generic.fields')
+	);
+});
+
+const resourceMapperMode = computed<string | undefined>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.mode;
+});
+
 function getFieldLabel(field: ResourceMapperField): string {
 	if (isMatchingField(field.id)) {
 		const suffix = locale.baseText('resourceMapper.usingToMatch') || '';
@@ -73,13 +91,10 @@ function getFieldLabel(field: ResourceMapperField): string {
 
 function getFieldDescription(field: ResourceMapperField): string {
 	if (isMatchingField(field.id)) {
-		const singularFieldWord =
-			props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
-			locale.baseText('generic.field');
 		return (
 			locale.baseText('resourceMapper.usingToMatch.description', {
 				interpolate: {
-					fieldWord: singularFieldWord,
+					fieldWord: singularFieldWord.value,
 				},
 			}) || ''
 		);
@@ -88,9 +103,19 @@ function getFieldDescription(field: ResourceMapperField): string {
 }
 
 function isMatchingField(field: string): boolean {
+	const match = field.match(props.FIELD_NAME_REGEX);
+	let fieldName = field;
+	if (match) {
+		fieldName = match.pop() || field;
+	}
 	return (
-		props.showMatchingColumnsSelector && (props.paramValue.matchingColumns || []).includes(field)
+		props.showMatchingColumnsSelector &&
+		(props.paramValue.matchingColumns || []).includes(fieldName)
 	);
+}
+
+function fieldCannotBeDeleted(field: INodeProperties): boolean {
+	return resourceMapperMode.value === 'add' && field.required === true;
 }
 
 function getParameterValue(
@@ -101,12 +126,12 @@ function getParameterValue(
 	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
 }
 
-function onValueChanged(value: IUpdateInformation) {
+function onValueChanged(value: IUpdateInformation): void {
 	emit('fieldValueChanged', value);
 }
 
-function removeField(field: string) {
-	emit('removeField', field);
+function removeField(fieldName: string) {
+	emit('removeField', fieldName);
 }
 
 defineExpose({
@@ -121,10 +146,7 @@ defineExpose({
 			{{
 				locale.baseText('resourceMapper.fetchingFields.message', {
 					interpolate: {
-						fieldWord:
-							props.parameter.typeOptions?.fieldWords?.plural ||
-							locale.baseText('generic.fields') ||
-							'fields',
+						fieldWord: pluralFieldWord,
 					},
 				})
 			}}
@@ -140,11 +162,34 @@ defineExpose({
 			:key="field.name"
 			:class="['parameter-item', $style.parameterItem]"
 		>
-			<div class="delete-option clickable" :title="$locale.baseText('parameterInputList.delete')">
+			<div
+				v-if="fieldCannotBeDeleted(field)"
+				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
+			>
+				<n8n-tooltip placement="top">
+					<template #content>
+						<span>{{
+							locale.baseText('resourceMapper.mandatoryField.title', {
+								interpolate: { fieldWord: singularFieldWord },
+							})
+						}}</span>
+					</template>
+					<font-awesome-icon icon="question-circle" />
+				</n8n-tooltip>
+			</div>
+			<div
+				v-else-if="!isMatchingField(field.name)"
+				:class="['delete-option', 'clickable', 'mt-5xs']"
+			>
 				<font-awesome-icon
 					icon="trash"
-					class="reset-icon clickable"
-					:title="$locale.baseText('parameterInputList.deleteParameter')"
+					:title="
+						locale.baseText('resourceMapper.removeField', {
+							interpolate: {
+								fieldWord: singularFieldWord,
+							},
+						})
+					"
 					@click="removeField(field.name)"
 				/>
 			</div>
@@ -166,5 +211,9 @@ defineExpose({
 .parameterItem {
 	position: relative;
 	padding: 0 0 0 1em;
+}
+
+.parameterTooltipIcon {
+	color: var(--color-text-light) !important;
 }
 </style>

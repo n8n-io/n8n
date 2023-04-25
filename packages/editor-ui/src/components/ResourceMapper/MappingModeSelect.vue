@@ -3,7 +3,7 @@ import type { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workfl
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 
-export interface Props {
+interface Props {
 	initialValue: string;
 	fieldsToMap: ResourceMapperFields['fields'];
 	inputSize: string;
