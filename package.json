@@ -34,7 +34,6 @@
     "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
-    "@deep-consulting-solutions/n8n-nodes-dcs-crm": "1.1.0",
     "n8n": "workspace:*"
   },
   "devDependencies": {
