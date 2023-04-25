@@ -75,10 +75,10 @@ onMounted(async () => {
 	}
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
-	if (state.paramValue.value === null) {
+	if (!state.paramValue.value) {
 		state.paramValue.value = {};
 		state.fieldsToMap.forEach((field) => {
-			state.paramValue.value[field.id] = '';
+			state.paramValue.value[field.id] = null;
 		});
 	}
 });
@@ -218,7 +218,7 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	}
 }
 
-function deleteOption(name: string): void {
+function removeField(name: string): void {
 	const match = name.match(FIELD_NAME_REGEX);
 	if (match) {
 		const fieldName = match.pop();
@@ -232,6 +232,18 @@ function deleteOption(name: string): void {
 			field.display = false;
 		}
 	}
+}
+
+function addField(name: string): void {
+	state.paramValue.value = {
+		...state.paramValue.value,
+		[name]: null,
+	}
+	const field = state.fieldsToMap.find((field) => field.id === name);
+	if (field) {
+		field.display = true;
+	}
+	emitValueChanged();
 }
 
 function emitValueChanged(): void {
@@ -295,7 +307,8 @@ defineExpose({
 			:showMappingModeSelect="showMappingModeSelect"
 			:loading="state.loading"
 			@fieldValueChanged="fieldValueChanged"
-			@removeField="deleteOption"
+			@removeField="removeField"
+			@addField="addField"
 		/>
 	</div>
 </template>

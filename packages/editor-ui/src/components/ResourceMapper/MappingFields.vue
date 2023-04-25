@@ -30,6 +30,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	(event: 'fieldValueChanged', value: IUpdateInformation): void;
 	(event: 'removeField', field: string): void;
+	(event: 'addField', field: string): void;
 }>();
 
 const fieldsUi = computed<INodeProperties[]>(() => {
@@ -63,11 +64,46 @@ const orderedFields = computed<INodeProperties[]>(() => {
 	return fieldsUi.value;
 });
 
+const removedFields = computed<ResourceMapperField[]>(() => {
+	return props.fieldsToMap.filter((field) => {
+		if (props.paramValue.value && !(field.id in props.paramValue.value)) {
+			return true;
+		}
+		return false;
+	});
+});
+
 const singularFieldWord = computed<string>(() => {
 	return (
 		props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
 		locale.baseText('generic.field')
 	);
+});
+
+const pluralFieldWord = computed<string>(() => {
+	return (
+		props.parameter.typeOptions?.resourceMapper?.fieldWords?.plural ||
+		locale.baseText('generic.fields')
+	);
+});
+
+const addFieldOptions = computed<{name: string, value: string}[]>(() => {
+	return [
+		{
+			name: locale.baseText('resourceMapper.addAllFields', { interpolate: { fieldWord: pluralFieldWord.value }}),
+			value: 'addAllFields',
+			disabled: true,
+		},
+		{
+			name: locale.baseText('resourceMapper.removeAllFields', { interpolate: { fieldWord: pluralFieldWord.value }}),
+			value: 'removeAllFields',
+		},
+	].concat(removedFields.value.map((field) => {
+		return {
+			name: field.displayName,
+			value: field.id,
+		};
+	}));
 });
 
 const resourceMapperMode = computed<string | undefined>(() => {
@@ -125,6 +161,10 @@ function onValueChanged(value: IUpdateInformation): void {
 
 function removeField(fieldName: string) {
 	emit('removeField', fieldName);
+}
+
+function addField(fieldName: string) {
+	emit('addField', fieldName);
 }
 
 defineExpose({
@@ -186,6 +226,23 @@ defineExpose({
 				:nodeValues="nodeValues"
 				@valueChanged="onValueChanged"
 			/>
+		</div>
+		<div class="add-option">
+			<n8n-select
+				:placeholder="locale.baseText('resourceMapper.addFieldToSend', {
+					interpolate: { fieldWord: singularFieldWord },
+				})"
+				size="small"
+				@change="addField"
+			>
+				<n8n-option
+					v-for="item in addFieldOptions"
+					:key="item.value"
+					:label="item.name"
+					:value="item.value"
+				>
+				</n8n-option>
+			</n8n-select>
 		</div>
 	</div>
 </template>
