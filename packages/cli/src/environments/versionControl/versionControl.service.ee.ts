@@ -49,6 +49,7 @@ export class VersionControlService {
 	public get versionControlPreferences(): VersionControlPreferences {
 		return {
 			...this._versionControlPreferences,
+			connected: this._versionControlPreferences.connected ?? false,
 			publicKey: this.getPublicKey(),
 		};
 	}
@@ -130,6 +131,11 @@ export class VersionControlService {
 		preferences: Partial<VersionControlPreferences>,
 		allowMissingProperties = true,
 	): Promise<ValidationError[]> {
+		if (this.isVersionControlConnected()) {
+			if (preferences.repositoryUrl !== this._versionControlPreferences.repositoryUrl) {
+				throw new Error('Cannot change repository while connected');
+			}
+		}
 		const preferencesObject = new VersionControlPreferences(preferences);
 		const validationResult = await validate(preferencesObject, {
 			forbidUnknownValues: false,
@@ -140,7 +146,6 @@ export class VersionControlService {
 		if (validationResult.length > 0) {
 			throw new Error(`Invalid version control preferences: ${JSON.stringify(validationResult)}`);
 		}
-		// TODO: if repositoryUrl is changed, check if it is valid
 		// TODO: if branchName is changed, check if it is valid
 		return validationResult;
 	}
