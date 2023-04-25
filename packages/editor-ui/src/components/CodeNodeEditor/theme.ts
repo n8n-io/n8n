@@ -50,7 +50,7 @@ export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 			borderLeftColor: 'var(--color-code-caret)',
 		},
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
-			// backgroundColor: 'var(--color-code-selection)',
+			backgroundColor: 'var(--color-code-selection)',
 		},
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
