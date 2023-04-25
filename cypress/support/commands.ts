@@ -168,7 +168,9 @@ Cypress.Commands.add('skipSetup', () => {
 	const workflowPage = new WorkflowPage();
 	const Confirmation = new MessageBox();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
