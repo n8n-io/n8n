@@ -40,25 +40,7 @@ export const description: INodeProperties[] = [
 		],
 		default: 'create',
 	},
-	{
-		...folderRLC,
-		displayOptions: {
-			show: {
-				operation: ['deleteFolder', 'share'],
-				resource: ['folder'],
-			},
-		},
-	},
 	...create.description,
 	...deleteFolder.description,
 	...share.description,
-	{
-		...fileAndFolderOptions,
-		displayOptions: {
-			show: {
-				operation: ['share'],
-				resource: ['folder'],
-			},
-		},
-	},
 ];
