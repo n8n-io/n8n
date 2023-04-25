@@ -18,7 +18,7 @@ export class VersionControlPreferences {
 	authorEmail: string;
 
 	@IsString()
-	branchName: string;
+	branchName = 'main';
 
 	@IsBoolean()
 	branchReadOnly: boolean;
@@ -26,9 +26,9 @@ export class VersionControlPreferences {
 	@IsHexColor()
 	branchColor: string;
 
-	@IsOptional()
-	@IsString()
-	readonly privateKey?: string;
+	// @IsOptional()
+	// @IsString()
+	// readonly privateKey?: string;
 
 	@IsOptional()
 	@IsString()
