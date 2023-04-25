@@ -78,9 +78,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
+import { reactive, toRefs, getCurrentInstance, computed, onUnmounted } from 'vue';
 import type { INodeTypeDescription, INodeActionTypeDescription } from 'n8n-workflow';
-import { INodeTypeNameVersion } from 'n8n-workflow';
 import type {
 	INodeCreateElement,
 	NodeCreateElement,
@@ -97,7 +96,6 @@ import {
 	STICKY_NODE_TYPE,
 	REGULAR_NODE_FILTER,
 	TRIGGER_NODE_FILTER,
-	N8N_NODE_TYPE,
 } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';

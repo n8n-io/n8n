@@ -1,10 +1,9 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber } from '@/utils';
-import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import type { Endpoint, Connection } from '@jsplumb/core';
-import { ConnectionEstablishedParams } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
 import type {

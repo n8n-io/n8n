@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
 import { computed, ref } from 'vue';
 import type { EnvironmentVariable } from '@/Interface';
 import * as environmentsApi from '@/api/environments.ee';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { createVariable } from '@/api/environments.ee';
 
 export const useEnvironmentsStore = defineStore('environments', () => {
 	const rootStore = useRootStore();
