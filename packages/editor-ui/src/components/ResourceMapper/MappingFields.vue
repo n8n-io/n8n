@@ -89,19 +89,21 @@ const addFieldOptions = computed<Array<{ name: string; value: string; disabled?:
 				interpolate: { fieldWord: pluralFieldWord.value },
 			}),
 			value: 'addAllFields',
-			disabled: true,
+			disabled: removedFields.value.length === 0,
 		},
 		{
 			name: locale.baseText('resourceMapper.removeAllFields', {
 				interpolate: { fieldWord: pluralFieldWord.value },
 			}),
 			value: 'removeAllFields',
+			disabled: removedFields.value.length === props.fieldsToMap.length,
 		},
 	].concat(
 		removedFields.value.map((field) => {
 			return {
 				name: field.displayName,
 				value: field.id,
+				disabled: false,
 			};
 		}),
 	);
@@ -230,9 +232,11 @@ defineExpose({
 		</div>
 		<div class="add-option">
 			<n8n-select
-				:placeholder="locale.baseText('resourceMapper.addFieldToSend', {
-					interpolate: { fieldWord: singularFieldWord },
-				})"
+				:placeholder="
+					locale.baseText('resourceMapper.addFieldToSend', {
+						interpolate: { fieldWord: singularFieldWord },
+					})
+				"
 				size="small"
 				@change="addField"
 			>
@@ -241,6 +245,7 @@ defineExpose({
 					:key="item.value"
 					:label="item.name"
 					:value="item.value"
+					:disabled="item.disabled"
 				>
 				</n8n-option>
 			</n8n-select>
