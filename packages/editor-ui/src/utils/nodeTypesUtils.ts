@@ -4,24 +4,13 @@ import { useNodeTypesStore } from './../stores/nodeTypes';
 import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
-	CUSTOM_NODES_CATEGORY,
-	SUBCATEGORY_DESCRIPTIONS,
-	UNCATEGORIZED_CATEGORY,
-	UNCATEGORIZED_SUBCATEGORY,
-	PERSONALIZED_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
-	REGULAR_NODE_FILTER,
-	TRIGGER_NODE_FILTER,
-	ALL_NODE_FILTER,
 	MAPPING_PARAMS,
 } from '@/constants';
 import type {
-	INodeCreateElement,
-	ICategoriesWithNodes,
 	INodeUi,
 	ITemplatesNode,
-	INodeItemProps,
 	NodeAuthenticationOption,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
@@ -30,7 +19,6 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	INodeTypeDescription,
-	INodeActionTypeDescription,
 	NodeParameterValueType,
 	INodePropertyOptions,
 	INodePropertyCollection,
@@ -47,158 +35,6 @@ import { i18n as locale } from '@/plugins/i18n';
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
-
-const addNodeToCategory = (
-	accu: ICategoriesWithNodes,
-	nodeType: INodeTypeDescription | INodeActionTypeDescription,
-	category: string,
-	subcategory: string,
-) => {
-	if (!accu[category]) {
-		accu[category] = {};
-	}
-	if (!accu[category][subcategory]) {
-		accu[category][subcategory] = {
-			triggerCount: 0,
-			regularCount: 0,
-			nodes: [],
-		};
-	}
-	const isTrigger = nodeType.group.includes('trigger');
-	if (isTrigger) {
-		accu[category][subcategory].triggerCount++;
-	}
-	if (!isTrigger) {
-		accu[category][subcategory].regularCount++;
-	}
-	accu[category][subcategory].nodes.push({
-		type: nodeType.actionKey ? 'action' : 'node',
-		key: `${nodeType.name}`,
-		category,
-		properties: {
-			nodeType,
-			subcategory,
-		},
-		includedByTrigger: isTrigger,
-		includedByRegular: !isTrigger,
-	});
-};
-
-export const getCategoriesWithNodes = (
-	nodeTypes: INodeTypeDescription[],
-	uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY,
-): ICategoriesWithNodes => {
-	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) =>
-		a.displayName > b.displayName ? 1 : -1,
-	);
-	const result = sorted.reduce((accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
-		if (!nodeType.codex || !nodeType.codex.categories) {
-			addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
-			return accu;
-		}
-
-		nodeType.codex.categories.forEach((_category: string) => {
-			const category = _category.trim();
-			const subcategories = nodeType?.codex?.subcategories?.[category] ?? null;
-
-			if (subcategories === null || subcategories.length === 0) {
-				addNodeToCategory(accu, nodeType, category, uncategorizedSubcategory);
-				return;
-			}
-
-			subcategories.forEach((subcategory) => {
-				addNodeToCategory(accu, nodeType, category, subcategory);
-			});
-		});
-		return accu;
-	}, {});
-	return result;
-};
-
-const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
-	const excludeFromSort = [
-		CORE_NODES_CATEGORY,
-		CUSTOM_NODES_CATEGORY,
-		UNCATEGORIZED_CATEGORY,
-		PERSONALIZED_CATEGORY,
-	];
-	const categories = Object.keys(categoriesWithNodes);
-	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
-	sorted.sort();
-
-	return [
-		CORE_NODES_CATEGORY,
-		CUSTOM_NODES_CATEGORY,
-		PERSONALIZED_CATEGORY,
-		...sorted,
-		UNCATEGORIZED_CATEGORY,
-	];
-};
-
-export const getCategorizedList = (
-	categoriesWithNodes: ICategoriesWithNodes,
-	categoryIsExpanded = false,
-): INodeCreateElement[] => {
-	const categories = getCategories(categoriesWithNodes);
-
-	const result = categories.reduce((accu: INodeCreateElement[], category: string) => {
-		if (!categoriesWithNodes[category]) {
-			return accu;
-		}
-
-		const categoryEl: INodeCreateElement = {
-			type: 'category',
-			key: category,
-			properties: {
-				category,
-				name: category,
-				expanded: categoryIsExpanded,
-			},
-		};
-
-		const subcategories = Object.keys(categoriesWithNodes[category]);
-		if (subcategories.length === 1) {
-			const subcategory = categoriesWithNodes[category][subcategories[0]];
-			if (subcategory.triggerCount > 0) {
-				categoryEl.includedByTrigger = subcategory.triggerCount > 0;
-			}
-			if (subcategory.regularCount > 0) {
-				categoryEl.includedByRegular = subcategory.regularCount > 0;
-			}
-			return [...accu, categoryEl, ...subcategory.nodes];
-		}
-
-		subcategories.sort();
-		const subcategorized = subcategories.reduce(
-			(accu: INodeCreateElement[], subcategory: string) => {
-				const subcategoryEl: INodeCreateElement = {
-					type: 'subcategory',
-					key: `${category}_${subcategory}`,
-					properties: {
-						subcategory,
-						description: SUBCATEGORY_DESCRIPTIONS[category][subcategory],
-					},
-					includedByTrigger: categoriesWithNodes[category][subcategory].triggerCount > 0,
-					includedByRegular: categoriesWithNodes[category][subcategory].regularCount > 0,
-				};
-
-				if (subcategoryEl.includedByTrigger) {
-					categoryEl.includedByTrigger = true;
-				}
-				if (subcategoryEl.includedByRegular) {
-					categoryEl.includedByRegular = true;
-				}
-
-				accu.push(subcategoryEl);
-				return accu;
-			},
-			[],
-		);
-
-		return [...accu, categoryEl, ...subcategorized];
-	}, []);
-	return result;
-};
 
 export function getAppNameFromCredType(name: string) {
 	return name
@@ -270,35 +106,6 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		(acc, item) => (isJsonKeyObject(item) ? acc.concat(item.json) : acc),
 		[],
 	);
-
-export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
-	if (selectedView === REGULAR_NODE_FILTER && el.includedByRegular) {
-		return true;
-	}
-	if (selectedView === TRIGGER_NODE_FILTER && el.includedByTrigger) {
-		return true;
-	}
-
-	return selectedView === ALL_NODE_FILTER;
-};
-
-const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {
-	if (!nodeType.codex || !nodeType.codex.alias) {
-		return false;
-	}
-
-	return nodeType.codex.alias.reduce((accu: boolean, alias: string) => {
-		return accu || alias.toLowerCase().indexOf(filter) > -1;
-	}, false);
-};
-
-export const matchesNodeType = (el: INodeCreateElement, filter: string) => {
-	const nodeType = (el.properties as INodeItemProps).nodeType;
-
-	return (
-		nodeType.displayName.toLowerCase().indexOf(filter) !== -1 || matchesAlias(nodeType, filter)
-	);
-};
 
 export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	return (
