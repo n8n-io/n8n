@@ -28,7 +28,11 @@ const BASE_STYLING = {
 
 const cssStyleDeclaration = getComputedStyle(document.documentElement);
 
-export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
+interface ThemeSettings {
+	isReadOnly?: boolean;
+}
+
+export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
@@ -36,7 +40,7 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
-			height: settings.maxHeight ? '100%' : null,
+			height: '100%',
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
@@ -48,6 +52,13 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
 			backgroundColor: 'var(--color-code-selection)',
 		},
+		'&.cm-editor': {
+			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
+		},
+		'&.cm-editor.cm-focused': {
+			outline: 'none',
+			borderColor: 'var(--color-secondary)',
+		},
 		'.cm-activeLine': {
 			backgroundColor: 'var(--color-code-lineHighlight)',
 		},
@@ -55,7 +66,9 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 			backgroundColor: 'var(--color-code-lineHighlight)',
 		},
 		'.cm-gutters': {
-			backgroundColor: 'var(--color-code-gutterBackground)',
+			backgroundColor: isReadOnly
+				? 'var(--color-code-background-readonly)'
+				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 		},
 		'.cm-tooltip': {
@@ -64,7 +77,8 @@ export const codeNodeEditorTheme = (settings: { maxHeight: boolean }) => [
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			maxHeight: settings.maxHeight ? null : '400px',
+			maxHeight: '100%',
+			...(isReadOnly ? {} : { minHeight: '10em' }),
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,

@@ -1,5 +1,6 @@
-import { Response, Server } from 'miragejs';
-import { AppSchema } from '../types';
+import type { Server } from 'miragejs';
+import { Response } from 'miragejs';
+import type { AppSchema } from '../types';
 
 export function routesForCredentialTypes(server: Server) {
 	server.get('/types/credentials.json', (schema: AppSchema) => {

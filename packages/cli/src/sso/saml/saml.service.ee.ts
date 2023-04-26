@@ -73,9 +73,8 @@ export class SamlService {
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					return Promise.reject(new Error('Invalid SAML response'));
+					throw new Error('Invalid SAML response');
 				}
-				return Promise.resolve();
 			},
 		});
 	}
@@ -302,7 +301,9 @@ export class SamlService {
 			);
 		} catch (error) {
 			// throw error;
-			throw new AuthError('SAML Authentication failed. Could not parse SAML response.');
+			throw new AuthError(
+				`SAML Authentication failed. Could not parse SAML response. ${(error as Error).message}`,
+			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

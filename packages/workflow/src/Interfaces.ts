@@ -17,6 +17,7 @@ import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
 import type { PathLike } from 'fs';
 import type { ExecutionStatus } from './ExecutionStatus';
+import type { AuthenticationMethod } from './Authentication';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -172,6 +173,7 @@ export interface IRequestOptionsSimplified {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body: IDataObject;
 	headers: IDataObject;
@@ -182,6 +184,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	body?: IDataObject;
 	headers?: IDataObject;
@@ -383,7 +386,6 @@ export interface IDataObject {
 	[key: string]: GenericValue | IDataObject | GenericValue[] | IDataObject[];
 }
 
-// export type IExecuteResponsePromiseData = IDataObject;
 export type IExecuteResponsePromiseData = IDataObject | IN8nHttpFullResponse;
 
 export interface INodeTypeNameVersion {
@@ -501,6 +503,7 @@ export interface IHttpRequestOptions {
 	auth?: {
 		username: string;
 		password: string;
+		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
@@ -1016,8 +1019,15 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
-export type EditorLanguageTypes = 'javaScript' | 'python';
+export type EditorType =
+	| 'code'
+	| 'codeNodeEditor'
+	| 'htmlEditor'
+	| 'sqlEditor'
+	| 'pythonEditor'
+	| 'json';
+export type CodeNodeEditorLanguage = 'javaScript' | 'json' | 'python';
+export type SQLDialect = 'mssql' | 'mysql' | 'postgres';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1030,8 +1040,9 @@ export interface ILoadOptions {
 export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
-	editor?: EditorTypes; // Supported by: string
-	editorLanguage?: EditorLanguageTypes; //  Supported by: string in combination with editor: codeNodeEditor
+	editor?: EditorType; // Supported by: string
+	editorLanguage?: CodeNodeEditorLanguage; // Supported by: string in combination with editor: codeNodeEditor
+	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
@@ -1464,21 +1475,30 @@ export interface IWebhookDescription {
 	restartWebhook?: boolean;
 }
 
+export interface ProxyInput {
+	all: () => INodeExecutionData[];
+	context: any;
+	first: () => INodeExecutionData | undefined;
+	item: INodeExecutionData | undefined;
+	last: () => INodeExecutionData | undefined;
+	params?: INodeParameters;
+}
+
 export interface IWorkflowDataProxyData {
 	[key: string]: any;
-	$binary: any;
+	$binary: INodeExecutionData['binary'];
 	$data: any;
 	$env: any;
-	$evaluateExpression: any;
-	$item: any;
-	$items: any;
-	$json: any;
+	$evaluateExpression: (expression: string, itemIndex?: number) => NodeParameterValueType;
+	$item: (itemIndex: number, runIndex?: number) => IWorkflowDataProxyData;
+	$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => INodeExecutionData[];
+	$json: INodeExecutionData['json'];
 	$node: any;
-	$parameter: any;
-	$position: any;
+	$parameter: INodeParameters;
+	$position: number;
 	$workflow: any;
 	$: any;
-	$input: any;
+	$input: ProxyInput;
 	$thisItem: any;
 	$thisRunIndex: number;
 	$thisItemIndex: number;
@@ -1695,6 +1715,7 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId: string;
+	variables: IDataObject;
 }
 
 export type WorkflowExecuteMode =
@@ -1857,7 +1878,7 @@ export interface IConnectedNode {
 	depth: number;
 }
 
-export enum OAuth2GrantType {
+export const enum OAuth2GrantType {
 	authorizationCode = 'authorizationCode',
 	clientCredentials = 'clientCredentials',
 }
@@ -1936,4 +1957,112 @@ export interface ExecutionFilters {
 	status?: ExecutionStatus[];
 	waitTill?: boolean;
 	workflowId?: number | string;
+}
+
+export interface IVersionNotificationSettings {
+	enabled: boolean;
+	endpoint: string;
+	infoUrl: string;
+}
+
+export interface IUserManagementSettings {
+	enabled: boolean;
+	showSetupOnFirstLoad?: boolean;
+	smtpSetup: boolean;
+	authenticationMethod: AuthenticationMethod;
+}
+
+export interface IPublicApiSettings {
+	enabled: boolean;
+	latestVersion: number;
+	path: string;
+	swaggerUi: {
+		enabled: boolean;
+	};
+}
+
+export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
+
+export interface IN8nUISettings {
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
+	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
+	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
+	timezone: string;
+	urlBaseWebhook: string;
+	urlBaseEditor: string;
+	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
+	versionNotifications: IVersionNotificationSettings;
+	instanceId: string;
+	telemetry: ITelemetrySettings;
+	posthog: {
+		enabled: boolean;
+		apiHost: string;
+		apiKey: string;
+		autocapture: boolean;
+		disableSessionRecording: boolean;
+		debug: boolean;
+	};
+	personalizationSurveyEnabled: boolean;
+	userActivationSurveyEnabled: boolean;
+	defaultLocale: string;
+	userManagement: IUserManagementSettings;
+	sso: {
+		saml: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+		ldap: {
+			loginLabel: string;
+			loginEnabled: boolean;
+		};
+	};
+	publicApi: IPublicApiSettings;
+	workflowTagsDisabled: boolean;
+	logLevel: ILogLevel;
+	hiringBannerEnabled: boolean;
+	templates: {
+		enabled: boolean;
+		host: string;
+	};
+	onboardingCallPromptEnabled: boolean;
+	missingPackages?: boolean;
+	executionMode: 'regular' | 'queue';
+	pushBackend: 'sse' | 'websocket';
+	communityNodesEnabled: boolean;
+	deployment: {
+		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
+	};
+	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string[];
+		external?: string[];
+	};
+	enterprise: {
+		sharing: boolean;
+		ldap: boolean;
+		saml: boolean;
+		logStreaming: boolean;
+		advancedExecutionFilters: boolean;
+		variables: boolean;
+		versionControl: boolean;
+	};
+	hideUsagePage: boolean;
+	license: {
+		environment: 'development' | 'production' | 'staging';
+	};
+	variables: {
+		limit: number;
+	};
 }

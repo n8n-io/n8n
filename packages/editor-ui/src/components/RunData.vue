@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="['run-data', $style.container]">
 		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
@@ -121,7 +121,12 @@
 			</div>
 		</div>
 
-		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
+		<div
+			:class="$style.runSelector"
+			v-if="maxRunIndex > 0"
+			v-show="!editMode.enabled"
+			data-test-id="run-selector"
+		>
 			<n8n-select
 				size="small"
 				:value="runIndex"
@@ -157,7 +162,11 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
+		<div
+			v-if="maxOutputIndex > 0 && branches.length > 1"
+			:class="$style.tabs"
+			data-test-id="branches"
+		>
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
@@ -184,7 +193,6 @@
 					<code-node-editor
 						:value="editMode.value"
 						language="json"
-						:maxHeight="true"
 						@valueChanged="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
@@ -219,7 +227,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
-				<slot name="recovered-artifical-output-data"></slot>
+				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
@@ -450,10 +458,10 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { saveAs } from 'file-saver';
-import {
+import type {
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -463,7 +471,7 @@ import {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
-import {
+import type {
 	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -585,7 +593,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			currentPage: 1,
 			pageSize: 10,
 			pageSizes: [10, 25, 50, 100],
-			eventBus: dataPinningEventBus,
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
@@ -595,8 +602,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		this.init();
 
 		if (!this.isPaneTypeInput) {
-			this.eventBus.on('data-pinning-error', this.onDataPinningError);
-			this.eventBus.on('data-unpinning', this.onDataUnpinning);
+			dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
+			dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
 
 			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
@@ -609,8 +616,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 	},
 	destroyed() {
 		this.hidePinDataDiscoveryTooltip();
-		this.eventBus.off('data-pinning-error', this.onDataPinningError);
-		this.eventBus.off('data-unpinning', this.onDataUnpinning);
+		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
+		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -908,7 +915,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				setTimeout(() => {
 					this.isControlledPinDataTooltip = true;
 					this.pinDataDiscoveryTooltipVisible = true;
-					this.eventBus.emit('data-pinning-discovery', { isTooltipVisible: true });
+					dataPinningEventBus.emit('data-pinning-discovery', { isTooltipVisible: true });
 				}, 500); // Wait for NDV to open
 			}
 		},
@@ -916,7 +923,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			if (this.pinDataDiscoveryTooltipVisible) {
 				this.isControlledPinDataTooltip = false;
 				this.pinDataDiscoveryTooltipVisible = false;
-				this.eventBus.emit('data-pinning-discovery', { isTooltipVisible: false });
+				dataPinningEventBus.emit('data-pinning-discovery', { isTooltipVisible: false });
 			}
 		},
 		pinDataDiscoveryComplete() {
@@ -1138,9 +1145,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const previous = this.displayMode;
 			this.ndvStore.setPanelDisplayMode({ pane: this.paneType, mode: displayMode });
 
-			const dataContainer = this.$refs.dataContainer;
-			if (dataContainer) {
-				const dataDisplay = (dataContainer as Element).children[0];
+			const dataContainerRef = this.$refs.dataContainer as Element | undefined;
+			if (dataContainerRef) {
+				const dataDisplay = dataContainerRef.children[0];
 
 				if (dataDisplay) {
 					dataDisplay.scrollTo(0, 0);
@@ -1243,7 +1250,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 			if (id) {
-				const url = this.restApi().getBinaryUrl(id, 'download', fileName, mimeType);
+				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName, mimeType);
 				saveAs(url, [fileName, fileExtension].join('.'));
 				return;
 			} else {
@@ -1564,28 +1571,30 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 }
 
 .editMode {
-	height: calc(100% - var(--spacing-s));
+	height: 100%;
+	max-height: calc(100% - var(--spacing-3xl));
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-end;
-	align-items: flex-end;
+	justify-content: stretch;
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 }
 
 .editModeBody {
 	flex: 1 1 auto;
+	max-height: 100%;
 	width: 100%;
-	height: 100%;
-	overflow: hidden;
+	overflow: auto;
 }
 
 .editModeFooter {
+	flex: 0 1 auto;
 	display: flex;
 	width: 100%;
 	justify-content: space-between;
 	align-items: center;
 	padding-top: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .editModeFooterInfotip {
@@ -1608,5 +1617,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+</style>
+
+<style lang="scss" scoped>
+.run-data {
+	.code-node-editor {
+		height: 100%;
+	}
 }
 </style>

@@ -327,17 +327,15 @@
 import Vue from 'vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ITimeoutHMS,
 	IUser,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
 import Modal from './Modal.vue';
 import {
@@ -348,6 +346,7 @@ import {
 
 import mixins from 'vue-typed-mixins';
 
+import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -357,7 +356,7 @@ import useWorkflowsEEStore from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
+export default mixins(externalHooks, genericHelpers, showMessage).extend({
 	name: 'WorkflowSettings',
 	components: {
 		Modal,
@@ -504,7 +503,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		}
 		if (workflowSettings.callerPolicy === undefined) {
 			workflowSettings.callerPolicy = this.defaultValues
-				.workflowCallerPolicy as WorkflowCallerPolicyDefaultOption;
+				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
 			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
@@ -703,7 +702,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				return;
 			}
 
-			const timezones = await this.restApi().getTimezones();
+			const timezones = await this.settingsStore.getTimezones();
 
 			let defaultTimezoneValue = timezones[this.defaultValues.timezone] as string | undefined;
 			if (defaultTimezoneValue === undefined) {
@@ -724,7 +723,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			}
 		},
 		async loadWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
+			const workflows = await this.workflowsStore.fetchAllWorkflows();
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;
@@ -789,7 +788,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			data.versionId = this.workflowsStore.workflowVersionId;
 
 			try {
-				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
+				const workflow = await this.workflowsStore.updateWorkflow(this.$route.params.name, data);
 				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
 				this.$showError(

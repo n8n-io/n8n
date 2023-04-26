@@ -62,7 +62,7 @@
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
-import { IUser, IUserListAction } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
@@ -70,7 +70,6 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { BaseTextKey } from '@/plugins/i18n';
 import { useUsageStore } from '@/stores/usage';
 import { useSSOStore } from '@/stores/sso';
 
@@ -152,17 +151,7 @@ export default mixins(showMessage, copyPaste).extend({
 			}
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=users`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-users`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('users', 'upgrade-users');
 		},
 	},
 });

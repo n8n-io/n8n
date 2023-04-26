@@ -1,7 +1,9 @@
 import type { IDataObject } from 'n8n-workflow';
 
 export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
-	return typeof maybe === 'object' && maybe !== null && !Array.isArray(maybe);
+	return (
+		typeof maybe === 'object' && maybe !== null && !Array.isArray(maybe) && !(maybe instanceof Date)
+	);
 }
 
 function isTraversable(maybe: unknown): maybe is IDataObject {
@@ -13,7 +15,6 @@ function isTraversable(maybe: unknown): maybe is IDataObject {
  */
 export function standardizeOutput(output: IDataObject) {
 	function standardizeOutputRecursive(obj: IDataObject, knownObjects = new WeakSet()): IDataObject {
-		if (obj === undefined || obj === null) return obj;
 		for (const [key, value] of Object.entries(obj)) {
 			if (!isTraversable(value)) continue;
 

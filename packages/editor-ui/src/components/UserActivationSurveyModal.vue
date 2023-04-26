@@ -15,7 +15,7 @@
 							<n8n-text :bold="true"> {{ workflowName }} </n8n-text>
 						</template>
 						<template #ranSuccessfully>
-							<n8n-text :bold="true" :class="$style.link">
+							<n8n-text>
 								{{
 									locale.baseText('userActivationSurveyModal.description.workflowRanSuccessfully')
 								}}
@@ -90,7 +90,7 @@ onMounted(async () => {
 			currentSettings?.firstSuccessfulWorkflowId ?? '',
 		);
 		workflowName.value = name;
-		showConfetti();
+		setTimeout(showConfetti, 500);
 	} catch (e) {}
 });
 
@@ -155,10 +155,6 @@ const showConfetti = () => {
 <style module lang="scss">
 .form {
 	margin-top: var(--spacing-l);
-}
-
-.link {
-	color: var(--color-primary);
 }
 
 .description > * {

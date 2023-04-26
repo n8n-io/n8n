@@ -32,7 +32,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
-import {
+import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,
@@ -48,6 +48,9 @@ import { useRootStore } from './n8nRootStore';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows';
 import { useSettingsStore } from './settings';
+import { useUsageStore } from './usage';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { i18n as locale } from '@/plugins/i18n';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -215,6 +218,14 @@ export const useUIStore = defineStore(STORES.UI, {
 						},
 					},
 				},
+				variables: {
+					unavailable: {
+						title: `contextual.variables.unavailable.title${contextKey}`,
+						description: 'contextual.variables.unavailable.description',
+						action: `contextual.variables.unavailable.action${contextKey}`,
+						button: `contextual.variables.unavailable.button${contextKey}`,
+					},
+				},
 				users: {
 					settings: {
 						unavailable: {
@@ -301,6 +312,22 @@ export const useUIStore = defineStore(STORES.UI, {
 					}
 				}
 				return false;
+			};
+		},
+		upgradeLinkUrl() {
+			return (source: string, utm_campaign: string): string => {
+				const usageStore = useUsageStore();
+				const linkUrlTranslationKey = this.contextBasedTranslationKeys
+					.upgradeLinkUrl as BaseTextKey;
+				let linkUrl = locale.baseText(linkUrlTranslationKey);
+
+				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
+					linkUrl = `${usageStore.viewPlansUrl}&source=${source}`;
+				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
+					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
+				}
+
+				return linkUrl;
 			};
 		},
 	},
@@ -451,6 +478,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
 			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+		},
+		goToUpgrade(source: string, utm_campaign: string): void {
+			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
 		},
 	},
 });

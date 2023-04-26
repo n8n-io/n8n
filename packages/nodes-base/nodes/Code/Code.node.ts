@@ -286,6 +286,7 @@ return _input.item;
 		],
 	};
 
+<<<<<<< HEAD
 	async executePython(this: IExecuteFunctions) {
 		let items = this.getInputData();
 
@@ -379,6 +380,9 @@ return _input.item;
 	async executeJavascript(this: IExecuteFunctions) {
 		let items = this.getInputData();
 
+=======
+	async execute(this: IExecuteFunctions) {
+>>>>>>> origin/master
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeNodeMode;
 		const workflowMode = this.getMode();
 
@@ -390,24 +394,29 @@ return _input.item;
 
 			const context = getSandboxContext.call(this, 0);
 			context.items = context.$input.all();
+<<<<<<< HEAD
 			const sandbox = new SandboxJavaScript(context, workflowMode, nodeMode, this.helpers);
+=======
+			const sandbox = new Sandbox(context, jsCodeAllItems, workflowMode, this.helpers);
+>>>>>>> origin/master
 
 			if (workflowMode === 'manual') {
 				sandbox.vm.on('console.log', this.sendMessageToUI);
 			}
 
+			let result: INodeExecutionData[];
 			try {
-				items = await sandbox.runCode(jsCodeAllItems);
+				result = await sandbox.runCodeAllItems();
 			} catch (error) {
-				if (!this.continueOnFail()) return Promise.reject(error);
-				items = [{ json: { error: error.message } }];
+				if (!this.continueOnFail()) throw error;
+				result = [{ json: { error: error.message } }];
 			}
 
-			for (const item of items) {
+			for (const item of result) {
 				standardizeOutput(item.json);
 			}
 
-			return this.prepareOutputData(items);
+			return this.prepareOutputData(result);
 		}
 		// ----------------------------------
 		//        runOnceForEachItem
@@ -418,6 +427,7 @@ return _input.item;
 			for (let index = 0; index < items.length; index++) {
 				let item = items[index];
 
+<<<<<<< HEAD
 				const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
 
 				const context = getSandboxContext.call(this, index);
@@ -427,6 +437,16 @@ return _input.item;
 				if (workflowMode === 'manual') {
 					sandbox.vm.on('console.log', this.sendMessageToUI);
 				}
+=======
+		const items = this.getInputData();
+
+		for (let index = 0; index < items.length; index++) {
+			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
+
+			const context = getSandboxContext.call(this, index);
+			context.item = context.$input.item;
+			const sandbox = new Sandbox(context, jsCodeEachItem, workflowMode, this.helpers);
+>>>>>>> origin/master
 
 				try {
 					item = await sandbox.runCode(jsCodeEachItem, index);
@@ -444,7 +464,25 @@ return _input.item;
 				}
 			}
 
+<<<<<<< HEAD
 			return this.prepareOutputData(returnData);
+=======
+			let result: INodeExecutionData | undefined;
+			try {
+				result = await sandbox.runCodeEachItem(index);
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+				returnData.push({ json: { error: error.message } });
+			}
+
+			if (result) {
+				returnData.push({
+					json: standardizeOutput(result.json),
+					pairedItem: { item: index },
+					...(result.binary && { binary: result.binary }),
+				});
+			}
+>>>>>>> origin/master
 		}
 	}
 

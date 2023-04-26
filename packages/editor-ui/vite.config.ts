@@ -72,14 +72,6 @@ const alias = [
 	},
 ];
 
-// https://github.com/vitest-dev/vitest/discussions/1806
-if (NODE_ENV === 'test') {
-	alias.push({
-		find: /^monaco-editor$/,
-		replacement: __dirname + '/node_modules/monaco-editor/esm/vs/editor/editor.api',
-	});
-}
-
 const plugins = [
 	vue(),
 	legacy({

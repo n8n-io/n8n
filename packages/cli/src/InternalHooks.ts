@@ -271,11 +271,11 @@ export class InternalHooks implements IInternalHooksClass {
 		runData?: IRun,
 		userId?: string,
 	): Promise<void> {
-		const promises = [Promise.resolve()];
-
 		if (!workflow.id) {
-			return Promise.resolve();
+			return;
 		}
+
+		const promises = [];
 
 		const properties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
@@ -980,5 +980,9 @@ export class InternalHooks implements IInternalHooksClass {
 	 */
 	async onAuditGeneratedViaCli() {
 		return this.telemetry.track('Instance generated security audit via CLI command');
+	}
+
+	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
+		return this.telemetry.track('User created variable', createData);
 	}
 }

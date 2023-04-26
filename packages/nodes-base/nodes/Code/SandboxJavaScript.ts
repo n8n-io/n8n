@@ -12,6 +12,15 @@ import type {
 } from 'n8n-workflow';
 import { Sandbox } from './Sandbox';
 
+interface SandboxContext extends IWorkflowDataProxyData {
+	$getNodeParameter: IExecuteFunctions['getNodeParameter'];
+	$getWorkflowStaticData: IExecuteFunctions['getWorkflowStaticData'];
+	helpers: IExecuteFunctions['helpers'];
+}
+
+const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
+	process.env;
+
 export class SandboxJavaScript extends Sandbox {
 	private jsCode = '';
 
@@ -51,14 +60,14 @@ export class SandboxJavaScript extends Sandbox {
 		};
 	}
 
-	async runCode(jsCode: string, itemIndex?: number) {
-		this.jsCode = jsCode;
-		this.itemIndex = itemIndex;
+	// async runCode(jsCode: string, itemIndex?: number) {
+	// 	this.jsCode = jsCode;
+	// 	this.itemIndex = itemIndex;
 
-		return this.nodeMode === 'runOnceForAllItems' ? this.runCodeAllItems() : this.runCodeEachItem();
-	}
+	// 	return this.nodeMode === 'runOnceForAllItems' ? this.runCodeAllItems() : this.runCodeEachItem();
+	// }
 
-	private async runCodeAllItems() {
+	async runCodeAllItems(): Promise<INodeExecutionData[]> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
 		let executionResult;
@@ -85,7 +94,7 @@ export class SandboxJavaScript extends Sandbox {
 		return this.helpers.normalizeItems(executionResult);
 	}
 
-	private async runCodeEachItem() {
+	async runCodeEachItem(itemIndex: number): Promise<INodeExecutionData | undefined> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
 		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
@@ -133,10 +142,7 @@ export class SandboxJavaScript extends Sandbox {
 	}
 }
 
-export function getSandboxContext(
-	this: IExecuteFunctions,
-	index: number,
-): Record<string, unknown> & IWorkflowDataProxyData {
+export function getSandboxContext(this: IExecuteFunctions, index: number): SandboxContext {
 	return {
 		// from NodeExecuteFunctions
 		$getNodeParameter: this.getNodeParameter,

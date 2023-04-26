@@ -37,12 +37,6 @@ const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
-			displayName: 'Version 1',
-			name: 'versionNotice',
-			type: 'notice',
-			default: '',
-		},
-		{
 			displayName: 'Operation',
 			name: 'operation',
 			type: 'options',
@@ -77,6 +71,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			typeOptions: {
+				editor: 'sqlEditor',
+				sqlDialect: 'postgres',
+			},
 			displayOptions: {
 				show: {
 					operation: ['executeQuery'],
