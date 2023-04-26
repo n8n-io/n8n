@@ -9,14 +9,16 @@ import {
 	VERSION_CONTROL_SSH_KEY_NAME,
 } from './constants';
 import * as Db from '@/Db';
+import glob from 'fast-glob';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { readFileSync, existsSync } from 'fs';
-import { writeFile as fsWriteFile } from 'fs/promises';
+import { writeFile as fsWriteFile, readFile as fsReadFile } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
 import type { FetchResult, StatusResult } from 'simple-git';
+import { IWorkflowToImport } from '../../Interfaces';
 
 @Service()
 export class VersionControlService {
@@ -198,12 +200,70 @@ export class VersionControlService {
 	}
 
 	async exportWorkflowsToWorkFolder() {
-		// TODO: export all workflows to json
-		// add owning user email to json
+		try {
+			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
+				relations: ['workflow', 'role', 'user'],
+				where: {
+					role: {
+						name: 'owner',
+						scope: 'workflow',
+					},
+				},
+			});
+			await Promise.all(
+				sharedWorkflows.map(async (e) => {
+					// TODO: using workflowname for now, until IDs are unique
+					const fileName = path.join(this.gitFolder, `${e.workflow.name}.json`);
+					return fsWriteFile(
+						fileName,
+						JSON.stringify(
+							{
+								...e.workflow,
+								owner: e.user.email,
+							},
+							null,
+							2,
+						),
+					);
+				}),
+			);
+			// TODO: also write variables
+			return sharedWorkflows;
+		} catch (error) {
+			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+		}
 	}
 
 	async importWorkflowsFromGit() {
-		//
+		try {
+			const files = await glob('*.json', {
+				cwd: this.gitFolder,
+				absolute: true,
+			});
+			const existingWorkflows = await Db.collections.Workflow.find({
+				select: ['id', 'name', 'versionId'],
+			});
+			await Promise.all(
+				files.map(async (file) => {
+					const workflow = jsonParse<IWorkflowToImport>(
+						await fsReadFile(file, { encoding: 'utf8' }),
+					);
+					if (
+						existingWorkflows.find(
+							(e) => e.name === workflow.name && e.versionId === workflow.versionId,
+						)
+					) {
+						// Workflow with same id and version already exists, skip
+						console.log(`Skipping workflow ${workflow.name} with same id and version`);
+						return;
+					}
+					// TODO: run actual import
+				}),
+			);
+			return files;
+		} catch (error) {
+			throw Error(`Failed to import workflows from work folder: ${(error as Error).message}`);
+		}
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {

@@ -1655,6 +1655,7 @@ export interface IWorkflowBase {
 	settings?: IWorkflowSettings;
 	staticData?: IDataObject;
 	pinData?: IPinData;
+	versionId?: string;
 }
 
 export interface IWorkflowCredentials {

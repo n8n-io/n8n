@@ -34,18 +34,6 @@ export class VersionControlController {
 		}
 	}
 
-	//TODO: temporary function to generate key and save new pair
-	// REMOVE THIS FUNCTION AFTER TESTING
-	@Authorized(['global', 'owner'])
-	@Get('/generateKeyPair', { middlewares: [versionControlLicensedMiddleware] })
-	async generateKeyPair() {
-		try {
-			return await this.versionControlService.generateAndSaveKeyPair();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
 	@Authorized(['global', 'owner'])
 	@Get('/connect')
 	async connect() {
@@ -141,6 +129,37 @@ export class VersionControlController {
 	async status() {
 		try {
 			return await this.versionControlService.status();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
+	@Authorized(['global', 'owner'])
+	@Get('/generateKeyPair', { middlewares: [versionControlLicensedMiddleware] })
+	async generateKeyPair() {
+		try {
+			return await this.versionControlService.generateAndSaveKeyPair();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/export', { middlewares: [versionControlLicensedMiddleware] })
+	async export() {
+		try {
+			return await this.versionControlService.exportWorkflowsToWorkFolder();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/import', { middlewares: [versionControlLicensedMiddleware] })
+	async import() {
+		try {
+			return await this.versionControlService.importWorkflowsFromGit();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
