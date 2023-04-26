@@ -107,7 +107,6 @@ import CopyInput from './CopyInput.vue';
 import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from '@/mixins/copyPaste';
 import { showMessage } from '@/mixins/showMessage';
-import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

@@ -117,7 +117,7 @@
 			}}</n8n-text>
 		</template>
 
-		<template #recovered-artifical-output-data>
+		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')

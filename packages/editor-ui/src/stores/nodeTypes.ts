@@ -8,14 +8,12 @@ import {
 } from '@/api/nodeTypes';
 import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
 import type {
-	ICategoriesWithNodes,
-	INodeCreateElement,
 	INodeTypesState,
 	IResourceLocatorReqParams,
 	ResourceMapperReqParams,
 } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit, getCategoriesWithNodes, getCategorizedList } from '@/utils';
+import { omit } from '@/utils';
 import type {
 	ILoadOptions,
 	INodeCredentials,
@@ -29,8 +27,6 @@ import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useCredentialsStore } from './credentials';
 import { useRootStore } from './n8nRootStore';
-import { useUsersStore } from './users';
-import { useNodeCreatorStore } from './nodeCreator';
 import type { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
@@ -91,13 +87,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		visibleNodeTypes(): INodeTypeDescription[] {
 			return this.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
 		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			const usersStore = useUsersStore();
-			return getCategoriesWithNodes(this.visibleNodeTypes, usersStore.personalizedNodeTypes);
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return getCategorizedList(this.categoriesWithNodes);
-		},
 	},
 	actions: {
 		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {
@@ -131,9 +120,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				{ ...this.nodeTypes },
 			);
 			Vue.set(this, 'nodeTypes', nodeTypes);
-
-			// Trigger compute of mergedAppNodes getter so it's ready when user opens the node creator
-			useNodeCreatorStore().mergedAppNodes;
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(

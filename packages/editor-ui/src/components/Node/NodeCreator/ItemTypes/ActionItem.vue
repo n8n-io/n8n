@@ -1,13 +1,12 @@
 <template>
 	<n8n-node-creator-node
-		:key="`${action.actionKey}_${action.displayName}`"
-		@click="onActionClick(action)"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		draggable
 		:class="$style.action"
 		:title="action.displayName"
 		:isTrigger="isTriggerAction(action)"
+		data-keyboard-nav="true"
 	>
 		<template #dragContent>
 			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
@@ -23,22 +22,27 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import type { INodeTypeDescription, INodeActionTypeDescription } from 'n8n-workflow';
+import type { ActionTypeDescription, SimplifiedNodeType } from '@/Interface';
+import { WEBHOOK_NODE_TYPE } from '@/constants';
+
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
-import type { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+
+import { useViewStacks } from '../composables/useViewStacks';
+import { useActions } from '../composables/useActions';
 
 export interface Props {
-	nodeType: INodeTypeDescription;
-	action: INodeActionTypeDescription;
+	nodeType: SimplifiedNodeType;
+	action: ActionTypeDescription;
 }
 
 const props = defineProps<Props>();
+
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
-const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
-	useNodeCreatorStore();
+
+const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } = useActions();
+const { activeViewStack } = useViewStacks();
 
 const state = reactive({
 	dragging: false,
@@ -49,11 +53,6 @@ const state = reactive({
 	storeWatcher: null as Function | null,
 	draggableDataTransfer: null as Element | null,
 });
-const emit = defineEmits<{
-	(event: 'actionSelected', action: IUpdateInformation): void;
-	(event: 'dragstart', $e: DragEvent): void;
-	(event: 'dragend', $e: DragEvent): void;
-}>();
 
 const draggableStyle = computed<{ top: string; left: string }>(() => ({
 	top: `${state.draggablePosition.y}px`,
@@ -62,11 +61,8 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const actionData = computed(() => getActionData(props.action));
 
-const isTriggerAction = (action: INodeActionTypeDescription) =>
-	action.name?.toLowerCase().includes('trigger');
-function onActionClick(actionItem: INodeActionTypeDescription) {
-	emit('actionSelected', getActionData(actionItem));
-}
+const isTriggerAction = (action: ActionTypeDescription) =>
+	action.name?.toLowerCase().includes('trigger') || action.name === WEBHOOK_NODE_TYPE;
 
 function onDragStart(event: DragEvent): void {
 	/**
@@ -84,14 +80,18 @@ function onDragStart(event: DragEvent): void {
 			'nodeTypeName',
 			getNodeTypesWithManualTrigger(actionData.value?.key).join(','),
 		);
-
-		state.storeWatcher = setAddedNodeActionParameters(actionData.value, telemetry);
+		if (telemetry) {
+			state.storeWatcher = setAddedNodeActionParameters(
+				actionData.value,
+				telemetry,
+				activeViewStack.rootView,
+			);
+		}
 		document.body.addEventListener('dragend', onDragEnd);
 	}
 
 	state.dragging = true;
 	state.draggablePosition = { x, y };
-	emit('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
@@ -109,8 +109,6 @@ function onDragEnd(event: DragEvent): void {
 	document.body.removeEventListener('dragend', onDragEnd);
 	document.body.removeEventListener('dragover', onDragOver);
 
-	emit('dragend', event);
-
 	state.dragging = false;
 	setTimeout(() => {
 		state.draggablePosition = { x: -100, y: -100 };
@@ -121,25 +119,19 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 
 <style lang="scss" module>
 .action {
-	margin-left: 15px;
-	margin-right: 12px;
-
+	--node-creator-name-size: var(--font-size-2xs);
+	--node-creator-name-weight: var(--font-weight-normal);
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
+	--node-icon-size: 20px;
+	--node-icon-margin-right: var(--spacing-xs);
+
+	margin-left: var(--spacing-s);
+	margin-right: var(--spacing-s);
+	padding: var(--spacing-2xs) 0;
 }
 .nodeIcon {
-	margin-right: var(--spacing-s);
-}
-
-.apiHint {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	padding-top: var(--spacing-s);
-	line-height: var(--font-line-height-regular);
-	border-top: 1px solid #dbdfe7;
-	z-index: 1;
-	// Prevent double borders when the last category is collapsed
-	margin-top: -1px;
+	margin-right: var(--spacing-xs);
 }
 
 .draggable {

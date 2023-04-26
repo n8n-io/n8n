@@ -80,7 +80,7 @@
 			</n8n-text>
 		</template>
 
-		<template #recovered-artifical-output-data>
+		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
@@ -100,8 +100,7 @@
 <script lang="ts">
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import type Vue from 'vue';
-import RunData, { EnterEditModeArgs } from './RunData.vue';
+import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { pinData } from '@/mixins/pinData';
 import mixins from 'vue-typed-mixins';
