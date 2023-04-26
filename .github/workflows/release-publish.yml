@@ -43,7 +43,7 @@ jobs:
           pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
           
       - name: Trigger a release note
-        run: curl --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{env.RELEASE}}"}'
+        run: curl --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' -- header 'Authorization:  Basic [TODO]' --data '{"version":"${{env.RELEASE}}"}'
 
       - name: Create Release
         uses: ncipollo/release-action@v1
