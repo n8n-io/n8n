@@ -72,6 +72,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			typeOptions: {
+				editor: 'sqlEditor',
+				sqlDialect: 'mysql',
+			},
 			displayOptions: {
 				show: {
 					operation: ['executeQuery'],
