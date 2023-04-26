@@ -41,12 +41,19 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
+          npm dist-tag rm n8n rc
 
-      - name: Create Release
+      - name: Create a Release on GitHub
         uses: ncipollo/release-action@v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
           tag: 'n8n@${{env.RELEASE}}'
+          prerelease: true
+          makeLatest: false
+
+      - name: Trigger a release note
+        continue-on-error: true
+        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{env.RELEASE}}"}'
 
       - name: Merge Release into 'master'
         run: |
