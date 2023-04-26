@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class CrowdApi implements ICredentialType {
 	name = 'crowdApi';
+
 	displayName = 'crowd.dev API';
+
 	documentationUrl = 'https://docs.crowd.dev/reference/getting-started-with-crowd-dev-api';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Domain',
@@ -31,34 +34,6 @@ export class CrowdApi implements ICredentialType {
 			},
 			default: '',
 		},
-		{
-			displayName: 'Debug',
-			name: 'debug',
-			description: 'Turn it on to see request options instead of making actual requests',
-			type: 'boolean',
-			default: false,
-		},
-		{
-			displayName: 'Debug Output',
-			name: 'debugOutput',
-			type: 'options',
-			displayOptions: {
-				show: {
-					debug: [true]
-				}
-			},
-			default: 'params',
-			options: [
-				{
-					name: 'Params Values',
-					value: 'params',
-				},
-				{
-					name: 'Request Options',
-					value: 'request',
-				}
-			]
-		}
 	];
 
 	// This allows the credential to be used by other parts of n8n
@@ -81,9 +56,9 @@ export class CrowdApi implements ICredentialType {
 			baseURL: '={{$credentials?.domain + "/api/tenant/" + $credentials?.tenantId}}',
 			url: '/member/query',
 			body: {
-				"limit": 1,
-				"offset": 0
-			}
+				limit: 1,
+				offset: 0,
+			},
 		},
 	};
 }

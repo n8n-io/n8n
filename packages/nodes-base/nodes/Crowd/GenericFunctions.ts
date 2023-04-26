@@ -1,13 +1,5 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
-export interface ICrowdCreds {
-	domain: string;
-	tenantId: string;
-	token: string;
-	debug: boolean;
-	debugOutput: 'params' | 'request';
-}
-
 const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown> => {
 	const params = execFns.getNode().parameters;
 	const paramsWithValues = Object.keys(params).map((name) => [

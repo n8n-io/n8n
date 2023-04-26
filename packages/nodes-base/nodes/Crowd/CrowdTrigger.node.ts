@@ -6,7 +6,12 @@ import type {
 	IWebhookResponseData,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import type { ICrowdCreds } from './GenericFunctions';
+
+interface ICrowdCreds {
+	domain: string;
+	tenantId: string;
+	token: string;
+}
 
 const credsName = 'crowdApi';
 
