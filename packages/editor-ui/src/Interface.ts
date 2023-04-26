@@ -25,7 +25,6 @@ import type {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
-	INodeActionTypeDescription,
 	IDisplayOptions,
 	IExecutionsSummary,
 	FeatureFlags,
@@ -36,7 +35,11 @@ import type {
 	WorkflowSettings,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
-import type { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
+import type {
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+} from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy } from '@/utils/typeHelpers';
 
@@ -707,67 +710,85 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
-export interface ISubcategoryItemProps {
-	subcategory: string;
-	description: string;
-	key?: string;
-	iconType: string;
+export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
+
+export type ActionsRecord<T extends SimplifiedNodeType[]> = {
+	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
+};
+
+export interface SimplifiedNodeType
+	extends Pick<
+		INodeTypeDescription,
+		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+	> {}
+export interface SubcategoryItemProps {
+	description?: string;
+	iconType?: string;
 	icon?: string;
+	title?: string;
+	subcategory?: string;
 	defaults?: INodeParameters;
+	forceIncludeNodes?: string[];
 }
 export interface ViewItemProps {
-	withTopBorder: boolean;
 	title: string;
 	description: string;
 	icon: string;
 }
-
-export interface INodeItemProps {
-	subcategory: string;
-	nodeType: INodeTypeDescription;
+export interface LabelItemProps {
+	key: string;
+}
+export interface ActionTypeDescription extends SimplifiedNodeType {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
+	codex: {
+		label: string;
+		categories: string[];
+	};
 }
 
-export interface IActionItemProps {
-	subcategory: string;
-	nodeType: INodeActionTypeDescription;
-}
-
-export interface ICategoryItemProps {
-	expanded: boolean;
-	category: string;
+export interface CategoryItemProps {
 	name: string;
+	count: number;
 }
 
 export interface CreateElementBase {
+	uuid?: string;
 	key: string;
-	includedByTrigger?: boolean;
-	includedByRegular?: boolean;
 }
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
-	category?: string[];
-	properties: INodeItemProps;
+	subcategory: string;
+	properties: SimplifiedNodeType;
 }
 
 export interface CategoryCreateElement extends CreateElementBase {
 	type: 'category';
-	properties: ICategoryItemProps;
+	subcategory: string;
+	properties: CategoryItemProps;
 }
 
 export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
-	properties: ISubcategoryItemProps;
+	properties: SubcategoryItemProps;
 }
 export interface ViewCreateElement extends CreateElementBase {
 	type: 'view';
 	properties: ViewItemProps;
 }
 
+export interface LabelCreateElement extends CreateElementBase {
+	type: 'label';
+	subcategory: string;
+	properties: LabelItemProps;
+}
+
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
-	category: string;
-	properties: IActionItemProps;
+	subcategory: string;
+	properties: ActionTypeDescription;
 }
 
 export type INodeCreateElement =
@@ -775,18 +796,12 @@ export type INodeCreateElement =
 	| CategoryCreateElement
 	| SubcategoryCreateElement
 	| ViewCreateElement
+	| LabelCreateElement
 	| ActionCreateElement;
 
-export interface ICategoriesWithNodes {
-	[category: string]: {
-		[subcategory: string]: {
-			regularCount: number;
-			triggerCount: number;
-			nodes: INodeCreateElement[];
-		};
-	};
+export interface SubcategorizedNodeTypes {
+	[subcategory: string]: INodeCreateElement[];
 }
-
 export interface ITag {
 	id: string;
 	name: string;
@@ -1072,7 +1087,7 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
+export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1087,8 +1102,8 @@ export type NodeCreatorOpenSource =
 export interface INodeCreatorState {
 	itemsFilter: string;
 	showScrim: boolean;
-	rootViewHistory: INodeFilterType[];
-	selectedView: INodeFilterType;
+	rootViewHistory: NodeFilterType[];
+	selectedView: NodeFilterType;
 	openSource: NodeCreatorOpenSource;
 }
 

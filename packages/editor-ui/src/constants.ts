@@ -165,28 +165,12 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NODE_CONNECTION_DROP: 'node_connection_drop',
 	'': '',
 };
-
 export const CORE_NODES_CATEGORY = 'Core Nodes';
-export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
-export const RECOMMENDED_CATEGORY = 'Recommended';
-export const SUBCATEGORY_DESCRIPTIONS: {
-	[category: string]: { [subcategory: string]: string };
-} = {
-	'Core Nodes': {
-		// this - all subkeys are set from codex
-		Flow: 'Branches, core triggers, merge data',
-		Files: 'Work with CSV, XML, text, images etc.',
-		'Data Transformation': 'Manipulate data fields, run code',
-		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
-	},
-};
-export const REGULAR_NODE_FILTER = 'Regular';
-export const TRIGGER_NODE_FILTER = 'Trigger';
-export const ALL_NODE_FILTER = 'All';
+export const DEFAULT_SUBCATEGORY = '*';
+export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
+export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
-export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
-export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
@@ -355,11 +339,6 @@ export const HIRING_BANNER = `
 Love n8n? Help us build the future of automation! https://n8n.io/careers?utm_source=n8n_user&utm_medium=console_output
 `;
 
-export const NODE_TYPE_COUNT_MAPPER = {
-	[REGULAR_NODE_FILTER]: ['regularCount'],
-	[TRIGGER_NODE_FILTER]: ['triggerCount'],
-	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
-};
 export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
 export const enum VIEWS {
@@ -538,12 +517,18 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
+export const AUTO_INSERT_ACTION_EXPERIMENT = {
+	name: '003_auto_insert_action',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const TEMPLATE_EXPERIMENT = {
 	name: '002_remove_templates',
 	control: 'control',
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];

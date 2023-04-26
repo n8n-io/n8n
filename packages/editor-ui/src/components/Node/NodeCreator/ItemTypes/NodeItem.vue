@@ -4,12 +4,11 @@
 		:draggable="!showActionArrow"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		@click.stop="onClick"
 		:class="$style.nodeItem"
-		:description="allowDescription ? description : ''"
+		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
 		:title="displayName"
-		:isTrigger="!allowActions && isTriggerNode"
 		:show-action-arrow="showActionArrow"
+		:is-trigger="isTrigger"
 	>
 		<template #icon>
 			<node-icon :nodeType="nodeType" />
@@ -39,62 +38,59 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { computed, ref, getCurrentInstance } from 'vue';
+import type { SimplifiedNodeType } from '@/Interface';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
 
-import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { isCommunityPackageName } from '@/utils';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-
 import NodeIcon from '@/components/NodeIcon.vue';
 
+import { useActions } from '../composables/useActions';
+
 export interface Props {
-	nodeType: INodeTypeDescription;
+	nodeType: SimplifiedNodeType;
+	subcategory?: string;
 	active?: boolean;
-	allowActions?: boolean;
-	allowDescription?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	active: false,
-	allowActions: false,
-	allowDescription: false,
 });
 
-const emit = defineEmits<{
-	(event: 'dragstart', $e: DragEvent): void;
-	(event: 'dragend', $e: DragEvent): void;
-	(event: 'nodeTypeSelected', value: string[]): void;
-	(event: 'actionsOpen', value: INodeTypeDescription): void;
-}>();
-
+const { actions } = useNodeCreatorStore();
+const { getNodeTypesWithManualTrigger } = useActions();
 const instance = getCurrentInstance();
-const state = reactive({
-	dragging: false,
-	draggablePosition: {
-		x: -100,
-		y: -100,
-	},
-	draggableDataTransfer: null as Element | null,
-});
+
+const dragging = ref(false);
+const draggablePosition = ref({ x: -100, y: -100 });
+const draggableDataTransfer = ref(null as Element | null);
+
 const description = computed<string>(() => {
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
 	}) as string;
 });
-const showActionArrow = computed(() => props.allowActions && hasActions.value);
+const showActionArrow = computed(() => hasActions.value);
 
-const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
+const hasActions = computed(() => {
+	return nodeActions.value.length > 1;
+});
+
+const nodeActions = computed(() => {
+	const nodeActions = actions[props.nodeType.name] || [];
+	return nodeActions;
+});
 
 const shortNodeType = computed<string>(
 	() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '',
 );
 
 const draggableStyle = computed<{ top: string; left: string }>(() => ({
-	top: `${state.draggablePosition.y}px`,
-	left: `${state.draggablePosition.x}px`,
+	top: `${draggablePosition.value.y}px`,
+	left: `${draggablePosition.value.x}px`,
 }));
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
@@ -105,21 +101,13 @@ const displayName = computed<any>(() => {
 
 	return instance?.proxy.$locale.headerText({
 		key: `headers.${shortNodeType}.displayName`,
-		fallback:
-			props.allowActions && props.nodeType.actions?.length
-				? displayName.replace('Trigger', '')
-				: displayName,
+		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
 });
 
-const isTriggerNode = computed<boolean>(() =>
-	props.nodeType.displayName.toLowerCase().includes('trigger'),
-);
-
-function onClick() {
-	if (hasActions.value && props.allowActions) emit('actionsOpen', props.nodeType);
-	else emit('nodeTypeSelected', [props.nodeType.name]);
-}
+const isTrigger = computed<boolean>(() => {
+	return props.nodeType.group.includes('trigger') && !hasActions.value;
+});
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
@@ -133,36 +121,33 @@ function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = 'copy';
 		event.dataTransfer.dropEffect = 'copy';
-		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
+		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
 			'nodeTypeName',
-			useNodeCreatorStore().getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+			getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
 		);
 	}
 
-	state.dragging = true;
-	state.draggablePosition = { x, y };
-	emit('dragstart', event);
+	dragging.value = true;
+	draggablePosition.value = { x, y };
 }
 
 function onDragOver(event: DragEvent): void {
-	if (!state.dragging || (event.pageX === 0 && event.pageY === 0)) {
+	if (!dragging.value || (event.pageX === 0 && event.pageY === 0)) {
 		return;
 	}
 
 	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
 
-	state.draggablePosition = { x, y };
+	draggablePosition.value = { x, y };
 }
 
 function onDragEnd(event: DragEvent): void {
 	document.body.removeEventListener('dragover', onDragOver);
 
-	emit('dragend', event);
-
-	state.dragging = false;
+	dragging.value = false;
 	setTimeout(() => {
-		state.draggablePosition = { x: -100, y: -100 };
+		draggablePosition.value = { x: -100, y: -100 };
 	}, 300);
 }
 
@@ -171,11 +156,6 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		instance?.proxy.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
 	}
 }
-
-defineExpose({
-	onClick,
-});
-const { dragging, draggableDataTransfer } = toRefs(state);
 </script>
 <style lang="scss" module>
 .nodeItem {

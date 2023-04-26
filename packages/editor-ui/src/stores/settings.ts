@@ -235,11 +235,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		setPromptsData(promptsData: IN8nPrompts): void {
 			Vue.set(this, 'promptsData', promptsData);
 		},
-		setAllowedModules(allowedModules: { builtIn?: string; external?: string }): void {
-			this.settings.allowedModules = {
-				...(allowedModules.builtIn && { builtIn: allowedModules.builtIn.split(',') }),
-				...(allowedModules.external && { external: allowedModules.external.split(',') }),
-			};
+		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
+			this.settings.allowedModules = allowedModules;
 		},
 		async fetchPromptsData(): Promise<void> {
 			if (!this.isTelemetryEnabled) {
