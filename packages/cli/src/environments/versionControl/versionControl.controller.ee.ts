@@ -46,6 +46,26 @@ export class VersionControlController {
 		}
 	}
 
+	@Authorized(['global', 'owner'])
+	@Get('/connect')
+	async connect() {
+		try {
+			return await this.versionControlService.connect();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/disconnect')
+	async disconnect() {
+		try {
+			return await this.versionControlService.disconnect();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
 	@Authorized('any')
 	@Get('/get-branches')
 	async getBranches() {
@@ -68,7 +88,7 @@ export class VersionControlController {
 
 	@Authorized('any')
 	@Get('/fetch')
-	async fetchRepo() {
+	async fetch() {
 		try {
 			return await this.versionControlService.fetch();
 		} catch (error) {
@@ -76,21 +96,51 @@ export class VersionControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
-	@Get('/connect')
-	async connect() {
+	@Authorized('any')
+	@Post('/push')
+	async push() {
 		try {
-			return await this.versionControlService.connect();
+			return await this.versionControlService.push();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
 
-	@Authorized(['global', 'owner'])
-	@Get('/disconnect')
-	async disconnect() {
+	@Authorized('any')
+	@Get('/pull')
+	async pull() {
 		try {
-			return await this.versionControlService.disconnect();
+			return await this.versionControlService.pull();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized('any')
+	@Post('/stage')
+	async stage() {
+		try {
+			return await this.versionControlService.stage();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized('any')
+	@Post('/commit')
+	async commit(req: VersionControlRequest.Commit) {
+		try {
+			return await this.versionControlService.commit(req.body.message);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized('any')
+	@Get('/status')
+	async status() {
+		try {
+			return await this.versionControlService.status();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

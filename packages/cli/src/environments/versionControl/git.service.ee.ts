@@ -4,7 +4,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import path from 'path';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import { constants as fsConstants } from 'fs';
-import type { FetchResult, SimpleGit, SimpleGitOptions } from 'simple-git';
+import type { FetchResult, SimpleGit, SimpleGitOptions, StatusResult } from 'simple-git';
 import { simpleGit } from 'simple-git';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 
@@ -176,5 +176,42 @@ export class VersionControlGitService {
 			throw new Error('Git is not initialized');
 		}
 		return this.git.fetch();
+	}
+
+	async pull(): Promise<void> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		throw new Error('not implemented');
+	}
+
+	async push(): Promise<void> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		throw new Error('not implemented');
+	}
+
+	async stage(): Promise<void> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		throw new Error('not implemented');
+	}
+
+	async commit(message: string): Promise<void> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		console.log(message);
+		throw new Error('not implemented');
+	}
+
+	async status(): Promise<StatusResult> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		const statusResult = await this.git.status();
+		return statusResult;
 	}
 }

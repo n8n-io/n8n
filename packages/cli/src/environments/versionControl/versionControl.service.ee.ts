@@ -16,7 +16,7 @@ import { readFileSync, existsSync } from 'fs';
 import { writeFile as fsWriteFile } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
-import type { FetchResult } from 'simple-git';
+import type { FetchResult, StatusResult } from 'simple-git';
 
 @Service()
 export class VersionControlService {
@@ -197,6 +197,15 @@ export class VersionControlService {
 		return;
 	}
 
+	async exportWorkflowsToWorkFolder() {
+		// TODO: export all workflows to json
+		// add owning user email to json
+	}
+
+	async importWorkflowsFromGit() {
+		//
+	}
+
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
 		return this.gitService.getBranches();
 	}
@@ -208,5 +217,25 @@ export class VersionControlService {
 
 	async fetch(): Promise<FetchResult> {
 		return this.gitService.fetch();
+	}
+
+	async pull(): Promise<void> {
+		return this.gitService.pull();
+	}
+
+	async push(): Promise<void> {
+		return this.gitService.push();
+	}
+
+	async stage(): Promise<void> {
+		return this.gitService.stage();
+	}
+
+	async commit(message: string): Promise<void> {
+		return this.gitService.commit(message);
+	}
+
+	async status(): Promise<StatusResult> {
+		return this.gitService.status();
 	}
 }
