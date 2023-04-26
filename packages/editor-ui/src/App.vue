@@ -203,7 +203,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.versionControlStore.isEnterpriseVersionControlEnabled &&
 			this.usersStore.isInstanceOwner
 		) {
-			this.versionControlStore.fetchPreferences();
+			this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {

@@ -69,7 +69,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setPreferences(data);
 	};
 
-	const fetchPreferences = async (preferences: Partial<VersionControlPreferences>) => {
+	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
 		const data = await vcApi.setPreferences(rootStore.getRestApiContext, preferences);
 		setPreferences(data);
 	};
@@ -83,6 +83,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		getConfig,
 		getPreferences,
 		setPreferences,
-		fetchPreferences,
+		savePreferences,
 	};
 });
