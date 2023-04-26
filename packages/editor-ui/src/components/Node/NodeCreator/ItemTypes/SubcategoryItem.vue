@@ -13,15 +13,15 @@
 </template>
 
 <script setup lang="ts">
-import type { ISubcategoryItemProps } from '@/Interface';
+import type { SubcategoryItemProps } from '@/Interface';
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
 export interface Props {
-	item: ISubcategoryItemProps;
+	item: SubcategoryItemProps;
 }
 
 const props = defineProps<Props>();
-const subcategoryName = computed(() => camelCase(props.item.subcategory));
+const subcategoryName = computed(() => camelCase(props.item.subcategory || props.item.title));
 </script>
 
 <style lang="scss" module>
@@ -29,10 +29,5 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory));
 	--action-arrow-color: var(--color-text-light);
 	margin-left: 15px;
 	margin-right: 12px;
-}
-.withTopBorder {
-	border-top: 1px solid var(--color-foreground-base);
-	margin-top: var(--spacing-m);
-	padding-top: var(--spacing-l);
 }
 </style>

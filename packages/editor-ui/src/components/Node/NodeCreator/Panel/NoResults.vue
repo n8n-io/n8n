@@ -1,12 +1,24 @@
 <template>
-	<div :class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }">
+	<div
+		:class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }"
+		data-test-id="node-creator-no-results"
+	>
 		<div :class="$style.icon" v-if="showIcon">
 			<no-results-icon />
 		</div>
 		<div :class="$style.title">
 			<slot name="title" />
+			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
 			<div :class="$style.action">
-				<slot name="action" />
+				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+				<n8n-link v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
+					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+				</n8n-link>
+
+				<n8n-link v-if="rootView === TRIGGER_NODE_CREATOR_VIEW" @click="$emit('addWebhookNode')">
+					{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+				</n8n-link>
+				{{ $locale.baseText('nodeCreator.noResults.node') }}
 			</div>
 		</div>
 
@@ -30,12 +42,19 @@
 </template>
 
 <script setup lang="ts">
-import { REQUEST_NODE_FORM_URL } from '@/constants';
+import {
+	REQUEST_NODE_FORM_URL,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
+import type { NodeFilterType } from '@/Interface';
+
 import NoResultsIcon from './NoResultsIcon.vue';
 
 export interface Props {
 	showIcon?: boolean;
 	showRequest?: boolean;
+	rootView?: NodeFilterType;
 }
 
 defineProps<Props>();

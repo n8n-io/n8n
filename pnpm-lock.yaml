@@ -872,8 +872,8 @@ importers:
         specifier: ^5.15.3
         version: 5.15.4
       '@fortawesome/vue-fontawesome':
-        specifier: ^2.0.2
-        version: 2.0.8(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14)
+        specifier: ^2.0.10
+        version: 2.0.10(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14)
       '@jsplumb/browser-ui':
         specifier: ^5.13.2
         version: 5.13.2
@@ -1064,6 +1064,9 @@ importers:
       '@vitest/coverage-c8':
         specifier: ^0.28.5
         version: 0.28.5(sass@1.55.0)(terser@5.16.1)
+      '@volar-plugins/eslint':
+        specifier: ^0.0.4
+        version: 0.0.4(eslint@8.39.0)
       c8:
         specifier: ^7.12.0
         version: 7.12.0
@@ -3760,8 +3763,8 @@ packages:
     dependencies:
       '@fortawesome/fontawesome-common-types': 0.2.36
 
-  /@fortawesome/vue-fontawesome@2.0.8(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14):
-    resolution: {integrity: sha512-SRmP0q9Ox4zq8ydDR/hrH+23TVU1bdwYVnugLVaAIwklOHbf56gx6JUGlwES7zjuNYqzKgl8e39iYf6ph8qSQw==}
+  /@fortawesome/vue-fontawesome@2.0.10(@fortawesome/fontawesome-svg-core@1.2.36)(vue@2.7.14):
+    resolution: {integrity: sha512-OTETSXz+3ygD2OK2/vy82cmUBpuJqeOAg4gfnnv+f2Rir1tDIhQg026Q3NQxznq83ZLz8iNqGG9XJm26inpDeg==}
     peerDependencies:
       '@fortawesome/fontawesome-svg-core': ~1 || ~6
       vue: ~2
@@ -3997,13 +4000,6 @@ packages:
       v8-to-istanbul: 9.0.1
     transitivePeerDependencies:
       - supports-color
-    dev: true
-
-  /@jest/schemas@29.4.2:
-    resolution: {integrity: sha512-ZrGzGfh31NtdVH8tn0mgJw4khQuNHiKqdzJAFbCaERbyCP9tHlxWuL/mnMu8P7e/+k4puWjI1NOzi/sFsjce/g==}
-    engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
-    dependencies:
-      '@sinclair/typebox': 0.25.21
     dev: true
 
   /@jest/schemas@29.4.3:
@@ -7386,11 +7382,27 @@ packages:
       pretty-format: 27.5.1
     dev: true
 
+  /@volar-plugins/eslint@0.0.4(eslint@8.39.0):
+    resolution: {integrity: sha512-CjvOHSPOyfMv4mgjFk0JOsnq0yWj4LaHb7n4bjNWqqhdwPWmaUEK5AbOloBRxix0736Z3OimH8GMjHNlMcbeiw==}
+    peerDependencies:
+      eslint: '*'
+    dependencies:
+      '@volar/shared': 1.0.24
+      eslint: 8.39.0
+    dev: true
+
   /@volar/language-core@1.0.24:
     resolution: {integrity: sha512-vTN+alJiWwK0Pax6POqrmevbtFW2dXhjwWiW/MW4f48eDYPLdyURWcr8TixO7EN/nHsUBj2udT7igFKPtjyAKg==}
     dependencies:
       '@volar/source-map': 1.0.24
       muggle-string: 0.1.0
+    dev: true
+
+  /@volar/shared@1.0.24:
+    resolution: {integrity: sha512-30mqmNsw49xlGhziL59z6kP6/TlBatkeOzMImUSWmn1QtqV7r2onDGgNNdCqSa1esTo4UtGup6yqqM2oUwrMSQ==}
+    dependencies:
+      typesafe-path: 0.2.2
+      vscode-uri: 3.0.7
     dev: true
 
   /@volar/source-map@1.0.24:
@@ -17760,7 +17772,7 @@ packages:
     resolution: {integrity: sha512-qKlHR8yFVCbcEWba0H0TOC8dnLlO4vPlyEjRPw31FZ2Rupy9nLa8ZLbYny8gWEl8CkEhJqAE6IzdNELTBVcBEg==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
-      '@jest/schemas': 29.4.2
+      '@jest/schemas': 29.4.3
       ansi-styles: 5.2.0
       react-is: 18.2.0
     dev: true
@@ -20906,6 +20918,10 @@ packages:
       - supports-color
     dev: false
 
+  /typesafe-path@0.2.2:
+    resolution: {integrity: sha512-OJabfkAg1WLZSqJAJ0Z6Sdt3utnbzr/jh+NAHoyWHJe8CMSy79Gm085094M9nvTPy22KzTVn5Zq5mbapCI/hPA==}
+    dev: true
+
   /typescript@5.0.3:
     resolution: {integrity: sha512-xv8mOEDnigb/tN9PSMTwSEqAnUvkoXMQlicOb0IUVDBSQCgBSaAAROUZYy2IcUy5qU6XajK5jjjO7TMWqBTKZA==}
     engines: {node: '>=12.20'}
@@ -21583,6 +21599,10 @@ packages:
   /void-elements@3.1.0:
     resolution: {integrity: sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==}
     engines: {node: '>=0.10.0'}
+    dev: true
+
+  /vscode-uri@3.0.7:
+    resolution: {integrity: sha512-eOpPHogvorZRobNqJGhapa0JdwaxpjVvyBp0QIUMRMSf8ZAlqOdEquKuRmw9Qwu0qXtJIWqFtMkmvJjUZmMjVA==}
     dev: true
 
   /vue-agile@2.0.0:
