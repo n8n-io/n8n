@@ -26,12 +26,13 @@ RUN rm -rf packages/@n8n_io/eslint-config packages/editor-ui/src packages/editor
 RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/* 
 
 # 2 . install packages
-FROM node:${NODE_VERSION}-slim as packages
+FROM node:${NODE_VERSION}-slim as privatenodepackages
 ARG ACCESS_TOKEN
 ENV TOKEN_FOR_PACKAGES=${ACCESS_TOKEN}
 RUN cd /home/node && mkdir .n8n && cd .n8n && mkdir nodes && cd nodes
+WORKDIR /home/node/.n8n/nodes
 RUN printf "@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=%s" $TOKEN_FOR_PACKAGES > .npmrc
-RUN yarn add "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-nodo-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3"
+RUN npm install "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-nodo-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3"
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
@@ -44,8 +45,9 @@ RUN \
 	chown node:node .n8n
 
 RUN cd .n8n && mkdir nodes &&  cd nodes
-COPY --from=packages /home/node/.n8n/nodes .
+COPY --from=privatenodepackages /home/node/.n8n/nodes /home/node/.n8n/nodes
 
 USER node
 ENV NODE_ENV=production
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
