@@ -65,12 +65,7 @@ const orderedFields = computed<INodeProperties[]>(() => {
 });
 
 const removedFields = computed<ResourceMapperField[]>(() => {
-	return props.fieldsToMap.filter((field) => {
-		if (props.paramValue.value && !(field.id in props.paramValue.value)) {
-			return true;
-		}
-		return false;
-	});
+	return props.fieldsToMap.filter((field) => field.display === false);
 });
 
 const singularFieldWord = computed<string>(() => {
@@ -87,23 +82,29 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-const addFieldOptions = computed<{name: string, value: string}[]>(() => {
+const addFieldOptions = computed<Array<{ name: string; value: string; disabled?: boolean }>>(() => {
 	return [
 		{
-			name: locale.baseText('resourceMapper.addAllFields', { interpolate: { fieldWord: pluralFieldWord.value }}),
+			name: locale.baseText('resourceMapper.addAllFields', {
+				interpolate: { fieldWord: pluralFieldWord.value },
+			}),
 			value: 'addAllFields',
 			disabled: true,
 		},
 		{
-			name: locale.baseText('resourceMapper.removeAllFields', { interpolate: { fieldWord: pluralFieldWord.value }}),
+			name: locale.baseText('resourceMapper.removeAllFields', {
+				interpolate: { fieldWord: pluralFieldWord.value },
+			}),
 			value: 'removeAllFields',
 		},
-	].concat(removedFields.value.map((field) => {
-		return {
-			name: field.displayName,
-			value: field.id,
-		};
-	}));
+	].concat(
+		removedFields.value.map((field) => {
+			return {
+				name: field.displayName,
+				value: field.id,
+			};
+		}),
+	);
 });
 
 const resourceMapperMode = computed<string | undefined>(() => {

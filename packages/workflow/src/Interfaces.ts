@@ -1970,7 +1970,7 @@ export type ResourceMapperFieldType = 'string' | 'number' | 'dateTime' | 'boolea
 
 export type ResourceMapperValue = {
 	mappingMode: string;
-	value: { [key: string]: string | number | boolean | null };
+	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
 };
 export interface ExecutionOptions {

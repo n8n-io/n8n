@@ -52,7 +52,10 @@ const state = reactive({
 watch(
 	() => props.dependentParametersValues,
 	async () => {
+		state.paramValue.value = null;
+		emitValueChanged();
 		await initFetching();
+		setDefaultFieldValues();
 	},
 );
 
@@ -61,26 +64,18 @@ onMounted(async () => {
 		const params = props.nodeValues.parameters as INodeParameters;
 		const parameterName = props.parameter.name;
 		if (parameterName in params) {
-			state.paramValue = (params[parameterName]) as ResourceMapperValue;
+			state.paramValue = params[parameterName] as ResourceMapperValue;
 			// TODO: Handle missing values properly once add/remove fields is implemented
 			Object.keys(state.paramValue.value || {}).forEach((key) => {
-				if (state.paramValue.value[key] === '') {
+				if (state.paramValue.value && state.paramValue.value[key] === '') {
 					state.paramValue.value[key] = null;
 				}
 			});
 		}
 	}
-	if (!state.paramValue.matchingColumns) {
-		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
-	}
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
-	if (!state.paramValue.value) {
-		state.paramValue.value = {};
-		state.fieldsToMap.forEach((field) => {
-			state.paramValue.value[field.id] = null;
-		});
-	}
+	setDefaultFieldValues();
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -187,6 +182,20 @@ async function onModeChanged(mode: string): Promise<void> {
 	emitValueChanged();
 }
 
+function setDefaultFieldValues(): void {
+	if (!state.paramValue.value) {
+		state.paramValue.value = {};
+		state.fieldsToMap.forEach((field) => {
+			if (state.paramValue.value) {
+				state.paramValue.value[field.id] = null;
+			}
+		});
+	}
+	if (!state.paramValue.matchingColumns) {
+		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
+	}
+}
+
 function onMatchingColumnsChanged(matchingColumns: string[]): void {
 	state.paramValue = {
 		...state.paramValue,
@@ -211,7 +220,7 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	const match = updateInfo.name.match(FIELD_NAME_REGEX);
 	if (match) {
 		const name = match.pop();
-		if (name) {
+		if (name && state.paramValue.value) {
 			state.paramValue.value[name] = newValue;
 			emitValueChanged();
 		}
@@ -224,8 +233,10 @@ function removeField(name: string): void {
 		const fieldName = match.pop();
 
 		if (fieldName) {
-			delete state.paramValue.value[fieldName];
-			emitValueChanged();
+			if (state.paramValue.value) {
+				delete state.paramValue.value[fieldName];
+				emitValueChanged();
+			}
 		}
 		const field = state.fieldsToMap.find((field) => field.id === fieldName);
 		if (field) {
@@ -238,7 +249,7 @@ function addField(name: string): void {
 	state.paramValue.value = {
 		...state.paramValue.value,
 		[name]: null,
-	}
+	};
 	const field = state.fieldsToMap.find((field) => field.id === name);
 	if (field) {
 		field.display = true;
