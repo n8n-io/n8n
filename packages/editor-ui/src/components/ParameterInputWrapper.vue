@@ -44,7 +44,6 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import type Vue from 'vue';
 
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
