@@ -41,6 +41,7 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
+          npm dist-tag rm n8n rc
 
       - name: Create a Release on GitHub
         uses: ncipollo/release-action@v1
