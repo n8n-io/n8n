@@ -4,7 +4,7 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 import { googleApiRequest } from '../transport';
-import { RlcDefaults } from '../helpers/interfaces';
+import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../helpers/interfaces';
 
 interface GoogleDriveFilesItem {
 	id: string;
@@ -27,7 +27,7 @@ export async function fileSearch(
 	if (filter) {
 		query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
-	query.push("mimeType != 'application/vnd.google-apps.folder'");
+	query.push(`mimeType != '${DRIVE.FOLDER}'`);
 	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 		q: query.join(' and '),
 		pageToken: paginationToken,
@@ -53,7 +53,7 @@ export async function folderSearch(
 	if (filter) {
 		query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
-	query.push("mimeType = 'application/vnd.google-apps.folder'");
+	query.push(`mimeType = '${DRIVE.FOLDER}'`);
 	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 		q: query.join(' and '),
 		pageToken: paginationToken,
@@ -63,8 +63,8 @@ export async function folderSearch(
 
 	const results: INodeListSearchItems[] = [
 		{
-			name: RlcDefaults.Folder,
-			value: RlcDefaults.Folder,
+			name: RLC_FOLDER_DEFAULT,
+			value: RLC_FOLDER_DEFAULT,
 			url: 'https://drive.google.com/drive',
 		},
 	];
@@ -97,8 +97,8 @@ export async function driveSearch(
 
 	const results: INodeListSearchItems[] = [
 		{
-			name: RlcDefaults.Drive,
-			value: RlcDefaults.Drive,
+			name: RLC_DRIVE_DEFAULT,
+			value: RLC_DRIVE_DEFAULT,
 			url: 'https://drive.google.com/drive/my-drive',
 		},
 	];

@@ -1,5 +1,4 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { fileRLC } from '../common.descriptions';
 
 import * as copy from './copy.operation';
 import * as createFromText from './createFromText.operation';
@@ -74,15 +73,6 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'upload',
-	},
-	{
-		...fileRLC,
-		displayOptions: {
-			show: {
-				operation: ['download', 'deleteFile'],
-				resource: ['file'],
-			},
-		},
 	},
 	...copy.description,
 	...deleteFile.description,

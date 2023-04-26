@@ -3,8 +3,10 @@ import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
+import { fileRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
+	fileRLC,
 	{
 		displayName: 'Delete Permanently',
 		name: 'deletePermanently',

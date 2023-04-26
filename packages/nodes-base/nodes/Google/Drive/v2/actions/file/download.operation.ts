@@ -8,8 +8,10 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
+import { fileRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
+	fileRLC,
 	{
 		displayName: 'Options',
 		name: 'options',

@@ -4,6 +4,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
+import { DRIVE } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -67,7 +68,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const options = this.getNodeParameter('options', i, {});
 	const parentFolderId = ((options?.parentFolderId as IDataObject)?.value as string) || 'root';
 	const convertToGoogleDocument = (options.convertToGoogleDocument as boolean) || false;
-	const mimeType = convertToGoogleDocument ? 'application/vnd.google-apps.document' : 'text/plain';
+	const mimeType = convertToGoogleDocument ? DRIVE.DOCUMENT : 'text/plain';
 
 	const bodyParameters = {
 		name,

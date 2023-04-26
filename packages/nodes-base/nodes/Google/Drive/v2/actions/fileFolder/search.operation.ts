@@ -6,7 +6,7 @@ import { driveRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { prepareQueryString } from '../../helpers/utils';
 import type { SearchFilter } from '../../helpers/interfaces';
-import { RlcDefaults } from '../../helpers/interfaces';
+import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -118,59 +118,59 @@ const properties: INodeProperties[] = [
 							},
 							{
 								name: '3rd Party Shortcut',
-								value: 'application/vnd.google-apps.drive-sdk',
+								value: DRIVE.SDK,
 							},
 							{
 								name: 'Audio',
-								value: 'application/vnd.google-apps.audio',
+								value: DRIVE.AUDIO,
 							},
 							{
 								name: 'Google Apps Scripts',
-								value: 'application/vnd.google-apps.script',
+								value: DRIVE.APP_SCRIPTS,
 							},
 							{
 								name: 'Google Docs',
-								value: 'application/vnd.google-apps.document',
+								value: DRIVE.DOCUMENT,
 							},
 							{
 								name: 'Google Drawing',
-								value: 'application/vnd.google-apps.drawing',
+								value: DRIVE.DRAWING,
 							},
 							{
 								name: 'Google Forms',
-								value: 'application/vnd.google-apps.form',
+								value: DRIVE.FORM,
 							},
 							{
 								name: 'Google Fusion Tables',
-								value: 'application/vnd.google-apps.fusiontable',
+								value: DRIVE.FUSIONTABLE,
 							},
 							{
 								name: 'Google My Maps',
-								value: 'application/vnd.google-apps.map',
+								value: DRIVE.MAP,
 							},
 							{
 								name: 'Google Sheets',
-								value: 'application/vnd.google-apps.spreadsheet',
+								value: DRIVE.SPREADSHEET,
 							},
 							{
 								name: 'Google Sites',
-								value: 'application/vnd.google-apps.site',
+								value: DRIVE.SITES,
 							},
 							{
 								name: 'Google Slides',
-								value: 'application/vnd.google-apps.presentation',
+								value: DRIVE.PRESENTATION,
 							},
 							{
 								name: 'Photo',
-								value: 'application/vnd.google-apps.photo',
+								value: DRIVE.PHOTO,
 							},
 							{
 								name: 'Unknown',
-								value: 'application/vnd.google-apps.unknown',
+								value: DRIVE.UNKNOWN,
 							},
 							{
 								name: 'Video',
-								value: 'application/vnd.google-apps.video',
+								value: DRIVE.VIDEO,
 							},
 						],
 						displayOptions: {
@@ -366,19 +366,19 @@ export async function execute(
 	const returnedTypes: string[] = [];
 
 	if (Object.keys(filter)?.length) {
-		if (filter.folderId.value !== RlcDefaults.Folder) {
+		if (filter.folderId.value !== RLC_FOLDER_DEFAULT) {
 			query.push(`'${filter.folderId.value}' in parents`);
 		}
 
-		if (filter.driveId.value !== RlcDefaults.Drive) {
+		if (filter.driveId.value !== RLC_DRIVE_DEFAULT) {
 			driveId = filter.driveId.value;
 		}
 
 		if (filter.whatToSearch === 'folders') {
-			query.push("mimeType = 'application/vnd.google-apps.folder'");
+			query.push(`mimeType = '${DRIVE.FOLDER}'`);
 		} else {
 			if (filter.whatToSearch === 'files') {
-				query.push("mimeType != 'application/vnd.google-apps.folder'");
+				query.push(`mimeType != '${DRIVE.FOLDER}'`);
 			}
 
 			if (filter?.fileTypes?.length && !filter.fileTypes.includes('*')) {
@@ -414,7 +414,6 @@ export async function execute(
 
 	const qs: IDataObject = {
 		pageSize,
-		// orderBy: 'modifiedTime',
 		fields: `nextPageToken, files(${queryFields})`,
 		spaces: querySpaces,
 		q: query.filter((q) => q).join(' and '),

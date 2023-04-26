@@ -1,14 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { BINARY_ENCODING, jsonParse } from 'n8n-workflow';
-
-import type { Readable } from 'stream';
-
-import { UPLOAD_CHUNK_SIZE } from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { folderRLC } from '../common.descriptions';
+import { getItemBinaryData } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -134,28 +130,13 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	let contentLength: number;
-	let fileContent: Buffer | Readable;
-	let originalFilename: string | undefined;
-	let mimeType;
-
 	const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 
-	const binaryData = this.helpers.assertBinaryData(i, inputDataFieldName);
-
-	if (binaryData.id) {
-		// Stream data in 256KB chunks, and upload the via the resumable upload api
-		fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
-		const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
-		contentLength = metadata.fileSize;
-		originalFilename = metadata.fileName;
-		if (metadata.mimeType) mimeType = binaryData.mimeType;
-	} else {
-		fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-		contentLength = fileContent.length;
-		originalFilename = binaryData.fileName;
-		mimeType = binaryData.mimeType;
-	}
+	const { contentLength, fileContent, originalFilename, mimeType } = await getItemBinaryData.call(
+		this,
+		inputDataFieldName,
+		i,
+	);
 
 	const name = (this.getNodeParameter('name', i) as string) || originalFilename;
 	const parentFolder = this.getNodeParameter('parentFolder', i, undefined, { extractValue: true });
@@ -180,7 +161,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				json: false,
 			},
 		);
-		uploadId = jsonParse<IDataObject>(response as string).id;
+
+		uploadId = response.id;
 	} else {
 		const resumableUpload = await googleApiRequest.call(
 			this,

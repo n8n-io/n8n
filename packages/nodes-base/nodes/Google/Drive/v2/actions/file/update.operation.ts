@@ -1,15 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { prepareQueryString } from '../../helpers/utils';
+import { getItemBinaryData, prepareQueryString } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
-
-import { UPLOAD_CHUNK_SIZE } from '../../helpers/interfaces';
-
-import type { Readable } from 'stream';
 
 const properties: INodeProperties[] = [
 	{
@@ -28,7 +24,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Input Data Field Name',
 		name: 'inputDataFieldName',
 		type: 'string',
-		placeholder: '“e.g. data',
+		placeholder: 'e.g. data',
 		default: '',
 		hint: 'The name of the input field containing the binary file data to update the file',
 		description:
@@ -198,33 +194,12 @@ export async function execute(
 
 	// update file binary data
 	if (changeFileContent) {
-		let contentLength: number;
-		let fileContent: Buffer | Readable;
-
 		const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 
-		if (!inputDataFieldName) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'The name of the input field containing the binary file data must be set',
-				{
-					itemIndex: i,
-				},
-			);
-		}
-		const binaryData = this.helpers.assertBinaryData(i, inputDataFieldName);
+		const binaryData = await getItemBinaryData.call(this, inputDataFieldName, i);
 
-		if (binaryData.id) {
-			// Stream data in 256KB chunks, and upload the via the resumable upload api
-			fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
-			const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
-			contentLength = metadata.fileSize;
-			if (metadata.mimeType) mimeType = binaryData.mimeType;
-		} else {
-			fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
-			contentLength = fileContent.length;
-			mimeType = binaryData.mimeType;
-		}
+		const { contentLength, fileContent } = binaryData;
+		mimeType = binaryData.mimeType;
 
 		if (Buffer.isBuffer(fileContent)) {
 			await googleApiRequest.call(

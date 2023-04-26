@@ -4,6 +4,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { folderRLC } from '../common.descriptions';
+import { DRIVE } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -65,7 +66,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const body: IDataObject = {
 		name,
-		mimeType: 'application/vnd.google-apps.folder',
+		mimeType: DRIVE.FOLDER,
 		parents: [parentFolder],
 	};
 
