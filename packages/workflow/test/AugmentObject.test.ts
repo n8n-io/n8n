@@ -233,8 +233,8 @@ describe('AugmentObject', () => {
 				a: 9111,
 				b: '9222',
 				c: 3,
-				d: date,
-				r: regexp,
+				d: date.toJSON(),
+				r: regexp.toString(),
 			});
 		});
 
