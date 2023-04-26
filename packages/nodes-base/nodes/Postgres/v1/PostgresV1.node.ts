@@ -71,6 +71,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			typeOptions: {
+				editor: 'sqlEditor',
+				sqlDialect: 'postgres',
+			},
 			displayOptions: {
 				show: {
 					operation: ['executeQuery'],

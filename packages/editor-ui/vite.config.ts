@@ -1,6 +1,5 @@
 import vue from '@vitejs/plugin-vue2';
 import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
@@ -73,23 +72,10 @@ const alias = [
 	},
 ];
 
-// https://github.com/vitest-dev/vitest/discussions/1806
-if (NODE_ENV === 'test') {
-	alias.push({
-		find: /^monaco-editor$/,
-		replacement: __dirname + '/node_modules/monaco-editor/esm/vs/editor/editor.api',
-	});
-}
-
 const plugins = [
 	vue(),
 	legacy({
 		targets: ['>1%', 'last 3 versions', 'not dead'],
-	}),
-	monacoEditorPlugin({
-		publicPath: 'assets/monaco-editor',
-		customDistPath: (root: string, buildOutDir: string, base: string) =>
-			`${root}/${buildOutDir}/assets/monaco-editor`,
 	}),
 ];
 

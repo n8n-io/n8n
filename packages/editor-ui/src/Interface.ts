@@ -28,7 +28,6 @@ import type {
 	INodeActionTypeDescription,
 	IDisplayOptions,
 	IExecutionsSummary,
-	IAbstractEventMessage,
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,

@@ -172,7 +172,6 @@ import type {
 	IUpdateInformation,
 	IUsedCredential,
 } from '@/Interface';
-import { ICredentialsResponse, IUser } from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -963,7 +962,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	.node-parameters-wrapper {
 		height: 100%;
 		overflow-y: auto;
-		padding: 0 20px 200px 20px;
+		padding: 0 20px;
 	}
 
 	&.dragging {

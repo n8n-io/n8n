@@ -10,7 +10,7 @@ import {
 	SIDEBAR_WIDTH,
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
-import { ref, watchEffect, onMounted, computed, onUnmounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useCanvasStore } from '@/stores/canvas';
 
 interface ExtendedHTMLSpanElement extends HTMLSpanElement {
