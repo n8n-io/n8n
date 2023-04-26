@@ -1426,5 +1426,5 @@ export type VersionControlPreferences = {
 	branchName: string;
 	branchReadOnly: boolean;
 	branchColor: string;
-	readonly publicKey?: string;
+	publicKey?: string;
 };

@@ -1,10 +1,11 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings';
 import * as vcApi from '@/api/versionControl';
 import { useRootStore } from '@/stores/n8nRootStore';
+import type { VersionControlPreferences } from '@/Interface';
 
 export const useVersionControlStore = defineStore('versionControl', () => {
 	const rootStore = useRootStore();
@@ -13,6 +14,17 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	const isEnterpriseVersionControlEnabled = computed(() =>
 		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.VersionControl),
 	);
+
+	const preferences = reactive<VersionControlPreferences>({
+		branchName: '',
+		authorName: '',
+		authorEmail: '',
+		repositoryUrl: '',
+		branchReadOnly: false,
+		branchColor: '#000000',
+		connected: false,
+		publicKey: '',
+	});
 
 	const state = reactive({
 		branches: [] as string[],
@@ -48,6 +60,20 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		state.currentBranch = currentBranch;
 	};
 
+	const setPreferences = (data: Partial<VersionControlPreferences>) => {
+		Object.assign(preferences, data);
+	};
+
+	const getPreferences = async () => {
+		const data = await vcApi.getPreferences(rootStore.getRestApiContext);
+		setPreferences(data);
+	};
+
+	const fetchPreferences = async (preferences: Partial<VersionControlPreferences>) => {
+		const data = await vcApi.setPreferences(rootStore.getRestApiContext, preferences);
+		setPreferences(data);
+	};
+
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
@@ -55,5 +81,8 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		initRepository,
 		sync,
 		getConfig,
+		getPreferences,
+		setPreferences,
+		fetchPreferences,
 	};
 });
