@@ -37,7 +37,7 @@ const emit = defineEmits<{
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => {
-		return field.canBeUsedToMatch !== false;
+		return field.canBeUsedToMatch !== false && field.display !== false;
 	});
 });
 
@@ -61,7 +61,11 @@ const fieldDescription = computed<string>(() => {
 		props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
 	const singularFieldWord =
 		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
-	return locale.baseText('resourceMapper.columnsToMatchOn.description', {
+	const labeli18nKey =
+		props.typeOptions?.multiKeyMatch === true
+			? 'resourceMapper.columnsToMatchOn.multi.description'
+			: 'resourceMapper.columnsToMatchOn.single.description';
+	return locale.baseText(labeli18nKey, {
 		interpolate: {
 			fieldWord: props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord,
 		},
