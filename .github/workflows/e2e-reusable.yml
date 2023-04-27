@@ -77,12 +77,6 @@ jobs:
       image: cypress/${{ inputs.run-env }}
       options: --user 1001
     steps:
-      - name: Install Git
-        if: ${{ inputs.pr_number }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y git
-
       - uses: actions/checkout@v3
         with:
           repository: n8n-io/n8n
@@ -137,12 +131,6 @@ jobs:
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
-
-      - name: Install Git
-        if: ${{ inputs.pr_number }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y git
 
       - name: Checkout PR
         if: ${{ inputs.pr_number }}
