@@ -12,6 +12,7 @@ import { AUTH_COOKIE_NAME, EDITOR_UI_DIST_DIR } from '@/constants';
 import { issueCookie, resolveJwtContent } from '@/auth/jwt';
 import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import type { UserRepository } from '@db/repositories';
+import { canSkipAuth } from '@/decorators/registerController';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -90,14 +91,10 @@ export const setupAuthMiddlewares = (
 			// skip authentication for preflight requests
 			req.method === 'OPTIONS' ||
 			staticAssets.includes(req.url.slice(1)) ||
+			canSkipAuth(req.method, req.path) ||
 			isAuthExcluded(req.url, ignoredEndpoints) ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
-			req.url.startsWith(`/${restEndpoint}/login`) ||
-			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
 			isPostUsersId(req, restEndpoint) ||
-			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||
-			req.url.startsWith(`/${restEndpoint}/resolve-password-token`) ||
-			req.url.startsWith(`/${restEndpoint}/change-password`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
 			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`)
 		) {
