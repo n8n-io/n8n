@@ -30,7 +30,7 @@
 				<n8n-loading variant="p" :rows="1" />
 				<n8n-loading variant="p" :rows="1" />
 			</div>
-			<div v-if="executions.length === 0" :class="$style.noResultsContainer">
+			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
