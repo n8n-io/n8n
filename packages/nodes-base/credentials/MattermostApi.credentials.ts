@@ -46,7 +46,7 @@ export class MattermostApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}/api/v4',
+			baseURL: '={{$credentials.baseUrl.replace(/\\/$/, "")}}/api/v4',
 			url: '/users',
 			skipSslCertificateValidation: '={{$credentials?.allowUnauthorizedCerts}}',
 		},
