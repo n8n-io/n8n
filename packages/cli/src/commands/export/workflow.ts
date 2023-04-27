@@ -117,6 +117,19 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			let fileContents: string;
 			let i: number;
 			for (i = 0; i < workflows.length; i++) {
+				let j: number;
+				for (j = 0; j < workflows[i].nodes.length; j++) {
+					if (workflows[i].nodes[j].type === 'n8n-nodes-base.code') {
+						const codeFileName = `${
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-non-null-assertion
+							(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
+							'code/' +
+							workflows[i].nodes[j].id
+						}.js`;
+						fs.writeFileSync(codeFileName, workflows[i].nodes[j].parameters.jsCode as string);
+						workflows[i].nodes[j].parameters.jsCode = '';
+					}
+				}
 				fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
 					// eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-non-null-assertion

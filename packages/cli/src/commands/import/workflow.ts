@@ -118,6 +118,16 @@ export class ImportWorkflowsCommand extends BaseCommand {
 						fs.readFileSync(file, { encoding: 'utf8' }),
 					);
 
+					let j: number;
+					for (j = 0; j < workflow.nodes.length; j++) {
+						if (workflow.nodes[j].type === 'n8n-nodes-base.code') {
+							const code = fs.readFileSync(`${inputPath}code/${workflow.nodes[j].id}.js`, {
+								encoding: 'utf8',
+							});
+							workflow.nodes[j].parameters.jsCode = code;
+						}
+					}
+
 					if (credentials.length > 0) {
 						workflow.nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentials);
