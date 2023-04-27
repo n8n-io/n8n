@@ -121,7 +121,8 @@ export class ItemListsV2 implements INodeType {
 						{
 							name: 'Split Out Items',
 							value: 'splitOutItems',
-							description: 'Turn a list inside item(s) into separate items',
+							description:
+								"Turn a list or values of object's properties inside item(s) into separate items",
 							action: 'Split Out Items',
 						},
 						{
@@ -844,81 +845,85 @@ return 0;`,
 						}
 					}
 
-					if (!Array.isArray(arrayToSplit)) {
+					if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The provided field '${fieldToSplitOut}' is not an array`,
+							`The provided field '${fieldToSplitOut}' is not an array or object`,
 							{ itemIndex: i },
 						);
-					} else {
-						for (const element of arrayToSplit) {
-							let newItem = {};
+					}
 
-							if (include === 'selectedOtherFields') {
-								const fieldsToInclude = (
-									this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]
-								).map((field) => field.fieldName);
+					if (!Array.isArray(arrayToSplit)) {
+						arrayToSplit = Object.values(arrayToSplit);
+					}
 
-								if (!fieldsToInclude.length) {
-									throw new NodeOperationError(this.getNode(), 'No fields specified', {
-										description: 'Please add a field to include',
-									});
-								}
+					for (const element of arrayToSplit) {
+						let newItem = {};
 
-								newItem = {
-									...fieldsToInclude.reduce((prev, field) => {
-										if (field === fieldToSplitOut) {
-											return prev;
-										}
-										let value;
-										if (!disableDotNotation) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field];
-										}
-										prev = { ...prev, [field]: value };
-										return prev;
-									}, {}),
-								};
-							} else if (include === 'allOtherFields') {
-								const keys = Object.keys(items[i].json);
+						if (include === 'selectedOtherFields') {
+							const fieldsToInclude = (
+								this.getNodeParameter('fieldsToInclude.fields', i, []) as [{ fieldName: string }]
+							).map((field) => field.fieldName);
 
-								newItem = {
-									...keys.reduce((prev, field) => {
-										let value;
-										if (!disableDotNotation) {
-											value = get(items[i].json, field);
-										} else {
-											value = items[i].json[field];
-										}
-										prev = { ...prev, [field]: value };
-										return prev;
-									}, {}),
-								};
-
-								unset(newItem, fieldToSplitOut);
+							if (!fieldsToInclude.length) {
+								throw new NodeOperationError(this.getNode(), 'No fields specified', {
+									description: 'Please add a field to include',
+								});
 							}
 
-							if (
-								typeof element === 'object' &&
-								include === 'noOtherFields' &&
-								destinationFieldName === ''
-							) {
-								newItem = { ...newItem, ...element };
-							} else {
-								newItem = {
-									...newItem,
-									[destinationFieldName || fieldToSplitOut]: element,
-								};
-							}
+							newItem = {
+								...fieldsToInclude.reduce((prev, field) => {
+									if (field === fieldToSplitOut) {
+										return prev;
+									}
+									let value;
+									if (!disableDotNotation) {
+										value = get(items[i].json, field);
+									} else {
+										value = items[i].json[field];
+									}
+									prev = { ...prev, [field]: value };
+									return prev;
+								}, {}),
+							};
+						} else if (include === 'allOtherFields') {
+							const keys = Object.keys(items[i].json);
 
-							returnData.push({
-								json: newItem,
-								pairedItem: {
-									item: i,
-								},
-							});
+							newItem = {
+								...keys.reduce((prev, field) => {
+									let value;
+									if (!disableDotNotation) {
+										value = get(items[i].json, field);
+									} else {
+										value = items[i].json[field];
+									}
+									prev = { ...prev, [field]: value };
+									return prev;
+								}, {}),
+							};
+
+							unset(newItem, fieldToSplitOut);
 						}
+
+						if (
+							typeof element === 'object' &&
+							include === 'noOtherFields' &&
+							destinationFieldName === ''
+						) {
+							newItem = { ...newItem, ...element };
+						} else {
+							newItem = {
+								...newItem,
+								[destinationFieldName || fieldToSplitOut]: element,
+							};
+						}
+
+						returnData.push({
+							json: newItem,
+							pairedItem: {
+								item: i,
+							},
+						});
 					}
 				}
 
