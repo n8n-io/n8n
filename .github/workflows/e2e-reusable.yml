@@ -42,6 +42,10 @@ on:
         required: false
         default: '[1, 2, 3, 4, 5, 6, 7, 8]'
         type: string
+      pr_number:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
     secrets:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
@@ -78,8 +82,11 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Echo git status
-        run: echo git status
+      - name: Fetch PR and create local merge commit
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head:pr-${{ inputs.pr_number }}
+          git merge --no-ff --no-commit pr-${{ inputs.pr_number }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -124,6 +131,12 @@ jobs:
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
+
+      - name: Fetch PR and create local merge commit
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head:pr-${{ inputs.pr_number }}
+          git merge --no-ff --no-commit pr-${{ inputs.pr_number }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
