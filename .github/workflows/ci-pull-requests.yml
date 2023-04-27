@@ -112,12 +112,13 @@ jobs:
     name: E2E [Electron/Node 16]
     uses: ./.github/workflows/e2e-reusable.yml
     with:
-      branch: ${{ github.event.pull_request.head.ref }}
+      branch: ${{ github.event.pull_request.base.ref }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
-      run-env: base:16.18.1
+      run-env: browsers:node16.18.0-chrome107-ff106-edge
       record: false
       parallel: false
+      pr_number: ${{ github.event.number }}
       containers: '[1]'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
