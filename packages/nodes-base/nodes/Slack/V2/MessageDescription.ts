@@ -312,6 +312,21 @@ export const messageFields: INodeProperties[] = [
 			'The message text to post. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['post'],
+				resource: ['message'],
+				messageType: ['attachment', 'block'],
+			},
+		},
+		description:
+			'Used as a fallback string to display in notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
 		displayName: 'Blocks',
 		name: 'blocksUi',
 		type: 'string',
