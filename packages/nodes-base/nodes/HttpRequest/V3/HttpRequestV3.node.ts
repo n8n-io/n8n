@@ -395,6 +395,7 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 					default: 'keypair',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 					description:
 						'The body can be specified using explicit fields (<code>keypair</code>) or using a JavaScript object (<code>json</code>)',
 				},
