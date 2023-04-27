@@ -429,7 +429,13 @@
 		</div>
 		<div
 			:class="$style.pagination"
-			v-if="hasNodeRun && !hasRunError && dataCount > pageSize && !isSchemaView"
+			v-if="
+				hasNodeRun &&
+				!hasRunError &&
+				binaryData.length === 0 &&
+				dataCount > pageSize &&
+				!isSchemaView
+			"
 			v-show="!editMode.enabled"
 		>
 			<el-pagination
