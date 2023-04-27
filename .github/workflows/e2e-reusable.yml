@@ -78,7 +78,6 @@ jobs:
       options: --user 1001
     steps:
       - uses: actions/checkout@v3
-        if: ${{ !inputs.pr_number }}
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -129,7 +128,6 @@ jobs:
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
       - uses: actions/checkout@v3
-        if: ${{ !inputs.pr_number }}
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
