@@ -1,6 +1,6 @@
 import express from 'express';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -23,11 +23,14 @@ import {
 } from '../serviceProvider.ee';
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
+import Container from 'typedi';
+import { InternalHooks } from '../../../InternalHooks';
 
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(private samlService: SamlService) {}
 
+	@NoAuthRequired()
 	@Get(SamlUrls.metadata)
 	async getServiceProviderMetadata(req: express.Request, res: express.Response) {
 		return res
@@ -87,6 +90,7 @@ export class SamlController {
 	 * GET /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
+	@NoAuthRequired()
 	@Get(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsGet(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return this.acsHandler(req, res, 'redirect');
@@ -96,6 +100,7 @@ export class SamlController {
 	 * POST /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
+	@NoAuthRequired()
 	@Post(SamlUrls.acs, { middlewares: [samlLicensedMiddleware] })
 	async acsPost(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return this.acsHandler(req, res, 'post');
@@ -122,6 +127,7 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
+				Container.get(InternalHooks).onUserLoginSuccess({user: loginResult.authenticatedUser, authenticationMethod: 'saml'});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
@@ -134,20 +140,23 @@ export class SamlController {
 					return res.status(202).send(loginResult.attributes);
 				}
 			}
+			Container.get(InternalHooks).onUserLoginFailed({user: loginResult.attributes.email ??  'unknown', authenticationMethod: 'saml'});
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
 				return res.send(getSamlConnectionTestFailedView((error as Error).message));
 			}
+			Container.get(InternalHooks).onUserLoginFailed({user: 'unknown', authenticationMethod: 'saml'});
 			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
-	}
+	} 
 
 	/**
 	 * GET /sso/saml/initsso
 	 * Access URL for implementing SP-init SSO
 	 * This endpoint is available if SAML is licensed and enabled
 	 */
+	@NoAuthRequired()
 	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware] })
 	async initSsoGet(req: express.Request, res: express.Response) {
 		return this.handleInitSSO(res);
