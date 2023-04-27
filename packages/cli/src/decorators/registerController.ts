@@ -14,7 +14,6 @@ import type {
 	AuthRole,
 	AuthRoleMetadata,
 	Controller,
-	Method,
 	MiddlewareMetadata,
 	RouteMetadata,
 } from './types';
