@@ -14,6 +14,7 @@ import type {
 	AuthRole,
 	AuthRoleMetadata,
 	Controller,
+	Method,
 	MiddlewareMetadata,
 	RouteMetadata,
 } from './types';
@@ -31,6 +32,11 @@ export const createAuthMiddleware =
 
 		res.status(403).json({ status: 'error', message: 'Unauthorized' });
 	};
+
+const authFreeRoutes: string[] = [];
+
+export const canSkipAuth = (method: string, path: string): boolean =>
+	authFreeRoutes.includes(`${method.toLowerCase()} ${path}`);
 
 export const registerController = (app: Application, config: Config, controller: object) => {
 	const controllerClass = controller.constructor;
@@ -69,6 +75,7 @@ export const registerController = (app: Application, config: Config, controller:
 					(controller as Controller)[handlerName](req, res),
 				),
 			);
+			if (!authRole || authRole === 'none') authFreeRoutes.push(`${method} ${prefix}${path}`);
 		});
 
 		app.use(prefix, router);
