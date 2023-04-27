@@ -76,7 +76,7 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 
-const createEmptyWorkflow = (): IWorkflowDb => ({
+export const createEmptyWorkflow = (): IWorkflowDb => ({
 	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	name: '',
 	active: false,
