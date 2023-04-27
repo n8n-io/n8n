@@ -204,6 +204,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
+		dependentParametersValues: {
+			type: [String, null] as PropType<string | null>,
+			default: null,
+		},
 		displayTitle: {
 			type: String,
 			default: '',
@@ -427,6 +431,18 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.value.__regex !== mode.extractValue.regex
 			) {
 				this.$emit('input', { ...this.value, __regex: mode.extractValue.regex });
+			}
+		},
+		dependentParametersValues() {
+			// Reset value if dependent parameters change
+			if (this.value && isResourceLocatorValue(this.value) && this.value.value !== '') {
+				console.log('reset value');
+				this.$emit('input', {
+					...this.value,
+					cachedResultName: '',
+					cachedResultUrl: '',
+					value: '',
+				});
 			}
 		},
 	},
