@@ -1,8 +1,8 @@
 <template>
-	<div :class="$style.container" v-if="!loading">
+	<div :class="$style.container">
 		<executions-sidebar
 			:executions="executions"
-			:loading="loading"
+			:loading="loading && !executions.length"
 			:loadingMore="loadingMore"
 			:temporaryExecution="temporaryExecution"
 			@reloadExecutions="setExecutions"
