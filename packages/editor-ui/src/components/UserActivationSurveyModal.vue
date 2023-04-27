@@ -48,6 +48,13 @@
 		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-button
+					size="large"
+					type="secondary"
+					data-test-id="skip-button"
+					:label="locale.baseText('userActivationSurveyModal.form.button.skip')"
+					@click="onSkip"
+				/>
+				<n8n-button
 					:disabled="!hasAnyChanges"
 					@click="onShareFeedback"
 					size="large"
@@ -97,6 +104,10 @@ onMounted(async () => {
 const onShareFeedback = () => {
 	telemetry.track('User responded to activation modal', { response: getFeedback() });
 	showSharedFeedbackSuccess();
+	modalBus.emit('close');
+};
+
+const onSkip = () => {
 	modalBus.emit('close');
 };
 
