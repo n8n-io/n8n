@@ -13,8 +13,6 @@ describe('Authentication', () => {
 
 	it('should setup owner', () => {
 		cy.setup({ email, firstName, lastName, password });
-		// Test if it's breaking
-		cy.get('.nope').should('exist');
 	});
 
 	it('should sign user in', () => {
