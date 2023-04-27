@@ -26,11 +26,11 @@
 			@scroll="loadMore(20)"
 		>
 			<div v-if="loading" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
 			</div>
-			<div v-if="executions.length === 0" :class="$style.noResultsContainer">
+			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
@@ -54,7 +54,7 @@
 				@retryExecution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
