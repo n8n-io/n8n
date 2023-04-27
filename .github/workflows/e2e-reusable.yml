@@ -7,7 +7,6 @@ on:
         description: 'GitHub branch to test.'
         required: false
         type: string
-        default: 'master'
       user:
         description: 'User who kicked this off.'
         required: false
