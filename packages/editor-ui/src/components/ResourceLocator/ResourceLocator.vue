@@ -436,7 +436,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		dependentParametersValues() {
 			// Reset value if dependent parameters change
 			if (this.value && isResourceLocatorValue(this.value) && this.value.value !== '') {
-				console.log('reset value');
 				this.$emit('input', {
 					...this.value,
 					cachedResultName: '',
