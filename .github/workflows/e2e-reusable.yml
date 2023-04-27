@@ -78,6 +78,7 @@ jobs:
       options: --user 1001
     steps:
       - uses: actions/checkout@v3
+        if: ${{ !inputs.pr_number }}
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -85,8 +86,8 @@ jobs:
       - name: Fetch PR and create local merge commit
         if: ${{ inputs.pr_number }}
         run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head:pr-${{ inputs.pr_number }}
-          git merge --no-ff --no-commit pr-${{ inputs.pr_number }}
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -128,6 +129,7 @@ jobs:
         containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
     steps:
       - uses: actions/checkout@v3
+        if: ${{ !inputs.pr_number }}
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -135,8 +137,8 @@ jobs:
       - name: Fetch PR and create local merge commit
         if: ${{ inputs.pr_number }}
         run: |
-          git fetch origin pull/${{ inputs.pr_number }}/head:pr-${{ inputs.pr_number }}
-          git merge --no-ff --no-commit pr-${{ inputs.pr_number }}
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
