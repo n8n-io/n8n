@@ -1300,7 +1300,7 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.headers = {};
 				}
 				const rawContentType = this.getNodeParameter('rawContentType', itemIndex) as string;
-				requestOptions.headers['Content-Type'] = rawContentType;
+				requestOptions.headers['content-type'] = rawContentType;
 			}
 
 			const authDataKeys: IAuthDataSanitizeKeys = {};
