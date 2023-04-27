@@ -78,6 +78,9 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
+      - name: Echo git status
+        run: echo git status
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
         with:
