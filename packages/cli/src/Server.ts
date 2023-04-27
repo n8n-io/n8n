@@ -162,7 +162,7 @@ import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
-	isSamlCurrentAuthenticationMethod
+	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';

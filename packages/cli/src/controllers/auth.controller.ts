@@ -89,10 +89,17 @@ export class AuthController {
 		}
 		if (user) {
 			await issueCookie(res, user);
-			Container.get(InternalHooks).onUserLoginSuccess({user, authenticationMethod: usedAuthenticationMethod});
+			void Container.get(InternalHooks).onUserLoginSuccess({
+				user,
+				authenticationMethod: usedAuthenticationMethod,
+			});
 			return withFeatureFlags(this.postHog, sanitizeUser(user));
 		}
-		Container.get(InternalHooks).onUserLoginFailed({user: email, authenticationMethod: usedAuthenticationMethod, reason: 'wrong credentials'});
+		void Container.get(InternalHooks).onUserLoginFailed({
+			user: email,
+			authenticationMethod: usedAuthenticationMethod,
+			reason: 'wrong credentials',
+		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 

@@ -1,5 +1,5 @@
 import type express from 'express';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
@@ -27,7 +27,6 @@ import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { InternalHooks } from '../../InternalHooks';
 
 @Service()
 export class SamlService {

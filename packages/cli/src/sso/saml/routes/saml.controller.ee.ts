@@ -127,7 +127,10 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
-				Container.get(InternalHooks).onUserLoginSuccess({user: loginResult.authenticatedUser, authenticationMethod: 'saml'});
+				void Container.get(InternalHooks).onUserLoginSuccess({
+					user: loginResult.authenticatedUser,
+					authenticationMethod: 'saml',
+				});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
@@ -140,16 +143,22 @@ export class SamlController {
 					return res.status(202).send(loginResult.attributes);
 				}
 			}
-			Container.get(InternalHooks).onUserLoginFailed({user: loginResult.attributes.email ??  'unknown', authenticationMethod: 'saml'});
+			void Container.get(InternalHooks).onUserLoginFailed({
+				user: loginResult.attributes.email ?? 'unknown',
+				authenticationMethod: 'saml',
+			});
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
 				return res.send(getSamlConnectionTestFailedView((error as Error).message));
 			}
-			Container.get(InternalHooks).onUserLoginFailed({user: 'unknown', authenticationMethod: 'saml'});
+			void Container.get(InternalHooks).onUserLoginFailed({
+				user: 'unknown',
+				authenticationMethod: 'saml',
+			});
 			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
-	} 
+	}
 
 	/**
 	 * GET /sso/saml/initsso

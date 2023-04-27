@@ -733,8 +733,11 @@ export class InternalHooks implements IInternalHooksClass {
 			}),
 		]);
 	}
-	
-	async onUserLoginSuccess(userLoginData: { user: User; authenticationMethod: AuthenticationMethod }): Promise<void> {
+
+	async onUserLoginSuccess(userLoginData: {
+		user: User;
+		authenticationMethod: AuthenticationMethod;
+	}): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.login.success',
@@ -746,7 +749,11 @@ export class InternalHooks implements IInternalHooksClass {
 		]);
 	}
 
-	async onUserLoginFailed(userLoginData: { user: string; authenticationMethod: AuthenticationMethod, reason?: string }): Promise<void> {
+	async onUserLoginFailed(userLoginData: {
+		user: string;
+		authenticationMethod: AuthenticationMethod;
+		reason?: string;
+	}): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.login.failed',
