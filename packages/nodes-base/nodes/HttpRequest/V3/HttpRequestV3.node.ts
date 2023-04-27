@@ -395,7 +395,8 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 					default: 'keypair',
-					description: 'Asasas',
+					description:
+						'The body can be specified using explicit fields (<code>keypair</code>) or using a JavaScript object (<code>json</code>)',
 				},
 				{
 					displayName: 'Body Parameters',
