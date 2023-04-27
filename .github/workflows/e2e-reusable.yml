@@ -82,7 +82,13 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Fetch PR and create local merge commit
+      - name: Install Git
+        if: ${{ inputs.pr_number }}
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y git
+
+      - name: Checkout PR
         if: ${{ inputs.pr_number }}
         run: |
           git fetch origin pull/${{ inputs.pr_number }}/head
@@ -132,7 +138,13 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Fetch PR and create local merge commit
+      - name: Install Git
+        if: ${{ inputs.pr_number }}
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y git
+
+      - name: Checkout PR
         if: ${{ inputs.pr_number }}
         run: |
           git fetch origin pull/${{ inputs.pr_number }}/head
