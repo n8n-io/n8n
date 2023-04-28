@@ -21,7 +21,6 @@ import type {
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
-	checkInput,
 	checkMatchFieldsInput,
 	findMatches,
 	mergeMatched,
@@ -450,20 +449,10 @@ export class MergeV2 implements INodeType {
 				options.joinMode = joinMode;
 				options.outputDataFrom = outputDataFrom;
 
-				const input1 = checkInput(
-					this.getInputData(0),
-					matchFields.map((pair) => pair.field1),
-					options.disableDotNotation || false,
-					'Input 1',
-				);
+				const input1 = this.getInputData(0);
 				if (!input1) return [returnData];
 
-				const input2 = checkInput(
-					this.getInputData(1),
-					matchFields.map((pair) => pair.field2),
-					options.disableDotNotation || false,
-					'Input 2',
-				);
+				const input2 = this.getInputData(1);
 
 				if (!input2 || !matchFields.length) {
 					if (
