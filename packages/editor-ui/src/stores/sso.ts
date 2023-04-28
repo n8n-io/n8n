@@ -7,7 +7,7 @@ import * as ssoApi from '@/api/sso';
 import type { SamlPreferences } from '@/Interface';
 import { updateCurrentUser } from '@/api/users';
 import { useUsersStore } from '@/stores/users';
-import { SamlPreferencesExtractedData } from '@/Interface';
+import type { SamlPreferencesExtractedData } from '@/Interface';
 
 export const useSSOStore = defineStore('sso', () => {
 	const rootStore = useRootStore();

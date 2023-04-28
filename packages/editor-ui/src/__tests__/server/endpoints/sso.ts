@@ -1,8 +1,8 @@
-import type { Server } from 'miragejs';
-import { Request, Response } from 'miragejs';
+import type { Server, Request } from 'miragejs';
+import { Response } from 'miragejs';
 import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
 import { faker } from '@faker-js/faker';
-import { AppSchema } from '@/__tests__/server/types';
+import type { AppSchema } from '@/__tests__/server/types';
 import { jsonParse } from 'n8n-workflow';
 
 let samlConfig: SamlPreferences & SamlPreferencesExtractedData = {

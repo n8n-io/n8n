@@ -2,7 +2,6 @@ import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { render } from '@testing-library/vue';
 import { PiniaVuePlugin } from 'pinia';
-import { i18nInstance } from '@/plugins/i18n';
 
 export const retry = (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
 	return new Promise((resolve, reject) => {
