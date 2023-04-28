@@ -13,7 +13,7 @@
 			@click="toggleCollapse"
 		>
 			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-4xs" />
+			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
 		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
