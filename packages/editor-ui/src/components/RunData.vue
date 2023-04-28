@@ -1069,7 +1069,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 
 			this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-			this.workflowsStore.pinData({ node: this.node, this.inputData });
+			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
 
 			if (this.maxRunIndex > 0) {
 				this.$showToast({
