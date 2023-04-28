@@ -1,5 +1,9 @@
 <template>
-	<div class="resource-locator" ref="container">
+	<div
+		class="resource-locator"
+		ref="container"
+		:data-test-id="`resource-locator-${parameter.name}`"
+	>
 		<resource-locator-dropdown
 			:value="value ? value.value : ''"
 			:show="showResourceDropdown"
@@ -18,7 +22,7 @@
 			ref="dropdown"
 		>
 			<template #error>
-				<div :class="$style.error">
+				<div :class="$style.error" data-test-id="rlc-error-container">
 					<n8n-text color="text-dark" align="center" tag="div">
 						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
@@ -47,6 +51,7 @@
 						:disabled="isReadOnly"
 						@change="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+						data-test-id="rlc-mode-selector"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -64,7 +69,7 @@
 					</n8n-select>
 				</div>
 
-				<div :class="$style.inputContainer">
+				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
 					<draggable-target
 						type="mapping"
 						:disabled="hasOnlyListMode"
@@ -101,6 +106,7 @@
 									:placeholder="inputPlaceholder"
 									type="text"
 									ref="input"
+									data-test-id="rlc-input"
 									@input="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
@@ -211,6 +217,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		parameterIssues: {
 			type: Array as PropType<string[]>,
 			default: () => [],
+		},
+		dependentParametersValues: {
+			type: [String, null] as PropType<string | null>,
+			default: null,
 		},
 		displayTitle: {
 			type: String,
@@ -446,6 +456,17 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.value.__regex !== mode.extractValue.regex
 			) {
 				this.$emit('input', { ...this.value, __regex: mode.extractValue.regex });
+			}
+		},
+		dependentParametersValues() {
+			// Reset value if dependent parameters change
+			if (this.value && isResourceLocatorValue(this.value) && this.value.value !== '') {
+				this.$emit('input', {
+					...this.value,
+					cachedResultName: '',
+					cachedResultUrl: '',
+					value: '',
+				});
 			}
 		},
 	},
