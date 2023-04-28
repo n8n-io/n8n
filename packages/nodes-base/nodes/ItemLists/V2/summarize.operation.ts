@@ -571,7 +571,11 @@ export async function execute(
 
 	const getValue = fieldValueGetter(options.disableDotNotation);
 
-	checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	const nodeVersion = this.getNode().typeVersion;
+
+	if (nodeVersion < 2.1) {
+		checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	}
 
 	const aggregationResult = splitData(
 		fieldsToSplitBy,
