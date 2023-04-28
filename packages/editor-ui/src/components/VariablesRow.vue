@@ -7,7 +7,7 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore, useUsersStore } from '@/stores';
 import { getVariablesPermissions } from '@/permissions';
 
-const i18n = useI18n();
+const { i18n } = useI18n();
 const copyToClipboard = useCopyToClipboard();
 const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
