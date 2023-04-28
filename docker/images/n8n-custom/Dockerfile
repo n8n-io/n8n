@@ -3,6 +3,7 @@ ARG ACCESS_TOKEN
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
+ARG ACCESS_TOKEN
 ENV TOKEN_FOR_PACKAGES=${ACCESS_TOKEN}
 
 COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
@@ -14,6 +15,7 @@ RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
+RUN printf "@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=%s" $TOKEN_FOR_PACKAGES >> .npmrc
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
