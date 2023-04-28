@@ -800,16 +800,16 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				path = 'executionsList.statusWaiting';
 			} else if (status === 'canceled') {
 				path = 'executionsList.statusCanceled';
-			} else if (status === 'crashed') {
-				path = 'executionsList.statusText';
+			} else if (['crashed', 'failed', 'success'].includes(status)) {
+				if (!entry.stoppedAt) {
+					path = 'executionsList.statusTextWithoutTime';
+				} else {
+					path = 'executionsList.statusText';
+				}
 			} else if (status === 'new') {
 				path = 'executionsList.statusRunning';
 			} else if (status === 'running') {
 				path = 'executionsList.statusRunning';
-			} else if (status === 'success') {
-				path = 'executionsList.statusText';
-			} else if (status === 'failed') {
-				path = 'executionsList.statusText';
 			} else {
 				path = 'executionsList.statusUnknown';
 			}
