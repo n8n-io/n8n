@@ -171,10 +171,5 @@ describe('Sharing', () => {
 		cy.visit(credentialsPage.url);
 		credentialsPage.getters.credentialCard('Credential C2').click();
 		credentialsModal.getters.testSuccessTag().should('be.visible');
-
-		// credentialsModal.actions.changeTab('Sharing');
-		// credentialsModal.getters.userCard(instanceOwner.email).should('be.visible');
-		// credentialsModal.getters.userCard(users[0].email).should('be.visible');
-		// credentialsModal.getters.userCard(users[1].email).should('be.visible');
 	});
 });
