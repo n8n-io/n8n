@@ -34,7 +34,7 @@ WORKDIR /home/node/.n8n/nodes
 RUN printf "@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=%s" $TOKEN_FOR_PACKAGES > .npmrc
 RUN npm install "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-nodo-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3"
 
-# 2. Start with a new clean image with just the code that is needed to run n8n
+# 3. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /home/node /usr/local/lib/node_modules/n8n
 RUN ln -s /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n
@@ -49,5 +49,6 @@ COPY --from=privatenodepackages /home/node/.n8n/nodes /home/node/.n8n/nodes
 
 USER node
 ENV NODE_ENV=production
+ENV DB_TYPE=postgresdb
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
