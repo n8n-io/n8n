@@ -220,6 +220,7 @@ export class Worker extends BaseCommand {
 			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
 		};
 
+		// TODO: setup AbortController
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 		if (fullExecutionData.data !== undefined) {

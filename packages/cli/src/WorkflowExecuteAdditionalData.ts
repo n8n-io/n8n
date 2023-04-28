@@ -878,6 +878,7 @@ async function executeWorkflow(
 
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
+		// TODO: setup abortController
 		// Execute the workflow
 		const workflowExecute = new WorkflowExecute(
 			additionalDataIntegrated,
