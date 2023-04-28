@@ -18,6 +18,7 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
+				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
 				:expressionComputedValue="expressionEvaluated"
