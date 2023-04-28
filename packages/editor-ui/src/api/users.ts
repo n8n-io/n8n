@@ -1,11 +1,11 @@
-import {
+import type {
 	CurrentUserResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
 	IUserResponse,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<CurrentUserResponse | null> {
@@ -89,9 +89,21 @@ export async function changePassword(
 
 export function updateCurrentUser(
 	context: IRestApiContext,
-	params: { id: string; firstName: string; lastName: string; email: string },
+	params: {
+		id?: string;
+		firstName?: string;
+		lastName?: string;
+		email: string;
+	},
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
+}
+
+export function updateCurrentUserSettings(
+	context: IRestApiContext,
+	settings: IUserResponse['settings'],
+): Promise<IUserResponse['settings']> {
+	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
 
 export function updateCurrentUserPassword(

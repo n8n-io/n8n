@@ -1236,13 +1236,7 @@ export class Workflow {
 				return { data: null };
 			}
 
-			let promiseResults;
-			try {
-				promiseResults = await Promise.all(returnPromises);
-			} catch (error) {
-				return Promise.reject(error);
-			}
-
+			const promiseResults = await Promise.all(returnPromises);
 			if (promiseResults) {
 				return { data: [promiseResults] };
 			}

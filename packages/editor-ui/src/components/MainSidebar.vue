@@ -91,15 +91,13 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -115,13 +113,11 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useVersionsStore } from '@/stores/versions';
-import { isNavigationFailure, NavigationFailureType, Route } from 'vue-router';
+import { isNavigationFailure } from 'vue-router';
 
 export default mixins(
 	genericHelpers,
-	restApi,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
@@ -225,6 +221,14 @@ export default mixins(
 					customIconSize: 'medium',
 					position: 'top',
 					activateOnRouteNames: [VIEWS.CREDENTIALS],
+				},
+				{
+					id: 'variables',
+					icon: 'variable',
+					label: this.$locale.baseText('mainSidebar.variables'),
+					customIconSize: 'medium',
+					position: 'top',
+					activateOnRouteNames: [VIEWS.VARIABLES],
 				},
 				{
 					id: 'executions',
@@ -371,6 +375,12 @@ export default mixins(
 				case 'credentials': {
 					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
 						this.goToRoute({ name: VIEWS.CREDENTIALS });
+					}
+					break;
+				}
+				case 'variables': {
+					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
+						this.goToRoute({ name: VIEWS.VARIABLES });
 					}
 					break;
 				}

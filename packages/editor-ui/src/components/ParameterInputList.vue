@@ -134,7 +134,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -145,7 +145,7 @@ import SwaggerEditor from '@/components/SwaggerEditor/SwaggerEditor.vue';
 import { get, set } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
-import { Component, PropType } from 'vue';
+import type { Component, PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';

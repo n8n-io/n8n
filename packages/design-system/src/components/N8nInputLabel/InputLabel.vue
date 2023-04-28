@@ -4,6 +4,7 @@
 			v-if="label || $slots.options"
 			:for="inputName"
 			:class="{
+				'n8n-input-label': true,
 				[$style.inputLabel]: true,
 				[$style.heading]: !!label,
 				[$style.underline]: underline,
@@ -47,9 +48,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,

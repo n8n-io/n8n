@@ -1,16 +1,17 @@
 ARG NODE_VERSION=16
+ARG ACCESS_TOKEN
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
+ENV TOKEN_FOR_PACKAGES=${ACCESS_TOKEN}
 
-COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
-COPY scripts ./scripts
-COPY packages ./packages
-COPY patches ./patches
+COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
+COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node packages ./packages
+COPY --chown=node:node patches ./patches
 
 RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
-RUN chown -R node:node .
 USER node
 
 RUN pnpm install --frozen-lockfile
@@ -22,10 +23,18 @@ RUN jq '{name: .name, version: .version}' packages/design-system/package.json > 
 RUN NODE_ENV=production pnpm install --prod --no-optional
 RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
 RUN rm -rf packages/@n8n_io/eslint-config packages/editor-ui/src packages/editor-ui/node_modules packages/design-system
-RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/*
+RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/* 
 
+# 2 . install packages
+FROM node:${NODE_VERSION}-slim as privatenodepackages
+ARG ACCESS_TOKEN
+ENV TOKEN_FOR_PACKAGES=${ACCESS_TOKEN}
+RUN cd /home/node && mkdir .n8n && cd .n8n && mkdir nodes && cd nodes
+WORKDIR /home/node/.n8n/nodes
+RUN printf "@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=%s" $TOKEN_FOR_PACKAGES > .npmrc
+RUN npm install "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-nodo-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3"
 
-# 2. Start with a new clean image with just the code that is needed to run n8n
+# 3. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
 COPY --from=builder /home/node /usr/local/lib/node_modules/n8n
 RUN ln -s /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n
@@ -34,6 +43,12 @@ COPY docker/images/n8n-custom/docker-entrypoint.sh /
 RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
+
+RUN cd .n8n && mkdir nodes &&  cd nodes
+COPY --from=privatenodepackages /home/node/.n8n/nodes /home/node/.n8n/nodes
+
 USER node
 ENV NODE_ENV=production
+ENV DB_TYPE=postgresdb
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+

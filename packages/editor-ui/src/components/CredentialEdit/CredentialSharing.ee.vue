@@ -80,7 +80,8 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction, UIState } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
+import { UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
@@ -181,17 +182,7 @@ export default mixins(showMessage).extend({
 			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=credential_sharing`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-credentials-sharing`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
 	},
 	mounted() {

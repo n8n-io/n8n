@@ -1,0 +1,33 @@
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+
+
+name: Deploy to Amazon ECR in the dev environment
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: build
+      shell: bash
+      run: |
+        docker build --build-arg ACCESS_TOKEN=${{ secrets.GITHUB_TOKEN }} -t "${{ github.ref_name }}" -f docker/images/n8n-custom/Dockerfile .
+
+    - name: push ecr
+      uses: Deep-Consulting-Solutions/ecr-deploy-action@main
+      with:
+        service-key: 'n8n' 
+        account: ${{ secrets.DCS_AWS_ACCOUNT }}
+        source-image: ${{ github.ref_name }}
+        tag: ${{ github.ref_name }}
