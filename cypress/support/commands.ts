@@ -58,8 +58,8 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// These aliases are set-up before each test in cypress/support/e2e.ts
 	// we can't set them up here because at this point it would be too late
 	// and the requests would already have been made
-	if(waitForIntercepts) {
-		cy.wait(['@loadSettings', '@loadLogin'])
+	if (waitForIntercepts) {
+		cy.wait(['@loadSettings', '@loadLogin']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
@@ -243,8 +243,8 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 	element.trigger('mousedown');
 	element.trigger('mousemove', {
 		which: 1,
-		pageX: options?.abs? xDiff: originalLocation.right + xDiff,
-		pageY: options?.abs? yDiff: originalLocation.top + yDiff,
+		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,
+		pageY: options?.abs ? yDiff : originalLocation.top + yDiff,
 		force: true,
 	});
 	element.trigger('mouseup', { force: true });
