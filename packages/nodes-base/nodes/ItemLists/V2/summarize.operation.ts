@@ -359,6 +359,26 @@ const fieldValueGetter = (disableDotNotation?: boolean) => {
 	}
 };
 
+function checkIfFieldExists(
+	this: IExecuteFunctions,
+	items: IDataObject[],
+	aggregations: Aggregations,
+	getValue: ValueGetterFn,
+) {
+	for (const aggregation of aggregations) {
+		if (aggregation.field === '') {
+			continue;
+		}
+		const exist = items.some((item) => getValue(item, aggregation.field) !== undefined);
+		if (!exist) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The field '${aggregation.field}' does not exist in any items`,
+			);
+		}
+	}
+}
+
 function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGetterFn) {
 	const { aggregation, field } = entry;
 	let data = [...items];
@@ -550,6 +570,12 @@ export async function execute(
 	}
 
 	const getValue = fieldValueGetter(options.disableDotNotation);
+
+	const nodeVersion = this.getNode().typeVersion;
+
+	if (nodeVersion < 2.1) {
+		checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+	}
 
 	const aggregationResult = splitData(
 		fieldsToSplitBy,

@@ -346,6 +346,26 @@ export function checkMatchFieldsInput(data: IDataObject[]) {
 	return data as PairToMatch[];
 }
 
+export function checkInput(
+	input: INodeExecutionData[],
+	fields: string[],
+	disableDotNotation: boolean,
+	inputLabel: string,
+) {
+	for (const field of fields) {
+		const isPresent = (input || []).some((entry) => {
+			if (disableDotNotation) {
+				return entry.json.hasOwnProperty(field);
+			}
+			return get(entry.json, field, undefined) !== undefined;
+		});
+		if (!isPresent) {
+			throw new Error(`Field '${field}' is not present in any of items in '${inputLabel}'`);
+		}
+	}
+	return input;
+}
+
 export function addSourceField(data: INodeExecutionData[], sourceField: string) {
 	return data.map((entry) => {
 		const json = {

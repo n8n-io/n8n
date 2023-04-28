@@ -421,3 +421,29 @@ export function checkInput(input: INodeExecutionData[]) {
 	}
 	return input;
 }
+
+export function checkInputAndThrowError(
+	input: INodeExecutionData[],
+	fields: string[],
+	disableDotNotation: boolean,
+	inputLabel: string,
+) {
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	if (input.length === 0) {
+		return input;
+	}
+	for (const field of fields) {
+		const isPresent = (input || []).some((entry) => {
+			if (disableDotNotation) {
+				return entry.json.hasOwnProperty(field);
+			}
+			return get(entry.json, field, undefined) !== undefined;
+		});
+		if (!isPresent) {
+			throw new Error(`Field '${field}' is not present in any of items in '${inputLabel}'`);
+		}
+	}
+	return input;
+}
