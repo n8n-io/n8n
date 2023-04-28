@@ -765,7 +765,7 @@ export class SlackV2 implements INodeType {
 						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let content: IDataObject = {};
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i, '') as string;
 						switch (messageType) {
 							case 'text':
 								content = { text };
@@ -778,9 +778,6 @@ export class SlackV2 implements INodeType {
 								break;
 							case 'attachment':
 								content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
-								if (text) {
-									content.text = text;
-								}
 								break;
 							default:
 								throw new NodeOperationError(
