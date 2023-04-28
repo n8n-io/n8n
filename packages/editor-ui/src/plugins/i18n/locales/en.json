@@ -1673,7 +1673,7 @@
 	"contextual.workflows.sharing.unavailable.button.desktop": "View plans",
 
 	"contextual.variables.unavailable.title": "Available on Enterprise plan",
-	"contextual.variables.unavailable.title.cloud": "Available on Power plan",
+	"contextual.variables.unavailable.title.cloud": "Available on Pro plan",
 	"contextual.variables.unavailable.title.desktop": "Upgrade to n8n Cloud to collaborate",
 	"contextual.variables.unavailable.description": "Variables can be used to store and access data across workflows. Reference them in n8n using the prefix <code>$vars</code> (e.g. <code>$vars.myVariable</code>). Variables are immutable and cannot be modified within your workflows.<br/><a href=\"https://docs.n8n.io/environments/variables/\" target=\"_blank\">Learn more in the docs.</a>",
 	"contextual.variables.unavailable.button": "View plans",
