@@ -528,5 +528,34 @@ describe('AugmentObject', () => {
 			const augmentedObject = augmentObject(originalObject);
 			expect(Object.keys(augmentedObject)).toEqual(['a', 'b']);
 		});
+
+		test('should return property descriptors', () => {
+			const originalObject = {
+				x: {
+					y: {},
+					z: {},
+				},
+			};
+			const augmentedObject = augmentObject(originalObject);
+
+			expect(Object.getOwnPropertyDescriptor(augmentedObject.x, 'y')).toEqual({
+				configurable: true,
+				enumerable: true,
+				value: {},
+				writable: true,
+			});
+
+			delete augmentedObject.x.y;
+			expect(augmentedObject.x.hasOwnProperty('y')).toEqual(false);
+
+			augmentedObject.x.y = 42;
+			expect(augmentedObject.x.hasOwnProperty('y')).toEqual(true);
+			expect(Object.getOwnPropertyDescriptor(augmentedObject.x, 'y')).toEqual({
+				configurable: true,
+				enumerable: true,
+				value: 42,
+				writable: true,
+			});
+		});
 	});
 });
