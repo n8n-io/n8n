@@ -288,6 +288,10 @@ export class InternalHooks implements IInternalHooksClass {
 			properties.user_id = userId;
 		}
 
+		if (runData?.data.resultData.error?.message?.includes('canceled')) {
+			runData.status = 'canceled';
+		}
+
 		properties.success = !!runData?.finished;
 
 		let executionStatus: ExecutionStatus;
@@ -295,6 +299,8 @@ export class InternalHooks implements IInternalHooksClass {
 			executionStatus = 'crashed';
 		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
 			executionStatus = 'waiting';
+		} else if (runData?.status === 'canceled') {
+			executionStatus = 'canceled';
 		} else {
 			executionStatus = properties.success ? 'success' : 'failed';
 		}
