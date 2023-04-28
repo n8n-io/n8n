@@ -5,6 +5,7 @@ import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import yaml from '@modyfi/vite-plugin-yaml';
 
 import packageJSON from './package.json';
 
@@ -91,6 +92,7 @@ const plugins = [
 		customDistPath: (root: string, buildOutDir: string, base: string) =>
 			`${root}/${buildOutDir}/assets/monaco-editor`,
 	}),
+	yaml(),
 ];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;

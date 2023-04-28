@@ -1,0 +1,10 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Webhook",
+		"version": "1.0.0",
+		"description": "description"
+	},
+	"components": {},
+	"paths": {}
+}

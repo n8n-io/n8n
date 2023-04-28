@@ -384,7 +384,8 @@ export default mixins(
 			return this.workflowsStore.executionWaitingForWebhook;
 		},
 		blockUi(): boolean {
-			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
+			return false;
+			// return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
 		foreignCredentials(): string[] {
 			const credentials = (this.activeNode || {}).credentials;

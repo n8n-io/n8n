@@ -33,6 +33,7 @@
     "@codemirror/lint": "^6.0.0",
     "@codemirror/state": "^6.1.4",
     "@codemirror/view": "^6.5.1",
+    "@deep-consulting-solutions/swagger-editor": "^1.0.0",
     "@fontsource/open-sans": "^4.5.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-regular-svg-icons": "^6.1.1",
@@ -84,6 +85,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
+    "@modyfi/vite-plugin-yaml": "^1.0.4",
     "@pinia/testing": "^0.0.14",
     "@sentry/vite-plugin": "^0.4.0",
     "@testing-library/jest-dom": "^5.16.5",
@@ -99,6 +101,7 @@
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^3.2.0",
+    "@types/swagger-ui": "^3.52.0",
     "@types/uuid": "^8.3.2",
     "@vitejs/plugin-legacy": "^3.0.1",
     "@vitejs/plugin-vue2": "^2.2.0",
