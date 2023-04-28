@@ -1015,7 +1015,8 @@ export type NodePropertyTypes =
 	| 'string'
 	| 'credentialsSelect'
 	| 'resourceLocator'
-	| 'curlImport';
+	| 'curlImport'
+	| 'swaggerEditor';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

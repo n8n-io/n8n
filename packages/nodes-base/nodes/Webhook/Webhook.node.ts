@@ -98,6 +98,7 @@ export class Webhook implements INodeType {
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
 				responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 				path: '={{$parameter["path"]}}',
+				swagger: '={{$parameter["swagger"]}}',
 			},
 		],
 		properties: [
@@ -215,6 +216,18 @@ export class Webhook implements INodeType {
 				},
 				default: 200,
 				description: 'The HTTP Response code to return',
+			},
+			{
+				displayName: 'Swagger',
+				name: 'swagger',
+				type: 'swaggerEditor',
+				typeOptions: {
+					editor: 'json',
+					rows: 10,
+				},
+				default: '{}',
+				required: true,
+				description: 'JSON code for the Swagger docs to be displayed',
 			},
 			{
 				displayName: 'Response Data',
