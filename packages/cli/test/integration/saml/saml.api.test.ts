@@ -3,13 +3,17 @@ import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { SamlUrls } from '@/sso/saml/constants';
 import { License } from '@/License';
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
 import { sampleConfig } from './sampleMetadata';
 
+let someUser: User;
 let owner: User;
+let noAuthMemberAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
 
 async function enableSaml(enable: boolean) {
@@ -20,7 +24,10 @@ beforeAll(async () => {
 	Container.get(License).isSamlEnabled = () => true;
 	const app = await utils.initTestServer({ endpointGroups: ['me', 'saml'] });
 	owner = await testDb.createOwner();
+	someUser = await testDb.createUser();
 	authOwnerAgent = utils.createAuthAgent(app)(owner);
+	authMemberAgent = utils.createAgent(app, { auth: true, user: someUser });
+	noAuthMemberAgent = utils.createAgent(app, { auth: false, user: someUser });
 });
 
 afterAll(async () => {
@@ -129,6 +136,130 @@ describe('Instance owner', () => {
 				.expect(500);
 
 			expect(getCurrentAuthenticationMethod()).toBe('ldap');
+			await setCurrentAuthenticationMethod('saml');
+		});
+	});
+});
+
+describe('Check endpoint permissions', () => {
+	beforeEach(async () => {
+		await enableSaml(true);
+	});
+	describe('Owner', () => {
+		test(`should be able to access ${SamlUrls.metadata}`, async () => {
+			await authOwnerAgent.get(`/sso/saml${SamlUrls.metadata}`).expect(200);
+		});
+
+		test(`should be able to access GET ${SamlUrls.config}`, async () => {
+			await authOwnerAgent.get(`/sso/saml${SamlUrls.config}`).expect(200);
+		});
+
+		test(`should be able to access POST ${SamlUrls.config}`, async () => {
+			await authOwnerAgent.post(`/sso/saml${SamlUrls.config}`).expect(200);
+		});
+
+		test(`should be able to access POST ${SamlUrls.configToggleEnabled}`, async () => {
+			await authOwnerAgent.post(`/sso/saml${SamlUrls.configToggleEnabled}`).expect(400);
+		});
+
+		test(`should be able to access GET ${SamlUrls.acs}`, async () => {
+			// Note that 401 here is coming from the missing SAML object,
+			// not from not being able to access the endpoint, so this is expected!
+			const response = await authOwnerAgent.get(`/sso/saml${SamlUrls.acs}`).expect(401);
+			expect(response.text).toContain('SAML Authentication failed');
+		});
+
+		test(`should be able to access POST ${SamlUrls.acs}`, async () => {
+			// Note that 401 here is coming from the missing SAML object,
+			// not from not being able to access the endpoint, so this is expected!
+			const response = await authOwnerAgent.post(`/sso/saml${SamlUrls.acs}`).expect(401);
+			expect(response.text).toContain('SAML Authentication failed');
+		});
+
+		test(`should be able to access GET ${SamlUrls.initSSO}`, async () => {
+			const response = await authOwnerAgent.get(`/sso/saml${SamlUrls.initSSO}`).expect(200);
+		});
+
+		test(`should be able to access GET ${SamlUrls.configTest}`, async () => {
+			await authOwnerAgent.get(`/sso/saml${SamlUrls.configTest}`).expect(200);
+		});
+	});
+	describe('Authenticated Member', () => {
+		test(`should be able to access ${SamlUrls.metadata}`, async () => {
+			await authMemberAgent.get(`/sso/saml${SamlUrls.metadata}`).expect(200);
+		});
+
+		test(`should be able to access GET ${SamlUrls.config}`, async () => {
+			await authMemberAgent.get(`/sso/saml${SamlUrls.config}`).expect(200);
+		});
+
+		test(`should NOT be able to access POST ${SamlUrls.config}`, async () => {
+			await authMemberAgent.post(`/sso/saml${SamlUrls.config}`).expect(403);
+		});
+
+		test(`should NOT be able to access POST ${SamlUrls.configToggleEnabled}`, async () => {
+			await authMemberAgent.post(`/sso/saml${SamlUrls.configToggleEnabled}`).expect(403);
+		});
+
+		test(`should be able to access GET ${SamlUrls.acs}`, async () => {
+			// Note that 401 here is coming from the missing SAML object,
+			// not from not being able to access the endpoint, so this is expected!
+			const response = await authMemberAgent.get(`/sso/saml${SamlUrls.acs}`).expect(401);
+			expect(response.text).toContain('SAML Authentication failed');
+		});
+
+		test(`should be able to access POST ${SamlUrls.acs}`, async () => {
+			// Note that 401 here is coming from the missing SAML object,
+			// not from not being able to access the endpoint, so this is expected!
+			const response = await authMemberAgent.post(`/sso/saml${SamlUrls.acs}`).expect(401);
+			expect(response.text).toContain('SAML Authentication failed');
+		});
+
+		test(`should be able to access GET ${SamlUrls.initSSO}`, async () => {
+			const response = await authMemberAgent.get(`/sso/saml${SamlUrls.initSSO}`).expect(200);
+		});
+
+		test(`should NOT be able to access GET ${SamlUrls.configTest}`, async () => {
+			await authMemberAgent.get(`/sso/saml${SamlUrls.configTest}`).expect(403);
+		});
+	});
+	describe('Non-Authenticated User', () => {
+		test(`should be able to access ${SamlUrls.metadata}`, async () => {
+			await noAuthMemberAgent.get(`/sso/saml${SamlUrls.metadata}`).expect(200);
+		});
+
+		test(`should NOT be able to access GET ${SamlUrls.config}`, async () => {
+			await noAuthMemberAgent.get(`/sso/saml${SamlUrls.config}`).expect(401);
+		});
+
+		test(`should NOT be able to access POST ${SamlUrls.config}`, async () => {
+			await noAuthMemberAgent.post(`/sso/saml${SamlUrls.config}`).expect(401);
+		});
+
+		test(`should NOT be able to access POST ${SamlUrls.configToggleEnabled}`, async () => {
+			await noAuthMemberAgent.post(`/sso/saml${SamlUrls.configToggleEnabled}`).expect(401);
+		});
+
+		test(`should be able to access GET ${SamlUrls.acs}`, async () => {
+			// Note that 401 here is coming from the missing SAML object,
+			// not from not being able to access the endpoint, so this is expected!
+			const response = await noAuthMemberAgent.get(`/sso/saml${SamlUrls.acs}`).expect(401);
+			expect(response.text).toContain('SAML Authentication failed');
+		});
+
+		test(`should be able to access POST ${SamlUrls.acs}`, async () => {
+			// Note that 401 here is coming from the missing SAML object,
+			// not from not being able to access the endpoint, so this is expected!
+			const response = await noAuthMemberAgent.post(`/sso/saml${SamlUrls.acs}`).expect(401);
+			expect(response.text).toContain('SAML Authentication failed');
+		});
+
+		test(`should be able to access GET ${SamlUrls.initSSO}`, async () => {
+			const response = await noAuthMemberAgent.get(`/sso/saml${SamlUrls.initSSO}`).expect(200);
+		});
+
+		test(`should NOT be able to access GET ${SamlUrls.configTest}`, async () => {
+			await noAuthMemberAgent.get(`/sso/saml${SamlUrls.configTest}`).expect(401);
 		});
 	});
 });

@@ -24,7 +24,7 @@ import {
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
 import Container from 'typedi';
-import { InternalHooks } from '../../../InternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 
 @RestController('/sso/saml')
 export class SamlController {
@@ -42,7 +42,7 @@ export class SamlController {
 	 * GET /sso/saml/config
 	 * Return SAML config
 	 */
-	@Authorized(['global', 'owner'])
+	@Authorized('any')
 	@Get(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
 	async configGet() {
 		const prefs = this.samlService.samlPreferences;
