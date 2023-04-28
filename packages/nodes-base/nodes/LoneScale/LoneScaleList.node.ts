@@ -83,7 +83,7 @@ export class LoneScaleList implements INodeType {
 				},
 				options: [
 					{
-						name: 'Add',
+						name: 'Create',
 						value: 'add',
 						description: 'Add an item',
 						action: 'Add a item',
@@ -107,13 +107,11 @@ export class LoneScaleList implements INodeType {
 						name: 'Company',
 						value: 'COMPANY',
 						description: 'List of company',
-						action: 'Get company lists',
 					},
 					{
 						name: 'Contact',
 						value: 'PEOPLE',
 						description: 'List of contact',
-						action: 'Get contact lists',
 					},
 				],
 				default: 'PEOPLE',
@@ -151,6 +149,7 @@ export class LoneScaleList implements INodeType {
 				},
 				default: '',
 				description: 'Contact first name',
+				required: true,
 			},
 			{
 				displayName: 'Last Name',
@@ -165,34 +164,9 @@ export class LoneScaleList implements INodeType {
 				},
 				default: '',
 				description: 'Contact last name',
+				required: true,
 			},
-			{
-				displayName: 'Full Name',
-				name: 'full_name',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['add'],
-						resource: ['item'],
-						type: ['PEOPLE'],
-					},
-				},
-				default: '',
-				description: 'Contact full name',
-			},
-			{
-				displayName: 'Linkedin Url',
-				name: 'linkedin_url',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['add'],
-						resource: ['item'],
-					},
-				},
-				default: '',
-				description: 'Contact Linkedin URL',
-			},
+
 			{
 				displayName: 'Company Name',
 				name: 'company_name',
@@ -201,15 +175,19 @@ export class LoneScaleList implements INodeType {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['COMPANY'],
 					},
 				},
 				default: '',
 				description: 'Contact company name',
 			},
+
 			{
-				displayName: 'Current Position',
-				name: 'current_position',
-				type: 'string',
+				displayName: 'Additional Fields',
+				name: 'peopleAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -217,60 +195,107 @@ export class LoneScaleList implements INodeType {
 						type: ['PEOPLE'],
 					},
 				},
-				default: '',
-				description: 'Contact current position',
+				options: [
+					{
+						displayName: 'Full Name',
+						name: 'full_name',
+						type: 'string',
+						default: '',
+						description: 'Contact full name',
+					},
+					{
+						displayName: 'Contact Email',
+						name: 'email',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+						description: 'Contact email',
+					},
+					{
+						displayName: 'Company Name',
+						name: 'company_name',
+						type: 'string',
+						default: '',
+						description: 'Contact company name',
+					},
+					{
+						displayName: 'Current Position',
+						name: 'current_position',
+						type: 'string',
+						default: '',
+						description: 'Contact current position',
+					},
+					{
+						displayName: 'Company Domain',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						description: 'Contact company domain',
+					},
+					{
+						displayName: 'Linkedin Url',
+						name: 'linkedin_url',
+						type: 'string',
+						default: '',
+						description: 'Contact Linkedin URL',
+					},
+					{
+						displayName: 'Contact Location',
+						name: 'location',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Contact ID',
+						name: 'contact_id',
+						type: 'string',
+						default: '',
+						description: 'Contact ID from your source',
+					},
+				],
 			},
 			{
-				displayName: 'Company Domain',
-				name: 'domain',
-				type: 'string',
+				displayName: 'Additional Fields',
+				name: 'companyAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
 				displayOptions: {
 					show: {
 						operation: ['add'],
 						resource: ['item'],
+						type: ['COMPANY'],
 					},
 				},
-				default: '',
-				description: 'Contact company domain',
-			},
-			{
-				displayName: 'Contact Location',
-				name: 'location',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['add'],
-						resource: ['item'],
+				options: [
+					{
+						displayName: 'Linkedin Url',
+						name: 'linkedin_url',
+						type: 'string',
+						default: '',
+						description: 'Company Linkedin URL',
 					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'Contact Email',
-				name: 'email',
-				type: 'string',
-				placeholder: 'name@email.com',
-				displayOptions: {
-					show: {
-						operation: ['add'],
-						resource: ['item'],
-						type: ['PEOPLE'],
+					{
+						displayName: 'Company Domain',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						description: 'Company company domain',
 					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'Contact ID',
-				name: 'contact_id',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['add'],
-						resource: ['item'],
+					{
+						displayName: 'Contact Location',
+						name: 'location',
+						type: 'string',
+						default: '',
 					},
-				},
-				default: '',
-				description: 'Contact ID from your source',
+					{
+						displayName: 'Contact ID',
+						name: 'contact_id',
+						type: 'string',
+						default: '',
+						description: 'Contact ID from your source',
+					},
+				],
 			},
 			{
 				displayName: 'Name',
@@ -302,14 +327,14 @@ export class LoneScaleList implements INodeType {
 					{
 						name: 'Company',
 						value: 'COMPANY',
-						description: 'List of company',
-						action: 'Create a list of company',
+						description: 'Create a list of companies',
+						action: 'Create a list of companies',
 					},
 					{
 						name: 'Contact',
 						value: 'PEOPLE',
-						description: 'List of contact',
-						action: 'Create a list of contact',
+						description: 'Create a list of contacts',
+						action: 'Create a list of contacts',
 					},
 				],
 				default: 'COMPANY',
@@ -352,7 +377,6 @@ export class LoneScaleList implements INodeType {
 							entity,
 						};
 
-						console.log({ body });
 						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
@@ -368,20 +392,52 @@ export class LoneScaleList implements INodeType {
 						let currentPosition = '';
 						let fullName = '';
 						let email = '';
+						let linkedinUrl = '';
+						let companyName = '';
+						let domain = '';
+						let location = '';
+						let contactId = '';
+
 						const entity = this.getNodeParameter('type', i) as string;
 						const listId = this.getNodeParameter('list', i) as string;
 						if (entity === 'PEOPLE') {
+							const peopleAdditionalFields = this.getNodeParameter('peopleAdditionalFields', i) as {
+								email: string;
+								full_name: string;
+								current_position: string;
+								linkedin_url: string;
+								company_name: string;
+								domain: string;
+								location: string;
+								contact_id: string;
+							};
 							firstName = this.getNodeParameter('first_name', i) as string;
 							lastName = this.getNodeParameter('last_name', i) as string;
-							fullName = this.getNodeParameter('full_name', i) as string;
-							currentPosition = this.getNodeParameter('current_position', i) as string;
-							email = this.getNodeParameter('email', i) as string;
+							fullName = peopleAdditionalFields?.full_name;
+							currentPosition = peopleAdditionalFields?.current_position;
+							email = peopleAdditionalFields?.email;
+							linkedinUrl = peopleAdditionalFields?.linkedin_url;
+							companyName = peopleAdditionalFields?.company_name;
+							domain = peopleAdditionalFields?.domain;
+							location = peopleAdditionalFields?.location;
+							contactId = peopleAdditionalFields?.contact_id;
 						}
-						const linkedinUrl = this.getNodeParameter('linkedin_url', i) as string;
-						const companyName = this.getNodeParameter('company_name', i) as string;
-						const domain = this.getNodeParameter('domain', i) as string;
-						const location = this.getNodeParameter('location', i) as string;
-						const contactId = this.getNodeParameter('contact_id', i) as string;
+						if (entity === 'COMPANY') {
+							const companyAdditionalFields = this.getNodeParameter(
+								'companyAdditionalFields',
+								i,
+							) as {
+								linkedin_url: string;
+								domain: string;
+								location: string;
+								contact_id: string;
+							};
+							companyName = this.getNodeParameter('company_name', i) as string;
+							linkedinUrl = companyAdditionalFields?.linkedin_url;
+							domain = companyAdditionalFields?.domain;
+							location = companyAdditionalFields?.location;
+							contactId = companyAdditionalFields?.contact_id;
+						}
 
 						const body: IDataObject = {
 							...(firstName && { first_name: firstName }),
