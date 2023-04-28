@@ -164,4 +164,17 @@ describe('Sharing', () => {
 		workflowsPage.getters.workflowCard('Workflow W2').click();
 		workflowPage.actions.executeWorkflow();
 	});
+
+	it('should automatically test C2 when opened by U2 sharee', () => {
+		cy.signin(users[0]);
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.credentialCard('Credential C2').click();
+		credentialsModal.getters.testSuccessTag().should('be.visible');
+
+		// credentialsModal.actions.changeTab('Sharing');
+		// credentialsModal.getters.userCard(instanceOwner.email).should('be.visible');
+		// credentialsModal.getters.userCard(users[0].email).should('be.visible');
+		// credentialsModal.getters.userCard(users[1].email).should('be.visible');
+	});
 });
