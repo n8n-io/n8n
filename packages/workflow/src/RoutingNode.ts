@@ -79,6 +79,7 @@ export class RoutingNode {
 		executeData: IExecuteData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		credentialsDecrypted?: ICredentialsDecrypted,
+		abortController?: AbortController,
 	): Promise<INodeExecutionData[][] | null | undefined> {
 		const items = inputData.main[0] as INodeExecutionData[];
 		const returnData: INodeExecutionData[] = [];
@@ -99,6 +100,7 @@ export class RoutingNode {
 			this.additionalData,
 			executeData,
 			this.mode,
+			abortController,
 		);
 
 		let credentials: ICredentialDataDecryptedObject | undefined;
@@ -136,6 +138,7 @@ export class RoutingNode {
 					this.additionalData,
 					executeData,
 					this.mode,
+					abortController,
 				);
 				const requestData: DeclarativeRestApiSettings.ResultOptions = {
 					options: {

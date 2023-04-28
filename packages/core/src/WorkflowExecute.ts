@@ -56,6 +56,7 @@ export class WorkflowExecute {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		runExecutionData?: IRunExecutionData,
+		private abortController?: AbortController,
 	) {
 		this.additionalData = additionalData;
 		this.mode = mode;
@@ -1052,6 +1053,7 @@ export class WorkflowExecute {
 									this.additionalData,
 									NodeExecuteFunctions,
 									this.mode,
+									this.abortController,
 								);
 								nodeSuccessData = runNodeData.data;
 
