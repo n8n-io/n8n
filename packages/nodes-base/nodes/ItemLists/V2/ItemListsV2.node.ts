@@ -829,21 +829,25 @@ return 0;`,
 					}
 
 					if (arrayToSplit === undefined) {
-						if (fieldToSplitOut.includes('.') && disableDotNotation) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-								{
-									description:
-										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-								},
-							);
+						if (nodeVersion < 2.1) {
+							if (fieldToSplitOut.includes('.') && disableDotNotation) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+									{
+										description:
+											"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
+									},
+								);
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+									{ itemIndex: i },
+								);
+							}
 						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-								{ itemIndex: i },
-							);
+							arrayToSplit = [];
 						}
 					}
 
