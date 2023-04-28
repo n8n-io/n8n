@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
-import { Notification } from 'element-ui';
 import { useSSOStore } from '@/stores/sso';
 import { useUIStore } from '@/stores/ui';
 import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
-import { useI18n, useMessage } from '@/composables';
+import { useI18n, useMessage, useToast } from '@/composables';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -16,6 +15,7 @@ const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
 const message = useMessage();
+const toast = useToast();
 
 const ssoActivatedLabel = computed(() =>
 	ssoStore.isSamlLoginEnabled
@@ -104,11 +104,7 @@ const onSave = async () => {
 			}
 		}
 	} catch (error) {
-		Notification.error({
-			title: 'Error',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'error');
 	} finally {
 		await getSamlConfig();
 	}
@@ -122,11 +118,7 @@ const onTest = async () => {
 			window.open(url, '_blank');
 		}
 	} catch (error) {
-		Notification.error({
-			title: 'Error',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'error');
 	}
 };
 
@@ -141,11 +133,7 @@ onMounted(async () => {
 	try {
 		await getSamlConfig();
 	} catch (error) {
-		Notification.error({
-			title: 'Error',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'error');
 	}
 });
 </script>
