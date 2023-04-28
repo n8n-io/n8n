@@ -756,18 +756,25 @@ export class SlackV2 implements INodeType {
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
 								  }) as string);
-						// @ts-ignore
-						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
+
+						if (
+							select === 'user' &&
+							(this.getNodeParameter('user', i) as IDataObject).mode === 'username'
+						) {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let content: IDataObject = {};
+						const text = this.getNodeParameter('text', i, '') as string;
 						switch (messageType) {
 							case 'text':
-								content = { text: this.getNodeParameter('text', i) as string };
+								content = { text };
 								break;
 							case 'block':
 								content = JSON.parse(this.getNodeParameter('blocksUi', i) as string);
+								if (text) {
+									content.text = text;
+								}
 								break;
 							case 'attachment':
 								content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
@@ -803,8 +810,8 @@ export class SlackV2 implements INodeType {
 								action = 'postEphemeral';
 							}
 						}
-						//@ts-ignore
-						const replyValues = otherOptions.thread_ts?.replyValues as IDataObject;
+
+						const replyValues = (otherOptions.thread_ts as IDataObject)?.replyValues as IDataObject;
 						Object.assign(body, replyValues);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
@@ -879,8 +886,11 @@ export class SlackV2 implements INodeType {
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
 								  }) as string);
-						// @ts-ignore
-						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
+
+						if (
+							select === 'user' &&
+							(this.getNodeParameter('user', i) as IDataObject).mode === 'username'
+						) {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
@@ -1182,8 +1192,7 @@ export class SlackV2 implements INodeType {
 						const body: IDataObject = {};
 						let status;
 						if (options.status) {
-							// @ts-ignore
-							status = options.status?.set_status[0] as IDataObject;
+							status = ((options.status as IDataObject)?.set_status as IDataObject[])[0];
 							if (status.status_expiration === undefined) {
 								status.status_expiration = 0;
 							} else {
@@ -1199,15 +1208,16 @@ export class SlackV2 implements INodeType {
 							const customFields = (options.customFieldUi as IDataObject)
 								.customFieldValues as IDataObject[];
 
-							options.fields = {};
+							const fields: IDataObject = {};
 
 							for (const customField of customFields) {
-								//@ts-ignore
-								options.fields[customField.id] = {
+								fields[customField.id as string] = {
 									value: customField.value,
 									alt: customField.alt,
 								};
 							}
+
+							options.fields = fields;
 						}
 						Object.assign(body, options);
 						responseData = await slackApiRequest.call(
