@@ -304,8 +304,10 @@ export class NodeApiError extends NodeError {
 			this.removeCircularRefs(error.error as JsonObject);
 		}
 
-		if (!message && (error.message || (error?.reason as IDataObject)?.message)) {
-			this.message = (error.message ?? (error?.reason as IDataObject)?.message) as string;
+		if ((!message && (error.message || (error?.reason as IDataObject)?.message)) || description) {
+			this.message = (error.message ??
+				(error?.reason as IDataObject)?.message ??
+				description) as string;
 		}
 
 		if (!description && (error.description || (error?.reason as IDataObject)?.description)) {
@@ -367,7 +369,8 @@ export class NodeApiError extends NodeError {
 	private setMessage() {
 		if (!this.httpCode) {
 			this.httpCode = null;
-			this.message = this.message ?? this.description ?? UNKNOWN_ERROR_MESSAGE;
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+			this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
@@ -384,7 +387,8 @@ export class NodeApiError extends NodeError {
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message = this.message ?? this.description ?? UNKNOWN_ERROR_MESSAGE;
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
 		}
 		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
