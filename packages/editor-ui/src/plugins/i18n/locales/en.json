@@ -510,6 +510,7 @@
 	"executionsList.status": "Status",
 	"executionsList.statusCanceled": "Canceled",
 	"executionsList.statusText": "{status} in {time}",
+	"executionsList.statusTextWithoutTime": "{status}",
 	"executionsList.statusRunning": "{status} for {time}",
 	"executionsList.statusWaiting": "{status} until {time}",
 	"executionsList.statusUnknown": "Could not complete",
