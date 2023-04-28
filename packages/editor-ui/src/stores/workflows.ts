@@ -994,7 +994,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
 			if (!this.workflow.pinData || !this.workflow.pinData[nodeName]) return undefined;
-			return this.workflow.pinData[nodeName];
+			return this.workflow.pinData[nodeName].map((item) => item.json) as INodeExecutionData[];
 		},
 
 		activeNode(): INodeUi | null {
