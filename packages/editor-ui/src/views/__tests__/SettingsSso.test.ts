@@ -22,18 +22,6 @@ describe('SettingsSso', () => {
 		setActivePinia(pinia);
 
 		window.open = vi.fn();
-		vi.mock('@/composables', async () => {
-			const actual = await vi.importActual('@/composables');
-
-			return {
-				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-				// @ts-ignore
-				...actual,
-				useMessage: () => ({
-					confirm: vi.fn(),
-				}),
-			};
-		});
 
 		await useSettingsStore().getSettings();
 		ssoStore = useSSOStore();
@@ -48,7 +36,10 @@ describe('SettingsSso', () => {
 	});
 
 	it('should render paywall state when there is no license', () => {
-		const { getByTestId, queryByTestId, queryByRole } = renderComponent(SettingsSso, { pinia });
+		const { getByTestId, queryByTestId, queryByRole } = renderComponent(SettingsSso, {
+			pinia,
+			i18n: i18nInstance,
+		});
 
 		expect(queryByRole('checkbox')).not.toBeInTheDocument();
 		expect(queryByTestId('sso-content-licensed')).not.toBeInTheDocument();
@@ -58,7 +49,10 @@ describe('SettingsSso', () => {
 	it('should render licensed content', () => {
 		vi.spyOn(ssoStore, 'isEnterpriseSamlEnabled', 'get').mockReturnValue(true);
 
-		const { getByTestId, queryByTestId, getByRole } = renderComponent(SettingsSso, { pinia });
+		const { getByTestId, queryByTestId, getByRole } = renderComponent(SettingsSso, {
+			pinia,
+			i18n: i18nInstance,
+		});
 
 		expect(getByRole('checkbox')).toBeInTheDocument();
 		expect(getByTestId('sso-content-licensed')).toBeInTheDocument();
@@ -70,6 +64,7 @@ describe('SettingsSso', () => {
 
 		const { container, getByTestId, getByRole } = renderComponent(SettingsSso, {
 			pinia,
+			i18n: i18nInstance,
 		});
 
 		await retry(() =>
