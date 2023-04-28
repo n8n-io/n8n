@@ -5,6 +5,7 @@ import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import type {
+	AuthenticationMethod,
 	ExecutionStatus,
 	INodesGraphResult,
 	IRun,
@@ -80,6 +81,7 @@ export class InternalHooks implements IInternalHooksClass {
 			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
 			smtp_set_up: diagnosticInfo.smtp_set_up,
 			ldap_allowed: diagnosticInfo.ldap_allowed,
+			saml_enabled: diagnosticInfo.saml_enabled,
 		};
 
 		return Promise.all([
@@ -728,6 +730,38 @@ export class InternalHooks implements IInternalHooksClass {
 			}),
 			this.telemetry.track('Instance failed to send transactional email to user', {
 				user_id: failedEmailData.user.id,
+			}),
+		]);
+	}
+
+	async onUserLoginSuccess(userLoginData: {
+		user: User;
+		authenticationMethod: AuthenticationMethod;
+	}): Promise<void> {
+		void Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.login.success',
+				payload: {
+					authenticationMethod: userLoginData.authenticationMethod,
+					...userToPayload(userLoginData.user),
+				},
+			}),
+		]);
+	}
+
+	async onUserLoginFailed(userLoginData: {
+		user: string;
+		authenticationMethod: AuthenticationMethod;
+		reason?: string;
+	}): Promise<void> {
+		void Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.login.failed',
+				payload: {
+					authenticationMethod: userLoginData.authenticationMethod,
+					user: userLoginData.user,
+					reason: userLoginData.reason,
+				},
 			}),
 		]);
 	}
