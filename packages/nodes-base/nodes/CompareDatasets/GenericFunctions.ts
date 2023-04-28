@@ -414,28 +414,10 @@ export function checkMatchFieldsInput(data: IDataObject[]) {
 	return data as PairToMatch[];
 }
 
-export function checkInput(
-	input: INodeExecutionData[],
-	fields: string[],
-	disableDotNotation: boolean,
-	inputLabel: string,
-) {
+export function checkInput(input: INodeExecutionData[]) {
+	if (!input) return [];
 	if (input.some((item) => isEmpty(item.json))) {
 		input = input.filter((item) => !isEmpty(item.json));
-	}
-	if (input.length === 0) {
-		return input;
-	}
-	for (const field of fields) {
-		const isPresent = (input || []).some((entry) => {
-			if (disableDotNotation) {
-				return entry.json.hasOwnProperty(field);
-			}
-			return get(entry.json, field, undefined) !== undefined;
-		});
-		if (!isPresent) {
-			throw new Error(`Field '${field}' is not present in any of items in '${inputLabel}'`);
-		}
 	}
 	return input;
 }

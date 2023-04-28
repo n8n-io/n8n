@@ -254,19 +254,9 @@ export class CompareDatasets implements INodeType {
 			options.fuzzyCompare = this.getNodeParameter('fuzzyCompare', 0, false) as boolean;
 		}
 
-		const input1 = checkInput(
-			this.getInputData(0),
-			matchFields.map((pair) => pair.field1),
-			(options.disableDotNotation as boolean) || false,
-			'Input A',
-		);
+		const input1 = checkInput(this.getInputData(0));
 
-		const input2 = checkInput(
-			this.getInputData(1),
-			matchFields.map((pair) => pair.field2),
-			(options.disableDotNotation as boolean) || false,
-			'Input B',
-		);
+		const input2 = checkInput(this.getInputData(1));
 
 		const resolve = this.getNodeParameter('resolve', 0, '') as string;
 		options.resolve = resolve;
