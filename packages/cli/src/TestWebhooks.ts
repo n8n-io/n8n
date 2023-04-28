@@ -18,6 +18,7 @@ import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { webhookNotFoundErrorMessage } from './utils';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
@@ -70,7 +71,7 @@ export class TestWebhooks {
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.NotFoundError(
-					`The requested webhook "${httpMethod} ${path}" is not registered.`,
+					webhookNotFoundErrorMessage(path, httpMethod),
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
 			}
@@ -96,7 +97,7 @@ export class TestWebhooks {
 		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
 			throw new ResponseHelper.NotFoundError(
-				`The requested webhook "${httpMethod} ${path}" is not registered.`,
+				webhookNotFoundErrorMessage(path, httpMethod),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}
@@ -160,7 +161,7 @@ export class TestWebhooks {
 		if (!webhookMethods.length) {
 			// The requested webhook is not registered
 			throw new ResponseHelper.NotFoundError(
-				`The requested webhook "${path}" is not registered.`,
+				webhookNotFoundErrorMessage(path),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}

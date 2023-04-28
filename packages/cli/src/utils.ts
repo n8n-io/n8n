@@ -58,3 +58,16 @@ export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 
 	return [pass, fail];
 };
+
+export const webhookNotFoundErrorMessage = (path: string, httpMethod?: string) => {
+	let tip = '';
+	let webhookPath = path;
+	if (httpMethod) {
+		webhookPath = `${httpMethod} ${webhookPath}`;
+	}
+	if (httpMethod === 'POST') {
+		tip = ' Did you mean to make a GET request?';
+	}
+
+	return `The requested webhook "${webhookPath}" is not registered.${tip}`;
+};
