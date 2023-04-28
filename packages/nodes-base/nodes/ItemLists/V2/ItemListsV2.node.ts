@@ -950,38 +950,6 @@ return 0;`,
 							description: 'Please add a field to aggregate',
 						});
 					}
-					for (const { fieldToAggregate } of fieldsToAggregate) {
-						let found = false;
-						for (const item of items) {
-							if (fieldToAggregate === '') {
-								throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', {
-									description: 'Please add a field to aggregate',
-								});
-							}
-							if (!disableDotNotation) {
-								if (get(item.json, fieldToAggregate) !== undefined) {
-									found = true;
-								}
-							} else if (item.json.hasOwnProperty(fieldToAggregate)) {
-								found = true;
-							}
-						}
-						if (!found && disableDotNotation && fieldToAggregate.includes('.')) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToAggregate}' in the input data`,
-								{
-									description:
-										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-								},
-							);
-						} else if (!found && !keepMissing) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToAggregate}' in the input data`,
-							);
-						}
-					}
 
 					const newItem: INodeExecutionData = {
 						json: {},
