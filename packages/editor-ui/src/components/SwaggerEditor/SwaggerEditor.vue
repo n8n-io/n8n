@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<iframe  class="swagger" :src="swaggerIframeURL" />
+		<iframe  class="swagger-iframe" ref="swaggerIframe" :src="swaggerIframeURL" />
 	</div>
 </template>
 
@@ -26,6 +26,7 @@ interface Data {
 	isFirstMount: boolean;
 	suppressEvent: boolean;
 	swaggerIframeURL: string;
+	swaggerElement: any;
 }
 
 interface PathParameter {
@@ -37,7 +38,6 @@ interface PathParameter {
 		default?: string | number;
 	};
 }
-
 
 export default mixins(workflowHelpers).extend({
 	name: 'SwaggerEditor',
@@ -71,12 +71,14 @@ export default mixins(workflowHelpers).extend({
 			suppressEvent: false,
 			input: JSON.stringify(base, null, 2),
 			swaggerIframeURL,
+			swaggerElement: null,
 		};
 	},
 	mounted() {
-
 		this.updateSpec(this.$props.nodeValues);
 		window.addEventListener('message', this.messageHandler);
+		this.swaggerElement = this.$refs.swaggerIframe;
+		console.log({iframe: this.swaggerElement})
 	},
 	computed: {
 		webhooksNode(): IWebhookDescription[] {
@@ -151,6 +153,7 @@ export default mixins(workflowHelpers).extend({
 			return baseObject;
 		},
 		updateSpec(values: INodeParameters) {
+			const swaggerIframe = document.getElementById("swagger-iframe")
 			if (this.suppressEvent) {
 				this.suppressEvent = false;
 				return;
@@ -161,7 +164,7 @@ export default mixins(workflowHelpers).extend({
 				this.suppressEvent = true;
 				const swagger = this.$props.nodeValues.parameters.swagger;
 
-				window.postMessage(
+				this.swaggerElement?.contentWindow?.postMessage(
 					{
 						body: swagger === '{}' ? base : swagger,
 						name: 'editor_change',
@@ -219,8 +222,8 @@ export default mixins(workflowHelpers).extend({
 			];
 
 			const copyString = JSON.stringify(copy, null, '\t');
-			
-			window.postMessage(
+			console.log(swaggerIframe);
+			this.swaggerElement?.contentWindow?.postMessage(
 				{
 					body: copyString,
 					name: 'editor_change',
@@ -329,7 +332,7 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style lang="scss">
-.swagger {
+.swagger-iframe {
 		width: 100% !important;
 		height: 800px;
 }
