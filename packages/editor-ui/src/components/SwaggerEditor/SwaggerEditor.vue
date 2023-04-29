@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div id="swagger" class="swagger" />
+		<iframe  class="swagger" :src="swaggerIframeURL" />
 	</div>
 </template>
 
@@ -8,8 +8,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import SwaggerEditor, { Editor } from '@deep-consulting-solutions/swagger-editor';
-import '@deep-consulting-solutions/swagger-editor/dist/swagger-editor.css';
 import {
 	jsonParse,
 	INodeParameters,
@@ -25,9 +23,9 @@ import base from './base.json';
 
 interface Data {
 	input: string;
-	editor: Editor | null;
 	isFirstMount: boolean;
 	suppressEvent: boolean;
+	swaggerIframeURL: string;
 }
 
 interface PathParameter {
@@ -39,6 +37,7 @@ interface PathParameter {
 		default?: string | number;
 	};
 }
+
 
 export default mixins(workflowHelpers).extend({
 	name: 'SwaggerEditor',
@@ -65,18 +64,16 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	data(): Data {
+		console.log(import.meta.env)
+		const swaggerIframeURL = import.meta.env.MODE === "production"? `/deep-consulting-swagger`  : 'http://localhost:3000';
 		return {
-			editor: null,
 			isFirstMount: true,
 			suppressEvent: false,
 			input: JSON.stringify(base, null, 2),
+			swaggerIframeURL,
 		};
 	},
 	mounted() {
-		this.editor = SwaggerEditor({
-			dom_id: '#swagger',
-			spec: JSON.stringify({}, null, 2),
-		});
 
 		this.updateSpec(this.$props.nodeValues);
 		window.addEventListener('message', this.messageHandler);
@@ -96,6 +93,7 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		messageHandler(ev: MessageEvent) {
+			console.log(ev.data);
 			if (ev.data.name === 'editor_onChange' && ev.data.body) {
 				this.parseSpec(ev.data.body);
 				this.input = ev.data.body;
@@ -221,7 +219,7 @@ export default mixins(workflowHelpers).extend({
 			];
 
 			const copyString = JSON.stringify(copy, null, '\t');
-
+			
 			window.postMessage(
 				{
 					body: copyString,
@@ -326,18 +324,13 @@ export default mixins(workflowHelpers).extend({
 	},
 	beforeDestroy() {
 		window.removeEventListener('message', this.messageHandler);
-		this.editor?.jsonSchemaValidatorActions.terminateWorker();
 	},
 });
 </script>
 
 <style lang="scss">
-div#swagger.swagger div.swagger-editor div.SplitPane.vertical {
-	position: relative !important;
-	flex-direction: column !important;
-
-	& > div {
+.swagger {
 		width: 100% !important;
-	}
+		height: 800px;
 }
 </style>

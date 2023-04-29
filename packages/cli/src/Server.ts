@@ -65,6 +65,7 @@ import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	SWAGGER_DIR,
 	inDevelopment,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
@@ -490,6 +491,14 @@ class Server extends AbstractServer {
 		if (config.getEnv('security.jwtAuth.active')) {
 			await setupExternalJWTAuth(this.app, config, authIgnoreRegex);
 		}
+
+		// ----------------------------------------
+		// Route for Swagger editor assets
+		// ----------------------------------------
+		this.app.use(
+			'/deep-consulting-swagger',
+			express.static(SWAGGER_DIR),
+		);
 
 		// ----------------------------------------
 		// Public API
