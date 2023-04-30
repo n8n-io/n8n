@@ -64,7 +64,6 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	data(): Data {
-		console.log(import.meta.env)
 		const swaggerIframeURL = import.meta.env.MODE === "production"? `/deep-consulting-swagger`  : 'http://localhost:3000';
 		return {
 			isFirstMount: true,
@@ -78,7 +77,6 @@ export default mixins(workflowHelpers).extend({
 		this.updateSpec(this.$props.nodeValues);
 		window.addEventListener('message', this.messageHandler);
 		this.swaggerElement = this.$refs.swaggerIframe;
-		console.log({iframe: this.swaggerElement})
 	},
 	computed: {
 		webhooksNode(): IWebhookDescription[] {
@@ -95,7 +93,6 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		messageHandler(ev: MessageEvent) {
-			console.log(ev.data);
 			if (ev.data.name === 'editor_onChange' && ev.data.body) {
 				this.parseSpec(ev.data.body);
 				this.input = ev.data.body;
@@ -222,7 +219,6 @@ export default mixins(workflowHelpers).extend({
 			];
 
 			const copyString = JSON.stringify(copy, null, '\t');
-			console.log(swaggerIframe);
 			this.swaggerElement?.contentWindow?.postMessage(
 				{
 					body: copyString,
