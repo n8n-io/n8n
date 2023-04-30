@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<iframe  class="swagger" :src="swaggerIframeURL" />
+		<iframe  class="swagger-iframe" ref="swaggerIframe" :src="swaggerIframeURL" />
 	</div>
 </template>
 
@@ -26,6 +26,7 @@ interface Data {
 	isFirstMount: boolean;
 	suppressEvent: boolean;
 	swaggerIframeURL: string;
+	swaggerElement: any;
 }
 
 interface PathParameter {
@@ -37,7 +38,6 @@ interface PathParameter {
 		default?: string | number;
 	};
 }
-
 
 export default mixins(workflowHelpers).extend({
 	name: 'SwaggerEditor',
@@ -64,19 +64,19 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	data(): Data {
-		console.log(import.meta.env)
 		const swaggerIframeURL = import.meta.env.MODE === "production"? `/deep-consulting-swagger`  : 'http://localhost:3000';
 		return {
 			isFirstMount: true,
 			suppressEvent: false,
 			input: JSON.stringify(base, null, 2),
 			swaggerIframeURL,
+			swaggerElement: null,
 		};
 	},
 	mounted() {
-
 		this.updateSpec(this.$props.nodeValues);
 		window.addEventListener('message', this.messageHandler);
+		this.swaggerElement = this.$refs.swaggerIframe;
 	},
 	computed: {
 		webhooksNode(): IWebhookDescription[] {
@@ -93,7 +93,6 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		messageHandler(ev: MessageEvent) {
-			console.log(ev.data);
 			if (ev.data.name === 'editor_onChange' && ev.data.body) {
 				this.parseSpec(ev.data.body);
 				this.input = ev.data.body;
@@ -151,6 +150,7 @@ export default mixins(workflowHelpers).extend({
 			return baseObject;
 		},
 		updateSpec(values: INodeParameters) {
+			const swaggerIframe = document.getElementById("swagger-iframe")
 			if (this.suppressEvent) {
 				this.suppressEvent = false;
 				return;
@@ -161,7 +161,7 @@ export default mixins(workflowHelpers).extend({
 				this.suppressEvent = true;
 				const swagger = this.$props.nodeValues.parameters.swagger;
 
-				window.postMessage(
+				this.swaggerElement?.contentWindow?.postMessage(
 					{
 						body: swagger === '{}' ? base : swagger,
 						name: 'editor_change',
@@ -219,8 +219,7 @@ export default mixins(workflowHelpers).extend({
 			];
 
 			const copyString = JSON.stringify(copy, null, '\t');
-			
-			window.postMessage(
+			this.swaggerElement?.contentWindow?.postMessage(
 				{
 					body: copyString,
 					name: 'editor_change',
@@ -329,7 +328,7 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style lang="scss">
-.swagger {
+.swagger-iframe {
 		width: 100% !important;
 		height: 800px;
 }
