@@ -47,7 +47,7 @@ async function configurePostgres(
 ) {
 	const pgp = pgPromise();
 
-	if(typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
+	if (typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
 		// Always return dates as ISO strings
 		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 			pgp.pg.types.setTypeParser(type, (value: string) => {
