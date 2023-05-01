@@ -166,7 +166,7 @@ export default mixins(workflowHelpers).extend({
 						body: swagger === '{}' ? base : swagger,
 						name: 'editor_change',
 					},
-					window.origin,
+					"*",
 				);
 
 				return;
@@ -224,7 +224,7 @@ export default mixins(workflowHelpers).extend({
 					body: copyString,
 					name: 'editor_change',
 				},
-				window.origin,
+				"*",
 			);
 
 			this.input = copyString;
