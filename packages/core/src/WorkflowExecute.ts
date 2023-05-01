@@ -746,7 +746,9 @@ export class WorkflowExecute {
 
 			const returnPromise = (async () => {
 				try {
-					await this.executeHook('workflowExecuteBefore', [workflow]);
+					if (!this.additionalData.restartExecutionId) {
+						await this.executeHook('workflowExecuteBefore', [workflow]);
+					}
 				} catch (error) {
 					// Set the error that it can be saved correctly
 					executionError = {
@@ -790,7 +792,7 @@ export class WorkflowExecute {
 					}
 
 					if (gotCancel) {
-						return Promise.resolve();
+						return;
 					}
 
 					nodeSuccessData = null;
@@ -917,7 +919,7 @@ export class WorkflowExecute {
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						if (gotCancel) {
-							return Promise.resolve();
+							return;
 						}
 						try {
 							if (tryIndex !== 0) {
@@ -1173,10 +1175,8 @@ export class WorkflowExecute {
 									outputIndex
 								]) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
-										return Promise.reject(
-											new Error(
-												`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
-											),
+										throw new Error(
+											`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
 										);
 									}
 
@@ -1210,7 +1210,7 @@ export class WorkflowExecute {
 					]);
 				}
 
-				return Promise.resolve();
+				return;
 			})()
 				.then(async () => {
 					if (gotCancel && executionError === undefined) {

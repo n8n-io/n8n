@@ -58,8 +58,8 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// These aliases are set-up before each test in cypress/support/e2e.ts
 	// we can't set them up here because at this point it would be too late
 	// and the requests would already have been made
-	if(waitForIntercepts) {
-		cy.wait(['@loadSettings', '@loadLogin'])
+	if (waitForIntercepts) {
+		cy.wait(['@loadSettings', '@loadLogin']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
@@ -232,18 +232,19 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, pos) => {
+Cypress.Commands.add('drag', (selector, pos, options) => {
+	const index = options?.index || 0;
 	const [xDiff, yDiff] = pos;
-	const element = cy.get(selector);
+	const element = cy.get(selector).eq(index);
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
 
 	element.trigger('mousedown');
 	element.trigger('mousemove', {
 		which: 1,
-		pageX: originalLocation.right + xDiff,
-		pageY: originalLocation.top + yDiff,
+		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,
+		pageY: options?.abs ? yDiff : originalLocation.top + yDiff,
 		force: true,
 	});
 	element.trigger('mouseup', { force: true });

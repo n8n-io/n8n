@@ -24,6 +24,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+import { keysToLowercase } from '../../../utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -134,6 +135,18 @@ export class HttpRequestV3 implements INodeType {
 					displayOptions: {
 						show: {
 							authentication: ['predefinedCredentialType'],
+						},
+					},
+				},
+				{
+					displayName:
+						'Make sure you have specified the scope(s) for the Service Account in the credential',
+					name: 'googleApiWarning',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							nodeCredentialType: ['googleApi'],
 						},
 					},
 				},
@@ -382,7 +395,9 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 					default: 'keypair',
-					description: 'Asasas',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+					description:
+						'The body can be specified using explicit fields (<code>keypair</code>) or using a JavaScript object (<code>json</code>)',
 				},
 				{
 					displayName: 'Body Parameters',
@@ -748,9 +763,7 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {
-								redirect: {},
-							},
+							default: { redirect: {} },
 							options: [
 								{
 									displayName: 'Redirect',
@@ -779,6 +792,56 @@ export class HttpRequestV3 implements INodeType {
 									],
 								},
 							],
+							displayOptions: {
+								show: {
+									'@version': [1, 2, 3],
+								},
+							},
+						},
+						{
+							displayName: 'Redirects',
+							name: 'redirect',
+							placeholder: 'Add Redirect',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {
+								redirect: {},
+							},
+							options: [
+								{
+									displayName: 'Redirect',
+									name: 'redirect',
+									values: [
+										{
+											displayName: 'Follow Redirects',
+											name: 'followRedirects',
+											type: 'boolean',
+											default: true,
+											noDataExpression: true,
+											description: 'Whether to follow all redirects',
+										},
+										{
+											displayName: 'Max Redirects',
+											name: 'maxRedirects',
+											type: 'number',
+											displayOptions: {
+												show: {
+													followRedirects: [true],
+												},
+											},
+											default: 21,
+											description: 'Max number of redirects to follow',
+										},
+									],
+								},
+							],
+							displayOptions: {
+								hide: {
+									'@version': [1, 2, 3],
+								},
+							},
 						},
 						{
 							displayName: 'Response',
@@ -973,16 +1036,19 @@ export class HttpRequestV3 implements INodeType {
 			const body = this.getNodeParameter('body', itemIndex, '') as string;
 
 			const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+
 			const headerParameters = this.getNodeParameter(
 				'headerParameters.parameters',
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+
 			const specifyHeaders = this.getNodeParameter(
 				'specifyHeaders',
 				itemIndex,
 				'keypair',
 			) as string;
+
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
@@ -1038,13 +1104,14 @@ export class HttpRequestV3 implements INodeType {
 			if (autoDetectResponseFormat || fullResponse) {
 				requestOptions.resolveWithFullResponse = true;
 			}
+			const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
 
-			if (redirect?.redirect?.followRedirects) {
+			if (redirect?.redirect?.followRedirects || defaultRedirect) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects) {
+			if (redirect?.redirect?.maxRedirects || defaultRedirect) {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
@@ -1116,7 +1183,7 @@ export class HttpRequestV3 implements INodeType {
 								this.getNode(),
 								'JSON parameter need to be an valid JSON',
 								{
-									runIndex: itemIndex,
+									itemIndex,
 								},
 							);
 						}
@@ -1161,8 +1228,8 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.body = uploadData;
 					requestOptions.headers = {
 						...requestOptions.headers,
-						'Content-Length': contentLength,
-						'Content-Type': itemBinaryData.mimeType ?? 'application/octet-stream',
+						'content-length': contentLength,
+						'content-type': itemBinaryData.mimeType ?? 'application/octet-stream',
 					};
 				} else if (bodyContentType === 'raw') {
 					requestOptions.body = body;
@@ -1182,7 +1249,7 @@ export class HttpRequestV3 implements INodeType {
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
 							{
-								runIndex: itemIndex,
+								itemIndex,
 							},
 						);
 					}
@@ -1193,8 +1260,9 @@ export class HttpRequestV3 implements INodeType {
 
 			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
+				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					requestOptions.headers = headerParameters.reduce(parametersToKeyValue, {});
+					additionalHeaders = headerParameters.reduce(parametersToKeyValue, {});
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
@@ -1204,13 +1272,17 @@ export class HttpRequestV3 implements INodeType {
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
 							{
-								runIndex: itemIndex,
+								itemIndex,
 							},
 						);
 					}
 
-					requestOptions.headers = jsonParse(jsonHeadersParameter);
+					additionalHeaders = jsonParse(jsonHeadersParameter);
 				}
+				requestOptions.headers = {
+					...requestOptions.headers,
+					...keysToLowercase(additionalHeaders),
+				};
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
@@ -1230,7 +1302,7 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.headers = {};
 				}
 				const rawContentType = this.getNodeParameter('rawContentType', itemIndex) as string;
-				requestOptions.headers['Content-Type'] = rawContentType;
+				requestOptions.headers['content-type'] = rawContentType;
 			}
 
 			const authDataKeys: IAuthDataSanitizeKeys = {};
@@ -1278,7 +1350,6 @@ export class HttpRequestV3 implements INodeType {
 			try {
 				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
 			} catch (e) {}
-
 			if (authentication === 'genericCredentialType' || authentication === 'none') {
 				if (oAuth1Api) {
 					const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
@@ -1321,7 +1392,7 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response.reason as JsonObject);
+					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
 					// Return the actual reason as error
 					returnItems.push({

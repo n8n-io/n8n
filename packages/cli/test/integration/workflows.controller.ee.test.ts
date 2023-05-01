@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
@@ -51,7 +51,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	Container.reset();
 	await testDb.terminate();
 });
 
@@ -304,7 +303,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
-				currentUserHasAccess: false, // although owner can see, he does not have access
+				currentUserHasAccess: false, // although owner can see, they do not have access
 			},
 		]);
 

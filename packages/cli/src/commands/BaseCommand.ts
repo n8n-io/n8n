@@ -51,13 +51,13 @@ export abstract class BaseCommand extends Command {
 		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
-		this.instanceId = this.userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(this.instanceId);
-		await Container.get(InternalHooks).init(this.instanceId);
-
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
+
+		this.instanceId = this.userSettings.instanceId ?? '';
+		await Container.get(PostHogClient).init(this.instanceId);
+		await Container.get(InternalHooks).init(this.instanceId);
 	}
 
 	protected async stopProcess() {
@@ -96,7 +96,7 @@ export abstract class BaseCommand extends Command {
 		if (inTest || this.id === 'start') return;
 		if (Db.isInitialized) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.connection.destroy();
+			await Db.getConnection().destroy();
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

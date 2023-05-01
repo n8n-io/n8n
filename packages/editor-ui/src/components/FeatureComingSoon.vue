@@ -29,15 +29,15 @@
 </template>
 
 <script lang="ts">
-import { IFakeDoor } from '@/Interface';
+import type { IFakeDoor } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'FeatureComingSoon',
 	props: {
 		featureId: {

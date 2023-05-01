@@ -144,6 +144,7 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = config.getEnv('path');
+		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -167,6 +168,7 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -187,8 +189,16 @@ export class Start extends BaseCommand {
 		await license.init(this.instanceId);
 
 		const activationKey = config.getEnv('license.activationKey');
+
 		if (activationKey) {
+			const hasCert = (await license.loadCertStr()).length > 0;
+
+			if (hasCert) {
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
 			try {
+				LoggerProxy.debug('Attempting license activation');
 				await license.activate(activationKey);
 			} catch (e) {
 				LoggerProxy.error('Could not activate license', e as Error);

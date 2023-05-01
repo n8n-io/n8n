@@ -2,29 +2,38 @@ import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
+	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	START_NODE_TYPE,
 	STORES,
 } from '@/constants';
-import {
+import type {
 	ExecutionsQueryFilter,
+	IActivationError,
+	IExecutionDeleteFilter,
+	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
+	IExecutionsListResponse,
+	IExecutionsStopData,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
 	IPushDataUnsavedExecutionFinished,
+	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
+	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import {
-	deepCopy,
+import type {
+	IAbstractEventMessage,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -36,14 +45,16 @@ import {
 	INodeExecutionData,
 	INodeIssueData,
 	INodeParameters,
+	INodeTypeData,
+	INodeTypes,
 	IPinData,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import Vue from 'vue';
 
 import { useRootStore } from './n8nRootStore';
@@ -51,19 +62,21 @@ import {
 	getActiveWorkflows,
 	getCurrentExecutions,
 	getExecutionData,
-	getFinishedExecutions,
+	getExecutions,
 	getNewWorkflow,
 	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
-import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
 	getPairedItemsMapping,
 	stringSizeInBytes,
 	isObjectLiteral,
 	isEmpty,
+	makeRestApiRequest,
+	unflattenExecutionData,
 } from '@/utils';
 import { useNDVStore } from './ndv';
 import { useNodeTypesStore } from './nodeTypes';
@@ -85,6 +98,9 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	versionId: '',
 	usedCredentials: [],
 });
+
+let cachedWorkflowKey: string | null = '';
+let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -188,6 +204,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		allNodes(): INodeUi[] {
 			return this.workflow.nodes;
 		},
+		/**
+		 * Names of all nodes currently on canvas.
+		 */
+		canvasNames(): Set<string> {
+			return new Set(this.allNodes.map((n) => n.name));
+		},
 		nodesByName(): { [name: string]: INodeUi } {
 			return this.workflow.nodes.reduce((accu: { [name: string]: INodeUi }, node) => {
 				accu[node.name] = node;
@@ -256,7 +278,99 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 	actions: {
-		// Workflow actions
+		getNodeTypes(): INodeTypes {
+			const nodeTypes: INodeTypes = {
+				nodeTypes: {},
+				init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
+				// @ts-ignore
+				getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+					const nodeTypeDescription = useNodeTypesStore().getNodeType(nodeType, version);
+
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+
+					return {
+						description: nodeTypeDescription,
+						// As we do not have the trigger/poll functions available in the frontend
+						// we use the information available to figure out what are trigger nodes
+						// @ts-ignore
+						trigger:
+							(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
+								nodeTypeDescription.inputs.length === 0 &&
+								!nodeTypeDescription.webhooks) ||
+							undefined,
+					};
+				},
+			};
+
+			return nodeTypes;
+		},
+
+		// Returns a shallow copy of the nodes which means that all the data on the lower
+		// levels still only gets referenced but the top level object is a different one.
+		// This has the advantage that it is very fast and does not cause problems with vuex
+		// when the workflow replaces the node-parameters.
+		getNodes(): INodeUi[] {
+			const nodes = useWorkflowsStore().allNodes;
+			const returnNodes: INodeUi[] = [];
+
+			for (const node of nodes) {
+				returnNodes.push(Object.assign({}, node));
+			}
+
+			return returnNodes;
+		},
+
+		// Returns a workflow instance.
+		getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+			const nodeTypes = this.getNodeTypes();
+			let workflowId: string | undefined = useWorkflowsStore().workflowId;
+			if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				workflowId = undefined;
+			}
+
+			const workflowName = useWorkflowsStore().workflowName;
+
+			cachedWorkflow = new Workflow({
+				id: workflowId,
+				name: workflowName,
+				nodes: copyData ? deepCopy(nodes) : nodes,
+				connections: copyData ? deepCopy(connections) : connections,
+				active: false,
+				nodeTypes,
+				settings: useWorkflowsStore().workflowSettings,
+				// @ts-ignore
+				pinData: useWorkflowsStore().getPinData,
+			});
+
+			return cachedWorkflow;
+		},
+
+		getCurrentWorkflow(copyData?: boolean): Workflow {
+			const nodes = this.getNodes();
+			const connections = this.allConnections;
+			const cacheKey = JSON.stringify({ nodes, connections });
+			if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
+				return cachedWorkflow;
+			}
+			cachedWorkflowKey = cacheKey;
+
+			return this.getWorkflow(nodes, connections, copyData);
+		},
+
+		// Returns a workflow from a given URL
+		async getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
+				url,
+			});
+		},
+
+		async getActivationError(id: string): Promise<IActivationError | undefined> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
+		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
 			const rootStore = useRootStore();
@@ -384,7 +498,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}, {});
 		},
 
-		deleteWorkflow(id: string): void {
+		async deleteWorkflow(id: string): Promise<void> {
+			const rootStore = useRootStore();
+			await makeRestApiRequest(rootStore.getRestApiContext, 'DELETE', `/workflows/${id}`);
 			const { [id]: deletedWorkflow, ...workflows } = this.workflowsById;
 			this.workflowsById = workflows;
 		},
@@ -462,7 +578,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowPinData(pinData: IPinData): void {
 			Vue.set(this.workflow, 'pinData', pinData || {});
-			dataPinningEventBus.$emit('pin-data', pinData || {});
+			dataPinningEventBus.emit('pin-data', pinData || {});
 		},
 
 		setWorkflowTagIds(tags: string[]): void {
@@ -523,7 +639,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
+			dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 		},
 
 		unpinData(payload: { node: INodeUi }): void {
@@ -537,7 +653,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+			dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 		},
 
 		addConnection(data: { connection: IConnection[] }): void {
@@ -938,11 +1054,137 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(this, 'activeExecutions', newActiveExecutions);
 		},
 
+		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
+			let sendData;
+			if (loadWorkflow === true) {
+				sendData = {
+					loadWorkflow: true,
+				};
+			}
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				`/executions/${id}/retry`,
+				sendData,
+			);
+		},
+
+		// Deletes executions
+		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/executions/delete',
+				sendData as unknown as IDataObject,
+			);
+		},
+
+		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
+		async getPastExecutions(
+			filter: IDataObject,
+			limit: number,
+			lastId?: string,
+			firstId?: string,
+		): Promise<IExecutionsListResponse> {
+			let sendData = {};
+			if (filter) {
+				sendData = {
+					filter,
+					firstId,
+					lastId,
+					limit,
+				};
+			}
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
+		},
+
+		async getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
+			let sendData = {};
+			if (filter) {
+				sendData = {
+					filter,
+				};
+			}
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/executions-current',
+				sendData,
+			);
+		},
+
+		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
+			const rootStore = useRootStore();
+			const response = await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/executions/${id}`,
+			);
+			return response && unflattenExecutionData(response);
+		},
+
+		// Creates a new workflow
+		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/workflows',
+				sendData as unknown as IDataObject,
+			);
+		},
+
+		// Updates an existing workflow
+		async updateWorkflow(
+			id: string,
+			data: IWorkflowDataUpdate,
+			forceSave = false,
+		): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'PATCH',
+				`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
+				data as unknown as IDataObject,
+			);
+		},
+
+		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/workflows/run',
+				startRunData as unknown as IDataObject,
+			);
+		},
+
+		async removeTestWebhook(workflowId: string): Promise<boolean> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'DELETE',
+				`/test-webhook/${workflowId}`,
+			);
+		},
+
+		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				`/executions-current/${executionId}/stop`,
+			);
+		},
+
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
 		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
-			let finishedExecutions = [];
 
 			if (!requestFilter.workflowId) {
 				return [];
@@ -954,23 +1196,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						workflowId: requestFilter.workflowId,
 					});
 				}
-				finishedExecutions = await getFinishedExecutions(
-					rootStore.getRestApiContext,
-					requestFilter,
-				);
+				const finishedExecutions = await getExecutions(rootStore.getRestApiContext, requestFilter);
 				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
 				throw error;
 			}
 		},
+
 		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 			const rootStore = useRootStore();
 			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
+
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
+
 		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
 			executions.forEach((execution) => {
 				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
@@ -979,6 +1221,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}
 			});
 		},
+		// Returns all the available timezones
+		async getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/eventbus/execution/' + id);
+		},
+		// Binary data
+		async getBinaryUrl(dataPath, mode, fileName, mimeType): string {
+			const rootStore = useRootStore();
+			let restUrl = rootStore.getRestUrl;
+			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
+			const url = new URL(`${restUrl}/data/${dataPath}`);
+			url.searchParams.append('mode', mode);
+			if (fileName) url.searchParams.append('fileName', fileName);
+			if (mimeType) url.searchParams.append('mimeType', mimeType);
+			return url.toString();
+		},
+
 		setNodePristine(nodeName: string, isPristine: boolean): void {
 			Vue.set(this.nodeMetadata[nodeName], 'pristine', isPristine);
 		},

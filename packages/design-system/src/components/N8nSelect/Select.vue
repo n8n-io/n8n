@@ -33,7 +33,9 @@
 
 <script lang="ts">
 import { Select as ElSelect } from 'element-ui';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+
+type InnerSelectRef = InstanceType<typeof ElSelect>;
 
 export interface IProps {
 	size?: string;
@@ -41,7 +43,7 @@ export interface IProps {
 	popperClass?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect,
@@ -117,23 +119,23 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.focus();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
 			}
 		},
 		blur() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.blur();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.blur();
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				const input = select.$refs.input as (Vue & HTMLElement) | undefined;
-				if (input) {
-					input.focus();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				const inputRef = selectRef.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}
 		},
@@ -167,6 +169,9 @@ export default Vue.extend({
 	input {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
+		@-moz-document url-prefix() {
+			padding: 0 var(--spacing-3xs);
+		}
 	}
 }
 

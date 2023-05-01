@@ -1,6 +1,6 @@
 import mixins from 'vue-typed-mixins';
 import { ExpressionExtensions } from 'n8n-workflow';
-import { EditorView, ViewUpdate } from '@codemirror/view';
+import type { EditorView, ViewUpdate } from '@codemirror/view';
 
 import { expressionManager } from './expressionManager';
 

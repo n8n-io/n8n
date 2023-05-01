@@ -10,9 +10,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-route',
 	props: {
 		to: {
@@ -25,12 +25,13 @@ export default Vue.extend({
 	},
 	computed: {
 		useRouterLink() {
-			if (this.newWindow === true) {
+			if (this.newWindow) {
 				// router-link does not support click events and opening in new window
 				return false;
 			}
+
 			if (typeof this.to === 'string') {
-				return (this.to as string).startsWith('/');
+				return this.to.startsWith('/');
 			}
 
 			return this.to !== undefined;
@@ -39,8 +40,9 @@ export default Vue.extend({
 			if (this.newWindow !== undefined) {
 				return this.newWindow;
 			}
+
 			if (typeof this.to === 'string') {
-				return !(this.to as string).startsWith('/');
+				return !this.to.startsWith('/');
 			}
 			return true;
 		},
