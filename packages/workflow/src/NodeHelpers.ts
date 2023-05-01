@@ -1031,7 +1031,7 @@ export function getNodeWebhookUrl(
 	node: INode,
 	path: string,
 	isFullPath?: boolean,
-	withouthoutPathID?: boolean,
+	withouthoutPathID = true,
 ): string {
 	if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
 		// setting this to false to prefix the webhookId
