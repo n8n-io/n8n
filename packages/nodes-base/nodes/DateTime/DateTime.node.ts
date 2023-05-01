@@ -415,7 +415,10 @@ export class DateTime implements INodeType {
 				item = items[i];
 
 				if (action === 'format') {
-					let currentDate = this.getNodeParameter('value', i) as string;
+					let currentDate: string | number | LuxonDateTime = this.getNodeParameter(
+						'value',
+						i,
+					) as string;
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
 					const options = this.getNodeParameter('options', i);
@@ -425,13 +428,20 @@ export class DateTime implements INodeType {
 						currentDate = (currentDate as unknown as LuxonDateTime).toISO();
 					}
 
+					// Check if the input is a number
+					if (!Number.isNaN(Number(currentDate))) {
+						//input is a number, convert to number in case it is a string
+						currentDate = Number(currentDate);
+						// check if the number is a timestamp in float format and convert to integer
+						if (!Number.isInteger(currentDate)) {
+							currentDate = currentDate * 1000;
+						}
+					}
+
 					if (currentDate === undefined) {
 						continue;
 					}
-					if (
-						options.fromFormat === undefined &&
-						!moment(currentDate as string | number).isValid()
-					) {
+					if (options.fromFormat === undefined && !moment(currentDate).isValid()) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'The date input format could not be recognized. Please set the "From Format" field',
@@ -439,14 +449,20 @@ export class DateTime implements INodeType {
 						);
 					}
 
-					if (Number.isInteger(currentDate as unknown as number)) {
-						newDate = moment.unix(currentDate as unknown as number);
+					if (Number.isInteger(currentDate)) {
+						const timestampLengthInMilliseconds1990 = 12;
+						// check if the number is a timestamp in seconds or milliseconds and create a moment object accordingly
+						if (currentDate.toString().length < timestampLengthInMilliseconds1990) {
+							newDate = moment.unix(currentDate as number);
+						} else {
+							newDate = moment(currentDate);
+						}
 					} else {
 						if (options.fromTimezone || options.toTimezone) {
 							const fromTimezone = options.fromTimezone || workflowTimezone;
 							if (options.fromFormat) {
 								newDate = moment.tz(
-									currentDate,
+									currentDate as string,
 									options.fromFormat as string,
 									fromTimezone as string,
 								);
