@@ -207,7 +207,6 @@ export class AwsS3V2 implements INodeType {
 								'',
 								qs,
 							);
-							console.log(responseData);
 							responseData = responseData.slice(0, qs.limit);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -888,7 +887,6 @@ export class AwsS3V2 implements INodeType {
 										region as string,
 									);
 									part++;
-									console.log('Part', part);
 									headers = {};
 								} catch (error) {
 									try {
@@ -900,7 +898,7 @@ export class AwsS3V2 implements INodeType {
 										);
 										console.log('Abort Upload', abortUpload);
 									} catch (err) {
-										// console.log('Error while aborting ', err);
+										console.log('Error while aborting ', err);
 									}
 									if (error.response?.status !== 308) throw error;
 								}
@@ -947,8 +945,7 @@ export class AwsS3V2 implements INodeType {
 							headers['Content-MD5'] = createHash('md5').update(data).digest('base64');
 
 							headers['Content-Type'] = 'application/xml';
-							console.log(data);
-							const completeUpload = await awsApiRequestREST.call(
+							const completeUpload = (await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
 								'POST',
@@ -958,8 +955,17 @@ export class AwsS3V2 implements INodeType {
 								headers,
 								{},
 								region as string,
-							);
-							responseData = completeUpload as IDataObject;
+							)) as {
+								CompleteMultipartUploadResult: {
+									Location: string;
+									Bucket: string;
+									Key: string;
+									ETag: string;
+								};
+							};
+							responseData = {
+								...completeUpload.CompleteMultipartUploadResult,
+							};
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(responseData),
 								{ itemData: { item: i } },
@@ -985,12 +991,12 @@ export class AwsS3V2 implements INodeType {
 								{},
 								region as string,
 							);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ success: true }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ success: true }),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
