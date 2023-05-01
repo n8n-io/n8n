@@ -959,7 +959,12 @@ export class AwsS3V2 implements INodeType {
 								{},
 								region as string,
 							);
-							console.log('Complete Upload', completeUpload);
+							responseData = completeUpload as IDataObject;
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
