@@ -28,7 +28,7 @@ import {
 } from './GenericFunctions';
 import type { Readable } from 'stream';
 
-const UPLOAD_CHUNK_SIZE = 256 * 1024;
+const UPLOAD_CHUNK_SIZE = 512 * 1024;
 
 export class AwsS3V2 implements INodeType {
 	description: INodeTypeDescription;
@@ -875,7 +875,7 @@ export class AwsS3V2 implements INodeType {
 								headers['Content-Length'] = chunk.length;
 								headers['Content-MD5'] = createHash('MD5').update(chunkBuffer).digest('base64');
 								try {
-									const sendChunks = await awsApiRequestREST.call(
+									await awsApiRequestREST.call(
 										this,
 										`${bucketName}.s3`,
 										'PUT',
@@ -887,7 +887,7 @@ export class AwsS3V2 implements INodeType {
 										region as string,
 									);
 									part++;
-									console.log('Send Chunks', sendChunks);
+									console.log('Part', part);
 									headers = {};
 								} catch (error) {
 									try {
@@ -906,9 +906,45 @@ export class AwsS3V2 implements INodeType {
 								}
 							}
 
-							// headers['Content-Type'] = binaryPropertyData.mimeType;
-
-							// headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+							headers = {};
+							const listParts = (await awsApiRequestREST.call(
+								this,
+								`${bucketName}.s3`,
+								'GET',
+								`/${bucketName}-${
+									this.getNode().id
+								}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
+								'',
+								qs,
+								headers,
+								{},
+								region as string,
+							)) as {
+								ListPartsResult: {
+									Part: Array<{
+										ETag: string;
+										PartNumber: number;
+									}>;
+								};
+							};
+							body = {
+								CompleteMultiPartUpload: {
+									Part: listParts.ListPartsResult.Part,
+								},
+							};
+							console.log(body);
+							const completeUpload = await awsApiRequestREST.call(
+								this,
+								`${bucketName}.s3`,
+								'POST',
+								`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+								body,
+								qs,
+								headers,
+								{},
+								region as string,
+							);
+							console.log('Complete Upload', completeUpload);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
