@@ -16,7 +16,7 @@ export default mergeConfig(
 		},
 		build: {
 			lib: {
-				entry: resolve(__dirname, 'src', 'main.js'),
+				entry: resolve(__dirname, 'src', 'main.ts'),
 				name: 'N8nDesignSystem',
 				fileName: (format) => `n8n-design-system.${format}.js`,
 			},

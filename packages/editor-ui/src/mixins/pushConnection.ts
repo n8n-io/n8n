@@ -1,4 +1,4 @@
-import {
+import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
@@ -8,10 +8,10 @@ import {
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import {
+import type {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
@@ -19,13 +19,13 @@ import {
 	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
-	TelemetryHelpers,
 } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -39,9 +39,13 @@ export const pushConnection = mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 ).extend({
+	setup() {
+		return {
+			...useTitleChange(),
+		};
+	},
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
@@ -295,7 +299,7 @@ export const pushConnection = mixins(
 						for (const key of Object.keys(activeRunData)) {
 							if (
 								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
-									.isArtificalRecoveredEventItem === true &&
+									?.isArtificialRecoveredEventItem === true &&
 								activeRunData[key].length > 0
 							)
 								pushData.data.data.resultData.runData[key] = activeRunData[key];
@@ -335,7 +339,7 @@ export const pushConnection = mixins(
 					runDataExecuted.data.resultData.error &&
 					runDataExecuted.data.resultData.error.lineNumber;
 
-				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
@@ -362,7 +366,7 @@ export const pushConnection = mixins(
 					}
 
 					// Workflow did start but had been put to wait
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 					this.$showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
@@ -370,7 +374,7 @@ export const pushConnection = mixins(
 						duration: 0,
 					});
 				} else if (runDataExecuted.finished !== true) {
-					this.$titleSet(workflow.name as string, 'ERROR');
+					this.titleSet(workflow.name as string, 'ERROR');
 
 					if (
 						runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -441,7 +445,7 @@ export const pushConnection = mixins(
 					}
 				} else {
 					// Workflow did execute without a problem
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
 					if (execution && execution.executedNode) {

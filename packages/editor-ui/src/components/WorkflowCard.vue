@@ -63,7 +63,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { IWorkflowDb, IUser, ITag } from '@/Interface';
+import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -71,16 +71,17 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
-import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+
+type ActivatorRef = InstanceType<typeof WorkflowActivator>;
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -89,7 +90,7 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -165,7 +166,7 @@ export default mixins(showMessage, restApi).extend({
 	methods: {
 		async onClick(event?: PointerEvent) {
 			if (event) {
-				if ((this.$refs.activator as Vue)?.$el.contains(event.target as HTMLElement)) {
+				if ((this.$refs.activator as ActivatorRef)?.$el.contains(event.target as HTMLElement)) {
 					return;
 				}
 
@@ -232,13 +233,9 @@ export default mixins(showMessage, restApi).extend({
 				}
 
 				try {
-					await this.restApi().deleteWorkflow(this.data.id);
-					this.workflowsStore.deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-					);
+					this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 					return;
 				}
 

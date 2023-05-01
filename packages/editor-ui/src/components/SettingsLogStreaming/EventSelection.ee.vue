@@ -71,7 +71,7 @@
 <script lang="ts">
 import { Checkbox } from 'element-ui';
 import { mapStores } from 'pinia';
-import { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '../../plugins/i18n';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
 
 export default {

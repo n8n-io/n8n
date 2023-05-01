@@ -193,11 +193,15 @@ describe('AugmentObject', () => {
 
 	describe('augmentObject', () => {
 		test('should work with simple values on first level', () => {
+			const date = new Date(1680089084200);
+			const regexp = new RegExp('^test$', 'ig');
 			const originalObject: IDataObject = {
 				1: 11,
 				2: '22',
 				a: 111,
 				b: '222',
+				d: date,
+				r: regexp,
 			};
 			const copyOriginal = JSON.parse(JSON.stringify(originalObject));
 
@@ -221,7 +225,7 @@ describe('AugmentObject', () => {
 
 			augmentedObject.c = 3;
 
-			expect(originalObject).toEqual(copyOriginal);
+			expect({ ...originalObject, d: date.toJSON(), r: {} }).toEqual(copyOriginal);
 
 			expect(augmentedObject).toEqual({
 				1: 911,
@@ -229,6 +233,8 @@ describe('AugmentObject', () => {
 				a: 9111,
 				b: '9222',
 				c: 3,
+				d: date.toJSON(),
+				r: regexp.toString(),
 			});
 		});
 
@@ -513,6 +519,43 @@ describe('AugmentObject', () => {
 			const timeCopied = new Date().getTime() - startTime;
 
 			expect(timeAugmented).toBeLessThan(timeCopied);
+		});
+
+		test('should ignore non-enumerable keys', () => {
+			const originalObject = { a: 1, b: 2 };
+			Object.defineProperty(originalObject, '__hiddenProp', { enumerable: false });
+
+			const augmentedObject = augmentObject(originalObject);
+			expect(Object.keys(augmentedObject)).toEqual(['a', 'b']);
+		});
+
+		test('should return property descriptors', () => {
+			const originalObject = {
+				x: {
+					y: {},
+					z: {},
+				},
+			};
+			const augmentedObject = augmentObject(originalObject);
+
+			expect(Object.getOwnPropertyDescriptor(augmentedObject.x, 'y')).toEqual({
+				configurable: true,
+				enumerable: true,
+				value: {},
+				writable: true,
+			});
+
+			delete augmentedObject.x.y;
+			expect(augmentedObject.x.hasOwnProperty('y')).toEqual(false);
+
+			augmentedObject.x.y = 42;
+			expect(augmentedObject.x.hasOwnProperty('y')).toEqual(true);
+			expect(Object.getOwnPropertyDescriptor(augmentedObject.x, 'y')).toEqual({
+				configurable: true,
+				enumerable: true,
+				value: 42,
+				writable: true,
+			});
 		});
 	});
 });

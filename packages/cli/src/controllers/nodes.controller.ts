@@ -4,7 +4,7 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import {
@@ -30,10 +30,10 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { Config } from '@/config';
-import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
+@Authorized(['global', 'owner'])
 @RestController('/nodes')
 export class NodesController {
 	constructor(
@@ -42,14 +42,6 @@ export class NodesController {
 		private push: Push,
 		private internalHooks: InternalHooks,
 	) {}
-
-	// TODO: move this into a new decorator `@Authorized`
-	@Middleware()
-	checkIfOwner(req: Request, res: Response, next: NextFunction) {
-		if (!isAuthenticatedRequest(req) || req.user.globalRole.name !== 'owner')
-			res.status(403).json({ status: 'error', message: 'Unauthorized' });
-		else next();
-	}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
 	@Middleware()
@@ -109,7 +101,7 @@ export class NodesController {
 
 		let installedPackage: InstalledPackages;
 		try {
-			installedPackage = await this.loadNodesAndCredentials.loadNpmModule(
+			installedPackage = await this.loadNodesAndCredentials.installNpmModule(
 				parsed.packageName,
 				parsed.version,
 			);
@@ -125,7 +117,10 @@ export class NodesController {
 				failure_reason: errorMessage,
 			});
 
-			const message = [`Error loading package "${name}"`, errorMessage].join(':');
+			let message = [`Error loading package "${name}" `, errorMessage].join(':');
+			if (error instanceof Error && error.cause instanceof Error) {
+				message += `\nCause: ${error.cause.message}`;
+			}
 
 			const clientError = error instanceof Error ? isClientError(error) : false;
 			throw new (clientError ? BadRequestError : InternalServerError)(message);

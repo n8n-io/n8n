@@ -38,7 +38,7 @@
 
 <script lang="ts">
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { ITemplatesCategory } from '@/Interface';
+import type { ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({

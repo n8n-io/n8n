@@ -206,3 +206,11 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 		json: item,
 	}));
 }
+
+export const keysToLowercase = <T>(headers: T) => {
+	if (typeof headers !== 'object' || Array.isArray(headers) || headers === null) return headers;
+	return Object.entries(headers).reduce((acc, [key, value]) => {
+		acc[key.toLowerCase()] = value;
+		return acc;
+	}, {} as IDataObject);
+};

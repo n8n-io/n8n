@@ -23,9 +23,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { ITag, ITagRow } from '@/Interface';
+import type { ITag, ITagRow } from '@/Interface';
 import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { mapStores } from 'pinia';
@@ -34,7 +34,7 @@ import { useUsersStore } from '@/stores/users';
 const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
-export default Vue.extend({
+export default defineComponent({
 	components: { TagsTableHeader, TagsTable },
 	name: 'TagsView',
 	props: ['tags', 'isLoading'],
@@ -52,7 +52,7 @@ export default Vue.extend({
 	computed: {
 		...mapStores(useUsersStore),
 		isCreateEnabled(): boolean {
-			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
+			return (this.tags || []).length === 0 || this.$data.createEnabled;
 		},
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) =>
@@ -61,7 +61,7 @@ export default Vue.extend({
 					: this.$locale.baseText('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || this.$data.updateId || this.$data.deleteId;
-			const tagRows = (this.$props.tags || [])
+			const tagRows = (this.tags || [])
 				.filter((tag: ITag) => this.stickyIds.has(tag.id) || matches(tag.name, this.$data.search))
 				.map(
 					(tag: ITag): ITagRow => ({
@@ -87,8 +87,7 @@ export default Vue.extend({
 		},
 		isHeaderDisabled(): boolean {
 			return (
-				this.$props.isLoading ||
-				!!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
+				this.isLoading || !!(this.isCreateEnabled || this.$data.updateId || this.$data.deleteId)
 			);
 		},
 
