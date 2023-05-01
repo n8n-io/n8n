@@ -28,7 +28,8 @@ import {
 } from './GenericFunctions';
 import type { Readable } from 'stream';
 
-const UPLOAD_CHUNK_SIZE = 512 * 1024;
+// Minimum size 5MB for multipart upload in S3
+const UPLOAD_CHUNK_SIZE = 5120 * 1024;
 
 export class AwsS3V2 implements INodeType {
 	description: INodeTypeDescription;
@@ -901,7 +902,6 @@ export class AwsS3V2 implements INodeType {
 									} catch (err) {
 										// console.log('Error while aborting ', err);
 									}
-									console.log(part);
 									if (error.response?.status !== 308) throw error;
 								}
 							}
@@ -927,18 +927,33 @@ export class AwsS3V2 implements INodeType {
 									}>;
 								};
 							};
+
 							body = {
-								CompleteMultiPartUpload: {
-									Part: listParts.ListPartsResult.Part,
+								CompleteMultipartUpload: {
+									$: {
+										xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+									},
+									Part: listParts.ListPartsResult.Part.map((Part) => {
+										return {
+											ETag: Part.ETag,
+											PartNumber: Part.PartNumber,
+										};
+									}),
 								},
 							};
-							console.log(body);
+							const builder = new Builder();
+							const data = builder.buildObject(body);
+							headers = {};
+							headers['Content-MD5'] = createHash('md5').update(data).digest('base64');
+
+							headers['Content-Type'] = 'application/xml';
+							console.log(data);
 							const completeUpload = await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
 								'POST',
 								`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
-								body,
+								data,
 								qs,
 								headers,
 								{},
@@ -959,7 +974,7 @@ export class AwsS3V2 implements INodeType {
 								`${bucketName}.s3`,
 								'PUT',
 								`${path}${fileName}`,
-								body,
+								{ body },
 								qs,
 								headers,
 								{},
