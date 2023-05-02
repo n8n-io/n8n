@@ -5,6 +5,7 @@ import { isEmpty } from 'lodash';
 import { get } from 'lodash';
 import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
 import type {
+	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	ICredentialTypeData,
@@ -27,6 +28,7 @@ import type {
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	NodeLoadingDetails,
 } from 'n8n-workflow';
 import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
@@ -52,7 +54,14 @@ const getFakeDecryptedCredentials = (
 	return {};
 };
 
-const knownCredentials = readJsonFileSync('dist/known/credentials.json');
+export const readJsonFileSync = <T = any>(filePath: string) =>
+	JSON.parse(readFileSync(path.join(baseDir, filePath), 'utf-8')) as T;
+
+const knownCredentials = readJsonFileSync<Record<string, CredentialLoadingDetails>>(
+	'dist/known/credentials.json',
+);
+
+const knownNodes = readJsonFileSync<Record<string, NodeLoadingDetails>>('dist/known/nodes.json');
 
 class CredentialType implements ICredentialTypes {
 	credentialTypes: ICredentialTypeData = {};
@@ -65,7 +74,7 @@ class CredentialType implements ICredentialTypes {
 	}
 
 	recognizes(credentialType: string): boolean {
-		return true;
+		return credentialType in this.credentialTypes;
 	}
 
 	getByName(credentialType: string): ICredentialType {
@@ -73,8 +82,7 @@ class CredentialType implements ICredentialTypes {
 	}
 
 	getNodeTypesToTestWith(type: string): string[] {
-		// return this.credentialTypes[type]?.nodesToTestWith ?? [];
-		return [];
+		return knownCredentials[type]?.nodesToTestWith ?? [];
 	}
 
 	getParentTypes(typeName: string): string[] {
@@ -93,9 +101,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		requestParams: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		const credentialType = this.credentialTypes.getByName(typeName);
-
 		if (typeof credentialType.authenticate === 'function') {
-			// Special authentication function is defined
 			return credentialType.authenticate(credentials, requestParams);
 		}
 		return requestParams;
@@ -177,8 +183,6 @@ export function WorkflowExecuteAdditionalData(
 		variables: {},
 	};
 }
-
-const knownNodes = readJsonFileSync('dist/known/nodes.json');
 
 class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
@@ -300,10 +304,6 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	});
 }
 
-export function readJsonFileSync(filePath: string) {
-	return JSON.parse(readFileSync(path.join(baseDir, filePath), 'utf-8'));
-}
-
 export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes) => {
 	// execute workflow
 	const { result } = await executeWorkflow(testData, types);
@@ -336,7 +336,7 @@ export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
 		const description = filePath.replace('.json', '');
-		const workflowData = readJsonFileSync(filePath);
+		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
