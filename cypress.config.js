@@ -11,7 +11,7 @@ module.exports = defineConfig({
 	},
 	defaultCommandTimeout: 10000,
 	requestTimeout: 12000,
-	numTestsKeptInMemory: 0,
+	numTestsKeptInMemory: 2,
 	experimentalMemoryManagement: true,
 	e2e: {
 		baseUrl: BASE_URL,
