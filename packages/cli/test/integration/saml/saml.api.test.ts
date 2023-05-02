@@ -11,8 +11,8 @@ import * as utils from '../shared/utils';
 import { sampleConfig } from './sampleMetadata';
 import { InternalHooks } from '@/InternalHooks';
 import { SamlService } from '@/sso/saml/saml.service.ee';
-import { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
-import { AuthenticationMethod } from 'n8n-workflow';
+import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
+import type { AuthenticationMethod } from 'n8n-workflow';
 
 let someUser: User;
 let owner: User;
