@@ -471,6 +471,14 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/tags/${tagId}/taggings/${taggingId}`;
 						response = await actionNetworkApiRequest.call(this, 'DELETE', endpoint);
+					} else if (operation === 'getAll') {
+						// ----------------------------------------
+						//             personTag: getAll
+						// ----------------------------------------
+						const tagId = this.getNodeParameter('tagId', i);
+
+						const endpoint = `/tags/${tagId}/taggings`;
+						response = await handleListing.call(this, 'GET', endpoint);
 					}
 				}
 

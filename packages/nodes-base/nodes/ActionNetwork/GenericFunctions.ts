@@ -13,6 +13,7 @@ import type {
 	PetitionResponse,
 	Resource,
 	Response,
+	LinkedResource,
 } from './types';
 
 export async function actionNetworkApiRequest(
@@ -100,8 +101,8 @@ export async function handleListing(
 //              helpers
 // ----------------------------------------
 
-export const extractId = (response: LinksFieldContainer) => {
-	return response._links.self.href.split('/').pop() ?? 'No ID';
+export const extractId = (response: LinksFieldContainer, resource: LinkedResource = 'self') => {
+	return response._links[resource].href.split('/').pop() ?? 'No ID';
 };
 
 export const makeOsdiLink = (personId: string) => {
@@ -297,11 +298,24 @@ const simplifyPetitionResponse = (response: PetitionResponse) => {
 	};
 };
 
+const simplifyPersonTagResponse = (response: Response) => {
+	const fieldsToSimplify = ['identifiers', '_links', 'item_type'];
+
+	return {
+		id: extractId(response),
+		person_id: extractId(response, 'osdi:person'),
+		tag_id: extractId(response, 'osdi:tag'),
+		...omit(response, fieldsToSimplify),
+	};
+};
+
 export const simplifyResponse = (response: Response, resource: Resource) => {
 	if (resource === 'person') {
 		return simplifyPersonResponse(response as PersonResponse);
 	} else if (resource === 'petition') {
 		return simplifyPetitionResponse(response as PetitionResponse);
+	} else if (resource === 'personTag') {
+		return simplifyPersonTagResponse(response);
 	}
 
 	const fieldsToSimplify = ['identifiers', '_links', 'action_network:sponsor', 'reminders'];

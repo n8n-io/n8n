@@ -22,6 +22,11 @@ export const personTagOperations: INodeProperties[] = [
 				value: 'remove',
 				action: 'Remove a person tag',
 			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				action: 'List all tags',
+			},
 		],
 		default: 'add',
 	},
@@ -81,7 +86,7 @@ export const personTagFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['personTag'],
-				operation: ['remove'],
+				operation: ['remove', 'getAll'],
 			},
 		},
 	},
@@ -101,6 +106,52 @@ export const personTagFields: INodeProperties[] = [
 			show: {
 				resource: ['personTag'],
 				operation: ['remove'],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//             personTag: getAll
+	// ----------------------------------------
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		description: 'Max number of results to return',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 25,
+		displayOptions: {
+			show: {
+				resource: ['personTag'],
+				operation: ['getAll'],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		description: 'Whether to return all results or only up to a given limit',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['personTag'],
+				operation: ['getAll'],
+			},
+		},
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+		default: true,
+		displayOptions: {
+			show: {
+				resource: ['personTag'],
+				operation: ['getAll'],
 			},
 		},
 	},

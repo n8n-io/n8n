@@ -11,6 +11,8 @@ export type Resource =
 	| 'signature'
 	| 'tag';
 
+export type LinkedResource = 'self' | 'osdi:person' | 'osdi:tagging' | 'osdi:tag';
+
 export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 
 // @ts-ignore
@@ -83,7 +85,7 @@ export type FieldWithPrimaryField = EmailAddressField | PhoneNumberField | Posta
 //                 responses
 // ----------------------------------------
 
-export type LinksFieldContainer = { _links: { self: { href: string } } };
+export type LinksFieldContainer = { _links: { [resourceName: string]: { href: string } } };
 
 export type Response = JsonObject & LinksFieldContainer;
 
