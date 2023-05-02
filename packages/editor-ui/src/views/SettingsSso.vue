@@ -206,6 +206,9 @@ onMounted(async () => {
 				</div>
 			</div>
 			<div :class="$style.buttons">
+				<n8n-button :disabled="!isSaveEnabled" @click="onSave" data-test-id="sso-save">
+					{{ locale.baseText('settings.sso.settings.save') }}
+				</n8n-button>
 				<n8n-button
 					:disabled="!isTestEnabled"
 					type="tertiary"
@@ -213,9 +216,6 @@ onMounted(async () => {
 					data-test-id="sso-test"
 				>
 					{{ locale.baseText('settings.sso.settings.test') }}
-				</n8n-button>
-				<n8n-button :disabled="!isSaveEnabled" @click="onSave" data-test-id="sso-save">
-					{{ locale.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 			</div>
 			<footer :class="$style.footer">
