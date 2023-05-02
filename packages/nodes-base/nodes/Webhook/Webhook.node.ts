@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -8,7 +9,7 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-
+import { verifyCrmToken, verifyPortalToken } from './authentication';
 import fs from 'fs';
 import stream from 'stream';
 import { promisify } from 'util';
@@ -17,6 +18,8 @@ import type { Response } from 'express';
 import formidable from 'formidable';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
+import type { OpenAPIRequestValidatorArgs } from 'openapi-request-validator';
+import OpenAPIRequestValidator from 'openapi-request-validator';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -112,12 +115,20 @@ export class Webhook implements INodeType {
 						value: 'basicAuth',
 					},
 					{
+						name: 'Client Portal Auth',
+						value: 'clientPortalAuth',
+					},
+					{
 						name: 'Header Auth',
 						value: 'headerAuth',
 					},
 					{
 						name: 'None',
 						value: 'none',
+					},
+					{
+						name: 'Zoho CRM Auth',
+						value: 'zohoCRMAuth',
 					},
 				],
 				default: 'none',
@@ -435,16 +446,17 @@ export class Webhook implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const authentication = this.getNodeParameter('authentication') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const swagger = this.getNodeParameter('swagger', '{}') as Record<string, any>;
+
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const headers = this.getHeaderData();
 		const realm = 'Webhook';
-
 		const ignoreBots = options.ignoreBots as boolean;
 		if (ignoreBots && isbot((headers as IDataObject)['user-agent'] as string)) {
 			return authorizationError(resp, realm, 403);
 		}
-
+		const [, token] = headers.authorization?.split(' ') || [];
 		if (authentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
 			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
@@ -472,6 +484,18 @@ export class Webhook implements INodeType {
 			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
+			}
+		} else if (authentication === 'clientPortalAuth') {
+			try {
+				await verifyPortalToken(token, this.helpers.httpRequest);
+			} catch (error) {
+				return authorizationError(resp, realm, 401, error?.message as string);
+			}
+		} else if (authentication === 'zohoCRMAuth') {
+			try {
+				await verifyCrmToken(token, this.helpers.httpRequest);
+			} catch (error) {
+				return authorizationError(resp, realm, 401, error?.message as string);
 			}
 		} else if (authentication === 'headerAuth') {
 			// Special header with value is needed to call webhook
@@ -586,7 +610,6 @@ export class Webhook implements INodeType {
 				await binaryFile.cleanup();
 			}
 		}
-
 		const response: INodeExecutionData = {
 			json: {
 				headers,
@@ -595,6 +618,34 @@ export class Webhook implements INodeType {
 				body: this.getBodyData(),
 			},
 		};
+		// request body, query, params validation
+		if (swagger) {
+			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+			const endpointPaths = JSON.parse(swagger as unknown as string)?.paths as Record<string, any>;
+			const endpoints = Object.keys(endpointPaths || {});
+			const endpointPath = endpoints[0] || '';
+			const method = (this.getNodeParameter('httpMethod') as string)?.toLowerCase();
+			const parameters = endpointPaths?.[endpointPath]?.[method]
+				?.parameters as OpenAPIRequestValidatorArgs['parameters'];
+			const requestBody = endpointPaths?.[endpointPath]?.[method]
+				?.requestBody as OpenAPIRequestValidatorArgs['requestBody'];
+			if (parameters?.length || requestBody) {
+				const requestValidator = new OpenAPIRequestValidator({
+					requestBody,
+					parameters,
+				});
+				const errors = requestValidator.validateRequest(response.json);
+				if (errors) {
+					const firstError = errors?.errors[0];
+					return authorizationError(
+						resp,
+						realm,
+						400,
+						`${firstError?.message} in the request ${firstError?.location}`,
+					);
+				}
+			}
+		}
 
 		if (options.rawBody) {
 			response.binary = {
