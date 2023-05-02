@@ -1,9 +1,6 @@
 import { UserSettings } from 'n8n-core';
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	Repository,
-} from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
 
 import config from '@/config';
@@ -24,7 +21,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleRepository } from '@db/repositories';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
@@ -211,6 +208,7 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
+	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();

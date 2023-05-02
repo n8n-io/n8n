@@ -1,8 +1,7 @@
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
-import {
+import type {
 	ICredentialDataDecryptedObject,
-	ICredentialsHelper,
 	IDataObject,
 	IDeferredPromise,
 	IExecuteFunctions,
@@ -22,12 +21,10 @@ import {
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	LoadingDetails,
-	LoggerProxy,
-	NodeHelpers,
-	WorkflowHooks,
 } from 'n8n-workflow';
+import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
-import { WorkflowTestData } from './types';
+import type { WorkflowTestData } from './types';
 import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
@@ -139,6 +136,7 @@ export function WorkflowExecuteAdditionalData(
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
+
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return this.nodeTypes[nodeType].type;
 	}
@@ -180,7 +178,7 @@ const loadKnownNodes = (): Record<string, LoadingDetails> => {
 	return knownNodes!;
 };
 
-export function createTemporaryDir(prefix: string = 'n8n') {
+export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
@@ -196,7 +194,7 @@ export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'de
 	return temporaryDir;
 }
 
-export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
+export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 	if (!Array.isArray(testData)) {
 		testData = [testData];
 	}
@@ -237,6 +235,14 @@ export function setup(testData: Array<WorkflowTestData> | WorkflowTestData) {
 export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 	return Object.keys(testData.output.nodeData).map((nodeName) => {
 		if (result.data.resultData.runData[nodeName] === undefined) {
+			// log errors from other nodes
+			Object.keys(result.data.resultData.runData).forEach((key) => {
+				const error = result.data.resultData.runData[key][0]?.error;
+				if (error) {
+					console.log(`Node ${key}\n`, error);
+				}
+			});
+
 			throw new Error(`Data for node "${nodeName}" is missing!`);
 		}
 		const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -278,7 +284,7 @@ const preparePinData = (pinData: IDataObject) => {
 	const returnData = Object.keys(pinData).reduce(
 		(acc, key) => {
 			const data = pinData[key] as IDataObject[];
-			acc[key] = [data as IDataObject[]];
+			acc[key] = [data];
 			return acc;
 		},
 		{} as {
