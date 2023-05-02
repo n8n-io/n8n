@@ -19,4 +19,9 @@ export const FAKE_CREDENTIALS_DATA: IDataObject = {
 		label: 'GitHub:john-doe',
 		secret: 'BVDRSBXQB2ZEL5HE',
 	},
+	aws: {
+		region: 'eu-central-1',
+		accessKeyId: 'key',
+		secretAccessKey: 'secret',
+	},
 };
