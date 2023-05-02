@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { organizationPresend } from '../GenericFunctions';
-import { mapWith, showFor } from './utils';
+import { getId, mapWith, showFor } from './utils';
 
 const displayOpts = showFor(['organization']);
 
@@ -37,7 +37,7 @@ const organizationOperations: INodeProperties = {
 			routing: {
 				request: {
 					method: 'DELETE',
-					url: '=/organization/{{$parameter["id"]}}',
+					url: '=/organization',
 				},
 			},
 		},
@@ -65,15 +65,6 @@ const organizationOperations: INodeProperties = {
 			},
 		},
 	],
-};
-
-const idField: INodeProperties = {
-	displayName: 'ID',
-	name: 'id',
-	description: 'The ID of the organization',
-	type: 'string',
-	required: true,
-	default: '',
 };
 
 const commonFields: INodeProperties[] = [
@@ -144,7 +135,7 @@ const commonFields: INodeProperties[] = [
 ];
 
 const organizationFields: INodeProperties[] = [
-	Object.assign({}, idField, displayFor.id),
+	Object.assign(getId(), { description: 'The ID of the organization' }, displayFor.id),
 	...commonFields.map(mapWith(displayFor.createOrUpdate)),
 ];
 

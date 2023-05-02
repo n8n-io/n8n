@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { taskPresend } from '../GenericFunctions';
-import { mapWith, showFor } from './utils';
+import { getId, mapWith, showFor } from './utils';
 
 const displayOpts = showFor(['task']);
 
@@ -37,7 +37,7 @@ const taskOperations: INodeProperties = {
 			routing: {
 				request: {
 					method: 'DELETE',
-					url: '=/task/{{$parameter["id"]}}',
+					url: '=/task',
 				},
 			},
 		},
@@ -65,15 +65,6 @@ const taskOperations: INodeProperties = {
 			},
 		},
 	],
-};
-
-const idField: INodeProperties = {
-	displayName: 'ID',
-	name: 'id',
-	description: 'The ID of the task',
-	type: 'string',
-	required: true,
-	default: '',
 };
 
 const commonFields: INodeProperties[] = [
@@ -161,7 +152,7 @@ const commonFields: INodeProperties[] = [
 ];
 
 const taskFields: INodeProperties[] = [
-	Object.assign({}, idField, displayFor.id),
+	Object.assign(getId(), { description: 'The ID of the task' }, displayFor.id),
 	...commonFields.map(mapWith(displayFor.createOrUpdate)),
 ];
 

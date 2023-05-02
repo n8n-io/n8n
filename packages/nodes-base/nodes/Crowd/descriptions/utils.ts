@@ -25,3 +25,17 @@ export const mapWith =
 	<T>(...objects: Array<Partial<T>>) =>
 	(item: Partial<T>) =>
 		Object.assign({}, item, ...objects);
+
+export const getId = (): INodeProperties => ({
+	displayName: 'ID',
+	name: 'id',
+	type: 'string',
+	required: true,
+	default: '',
+	routing: {
+		send: {
+			type: 'query',
+			property: 'ids[]',
+		},
+	},
+});
