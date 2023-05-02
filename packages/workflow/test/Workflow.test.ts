@@ -20,7 +20,7 @@ interface StubNode {
 }
 
 describe('Workflow', () => {
-	describe('renameNodeInExpressions', () => {
+	describe('renameNodeInParameterValue for expressions', () => {
 		const tests = [
 			{
 				description: 'do nothing if there is no expression',
@@ -257,12 +257,64 @@ describe('Workflow', () => {
 
 		for (const testData of tests) {
 			test(testData.description, () => {
-				const result = workflow.renameNodeInExpressions(
+				const result = workflow.renameNodeInParameterValue(
 					testData.input.parameters,
 					testData.input.currentName,
 					testData.input.newName,
 				);
 				expect(result).toEqual(testData.output);
+			});
+		}
+	});
+
+	describe('renameNodeInParameterValue for node with renamable content', () => {
+		const tests = [
+			{
+				description: "should work with $('name')",
+				input: {
+					currentName: 'Old',
+					newName: 'New',
+					parameters: { jsCode: "$('Old').first();" },
+				},
+				output: { jsCode: "$('New').first();" },
+			},
+			{
+				description: "should work with $node['name'] and $node.name",
+				input: {
+					currentName: 'Old',
+					newName: 'New',
+					parameters: { jsCode: "$node['Old'].first(); $node.Old.first();" },
+				},
+				output: { jsCode: "$node['New'].first(); $node.New.first();" },
+			},
+			{
+				description: 'should work with $items()',
+				input: {
+					currentName: 'Old',
+					newName: 'New',
+					parameters: { jsCode: "$items('Old').first();" },
+				},
+				output: { jsCode: "$items('New').first();" },
+			},
+		];
+
+		const workflow = new Workflow({
+			nodes: [],
+			connections: {},
+			active: false,
+			nodeTypes: Helpers.NodeTypes(),
+		});
+
+		for (const t of tests) {
+			test(t.description, () => {
+				expect(
+					workflow.renameNodeInParameterValue(
+						t.input.parameters,
+						t.input.currentName,
+						t.input.newName,
+						{ hasRenamableContent: true },
+					),
+				).toEqual(t.output);
 			});
 		}
 	});
@@ -605,9 +657,9 @@ describe('Workflow', () => {
 					},
 				},
 			},
-			// This does just a basic test if "renameNodeInExpressions" gets used. More complex
+			// This does just a basic test if "renameNodeInParameterValue" gets used. More complex
 			// tests with different formats and levels are in the separate tests for the function
-			// "renameNodeInExpressions"
+			// "renameNodeInParameterValue"
 			{
 				description: 'change name also in expressions which use node-name (dot notation)',
 				input: {

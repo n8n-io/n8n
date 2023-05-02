@@ -172,3 +172,11 @@ export const fuzzyCompare = (useFuzzyCompare: boolean, compareVersion = 1) => {
 		return isEqual(item1, item2);
 	};
 };
+
+export const keysToLowercase = <T>(headers: T) => {
+	if (typeof headers !== 'object' || Array.isArray(headers) || headers === null) return headers;
+	return Object.entries(headers).reduce((acc, [key, value]) => {
+		acc[key.toLowerCase()] = value;
+		return acc;
+	}, {} as IDataObject);
+};

@@ -7,7 +7,6 @@ on:
         description: 'GitHub branch to test.'
         required: false
         type: string
-        default: 'master'
       user:
         description: 'User who kicked this off.'
         required: false
@@ -43,6 +42,10 @@ on:
         required: false
         default: '[1, 2, 3, 4, 5, 6, 7, 8]'
         type: string
+      pr_number:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
     secrets:
       CYPRESS_RECORD_KEY:
         description: 'Cypress record key.'
@@ -78,6 +81,12 @@ jobs:
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
+
+      - name: Checkout PR
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
@@ -122,6 +131,12 @@ jobs:
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
+
+      - name: Checkout PR
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2.2.4
