@@ -4,6 +4,9 @@
 		"lib": ["dom", "es2020", "es2022.error"],
 		"types": ["node", "jest"],
 		"noEmit": true,
+		"paths": {
+			"@test/*": ["./test/*"]
+		},
 		// TODO: remove all options below this line
 		"noImplicitReturns": false,
 		"noUnusedLocals": false,
