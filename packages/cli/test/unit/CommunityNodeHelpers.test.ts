@@ -145,7 +145,7 @@ describe('executeCommand', () => {
 			);
 		});
 
-		await expect(async () => await executeCommand('ls')).rejects.toThrow(
+		await expect(async () => executeCommand('ls')).rejects.toThrow(
 			RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND,
 		);
 

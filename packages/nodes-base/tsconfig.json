@@ -9,7 +9,7 @@
 		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["credentials/**/*.ts", "nodes/**/*.ts"],
+	"include": ["credentials/**/*.ts", "nodes/**/*.ts", "test/**/*.ts", "utils/**/*.ts"],
 	"references": [
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" }

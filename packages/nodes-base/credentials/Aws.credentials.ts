@@ -9,6 +9,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+import { isObjectEmpty } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
 export const regions = [
@@ -353,7 +354,7 @@ export class Aws implements ICredentialType {
 			});
 		}
 
-		if (body && Object.keys(body).length === 0) {
+		if (body && typeof body === 'object' && !isObjectEmpty(body)) {
 			body = '';
 		}
 

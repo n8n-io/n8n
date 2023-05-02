@@ -25,10 +25,8 @@
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
 		>
-			<div v-if="loading" class="mr-m">
-				<n8n-loading variant="p" :rows="1" />
-				<n8n-loading variant="p" :rows="1" />
-				<n8n-loading variant="p" :rows="1" />
+			<div v-if="loading" class="mr-l">
+				<n8n-loading variant="rect" />
 			</div>
 			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
@@ -289,5 +287,12 @@ export default defineComponent({
 	width: 100%;
 	margin-top: var(--spacing-2xl);
 	text-align: center;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-skeleton__item) {
+	height: 60px;
+	border-radius: 0;
 }
 </style>
