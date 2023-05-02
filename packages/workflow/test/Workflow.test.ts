@@ -699,7 +699,7 @@ describe('Workflow', () => {
 	});
 
 	describe('getParameterValue', () => {
-		const tests: {
+		const tests: Array<{
 			description: string;
 			input: {
 				[nodeName: string]: {
@@ -709,7 +709,7 @@ describe('Workflow', () => {
 				};
 			};
 			output: Record<string, unknown>;
-		}[] = [
+		}> = [
 			{
 				description: 'read simple not expression value',
 				input: {
@@ -1244,7 +1244,7 @@ describe('Workflow', () => {
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] =
-					runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
+					runExecutionData.resultData.runData.Node1[0]!.data!.main[0]!;
 
 				for (const parameterName of Object.keys(testData.output)) {
 					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
@@ -1399,7 +1399,7 @@ describe('Workflow', () => {
 			const itemIndex = 0;
 			const runIndex = 0;
 			const connectionInputData: INodeExecutionData[] =
-				runExecutionData.resultData.runData!['Node1']![0]!.data!.main[0]!;
+				runExecutionData.resultData.runData.Node1[0]!.data!.main[0]!;
 			const parameterName = 'values';
 
 			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[

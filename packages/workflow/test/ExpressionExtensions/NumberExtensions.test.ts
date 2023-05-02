@@ -59,6 +59,7 @@ describe('Data Transformation Functions', () => {
 
 	describe('Multiple expressions', () => {
 		test('Basic multiple expressions', () => {
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			expect(evaluate('={{ "test abc".toSnakeCase() }} you have ${{ (100).format() }}.')).toEqual(
 				'test_abc you have $100.',
 			);
