@@ -190,6 +190,9 @@ export = {
 				try {
 					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
 				} catch (error) {
+					// If it fails to activate, set it to inactive
+					updateData.active = false;
+					await updateWorkflow(sharedWorkflow.workflowId, updateData);
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
 					}
