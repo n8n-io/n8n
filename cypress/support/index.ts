@@ -43,6 +43,7 @@ declare global {
 			skipSetup(): void;
 			resetAll(): void;
 			enableFeature(feature: string): void;
+			disableFeature(feature: string): void;
 			waitForLoad(waitForIntercepts?: boolean): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;

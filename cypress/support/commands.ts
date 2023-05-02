@@ -116,7 +116,9 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	const signupPage = new SignupPage();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -125,7 +127,10 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
 				signupPage.getters.password().type(password);
+
+				cy.intercept('POST', '/rest/owner/setup').as('setupRequest');
 				signupPage.getters.submit().click();
+				cy.wait('@setupRequest');
 			} else {
 				cy.log('User already signed up');
 			}
@@ -201,7 +206,11 @@ Cypress.Commands.add('setupOwner', (payload) => {
 });
 
 Cypress.Commands.add('enableFeature', (feature) => {
-	cy.task('enable-feature', feature);
+	cy.task('enable-feature', { feature, enabled: true });
+});
+
+Cypress.Commands.add('disableFeature', (feature) => {
+	cy.task('enable-feature', { feature, enabled: false });
 });
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {

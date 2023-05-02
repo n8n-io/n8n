@@ -35,8 +35,13 @@ module.exports = defineConfig({
 						return null
 					}
 				},
-				'enable-feature': (feature) =>
-					fetch(BASE_URL + `/e2e/enable-feature/${feature}`, { method: 'POST' }),
+				'enable-feature': ({ feature, enabled }) => {
+					return fetch(BASE_URL + `/e2e/enable-feature/${feature}`, {
+						method: 'POST',
+						body: JSON.stringify({ enabled }),
+						headers: { 'Content-Type': 'application/json' }
+					})
+				},
 			});
 		},
 	},

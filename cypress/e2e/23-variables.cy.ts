@@ -16,6 +16,7 @@ describe('Variables', () => {
 	});
 
 	it('should show the unlicensed action box when the feature is disabled', () => {
+		cy.disableFeature('feat:variables');
 		cy.signin({ email, password });
 		cy.visit(variablesPage.url);
 
