@@ -17,6 +17,8 @@ import type mysql2 from 'mysql2/promise';
 import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
 import type { IExecuteFunctions } from 'n8n-core';
 
+import { oldVersionNotice } from '../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'MySQL',
 	name: 'mySql',
@@ -37,6 +39,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Operation',
 			name: 'operation',
@@ -72,6 +75,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			typeOptions: {
+				editor: 'sqlEditor',
+				sqlDialect: 'mysql',
+			},
 			displayOptions: {
 				show: {
 					operation: ['executeQuery'],

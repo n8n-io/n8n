@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 // If your test needs data from credentials, you can add it here.
 // as JSON.stringify({ id: 'credentials_ID', name: 'credentials_name' }) for specific credentials

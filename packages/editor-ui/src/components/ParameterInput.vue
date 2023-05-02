@@ -18,6 +18,7 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
+				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
 				:expressionComputedValue="expressionEvaluated"
@@ -100,6 +101,14 @@
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
 					:disableExpressionCompletions="!isHtmlNode(node)"
+					@valueChanged="valueChangedDebounced"
+				/>
+
+				<sql-editor
+					v-else-if="editorType === 'sqlEditor'"
+					:query="node.parameters.query"
+					:dialect="getArgument('sqlDialect')"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -367,6 +376,7 @@ import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue'
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -374,8 +384,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
-import { CODE_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
@@ -384,6 +393,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus';
+import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
@@ -398,6 +408,7 @@ export default mixins(
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
+		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
@@ -961,8 +972,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			// Set focus on field
-			setTimeout(() => {
+			Vue.nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore

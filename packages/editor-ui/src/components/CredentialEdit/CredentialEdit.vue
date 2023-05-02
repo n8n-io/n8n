@@ -256,7 +256,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		setTimeout(() => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner === true) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
 					this.showValidationWarning = true;
 				} else {
 					this.retestCredential();
@@ -347,6 +349,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 		},
 		isCredentialTestable(): boolean {
+			// Sharees can always test since they can't see the data.
+			if (this.credentialPermissions.isOwner === false) {
+				return true;
+			}
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
 			}

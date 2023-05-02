@@ -16,6 +16,7 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		NODE_FUNCTION_ALLOW_EXTERNAL: 'node-fetch',
 	};
 } else if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';

@@ -204,6 +204,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		allNodes(): INodeUi[] {
 			return this.workflow.nodes;
 		},
+		/**
+		 * Names of all nodes currently on canvas.
+		 */
+		canvasNames(): Set<string> {
+			return new Set(this.allNodes.map((n) => n.name));
+		},
 		nodesByName(): { [name: string]: INodeUi } {
 			return this.workflow.nodes.reduce((accu: { [name: string]: INodeUi }, node) => {
 				accu[node.name] = node;
