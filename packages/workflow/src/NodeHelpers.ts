@@ -1238,23 +1238,25 @@ export function getParameterIssues(
 			}
 		}
 	} else if (nodeProperties.type === 'resourceMapper' && isDisplayed) {
-		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
-		if (isResourceMapperValue(value)) {
-			value.schema.forEach((field) => {
-				if (field.required) {
-					if (value.value && value.value[field.id] === null) {
-						const key = `${nodeProperties.name}.${field.id}`;
-						if (foundIssues.parameters === undefined) {
-							foundIssues.parameters = {};
+		if (nodeProperties.typeOptions?.resourceMapper?.mode === 'add') {
+			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+			if (isResourceMapperValue(value)) {
+				value.schema.forEach((field) => {
+					if (field.required) {
+						if (value.value && value.value[field.id] === null) {
+							const key = `${nodeProperties.name}.${field.id}`;
+							if (foundIssues.parameters === undefined) {
+								foundIssues.parameters = {};
+							}
+							if (foundIssues.parameters[key] === undefined) {
+								foundIssues.parameters[key] = [];
+							}
+							const error = `Field "${field.id}" is required.`;
+							foundIssues.parameters[key].push(error);
 						}
-						if (foundIssues.parameters[key] === undefined) {
-							foundIssues.parameters[key] = [];
-						}
-						const error = `Field "${field.id}" is required.`;
-						foundIssues.parameters[key].push(error);
 					}
-				}
-			});
+				});
+			}
 		}
 	}
 

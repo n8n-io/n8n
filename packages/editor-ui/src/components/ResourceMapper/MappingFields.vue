@@ -48,7 +48,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				name: `value["${field.id}"]`,
 				type: (field.type as NodePropertyTypes) || 'string',
 				default: '',
-				required: field.required,
+				required: false,
 				description: getFieldDescription(field),
 			};
 		});
@@ -247,21 +247,23 @@ defineExpose({
 					@click="removeField(field.name)"
 				/>
 			</div>
-			<parameter-input-full
-				:parameter="field"
-				:value="getParameterValue(nodeValues, field.name, path)"
-				:displayOptions="true"
-				:path="`${props.path}.${field.name}}`"
-				:isReadOnly="false"
-				:hideLabel="false"
-				:nodeValues="nodeValues"
-				:class="$style.parameterInputFull"
-				@valueChanged="onValueChanged"
-			/>
+			<div :class="$style.parameterInput">
+				<parameter-input-full
+					:parameter="field"
+					:value="getParameterValue(nodeValues, field.name, path)"
+					:displayOptions="true"
+					:path="`${props.path}.${field.name}}`"
+					:isReadOnly="false"
+					:hideLabel="false"
+					:nodeValues="nodeValues"
+					:class="$style.parameterInputFull"
+					@valueChanged="onValueChanged"
+				/>
+			</div>
 			<parameter-issues
 				v-if="getFieldIssues(field).length > 0"
 				:issues="getFieldIssues(field)"
-				:class="$style['parameter-issues']"
+				:class="[$style.parameterIssues, 'ml-5xs']"
 			/>
 		</div>
 		<div class="add-option">
@@ -289,19 +291,23 @@ defineExpose({
 
 <style module lang="scss">
 .parameterItem {
-	position: relative;
+	display: flex;
 	padding: 0 0 0 1em;
 
+	.parameterInput {
+		width: 100%;
+	}
+
 	&.hasIssues {
-		div:nth-child(2) {
-			width: 97%;
+		.parameterIssues {
+			float: none;
+			align-self: flex-end;
+			padding-bottom: var(--spacing-2xs);
 		}
-		div:nth-child(3) {
-			position: relative;
-			top: -22px;
-		}
-		input {
+		input,
+		input:focus {
 			--input-border-color: var(--color-danger);
+			border-color: var(--color-danger);
 		}
 	}
 }

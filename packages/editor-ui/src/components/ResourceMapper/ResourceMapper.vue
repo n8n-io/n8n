@@ -2,11 +2,12 @@
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import type {
+import {
 	INode,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeHelpers,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { computed, onMounted, reactive, watch } from 'vue';
@@ -79,6 +80,10 @@ onMounted(async () => {
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
 	setDefaultFieldValues();
+	// TODO: Load node issues when component is mounted
+	if (props.node) {
+		NodeHelpers.getNodeParametersIssues(nodeType.value?.properties || [], props.node);
+	}
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
