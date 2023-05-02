@@ -360,6 +360,7 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 	EditorType,
+	CodeNodeMode,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -744,7 +745,7 @@ export default mixins(
 		},
 		editorLanguage(): CodeNodeEditorLanguage {
 			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
-			return 'javaScript';
+			return (this.getArgument('editorLanguage') as CodeNodeEditorLanguage) ?? 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>

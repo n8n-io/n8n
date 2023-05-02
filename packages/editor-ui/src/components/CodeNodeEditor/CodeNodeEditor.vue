@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="['code-node-editor', $style['code-node-editor-container']]"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
 		ref="codeNodeEditorContainer"
@@ -23,13 +23,16 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 
+import type { LanguageSupport } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
-import { Compartment, EditorState, EditorStateConfig } from '@codemirror/state';
+import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import { EditorView } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
+import type { CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
+import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
@@ -39,36 +42,23 @@ import { useSettingsStore } from '@/stores/settings';
 import Modal from '@/components/Modal.vue';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
-import {
-	ALL_ITEMS_PLACEHOLDER,
-	CODE_LANGUAGES,
-	CODE_MODES,
-	EACH_ITEM_PLACEHOLDER,
-} from './constants';
+import { CODE_PLACEHOLDERS } from './constants';
 import { linterExtension } from './javaScript/linter';
 import { completerExtension } from './javaScript/completer';
 import { codeNodeEditorTheme } from './theme';
-import type { CodeLanguage, CodeMode } from './types';
-
-const placeholders: Partial<Record<CodeLanguage, Record<CodeMode, string>>> = {
-	javaScript: {
-		runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
-		runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
-	},
-};
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
 	components: { Modal },
 	props: {
 		mode: {
-			type: String as PropType<CodeMode>,
-			validator: (value: CodeMode): boolean => CODE_MODES.includes(value),
+			type: String as PropType<CodeExecutionMode>,
+			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),
 		},
 		language: {
-			type: String as PropType<CodeLanguage>,
-			default: 'javaScript' as CodeLanguage,
-			validator: (value: CodeLanguage): boolean => CODE_LANGUAGES.includes(value),
+			type: String as PropType<CodeNodeEditorLanguage>,
+			default: 'javaScript' as CodeNodeEditorLanguage,
+			validator: (value: CodeNodeEditorLanguage): boolean => CODE_LANGUAGES.includes(value),
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -81,22 +71,29 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	data() {
 		return {
 			editor: null as EditorView | null,
+			languageCompartment: new Compartment(),
 			linterCompartment: new Compartment(),
-			isDefault: false,
 			isEditorHovered: false,
 			isEditorFocused: false,
 		};
 	},
 	watch: {
-		mode(newMode, previousMode: CodeMode) {
+		mode(newMode, previousMode: CodeExecutionMode) {
 			this.reloadLinter();
 
-			if (this.content.trim() === placeholders[this.language]?.[previousMode]) {
+			if (this.content.trim() === CODE_PLACEHOLDERS[this.language]?.[previousMode]) {
 				this.refreshPlaceholder();
 			}
 		},
-		language() {
-			this.refreshPlaceholder();
+		language(newLanguage, previousLanguage: CodeNodeEditorLanguage) {
+			if (this.content.trim() === CODE_PLACEHOLDERS[previousLanguage]?.[this.mode]) {
+				this.refreshPlaceholder();
+			}
+
+			const [languageSupport] = this.languageExtensions;
+			this.editor?.dispatch({
+				effects: this.languageCompartment.reconfigure(languageSupport),
+			});
 		},
 	},
 	computed: {
@@ -110,7 +107,17 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			return this.editor.state.doc.toString();
 		},
 		placeholder(): string {
-			return placeholders[this.language]?.[this.mode] ?? '';
+			return CODE_PLACEHOLDERS[this.language]?.[this.mode] ?? '';
+		},
+		languageExtensions(): [LanguageSupport, ...Extension[]] {
+			switch (this.language) {
+				case 'json':
+					return [json()];
+				case 'javaScript':
+					return [javascript(), this.autocompletionExtension()];
+				case 'python':
+					return [python()];
+			}
 		},
 	},
 	methods: {
@@ -241,17 +248,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			);
 		}
 
-		switch (language) {
-			case 'json':
-				extensions.push(json());
-				break;
-			case 'javaScript':
-				extensions.push(javascript(), this.autocompletionExtension());
-				break;
-			case 'python':
-				extensions.push(python());
-				break;
-		}
+		const [languageSupport, ...otherExtensions] = this.languageExtensions;
+		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
 		const state = EditorState.create({
 			doc: this.value || this.placeholder,

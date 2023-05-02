@@ -1,76 +1,54 @@
 import type { NodeVMOptions } from 'vm2';
 import { NodeVM } from 'vm2';
+import type { IExecuteFunctions, INodeExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import type { CodeNodeMode } from './utils';
-
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	IWorkflowDataProxyData,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
+import type { SandboxContext } from './Sandbox';
 import { Sandbox } from './Sandbox';
-
-interface SandboxContext extends IWorkflowDataProxyData {
-	$getNodeParameter: IExecuteFunctions['getNodeParameter'];
-	$getWorkflowStaticData: IExecuteFunctions['getWorkflowStaticData'];
-	helpers: IExecuteFunctions['helpers'];
-}
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
 
-export class SandboxJavaScript extends Sandbox {
-	private jsCode = '';
+const getSandboxOptions = (
+	context: SandboxContext,
+	workflowMode: WorkflowExecuteMode,
+): NodeVMOptions => ({
+	console: workflowMode === 'manual' ? 'redirect' : 'inherit',
+	sandbox: context,
+	require: {
+		builtin: builtIn ? builtIn.split(',') : [],
+		external: external ? { modules: external.split(','), transitive: false } : false,
+	},
+});
 
-	private itemIndex: number | undefined = undefined;
-
-	vm: NodeVM;
+export class JavaScriptSandbox extends Sandbox {
+	readonly vm: NodeVM;
 
 	constructor(
-		context: ReturnType<typeof getSandboxContext>,
+		context: SandboxContext,
+		private jsCode: string,
+		itemIndex: number | undefined,
 		workflowMode: WorkflowExecuteMode,
-		private nodeMode: CodeNodeMode,
-		private helpers: IExecuteFunctions['helpers'],
+		helpers: IExecuteFunctions['helpers'],
 	) {
-		super({
-			object: {
-				singular: 'object',
-				plural: 'objects',
+		super(
+			{
+				object: {
+					singular: 'object',
+					plural: 'objects',
+				},
 			},
-		});
-		this.vm = new NodeVM(SandboxJavaScript.getSandboxOptions(context, workflowMode));
+			itemIndex,
+			helpers,
+		);
+		this.vm = new NodeVM(getSandboxOptions(context, workflowMode));
 	}
-
-	static getSandboxOptions(
-		context: ReturnType<typeof getSandboxContext>,
-		workflowMode: WorkflowExecuteMode,
-	): NodeVMOptions {
-		const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
-			process.env;
-
-		return {
-			console: workflowMode === 'manual' ? 'redirect' : 'inherit',
-			sandbox: context,
-			require: {
-				builtin: builtIn ? builtIn.split(',') : [],
-				external: external ? { modules: external.split(','), transitive: false } : false,
-			},
-		};
-	}
-
-	// async runCode(jsCode: string, itemIndex?: number) {
-	// 	this.jsCode = jsCode;
-	// 	this.itemIndex = itemIndex;
-
-	// 	return this.nodeMode === 'runOnceForAllItems' ? this.runCodeAllItems() : this.runCodeEachItem();
-	// }
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
-		let executionResult;
+		let executionResult: INodeExecutionData | INodeExecutionData[];
 
 		try {
 			executionResult = await this.vm.run(script, __dirname);
@@ -87,14 +65,10 @@ export class SandboxJavaScript extends Sandbox {
 
 		if (executionResult === null) return [];
 
-		executionResult = executionResult as INodeExecutionData[];
-
-		this.validateRunCodeAllItems(executionResult);
-
-		return this.helpers.normalizeItems(executionResult);
+		return this.validateRunCodeAllItems(executionResult);
 	}
 
-	async runCodeEachItem(itemIndex: number): Promise<INodeExecutionData | undefined> {
+	async runCodeEachItem(): Promise<INodeExecutionData | undefined> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
 		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
@@ -119,7 +93,7 @@ export class SandboxJavaScript extends Sandbox {
 			}
 		}
 
-		let executionResult;
+		let executionResult: INodeExecutionData;
 
 		try {
 			executionResult = await this.vm.run(script, __dirname);
@@ -136,20 +110,6 @@ export class SandboxJavaScript extends Sandbox {
 
 		if (executionResult === null) return;
 
-		this.validateRunCodeEachItem(executionResult as INodeExecutionData, false, this.itemIndex);
-
-		return executionResult.json ? executionResult : { json: executionResult };
+		return this.validateRunCodeEachItem(executionResult);
 	}
-}
-
-export function getSandboxContext(this: IExecuteFunctions, index: number): SandboxContext {
-	return {
-		// from NodeExecuteFunctions
-		$getNodeParameter: this.getNodeParameter,
-		$getWorkflowStaticData: this.getWorkflowStaticData,
-		helpers: this.helpers,
-
-		// $node, $items(), $parameter, $json, $env, etc.
-		...this.getWorkflowDataProxy(index),
-	};
 }

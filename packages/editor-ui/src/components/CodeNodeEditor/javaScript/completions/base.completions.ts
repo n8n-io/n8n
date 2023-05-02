@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor//constants';
+import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor/constants';
 import { addVarType } from '@/components/CodeNodeEditor/utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
@@ -7,7 +7,7 @@ import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-function getAutocompletableNodeNames(nodes: INodeUi[]) {
+function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
 		.filter((node: INodeUi) => !NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type))
 		.map((node: INodeUi) => node.name);
@@ -104,7 +104,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
 			options.push(
-				...getAutocompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
+				...getAutoCompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
 					return {
 						label: `$('${nodeName}')`,
 						type: 'variable',
@@ -142,7 +142,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = getAutocompletableNodeNames(this.workflowsStore.allNodes).map(
+			const options: Completion[] = getAutoCompletableNodeNames(this.workflowsStore.allNodes).map(
 				(nodeName) => {
 					return {
 						label: `$('${nodeName}')`,

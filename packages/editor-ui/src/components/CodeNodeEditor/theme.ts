@@ -13,6 +13,7 @@ import { tags } from '@lezer/highlight';
 const BASE_STYLING = {
 	fontSize: '0.8em',
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
+	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '300px',
 		lineHeight: '1.3em',
@@ -70,6 +71,7 @@ export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 				? 'var(--color-code-background-readonly)'
 				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
+			borderRadius: 'var(--border-radius-base)',
 		},
 		'.cm-tooltip': {
 			maxWidth: BASE_STYLING.tooltip.maxWidth,
