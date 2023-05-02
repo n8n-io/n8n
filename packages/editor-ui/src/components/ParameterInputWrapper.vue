@@ -23,23 +23,21 @@
 			@textInput="onTextInput"
 			@valueChanged="onValueChanged"
 		/>
-		<div data-test-id="parameter-input-hint">
-			<input-hint
-				v-if="expressionOutput"
-				:class="$style.hint"
-				data-test-id="parameter-expression-preview"
-				class="ph-no-capture"
-				:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-				:hint="expressionOutput"
-				:singleLine="true"
-			/>
-			<input-hint
-				v-else-if="parameterHint"
-				:class="$style.hint"
-				:renderHTML="true"
-				:hint="parameterHint"
-			/>
-		</div>
+		<input-hint
+			v-if="expressionOutput"
+			:class="$style.hint"
+			data-test-id="parameter-expression-preview"
+			class="ph-no-capture"
+			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+			:hint="expressionOutput"
+			:singleLine="true"
+		/>
+		<input-hint
+			v-else-if="parameterHint"
+			:class="$style.hint"
+			:renderHTML="true"
+			:hint="parameterHint"
+		/>
 	</div>
 </template>
 
@@ -162,7 +160,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 		expressionValueComputed(): string | null {
 			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
-
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return null;
 			}
