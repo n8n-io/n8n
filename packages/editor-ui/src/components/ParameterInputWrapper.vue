@@ -163,10 +163,6 @@ export default mixins(showMessage, workflowHelpers).extend({
 		expressionValueComputed(): string | null {
 			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
 
-			console.log('this.activeNode', this.activeNode);
-			// console.log('!this.activeNode', !this.activeNode);
-			// console.log('!this.isValueExpression', !this.isValueExpression);
-			// console.log("typeof value !== 'string'", typeof value !== 'string');
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return null;
 			}
