@@ -46,7 +46,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	name: 'node-creation',

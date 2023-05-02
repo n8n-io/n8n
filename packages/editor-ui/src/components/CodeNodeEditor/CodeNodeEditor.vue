@@ -43,9 +43,9 @@ import {
 	CODE_MODES,
 	EACH_ITEM_PLACEHOLDER,
 } from './constants';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import Modal from '../Modal.vue';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { CodeLanguage, CodeMode } from './types';
 
 const placeholders: Partial<Record<CodeLanguage, Record<CodeMode, string>>> = {

@@ -195,14 +195,14 @@ import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useHistoryStore } from '@/stores/history';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useCredentialsStore } from '@/stores/credentials';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from '@/event-bus';
 
 export default mixins(externalHooks, nodeHelpers).extend({

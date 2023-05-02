@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
 import { faker } from '@faker-js/faker';
 import SettingsSso from '@/views/SettingsSso.vue';
-import { useSSOStore } from '@/stores/sso';
+import { useSSOStore } from '@/stores/sso.store';
 import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { i18nInstance } from '@/plugins/i18n';

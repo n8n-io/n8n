@@ -9,9 +9,9 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessage).extend({
 	data() {

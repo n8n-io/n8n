@@ -57,12 +57,12 @@ import { showMessage } from '@/mixins/showMessage';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores';
 

@@ -92,8 +92,8 @@ import type {
 } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useSegment } from '@/stores/segment';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '../utils/mappingUtils';
 
