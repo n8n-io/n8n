@@ -58,8 +58,8 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.getCreatorItem('On app event').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
-		nodeCreatorFeature.getters.getCreatorItem('Results in other categories (1)').should('exist');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
+		nodeCreatorFeature.getters.getCategoryItem('Results in other categories').should('exist');
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
 		nodeCreatorFeature.getters.getCreatorItem('Edit Image').should('exist');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image123123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
@@ -101,7 +101,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.activeSubcategory().should('have.text', 'FTP');
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('file');
 		// Navigate to rename action which should be the 4th item
-		nodeCreatorFeature.getters.searchBar().find('input').type('{downarrow} {downarrow} {downarrow} {rightarrow}');
+		nodeCreatorFeature.getters.searchBar().find('input').type('{uparrow}{uparrow}{rightarrow}');
 		NDVModal.getters.parameterInput('operation').should('contain.text', 'Rename');
 	})
 
@@ -127,8 +127,106 @@ describe('Node Creator', () => {
 		})
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type(doubleActionNode);
 		nodeCreatorFeature.getters.getCreatorItem(doubleActionNode).click();
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 4);
 	})
+
+	it('should have "Actions" section collapsed when opening actions view from Trigger root view', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('ActiveCampaign');
+		nodeCreatorFeature.getters.getCreatorItem('ActiveCampaign').click();
+		nodeCreatorFeature.getters.getCategoryItem('Actions').should('exist');
+		nodeCreatorFeature.getters.getCategoryItem('Triggers').should('exist');
+
+		nodeCreatorFeature.getters.getCategoryItem('Triggers').parent().should('not.have.attr', 'data-category-collapsed');
+		nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('have.attr', 'data-category-collapsed', 'true');
+		nodeCreatorFeature.getters.getCategoryItem('Actions').click()
+		nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('not.have.attr', 'data-category-collapsed');
+	});
+
+	it('should have "Triggers" section collapsed when opening actions view from Regular root view', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
+
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
+		nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+
+		nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('not.have.attr', 'data-category-collapsed');
+		nodeCreatorFeature.getters.getCategoryItem('Actions').click()
+		nodeCreatorFeature.getters.getCategoryItem('Actions').parent().should('have.attr', 'data-category-collapsed');
+		nodeCreatorFeature.getters.getCategoryItem('Triggers').parent().should('have.attr', 'data-category-collapsed');
+		nodeCreatorFeature.getters.getCategoryItem('Triggers').click()
+		nodeCreatorFeature.getters.getCategoryItem('Triggers').parent().should('not.have.attr', 'data-category-collapsed');
+	});
+
+	it('should show callout and two suggested nodes if node has no trigger actions', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+		nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+		cy.getByTestId('actions-panel-no-triggers-callout').should('be.visible');
+		nodeCreatorFeature.getters.getCreatorItem('On a Schedule').should('be.visible');
+		nodeCreatorFeature.getters.getCreatorItem('On a Webhook call').should('be.visible');
+	});
+
+	it('should show intro callout if user has not made a production execution', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+		nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+		cy.getByTestId('actions-panel-activation-callout').should('be.visible');
+		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
+		nodeCreatorFeature.getters.searchBar().find('input').clear()
+
+		nodeCreatorFeature.getters.getCreatorItem('On a schedule').click();
+
+		// Setup 1s interval execution
+		cy.getByTestId('parameter-input-field').click();
+		cy.getByTestId('parameter-input-field')
+			.find('.el-select-dropdown')
+			.find('.option-headline')
+			.contains('Seconds')
+			.click();
+		cy.getByTestId('parameter-input-secondsInterval').clear().type('1');
+
+		NDVModal.actions.close();
+
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+		nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+		nodeCreatorFeature.getters.getCreatorItem('Get All People').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.activateWorkflow();
+		WorkflowPage.getters.activatorSwitch().should('have.class', 'is-checked');
+
+		// Wait for schedule 1s execution to mark user as having made a production execution
+		cy.wait(1500);
+		cy.reload()
+
+		// Action callout should not be visible after user has made a production execution
+		nodeCreatorFeature.actions.openNodeCreator();
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+		nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+		cy.getByTestId('actions-panel-activation-callout').should('not.exist');
+	});
+
+	it('should show Trigger and Actions sections during search', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Customer Datastore (n8n training)');
+		nodeCreatorFeature.getters.getCreatorItem('Customer Datastore (n8n training)').click();
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Non existent action name');
+
+		nodeCreatorFeature.getters.getCategoryItem('Triggers').should('be.visible');
+		nodeCreatorFeature.getters.getCategoryItem('Actions').should('be.visible');
+		cy.getByTestId('actions-panel-no-triggers-callout').should('be.visible');
+		nodeCreatorFeature.getters.getCreatorItem('On a Schedule').should('be.visible');
+		nodeCreatorFeature.getters.getCreatorItem('On a Webhook call').should('be.visible');
+	});
 
 	describe('should correctly append manual trigger for regular actions', () => {
 		// For these sources, manual node should be added
@@ -152,6 +250,7 @@ describe('Node Creator', () => {
 				source.handler()
 				nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 				nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+				nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 				nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 				NDVModal.actions.close();
 				WorkflowPage.getters.canvasNodes().should('have.length', 2);
@@ -162,12 +261,14 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.canvasAddButton().click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.actions.deleteNode('When clicking "Execute Workflow"')
 			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click()
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();
+			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
 			WorkflowPage.getters.canvasNodes().should('have.length', 2);

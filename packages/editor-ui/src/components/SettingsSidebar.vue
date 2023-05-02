@@ -24,16 +24,15 @@
 import mixins from 'vue-typed-mixins';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
-import { pushConnection } from '@/mixins/pushConnection';
-import { IFakeDoor } from '@/Interface';
-import { IMenuItem } from 'n8n-design-system';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { IFakeDoor } from '@/Interface';
+import type { IMenuItem } from 'n8n-design-system';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export default mixins(userHelpers, pushConnection).extend({
+export default mixins(userHelpers).extend({
 	name: 'SettingsSidebar',
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
@@ -133,9 +132,6 @@ export default mixins(userHelpers, pushConnection).extend({
 
 			return menuItems;
 		},
-	},
-	mounted() {
-		this.pushConnect();
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {

@@ -51,15 +51,12 @@ import mixins from 'vue-typed-mixins';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import {
-	deepCopy,
-	defaultMessageEventBusDestinationOptions,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
-import { BaseTextKey } from '../../plugins/i18n';
-import { EventBus } from '@/event-bus';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { BaseTextKey } from '../../plugins/i18n';
+import type { EventBus } from '@/event-bus';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -92,15 +89,10 @@ export default mixins(showMessage).extend({
 			deepCopy(defaultMessageEventBusDestinationOptions),
 			this.destination,
 		);
-		this.eventBus.on('destinationWasSaved', () => {
-			const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
-			if (updatedDestination) {
-				this.nodeParameters = Object.assign(
-					deepCopy(defaultMessageEventBusDestinationOptions),
-					this.destination,
-				);
-			}
-		});
+		this.eventBus?.on('destinationWasSaved', this.onDestinationWasSaved);
+	},
+	destroyed() {
+		this.eventBus?.off('destinationWasSaved', this.onDestinationWasSaved);
 	},
 	computed: {
 		...mapStores(useLogStreamingStore),
@@ -124,6 +116,15 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
+		onDestinationWasSaved() {
+			const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
+			if (updatedDestination) {
+				this.nodeParameters = Object.assign(
+					deepCopy(defaultMessageEventBusDestinationOptions),
+					this.destination,
+				);
+			}
+		},
 		async onClick(event?: PointerEvent) {
 			if (
 				event &&

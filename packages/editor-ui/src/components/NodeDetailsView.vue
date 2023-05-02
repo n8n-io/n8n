@@ -41,6 +41,7 @@
 				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
+				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
 				@close="close"
 				@init="onPanelsInit"
@@ -124,15 +125,15 @@
 </template>
 
 <script lang="ts">
-import {
+import type {
 	INodeConnections,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 	Workflow,
-	jsonParse,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import { jsonParse } from 'n8n-workflow';
+import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -211,15 +212,10 @@ export default mixins(
 		};
 	},
 	mounted() {
-		dataPinningEventBus.on(
-			'data-pinning-discovery',
-			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
-				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
-			},
-		);
+		dataPinningEventBus.on('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	destroyed() {
-		dataPinningEventBus.off('data-pinning-discovery');
+		dataPinningEventBus.off('data-pinning-discovery', this.setIsTooltipVisible);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
@@ -480,6 +476,9 @@ export default mixins(
 		},
 	},
 	methods: {
+		setIsTooltipVisible({ isTooltipVisible }: { isTooltipVisible: boolean }) {
+			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+		},
 		onKeyDown(e: KeyboardEvent) {
 			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
 				e.stopPropagation();

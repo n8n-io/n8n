@@ -20,21 +20,21 @@ import type { ICreateContactBody } from './ContactInterface';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-enum Status {
+const enum Status {
 	Open = 2,
 	Pending = 3,
 	Resolved = 4,
 	Closed = 5,
 }
 
-enum Priority {
+const enum Priority {
 	Low = 1,
 	Medium = 2,
 	High = 3,
 	Urgent = 4,
 }
 
-enum Source {
+const enum Source {
 	Email = 1,
 	Portal = 2,
 	Phone = 3,

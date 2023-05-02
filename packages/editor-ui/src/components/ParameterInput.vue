@@ -18,6 +18,7 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
+				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
 				:expressionComputedValue="expressionEvaluated"
@@ -51,17 +52,28 @@
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<code-edit
+				<el-dialog
 					v-if="codeEditDialogVisible"
-					:value="value"
-					:parameter="parameter"
-					:type="editorType"
-					:codeAutocomplete="codeAutocomplete"
-					:path="path"
-					:readonly="isReadOnly"
-					@closeDialog="closeCodeEditDialog"
-					@valueChanged="expressionUpdated"
-				></code-edit>
+					visible
+					append-to-body
+					:close-on-click-modal="false"
+					width="80%"
+					:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+						.nodeText()
+						.inputLabelDisplayName(parameter, path)}`"
+					:before-close="closeCodeEditDialog"
+				>
+					<div class="ignore-key-press">
+						<code-node-editor
+							:value="value"
+							:defaultValue="parameter.default"
+							:language="editorLanguage"
+							:isReadOnly="isReadOnly"
+							@valueChanged="expressionUpdated"
+						/>
+					</div>
+				</el-dialog>
+
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
 					:value="value"
@@ -73,15 +85,17 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCode="node.parameters.jsCode"
+					:value="node.parameters.jsCode"
+					:defaultValue="parameter.default"
+					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
 				/>
 
 				<html-editor
-					v-else-if="getArgument('editor') === 'htmlEditor'"
+					v-else-if="editorType === 'htmlEditor'"
 					:html="node.parameters.html"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
@@ -90,18 +104,25 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<sql-editor
+					v-else-if="editorType === 'sqlEditor'"
+					:query="node.parameters.query"
+					:dialect="getArgument('sqlDialect')"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<div
-					v-else-if="isEditor === true"
-					class="code-edit clickable ph-no-capture"
+					v-else-if="editorType"
+					class="readonly-code clickable ph-no-capture"
 					@click="displayEditDialog()"
 				>
-					<prism-editor
+					<code-node-editor
 						v-if="!codeEditDialogVisible"
-						:lineNumbers="true"
-						:readonly="true"
-						:code="displayValue"
-						language="js"
-					></prism-editor>
+						:value="value"
+						:language="editorLanguage"
+						:isReadOnly="true"
+					/>
 				</div>
 
 				<n8n-input
@@ -329,10 +350,8 @@
 
 import { get } from 'lodash-es';
 
-import { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import {
-	NodeHelpers,
-	NodeParameterValue,
+import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import type {
 	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
@@ -340,9 +359,11 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	EditorType,
+	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -352,11 +373,10 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-// @ts-ignore
-import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -364,9 +384,8 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
-import { CODE_NODE_TYPE } from '@/constants';
-import { PropType } from 'vue';
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -374,6 +393,9 @@ import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { htmlEditorEventBus } from '@/event-bus';
+import Vue from 'vue';
+
+type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
 export default mixins(
 	externalHooks,
@@ -384,14 +406,13 @@ export default mixins(
 ).extend({
 	name: 'parameter-input',
 	components: {
-		CodeEdit,
 		CodeNodeEditor,
 		HtmlEditor,
+		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
 		NodeCredentials,
 		CredentialsSelect,
-		PrismEditor,
 		ScopesNotice,
 		ParameterOptions,
 		ParameterIssues,
@@ -553,8 +574,8 @@ export default mixins(
 				return null;
 			}
 		},
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
+		node(): INodeUi {
+			return this.ndvStore.activeNode!;
 		},
 		displayTitle(): string {
 			const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -635,7 +656,7 @@ export default mixins(
 				return 'textarea';
 			}
 
-			if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
+			if (this.editorType === 'code') {
 				return 'textarea';
 			}
 
@@ -718,11 +739,12 @@ export default mixins(
 
 			return [];
 		},
-		isEditor(): boolean {
-			return ['code', 'json'].includes(this.editorType);
+		editorType(): EditorType {
+			return this.getArgument('editor') as EditorType;
 		},
-		editorType(): string {
-			return this.getArgument('editor') as string;
+		editorLanguage(): CodeNodeEditorLanguage {
+			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
+			return 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -906,22 +928,14 @@ export default mixins(
 			this.textEditDialogVisible = false;
 		},
 		displayEditDialog() {
-			if (this.isEditor) {
+			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
 				this.textEditDialogVisible = true;
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
-			if (this.parameter.typeOptions === undefined) {
-				return undefined;
-			}
-
-			if (this.parameter.typeOptions[argumentName] === undefined) {
-				return undefined;
-			}
-
-			return this.parameter.typeOptions[argumentName];
+			return this.parameter.typeOptions?.[argumentName];
 		},
 		expressionUpdated(value: string) {
 			const val: NodeParameterValueType = this.isResourceLocatorParameter
@@ -958,8 +972,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			// Set focus on field
-			setTimeout(() => {
+			Vue.nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
@@ -1099,10 +1112,9 @@ export default mixins(
 				}
 			} else if (command === 'refreshOptions') {
 				if (this.isResourceLocatorParameter) {
-					const resourceLocator = this.$refs.resourceLocator;
-					if (resourceLocator) {
-						(resourceLocator as Vue).$emit('refreshList');
-					}
+					const resourceLocatorRef = this.$refs.resourceLocator as ResourceLocatorRef | undefined;
+
+					resourceLocatorRef?.$emit('refreshList');
 				}
 				this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
@@ -1167,32 +1179,6 @@ export default mixins(
 				},
 				{ deep: true, immediate: true },
 			);
-
-			// Reload function on change element from
-			// displayOptions.typeOptions.reloadOnChange parameters
-			if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-				// Get all parameter in reloadOnChange property
-				// This reload when parameters in reloadOnChange is updated
-				const parametersOnChange: string[] = this.parameter.typeOptions.reloadOnChange;
-				for (let i = 0; i < parametersOnChange.length; i++) {
-					const parameter = parametersOnChange[i] as string;
-					if (parameter in this.node.parameters) {
-						this.$watch(
-							() => {
-								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
-									return this.node.parameters![parameter];
-								} else {
-									return null;
-								}
-							},
-							() => {
-								this.loadRemoteParameterOptions();
-							},
-							{ deep: true, immediate: true },
-						);
-					}
-				}
-			}
 		}
 
 		this.$externalHooks().run('parameterInput.mount', {
@@ -1204,7 +1190,7 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-.code-edit {
+.readonly-code {
 	font-size: var(--font-size-xs);
 }
 

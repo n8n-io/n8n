@@ -1,15 +1,16 @@
 import { MAIN_HEADER_TABS } from '@/constants';
 import { useNDVStore } from '@/stores/ndv';
-import { BulkCommand, Undoable } from '@/models/history';
+import type { Undoable } from '@/models/history';
+import { BulkCommand } from '@/models/history';
 import { useHistoryStore } from '@/stores/history';
 import { useUIStore } from '@/stores/ui';
 
-import { ref, onMounted, onUnmounted, Ref, nextTick, getCurrentInstance } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, getCurrentInstance } from 'vue';
 import { Command } from '@/models/history';
 import { useDebounceHelper } from './useDebounce';
 import useDeviceSupportHelpers from './useDeviceSupport';
 import { getNodeViewTab } from '@/utils';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 

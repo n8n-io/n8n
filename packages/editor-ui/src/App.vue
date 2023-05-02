@@ -37,7 +37,6 @@ import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -48,8 +47,9 @@ import { useNodeTypesStore } from './stores/nodeTypes';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
+import { useVersionControlStore } from '@/stores/versionControl';
 
-export default mixins(newVersions, showMessage, userHelpers, restApi).extend({
+export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -70,6 +70,7 @@ export default mixins(newVersions, showMessage, userHelpers, restApi).extend({
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
+			useVersionControlStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -196,6 +197,13 @@ export default mixins(newVersions, showMessage, userHelpers, restApi).extend({
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
+		}
+
+		if (
+			this.versionControlStore.isEnterpriseVersionControlEnabled &&
+			this.usersStore.isInstanceOwner
+		) {
+			this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {
