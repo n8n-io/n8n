@@ -7,7 +7,6 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { computed, onMounted, reactive, watch } from 'vue';
@@ -16,6 +15,7 @@ import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import { isResourceMapperValue } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
+import Vue from 'vue';
 
 interface Props {
 	parameter: INodeProperties;
@@ -42,9 +42,8 @@ const state = reactive({
 		mappingMode: 'defineBelow',
 		value: {},
 		matchingColumns: [],
-		manuallyRemovedColumns: [],
+		schema: [],
 	} as ResourceMapperValue,
-	fieldsToMap: [] as ResourceMapperField[],
 	loading: false,
 	loadingError: false,
 });
@@ -65,9 +64,9 @@ onMounted(async () => {
 		const params = props.nodeValues.parameters as INodeParameters;
 		const parameterName = props.parameter.name;
 		if (parameterName in params) {
-			state.paramValue = params[parameterName] as ResourceMapperValue;
-			if (!state.paramValue.manuallyRemovedColumns) {
-				state.paramValue.manuallyRemovedColumns = [];
+			state.paramValue = params[parameterName] as unknown as ResourceMapperValue;
+			if (!state.paramValue.schema) {
+				state.paramValue.schema = [];
 			}
 			// TODO: Handle missing values properly once add/remove fields is implemented
 			Object.keys(state.paramValue.value || {}).forEach((key) => {
@@ -97,7 +96,7 @@ const showMatchingColumnsSelector = computed<boolean>(() => {
 	return (
 		!state.loading &&
 		props.parameter.typeOptions?.resourceMapper?.mode !== 'add' &&
-		state.fieldsToMap.length > 0
+		state.paramValue.schema.length > 0
 	);
 });
 
@@ -106,7 +105,7 @@ const showMappingFields = computed<boolean>(() => {
 		state.paramValue.mappingMode === 'defineBelow' &&
 		!state.loading &&
 		!state.loadingError &&
-		state.fieldsToMap.length > 0
+		state.paramValue.schema.length > 0
 	);
 });
 
@@ -121,9 +120,9 @@ const matchingColumns = computed<string[]>(() => {
 });
 
 const defaultSelectedMatchingColumns = computed<string[]>(() => {
-	return state.fieldsToMap.length === 1
-		? [state.fieldsToMap[0].id]
-		: state.fieldsToMap.reduce((acc, field) => {
+	return state.paramValue.schema.length === 1
+		? [state.paramValue.schema[0].id]
+		: state.paramValue.schema.reduce((acc, field) => {
 				if (field.defaultMatch) {
 					acc.push(field.id);
 				}
@@ -167,7 +166,7 @@ async function loadFieldsToMap(): Promise<void> {
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	if (fetchedFields !== null) {
-		state.fieldsToMap = fetchedFields.fields.map((field) => {
+		state.paramValue.schema = fetchedFields.fields.map((field) => {
 			if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
 				field.display = false;
 			}
@@ -189,7 +188,7 @@ async function onModeChanged(mode: string): Promise<void> {
 function setDefaultFieldValues(): void {
 	if (!state.paramValue.value) {
 		state.paramValue.value = {};
-		state.fieldsToMap.forEach((field) => {
+		state.paramValue.schema.forEach((field) => {
 			if (state.paramValue.value) {
 				state.paramValue.value[field.id] = null;
 			}
@@ -239,7 +238,10 @@ function removeField(name: string): void {
 		if (fieldName) {
 			if (state.paramValue.value) {
 				delete state.paramValue.value[fieldName];
-				state.paramValue.manuallyRemovedColumns.push(fieldName);
+				const field = state.paramValue.schema.find((f) => f.id === fieldName);
+				if (field) {
+					Vue.set(field, 'removed', true);
+				}
 				emitValueChanged();
 			}
 		}
@@ -251,10 +253,10 @@ function addField(name: string): void {
 		...state.paramValue.value,
 		[name]: null,
 	};
-	state.paramValue.manuallyRemovedColumns.splice(
-		state.paramValue.manuallyRemovedColumns.indexOf(name),
-		1,
-	);
+	const field = state.paramValue.schema.find((f) => f.id === name);
+	if (field) {
+		Vue.set(field, 'removed', false);
+	}
 	emitValueChanged();
 }
 
@@ -282,14 +284,14 @@ defineExpose({
 			:serviceName="nodeType?.displayName || ''"
 			:loading="state.loading"
 			:loadingError="state.loadingError"
-			:fieldsToMap="state.fieldsToMap"
+			:fieldsToMap="state.paramValue.schema"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
 		/>
 		<matching-columns-select
 			v-if="showMatchingColumnsSelector"
 			:label-size="labelSize"
-			:fieldsToMap="state.fieldsToMap"
+			:fieldsToMap="state.paramValue.schema"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
 			:inputSize="inputSize"
 			:loading="state.loading"
@@ -311,7 +313,7 @@ defineExpose({
 			:parameter="props.parameter"
 			:path="props.path"
 			:nodeValues="props.nodeValues"
-			:fieldsToMap="state.fieldsToMap"
+			:fieldsToMap="state.paramValue.schema"
 			:paramValue="state.paramValue"
 			:FIELD_NAME_REGEX="FIELD_NAME_REGEX"
 			:labelSize="labelSize"

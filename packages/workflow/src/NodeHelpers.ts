@@ -38,7 +38,7 @@ import type {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
-import { isValidResourceLocatorParameterValue } from './type-guards';
+import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
@@ -1196,8 +1196,9 @@ export function getParameterIssues(
 	node: INode,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
+	const isDisplayed = displayParameterPath(nodeValues, nodeProperties, path, node);
 	if (nodeProperties.required === true) {
-		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
+		if (isDisplayed) {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
@@ -1218,25 +1219,42 @@ export function getParameterIssues(
 		}
 	}
 
-	if (nodeProperties.type === 'resourceLocator') {
-		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
-			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
-			if (isINodeParameterResourceLocator(value)) {
-				const mode = nodeProperties.modes?.find((option) => option.name === value.mode);
-				if (mode) {
-					const errors = validateResourceLocatorParameter(value, mode);
-					errors.forEach((error) => {
+	if (nodeProperties.type === 'resourceLocator' && isDisplayed) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isINodeParameterResourceLocator(value)) {
+			const mode = nodeProperties.modes?.find((option) => option.name === value.mode);
+			if (mode) {
+				const errors = validateResourceLocatorParameter(value, mode);
+				errors.forEach((error) => {
+					if (foundIssues.parameters === undefined) {
+						foundIssues.parameters = {};
+					}
+					if (foundIssues.parameters[nodeProperties.name] === undefined) {
+						foundIssues.parameters[nodeProperties.name] = [];
+					}
+
+					foundIssues.parameters[nodeProperties.name].push(error);
+				});
+			}
+		}
+	} else if (nodeProperties.type === 'resourceMapper' && isDisplayed) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isResourceMapperValue(value)) {
+			value.schema.forEach((field) => {
+				if (field.required) {
+					if (value.value && value.value[field.id] === null) {
+						const key = `${nodeProperties.name}.${field.id}`;
 						if (foundIssues.parameters === undefined) {
 							foundIssues.parameters = {};
 						}
-						if (foundIssues.parameters[nodeProperties.name] === undefined) {
-							foundIssues.parameters[nodeProperties.name] = [];
+						if (foundIssues.parameters[key] === undefined) {
+							foundIssues.parameters[key] = [];
 						}
-
-						foundIssues.parameters[nodeProperties.name].push(error);
-					});
+						const error = `Field "${field.id}" is required.`;
+						foundIssues.parameters[key].push(error);
+					}
 				}
-			}
+			});
 		}
 	}
 

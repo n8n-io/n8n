@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import type {
+	INodeIssues,
 	INodeParameters,
 	INodeProperties,
 	NodePropertyTypes,
@@ -8,9 +9,11 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ParameterIssues from '../ParameterIssues.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { get } from 'lodash-es';
+import { useNDVStore } from '@/stores';
 
 interface Props {
 	parameter: INodeProperties;
@@ -33,12 +36,11 @@ const emit = defineEmits<{
 	(event: 'addField', field: string): void;
 }>();
 
+const ndvStore = useNDVStore();
+
 const fieldsUi = computed<INodeProperties[]>(() => {
 	return props.fieldsToMap
-		.filter(
-			(field) =>
-				field.display !== false && !props.paramValue.manuallyRemovedColumns?.includes(field.id),
-		)
+		.filter((field) => field.display !== false && field.removed !== true)
 		.map((field) => {
 			return {
 				displayName: getFieldLabel(field),
@@ -68,9 +70,7 @@ const orderedFields = computed<INodeProperties[]>(() => {
 });
 
 const removedFields = computed<ResourceMapperField[]>(() => {
-	return props.fieldsToMap.filter((field) =>
-		props.paramValue.manuallyRemovedColumns?.includes(field.id),
-	);
+	return props.fieldsToMap.filter((field) => field.removed === true);
 });
 
 const singularFieldWord = computed<string>(() => {
@@ -170,6 +170,23 @@ function getParameterValue(
 	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
 }
 
+function getFieldIssues(field: INodeProperties): string[] {
+	let fieldIssues: string[] = [];
+	if (ndvStore.activeNode) {
+		const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
+		const match = field.name.match(props.FIELD_NAME_REGEX);
+		let fieldName = field.name;
+		if (match) {
+			fieldName = match.pop() || field.name;
+			const key = `${props.parameter.name}.${fieldName}`;
+			if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
+				fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
+			}
+		}
+	}
+	return fieldIssues;
+}
+
 function onValueChanged(value: IUpdateInformation): void {
 	emit('fieldValueChanged', value);
 }
@@ -193,7 +210,11 @@ defineExpose({
 		<div
 			v-for="field in orderedFields"
 			:key="field.name"
-			:class="['parameter-item', $style.parameterItem]"
+			:class="{
+				['parameter-item']: true,
+				[$style.parameterItem]: true,
+				[$style.hasIssues]: getFieldIssues(field).length > 0,
+			}"
 		>
 			<div
 				v-if="fieldCannotBeDeleted(field)"
@@ -234,7 +255,13 @@ defineExpose({
 				:isReadOnly="false"
 				:hideLabel="false"
 				:nodeValues="nodeValues"
+				:class="$style.parameterInputFull"
 				@valueChanged="onValueChanged"
+			/>
+			<parameter-issues
+				v-if="getFieldIssues(field).length > 0"
+				:issues="getFieldIssues(field)"
+				:class="$style['parameter-issues']"
 			/>
 		</div>
 		<div class="add-option">
@@ -264,6 +291,19 @@ defineExpose({
 .parameterItem {
 	position: relative;
 	padding: 0 0 0 1em;
+
+	&.hasIssues {
+		div:nth-child(2) {
+			width: 97%;
+		}
+		div:nth-child(3) {
+			position: relative;
+			top: -22px;
+		}
+		input {
+			--input-border-color: var(--color-danger);
+		}
+	}
 }
 
 .parameterTooltipIcon {

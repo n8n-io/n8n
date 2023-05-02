@@ -1961,6 +1961,7 @@ export interface ResourceMapperField {
 	required: boolean;
 	display: boolean;
 	type?: ResourceMapperFieldType;
+	removed?: boolean;
 }
 
 export type ResourceMapperFieldType = 'string' | 'number' | 'dateTime' | 'boolean';
@@ -1969,7 +1970,7 @@ export type ResourceMapperValue = {
 	mappingMode: string;
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
-	manuallyRemovedColumns: string[];
+	schema: ResourceMapperField[];
 };
 export interface ExecutionOptions {
 	limit?: number;

@@ -3,6 +3,7 @@ import type {
 	INodePropertyOptions,
 	INodePropertyCollection,
 	INodeParameterResourceLocator,
+	ResourceMapperValue,
 } from './Interfaces';
 
 export const isINodeProperties = (
@@ -42,4 +43,15 @@ export const isValidResourceLocatorParameterValue = (
 	} else {
 		return !!value;
 	}
+};
+
+export const isResourceMapperValue = (value: unknown): value is ResourceMapperValue => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'mappingMode' in value &&
+		'matchingColumns' in value &&
+		'schema' in value &&
+		'value' in value
+	);
 };
