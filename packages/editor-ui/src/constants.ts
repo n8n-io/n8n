@@ -533,3 +533,19 @@ export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTIO
 
 export const PARAMETER_TYPES_WITH_CUSTOM_LOADING = ['resourceLocator'];
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
+
+export const ALLOWED_HTML_ATTRIBUTES = ['href', 'name', 'target', 'title', 'class', 'id', 'style'];
+
+export const ALLOWED_HTML_TAGS = [
+	'p',
+	'strong',
+	'b',
+	'code',
+	'a',
+	'br',
+	'i',
+	'em',
+	'small',
+	'details',
+	'summary',
+];

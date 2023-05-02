@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap">
+		<div v-if="!signInWithLdap && !signInWithSaml">
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -114,7 +114,7 @@ export default mixins(showMessage).extend({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
 				},
 			},
 		];
@@ -129,6 +129,11 @@ export default mixins(showMessage).extend({
 		},
 		isLDAPFeatureEnabled(): boolean {
 			return this.settingsStore.settings.enterprise.ldap === true;
+		},
+		signInWithSaml(): boolean {
+			return (
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
+			);
 		},
 	},
 	methods: {

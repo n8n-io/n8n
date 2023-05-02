@@ -6,7 +6,7 @@ import { computed } from 'vue';
 export function useUpgradeLink(queryParams = { default: '', desktop: '' }) {
 	const uiStore = useUIStore();
 	const usageStore = useUsageStore();
-	const i18n = useI18n();
+	const { i18n } = useI18n();
 
 	const upgradeLinkUrl = computed(() => {
 		const linkUrlTranslationKey = uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey;
