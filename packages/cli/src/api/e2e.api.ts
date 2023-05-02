@@ -41,16 +41,16 @@ const truncateAll = async () => {
 	const allTables = await connection.query("SELECT name FROM sqlite_master WHERE type='table';");
 
 	// Disable foreign key constraint checks
-  await connection.query("PRAGMA foreign_keys = OFF;");
+	await connection.query('PRAGMA foreign_keys = OFF;');
 
-	for (const { name: table} of allTables) {
+	for (const { name: table } of allTables) {
 		await connection.query(
 			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 		);
 	}
 
 	// Re-enable foreign key constraint checks
-  await connection.query("PRAGMA foreign_keys = ON;");
+	await connection.query('PRAGMA foreign_keys = ON;');
 };
 
 const setupUserManagement = async () => {
@@ -127,10 +127,14 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	res.writeHead(204).end();
 });
 
-e2eController.post('/enable-feature/:feature', bodyParser.json(), async (req: Request<{ feature: Feature }>, res) => {
-	const { feature } = req.params;
-	const { enabled } = req.body;
+e2eController.post(
+	'/enable-feature/:feature',
+	bodyParser.json(),
+	async (req: Request<{ feature: Feature }>, res) => {
+		const { feature } = req.params;
+		const { enabled } = req.body;
 
-	enabledFeatures[feature] = enabled === undefined || enabled == true;
-	res.writeHead(204).end();
-});
+		enabledFeatures[feature] = enabled === undefined || enabled == true;
+		res.writeHead(204).end();
+	},
+);
