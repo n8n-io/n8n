@@ -7,7 +7,6 @@
 * **core:** Account for nodes with renamable content ([#6109](https://github.com/n8n-io/n8n/issues/6109)) ([b561d46](https://github.com/n8n-io/n8n/commit/b561d463265831f3cd370ec99982847f2bddca41))
 * **core:** Fix `hasOwnProperty` on augmented objects ([#6124](https://github.com/n8n-io/n8n/issues/6124)) ([2f015c0](https://github.com/n8n-io/n8n/commit/2f015c0f153785384b009e71bf4994e18b5d06b8))
 * **core:** Fix canceled execution status ([#6142](https://github.com/n8n-io/n8n/issues/6142)) ([1796101](https://github.com/n8n-io/n8n/commit/1796101fed03d04906f2341a0488b60b7b5bf71c))
-* **core:** Only take into account users that active for the first time to show activation modal (no-changelog) ([#6121](https://github.com/n8n-io/n8n/issues/6121)) ([7cde1a7](https://github.com/n8n-io/n8n/commit/7cde1a7cd86f4b95730b0dbd889b48f812dd0446))
 * **core:** Skip auth for controllers/routes that don't use the `Authorized` decorator, or use `Authorized('none')` ([#6106](https://github.com/n8n-io/n8n/issues/6106)) ([9d44991](https://github.com/n8n-io/n8n/commit/9d44991b2a8c9384e2bf32204ac47a4ecb0131be))
 * Correctly allow sharees to test credential when opening the modal ([#6111](https://github.com/n8n-io/n8n/issues/6111)) ([240bb47](https://github.com/n8n-io/n8n/commit/240bb47e8e2cd99c56b8837079073bbf2bf5f687))
 * **Date & Time Node:** Numbers conversions fix ([e11e7cd](https://github.com/n8n-io/n8n/commit/e11e7cd603a145c83c36f6a6deb821a56ccabd6f))
