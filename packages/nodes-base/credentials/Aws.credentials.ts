@@ -354,7 +354,7 @@ export class Aws implements ICredentialType {
 			});
 		}
 
-		if (body && typeof body === 'object' && !isObjectEmpty(body)) {
+		if (body && typeof body === 'object' && isObjectEmpty(body)) {
 			body = '';
 		}
 
