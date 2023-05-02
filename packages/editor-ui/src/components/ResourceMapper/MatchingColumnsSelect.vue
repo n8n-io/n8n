@@ -67,7 +67,10 @@ const fieldDescription = computed<string>(() => {
 			: 'resourceMapper.columnsToMatchOn.single.description';
 	return locale.baseText(labeli18nKey, {
 		interpolate: {
-			fieldWord: props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord,
+			fieldWord:
+				props.typeOptions?.multiKeyMatch === true
+					? `${pluralFieldWord.charAt(0).toUpperCase() + pluralFieldWord.slice(1)}`
+					: `${singularFieldWord.charAt(0).toUpperCase() + singularFieldWord.slice(1)}`,
 		},
 	});
 });

@@ -35,7 +35,10 @@ const emit = defineEmits<{
 
 const fieldsUi = computed<INodeProperties[]>(() => {
 	return props.fieldsToMap
-		.filter((field) => field.display !== false)
+		.filter(
+			(field) =>
+				field.display !== false && !props.paramValue.manuallyRemovedColumns?.includes(field.id),
+		)
 		.map((field) => {
 			return {
 				displayName: getFieldLabel(field),
@@ -65,14 +68,16 @@ const orderedFields = computed<INodeProperties[]>(() => {
 });
 
 const removedFields = computed<ResourceMapperField[]>(() => {
-	return props.fieldsToMap.filter((field) => field.display === false);
+	return props.fieldsToMap.filter((field) =>
+		props.paramValue.manuallyRemovedColumns?.includes(field.id),
+	);
 });
 
 const singularFieldWord = computed<string>(() => {
-	return (
+	const singularFieldWord =
 		props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
-		locale.baseText('generic.field')
-	);
+		locale.baseText('generic.field');
+	return singularFieldWord.charAt(0).toUpperCase() + singularFieldWord.slice(1);
 });
 
 const pluralFieldWord = computed<string>(() => {
@@ -111,6 +116,13 @@ const addFieldOptions = computed<Array<{ name: string; value: string; disabled?:
 
 const resourceMapperMode = computed<string | undefined>(() => {
 	return props.parameter.typeOptions?.resourceMapper?.mode;
+});
+
+const valuesLabel = computed<string>(() => {
+	if (resourceMapperMode.value && resourceMapperMode.value === 'update') {
+		return locale.baseText('resourceMapper.valuesToUpdate.label');
+	}
+	return locale.baseText('resourceMapper.valuesToSend.label');
 });
 
 function getFieldLabel(field: ResourceMapperField): string {
@@ -177,12 +189,7 @@ defineExpose({
 
 <template>
 	<div class="mt-xs" data-test-id="mapping-fields-container">
-		<n8n-input-label
-			:label="locale.baseText('resourceMapper.valuesToSend.label')"
-			:underline="true"
-			:size="labelSize"
-			color="text-dark"
-		/>
+		<n8n-input-label :label="valuesLabel" :underline="true" :size="labelSize" color="text-dark" />
 		<div
 			v-for="field in orderedFields"
 			:key="field.name"

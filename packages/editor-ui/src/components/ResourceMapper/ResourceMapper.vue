@@ -42,6 +42,7 @@ const state = reactive({
 		mappingMode: 'defineBelow',
 		value: {},
 		matchingColumns: [],
+		manuallyRemovedColumns: [],
 	} as ResourceMapperValue,
 	fieldsToMap: [] as ResourceMapperField[],
 	loading: false,
@@ -65,6 +66,9 @@ onMounted(async () => {
 		const parameterName = props.parameter.name;
 		if (parameterName in params) {
 			state.paramValue = params[parameterName] as ResourceMapperValue;
+			if (!state.paramValue.manuallyRemovedColumns) {
+				state.paramValue.manuallyRemovedColumns = [];
+			}
 			// TODO: Handle missing values properly once add/remove fields is implemented
 			Object.keys(state.paramValue.value || {}).forEach((key) => {
 				if (state.paramValue.value && state.paramValue.value[key] === '') {
@@ -235,12 +239,9 @@ function removeField(name: string): void {
 		if (fieldName) {
 			if (state.paramValue.value) {
 				delete state.paramValue.value[fieldName];
+				state.paramValue.manuallyRemovedColumns.push(fieldName);
 				emitValueChanged();
 			}
-		}
-		const field = state.fieldsToMap.find((field) => field.id === fieldName);
-		if (field) {
-			field.display = false;
 		}
 	}
 }
@@ -250,10 +251,10 @@ function addField(name: string): void {
 		...state.paramValue.value,
 		[name]: null,
 	};
-	const field = state.fieldsToMap.find((field) => field.id === name);
-	if (field) {
-		field.display = true;
-	}
+	state.paramValue.manuallyRemovedColumns.splice(
+		state.paramValue.manuallyRemovedColumns.indexOf(name),
+		1,
+	);
 	emitValueChanged();
 }
 

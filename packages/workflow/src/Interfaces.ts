@@ -1969,6 +1969,7 @@ export type ResourceMapperValue = {
 	mappingMode: string;
 	value: { [key: string]: string | number | boolean | null } | null;
 	matchingColumns: string[];
+	manuallyRemovedColumns: string[];
 };
 export interface ExecutionOptions {
 	limit?: number;
