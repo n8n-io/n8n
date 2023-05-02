@@ -113,7 +113,7 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 	});
 });
 
-Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }, skipIntercept = false) => {
 	const signupPage = new SignupPage();
 
 	cy.intercept('GET', signupPage.url).as('setupPage');
@@ -130,7 +130,10 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 
 				cy.intercept('POST', '/rest/owner/setup').as('setupRequest');
 				signupPage.getters.submit().click();
-				cy.wait('@setupRequest');
+
+				if(!skipIntercept) {
+					cy.wait('@setupRequest');
+				}
 			} else {
 				cy.log('User already signed up');
 			}

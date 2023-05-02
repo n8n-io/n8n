@@ -38,7 +38,9 @@ Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
-	const allTables = await connection.query("SELECT name FROM sqlite_master WHERE type='table';");
+	const allTables: Array<{ name: string }> = await connection.query(
+		"SELECT name FROM sqlite_master WHERE type='table';",
+	);
 
 	// Disable foreign key constraint checks
 	await connection.query('PRAGMA foreign_keys = OFF;');
@@ -134,7 +136,7 @@ e2eController.post(
 		const { feature } = req.params;
 		const { enabled } = req.body;
 
-		enabledFeatures[feature] = enabled === undefined || enabled == true;
+		enabledFeatures[feature] = enabled === undefined || enabled === true;
 		res.writeHead(204).end();
 	},
 );
