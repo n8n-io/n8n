@@ -1,6 +1,14 @@
 <template>
 	<div :class="$style.actionsGroup">
-		<el-dropdown trigger="click" @command="handleCopyClick">
+		<n8n-icon-button
+			v-if="noSelection"
+			:title="$locale.baseText('runData.copyToClipboard')"
+			icon="copy"
+			type="tertiary"
+			:circle="false"
+			@click="handleCopyClick({ command: 'value' })"
+		/>
+		<el-dropdown v-else trigger="click" @command="handleCopyClick">
 			<span class="el-dropdown-link">
 				<n8n-icon-button
 					:title="$locale.baseText('runData.copyToClipboard')"
@@ -47,7 +55,7 @@ type JsonPathData = {
 };
 
 // A path that does not exist so that nothing is selected by default
-const nonExistingJsonPath = '_!^&*';
+export const nonExistingJsonPath = '_!^&*';
 
 export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 	name: 'run-data-json-actions',
@@ -87,15 +95,17 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+		noSelection() {
+			return this.selectedJsonPath === nonExistingJsonPath;
+		},
 		normalisedJsonPath(): string {
-			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
-			return isNotSelected ? '[""]' : this.selectedJsonPath;
+			return this.noSelection ? '[""]' : this.selectedJsonPath;
 		},
 	},
 	methods: {
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
-			if (this.selectedJsonPath === nonExistingJsonPath) {
+			if (this.noSelection) {
 				if (this.hasPinData) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
