@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
@@ -7,23 +7,25 @@ import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { Role } from '@db/entities/Role';
-import { User } from '@db/entities/User';
-import {
-	defaultMessageEventBusDestinationSentryOptions,
-	defaultMessageEventBusDestinationSyslogOptions,
-	defaultMessageEventBusDestinationWebhookOptions,
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
+import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
+import {
+	defaultMessageEventBusDestinationSentryOptions,
+	defaultMessageEventBusDestinationSyslogOptions,
+	defaultMessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
-import { EventNamesTypes } from '@/eventbus/EventMessageClasses';
+import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 import { License } from '@/License';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
@@ -51,7 +53,7 @@ const testWebhookDestination: MessageEventBusDestinationWebhookOptions = {
 	...defaultMessageEventBusDestinationWebhookOptions,
 	id: '88be6560-bfb4-455c-8aa1-06971e9e5522',
 	url: 'http://localhost:3456',
-	method: `POST`,
+	method: 'POST',
 	label: 'Test Webhook',
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
