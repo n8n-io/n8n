@@ -59,15 +59,30 @@ export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	return [pass, fail];
 };
 
-export const webhookNotFoundErrorMessage = (path: string, httpMethod?: string) => {
-	let tip = '';
+export const webhookNotFoundErrorMessage = (
+	path: string,
+	httpMethod?: string,
+	webhookMethods?: string[],
+) => {
 	let webhookPath = path;
+
 	if (httpMethod) {
 		webhookPath = `${httpMethod} ${webhookPath}`;
 	}
-	if (httpMethod === 'POST') {
-		tip = ' Did you mean to make a GET request?';
-	}
 
-	return `The requested webhook "${webhookPath}" is not registered.${tip}`;
+	if (webhookMethods?.length && httpMethod) {
+		let methods = '';
+
+		if (webhookMethods.length === 1) {
+			methods = webhookMethods[0];
+		} else {
+			const lastMethod = webhookMethods.pop();
+
+			methods = `${webhookMethods.join(', ')} or ${lastMethod as string}`;
+		}
+
+		return `This webhook is not registered for ${httpMethod} requests. Did you mean to make a ${methods} request?`;
+	} else {
+		return `The requested webhook "${webhookPath}" is not registered.`;
+	}
 };
