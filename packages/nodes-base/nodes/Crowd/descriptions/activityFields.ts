@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 import { activityPresend } from '../GenericFunctions';
-import { emailsField, usernameField } from './shared';
+import { emailsField } from './shared';
 import { mapWith, showFor } from './utils';
 
 const displayOpts = showFor(['activity']);
@@ -51,13 +51,45 @@ const memberField: INodeProperties = {
 	name: 'member',
 	description: 'A member of your community',
 	type: 'fixedCollection',
+	required: true,
 	default: {},
 	options: [
 		{
 			displayName: 'Item Choice',
 			name: 'itemChoice',
 			values: [
-				usernameField,
+				{
+					displayName: 'Username',
+					name: 'username',
+					type: 'fixedCollection',
+					typeOptions: {
+						multipleValues: true,
+					},
+					required: true,
+					default: {},
+					options: [
+						{
+							displayName: 'Item Choice',
+							name: 'itemChoice',
+							values: [
+								{
+									displayName: 'Key',
+									name: 'key',
+									type: 'string',
+									required: true,
+									default: '',
+								},
+								{
+									displayName: 'Value',
+									name: 'value',
+									type: 'string',
+									required: true,
+									default: '',
+								},
+							],
+						},
+					],
+				},
 				{
 					displayName: 'displayName',
 					name: 'displayName',
