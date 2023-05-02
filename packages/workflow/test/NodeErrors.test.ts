@@ -1,4 +1,4 @@
-import { INode } from '../src/Interfaces';
+import type { INode } from '../src/Interfaces';
 import { NodeApiError } from '../src/NodeErrors';
 
 const node: INode = {
@@ -57,5 +57,24 @@ describe('NodeErrors tests', () => {
 		const nodeApiError = new NodeApiError(node, {}, { description: 'test error description' });
 
 		expect(nodeApiError.message).toEqual('test error description');
+	});
+
+	it('should return default message for ECONNREFUSED', () => {
+		const nodeApiError = new NodeApiError(node, {
+			status: 'rejected',
+			message: 'ECONNREFUSED',
+		});
+
+		expect(nodeApiError.message).toEqual(
+			'The service refused the connection - perhaps it is offline',
+		);
+	});
+
+	it('should return default message for 502', () => {
+		const nodeApiError = new NodeApiError(node, {
+			message: '502 Bad Gateway',
+		});
+
+		expect(nodeApiError.message).toEqual('Bad gateway - the service failed to handle your request');
 	});
 });
