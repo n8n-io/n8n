@@ -1,10 +1,12 @@
 const PostgresFun = require('../../../nodes/Postgres/v1/genericFunctions');
 const pgPromise = require('pg-promise');
 
+type NodeParams = Record<string, string | {}>;
+
 describe('pgUpdate', () => {
 	it('runs query to update db', async () => {
 		const updateItem = { id: 1234, name: 'test' };
-		const nodeParams = {
+		const nodeParams: NodeParams = {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id',
@@ -12,7 +14,7 @@ describe('pgUpdate', () => {
 			additionalFields: {},
 			returnFields: '*',
 		};
-		const getNodeParam = (key) => nodeParams[key];
+		const getNodeParam = (key: string) => nodeParams[key];
 		const pgp = pgPromise();
 		const any = jest.fn();
 		const db = { any };
@@ -26,13 +28,13 @@ describe('pgUpdate', () => {
 		await PostgresFun.pgUpdate(getNodeParam, pgp, db, items);
 
 		expect(db.any).toHaveBeenCalledWith(
-			`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values(1234,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`,
+			'update "myschema"."mytable" as t set "id"=v."id","name"=v."name" from (values(1234,\'test\')) as v("id","name") WHERE v."id" = t."id" RETURNING *',
 		);
 	});
 
 	it('runs query to update db if updateKey is not in columns', async () => {
 		const updateItem = { id: 1234, name: 'test' };
-		const nodeParams = {
+		const nodeParams: NodeParams = {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id',
@@ -40,7 +42,7 @@ describe('pgUpdate', () => {
 			additionalFields: {},
 			returnFields: '*',
 		};
-		const getNodeParam = (key) => nodeParams[key];
+		const getNodeParam = (key: string) => nodeParams[key];
 		const pgp = pgPromise();
 		const any = jest.fn();
 		const db = { any };
@@ -54,13 +56,13 @@ describe('pgUpdate', () => {
 		const results = await PostgresFun.pgUpdate(getNodeParam, pgp, db, items);
 
 		expect(db.any).toHaveBeenCalledWith(
-			`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values(1234,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`,
+			'update "myschema"."mytable" as t set "id"=v."id","name"=v."name" from (values(1234,\'test\')) as v("id","name") WHERE v."id" = t."id" RETURNING *',
 		);
 	});
 
 	it('runs query to update db with cast as updateKey', async () => {
 		const updateItem = { id: '1234', name: 'test' };
-		const nodeParams = {
+		const nodeParams: NodeParams = {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id:uuid',
@@ -68,7 +70,7 @@ describe('pgUpdate', () => {
 			additionalFields: {},
 			returnFields: '*',
 		};
-		const getNodeParam = (key) => nodeParams[key];
+		const getNodeParam = (key: string) => nodeParams[key];
 		const pgp = pgPromise();
 		const any = jest.fn();
 		const db = { any };
@@ -82,13 +84,13 @@ describe('pgUpdate', () => {
 		await PostgresFun.pgUpdate(getNodeParam, pgp, db, items);
 
 		expect(db.any).toHaveBeenCalledWith(
-			`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values('1234'::uuid,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`,
+			'update "myschema"."mytable" as t set "id"=v."id","name"=v."name" from (values(\'1234\'::uuid,\'test\')) as v("id","name") WHERE v."id" = t."id" RETURNING *',
 		);
 	});
 
 	it('runs query to update db with cast in target columns', async () => {
 		const updateItem = { id: '1234', name: 'test' };
-		const nodeParams = {
+		const nodeParams: NodeParams = {
 			table: 'mytable',
 			schema: 'myschema',
 			updateKey: 'id',
@@ -96,7 +98,7 @@ describe('pgUpdate', () => {
 			additionalFields: {},
 			returnFields: '*',
 		};
-		const getNodeParam = (key) => nodeParams[key];
+		const getNodeParam = (key: string) => nodeParams[key];
 		const pgp = pgPromise();
 		const any = jest.fn();
 		const db = { any };
@@ -110,7 +112,7 @@ describe('pgUpdate', () => {
 		await PostgresFun.pgUpdate(getNodeParam, pgp, db, items);
 
 		expect(db.any).toHaveBeenCalledWith(
-			`update \"myschema\".\"mytable\" as t set \"id\"=v.\"id\",\"name\"=v.\"name\" from (values('1234'::uuid,'test')) as v(\"id\",\"name\") WHERE v.\"id\" = t.\"id\" RETURNING *`,
+			'update "myschema"."mytable" as t set "id"=v."id","name"=v."name" from (values(\'1234\'::uuid,\'test\')) as v("id","name") WHERE v."id" = t."id" RETURNING *',
 		);
 	});
 });
@@ -118,14 +120,14 @@ describe('pgUpdate', () => {
 describe('pgInsert', () => {
 	it('runs query to insert', async () => {
 		const insertItem = { id: 1234, name: 'test', age: 34 };
-		const nodeParams = {
+		const nodeParams: NodeParams = {
 			table: 'mytable',
 			schema: 'myschema',
 			columns: 'id,name,age',
 			returnFields: '*',
 			additionalFields: {},
 		};
-		const getNodeParam = (key) => nodeParams[key];
+		const getNodeParam = (key: string) => nodeParams[key];
 		const pgp = pgPromise();
 		const any = jest.fn();
 		const db = { any };
@@ -139,20 +141,20 @@ describe('pgInsert', () => {
 		await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
 
 		expect(db.any).toHaveBeenCalledWith(
-			`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234,'test',34) RETURNING *`,
+			'insert into "myschema"."mytable"("id","name","age") values(1234,\'test\',34) RETURNING *',
 		);
 	});
 
 	it('runs query to insert with type casting', async () => {
 		const insertItem = { id: 1234, name: 'test', age: 34 };
-		const nodeParams = {
+		const nodeParams: NodeParams = {
 			table: 'mytable',
 			schema: 'myschema',
 			columns: 'id:int,name:text,age',
 			returnFields: '*',
 			additionalFields: {},
 		};
-		const getNodeParam = (key) => nodeParams[key];
+		const getNodeParam = (key: string) => nodeParams[key];
 		const pgp = pgPromise();
 		const any = jest.fn();
 		const db = { any };
@@ -166,7 +168,7 @@ describe('pgInsert', () => {
 		await PostgresFun.pgInsert(getNodeParam, pgp, db, items);
 
 		expect(db.any).toHaveBeenCalledWith(
-			`insert into \"myschema\".\"mytable\"(\"id\",\"name\",\"age\") values(1234::int,'test'::text,34) RETURNING *`,
+			'insert into "myschema"."mytable"("id","name","age") values(1234::int,\'test\'::text,34) RETURNING *',
 		);
 	});
 });
