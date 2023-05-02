@@ -131,7 +131,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
-import { UIState } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
@@ -450,7 +449,7 @@ export default mixins(showMessage).extend({
 					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
 					!this.workflow.sharedWith?.length // Sharing info already loaded
 				) {
-					await this.workflowsStore.fetchAndSetWorkflow(this.workflow.id);
+					await this.workflowsStore.fetchWorkflow(this.workflow.id);
 				}
 			}
 

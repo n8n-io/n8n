@@ -159,7 +159,11 @@ import { SamlService } from './sso/saml/saml.service.ee';
 import { variablesController } from './environments/variables/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
-import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from './sso/ssoHelpers';
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
@@ -444,13 +448,15 @@ class Server extends AbstractServer {
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
 
+		this.instanceId = await UserSettings.getInstanceId();
+
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
 			.catch(() => false);
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = this.instanceId;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
@@ -1417,7 +1423,8 @@ export async function start(): Promise<void> {
 		binaryDataMode: binaryDataConfig.mode,
 		n8n_multi_user_allowed: isUserManagementEnabled(),
 		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-		ldap_allowed: isLdapEnabled(),
+		ldap_allowed: isLdapCurrentAuthenticationMethod(),
+		saml_enabled: isSamlCurrentAuthenticationMethod(),
 	};
 
 	// Set up event handling

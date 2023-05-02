@@ -67,7 +67,6 @@ import { useCommunityNodesStore } from '@/stores/communityNodes';
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
-import { BaseTextKey } from '@/plugins/i18n';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 

@@ -35,6 +35,12 @@ const config = (module.exports = {
 		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
 		 */
 		'eslint-plugin-n8n-local-rules',
+
+		/** https://github.com/sweepline/eslint-plugin-unused-imports */
+		'unused-imports',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn */
+		'eslint-plugin-unicorn',
 	],
 
 	extends: [
@@ -422,6 +428,21 @@ const config = (module.exports = {
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/prefer-default-export.md
 		 */
 		'import/prefer-default-export': 'off',
+
+		// ----------------------------------
+		//         no-unused-imports
+		// ----------------------------------
+
+		/**
+		 * https://github.com/sweepline/eslint-plugin-unused-imports/blob/master/docs/rules/no-unused-imports.md
+		 */
+		'unused-imports/no-unused-imports': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-unnecessary-await.md */
+		'unicorn/no-unnecessary-await': 'error',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
+		'unicorn/no-useless-promise-resolve-reject': 'error',
 	},
 
 	overrides: [

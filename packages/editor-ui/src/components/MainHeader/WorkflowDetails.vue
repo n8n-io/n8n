@@ -123,7 +123,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import {
 	DUPLICATE_MODAL_KEY,
@@ -510,12 +509,9 @@ export default mixins(workflowHelpers).extend({
 					}
 
 					try {
-						await this.workflowsStore.deleteWorkflowAPI(this.currentWorkflowId);
+						await this.workflowsStore.deleteWorkflow(this.currentWorkflowId);
 					} catch (error) {
-						this.$showError(
-							error,
-							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-						);
+						this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 						return;
 					}
 					this.uiStore.stateIsDirty = false;

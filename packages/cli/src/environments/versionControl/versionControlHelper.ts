@@ -49,5 +49,8 @@ export function generateSshKeyPair(keyType: 'ed25519' | 'rsa' = 'ed25519') {
 	keyPair.publicKey = keyPublic.toString('ssh');
 	const keyPrivate = sshpk.parsePrivateKey(generatedKeyPair.privateKey, 'pem');
 	keyPair.privateKey = keyPrivate.toString('ssh-private');
-	return keyPair;
+	return {
+		privateKey: keyPair.privateKey,
+		publicKey: keyPair.publicKey,
+	};
 }
