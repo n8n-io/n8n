@@ -23,7 +23,7 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
 let authlessAgent: SuperAgentTest;
-let externalHooks = utils.mockInstance(ExternalHooks);
+const externalHooks = utils.mockInstance(ExternalHooks);
 
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['passwordReset'] });
