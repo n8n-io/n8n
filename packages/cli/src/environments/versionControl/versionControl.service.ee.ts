@@ -3,22 +3,25 @@ import path from 'path';
 import { generateSshKeyPair, isVersionControlLicensed } from './versionControlHelper';
 import { VersionControlPreferences } from './types/versionControlPreferences';
 import {
+	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	VERSION_CONTROL_GIT_FOLDER,
 	VERSION_CONTROL_PREFERENCES_DB_KEY,
 	VERSION_CONTROL_SSH_FOLDER,
 	VERSION_CONTROL_SSH_KEY_NAME,
+	VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import * as Db from '@/Db';
-import glob from 'fast-glob';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
-import { readFileSync, existsSync } from 'fs';
-import { writeFile as fsWriteFile, readFile as fsReadFile } from 'fs/promises';
+import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
+import { writeFile as fsWriteFile } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
 import type { FetchResult, StatusResult } from 'simple-git';
-import { IWorkflowToImport } from '../../Interfaces';
+import type { ExportResult } from './types/exportResult';
+import { VersionControlExportService } from './versionControlExport.service.ee';
+import { BadRequestError } from '../../ResponseHelper';
 
 @Service()
 export class VersionControlService {
@@ -30,10 +33,22 @@ export class VersionControlService {
 
 	private gitFolder: string;
 
-	constructor(private gitService: VersionControlGitService) {
+	private workflowExportFolder: string;
+
+	private credentialExportFolder: string;
+
+	constructor(
+		private gitService: VersionControlGitService,
+		private versionControlExportService: VersionControlExportService,
+	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.sshFolder = path.join(userFolder, VERSION_CONTROL_SSH_FOLDER);
 		this.gitFolder = path.join(userFolder, VERSION_CONTROL_GIT_FOLDER);
+		this.workflowExportFolder = path.join(this.gitFolder, VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER);
+		this.credentialExportFolder = path.join(
+			this.gitFolder,
+			VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
+		);
 		this.sshKeyName = path.join(this.sshFolder, VERSION_CONTROL_SSH_KEY_NAME);
 	}
 
@@ -57,15 +72,10 @@ export class VersionControlService {
 	}
 
 	public set versionControlPreferences(preferences: Partial<VersionControlPreferences>) {
-		this._versionControlPreferences = {
-			connected: preferences.connected ?? this._versionControlPreferences.connected,
-			authorEmail: preferences.authorEmail ?? this._versionControlPreferences.authorEmail,
-			authorName: preferences.authorName ?? this._versionControlPreferences.authorName,
-			branchName: preferences.branchName ?? this._versionControlPreferences.branchName,
-			branchColor: preferences.branchColor ?? this._versionControlPreferences.branchColor,
-			branchReadOnly: preferences.branchReadOnly ?? this._versionControlPreferences.branchReadOnly,
-			repositoryUrl: preferences.repositoryUrl ?? this._versionControlPreferences.repositoryUrl,
-		};
+		this._versionControlPreferences = VersionControlPreferences.merge(
+			preferences,
+			this._versionControlPreferences,
+		);
 	}
 
 	isVersionControlConnected(): boolean {
@@ -78,7 +88,7 @@ export class VersionControlService {
 
 	getPublicKey(): string {
 		try {
-			return readFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });
+			return fsReadFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });
 		} catch (error) {
 			LoggerProxy.error(`Failed to read public key: ${(error as Error).message}`);
 		}
@@ -86,7 +96,7 @@ export class VersionControlService {
 	}
 
 	hasKeyPairFiles(): boolean {
-		return existsSync(this.sshKeyName) && existsSync(this.sshKeyName + '.pub');
+		return fsExistsSync(this.sshKeyName) && fsExistsSync(this.sshKeyName + '.pub');
 	}
 
 	/**
@@ -122,7 +132,7 @@ export class VersionControlService {
 	async disconnect() {
 		try {
 			await this.setPreferences({ connected: false });
-			// TODO: remove key pair?
+			// TODO: remove key pair from disk?
 			this.gitService.reset();
 		} catch (error) {
 			throw Error(`Failed to disconnect from version control: ${(error as Error).message}`);
@@ -148,7 +158,16 @@ export class VersionControlService {
 		if (validationResult.length > 0) {
 			throw new Error(`Invalid version control preferences: ${JSON.stringify(validationResult)}`);
 		}
-		// TODO: if branchName is changed, check if it is valid
+		if (preferencesObject.branchName !== this._versionControlPreferences.branchName) {
+			const branches = await this.getBranches();
+			if (!branches.branches.includes(preferencesObject.branchName)) {
+				throw new Error(
+					`Selected branch ${preferencesObject.branchName} does not exist in repo: ${JSON.stringify(
+						branches.branches,
+					)}`,
+				);
+			}
+		}
 		return validationResult;
 	}
 
@@ -199,74 +218,48 @@ export class VersionControlService {
 		return;
 	}
 
-	async exportWorkflowsToWorkFolder() {
+	async export(): Promise<{
+		credentials: ExportResult | undefined;
+		workflows: ExportResult | undefined;
+	}> {
+		const result: {
+			credentials: ExportResult | undefined;
+			workflows: ExportResult | undefined;
+		} = {
+			credentials: undefined,
+			workflows: undefined,
+		};
 		try {
-			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-				relations: ['workflow', 'role', 'user'],
-				where: {
-					role: {
-						name: 'owner',
-						scope: 'workflow',
-					},
-				},
-			});
-			await Promise.all(
-				sharedWorkflows.map(async (e) => {
-					// TODO: using workflowname for now, until IDs are unique
-					const fileName = path.join(this.gitFolder, `${e.workflow.name}.json`);
-					return fsWriteFile(
-						fileName,
-						JSON.stringify(
-							{
-								...e.workflow,
-								owner: e.user.email,
-							},
-							null,
-							2,
-						),
-					);
-				}),
-			);
-			// TODO: also write variables
-			return sharedWorkflows;
+			result.workflows = await this.versionControlExportService.exportWorkflowsToWorkFolder();
+			result.credentials = await this.versionControlExportService.exportCredentialsToWorkFolder();
 		} catch (error) {
-			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+			throw new BadRequestError((error as { message: string }).message);
 		}
+		return result;
 	}
 
-	async importWorkflowsFromGit() {
+	async import(): Promise<{
+		credentials: ExportResult | undefined;
+		workflows: ExportResult | undefined;
+	}> {
+		const result: {
+			credentials: ExportResult | undefined;
+			workflows: ExportResult | undefined;
+		} = {
+			credentials: undefined,
+			workflows: undefined,
+		};
 		try {
-			const files = await glob('*.json', {
-				cwd: this.gitFolder,
-				absolute: true,
-			});
-			const existingWorkflows = await Db.collections.Workflow.find({
-				select: ['id', 'name', 'versionId'],
-			});
-			await Promise.all(
-				files.map(async (file) => {
-					const workflow = jsonParse<IWorkflowToImport>(
-						await fsReadFile(file, { encoding: 'utf8' }),
-					);
-					if (
-						existingWorkflows.find(
-							(e) => e.name === workflow.name && e.versionId === workflow.versionId,
-						)
-					) {
-						// Workflow with same id and version already exists, skip
-						console.log(`Skipping workflow ${workflow.name} with same id and version`);
-						return;
-					}
-					// TODO: run actual import
-				}),
-			);
-			return files;
+			result.workflows = await this.versionControlExportService.importFromWorkFolder();
 		} catch (error) {
-			throw Error(`Failed to import workflows from work folder: ${(error as Error).message}`);
+			throw new BadRequestError((error as { message: string }).message);
 		}
+		return result;
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
+		// fetch first to get include remote changes
+		await this.gitService.fetch();
 		return this.gitService.getBranches();
 	}
 

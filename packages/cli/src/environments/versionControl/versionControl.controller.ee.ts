@@ -3,7 +3,7 @@ import { versionControlLicensedMiddleware } from './middleware/versionControlEna
 import { VersionControlService } from './versionControl.service.ee';
 import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
-import { BadRequestError } from '../../ResponseHelper';
+import { BadRequestError } from '@/ResponseHelper';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -149,7 +149,7 @@ export class VersionControlController {
 	@Get('/export', { middlewares: [versionControlLicensedMiddleware] })
 	async export() {
 		try {
-			return await this.versionControlService.exportWorkflowsToWorkFolder();
+			return await this.versionControlService.export();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -159,7 +159,7 @@ export class VersionControlController {
 	@Get('/import', { middlewares: [versionControlLicensedMiddleware] })
 	async import() {
 		try {
-			return await this.versionControlService.importWorkflowsFromGit();
+			return await this.versionControlService.import();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
