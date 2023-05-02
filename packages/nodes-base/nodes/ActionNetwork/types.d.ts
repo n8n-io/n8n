@@ -18,6 +18,8 @@ export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add
 // @ts-ignore
 export type LanguageCodes = (typeof LanguageOptions)[number]['value'];
 
+type CustomFieldUi = CustomFieldInput;
+
 // ----------------------------------------
 //              UI fields
 // ----------------------------------------
@@ -29,6 +31,9 @@ export type AllFieldsUi = {
 	languages_spoken: LanguageCodes;
 	target: string;
 	location: LocationUi;
+	custom_fields: {
+		customFieldValues: CustomFieldUi[];
+	};
 };
 
 export type EmailAddressUi = {
@@ -80,6 +85,13 @@ type LatitudeLongitude = {
 };
 
 export type FieldWithPrimaryField = EmailAddressField | PhoneNumberField | PostalAddressField;
+
+export type CustomFieldInput = {
+	name: string;
+	value: string;
+};
+
+export type CustomField = { [key: string]: string };
 
 // ----------------------------------------
 //                 responses

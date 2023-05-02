@@ -317,6 +317,42 @@ export const personAdditionalFieldsOptions: INodeProperties['options'] = [
 			},
 		],
 	},
+	// custom fields
+	{
+		displayName: 'Custom Fields',
+		name: 'custom_fields',
+		type: 'fixedCollection',
+		default: {},
+		placeholder: 'Add Custom Fields',
+		typeOptions: {
+			multipleValues: true,
+		},
+		options: [
+			{
+				name: 'customFieldValues',
+				displayName: 'Custom Field',
+				values: [
+					{
+						displayName: 'Custom Field Name or ID',
+						name: 'name',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						default: '',
+						typeOptions: {
+							loadOptionsMethod: 'getCustomFieldOptions',
+						},
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
 ];
 
 export const petitionAdditionalFieldsOptions: INodeProperties[] = [
