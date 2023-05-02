@@ -7,6 +7,7 @@ import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
+
 import './styles/autocomplete-theme.scss';
 
 import '@fontsource/open-sans/latin-400.css';

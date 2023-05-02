@@ -1,7 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';

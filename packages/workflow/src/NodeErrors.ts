@@ -373,7 +373,7 @@ export class NodeApiError extends NodeError {
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				this.message = UNKNOWN_ERROR_MESSAGE;
+				this.message = this.message || UNKNOWN_ERROR_MESSAGE;
 		}
 		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;

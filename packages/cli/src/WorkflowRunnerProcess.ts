@@ -472,6 +472,8 @@ process.on('message', async (message: IProcessMessage) => {
 						? new WorkflowOperationError('Workflow execution timed out!')
 						: new WorkflowOperationError('Workflow-Execution has been canceled!');
 
+				runData.status = message.type === 'timeout' ? 'failed' : 'canceled';
+
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(
 					workflowRunner.startedAt,

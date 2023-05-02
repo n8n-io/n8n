@@ -64,6 +64,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
+	isObjectEmpty,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -727,10 +728,6 @@ export async function proxyRequestToAxios(
 	}
 }
 
-function isIterator(obj: unknown): boolean {
-	return obj instanceof Object && Symbol.iterator in obj;
-}
-
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -794,7 +791,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		// if there is a body and it's empty (does not have properties),
 		// make sure not to send anything in it as some services fail when
 		// sending GET request with empty body.
-		if (isIterator(body) || Object.keys(body).length > 0) {
+		if (typeof body === 'object' && !isObjectEmpty(body)) {
 			axiosRequest.data = body;
 		}
 	}
