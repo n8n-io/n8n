@@ -24,7 +24,7 @@ describe('PostHog', () => {
 		const ph = new PostHogClient();
 		await ph.init(instanceId);
 
-		expect(PostHog.prototype.constructor).toHaveBeenCalledWith(apiKey, {host: apiHost});
+		expect(PostHog.prototype.constructor).toHaveBeenCalledWith(apiKey, { host: apiHost });
 	});
 
 	it('does not initialize or track if diagnostics are not enabled', async () => {
@@ -78,13 +78,10 @@ describe('PostHog', () => {
 			createdAt,
 		});
 
-		expect(PostHog.prototype.getAllFlags).toHaveBeenCalledWith(
-			`${instanceId}#${userId}`,
-			{
-				personProperties: {
-					created_at_timestamp: createdAt.getTime().toString(),
-				},
-			}
-		);
+		expect(PostHog.prototype.getAllFlags).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
+			personProperties: {
+				created_at_timestamp: createdAt.getTime().toString(),
+			},
+		});
 	});
 });
