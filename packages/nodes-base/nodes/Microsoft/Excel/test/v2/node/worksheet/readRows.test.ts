@@ -1,5 +1,6 @@
 import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
 
+// eslint-disable-next-line unused-imports/no-unused-imports
 import * as _transport from '../../../../v2/transport';
 
 import nock from 'nock';
@@ -11,23 +12,23 @@ jest.mock('../../../../v2/transport', () => {
 		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
 			{
 				if (method === 'GET' && resource.includes('usedRange')) {
-					return Promise.resolve({
+					return {
 						values: [
 							['id', 'name', 'age', 'data'],
 							[1, 'Sam', 33, 'data 1'],
 							[2, 'Jon', 44, 'data 2'],
 							[3, 'Ron', 55, 'data 3'],
 						],
-					});
+					};
 				}
 
-				return Promise.resolve({
+				return {
 					values: [
 						['id', 'name', 'age', 'data'],
 						[1, 'Sam', 33, 'data 1'],
 						[2, 'Jon', 44, 'data 2'],
 					],
-				});
+				};
 			}
 		}),
 	};

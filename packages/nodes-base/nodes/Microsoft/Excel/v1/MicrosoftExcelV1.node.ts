@@ -25,6 +25,8 @@ import { worksheetFields, worksheetOperations } from './WorksheetDescription';
 
 import { tableFields, tableOperations } from './TableDescription';
 
+import { oldVersionNotice } from '../../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',
 	name: 'microsoftExcel',
@@ -45,12 +47,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		{
-			displayName: 'Version 1',
-			name: 'versionNotice',
-			type: 'notice',
-			default: '',
-		},
+		oldVersionNotice,
 		{
 			displayName: 'Resource',
 			name: 'resource',

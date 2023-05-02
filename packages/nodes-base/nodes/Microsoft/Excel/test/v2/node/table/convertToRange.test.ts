@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'POST') {
-				return Promise.resolve({
+				return {
 					address: 'Sheet4!A1:D5',
 					values: [
 						['id', 'name', 'age', 'data'],
@@ -23,7 +23,7 @@ jest.mock('../../../../v2/transport', () => {
 						[3, 'Sam', 34, 'data 4'],
 						[3, 'Donald', 99, 'data 5'],
 					],
-				});
+				};
 			}
 		}),
 	};

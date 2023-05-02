@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'GET') {
-				return Promise.resolve({
+				return {
 					value: [
 						{
 							id: '{00000000-0001-0000-0000-000000000000}',
@@ -29,7 +29,7 @@ jest.mock('../../../../v2/transport', () => {
 							name: 'foo2',
 						},
 					],
-				});
+				};
 			}
 		}),
 	};

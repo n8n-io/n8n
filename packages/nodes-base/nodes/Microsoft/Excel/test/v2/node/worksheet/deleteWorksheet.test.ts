@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'DELETE') {
-				return Promise.resolve({
+				return {
 					values: [
 						{
 							json: {
@@ -22,7 +22,7 @@ jest.mock('../../../../v2/transport', () => {
 							},
 						},
 					],
-				});
+				};
 			}
 		}),
 	};

@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
 			if (method === 'GET') {
-				return Promise.resolve({
+				return {
 					value: [
 						{
 							name: 'id',
@@ -29,21 +29,21 @@ jest.mock('../../../../v2/transport', () => {
 							name: 'data',
 						},
 					],
-				});
+				};
 			}
 			if (method === 'POST' && resource.includes('createSession')) {
-				return Promise.resolve({
+				return {
 					id: 12345,
-				});
+				};
 			}
 			if (method === 'POST' && resource.includes('add')) {
-				return Promise.resolve({
+				return {
 					index: 3,
 					values: [[3, 'Donald', 99, 'data 5']],
-				});
+				};
 			}
 			if (method === 'POST' && resource.includes('closeSession')) {
-				return Promise.resolve();
+				return;
 			}
 		}),
 	};

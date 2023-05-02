@@ -18,7 +18,7 @@ jest.mock('../../../../v2/transport', () => {
 			endpoint: string,
 		) {
 			if (endpoint.includes('columns')) {
-				return Promise.resolve([
+				return [
 					{
 						name: 'country',
 					},
@@ -31,10 +31,10 @@ jest.mock('../../../../v2/transport', () => {
 					{
 						name: 'visits',
 					},
-				]);
+				];
 			}
 			if (endpoint.includes('rows')) {
-				return Promise.resolve([
+				return [
 					{
 						index: 0,
 						values: [['uk', 'firefox', 1, 1]],
@@ -59,7 +59,7 @@ jest.mock('../../../../v2/transport', () => {
 						index: 5,
 						values: [['uk', 'chrome', 1, 55]],
 					},
-				]);
+				];
 			}
 		}),
 	};

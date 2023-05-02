@@ -13,7 +13,7 @@ jest.mock('../../../../v2/transport', () => {
 	return {
 		...originalModule,
 		microsoftApiRequestAllItemsSkip: jest.fn(async function () {
-			return Promise.resolve([
+			return [
 				{
 					name: 'country',
 				},
@@ -26,7 +26,7 @@ jest.mock('../../../../v2/transport', () => {
 				{
 					name: 'visits',
 				},
-			]);
+			];
 		}),
 	};
 });

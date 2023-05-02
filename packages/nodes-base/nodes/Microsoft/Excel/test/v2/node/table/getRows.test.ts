@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'GET') {
-				return Promise.resolve({
+				return {
 					value: [
 						{
 							index: 0,
@@ -25,11 +25,11 @@ jest.mock('../../../../v2/transport', () => {
 							values: [['us', 'chrome', 1, 12]],
 						},
 					],
-				});
+				};
 			}
 		}),
 		microsoftApiRequestAllItemsSkip: jest.fn(async function () {
-			return Promise.resolve([
+			return [
 				{
 					name: 'country',
 				},
@@ -42,7 +42,7 @@ jest.mock('../../../../v2/transport', () => {
 				{
 					name: 'visits',
 				},
-			]);
+			];
 		}),
 	};
 });

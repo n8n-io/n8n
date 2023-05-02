@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'GET') {
-				return Promise.resolve({
+				return {
 					value: [
 						{
 							'@odata.type': '#microsoft.graph.driveItem',
@@ -27,7 +27,7 @@ jest.mock('../../../../v2/transport', () => {
 						},
 						,
 					],
-				});
+				};
 			}
 		}),
 	};

@@ -14,7 +14,7 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string) {
 			if (method === 'POST') {
-				return Promise.resolve({
+				return {
 					style: 'TableStyleMedium2',
 					name: 'Table3',
 					showFilterButton: true,
@@ -26,7 +26,7 @@ jest.mock('../../../../v2/transport', () => {
 					showBandedRows: true,
 					showHeaders: true,
 					showTotals: false,
-				});
+				};
 			}
 		}),
 	};

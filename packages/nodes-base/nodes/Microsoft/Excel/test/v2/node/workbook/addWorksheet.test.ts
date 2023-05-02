@@ -14,20 +14,20 @@ jest.mock('../../../../v2/transport', () => {
 		...originalModule,
 		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
 			if (method === 'POST' && resource.includes('createSession')) {
-				return Promise.resolve({
+				return {
 					id: 12345,
-				});
+				};
 			}
 			if (method === 'POST' && resource.includes('add')) {
-				return Promise.resolve({
+				return {
 					id: '{266ADAB7-25B6-4F28-A2D1-FD5BFBD7A4F0}',
 					name: 'Sheet42',
 					position: 8,
 					visibility: 'Visible',
-				});
+				};
 			}
 			if (method === 'POST' && resource.includes('closeSession')) {
-				return Promise.resolve();
+				return;
 			}
 		}),
 	};
