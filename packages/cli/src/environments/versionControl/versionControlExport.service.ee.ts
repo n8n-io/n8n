@@ -24,6 +24,9 @@ import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
 import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { Variables } from '@/databases/entities/Variables';
+import type { ImportResult } from './types/importResult';
 
 @Service()
 export class VersionControlExportService {
@@ -187,17 +190,77 @@ export class VersionControlExportService {
 		}
 	}
 
-	async importFromWorkFolder(): Promise<ExportResult> {
+	private async importCredentialsFromFiles(): Promise<CredentialsEntity[]> {
+		const credentialFiles = await glob('*.json', {
+			cwd: this.credentialExportFolder,
+			absolute: true,
+		});
+		const existingCredentials = await Db.collections.Credentials.find({
+			select: ['id', 'name', 'type'],
+		});
+		const importCredentialsResult = await Promise.all(
+			credentialFiles.map(async (file) => {
+				const credential = jsonParse<ExportableCredential>(
+					await fsReadFile(file, { encoding: 'utf8' }),
+				);
+				const existingCredential = existingCredentials.find(
+					(e) => e.id === credential.id && e.type === credential.type,
+				);
+				if (!existingCredential) {
+					// create new credential
+					const newCredential = Db.collections.Credentials.create({
+						id: credential.id,
+						name: credential.name,
+						data: undefined,
+						type: credential.type,
+						nodesAccess: credential.nodesAccess,
+					});
+					await Db.collections.Credentials.save(newCredential);
+					return newCredential;
+				}
+				return existingCredential;
+			}),
+		);
+		return importCredentialsResult;
+	}
+
+	private async importVariablesFromFile(): Promise<Variables[]> {
+		const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
+			cwd: this.gitFolder,
+			absolute: true,
+		});
+		if (variablesFile.length > 0) {
+			const variables = jsonParse<Variables[]>(
+				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
+				{ fallbackValue: [] },
+			);
+			await Promise.all(
+				variables.map(async (variable) => {
+					await Db.collections.Variables.upsert(variable, {
+						skipUpdateIfNoValuesChanged: true,
+						conflictPaths: { id: true },
+					});
+				}),
+			);
+			return variables;
+		}
+		return [];
+	}
+
+	async importFromWorkFolder(): Promise<ImportResult> {
 		try {
-			const files = await glob('*.json', {
-				cwd: this.gitFolder,
+			const importedVariables = await this.importVariablesFromFile();
+			const importedCredentials = await this.importCredentialsFromFiles();
+			const workflowFiles = await glob('*.json', {
+				cwd: this.workflowExportFolder,
 				absolute: true,
 			});
+
 			const existingWorkflows = await Db.collections.Workflow.find({
 				select: ['id', 'name', 'versionId'],
 			});
-			const importResult = await Promise.all(
-				files.map(async (file) => {
+			const importWorkflowsResult = await Promise.all(
+				workflowFiles.map(async (file) => {
 					const workflow = jsonParse<IWorkflowToImport>(
 						await fsReadFile(file, { encoding: 'utf8' }),
 					);
@@ -220,9 +283,9 @@ export class VersionControlExportService {
 				}),
 			);
 			return {
-				count: importResult.length,
-				folder: this.workflowExportFolder,
-				files: importResult,
+				workflows: importWorkflowsResult,
+				variables: importedVariables,
+				credentials: importedCredentials,
 			};
 		} catch (error) {
 			throw Error(`Failed to import workflows from work folder: ${(error as Error).message}`);

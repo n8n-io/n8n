@@ -22,6 +22,7 @@ import type { CommitResult, FetchResult, PullResult, PushResult, StatusResult } 
 import type { ExportResult } from './types/exportResult';
 import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
+import type { ImportResult } from './types/importResult';
 
 @Service()
 export class VersionControlService {
@@ -242,23 +243,12 @@ export class VersionControlService {
 		return result;
 	}
 
-	async import(): Promise<{
-		credentials: ExportResult | undefined;
-		workflows: ExportResult | undefined;
-	}> {
-		const result: {
-			credentials: ExportResult | undefined;
-			workflows: ExportResult | undefined;
-		} = {
-			credentials: undefined,
-			workflows: undefined,
-		};
+	async import(): Promise<ImportResult | undefined> {
 		try {
-			result.workflows = await this.versionControlExportService.importFromWorkFolder();
+			return await this.versionControlExportService.importFromWorkFolder();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
-		return result;
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
