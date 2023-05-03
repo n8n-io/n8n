@@ -22,6 +22,7 @@ import type {
 	NodeParameterValueType,
 	INodePropertyOptions,
 	INodePropertyCollection,
+	ResourceMapperField,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 import { useCredentialsStore } from '@/stores/credentials';
@@ -407,4 +408,11 @@ export const parseResourceMapperFieldName = (fullName: string) => {
 	const fieldName = match ? match.pop() : fullName;
 
 	return fieldName;
+};
+
+export const fieldCannotBeDeleted = (
+	field: INodeProperties | ResourceMapperField,
+	resourceMapperMode: string,
+): boolean => {
+	return resourceMapperMode === 'add' && field.required === true;
 };

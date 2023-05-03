@@ -14,7 +14,7 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
+import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
 import Vue from 'vue';
 import { useNDVStore } from '@/stores';
@@ -80,6 +80,10 @@ onMounted(async () => {
 	// Set default values if this is the first time the parameter is being set
 	setDefaultFieldValues();
 	updateNodeIssues();
+});
+
+const resourceMapperMode = computed<string | undefined>(() => {
+	return props.parameter.typeOptions?.resourceMapper?.mode;
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -167,12 +171,16 @@ async function loadFieldsToMap(): Promise<void> {
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	if (fetchedFields !== null) {
-		state.paramValue.schema = fetchedFields.fields.map((field) => {
-			if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
+		const newSchema = fetchedFields.fields.map((field) => {
+			const existingField = state.paramValue.schema.find((f) => f.id === field.id);
+			if (existingField) {
+				field.removed = existingField.removed;
+			} else if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
 				field.display = false;
 			}
 			return field;
 		});
+		state.paramValue.schema = newSchema;
 		emitValueChanged();
 	}
 }
@@ -255,6 +263,12 @@ function removeField(name: string): void {
 }
 
 function addField(name: string): void {
+	if (name === 'addAllFields') {
+		return addAllFields();
+	}
+	if (name === 'removeAllFields') {
+		return removeAllFields();
+	}
 	state.paramValue.value = {
 		...state.paramValue.value,
 		[name]: null,
@@ -263,6 +277,24 @@ function addField(name: string): void {
 	if (field) {
 		Vue.set(field, 'removed', false);
 	}
+	emitValueChanged();
+}
+
+function addAllFields(): void {
+	state.paramValue.schema.forEach((field) => {
+		if (field.display) {
+			Vue.set(field, 'removed', false);
+		}
+	});
+	emitValueChanged();
+}
+
+function removeAllFields(): void {
+	state.paramValue.schema.forEach((field) => {
+		if (!fieldCannotBeDeleted(field, resourceMapperMode.value || '')) {
+			Vue.set(field, 'removed', true);
+		}
+	});
 	emitValueChanged();
 }
 

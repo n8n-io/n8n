@@ -14,7 +14,7 @@ import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { get } from 'lodash-es';
 import { useNDVStore } from '@/stores';
-import { parseResourceMapperFieldName } from '@/utils';
+import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -48,7 +48,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				name: `value["${field.id}"]`,
 				type: (field.type as NodePropertyTypes) || 'string',
 				default: '',
-				required: false,
+				required: field.required,
 				description: getFieldDescription(field),
 			};
 		});
@@ -102,7 +102,7 @@ const addFieldOptions = computed<Array<{ name: string; value: string; disabled?:
 				interpolate: { fieldWord: pluralFieldWord.value },
 			}),
 			value: 'removeAllFields',
-			disabled: removedFields.value.length === props.fieldsToMap.length,
+			disabled: isRemoveAllAvailable.value === false,
 		},
 	].concat(
 		removedFields.value.map((field) => {
@@ -112,6 +112,15 @@ const addFieldOptions = computed<Array<{ name: string; value: string; disabled?:
 				disabled: false,
 			};
 		}),
+	);
+});
+
+const isRemoveAllAvailable = computed<boolean>(() => {
+	return (
+		removedFields.value.length !== props.fieldsToMap.length &&
+		props.fieldsToMap.some((field) => {
+			return field.removed !== true && !fieldCannotBeDeleted(field, resourceMapperMode.value || '');
+		})
 	);
 });
 
@@ -156,10 +165,6 @@ function isMatchingField(field: string): boolean {
 		);
 	}
 	return false;
-}
-
-function fieldCannotBeDeleted(field: INodeProperties): boolean {
-	return resourceMapperMode.value === 'add' && field.required === true;
 }
 
 function getParameterValue(
@@ -253,6 +258,7 @@ defineExpose({
 					:path="`${props.path}.${field.name}}`"
 					:isReadOnly="false"
 					:hideLabel="false"
+					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"
 					@valueChanged="onValueChanged"
