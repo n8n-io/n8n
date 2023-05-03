@@ -66,6 +66,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { START_NODES } from './constants';
+import { webhookNotFoundErrorMessage } from './utils';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -221,7 +222,7 @@ export class ActiveWorkflowRunner {
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.NotFoundError(
-					`The requested webhook "${httpMethod} ${path}" is not registered.`,
+					webhookNotFoundErrorMessage(path, httpMethod),
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -247,7 +248,7 @@ export class ActiveWorkflowRunner {
 			});
 			if (webhook === null) {
 				throw new ResponseHelper.NotFoundError(
-					`The requested webhook "${httpMethod} ${path}" is not registered.`,
+					webhookNotFoundErrorMessage(path, httpMethod),
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
