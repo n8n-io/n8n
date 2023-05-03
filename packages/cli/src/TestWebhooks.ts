@@ -18,6 +18,9 @@ import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import UrlPattern from 'url-pattern';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
@@ -63,10 +66,34 @@ export class TestWebhooks {
 
 		// check if path is dynamic
 		if (webhookData === undefined) {
-			const pathElements = path.split('/');
-			const webhookId = pathElements.shift();
+			let webhookId: string | undefined;
+
+			for (const [, { workflow }] of Object.entries(testWebhookData)) {
+				const workflowOwner = await getWorkflowOwner(workflow.id!);
+
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
+
+				const webhooks = WebhookHelpers.getWorkflowWebhooks(
+					workflow,
+					additionalData,
+					undefined,
+					true,
+				);
+
+				for (const webhook of webhooks) {
+					// using this approach means that all webhooks in all workflows must have a unique path to avoid matching a request to the wrong webhook
+					// which in this case the first one that matches is selected
+					if (new UrlPattern(webhook.path.split(/[?#]/)[0]).match(path.split(/[?#]/)[0])) {
+						webhookId = webhook.webhookId;
+						break;
+					}
+				}
+
+				if (webhookId) break;
+			}
+
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			webhookData = activeWebhooks.get(httpMethod, pathElements.join('/'), webhookId);
+			webhookData = activeWebhooks.get(httpMethod, path, webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.NotFoundError(
@@ -75,6 +102,7 @@ export class TestWebhooks {
 				);
 			}
 
+			const pathElements = path.split('/');
 			path = webhookData.path;
 			// extracting params from path
 			path.split('/').forEach((ele, index) => {
