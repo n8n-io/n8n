@@ -64,10 +64,10 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import type { PlanData } from '@/Interface';
+import type { CloudPlanData } from '@/Interface';
 import { DateTime } from 'luxon';
 
-const currentPlan = ref<PlanData>({
+const currentPlan = ref<CloudPlanData>({
 	planSpec: {
 		planId: 43039,
 		monthlyExecutionsLimit: 200,

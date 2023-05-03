@@ -1444,7 +1444,7 @@ export type VersionControlPreferences = {
 	publicKey?: string;
 };
 
-export interface PlanData {
+export interface CloudPlanData {
 	planSpec: PlanSpec;
 	instance: Instance;
 	usage: Usage;
