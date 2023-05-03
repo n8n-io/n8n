@@ -360,7 +360,6 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 	EditorType,
-	CodeNodeMode,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
