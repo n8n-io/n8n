@@ -1,3 +1,12 @@
+## [0.226.2](https://github.com/n8n-io/n8n/compare/n8n@0.226.1...n8n@0.226.2) (2023-05-03)
+
+
+### Bug Fixes
+
+* **core:** Fix bug running addUserActivatedColumn migration on MariaDB ([#6157](https://github.com/n8n-io/n8n/issues/6157)) ([aa8e96d](https://github.com/n8n-io/n8n/commit/aa8e96dd6b19f105a957da71a5c4d7ab5caecc01))
+
+
+
 ## [0.226.1](https://github.com/n8n-io/n8n/compare/n8n@0.226.0...n8n@0.226.1) (2023-05-02)
 
 
