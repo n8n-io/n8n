@@ -94,7 +94,7 @@ export async function hubspotApiRequestAllItems(
 
 	let responseData;
 
-	query.limit = query.limit || 250;
+	query.limit = (query.limit as number) || 250;
 	query.count = 100;
 	body.limit = body.limit || 100;
 
