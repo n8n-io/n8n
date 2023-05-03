@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '../ParameterIssues.vue';
+import ParameterOptions from '../ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { get } from 'lodash-es';
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 	(event: 'fieldValueChanged', value: IUpdateInformation): void;
 	(event: 'removeField', field: string): void;
 	(event: 'addField', field: string): void;
+	(event: 'refreshFieldList'): void;
 }>();
 
 const ndvStore = useNDVStore();
@@ -115,11 +117,38 @@ const addFieldOptions = computed<Array<{ name: string; value: string; disabled?:
 	);
 });
 
+const parameterActions = computed<Array<{ label: string; value: string; disabled?: boolean }>>(
+	() => {
+		return [
+			{
+				label: locale.baseText('resourceMapper.refreshFieldList', {
+					interpolate: { fieldWord: singularFieldWord.value },
+				}),
+				value: 'refreshFieldList',
+			},
+			{
+				label: locale.baseText('resourceMapper.addAllFields', {
+					interpolate: { fieldWord: pluralFieldWord.value },
+				}),
+				value: 'addAllFields',
+				disabled: removedFields.value.length === 0,
+			},
+			{
+				label: locale.baseText('resourceMapper.removeAllFields', {
+					interpolate: { fieldWord: pluralFieldWord.value },
+				}),
+				value: 'removeAllFields',
+				disabled: isRemoveAllAvailable.value === false,
+			},
+		];
+	},
+);
+
 const isRemoveAllAvailable = computed<boolean>(() => {
 	return (
 		removedFields.value.length !== props.fieldsToMap.length &&
 		props.fieldsToMap.some((field) => {
-			return field.removed !== true && !fieldCannotBeDeleted(field, resourceMapperMode.value || '');
+			return field.removed !== true && !fieldCannotBeDeleted(field, resourceMapperMode.value);
 		})
 	);
 });
@@ -202,6 +231,23 @@ function addField(fieldName: string) {
 	emit('addField', fieldName);
 }
 
+function onParameterActionSelected(action: string): void {
+	switch (action) {
+		case 'addAllFields':
+			emit('addField', action);
+			break;
+		case 'removeAllFields':
+			// TODO: Why is this calling addField?
+			emit('addField', action);
+			break;
+		case 'refreshFieldList':
+			emit('refreshFieldList');
+			break;
+		default:
+			break;
+	}
+};
+
 defineExpose({
 	orderedFields,
 });
@@ -209,7 +255,23 @@ defineExpose({
 
 <template>
 	<div class="mt-xs" data-test-id="mapping-fields-container">
-		<n8n-input-label :label="valuesLabel" :underline="true" :size="labelSize" color="text-dark" />
+		<n8n-input-label
+			:label="valuesLabel"
+			:underline="true"
+			:size="labelSize"
+			:showOptions="true"
+			:showExpressionSelector="false"
+			color="text-dark"
+		>
+			<template #options>
+				<parameter-options
+					:parameter="parameter"
+					iconOrientation="horizontal"
+					:customActions="parameterActions"
+					@optionSelected="onParameterActionSelected"
+				/>
+			</template>
+		</n8n-input-label>
 		<div
 			v-for="field in orderedFields"
 			:key="field.name"
@@ -220,7 +282,7 @@ defineExpose({
 			}"
 		>
 			<div
-				v-if="fieldCannotBeDeleted(field)"
+				v-if="fieldCannotBeDeleted(field, resourceMapperMode)"
 				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
 			>
 				<n8n-tooltip placement="top">

@@ -112,6 +112,7 @@ const properties: INodeProperties[] = [
 			mappingMode: 'defineBelow',
 			value: null,
 		},
+		noDataExpression: true,
 		required: true,
 		typeOptions: {
 			loadOptionsDependsOn: ['table.value'],

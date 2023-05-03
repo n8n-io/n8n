@@ -149,6 +149,7 @@ export const description: SheetProperties = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
+		noDataExpression: true,
 		default: {
 			mappingMode: 'defineBelow',
 			value: null,

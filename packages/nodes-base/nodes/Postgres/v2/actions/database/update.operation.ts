@@ -144,6 +144,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'resourceMapper',
+		noDataExpression: true,
 		default: {
 			mappingMode: 'defineBelow',
 			value: null,

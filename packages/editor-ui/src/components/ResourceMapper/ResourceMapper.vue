@@ -291,7 +291,7 @@ function addAllFields(): void {
 
 function removeAllFields(): void {
 	state.paramValue.schema.forEach((field) => {
-		if (!fieldCannotBeDeleted(field, resourceMapperMode.value || '')) {
+		if (!fieldCannotBeDeleted(field, resourceMapperMode.value)) {
 			Vue.set(field, 'removed', true);
 		}
 	});
@@ -360,6 +360,7 @@ defineExpose({
 			@fieldValueChanged="fieldValueChanged"
 			@removeField="removeField"
 			@addField="addField"
+			@refreshFieldList="initFetching"
 		/>
 	</div>
 </template>

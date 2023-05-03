@@ -412,7 +412,7 @@ export const parseResourceMapperFieldName = (fullName: string) => {
 
 export const fieldCannotBeDeleted = (
 	field: INodeProperties | ResourceMapperField,
-	resourceMapperMode: string,
+	resourceMapperMode = '',
 ): boolean => {
 	return resourceMapperMode === 'add' && field.required === true;
 };

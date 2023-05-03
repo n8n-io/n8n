@@ -7,6 +7,7 @@
 			color="foreground-xdark"
 			iconSize="small"
 			:actions="actions"
+			:iconOrientation="iconOrientation"
 			@action="(action) => $emit('optionSelected', action)"
 			@visible-change="onMenuToggle"
 		/>
@@ -50,6 +51,15 @@ export default defineComponent({
 			type: Boolean,
 			default: true,
 		},
+		customActions: {
+			type: Array as PropType<Array<{ label: string; value: string; disabled?: boolean }>>,
+			default: () => [],
+		},
+		iconOrientation: {
+			type: String,
+			default: 'vertical',
+			validator: (value: string): boolean => ['horizontal', 'vertical'].includes(value),
+		},
 	},
 	computed: {
 		isDefault(): boolean {
@@ -91,6 +101,10 @@ export default defineComponent({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
+			if (Array.isArray(this.$props.customActions) && this.$props.customActions.length > 0) {
+				return this.$props.customActions;
+			};
+
 			if (this.isHtmlEditor && !this.isValueExpression) {
 				return [
 					{
