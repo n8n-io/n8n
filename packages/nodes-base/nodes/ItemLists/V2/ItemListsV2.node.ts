@@ -68,7 +68,7 @@ export class ItemListsV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: 2,
+			version: [2, 2.1],
 			defaults: {
 				name: 'Item Lists',
 			},
@@ -803,6 +803,8 @@ return 0;`,
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
+
 		if (resource === 'itemList') {
 			if (operation === 'splitOutItems') {
 				for (let i = 0; i < length; i++) {
@@ -827,21 +829,25 @@ return 0;`,
 					}
 
 					if (arrayToSplit === undefined) {
-						if (fieldToSplitOut.includes('.') && disableDotNotation) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-								{
-									description:
-										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-								},
-							);
+						if (nodeVersion < 2.1) {
+							if (fieldToSplitOut.includes('.') && disableDotNotation) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+									{
+										description:
+											"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
+									},
+								);
+							} else {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+									{ itemIndex: i },
+								);
+							}
 						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-								{ itemIndex: i },
-							);
+							arrayToSplit = [];
 						}
 					}
 
@@ -950,36 +956,39 @@ return 0;`,
 							description: 'Please add a field to aggregate',
 						});
 					}
-					for (const { fieldToAggregate } of fieldsToAggregate) {
-						let found = false;
-						for (const item of items) {
-							if (fieldToAggregate === '') {
-								throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', {
-									description: 'Please add a field to aggregate',
-								});
-							}
-							if (!disableDotNotation) {
-								if (get(item.json, fieldToAggregate) !== undefined) {
+
+					if (nodeVersion < 2.1) {
+						for (const { fieldToAggregate } of fieldsToAggregate) {
+							let found = false;
+							for (const item of items) {
+								if (fieldToAggregate === '') {
+									throw new NodeOperationError(this.getNode(), 'Field to aggregate is blank', {
+										description: 'Please add a field to aggregate',
+									});
+								}
+								if (!disableDotNotation) {
+									if (get(item.json, fieldToAggregate) !== undefined) {
+										found = true;
+									}
+								} else if (item.json.hasOwnProperty(fieldToAggregate)) {
 									found = true;
 								}
-							} else if (item.json.hasOwnProperty(fieldToAggregate)) {
-								found = true;
 							}
-						}
-						if (!found && disableDotNotation && fieldToAggregate.includes('.')) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToAggregate}' in the input data`,
-								{
-									description:
-										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-								},
-							);
-						} else if (!found && !keepMissing) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Couldn't find the field '${fieldToAggregate}' in the input data`,
-							);
+							if (!found && disableDotNotation && fieldToAggregate.includes('.')) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Couldn't find the field '${fieldToAggregate}' in the input data`,
+									{
+										description:
+											"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
+									},
+								);
+							} else if (!found && !keepMissing) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Couldn't find the field '${fieldToAggregate}' in the input data`,
+								);
+							}
 						}
 					}
 

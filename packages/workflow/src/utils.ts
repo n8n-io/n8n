@@ -1,5 +1,19 @@
 import type { BinaryFileType } from './Interfaces';
 
+const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
+
+export const isObjectEmpty = (obj: object | null | undefined): boolean => {
+	if (obj === undefined || obj === null) return true;
+	if (typeof obj === 'object') {
+		if (Array.isArray(obj)) return obj.length === 0;
+		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
+		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
+		if (Symbol.iterator in obj || readStreamClasses.has(obj.constructor.name)) return false;
+		return Object.keys(obj).length === 0;
+	}
+	return true;
+};
+
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */

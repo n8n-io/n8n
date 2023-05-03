@@ -51,6 +51,11 @@ export class NDV extends BasePage {
 		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
 		outputBranches: () => this.getters.outputPanel().findChildByTestId('branches'),
 		inputBranches: () => this.getters.inputPanel().findChildByTestId('branches'),
+		resourceLocator: (paramName: string) => cy.getByTestId(`resource-locator-${paramName}`),
+		resourceLocatorInput: (paramName: string) => this.getters.resourceLocator(paramName).find('[data-test-id="rlc-input-container"]'),
+		resourceLocatorDropdown: (paramName: string) => this.getters.resourceLocator(paramName).find('[data-test-id="resource-locator-dropdown"]'),
+		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
+		resourceLocatorModeSelector: (paramName: string) => this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 	};
 
 	actions = {
@@ -148,5 +153,10 @@ export class NDV extends BasePage {
 		switchIntputBranch: (name: string) => {
 			this.getters.inputBranches().get('span').contains(name).click();
 		},
+		setRLCValue: (paramName: string, value: string) => {
+			this.getters.resourceLocatorModeSelector(paramName).click();
+			this.getters.resourceLocatorModeSelector(paramName).find('li').last().click();
+			this.getters.resourceLocatorInput(paramName).type(value);
+		}
 	};
 }

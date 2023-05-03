@@ -143,7 +143,8 @@ export function augmentObject<T extends object>(data: T): T {
 		},
 
 		getOwnPropertyDescriptor(target, key) {
-			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
+			if (deletedProperties.indexOf(key) !== -1) return undefined;
+			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
 		},
 	});
 

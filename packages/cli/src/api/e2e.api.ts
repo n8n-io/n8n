@@ -36,33 +36,30 @@ type Feature = keyof typeof enabledFeatures;
 
 Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
-const tablesToTruncate = [
-	'auth_identity',
-	'auth_provider_sync_history',
-	'event_destinations',
-	'shared_workflow',
-	'shared_credentials',
-	'webhook_entity',
-	'workflows_tags',
-	'credentials_entity',
-	'tag_entity',
-	'workflow_statistics',
-	'workflow_entity',
-	'execution_entity',
-	'settings',
-	'installed_packages',
-	'installed_nodes',
-	'user',
-	'role',
-];
+const tablesNotToTruncate = ['sqlite_sequence'];
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
-	for (const table of tablesToTruncate) {
-		await connection.query(
-			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
-		);
+	const allTables: Array<{ name: string }> = await connection.query(
+		"SELECT name FROM sqlite_master WHERE type='table';",
+	);
+
+	// Disable foreign key constraint checks
+	await connection.query('PRAGMA foreign_keys = OFF;');
+
+	for (const { name: table } of allTables) {
+		try {
+			if (tablesNotToTruncate.includes(table)) continue;
+			await connection.query(
+				`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
+			);
+		} catch (error) {
+			console.warn('Dropping Table for E2E Reset error: ', error);
+		}
 	}
+
+	// Re-enable foreign key constraint checks
+	await connection.query('PRAGMA foreign_keys = ON;');
 };
 
 const setupUserManagement = async () => {
@@ -139,8 +136,14 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	res.writeHead(204).end();
 });
 
-e2eController.post('/enable-feature/:feature', async (req: Request<{ feature: Feature }>, res) => {
-	const { feature } = req.params;
-	enabledFeatures[feature] = true;
-	res.writeHead(204).end();
-});
+e2eController.patch(
+	'/feature/:feature',
+	bodyParser.json(),
+	async (req: Request<{ feature: Feature }>, res) => {
+		const { feature } = req.params;
+		const { enabled } = req.body;
+
+		enabledFeatures[feature] = enabled === undefined || enabled === true;
+		res.writeHead(204).end();
+	},
+);

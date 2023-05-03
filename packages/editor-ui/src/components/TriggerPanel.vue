@@ -48,6 +48,12 @@
 							}}
 						</n8n-text>
 					</div>
+					<NodeExecuteButton
+						:nodeName="nodeName"
+						@execute="onNodeExecute"
+						size="medium"
+						telemetrySource="inputs"
+					/>
 				</div>
 			</div>
 			<div key="default" v-else>

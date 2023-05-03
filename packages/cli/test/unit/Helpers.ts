@@ -1,4 +1,4 @@
-import { INodeTypeData } from 'n8n-workflow';
+import type { INodeTypeData } from 'n8n-workflow';
 
 /**
  * Ensure all pending promises settle. The promise's `resolve` is placed in
@@ -29,7 +29,7 @@ export function mockNodeTypesData(
 						outputs: [],
 						properties: [],
 					},
-					trigger: options?.addTrigger ? () => Promise.resolve(undefined) : undefined,
+					trigger: options?.addTrigger ? async () => undefined : undefined,
 				},
 			}),
 			acc
