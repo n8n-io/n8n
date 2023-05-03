@@ -105,10 +105,12 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
+			cy.intercept('/rest/users/*').as('userSignup')
 			signupPage.getters.firstName().type(firstName);
 			signupPage.getters.lastName().type(lastName);
 			signupPage.getters.password().type(password);
 			signupPage.getters.submit().click();
+			cy.wait('@userSignup');
 		});
 	});
 });
