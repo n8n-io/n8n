@@ -18,7 +18,7 @@ export class KafkaTrigger implements INodeType {
 		name: 'kafkaTrigger',
 		icon: 'file:kafka.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -116,7 +116,7 @@ export class KafkaTrigger implements INodeType {
 						type: 'number',
 						default: 1,
 						description:
-							'Max number of requests that may be in progress at any time. If falsey then no limit.',
+							'Max number of requests that may be in progress at any time. If false then no limit.',
 					},
 					{
 						displayName: 'Read Messages From Beginning',
