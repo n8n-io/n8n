@@ -83,6 +83,7 @@ import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -125,7 +126,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
-			selectedJsonPath: null as null | string,
+			selectedJsonPath: nonExistingJsonPath,
 			draggingPath: null as null | string,
 			displayMode: 'json',
 		};

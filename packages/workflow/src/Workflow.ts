@@ -55,6 +55,7 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
+import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -405,21 +406,18 @@ export class Workflow {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
-	/**
-	 * Renames nodes in expressions
-	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue The parameters to check for expressions
-	 * @param {string} currentName The current name of the node
-	 * @param {string} newName The new name
-	 */
-	renameNodeInExpressions(
+	renameNodeInParameterValue(
 		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
+		{ hasRenamableContent } = { hasRenamableContent: false },
 	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
-			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+			if (
+				typeof parameterValue === 'string' &&
+				(parameterValue.charAt(0) === '=' || hasRenamableContent)
+			) {
 				// Is expression so has to be rewritten
 				// To not run the "expensive" regex stuff when it is not needed
 				// make a simple check first if it really contains the the node-name
@@ -467,7 +465,7 @@ export class Workflow {
 			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
-				returnArray.push(this.renameNodeInExpressions(currentValue, currentName, newName));
+				returnArray.push(this.renameNodeInParameterValue(currentValue, currentName, newName));
 			}
 
 			return returnArray;
@@ -478,10 +476,11 @@ export class Workflow {
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			returnData[parameterName] = this.renameNodeInExpressions(
+			returnData[parameterName] = this.renameNodeInParameterValue(
 				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
 				newName,
+				{ hasRenamableContent },
 			);
 		}
 
@@ -505,11 +504,20 @@ export class Workflow {
 		// Update the expressions which reference the node
 		// with its old name
 		for (const node of Object.values(this.nodes)) {
-			node.parameters = this.renameNodeInExpressions(
+			node.parameters = this.renameNodeInParameterValue(
 				node.parameters,
 				currentName,
 				newName,
 			) as INodeParameters;
+
+			if (NODES_WITH_RENAMABLE_CONTENT.has(node.type)) {
+				node.parameters.jsCode = this.renameNodeInParameterValue(
+					node.parameters.jsCode,
+					currentName,
+					newName,
+					{ hasRenamableContent: true },
+				);
+			}
 		}
 
 		// Change all source connections
