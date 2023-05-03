@@ -55,6 +55,7 @@
 				size="mini"
 				icon="gem"
 				type="success"
+				:block="true"
 				@click="onUpgradeClicked"
 			/>
 		</div>
@@ -180,9 +181,5 @@ const onUpgradeClicked = () => {};
 
 .upgradeButtonSection {
 	margin: var(--spacing-s);
-}
-
-.upgradeButtonSection > * {
-	width: 100%;
 }
 </style>
