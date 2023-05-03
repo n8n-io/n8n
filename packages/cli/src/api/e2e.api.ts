@@ -36,6 +36,8 @@ type Feature = keyof typeof enabledFeatures;
 
 Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
+const tablesNotToTruncate = ['migrations', 'sqlite_sequence'];
+
 const truncateAll = async () => {
 	const connection = Db.getConnection();
 	const allTables: Array<{ name: string }> = await connection.query(
@@ -46,9 +48,14 @@ const truncateAll = async () => {
 	await connection.query('PRAGMA foreign_keys = OFF;');
 
 	for (const { name: table } of allTables) {
-		await connection.query(
-			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
-		);
+		try {
+			if (tablesNotToTruncate.includes(table)) continue;
+			await connection.query(
+				`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
+			);
+		} catch (error) {
+			console.warn('Dropping Table for E2E Reset error: ', error);
+		}
 	}
 
 	// Re-enable foreign key constraint checks
@@ -129,8 +136,8 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	res.writeHead(204).end();
 });
 
-e2eController.post(
-	'/enable-feature/:feature',
+e2eController.patch(
+	'/feature/:feature',
 	bodyParser.json(),
 	async (req: Request<{ feature: Feature }>, res) => {
 		const { feature } = req.params;

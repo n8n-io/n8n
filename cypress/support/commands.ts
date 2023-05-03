@@ -209,11 +209,11 @@ Cypress.Commands.add('setupOwner', (payload) => {
 });
 
 Cypress.Commands.add('enableFeature', (feature) => {
-	cy.task('enable-feature', { feature, enabled: true });
+	cy.task('set-feature', { feature, enabled: true });
 });
 
 Cypress.Commands.add('disableFeature', (feature) => {
-	cy.task('enable-feature', { feature, enabled: false });
+	cy.task('set-feature', { feature, enabled: false });
 });
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
