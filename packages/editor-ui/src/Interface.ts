@@ -1457,6 +1457,7 @@ export interface PlanSpec {
 	credentialsLimit: number;
 	isActive: boolean;
 	displayName: string;
+	expirationDate: string;
 	metadata: PlanMetadata;
 }
 export interface PlanMetadata {

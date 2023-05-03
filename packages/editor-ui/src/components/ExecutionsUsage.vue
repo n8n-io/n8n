@@ -76,6 +76,7 @@ const currentPlan = ref<CloudPlanData>({
 		credentialsLimit: 100,
 		isActive: false,
 		displayName: 'Trial',
+		expirationDate: '2023-05-06T01:47:47Z',
 		metadata: {
 			version: 'v1',
 			group: 'trial',
@@ -100,19 +101,16 @@ const now = DateTime.utc();
 onMounted(async () => {});
 
 const daysLeftOnTrial = computed(() => {
-	const { days = 0 } = now.diff(getPlanStartingDate(), ['days']).toObject();
-	return Math.trunc(days);
+	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
+	return Math.ceil(days);
 });
 
 const isTrialExpired = computed(() => {
-	const trialEndsAt = getPlanStartingDate().plus({
-		days: currentPlan.value.planSpec.metadata.trial.length,
-	});
+	const trialEndsAt = DateTime.fromISO(currentPlan.value.planSpec.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
 });
 
-const getPlanStartingDate = () =>
-	DateTime.fromISO(currentPlan.value.instance.createdAt).startOf('day');
+const getPlanExpirationDate = () => DateTime.fromISO(currentPlan.value.planSpec.expirationDate);
 
 const trialHasExecutionsLeft = computed(
 	() => currentPlan.value.usage.executions < currentPlan.value.planSpec.monthlyExecutionsLimit,
