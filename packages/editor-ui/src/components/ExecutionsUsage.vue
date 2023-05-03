@@ -9,7 +9,11 @@
 				</template>
 				<template #count>
 					<n8n-text size="xsmall" :bold="true" color="warning">
-						{{ daysLeftOnTrial }} {{ locale.baseText('executionUsage.currentUsage.count') }}
+						{{
+							locale.baseText('executionUsage.currentUsage.count', {
+								interpolate: { days: daysLeftOnTrial.toString() },
+							})
+						}}
 					</n8n-text>
 				</template>
 			</i18n>
