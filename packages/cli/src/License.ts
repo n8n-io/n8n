@@ -168,8 +168,7 @@ export class License {
 		}
 
 		return entitlements.find(
-			(entitlement) =>
-				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
+			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
 		);
 	}
 
