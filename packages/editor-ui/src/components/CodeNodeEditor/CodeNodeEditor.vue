@@ -4,7 +4,7 @@
 			<template #customContent>
 				<div :class="$style.accordionContent">
 					<div :class="$style.aiContent">
-						<n8n-select
+						<!-- <n8n-select
 							defaultFirstOption
 							placeholder="GPT Model"
 							size="medium"
@@ -17,7 +17,7 @@
 								key="gpt-3.5-turbo"
 								label="GPT 3.5 ($0.002 / 1K tokens)"
 							/>
-						</n8n-select>
+						</n8n-select> -->
 						<n8n-input
 							v-model="apiKey"
 							type="password"
@@ -26,13 +26,13 @@
 							placeholder="API Key"
 						/>
 						<n8n-input v-model="userPrompt" type="textarea" :rows="5" ref="input" />
-						<div v-if="lastQueryUsage" :class="$style.apiUsage">
+						<!-- <div v-if="lastQueryUsage" :class="$style.apiUsage">
 							<p>Last query tokens:</p>
 							<p>Completion: {{ lastQueryUsage?.completion_tokens }}</p>
 							<p>Prompt: {{ lastQueryUsage?.prompt_tokens }}</p>
 							<p>Total: {{ lastQueryUsage?.total_tokens }}</p>
 							<p>Cost: {{ calculateApiCost(lastQueryUsage?.total_tokens) }}$</p>
-						</div>
+						</div> -->
 
 						<div :class="$style.controls">
 							<n8n-button
