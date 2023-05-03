@@ -61,7 +61,6 @@ describe('NodeErrors tests', () => {
 
 	it('should return default message for ECONNREFUSED', () => {
 		const nodeApiError = new NodeApiError(node, {
-			status: 'rejected',
 			message: 'ECONNREFUSED',
 		});
 
