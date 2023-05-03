@@ -181,8 +181,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 					return null;
 				}
 
-				if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
-					computedValue = this.$locale.baseText('parameterInput.emptyString');
+				if (typeof computedValue === 'string' && computedValue.length === 0) {
+					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
