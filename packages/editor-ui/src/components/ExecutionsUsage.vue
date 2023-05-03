@@ -29,7 +29,7 @@
 			</n8n-text>
 		</div>
 		<div v-if="!isTrialExpired" :class="$style.usageCounter">
-			<div :class="$style.progressBarSection">
+			<div>
 				<progress
 					:class="[
 						trialHasExecutionsLeft ? $style.progressBarSuccess : $style.progressBarDanger,
@@ -164,11 +164,6 @@ const onUpgradeClicked = () => {};
 	margin-left: var(--spacing-s);
 	margin-top: var(--spacing-2xs);
 	font-size: var(--font-size-3xs);
-}
-.progressBarSection {
-	width: 62.4px;
-	justify-content: center;
-	margin-right: 0px;
 }
 
 .danger {
