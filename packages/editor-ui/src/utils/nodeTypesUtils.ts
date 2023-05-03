@@ -35,6 +35,7 @@ import { i18n as locale } from '@/plugins/i18n';
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 export function getAppNameFromCredType(name: string) {
 	return name
@@ -399,4 +400,11 @@ export const isNodeParameterRequired = (
 		}
 	});
 	return true;
+};
+
+export const parseResourceMapperFieldName = (fullName: string) => {
+	const match = fullName.match(RESOURCE_MAPPER_FIELD_NAME_REGEX);
+	const fieldName = match ? match.pop() : fullName;
+
+	return fieldName;
 };

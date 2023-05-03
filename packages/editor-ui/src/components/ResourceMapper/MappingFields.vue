@@ -14,6 +14,7 @@ import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { get } from 'lodash-es';
 import { useNDVStore } from '@/stores';
+import { parseResourceMapperFieldName } from '@/utils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -21,7 +22,6 @@ interface Props {
 	nodeValues: INodeParameters | undefined;
 	fieldsToMap: ResourceMapperField[];
 	paramValue: ResourceMapperValue;
-	FIELD_NAME_REGEX: RegExp;
 	labelSize: string;
 	showMatchingColumnsSelector: boolean;
 	showMappingModeSelect: boolean;
@@ -58,11 +58,12 @@ const orderedFields = computed<INodeProperties[]>(() => {
 	// Sort so that matching columns are first
 	if (props.paramValue.matchingColumns) {
 		fieldsUi.value.forEach((field, i) => {
-			const match = field.name.match(props.FIELD_NAME_REGEX);
-			const fieldName = match ? match.pop() : field.name;
-			if (props.paramValue.matchingColumns.includes(fieldName || '')) {
-				fieldsUi.value.splice(i, 1);
-				fieldsUi.value.unshift(field);
+			const fieldName = parseResourceMapperFieldName(field.name);
+			if (fieldName) {
+				if (props.paramValue.matchingColumns.includes(fieldName)) {
+					fieldsUi.value.splice(i, 1);
+					fieldsUi.value.unshift(field);
+				}
 			}
 		});
 	}
@@ -147,15 +148,14 @@ function getFieldDescription(field: ResourceMapperField): string {
 }
 
 function isMatchingField(field: string): boolean {
-	const match = field.match(props.FIELD_NAME_REGEX);
-	let fieldName = field;
-	if (match) {
-		fieldName = match.pop() || field;
+	const fieldName = parseResourceMapperFieldName(field);
+	if (fieldName) {
+		return (
+			props.showMatchingColumnsSelector &&
+			(props.paramValue.matchingColumns || []).includes(fieldName)
+		);
 	}
-	return (
-		props.showMatchingColumnsSelector &&
-		(props.paramValue.matchingColumns || []).includes(fieldName)
-	);
+	return false;
 }
 
 function fieldCannotBeDeleted(field: INodeProperties): boolean {
@@ -174,11 +174,9 @@ function getFieldIssues(field: INodeProperties): string[] {
 	let fieldIssues: string[] = [];
 	if (ndvStore.activeNode) {
 		const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
-		const match = field.name.match(props.FIELD_NAME_REGEX);
-		let fieldName = field.name;
-		if (match) {
-			fieldName = match.pop() || field.name;
-			const key = `${props.parameter.name}.${fieldName}`;
+		const filedName = parseResourceMapperFieldName(field.name);
+		if (filedName) {
+			const key = `${props.parameter.name}.${filedName}`;
 			if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
 				fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
 			}

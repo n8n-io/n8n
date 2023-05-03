@@ -1241,6 +1241,7 @@ export function getParameterIssues(
 		if (nodeProperties.typeOptions?.resourceMapper?.mode === 'add') {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 			if (isResourceMapperValue(value)) {
+				const fieldWordSingular = nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
 				value.schema.forEach((field) => {
 					if (field.required) {
 						const key = `${nodeProperties.name}.${field.id}`;
@@ -1251,7 +1252,9 @@ export function getParameterIssues(
 							foundIssues.parameters[key] = [];
 						}
 						if (value.value === null || (value.value && value.value[field.id] === null)) {
-							const error = `Field "${field.id}" is required.`;
+							const error = `${
+								fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1)
+							} "${field.id}" is required.`;
 							foundIssues.parameters[key].push(error);
 						}
 					}

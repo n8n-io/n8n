@@ -14,7 +14,7 @@ import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
-import { isResourceMapperValue } from '@/utils';
+import { isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
 import Vue from 'vue';
 import { useNDVStore } from '@/stores';
@@ -28,8 +28,6 @@ interface Props {
 	dependentParametersValues: string | null;
 	nodeValues: INodeParameters | undefined;
 }
-
-const FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
@@ -235,31 +233,23 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	) {
 		newValue = updateInfo.value;
 	}
-	// Extract the name from the path
-	const match = updateInfo.name.match(FIELD_NAME_REGEX);
-	if (match) {
-		const name = match.pop();
-		if (name && state.paramValue.value) {
-			state.paramValue.value[name] = newValue;
-			emitValueChanged();
-		}
+	const fieldName = parseResourceMapperFieldName(updateInfo.name);
+	if (fieldName && state.paramValue.value) {
+		state.paramValue.value[fieldName] = newValue;
+		emitValueChanged();
 	}
 }
 
 function removeField(name: string): void {
-	const match = name.match(FIELD_NAME_REGEX);
-	if (match) {
-		const fieldName = match.pop();
-
-		if (fieldName) {
-			if (state.paramValue.value) {
-				delete state.paramValue.value[fieldName];
-				const field = state.paramValue.schema.find((f) => f.id === fieldName);
-				if (field) {
-					Vue.set(field, 'removed', true);
-				}
-				emitValueChanged();
+	const fieldName = parseResourceMapperFieldName(name);
+	if (fieldName) {
+		if (state.paramValue.value) {
+			delete state.paramValue.value[fieldName];
+			const field = state.paramValue.schema.find((f) => f.id === fieldName);
+			if (field) {
+				Vue.set(field, 'removed', true);
 			}
+			emitValueChanged();
 		}
 	}
 }
@@ -331,7 +321,6 @@ defineExpose({
 			:nodeValues="props.nodeValues"
 			:fieldsToMap="state.paramValue.schema"
 			:paramValue="state.paramValue"
-			:FIELD_NAME_REGEX="FIELD_NAME_REGEX"
 			:labelSize="labelSize"
 			:showMatchingColumnsSelector="showMatchingColumnsSelector"
 			:showMappingModeSelect="showMappingModeSelect"
