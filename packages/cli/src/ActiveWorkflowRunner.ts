@@ -66,6 +66,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { START_NODES } from './constants';
+import UrlPattern from 'url-pattern';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -211,8 +212,30 @@ export class ActiveWorkflowRunner {
 		// check if path is dynamic
 		if (webhook === null) {
 			// check if a dynamic webhook path exists
+
+			const workflowsData = await Db.collections.Workflow.find({
+				where: { active: true },
+			});
+
+			for (const workflowData of workflowsData) {
+				const webhooks = await Db.collections.Webhook.findBy({
+					workflowId: workflowData.id,
+				});
+
+				for (const webhook of webhooks) {
+					// using this approach means that all webhooks in all workflows must have a unique path to avoid matching a request to the wrong webhook
+					// which in this case the first one that matches is selected
+					if (new UrlPattern(webhook.webhookPath.split(/[?#]/)[0]).match(path.split(/[?#]/)[0])) {
+						webhookId = webhook.webhookId;
+						break;
+					}
+				}
+
+				if (webhookId) break;
+			}
+
 			const pathElements = path.split('/');
-			webhookId = pathElements.shift();
+
 			const dynamicWebhooks = await Db.collections.Webhook.findBy({
 				webhookId,
 				method: httpMethod,
