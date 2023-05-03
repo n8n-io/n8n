@@ -9,8 +9,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	IRun,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -133,6 +134,19 @@ export class KafkaTrigger implements INodeType {
 						description: 'Whether to try to parse the message to an object',
 					},
 					{
+						displayName: 'Parallel Processing',
+						name: 'parallelProcessing',
+						type: 'boolean',
+						default: true,
+						displayOptions: {
+							hide: {
+								'@version': ['1'],
+							},
+						},
+						description:
+							'Whether to process messages in parallel or by keeping the message in order',
+					},
+					{
 						displayName: 'Only Message',
 						name: 'onlyMessage',
 						type: 'boolean',
@@ -177,6 +191,8 @@ export class KafkaTrigger implements INodeType {
 
 		const ssl = credentials.ssl as boolean;
 
+		const options = this.getNodeParameter('options', {}) as IDataObject;
+
 		const config: KafkaConfig = {
 			clientId,
 			brokers,
@@ -213,9 +229,9 @@ export class KafkaTrigger implements INodeType {
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
 
-		await consumer.connect();
+		const parallelProcessing = options.parallelProcessing as boolean;
 
-		const options = this.getNodeParameter('options', {}) as IDataObject;
+		await consumer.connect();
 
 		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
@@ -261,8 +277,16 @@ export class KafkaTrigger implements INodeType {
 						//@ts-ignore
 						data = value;
 					}
-
-					this.emit([this.helpers.returnJsonArray([data])]);
+					let responsePromise = undefined;
+					if (!parallelProcessing) {
+						responsePromise = await createDeferredPromise<IRun>();
+						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
+					} else {
+						this.emit([this.helpers.returnJsonArray([data])]);
+					}
+					if (responsePromise) {
+						await responsePromise.promise();
+					}
 				},
 			});
 		};
