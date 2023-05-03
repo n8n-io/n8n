@@ -105,9 +105,9 @@ const daysLeftOnTrial = computed(() => {
 });
 
 const isTrialExpired = computed(() => {
-	const trialEndsAt = getPlanStartingDate()
-		.plus({ days: currentPlan.value.planSpec.metadata.trial.length })
-		.endOf('day');
+	const trialEndsAt = getPlanStartingDate().plus({
+		days: currentPlan.value.planSpec.metadata.trial.length,
+	});
 	return now.toMillis() > trialEndsAt.toMillis();
 });
 
