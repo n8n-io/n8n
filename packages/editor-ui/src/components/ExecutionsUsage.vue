@@ -154,7 +154,7 @@ const onUpgradeClicked = () => {};
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);
 	margin-top: var(--spacing-xs);
-	line-height: 12.5px;
+	line-height: var(--spacing-xs);
 }
 
 .usageCounter {
