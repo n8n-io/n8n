@@ -117,7 +117,7 @@ export class KafkaTrigger implements INodeType {
 						type: 'number',
 						default: 1,
 						description:
-							'Max number of requests that may be in progress at any time. If false then no limit.',
+							'The maximum number of unacknowledged requests the client will send on a single connection',
 					},
 					{
 						displayName: 'Read Messages From Beginning',
