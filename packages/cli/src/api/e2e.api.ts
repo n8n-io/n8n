@@ -36,7 +36,7 @@ type Feature = keyof typeof enabledFeatures;
 
 Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
-const tablesNotToTruncate = ['migrations', 'sqlite_sequence'];
+const tablesNotToTruncate = ['sqlite_sequence'];
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
