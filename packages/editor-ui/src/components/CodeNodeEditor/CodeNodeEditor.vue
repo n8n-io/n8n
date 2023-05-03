@@ -114,9 +114,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				case 'json':
 					return [json()];
 				case 'javaScript':
-					return [javascript(), this.autocompletionExtension()];
+					return [javascript(), this.autocompletionExtension('javaScript')];
 				case 'python':
-					return [python()];
+					return [python(), this.autocompletionExtension('python')];
 			}
 		},
 	},

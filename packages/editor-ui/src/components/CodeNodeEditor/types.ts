@@ -1,6 +1,6 @@
 import type { EditorView } from '@codemirror/view';
 import type { I18nClass } from '@/plugins/i18n';
-import type { Workflow, CodeExecutionMode } from 'n8n-workflow';
+import type { Workflow, CodeExecutionMode, CodeNodeEditorLanguage } from 'n8n-workflow';
 import type { Node } from 'estree';
 
 export type CodeNodeEditorMixin = Vue.VueConstructor<
@@ -8,6 +8,7 @@ export type CodeNodeEditorMixin = Vue.VueConstructor<
 		$locale: I18nClass;
 		editor: EditorView | null;
 		mode: CodeExecutionMode;
+		language: CodeNodeEditorLanguage;
 		getCurrentWorkflow(): Workflow;
 	}
 >;

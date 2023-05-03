@@ -33,7 +33,12 @@ export const completerExtension = mixins(
 	jsonFieldCompletions,
 ).extend({
 	methods: {
-		autocompletionExtension(): Extension {
+		autocompletionExtension(language: 'javaScript' | 'python'): Extension {
+			const completions = [];
+			if (language === 'javaScript') {
+				completions.push(jsSnippets, localCompletionSource);
+			}
+
 			return autocompletion({
 				compareCompletions: (a: Completion, b: Completion) => {
 					if (/\.json$|id$|id['"]\]$/.test(a.label)) return 0;
@@ -41,8 +46,7 @@ export const completerExtension = mixins(
 					return a.label.localeCompare(b.label);
 				},
 				override: [
-					jsSnippets,
-					localCompletionSource,
+					...completions,
 
 					// core
 					this.itemCompletions,
