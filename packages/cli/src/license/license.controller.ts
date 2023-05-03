@@ -93,6 +93,8 @@ licenseController.post(
 				case 'RESERVATION_CONFLICT':
 					message = 'Activation key not found';
 					break;
+				default:
+					getLogger().error(message, { stack: error.stack ?? 'n/a' });
 			}
 
 			throw new ResponseHelper.BadRequestError(message);
