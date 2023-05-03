@@ -58,6 +58,7 @@
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
+			data-test-id="credentials-config-container-test-success"
 		/>
 
 		<template v-if="credentialPermissions.updateConnection">
