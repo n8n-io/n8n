@@ -55,7 +55,7 @@ const truncateAll = async () => {
 				.join(',')})`,
 		);
 	});
-	await connection.query('PRAGMA foreign_keys=OFF');
+	await connection.query('PRAGMA foreign_keys=ON');
 };
 
 const setupUserManagement = async () => {
