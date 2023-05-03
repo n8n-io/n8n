@@ -1443,3 +1443,36 @@ export type VersionControlPreferences = {
 	branchColor: string;
 	publicKey?: string;
 };
+
+export interface PlanData {
+	planSpec: PlanSpec;
+	instance: Instance;
+	usage: Usage;
+}
+
+export interface PlanSpec {
+	planId: number;
+	monthlyExecutionsLimit: number;
+	activeWorkflowsLimit: number;
+	credentialsLimit: number;
+	isActive: boolean;
+	displayName: string;
+	metadata: Metadata;
+}
+export interface Metadata {
+	version: string;
+	group: string;
+	slug: string;
+	trial: Trial;
+}
+export interface Trial {
+	length: number;
+	gracePeriod: number;
+}
+export interface Instance {
+	createdAt: string;
+}
+export interface Usage {
+	executions: number;
+	activeWorkflows: number;
+}

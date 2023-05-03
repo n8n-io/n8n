@@ -25,6 +25,8 @@
 					/>
 				</div>
 			</template>
+
+			<template #beforeLowerMenu> <ExecutionsUsage v-if="!isCollapsed" /></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
@@ -134,6 +136,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useVersionsStore } from '@/stores/versions';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl';
+import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 
 export default mixins(
 	genericHelpers,
@@ -147,6 +150,7 @@ export default mixins(
 	components: {
 		GiftNotificationIcon,
 		WorkflowSettings,
+		ExecutionsUsage,
 	},
 	data() {
 		return {
