@@ -36,33 +36,26 @@ type Feature = keyof typeof enabledFeatures;
 
 Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
-const tablesToTruncate = [
-	'auth_identity',
-	'auth_provider_sync_history',
-	'event_destinations',
-	'shared_workflow',
-	'shared_credentials',
-	'webhook_entity',
-	'workflows_tags',
-	'credentials_entity',
-	'tag_entity',
-	'workflow_statistics',
-	'workflow_entity',
-	'execution_entity',
-	'settings',
-	'installed_packages',
-	'installed_nodes',
-	'user',
-	'role',
-];
+const tablesNotToTruncate = ['migrations', 'sqlite_sequence'];
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
-	for (const table of tablesToTruncate) {
-		await connection.query(
-			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
+	await connection.query('PRAGMA foreign_keys=OFF');
+	await connection.transaction(async (em) => {
+		const allTables: Array<{ name: string }> = await em.query(
+			"SELECT name FROM sqlite_schema WHERE type ='table'",
 		);
-	}
+		for (const { name: tableName } of allTables) {
+			if (tablesNotToTruncate.includes(tableName)) continue;
+			await em.query(`DELETE FROM ${tableName}`);
+		}
+		await em.query(
+			`DELETE FROM sqlite_sequence WHERE name NOT IN (${tablesNotToTruncate
+				.map((t) => `'${t}'`)
+				.join(',')})`,
+		);
+	});
+	await connection.query('PRAGMA foreign_keys=OFF');
 };
 
 const setupUserManagement = async () => {
