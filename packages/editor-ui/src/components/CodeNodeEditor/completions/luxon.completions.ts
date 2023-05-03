@@ -1,7 +1,7 @@
 import Vue from 'vue';
-import { escape } from '@/components/CodeNodeEditor/utils';
+import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
+import type { CodeNodeEditorMixin } from '../types';
 
 export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {

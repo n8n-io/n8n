@@ -7,10 +7,10 @@ import * as esprima from 'esprima-next';
 import type { Node } from 'estree';
 import type { CodeNodeEditorLanguage } from 'n8n-workflow';
 
-import { DEFAULT_LINTER_DELAY_IN_MS, DEFAULT_LINTER_SEVERITY } from '../constants';
+import { DEFAULT_LINTER_DELAY_IN_MS, DEFAULT_LINTER_SEVERITY } from './constants';
 import { OFFSET_FOR_SCRIPT_WRAPPER } from './constants';
-import { walk } from '../utils';
-import type { CodeNodeEditorMixin, RangeNode } from '../types';
+import { walk } from './utils';
+import type { CodeNodeEditorMixin, RangeNode } from './types';
 
 export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {

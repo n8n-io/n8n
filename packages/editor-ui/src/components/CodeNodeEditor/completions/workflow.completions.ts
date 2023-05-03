@@ -1,7 +1,7 @@
 import Vue from 'vue';
-import { addVarType } from '@/components/CodeNodeEditor/utils';
+import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
+import type { CodeNodeEditorMixin } from '../types';
 
 const escape = (str: string) => str.replace('$', '\\$');
 

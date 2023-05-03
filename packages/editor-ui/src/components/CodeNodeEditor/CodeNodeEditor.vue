@@ -43,8 +43,8 @@ import Modal from '@/components/Modal.vue';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { CODE_PLACEHOLDERS } from './constants';
-import { linterExtension } from './javaScript/linter';
-import { completerExtension } from './javaScript/completer';
+import { linterExtension } from './linter';
+import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
