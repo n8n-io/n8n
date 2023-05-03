@@ -3384,7 +3384,7 @@ packages:
     dependencies:
       '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
       '@codemirror/language': 6.2.1
-      '@lezer/python': 1.1.4
+      '@lezer/python': 1.1.5
     transitivePeerDependencies:
       - '@codemirror/state'
       - '@codemirror/view'
@@ -4273,8 +4273,8 @@ packages:
       '@lezer/common': 1.0.1
     dev: false
 
-  /@lezer/python@1.1.4:
-    resolution: {integrity: sha512-x82XgYxqqX0Yiw7uIemQJ3z2QyQme5BYpectkPfNg99OQrakqfwqVolqEVIrsj4QO9rVDLFZZ49J0Vbne7UbAA==}
+  /@lezer/python@1.1.5:
+    resolution: {integrity: sha512-h0DVr6IfrmKUbTc5PeetaC87IZYoHyn5JogsVYW5mRDpVRyEsvaLBMLyEN4Ufc2BKp1c9y2Pkr8ZNLxS8dTLsQ==}
     dependencies:
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
