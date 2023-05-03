@@ -1,15 +1,11 @@
-import {
-	setup,
-	equalityTest,
-	workflowToTests,
-	getWorkflowFilenames,
-} from '../../../../test/nodes/Helpers';
+import { getWorkflowFilenames, testWorkflows } from '../../../../test/nodes/Helpers';
 
 import nock from 'nock';
 
 const response = {
 	TextDetections: [
 		{
+			// eslint-disable-next-line @typescript-eslint/no-loss-of-precision
 			Confidence: 99.63162231445312,
 			DetectedText: 'OMEGA',
 			Geometry: {
@@ -530,6 +526,7 @@ const response = {
 			Type: 'WORD',
 		},
 		{
+			// eslint-disable-next-line @typescript-eslint/no-loss-of-precision
 			Confidence: 96.12210083007812,
 			DetectedText: 'MADE',
 			Geometry: {
@@ -566,40 +563,24 @@ const response = {
 	TextModelVersion: '3.0',
 };
 
-jest.mock('../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../GenericFunctions');
-	return {
-		...originalModule,
-		awsApiRequest: jest.fn(async (method: string) => {
-			console.log('method', method);
-			if (method === 'POST') {
-				return {
-					response,
-				};
-			}
-		}),
-	};
-});
-
 describe('Test AWS Rekogntion Node', () => {
-	const workflows = getWorkflowFilenames(__dirname);
-	const tests = workflowToTests(workflows);
-	const baseUrl = 'https://rekognition.us-east-1.amazonaws.com';
+	describe('Image Recognition', () => {
+		const workflows = getWorkflowFilenames(__dirname);
+		const baseUrl = 'https://rekognition.us-east-1.amazonaws.com';
+		let mock: nock.Scope;
 
-	nock(baseUrl).post('/.*/').reply(200, response);
+		beforeAll(() => {
+			nock.disableNetConnect();
+			mock = nock(baseUrl);
+		});
 
-	beforeAll(() => {
-		nock.disableNetConnect();
+		beforeEach(async () => {
+			mock.post('/').reply(200, response);
+		});
+
+		afterAll(() => {
+			nock.restore();
+		});
+		testWorkflows(workflows);
 	});
-
-	afterAll(() => {
-		nock.restore();
-		jest.unmock('../GenericFunctions');
-	});
-
-	const nodeTypes = setup(tests);
-
-	for (const testData of tests) {
-		test(testData.description, async () => equalityTest(testData, nodeTypes));
-	}
 });
