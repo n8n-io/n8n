@@ -39,6 +39,7 @@ Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[
 const tablesNotToTruncate = ['sqlite_sequence'];
 
 const truncateAll = async () => {
+	console.log('__DEBUG__: Truncating all tables');
 	const connection = Db.getConnection();
 	const allTables: Array<{ name: string }> = await connection.query(
 		"SELECT name FROM sqlite_master WHERE type='table';",
@@ -60,9 +61,11 @@ const truncateAll = async () => {
 
 	// Re-enable foreign key constraint checks
 	await connection.query('PRAGMA foreign_keys = ON;');
+	console.log('__DEBUG__: Truncating all tables complete');
 };
 
 const setupUserManagement = async () => {
+	console.log('__DEBUG__: Setting up user management');
 	const connection = Db.getConnection();
 	await connection.query('INSERT INTO role (name, scope) VALUES ("owner", "global");');
 	const instanceOwnerRole = (await connection.query(
@@ -90,6 +93,7 @@ const setupUserManagement = async () => {
 	);
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
+	console.log('__DEBUG__: User management setup complete');
 };
 
 const resetLogStreaming = async () => {
@@ -102,14 +106,17 @@ const resetLogStreaming = async () => {
 export const e2eController = Router();
 
 e2eController.post('/db/reset', async (req, res) => {
+	console.log('__DEBUG__: DB Reset Start');
 	await resetLogStreaming();
 	await truncateAll();
 	await setupUserManagement();
 
+	console.log('__DEBUG__: DB Reset End');
 	res.writeHead(204).end();
 });
 
 e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
+	console.log('__DEBUG__: Setting up owner');
 	if (config.get('userManagement.isInstanceOwnerSetUp')) {
 		res.writeHead(500).send({ error: 'Owner already setup' });
 		return;
@@ -133,6 +140,7 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
+	console.log('__DEBUG__: Owner setup complete');
 	res.writeHead(204).end();
 });
 
