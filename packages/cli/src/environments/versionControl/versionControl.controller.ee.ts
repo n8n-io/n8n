@@ -4,6 +4,7 @@ import { VersionControlService } from './versionControl.service.ee';
 import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { BadRequestError } from '@/ResponseHelper';
+import type { PullResult, PushResult, StatusResult } from 'simple-git';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -84,9 +85,9 @@ export class VersionControlController {
 		}
 	}
 
-	@Authorized('any')
+	@Authorized(['global', 'owner'])
 	@Post('/push')
-	async push() {
+	async push(): Promise<PushResult> {
 		try {
 			return await this.versionControlService.push();
 		} catch (error) {
@@ -94,9 +95,9 @@ export class VersionControlController {
 		}
 	}
 
-	@Authorized('any')
+	@Authorized(['global', 'owner'])
 	@Get('/pull')
-	async pull() {
+	async pull(): Promise<PullResult> {
 		try {
 			return await this.versionControlService.pull();
 		} catch (error) {
@@ -104,17 +105,29 @@ export class VersionControlController {
 		}
 	}
 
-	@Authorized('any')
+	@Authorized(['global', 'owner'])
 	@Post('/stage')
-	async stage() {
+	async stage(req: VersionControlRequest.Stage): Promise<StatusResult | string> {
 		try {
-			return await this.versionControlService.stage();
+			const files =
+				req.body.files && req.body.files.length > 0 ? new Set<string>(req.body.files) : undefined;
+			return await this.versionControlService.stage(files);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
 
-	@Authorized('any')
+	@Authorized(['global', 'owner'])
+	@Post('/unstage')
+	async unstage(): Promise<StatusResult | string> {
+		try {
+			return await this.versionControlService.unstage();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
 	@Post('/commit')
 	async commit(req: VersionControlRequest.Commit) {
 		try {
@@ -126,7 +139,7 @@ export class VersionControlController {
 
 	@Authorized('any')
 	@Get('/status')
-	async status() {
+	async status(): Promise<StatusResult> {
 		try {
 			return await this.versionControlService.status();
 		} catch (error) {

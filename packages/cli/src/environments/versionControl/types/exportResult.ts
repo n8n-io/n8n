@@ -5,4 +5,5 @@ export interface ExportResult {
 		id: string;
 		name: string;
 	}>;
+	removedFiles?: string[];
 }

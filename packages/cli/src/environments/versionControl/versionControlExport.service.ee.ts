@@ -3,17 +3,19 @@ import path from 'path';
 import {
 	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	VERSION_CONTROL_GIT_FOLDER,
+	VERSION_CONTROL_VARIABLES_EXPORT_FILE,
 	VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import * as Db from '@/Db';
 import glob from 'fast-glob';
-import { jsonParse } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { constants as fsConstants } from 'fs';
 import {
 	writeFile as fsWriteFile,
 	readFile as fsReadFile,
 	access as fsAccess,
 	mkdir as fsMkdir,
+	rm as fsRm,
 } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
@@ -21,6 +23,7 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
+import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class VersionControlExportService {
@@ -40,6 +43,53 @@ export class VersionControlExportService {
 		);
 	}
 
+	getWorkflowPath(workflowId: string): string {
+		return path.join(this.workflowExportFolder, `${workflowId}.json`);
+	}
+
+	private async rmDeletedWorkflowsFromExportFolder(
+		workflowsToBeExported: SharedWorkflow[],
+	): Promise<Set<string>> {
+		const sharedWorkflowsFileNames = new Set<string>(
+			workflowsToBeExported.map((e) => this.getWorkflowPath(e.workflow.name)),
+		);
+		const existingWorkflowsInFolder = new Set<string>(
+			await glob('*.json', {
+				cwd: this.workflowExportFolder,
+				absolute: true,
+			}),
+		);
+		const deletedWorkflows = new Set(existingWorkflowsInFolder);
+		for (const elem of sharedWorkflowsFileNames) {
+			deletedWorkflows.delete(elem);
+		}
+		try {
+			await Promise.all([...deletedWorkflows].map(async (e) => fsRm(e)));
+		} catch (error) {
+			LoggerProxy.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
+		}
+		return deletedWorkflows;
+	}
+
+	private async writeExportableWorkflowsToExportFolder(workflowsToBeExported: SharedWorkflow[]) {
+		await Promise.all(
+			workflowsToBeExported.map(async (e) => {
+				// TODO: using workflowname for now, until IDs are unique
+				const fileName = this.getWorkflowPath(e.workflow.name);
+				const sanitizedWorkflow: ExportableWorkflow = {
+					id: e.workflow.id,
+					name: e.workflow.name,
+					nodes: e.workflow.nodes,
+					connections: e.workflow.connections,
+					settings: e.workflow.settings,
+					triggerCount: e.workflow.triggerCount,
+					owner: e.user.email,
+				};
+				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
+			}),
+		);
+	}
+
 	async exportWorkflowsToWorkFolder(): Promise<ExportResult> {
 		try {
 			try {
@@ -56,23 +106,12 @@ export class VersionControlExportService {
 					},
 				},
 			});
-			await Promise.all(
-				sharedWorkflows.map(async (e) => {
-					// TODO: using workflowname for now, until IDs are unique
-					const fileName = path.join(this.workflowExportFolder, `${e.workflow.name}.json`);
-					const sanitizedWorkflow: ExportableWorkflow = {
-						id: e.workflow.id,
-						name: e.workflow.name,
-						nodes: e.workflow.nodes,
-						connections: e.workflow.connections,
-						settings: e.workflow.settings,
-						triggerCount: e.workflow.triggerCount,
-						owner: e.user.email,
-					};
-					return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
-				}),
-			);
-			// TODO: also write variables
+
+			// before exporting, figure out which workflows have been deleted and remove them from the export folder
+			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(sharedWorkflows);
+			// write the workflows to the export folder as json files
+			await this.writeExportableWorkflowsToExportFolder(sharedWorkflows);
+
 			return {
 				count: sharedWorkflows.length,
 				folder: this.workflowExportFolder,
@@ -80,9 +119,35 @@ export class VersionControlExportService {
 					id: e.workflow.id,
 					name: path.join(this.workflowExportFolder, `${e.workflow.name}.json`),
 				})),
+				removedFiles: [...removedFiles],
 			};
 		} catch (error) {
 			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+		}
+	}
+
+	async exportVariablesToWorkFolder(): Promise<ExportResult> {
+		try {
+			try {
+				await fsAccess(this.gitFolder, fsConstants.F_OK);
+			} catch (error) {
+				await fsMkdir(this.gitFolder);
+			}
+			const variables = await Db.collections.Variables.find();
+			const fileName = path.join(this.gitFolder, VERSION_CONTROL_VARIABLES_EXPORT_FILE);
+			await fsWriteFile(fileName, JSON.stringify(variables, null, 2));
+			return {
+				count: variables.length,
+				folder: this.gitFolder,
+				files: [
+					{
+						id: '',
+						name: fileName,
+					},
+				],
+			};
+		} catch (error) {
+			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
 		}
 	}
 

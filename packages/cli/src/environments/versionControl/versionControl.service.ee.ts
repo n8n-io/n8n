@@ -18,7 +18,7 @@ import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
 import { writeFile as fsWriteFile } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
-import type { FetchResult, StatusResult } from 'simple-git';
+import type { CommitResult, FetchResult, PullResult, PushResult, StatusResult } from 'simple-git';
 import type { ExportResult } from './types/exportResult';
 import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
@@ -53,7 +53,7 @@ export class VersionControlService {
 	}
 
 	async init(): Promise<void> {
-		this.gitService.reset();
+		this.gitService.resetService();
 		await this.loadFromDbAndApplyVersionControlPreferences();
 		await this.gitService.init({
 			versionControlPreferences: this.versionControlPreferences,
@@ -133,7 +133,7 @@ export class VersionControlService {
 		try {
 			await this.setPreferences({ connected: false });
 			// TODO: remove key pair from disk?
-			this.gitService.reset();
+			this.gitService.resetService();
 		} catch (error) {
 			throw Error(`Failed to disconnect from version control: ${(error as Error).message}`);
 		}
@@ -220,17 +220,21 @@ export class VersionControlService {
 
 	async export(): Promise<{
 		credentials: ExportResult | undefined;
+		variables: ExportResult | undefined;
 		workflows: ExportResult | undefined;
 	}> {
 		const result: {
 			credentials: ExportResult | undefined;
+			variables: ExportResult | undefined;
 			workflows: ExportResult | undefined;
 		} = {
 			credentials: undefined,
+			variables: undefined,
 			workflows: undefined,
 		};
 		try {
 			result.workflows = await this.versionControlExportService.exportWorkflowsToWorkFolder();
+			result.variables = await this.versionControlExportService.exportVariablesToWorkFolder();
 			result.credentials = await this.versionControlExportService.exportCredentialsToWorkFolder();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -272,19 +276,40 @@ export class VersionControlService {
 		return this.gitService.fetch();
 	}
 
-	async pull(): Promise<void> {
+	async pull(): Promise<PullResult> {
 		return this.gitService.pull();
 	}
 
-	async push(): Promise<void> {
+	async push(): Promise<PushResult> {
 		return this.gitService.push();
 	}
 
-	async stage(): Promise<void> {
-		return this.gitService.stage();
+	async stage(files?: Set<string>): Promise<StatusResult | string> {
+		const status = await this.gitService.status();
+		if (!files) {
+			files = new Set<string>([
+				...status.not_added,
+				...status.created,
+				...status.deleted,
+				...status.modified,
+			]);
+		}
+		const stageResult = await this.gitService.stage(files);
+		if (!stageResult) {
+			return this.gitService.status();
+		}
+		return stageResult;
 	}
 
-	async commit(message: string): Promise<void> {
+	async unstage(): Promise<StatusResult | string> {
+		const stageResult = await this.gitService.resetHead();
+		if (!stageResult) {
+			return this.gitService.status();
+		}
+		return stageResult;
+	}
+
+	async commit(message: string): Promise<CommitResult> {
 		return this.gitService.commit(message);
 	}
 

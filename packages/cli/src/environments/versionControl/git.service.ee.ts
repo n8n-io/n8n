@@ -4,7 +4,15 @@ import { LoggerProxy } from 'n8n-workflow';
 import path from 'path';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import { constants as fsConstants } from 'fs';
-import type { FetchResult, SimpleGit, SimpleGitOptions, StatusResult } from 'simple-git';
+import type {
+	CommitResult,
+	FetchResult,
+	PullResult,
+	PushResult,
+	SimpleGit,
+	SimpleGitOptions,
+	StatusResult,
+} from 'simple-git';
 import { simpleGit } from 'simple-git';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 
@@ -90,11 +98,12 @@ export class VersionControlGitService {
 		}
 	}
 
-	reset() {
+	resetService() {
 		this.git = null;
 	}
 
 	resetLocalRepository() {
+		// TODO: Implement
 		this.git = null;
 	}
 
@@ -178,33 +187,42 @@ export class VersionControlGitService {
 		return this.git.fetch();
 	}
 
-	async pull(): Promise<void> {
+	async pull(): Promise<PullResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		throw new Error('not implemented');
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		return this.git.pull(undefined, undefined, { '--ff-only': null });
 	}
 
-	async push(): Promise<void> {
+	async push(): Promise<PushResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		throw new Error('not implemented');
+		return this.git.push();
 	}
 
-	async stage(): Promise<void> {
+	async stage(files: Set<string>): Promise<string> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		throw new Error('not implemented');
+		return this.git.add(Array.from(files));
 	}
 
-	async commit(message: string): Promise<void> {
+	async resetHead(): Promise<string> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		console.log(message);
-		throw new Error('not implemented');
+		return this.git.raw(['reset', 'HEAD']);
+		// built-in reset method does not work
+		// return this.git.reset();
+	}
+
+	async commit(message: string): Promise<CommitResult> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		return this.git.commit(message);
 	}
 
 	async status(): Promise<StatusResult> {
