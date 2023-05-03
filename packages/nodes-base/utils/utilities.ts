@@ -1,4 +1,10 @@
-import type { IDataObject, IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IDisplayOptions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
 import { jsonParse } from 'n8n-workflow';
 
 import { isEqual, isNull, merge } from 'lodash';
@@ -71,6 +77,25 @@ export function updateDisplayOptions(
 			displayOptions: merge({}, nodeProperty.displayOptions, displayOptions),
 		};
 	});
+}
+
+export function processJsonInput<T>(jsonData: T, inputName?: string) {
+	let values;
+	const input = `'${inputName}' ` || '';
+
+	if (typeof jsonData === 'string') {
+		try {
+			values = jsonParse(jsonData);
+		} catch (error) {
+			throw new Error(`Input ${input}must contain a valid JSON`);
+		}
+	} else if (typeof jsonData === 'object') {
+		values = jsonData;
+	} else {
+		throw new Error(`Input ${input}must contain a valid JSON`);
+	}
+
+	return values;
 }
 
 function isFalsy<T>(value: T) {
@@ -172,6 +197,15 @@ export const fuzzyCompare = (useFuzzyCompare: boolean, compareVersion = 1) => {
 		return isEqual(item1, item2);
 	};
 };
+
+export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
+	if (!Array.isArray(data)) {
+		return [{ json: data }];
+	}
+	return data.map((item) => ({
+		json: item,
+	}));
+}
 
 export const keysToLowercase = <T>(headers: T) => {
 	if (typeof headers !== 'object' || Array.isArray(headers) || headers === null) return headers;
