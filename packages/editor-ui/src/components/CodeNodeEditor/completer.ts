@@ -17,7 +17,7 @@ import { variablesCompletions } from './completions/variables.completions';
 
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
-import type { CodeNodeEditorMixin } from '@/components/CodeNodeEditor/types';
+import type { CodeNodeEditorMixin } from './types';
 
 export const completerExtension = mixins(
 	Vue as CodeNodeEditorMixin,
