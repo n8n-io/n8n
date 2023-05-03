@@ -78,6 +78,10 @@ export async function createPool(
 		supportBigNumbers: true,
 	};
 
+	if (options?.nodeVersion && (options.nodeVersion as number) >= 2.1) {
+		connectionOptions.dateStrings = true;
+	}
+
 	if (options?.connectionLimit) {
 		connectionOptions.connectionLimit = options.connectionLimit as number;
 	}
