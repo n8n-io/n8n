@@ -8,6 +8,7 @@
 		:value="value"
 		@change="onChange"
 	>
+		<slot></slot>
 		<n8n-input-label
 			:label="label"
 			:tooltipText="tooltipText"
@@ -32,7 +33,6 @@ export default defineComponent({
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		disabled: {
 			type: Boolean,
@@ -40,7 +40,6 @@ export default defineComponent({
 		},
 		tooltipText: {
 			type: String,
-			required: false,
 		},
 		indeterminate: {
 			type: Boolean,
