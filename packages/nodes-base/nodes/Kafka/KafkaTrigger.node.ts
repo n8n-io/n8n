@@ -140,7 +140,7 @@ export class KafkaTrigger implements INodeType {
 						default: true,
 						displayOptions: {
 							hide: {
-								'@version': ['1'],
+								'@version': [1],
 							},
 						},
 						description:
@@ -192,6 +192,8 @@ export class KafkaTrigger implements INodeType {
 		const ssl = credentials.ssl as boolean;
 
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+
+		options.nodeVersion = this.getNode().typeVersion;
 
 		const config: KafkaConfig = {
 			clientId,
@@ -278,7 +280,7 @@ export class KafkaTrigger implements INodeType {
 						data = value;
 					}
 					let responsePromise = undefined;
-					if (!parallelProcessing) {
+					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
 						responsePromise = await createDeferredPromise<IRun>();
 						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
 					} else {
