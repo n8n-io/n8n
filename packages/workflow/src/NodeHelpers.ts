@@ -1243,14 +1243,14 @@ export function getParameterIssues(
 			if (isResourceMapperValue(value)) {
 				value.schema.forEach((field) => {
 					if (field.required) {
-						if (value.value && value.value[field.id] === null) {
-							const key = `${nodeProperties.name}.${field.id}`;
-							if (foundIssues.parameters === undefined) {
-								foundIssues.parameters = {};
-							}
-							if (foundIssues.parameters[key] === undefined) {
-								foundIssues.parameters[key] = [];
-							}
+						const key = `${nodeProperties.name}.${field.id}`;
+						if (foundIssues.parameters === undefined) {
+							foundIssues.parameters = {};
+						}
+						if (foundIssues.parameters[key] === undefined) {
+							foundIssues.parameters[key] = [];
+						}
+						if (value.value === null || (value.value && value.value[field.id] === null)) {
 							const error = `Field "${field.id}" is required.`;
 							foundIssues.parameters[key].push(error);
 						}

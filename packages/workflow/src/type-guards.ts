@@ -50,7 +50,6 @@ export const isResourceMapperValue = (value: unknown): value is ResourceMapperVa
 		typeof value === 'object' &&
 		value !== null &&
 		'mappingMode' in value &&
-		'matchingColumns' in value &&
 		'schema' in value &&
 		'value' in value
 	);

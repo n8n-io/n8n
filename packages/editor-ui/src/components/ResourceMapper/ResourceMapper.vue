@@ -2,14 +2,14 @@
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import {
+import type {
 	INode,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
-	NodeHelpers,
 	ResourceMapperValue,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { computed, onMounted, reactive, watch } from 'vue';
 import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
@@ -17,6 +17,7 @@ import MappingFields from './MappingFields.vue';
 import { isResourceMapperValue } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
 import Vue from 'vue';
+import { useNDVStore } from '@/stores';
 
 interface Props {
 	parameter: INodeProperties;
@@ -31,6 +32,7 @@ interface Props {
 const FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 const nodeTypesStore = useNodeTypesStore();
+const ndvStore = useNDVStore();
 
 const props = defineProps<Props>();
 
@@ -69,7 +71,6 @@ onMounted(async () => {
 			if (!state.paramValue.schema) {
 				state.paramValue.schema = [];
 			}
-			// TODO: Handle missing values properly once add/remove fields is implemented
 			Object.keys(state.paramValue.value || {}).forEach((key) => {
 				if (state.paramValue.value && state.paramValue.value[key] === '') {
 					state.paramValue.value[key] = null;
@@ -80,10 +81,7 @@ onMounted(async () => {
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
 	setDefaultFieldValues();
-	// TODO: Load node issues when component is mounted
-	if (props.node) {
-		NodeHelpers.getNodeParametersIssues(nodeType.value?.properties || [], props.node);
-	}
+	updateNodeIssues();
 });
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
@@ -177,6 +175,7 @@ async function loadFieldsToMap(): Promise<void> {
 			}
 			return field;
 		});
+		emitValueChanged();
 	}
 }
 
@@ -201,6 +200,18 @@ function setDefaultFieldValues(): void {
 	}
 	if (!state.paramValue.matchingColumns) {
 		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
+	}
+}
+
+function updateNodeIssues(): void {
+	if (props.node) {
+		const parameterIssues = NodeHelpers.getNodeParametersIssues(
+			nodeType.value?.properties || [],
+			props.node,
+		);
+		if (parameterIssues) {
+			ndvStore.updateNodeParameterIssues(parameterIssues);
+		}
 	}
 }
 
