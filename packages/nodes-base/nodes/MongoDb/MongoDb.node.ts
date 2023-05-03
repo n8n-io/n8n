@@ -90,6 +90,7 @@ export class MongoDb implements INodeType {
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
+		const length = items.length;
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'aggregate') {
@@ -138,39 +139,43 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 			//         find
 			// ----------------------------------
+			for (let i = 0; i < length; i++) {
+				try {
+					const queryParameter = JSON.parse(this.getNodeParameter('query', i) as string);
 
-			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+					if (queryParameter._id && typeof queryParameter._id === 'string') {
+						queryParameter._id = new ObjectId(queryParameter._id as string);
+					}
 
-				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id as string);
-				}
+					let query = mdb
+						.collection(this.getNodeParameter('collection', i) as string)
+						.find(queryParameter as Document);
 
-				let query = mdb
-					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(queryParameter as Document);
+					const options = this.getNodeParameter('options', i);
+					const limit = options.limit as number;
+					const skip = options.skip as number;
+					const sort: Sort = options.sort && JSON.parse(options.sort as string);
+					if (skip > 0) {
+						query = query.skip(skip);
+					}
+					if (limit > 0) {
+						query = query.limit(limit);
+					}
+					if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
+						query = query.sort(sort);
+					}
 
-				const options = this.getNodeParameter('options', 0);
-				const limit = options.limit as number;
-				const skip = options.skip as number;
-				const sort: Sort = options.sort && JSON.parse(options.sort as string);
-				if (skip > 0) {
-					query = query.skip(skip);
-				}
-				if (limit > 0) {
-					query = query.limit(limit);
-				}
-				if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
-					query = query.sort(sort);
-				}
-				const queryResult = await query.toArray();
-
-				responseData = queryResult;
-			} catch (error) {
-				if (this.continueOnFail()) {
-					responseData = [{ error: (error as JsonObject).message }];
-				} else {
-					throw error;
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(await query.toArray()),
+						{ itemData: { item: i } },
+					);
+					responseData.push(...executionData);
+				} catch (error) {
+					if (this.continueOnFail()) {
+						responseData = [{ error: (error as JsonObject).message }];
+					} else {
+						throw error;
+					}
 				}
 			}
 		} else if (operation === 'findOneAndReplace') {
