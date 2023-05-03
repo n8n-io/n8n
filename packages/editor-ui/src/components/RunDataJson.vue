@@ -45,7 +45,9 @@
 						>
 					</template>
 					<template #nodeValue="{ node }">
-						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+						<span v-if="isNaN(node.index)" class="ph-no-capture">{{
+							getContent(node.content)
+						}}</span>
 						<span
 							v-else
 							data-target="mappable"
@@ -57,6 +59,7 @@
 								[$style.mappable]: mappingEnabled,
 								[$style.dragged]: draggingPath === node.path,
 							}"
+							class="ph-no-capture"
 							>{{ getContent(node.content) }}</span
 						>
 					</template>
@@ -67,19 +70,20 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { executionDataToJson, isString, shorten } from '@/utils';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -122,7 +126,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
-			selectedJsonPath: null as null | string,
+			selectedJsonPath: nonExistingJsonPath,
 			draggingPath: null as null | string,
 			displayMode: 'json',
 		};

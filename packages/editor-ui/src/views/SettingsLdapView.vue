@@ -6,17 +6,13 @@
 			</n8n-heading>
 		</div>
 
-		<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right">
-			<div>
-				LDAP allows users to authenticate with their centralized account. It's compatible with
-				services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.
-			</div>
-			<br />
+		<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right" class="mb-l">
+			{{ $locale.baseText('settings.ldap.note') }}
 		</n8n-info-tip>
 		<n8n-action-box
 			:description="$locale.baseText('settings.ldap.disabled.description')"
 			:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
-			@click="onContactUsClick"
+			@click="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
@@ -149,7 +145,7 @@
 <script lang="ts">
 import { convertToDisplayDate } from '@/utils';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ILdapConfig,
 	ILdapSyncData,
 	ILdapSyncTable,
@@ -157,7 +153,6 @@ import {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import humanizeDuration from 'humanize-duration';
@@ -167,31 +162,11 @@ import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
-import { getLdapSynchronizations } from '@/api/ldap';
-import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
+import { useUIStore } from '@/stores';
+import { createEventBus } from '@/event-bus';
+import type { N8nFormInputs } from 'n8n-design-system';
 
-type FormValues = {
-	loginEnabled: boolean;
-	loginLabel: string;
-	serverAddress: string;
-	baseDn: string;
-	bindingType: string;
-	adminDn: string;
-	adminPassword: string;
-	loginId: string;
-	email: string;
-	lastName: string;
-	firstName: string;
-	ldapId: string;
-	synchronizationEnabled: boolean;
-	allowUnauthorizedCerts: boolean;
-	synchronizationInterval: number;
-	userFilter: string;
-	pageSize: number;
-	searchTimeout: number;
-	port: number;
-	connectionSecurity: string;
-};
+type N8nFormInputsRef = InstanceType<typeof N8nFormInputs>;
 
 type tableRow = {
 	status: string;
@@ -221,7 +196,7 @@ export default mixins(showMessage).extend({
 			loadingTable: false,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
-			formBus: new Vue(),
+			formBus: createEventBus(),
 			readyToSubmit: false,
 			page: 0,
 			loginEnabled: false,
@@ -233,7 +208,7 @@ export default mixins(showMessage).extend({
 		await this.getLdapConfig();
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore, useSettingsStore, useUIStore),
 		currentUser(): null | IUser {
 			return this.usersStore.currentUser;
 		},
@@ -242,9 +217,8 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		onContactUsClick(event: MouseEvent): void {
-			const email = this.settingsStore.isCloudDeployment ? N8N_CONTACT_EMAIL : N8N_SALES_EMAIL;
-			location.href = `mailto:${email}`;
+		goToUpgrade() {
+			this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
 		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
 			if (column.property === 'status') {
@@ -294,32 +268,33 @@ export default mixins(showMessage).extend({
 		async onSubmit(): Promise<void> {
 			// We want to save all form values (incl. the hidden onces), so we are using
 			// `values` data prop of the `FormInputs` child component since they are all preserved there
-			const formInputs = this.$refs.ldapConfigForm as (Vue & { values: FormValues }) | undefined;
-			if (!this.hasAnyChanges || !formInputs) {
+			const formInputsRef = this.$refs.ldapConfigForm as N8nFormInputsRef | undefined;
+			if (!this.hasAnyChanges || !formInputsRef) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: formInputs.values.loginEnabled,
-				loginLabel: formInputs.values.loginLabel,
-				connectionUrl: formInputs.values.serverAddress,
-				allowUnauthorizedCerts: formInputs.values.allowUnauthorizedCerts,
-				connectionPort: +formInputs.values.port,
-				connectionSecurity: formInputs.values.connectionSecurity,
-				baseDn: formInputs.values.baseDn,
-				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
+				loginEnabled: formInputsRef.values.loginEnabled,
+				loginLabel: formInputsRef.values.loginLabel,
+				connectionUrl: formInputsRef.values.serverAddress,
+				allowUnauthorizedCerts: formInputsRef.values.allowUnauthorizedCerts,
+				connectionPort: +formInputsRef.values.port,
+				connectionSecurity: formInputsRef.values.connectionSecurity,
+				baseDn: formInputsRef.values.baseDn,
+				bindingAdminDn:
+					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminDn : '',
 				bindingAdminPassword:
-					formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
-				emailAttribute: formInputs.values.email,
-				firstNameAttribute: formInputs.values.firstName,
-				lastNameAttribute: formInputs.values.lastName,
-				loginIdAttribute: formInputs.values.loginId,
-				ldapIdAttribute: formInputs.values.ldapId,
-				userFilter: formInputs.values.userFilter,
-				synchronizationEnabled: formInputs.values.synchronizationEnabled,
-				synchronizationInterval: +formInputs.values.synchronizationInterval,
-				searchPageSize: +formInputs.values.pageSize,
-				searchTimeout: +formInputs.values.searchTimeout,
+					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminPassword : '',
+				emailAttribute: formInputsRef.values.email,
+				firstNameAttribute: formInputsRef.values.firstName,
+				lastNameAttribute: formInputsRef.values.lastName,
+				loginIdAttribute: formInputsRef.values.loginId,
+				ldapIdAttribute: formInputsRef.values.ldapId,
+				userFilter: formInputsRef.values.userFilter,
+				synchronizationEnabled: formInputsRef.values.synchronizationEnabled,
+				synchronizationInterval: +formInputsRef.values.synchronizationInterval,
+				searchPageSize: +formInputsRef.values.pageSize,
+				searchTimeout: +formInputsRef.values.searchTimeout,
 			};
 
 			let saveForm = true;
@@ -354,7 +329,7 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onSaveClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		async onTestConnectionClick() {
 			this.loadingTestConnection = true;

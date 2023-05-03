@@ -7,6 +7,7 @@ export class NodeCreator extends BasePage {
 		plusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasAddButton: () => cy.getByTestId('canvas-add-button'),
 		searchBar: () => cy.getByTestId('search-bar'),
+		getCategoryItem: (label: string) => cy.get(`[data-keyboard-nav-id="${label}"]`),
 		getCreatorItem: (label: string) =>
 			this.getters.creatorItem().contains(label).parents('[data-test-id="item-iterator-item"]'),
 		getNthCreatorItem: (n: number) => this.getters.creatorItem().eq(n),
@@ -15,10 +16,11 @@ export class NodeCreator extends BasePage {
 		selectedTab: () => this.getters.nodeCreatorTabs().find('.is-active'),
 		categorizedItems: () => cy.getByTestId('categorized-items'),
 		creatorItem: () => cy.getByTestId('item-iterator-item'),
+		categoryItem: () => cy.getByTestId('node-creator-category-item'),
 		communityNodeTooltip: () => cy.getByTestId('node-item-community-tooltip'),
-		noResults: () => cy.getByTestId('categorized-no-results'),
+		noResults: () => cy.getByTestId('node-creator-no-results'),
 		nodeItemName: () => cy.getByTestId('node-creator-item-name'),
-		activeSubcategory: () => cy.getByTestId('categorized-items-subcategory'),
+		activeSubcategory: () => cy.getByTestId('nodes-list-header'),
 		expandedCategories: () =>
 			this.getters.creatorItem().find('>div').filter('.active').invoke('text'),
 	};

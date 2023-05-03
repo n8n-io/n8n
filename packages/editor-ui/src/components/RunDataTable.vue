@@ -107,6 +107,7 @@
 						v-for="(row, index1) in tableData.data"
 						:key="index1"
 						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
 					>
 						<td
 							v-for="(data, index2) in row"
@@ -120,6 +121,7 @@
 							<span
 								v-if="isSimple(data)"
 								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+								class="ph-no-capture"
 								>{{ getValueToRender(data) }}</span
 							>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
@@ -141,9 +143,11 @@
 									>
 								</template>
 								<template #value="{ value }">
-									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
-										getValueToRender(value)
-									}}</span>
+									<span
+										:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+										class="ph-no-capture"
+										>{{ getValueToRender(value) }}</span
+									>
 								</template>
 							</n8n-tree>
 						</td>
@@ -158,11 +162,11 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-import { INodeUi, ITableData, NDVState } from '@/Interface';
+import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/utils';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -173,6 +177,8 @@ import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
+
+type DraggableRef = InstanceType<typeof Draggable>;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
@@ -221,7 +227,7 @@ export default mixins(externalHooks).extend({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
+			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,

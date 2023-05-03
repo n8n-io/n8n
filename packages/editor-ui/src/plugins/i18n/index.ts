@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
-import { INodeTranslationHeaders, IRootState } from '@/Interface';
+import type { INodeTranslationHeaders } from '@/Interface';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -13,7 +13,7 @@ import { locale } from 'n8n-design-system';
 import englishBaseText from './locales/en.json';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
-import { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -336,8 +336,12 @@ export class I18nClass {
 		$now: this.baseText('codeNodeEditor.completer.$now'),
 		$parameter: this.baseText('codeNodeEditor.completer.$parameter'),
 		$prevNode: this.baseText('codeNodeEditor.completer.$prevNode'),
+		$if: this.baseText('codeNodeEditor.completer.$if'),
+		$max: this.baseText('codeNodeEditor.completer.$max'),
+		$min: this.baseText('codeNodeEditor.completer.$min'),
 		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
 		$today: this.baseText('codeNodeEditor.completer.$today'),
+		$vars: this.baseText('codeNodeEditor.completer.$vars'),
 		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
 	};
 
@@ -530,14 +534,16 @@ function setLanguage(language: string) {
 }
 
 export async function loadLanguage(language?: string) {
-	if (!language) return Promise.resolve();
+	if (!language) return;
 
 	if (i18nInstance.locale === language) {
-		return Promise.resolve(setLanguage(language));
+		setLanguage(language);
+		return;
 	}
 
 	if (loadedLanguages.includes(language)) {
-		return Promise.resolve(setLanguage(language));
+		setLanguage(language);
+		return;
 	}
 
 	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;

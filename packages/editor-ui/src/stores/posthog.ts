@@ -1,12 +1,16 @@
-import { ref, Ref, watch } from 'vue';
+import type { Ref } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
-import { FeatureFlags } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, ONBOARDING_EXPERIMENT } from '@/constants';
+import type { FeatureFlags } from 'n8n-workflow';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	TEMPLATE_EXPERIMENT,
+} from '@/constants';
 import { useTelemetryStore } from './telemetry';
-import { useSegment } from './segment';
 import { debounce } from 'lodash-es';
 
 const EVENTS = {
@@ -18,10 +22,11 @@ export const usePostHog = defineStore('posthog', () => {
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
-	const segmentStore = useSegment();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+
+	const overrides: Ref<Record<string, string | boolean>> = ref({});
 
 	const reset = () => {
 		window.posthog?.reset?.();
@@ -37,6 +42,36 @@ export const usePostHog = defineStore('posthog', () => {
 		return getVariant(experiment) === variant;
 	};
 
+	if (!window.featureFlags) {
+		// for testing
+		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
+		if (cachedOverrdies) {
+			try {
+				console.log('Overriding feature flags', cachedOverrdies);
+				overrides.value = JSON.parse(cachedOverrdies);
+			} catch (e) {
+				console.log('Could not override experiment', e);
+			}
+		}
+
+		window.featureFlags = {
+			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
+			override: (name: string, value: string | boolean) => {
+				overrides.value[name] = value;
+				featureFlags.value = {
+					...featureFlags.value,
+					[name]: value,
+				};
+				try {
+					localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
+				} catch (e) {}
+			},
+
+			getVariant,
+			getAll: () => featureFlags.value || {},
+		};
+	}
+
 	const identify = () => {
 		const instanceId = rootStore.instanceId;
 		const user = usersStore.currentUser;
@@ -49,6 +84,13 @@ export const usePostHog = defineStore('posthog', () => {
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 		const id = user ? `${instanceId}#${user.id}` : instanceId;
 		window.posthog?.identify?.(id, traits);
+	};
+
+	const addExperimentOverrides = () => {
+		featureFlags.value = {
+			...featureFlags.value,
+			...overrides.value,
+		};
 	};
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
@@ -85,32 +127,51 @@ export const usePostHog = defineStore('posthog', () => {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
-			trackExperiments(evaluatedFeatureFlags);
+
+			// does not need to be debounced really, but tracking does not fire without delay on page load
+			addExperimentOverrides();
+			trackExperimentsDebounced(featureFlags.value);
+			evaluateExperiments(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
-				trackExperiments(map);
+				addExperimentOverrides();
+
+				// must be debounced because it is called multiple times by posthog
+				trackExperimentsDebounced(featureFlags.value);
+				evaluateExperimentsDebounced(featureFlags.value);
 			});
 		}
 	};
 
-	const trackExperiments = debounce((featureFlags: FeatureFlags) => {
+	const evaluateExperiments = (featureFlags: FeatureFlags) => {
+		Object.keys(featureFlags).forEach((name) => {
+			const variant = featureFlags[name];
+			if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
+				settingsStore.disableTemplates();
+			}
+		});
+	};
+	const evaluateExperimentsDebounced = debounce(evaluateExperiments, 2000);
+
+	const trackExperiments = (featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	}, 2000);
+	};
+	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
 
 	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
 		const variant = featureFlags[name];
+		if (!variant || trackedDemoExp.value[name] === variant) {
+			return;
+		}
+
 		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
 
 		trackedDemoExp.value[name] = variant;
-
-		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
-			segmentStore.showAppCuesChecklist();
-		}
 	};
 
 	return {

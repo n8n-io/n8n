@@ -2,7 +2,7 @@ import { PiniaVuePlugin } from 'pinia';
 import { createLocalVue, mount } from '@vue/test-utils';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { PERSONALIZATION_MODAL_KEY, ROLE_SALES_AND_MARKETING } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY } from '@/constants';
 import { retry } from '@/__tests__/utils';
 
 describe('PersonalizationModal.vue', () => {

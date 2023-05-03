@@ -33,16 +33,16 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
-import { IN8nPromptResponse } from '@/Interface';
+import type { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(workflowHelpers).extend({
 	components: { Modal },
@@ -51,7 +51,7 @@ export default mixins(workflowHelpers).extend({
 	data() {
 		return {
 			email: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
@@ -100,7 +100,7 @@ export default mixins(workflowHelpers).extend({
 						type: 'success',
 					});
 				}
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			}
 		},
 	},

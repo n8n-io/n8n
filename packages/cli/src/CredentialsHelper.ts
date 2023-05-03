@@ -224,7 +224,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): string {
-		if (parameterValue.charAt(0) !== '=') {
+		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
 		}
 
@@ -393,8 +393,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (expressionResolveValues) {
-			const timezone =
-				(expressionResolveValues.workflow.settings.timezone as string) || defaultTimezone;
+			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
 
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
@@ -452,7 +451,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		if (!Db.isInitialized) {
@@ -544,10 +542,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {

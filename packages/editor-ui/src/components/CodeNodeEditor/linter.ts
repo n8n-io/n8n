@@ -1,5 +1,7 @@
 import Vue from 'vue';
-import { Diagnostic, linter as createLinter } from '@codemirror/lint';
+import type { Diagnostic } from '@codemirror/lint';
+import { linter as createLinter } from '@codemirror/lint';
+import { jsonParseLinter } from '@codemirror/lang-json';
 import * as esprima from 'esprima-next';
 
 import {
@@ -11,12 +13,18 @@ import { walk } from './utils';
 
 import type { EditorView } from '@codemirror/view';
 import type { Node } from 'estree';
-import type { CodeNodeEditorMixin, RangeNode } from './types';
+import type { CodeLanguage, CodeNodeEditorMixin, RangeNode } from './types';
 
 export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
-		linterExtension() {
-			return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+		createLinter(language: CodeLanguage) {
+			switch (language) {
+				case 'javaScript':
+					return createLinter(this.lintSource, { delay: DEFAULT_LINTER_DELAY_IN_MS });
+				case 'json':
+					return createLinter(jsonParseLinter());
+			}
+			return undefined;
 		},
 
 		lintSource(editorView: EditorView): Diagnostic[] {
@@ -133,7 +141,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `.item` unavailable in `runOnceForAllItems` mode
+			 * Lint for `.item` unavailable in `$input` in `runOnceForAllItems` mode
 			 *
 			 * $input.item -> <removed>
 			 */
@@ -141,13 +149,15 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & { property: RangeNode };
 
-				const isUnavailableItemAccess = (node: Node) =>
+				const isUnavailableInputItemAccess = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
 					node.property.name === 'item';
 
-				walk<TargetNode>(ast, isUnavailableItemAccess).forEach((node) => {
+				walk<TargetNode>(ast, isUnavailableInputItemAccess).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
 					lintings.push({
