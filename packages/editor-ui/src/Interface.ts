@@ -1457,9 +1457,9 @@ export interface PlanSpec {
 	credentialsLimit: number;
 	isActive: boolean;
 	displayName: string;
-	metadata: Metadata;
+	metadata: PlanMetadata;
 }
-export interface Metadata {
+export interface PlanMetadata {
 	version: string;
 	group: string;
 	slug: string;
