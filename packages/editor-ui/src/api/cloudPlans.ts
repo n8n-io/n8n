@@ -5,7 +5,7 @@ export function getCurrentPlan(
 	cloudUserId: string,
 ): Promise<CloudPlanData> {
 	return Promise.resolve({
-		planSpec: {
+		plan: {
 			planId: 43039,
 			monthlyExecutionsLimit: 200,
 			activeWorkflowsLimit: 10,

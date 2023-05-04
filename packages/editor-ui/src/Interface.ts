@@ -1446,12 +1446,12 @@ export type VersionControlPreferences = {
 };
 
 export interface CloudPlanData {
-	planSpec: PlanSpec;
+	plan: Plan;
 	instance: Instance;
 	usage: Usage;
 }
 
-export interface PlanSpec {
+export interface Plan {
 	planId: number;
 	monthlyExecutionsLimit: number;
 	activeWorkflowsLimit: number;
