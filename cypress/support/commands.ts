@@ -105,18 +105,22 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
+			cy.intercept('/rest/users/*').as('userSignup')
 			signupPage.getters.firstName().type(firstName);
 			signupPage.getters.lastName().type(lastName);
 			signupPage.getters.password().type(password);
 			signupPage.getters.submit().click();
+			cy.wait('@userSignup');
 		});
 	});
 });
 
-Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }, skipIntercept = false) => {
 	const signupPage = new SignupPage();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -125,7 +129,13 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
 				signupPage.getters.password().type(password);
+
+				cy.intercept('POST', '/rest/owner/setup').as('setupRequest');
 				signupPage.getters.submit().click();
+
+				if(!skipIntercept) {
+					cy.wait('@setupRequest');
+				}
 			} else {
 				cy.log('User already signed up');
 			}
@@ -168,7 +178,9 @@ Cypress.Commands.add('skipSetup', () => {
 	const workflowPage = new WorkflowPage();
 	const Confirmation = new MessageBox();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -199,7 +211,11 @@ Cypress.Commands.add('setupOwner', (payload) => {
 });
 
 Cypress.Commands.add('enableFeature', (feature) => {
-	cy.task('enable-feature', feature);
+	cy.task('set-feature', { feature, enabled: true });
+});
+
+Cypress.Commands.add('disableFeature', (feature) => {
+	cy.task('set-feature', { feature, enabled: false });
 });
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {

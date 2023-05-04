@@ -316,12 +316,17 @@ export class NodeApiError extends NodeError {
 				(error?.reason as IDataObject)?.description) as string;
 		}
 
-		if (!httpCode && !message && error.status === 'rejected') {
+		if (
+			!httpCode &&
+			!message &&
+			this.message &&
+			this.message.toUpperCase().includes('ECONNREFUSED')
+		) {
 			httpCode = 'ECONNREFUSED';
 
 			const originalMessage = this.message;
-			if (!description && originalMessage) {
-				this.description = `${originalMessage} ${this.description ?? ''}`;
+			if (!description) {
+				this.description = `${originalMessage}; ${this.description ?? ''}`;
 			}
 		}
 
