@@ -2,7 +2,6 @@ import Vue from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
 import type { INodeTranslationHeaders } from '@/Interface';
-import { IRootState } from '@/Interface';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,

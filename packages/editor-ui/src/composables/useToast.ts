@@ -18,7 +18,7 @@ export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const externalHooks = useExternalHooks();
-	const i18n = useI18n();
+	const { i18n } = useI18n();
 
 	function showMessage(
 		messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },

@@ -75,7 +75,6 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';

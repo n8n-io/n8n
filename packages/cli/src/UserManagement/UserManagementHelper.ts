@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
-import type express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
@@ -12,7 +11,6 @@ import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories';
-import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';

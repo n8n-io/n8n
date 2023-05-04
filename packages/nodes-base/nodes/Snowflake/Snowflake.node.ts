@@ -65,6 +65,9 @@ export class Snowflake implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				typeOptions: {
+					editor: 'sqlEditor',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
