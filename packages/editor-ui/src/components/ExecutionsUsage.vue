@@ -68,7 +68,6 @@ import { DateTime } from 'luxon';
 
 export interface CloudPlanData {
 	plan: Plan;
-	instance: Instance;
 	usage: Usage;
 }
 
@@ -92,9 +91,7 @@ export interface Trial {
 	length: number;
 	gracePeriod: number;
 }
-export interface Instance {
-	createdAt: string;
-}
+
 export interface Usage {
 	executions: number;
 	activeWorkflows: number;

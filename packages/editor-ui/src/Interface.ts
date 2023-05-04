@@ -1447,7 +1447,6 @@ export type VersionControlPreferences = {
 
 export interface CloudPlanData {
 	plan: Plan;
-	instance: Instance;
 	usage: Usage;
 }
 
@@ -1470,9 +1469,6 @@ export interface PlanMetadata {
 export interface Trial {
 	length: number;
 	gracePeriod: number;
-}
-export interface Instance {
-	createdAt: string;
 }
 export interface Usage {
 	executions: number;
