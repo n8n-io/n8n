@@ -183,14 +183,16 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		},
 		checkForExecutionsCount() {
 			let acc = 0;
-			setInterval(async () => {
+			const interval = setInterval(async () => {
 				try {
-					const planData = await this.usersStore.getOwnerCurrentPLan();
-					if (planData.plan.metadata.slug === 'trial-1') {
-						planData.usage.executions += acc;
-						acc += 20;
-						this.usersStore.setCloudPLan(planData);
+					const plan = await this.usersStore.getOwnerCurrentPLan();
+					if (plan.metadata.slug !== 'trial-1') {
+						clearTimeout(interval);
 					}
+					// TODO: remove before releasing
+					plan.usage.executions += acc;
+					acc += 20;
+					this.usersStore.setCloudPLan(plan);
 				} catch {}
 			}, 5000);
 		},
