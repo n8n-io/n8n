@@ -18,7 +18,9 @@ import {
 	indentOnInput,
 	LanguageSupport,
 } from '@codemirror/language';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -26,13 +28,12 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
 
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
+import { htmlEditorEventBus } from '@/event-bus';
 import { expressionManager } from '@/mixins/expressionManager';
 import { theme } from './theme';
 import { nonTakenRanges } from './utils';
@@ -169,11 +170,12 @@ export default mixins(expressionManager).extend({
 
 	methods: {
 		root() {
-			const root = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			const rootRef = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			if (!rootRef) {
+				throw new Error('Expected div with ref "htmlEditor"');
+			}
 
-			if (!root) throw new Error('Expected div with ref "htmlEditor"');
-
-			return root;
+			return rootRef;
 		},
 
 		isMissingHtmlTags() {
@@ -256,7 +258,7 @@ export default mixins(expressionManager).extend({
 	},
 
 	mounted() {
-		htmlEditorEventBus.$on('format-html', this.format);
+		htmlEditorEventBus.on('format-html', this.format);
 
 		let doc = this.html;
 
@@ -272,7 +274,7 @@ export default mixins(expressionManager).extend({
 	},
 
 	destroyed() {
-		htmlEditorEventBus.$off('format-html', this.format);
+		htmlEditorEventBus.off('format-html', this.format);
 	},
 });
 </script>

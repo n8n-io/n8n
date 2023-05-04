@@ -69,7 +69,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 					return;
 				}
 
-				if (isCurrentWorkflow && nodesIssuesExist) {
+				if (isCurrentWorkflow && nodesIssuesExist && newActiveState === true) {
 					this.$showMessage({
 						title: this.$locale.baseText(
 							'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',

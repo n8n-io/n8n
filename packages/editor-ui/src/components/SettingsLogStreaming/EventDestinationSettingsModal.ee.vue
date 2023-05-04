@@ -180,19 +180,22 @@ import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
+import type { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
+import type {
+	IDataObject,
+	INodeCredentials,
+	NodeParameterValue,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
 import {
 	deepCopy,
 	defaultMessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
-	IDataObject,
-	INodeCredentials,
-	NodeParameterValue,
 	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
+import type { PropType } from 'vue';
 import Vue from 'vue';
 import { LOG_STREAM_MODAL_KEY } from '../../constants';
 import Modal from '@/components/Modal.vue';
@@ -205,11 +208,13 @@ import {
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
-import { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { Checkbox } from 'element-ui';
+import type { EventBus } from '@/event-bus';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'event-destination-settings-modal',
@@ -221,7 +226,7 @@ export default mixins(showMessage).extend({
 		},
 		isNew: Boolean,
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 	},
 	components: {
@@ -235,9 +240,9 @@ export default mixins(showMessage).extend({
 	},
 	data() {
 		return {
-			unchanged: !this.$props.isNew,
+			unchanged: !this.isNew,
 			activeTab: 'settings',
-			hasOnceBeenSaved: !this.$props.isNew,
+			hasOnceBeenSaved: !this.isNew,
 			isSaving: false,
 			isDeleting: false,
 			loading: false,
@@ -248,8 +253,8 @@ export default mixins(showMessage).extend({
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
-			modalBus: new Vue(),
-			headerLabel: this.$props.destination.label,
+			modalBus: createEventBus(),
+			headerLabel: this.destination.label,
 			testMessageSent: false,
 			testMessageResult: false,
 			isInstanceOwner: false,
@@ -450,7 +455,7 @@ export default mixins(showMessage).extend({
 			if (deleteConfirmed === false) {
 				return;
 			} else {
-				this.$props.eventBus.$emit('remove', this.destination.id);
+				this.eventBus.emit('remove', this.destination.id);
 				this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
 				this.uiStore.stateIsDirty = false;
 			}
@@ -461,7 +466,7 @@ export default mixins(showMessage).extend({
 				this.logStreamingStore.removeDestination(this.nodeParameters.id!);
 			}
 			this.ndvStore.activeNodeName = null;
-			this.$props.eventBus.$emit('closing', this.destination.id);
+			this.eventBus.emit('closing', this.destination.id);
 			this.uiStore.stateIsDirty = false;
 		},
 		async saveDestination() {
@@ -473,7 +478,7 @@ export default mixins(showMessage).extend({
 				this.hasOnceBeenSaved = true;
 				this.testMessageSent = false;
 				this.unchanged = true;
-				this.$props.eventBus.$emit('destinationWasSaved', this.destination.id);
+				this.eventBus.emit('destinationWasSaved', this.destination.id);
 				this.uiStore.stateIsDirty = false;
 			}
 		},

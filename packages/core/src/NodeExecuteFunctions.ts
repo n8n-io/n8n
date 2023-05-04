@@ -64,6 +64,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
+	isObjectEmpty,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -578,7 +579,13 @@ function digestAuthAxiosConfig(
 	return axiosConfig;
 }
 
-async function proxyRequestToAxios(
+type ConfigObject = {
+	auth?: { sendImmediately: boolean };
+	resolveWithFullResponse?: boolean;
+	simple?: boolean;
+};
+
+export async function proxyRequestToAxios(
 	workflow: Workflow,
 	additionalData: IWorkflowExecuteAdditionalData,
 	node: INode,
@@ -597,12 +604,6 @@ async function proxyRequestToAxios(
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
-	};
-
-	type ConfigObject = {
-		auth?: { sendImmediately: boolean };
-		resolveWithFullResponse?: boolean;
-		simple?: boolean;
 	};
 	let configObject: ConfigObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
@@ -707,12 +708,17 @@ async function proxyRequestToAxios(
 				}
 
 				const message = `${response.status as number} - ${JSON.stringify(responseData)}`;
-				throw Object.assign(new Error(message, { cause: error }), {
+				throw Object.assign(error, {
+					message,
 					statusCode: response.status,
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
+					error: responseData,
+					config: undefined,
+					request: undefined,
+					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else {
-				throw Object.assign(new Error(error.message, { cause: error }), {
+				throw Object.assign(error, {
 					options: pick(config ?? {}, ['url', 'method', 'data', 'headers']),
 				});
 			}
@@ -720,10 +726,6 @@ async function proxyRequestToAxios(
 
 		throw error;
 	}
-}
-
-function isIterator(obj: unknown): boolean {
-	return obj instanceof Object && Symbol.iterator in obj;
 }
 
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
@@ -789,7 +791,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		// if there is a body and it's empty (does not have properties),
 		// make sure not to send anything in it as some services fail when
 		// sending GET request with empty body.
-		if (isIterator(body) || Object.keys(body).length > 0) {
+		if (typeof body === 'object' && !isObjectEmpty(body)) {
 			axiosRequest.data = body;
 		}
 	}
@@ -820,15 +822,31 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-	const axiosRequest = convertN8nRequestToAxios(requestOptions);
+	let axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
 	) {
 		delete axiosRequest.data;
 	}
+	let result: AxiosResponse<any>;
+	try {
+		result = await axios(axiosRequest);
+	} catch (error) {
+		if (requestOptions.auth?.sendImmediately === false) {
+			const { response } = error;
+			if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+				throw error;
+			}
 
-	const result = await axios(axiosRequest);
+			const { auth } = axiosRequest;
+			delete axiosRequest.auth;
+			axiosRequest = digestAuthAxiosConfig(axiosRequest, response, auth);
+			result = await axios(axiosRequest);
+		}
+		throw error;
+	}
+
 	if (requestOptions.returnFullResponse) {
 		return {
 			body: result.data,
@@ -837,6 +855,7 @@ async function httpRequest(
 			statusMessage: result.statusText,
 		};
 	}
+
 	return result.data;
 }
 
@@ -1653,10 +1672,24 @@ export function getAdditionalKeys(
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
-							setWorkflowExecutionMetadata(runExecutionData, key, value);
+							try {
+								setWorkflowExecutionMetadata(runExecutionData, key, value);
+							} catch (e) {
+								if (mode === 'manual') {
+									throw e;
+								}
+								Logger.verbose(e.message);
+							}
 						},
 						setAll(obj: Record<string, string>): void {
-							setAllWorkflowExecutionMetadata(runExecutionData, obj);
+							try {
+								setAllWorkflowExecutionMetadata(runExecutionData, obj);
+							} catch (e) {
+								if (mode === 'manual') {
+									throw e;
+								}
+								Logger.verbose(e.message);
+							}
 						},
 						get(key: string): string {
 							return getWorkflowExecutionMetadata(runExecutionData, key);
@@ -1667,6 +1700,7 @@ export function getAdditionalKeys(
 				  }
 				: undefined,
 		},
+		$vars: additionalData.variables,
 
 		// deprecated
 		$executionId: executionId,
@@ -2001,6 +2035,7 @@ const getCommonWorkflowFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 ): Omit<FunctionsBase, 'getCredentials'> => ({
 	logger: Logger,
+	getExecutionId: () => additionalData.executionId!,
 	getNode: () => deepCopy(node),
 	getWorkflow: () => ({
 		id: workflow.id,
@@ -2306,7 +2341,6 @@ export function getExecuteFunctions(
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
-			getExecutionId: () => additionalData.executionId!,
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input

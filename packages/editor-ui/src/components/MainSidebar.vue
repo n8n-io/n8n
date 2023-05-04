@@ -9,13 +9,12 @@
 	>
 		<div
 			id="collapse-change-button"
-			:class="{
-				['clickable']: true,
-				[$style.sideMenuCollapseButton]: true,
-				[$style.expandedButton]: !isCollapsed,
-			}"
+			:class="['clickable', $style.sideMenuCollapseButton]"
 			@click="toggleCollapse"
-		></div>
+		>
+			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
@@ -26,19 +25,39 @@
 					/>
 				</div>
 			</template>
-			<template #menuSuffix v-if="hasVersionUpdates">
-				<div :class="$style.updates" @click="openUpdatesPanel">
-					<div :class="$style.giftContainer">
-						<GiftNotificationIcon />
+			<template #menuSuffix>
+				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
+					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
+						<div :class="$style.giftContainer">
+							<GiftNotificationIcon />
+						</div>
+						<n8n-text
+							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
+							color="text-base"
+						>
+							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
+								nextVersions.length > 1 ? 's' : ''
+							}}
+						</n8n-text>
 					</div>
-					<n8n-text
-						:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-						color="text-base"
-					>
-						{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-							nextVersions.length > 1 ? 's' : ''
-						}}
-					</n8n-text>
+					<div :class="$style.sync" v-if="versionControlStore.state.currentBranch">
+						<span>
+							<n8n-icon icon="code-branch" class="mr-xs" />
+							{{ currentBranch }}
+						</span>
+						<n8n-button
+							:title="
+								$locale.baseText('settings.versionControl.sync.prompt.title', {
+									interpolate: { branch: currentBranch },
+								})
+							"
+							icon="sync"
+							type="tertiary"
+							:size="isCollapsed ? 'mini' : 'small'"
+							square
+							@click="sync"
+						/>
+					</div>
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -91,15 +110,13 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -115,13 +132,12 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useVersionsStore } from '@/stores/versions';
-import { isNavigationFailure, NavigationFailureType, Route } from 'vue-router';
+import { isNavigationFailure } from 'vue-router';
+import { useVersionControlStore } from '@/stores/versionControl';
 
 export default mixins(
 	genericHelpers,
-	restApi,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
@@ -147,7 +163,11 @@ export default mixins(
 			useUsersStore,
 			useVersionsStore,
 			useWorkflowsStore,
+			useVersionControlStore,
 		),
+		currentBranch(): string {
+			return this.versionControlStore.state.currentBranch;
+		},
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
 		},
@@ -225,6 +245,14 @@ export default mixins(
 					customIconSize: 'medium',
 					position: 'top',
 					activateOnRouteNames: [VIEWS.CREDENTIALS],
+				},
+				{
+					id: 'variables',
+					icon: 'variable',
+					label: this.$locale.baseText('mainSidebar.variables'),
+					customIconSize: 'medium',
+					position: 'top',
+					activateOnRouteNames: [VIEWS.VARIABLES],
 				},
 				{
 					id: 'executions',
@@ -374,6 +402,12 @@ export default mixins(
 					}
 					break;
 				}
+				case 'variables': {
+					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
+						this.goToRoute({ name: VIEWS.VARIABLES });
+					}
+					break;
+				}
 				case 'executions': {
 					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
 						this.goToRoute({ name: VIEWS.EXECUTIONS });
@@ -448,6 +482,29 @@ export default mixins(
 				});
 			}
 		},
+		async sync() {
+			const prompt = await this.$prompt(
+				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
+					interpolate: { branch: this.versionControlStore.state.currentBranch },
+				}),
+				this.$locale.baseText('settings.versionControl.sync.prompt.title', {
+					interpolate: { branch: this.versionControlStore.state.currentBranch },
+				}),
+				{
+					confirmButtonText: 'Sync',
+					cancelButtonText: 'Cancel',
+					inputPlaceholder: this.$locale.baseText(
+						'settings.versionControl.sync.prompt.placeholder',
+					),
+					inputPattern: /^.+$/,
+					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
+				},
+			);
+
+			if (prompt.value) {
+				this.versionControlStore.sync({ commitMessage: prompt.value });
+			}
+		},
 	},
 });
 </script>
@@ -488,39 +545,16 @@ export default mixins(
 	z-index: 999;
 	display: flex;
 	justify-content: center;
-	align-items: flex-end;
+	align-items: center;
 	color: var(--color-text-base);
 	background-color: var(--color-foreground-xlight);
 	width: 20px;
 	height: 20px;
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	text-align: center;
 	border-radius: 50%;
 
-	&::before {
-		display: block;
-		position: relative;
-		left: px;
-		top: -2.5px;
-		transform: rotate(270deg);
-		content: '\e6df';
-		font-family: element-icons;
-		font-size: var(--font-size-2xs);
-		font-weight: bold;
-		color: var(--color-text-base);
-	}
-
-	&.expandedButton {
-		&::before {
-			transform: rotate(90deg);
-			left: 0px;
-		}
-	}
-
 	&:hover {
-		&::before {
-			color: var(--color-primary-shade-1);
-		}
+		color: var(--color-primary-shade-1);
 	}
 }
 
@@ -584,6 +618,29 @@ export default mixins(
 @media screen and (max-height: 470px) {
 	:global(#help) {
 		display: none;
+	}
+}
+
+.sync {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
+	margin: 0 calc(var(--spacing-l) * -1) calc(var(--spacing-m) * -1);
+	background: var(--color-background-light);
+	border-top: 1px solid var(--color-foreground-light);
+	font-size: var(--font-size-2xs);
+
+	span {
+		color: var(--color-text-light);
+	}
+
+	.sideMenuCollapsed & {
+		justify-content: center;
+		margin-left: calc(var(--spacing-xl) * -1);
+		> span {
+			display: none;
+		}
 	}
 }
 </style>

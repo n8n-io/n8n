@@ -10,6 +10,7 @@ import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
+import { RoleRepository } from '@db/repositories';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
@@ -93,7 +94,7 @@ export const randomPassword = (): string => {
  * Return the user role to be assigned to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
-	return Db.collections.Role.findOneByOrFail({ scope: 'global', name: 'member' });
+	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
 };
 
 /**

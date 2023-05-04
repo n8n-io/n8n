@@ -123,7 +123,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -131,20 +130,21 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, UIState } from '@/Interface';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IUser, IWorkflowDb } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
-import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
+import { createEventBus, nodeViewEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
 export default mixins(showMessage).extend({
@@ -168,7 +168,7 @@ export default mixins(showMessage).extend({
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: true,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
@@ -262,7 +262,7 @@ export default mixins(showMessage).extend({
 			const saveWorkflowPromise = () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-						nodeViewEventBus.$emit('saveWorkflow', () => {
+						nodeViewEventBus.emit('saveWorkflow', () => {
 							resolve(this.workflow.id);
 						});
 					} else {
@@ -299,7 +299,7 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
 			} finally {
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 				this.loading = false;
 			}
 		},
@@ -428,7 +428,7 @@ export default mixins(showMessage).extend({
 					console.error(failure);
 				}
 			});
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		trackTelemetry(data: ITelemetryTrackProperties) {
 			this.$telemetry.track('User selected sharee to remove', {
@@ -439,17 +439,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-workflow-sharing`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {

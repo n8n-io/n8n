@@ -56,16 +56,19 @@
 </template>
 
 <script lang="ts">
-import { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation } from '@/Interface';
 import ParameterOptions from './ParameterOptions.vue';
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from '@/utils';
-import { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
+import type { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-export default Vue.extend({
+type ParamRef = InstanceType<typeof ParameterInputWrapper>;
+
+export default defineComponent({
 	name: 'parameter-input-expanded',
 	components: {
 		ParameterOptions,
@@ -102,16 +105,16 @@ export default Vue.extend({
 	computed: {
 		...mapStores(useWorkflowsStore),
 		showRequiredErrors(): boolean {
-			if (!this.$props.parameter.required) {
+			if (!this.parameter.required) {
 				return false;
 			}
 
 			if (this.blurredEver || this.showValidationWarnings) {
-				if (this.$props.parameter.type === 'string') {
+				if (this.parameter.type === 'string') {
 					return !this.value;
 				}
 
-				if (this.$props.parameter.type === 'number') {
+				if (this.parameter.type === 'number') {
 					return typeof this.value !== 'number';
 				}
 			}
@@ -145,7 +148,7 @@ export default Vue.extend({
 		},
 		optionSelected(command: string) {
 			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
+				(this.$refs.param as ParamRef).$emit('optionSelected', command);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {

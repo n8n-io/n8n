@@ -117,15 +117,15 @@ class WorkflowRunnerProcess {
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
+		// Init db since we need to read the license.
+		await Db.init();
+
 		const instanceId = userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(instanceId);
 		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
-
-		// Init db since we need to read the license.
-		await Db.init();
 
 		const license = Container.get(License);
 		await license.init(instanceId);
@@ -471,6 +471,8 @@ process.on('message', async (message: IProcessMessage) => {
 					message.type === 'timeout'
 						? new WorkflowOperationError('Workflow execution timed out!')
 						: new WorkflowOperationError('Workflow-Execution has been canceled!');
+
+				runData.status = message.type === 'timeout' ? 'failed' : 'canceled';
 
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(

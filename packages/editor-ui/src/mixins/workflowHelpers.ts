@@ -1,14 +1,12 @@
 import {
-	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
 } from '@/constants';
 
-import {
+import type {
 	IConnections,
 	IDataObject,
 	INode,
@@ -19,20 +17,17 @@ import {
 	INodeCredentials,
 	INodeType,
 	INodeTypes,
-	INodeTypeData,
-	IPinData,
 	IRunExecutionData,
 	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	NodeHelpers,
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
-	deepCopy,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import {
+import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
@@ -44,7 +39,6 @@ import {
 } from '../Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
 
@@ -57,17 +51,16 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import { ICredentialsResponse } from '@/Interface';
-
-let cachedWorkflowKey: string | null = '';
-let cachedWorkflow: Workflow | null = null;
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import type { ICredentialsResponse } from '@/Interface';
+import { useEnvironmentsStore } from '@/stores';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -87,10 +80,6 @@ export function resolveParameter(
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
-
-	if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {
-		return null;
-	}
 
 	let runIndexParent = opts?.inputRunIndex ?? 0;
 	const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
@@ -140,33 +129,6 @@ export function resolveParameter(
 		runExecutionData = executionData.data;
 	}
 
-	parentNode.forEach((parentNodeName) => {
-		const pinData: IPinData[string] | undefined =
-			useWorkflowsStore().pinDataByNodeName(parentNodeName);
-
-		if (pinData) {
-			runExecutionData = {
-				...runExecutionData,
-				resultData: {
-					...runExecutionData.resultData,
-					runData: {
-						...runExecutionData.resultData.runData,
-						[parentNodeName]: [
-							{
-								startTime: new Date().valueOf(),
-								executionTime: 0,
-								source: [],
-								data: {
-									main: [pinData.map((data) => ({ json: data }))],
-								},
-							},
-						],
-					},
-				},
-			};
-		}
-	});
-
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
 	}
@@ -177,6 +139,7 @@ export function resolveParameter(
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
+		$vars: useEnvironmentsStore().variablesAsObject,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -209,84 +172,20 @@ export function resolveParameter(
 }
 
 function getCurrentWorkflow(copyData?: boolean): Workflow {
-	const nodes = getNodes();
-	const connections = useWorkflowsStore().allConnections;
-	const cacheKey = JSON.stringify({ nodes, connections });
-	if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
-		return cachedWorkflow;
-	}
-	cachedWorkflowKey = cacheKey;
-
-	return getWorkflow(nodes, connections, copyData);
+	return useWorkflowsStore().getCurrentWorkflow(copyData);
 }
 
-// Returns a shallow copy of the nodes which means that all the data on the lower
-// levels still only gets referenced but the top level object is a different one.
-// This has the advantage that it is very fast and does not cause problems with vuex
-// when the workflow replaces the node-parameters.
 function getNodes(): INodeUi[] {
-	const nodes = useWorkflowsStore().allNodes;
-	const returnNodes: INodeUi[] = [];
-
-	for (const node of nodes) {
-		returnNodes.push(Object.assign({}, node));
-	}
-
-	return returnNodes;
+	return useWorkflowsStore().getNodes();
 }
 
 // Returns a workflow instance.
 function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
-	const nodeTypes = getNodeTypes();
-	let workflowId: string | undefined = useWorkflowsStore().workflowId;
-	if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		workflowId = undefined;
-	}
-
-	const workflowName = useWorkflowsStore().workflowName;
-
-	cachedWorkflow = new Workflow({
-		id: workflowId,
-		name: workflowName,
-		nodes: copyData ? deepCopy(nodes) : nodes,
-		connections: copyData ? deepCopy(connections) : connections,
-		active: false,
-		nodeTypes,
-		settings: useWorkflowsStore().workflowSettings,
-		// @ts-ignore
-		pinData: useWorkflowsStore().pinData,
-	});
-
-	return cachedWorkflow;
+	return useWorkflowsStore().getWorkflow(nodes, connections, copyData);
 }
 
 function getNodeTypes(): INodeTypes {
-	const nodeTypes: INodeTypes = {
-		nodeTypes: {},
-		init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-		// @ts-ignore
-		getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-			const nodeTypeDescription = useNodeTypesStore().getNodeType(nodeType, version);
-
-			if (nodeTypeDescription === null) {
-				return undefined;
-			}
-
-			return {
-				description: nodeTypeDescription,
-				// As we do not have the trigger/poll functions available in the frontend
-				// we use the information available to figure out what are trigger nodes
-				// @ts-ignore
-				trigger:
-					(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
-						nodeTypeDescription.inputs.length === 0 &&
-						!nodeTypeDescription.webhooks) ||
-					undefined,
-			};
-		},
-	};
-
-	return nodeTypes;
+	return useWorkflowsStore().getNodeTypes();
 }
 
 // Returns connectionInputData to be able to execute an expression.
@@ -421,7 +320,7 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showMessage).extend({
+export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).extend({
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -559,7 +458,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		},
 
 		// Returns the currently loaded workflow as JSON.
-		getWorkflowDataToSave(): Promise<IWorkflowData> {
+		async getWorkflowDataToSave(): Promise<IWorkflowData> {
 			const workflowNodes = this.workflowsStore.allNodes;
 			const workflowConnections = this.workflowsStore.allConnections;
 
@@ -567,12 +466,8 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 			const nodes = [];
 			for (let nodeIndex = 0; nodeIndex < workflowNodes.length; nodeIndex++) {
-				try {
-					// @ts-ignore
-					nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
-				} catch (e) {
-					return Promise.reject(e);
-				}
+				// @ts-ignore
+				nodeData = this.getNodeDataToSave(workflowNodes[nodeIndex]);
 
 				nodes.push(nodeData);
 			}
@@ -593,7 +488,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				data.id = workflowId;
 			}
 
-			return Promise.resolve(data);
+			return data;
 		},
 
 		// Returns all node-types
@@ -760,7 +655,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 			if (isCurrentWorkflow) {
 				data = await this.getWorkflowDataToSave();
 			} else {
-				const { versionId } = await this.restApi().getWorkflow(workflowId);
+				const { versionId } = await this.workflowsStore.fetchWorkflow(workflowId);
 				data.versionId = versionId;
 			}
 
@@ -768,7 +663,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				data.active = active;
 			}
 
-			const workflow = await this.restApi().updateWorkflow(workflowId, data);
+			const workflow = await this.workflowsStore.updateWorkflow(workflowId, data);
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 			if (isCurrentWorkflow) {
@@ -810,7 +705,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 				workflowDataRequest.versionId = this.workflowsStore.workflowVersionId;
 
-				const workflowData = await this.restApi().updateWorkflow(
+				const workflowData = await this.workflowsStore.updateWorkflow(
 					currentWorkflow,
 					workflowDataRequest,
 					forceSave,
@@ -927,7 +822,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				if (tags) {
 					workflowDataRequest.tags = tags;
 				}
-				const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
 
@@ -1040,7 +935,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		async dataHasChanged(id: string) {
 			const currentData = await this.getWorkflowDataToSave();
 
-			const data: IWorkflowDb = await this.restApi().getWorkflow(id);
+			const data: IWorkflowDb = await this.workflowsStore.fetchWorkflow(id);
 
 			if (data !== undefined) {
 				const x = {

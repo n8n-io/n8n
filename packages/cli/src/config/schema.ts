@@ -1042,6 +1042,15 @@ export const schema = {
 		},
 	},
 
+	userActivationSurvey: {
+		enabled: {
+			doc: 'Whether user activation survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
+		},
+	},
+
 	diagnostics: {
 		enabled: {
 			doc: 'Whether diagnostic mode is enabled.',
@@ -1121,7 +1130,7 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether autorenew for licenses is enabled.',
+			doc: 'Whether auto renewal for licenses is enabled.',
 		},
 		autoRenewOffset: {
 			format: Number,

@@ -60,6 +60,10 @@ export class QuestDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				typeOptions: {
+					editor: 'sqlEditor',
+					sqlDialect: 'postgres',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],

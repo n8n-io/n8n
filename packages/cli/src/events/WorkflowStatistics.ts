@@ -7,8 +7,9 @@ import { QueryFailedError } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import config from '@/config';
+import { UserService } from '@/user/user.service';
 
-enum StatisticsUpsertResult {
+const enum StatisticsUpsertResult {
 	insert = 'insert',
 	update = 'update',
 	failed = 'failed',
@@ -112,6 +113,15 @@ export async function workflowExecutionCompleted(
 				user_id: owner.id,
 				workflow_id: workflowId,
 			};
+
+			if (!owner.settings?.userActivated) {
+				await UserService.updateUserSettings(owner.id, {
+					firstSuccessfulWorkflowId: workflowId,
+					userActivated: true,
+					showUserActivationSurvey: true,
+				});
+			}
+
 			// Send the metrics
 			await Container.get(InternalHooks).onFirstProductionWorkflowSuccess(metrics);
 		}

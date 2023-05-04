@@ -82,7 +82,7 @@ export class WooCommerce implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available categories to display them to user so that he can
+			// Get all the available categories to display them to user so that they can
 			// select them easily
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -102,7 +102,7 @@ export class WooCommerce implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

@@ -1,4 +1,3 @@
-import type { Repository } from 'typeorm';
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
@@ -20,7 +19,7 @@ import type { UserManagementMailer } from '@/UserManagement/email';
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
-import type { User } from '@db/entities/User';
+import type { UserRepository } from '@db/repositories';
 import { PasswordResetRequest } from '@/requests';
 import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
@@ -39,7 +38,7 @@ export class PasswordResetController {
 
 	private readonly mailer: UserManagementMailer;
 
-	private readonly userRepository: Repository<User>;
+	private readonly userRepository: UserRepository;
 
 	constructor({
 		config,
@@ -66,7 +65,6 @@ export class PasswordResetController {
 
 	/**
 	 * Send a password reset email.
-	 * Authless endpoint.
 	 */
 	@Post('/forgot-password')
 	async forgotPassword(req: PasswordResetRequest.Email) {
@@ -172,7 +170,6 @@ export class PasswordResetController {
 
 	/**
 	 * Verify password reset token and user ID.
-	 * Authless endpoint.
 	 */
 	@Get('/resolve-password-token')
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
@@ -214,7 +211,6 @@ export class PasswordResetController {
 
 	/**
 	 * Verify password reset token and user ID and update password.
-	 * Authless endpoint.
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {

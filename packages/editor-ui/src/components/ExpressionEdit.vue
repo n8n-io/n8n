@@ -78,7 +78,7 @@ import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/Expre
 import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
-import { IVariableItemSelected } from '@/Interface';
+import type { IVariableItemSelected } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
