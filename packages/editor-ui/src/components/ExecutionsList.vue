@@ -14,7 +14,11 @@
 					>
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
-					<execution-filter v-if="!isMounting" :workflows="workflows" @filterChanged="onFilterChanged" />
+					<execution-filter
+						v-if="!isMounting"
+						:workflows="workflows"
+						@filterChanged="onFilterChanged"
+					/>
 				</div>
 			</div>
 
