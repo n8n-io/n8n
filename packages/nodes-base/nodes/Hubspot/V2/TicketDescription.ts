@@ -86,7 +86,7 @@ export const ticketFields: INodeProperties[] = [
 		},
 		default: '',
 		description:
-			'The ID of the pipeline the ticket is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The stage ID of the pipeline the ticket is in; depends on Pipeline ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Ticket Name',
@@ -100,7 +100,6 @@ export const ticketFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'The ID of the pipeline the ticket is in',
 	},
 	{
 		displayName: 'Ticket Properties',
@@ -395,7 +394,6 @@ export const ticketFields: INodeProperties[] = [
 				name: 'ticketName',
 				type: 'string',
 				default: '',
-				description: 'The ID of the pipeline the ticket is in',
 			},
 			{
 				displayName: 'Ticket Owner Name or ID',
