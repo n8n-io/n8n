@@ -36,20 +36,32 @@ type Feature = keyof typeof enabledFeatures;
 
 Container.get(License).isFeatureEnabled = (feature: Feature) => enabledFeatures[feature] ?? false;
 
-const tablesNotToTruncate = ['sqlite_sequence'];
+const tablesToTruncate = [
+	'auth_identity',
+	'auth_provider_sync_history',
+	'event_destinations',
+	'shared_workflow',
+	'shared_credentials',
+	'webhook_entity',
+	'workflows_tags',
+	'credentials_entity',
+	'tag_entity',
+	'workflow_statistics',
+	'workflow_entity',
+	'execution_entity',
+	'settings',
+	'installed_packages',
+	'installed_nodes',
+	'user',
+	'role',
+	'variables',
+];
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
-	const allTables: Array<{ name: string }> = await connection.query(
-		"SELECT name FROM sqlite_master WHERE type='table';",
-	);
 
-	// Disable foreign key constraint checks
-	await connection.query('PRAGMA foreign_keys = OFF;');
-
-	for (const { name: table } of allTables) {
+	for (const table of tablesToTruncate) {
 		try {
-			if (tablesNotToTruncate.includes(table)) continue;
 			await connection.query(
 				`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 			);
@@ -57,9 +69,6 @@ const truncateAll = async () => {
 			console.warn('Dropping Table for E2E Reset error: ', error);
 		}
 	}
-
-	// Re-enable foreign key constraint checks
-	await connection.query('PRAGMA foreign_keys = ON;');
 };
 
 const setupUserManagement = async () => {
