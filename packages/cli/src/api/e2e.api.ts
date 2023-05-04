@@ -59,8 +59,6 @@ const tablesToTruncate = [
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
-	// Disable foreign key constraint checks
-	await connection.query('PRAGMA foreign_keys = OFF;');
 
 	for (const table of tablesToTruncate) {
 		try {
@@ -71,9 +69,6 @@ const truncateAll = async () => {
 			console.warn('Dropping Table for E2E Reset error: ', error);
 		}
 	}
-
-	// Re-enable foreign key constraint checks
-	await connection.query('PRAGMA foreign_keys = ON;');
 };
 
 const setupUserManagement = async () => {
