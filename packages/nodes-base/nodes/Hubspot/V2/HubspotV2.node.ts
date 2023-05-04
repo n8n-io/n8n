@@ -1078,7 +1078,10 @@ export class HubspotV2 implements INodeType {
 				return {
 					// tslint:disable-next-line: no-any
 					results: engagements.results.map((b: any) => ({
-						name: b.properties?.name?.value || b.engagement.id,
+						name:
+							b.properties?.name?.value || b.engagement?.type
+								? `${b.engagement?.type}: ${b.engagement.id}`
+								: b.engagement.id,
 						value: b.engagement.id,
 					})),
 				};
