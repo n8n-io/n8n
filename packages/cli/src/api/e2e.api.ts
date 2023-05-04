@@ -59,10 +59,6 @@ const tablesToTruncate = [
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
-	const allTables: Array<{ name: string }> = await connection.query(
-		"SELECT name FROM sqlite_master WHERE type='table';",
-	);
-
 	// Disable foreign key constraint checks
 	await connection.query('PRAGMA foreign_keys = OFF;');
 
