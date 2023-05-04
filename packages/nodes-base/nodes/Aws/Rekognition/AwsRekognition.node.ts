@@ -445,7 +445,6 @@ export class AwsRekognition implements INodeType {
 							{},
 							{ 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 						);
-						console.log(responseData);
 					}
 				}
 
