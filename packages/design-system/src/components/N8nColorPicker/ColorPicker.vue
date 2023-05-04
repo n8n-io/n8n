@@ -1,7 +1,18 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { ColorPicker } from 'element-ui';
-import type { IN8nColorPicker } from '@/types/colorPicker';
+
+export type ColorFormat = 'hex' | 'rgb' | 'hsl' | 'hsv';
+
+export type IN8nColorPicker = {
+	disabled?: boolean;
+	size?: 'small' | 'medium' | 'mini';
+	showAlpha?: boolean;
+	colorFormat?: ColorFormat;
+	popperClass?: string;
+	predefine?: ColorFormat[];
+	value: string;
+};
 
 const colorPickerProps = defineProps<IN8nColorPicker>();
 
