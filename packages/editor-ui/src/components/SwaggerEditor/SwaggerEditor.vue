@@ -26,6 +26,7 @@ interface Data {
 	isFirstMount: boolean;
 	suppressEvent: boolean;
 	swaggerIframeURL: string;
+	runOtherListeners: boolean;
 	swaggerElement: any;
 }
 
@@ -67,6 +68,7 @@ export default mixins(workflowHelpers).extend({
 		return {
 			isFirstMount: true,
 			suppressEvent: false,
+			runOtherListeners: false,
 			swaggerElement: null,
 			input: JSON.stringify(base, null, 2),
 			swaggerIframeURL:
@@ -76,17 +78,8 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	mounted() {
-		this.swaggerElement?.contentWindow?.postMessage(
-			{
-				name: 'editor_change',
-				body: JSON.stringify({}, null, 2),
-			},
-			'*',
-		);
-
-		this.updateSpec(this.$props.nodeValues);
-		window.addEventListener('message', this.messageHandler);
 		this.swaggerElement = this.$refs.swaggerIframe;
+		window.addEventListener('message', this.messageHandler);
 	},
 	computed: {
 		webhooksNode(): IWebhookDescription[] {
@@ -103,9 +96,19 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		messageHandler(ev: MessageEvent) {
-			if (ev.data.name === 'editor_onChange' && ev.data.body) {
-				this.parseSpec(ev.data.body);
-				this.input = ev.data.body;
+			if (this.runOtherListeners) {
+				if (ev.data.name === 'editor_onChange' && ev.data.body) {
+					this.parseSpec(ev.data.body);
+					this.input = ev.data.body;
+					return;
+				}
+			}
+
+			if (ev.data.name === 'editor_loaded') {
+				this.isFirstMount = true;
+				this.updateSpec(this.$props.nodeValues);
+				this.runOtherListeners = true;
+				return;
 			}
 		},
 		parsePath(path: string, method: string) {
@@ -170,15 +173,16 @@ export default mixins(workflowHelpers).extend({
 				this.suppressEvent = true;
 				const swagger = this.$props.nodeValues.parameters.swagger;
 
-				this.swaggerElement?.contentWindow?.postMessage(
-					{
-						body: swagger === '{}' ? base : swagger,
-						name: 'editor_change',
-					},
-					'*',
-				);
-
-				return;
+				if (swagger !== '{}') {
+					this.swaggerElement?.contentWindow?.postMessage(
+						{
+							body: swagger,
+							name: 'editor_change',
+						},
+						'*',
+					);
+					return;
+				}
 			}
 
 			const path = this.getParameterValue(values, 'path', 'parameters');
@@ -203,6 +207,7 @@ export default mixins(workflowHelpers).extend({
 
 			if (!auth || auth === 'none') {
 				if (copy.components?.securitySchemes) {
+					delete copy.security;
 					delete copy.components.securitySchemes;
 				}
 			} else {
@@ -214,6 +219,12 @@ export default mixins(workflowHelpers).extend({
 						scheme: 'bearer',
 					},
 				};
+
+				(copy.security as any) = [
+					{
+						bearerAuth: [],
+					},
+				];
 			}
 
 			copy.servers = [
