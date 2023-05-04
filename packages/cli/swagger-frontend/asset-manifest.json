@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/deep-consulting-swagger/static/css/main.f8987624.css",
-    "main.js": "/deep-consulting-swagger/static/js/main.a5e781c6.js",
+    "main.css": "/deep-consulting-swagger/static/css/main.555f398e.css",
+    "main.js": "/deep-consulting-swagger/static/js/main.eb142ed4.js",
     "static/js/787.1488faa3.chunk.js": "/deep-consulting-swagger/static/js/787.1488faa3.chunk.js",
     "index.html": "/deep-consulting-swagger/index.html",
-    "main.f8987624.css.map": "/deep-consulting-swagger/static/css/main.f8987624.css.map",
-    "main.a5e781c6.js.map": "/deep-consulting-swagger/static/js/main.a5e781c6.js.map",
+    "main.555f398e.css.map": "/deep-consulting-swagger/static/css/main.555f398e.css.map",
+    "main.eb142ed4.js.map": "/deep-consulting-swagger/static/js/main.eb142ed4.js.map",
     "787.1488faa3.chunk.js.map": "/deep-consulting-swagger/static/js/787.1488faa3.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.f8987624.css",
-    "static/js/main.a5e781c6.js"
+    "static/css/main.555f398e.css",
+    "static/js/main.eb142ed4.js"
   ]
 }
