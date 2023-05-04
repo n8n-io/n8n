@@ -58,7 +58,7 @@ export const parameters = {
 		list: [
 			{
 				name: 'dark',
-				class: 'theme-dark',
+				class: 'theme-dark-beta',
 				color: '#000',
 			},
 		],
