@@ -11,7 +11,7 @@ export type IN8nColorPicker = {
 	colorFormat?: ColorFormat;
 	popperClass?: string;
 	predefine?: ColorFormat[];
-	modelValue: string;
+	modelValue?: string;
 };
 
 const colorPickerProps = defineProps<IN8nColorPicker>();
