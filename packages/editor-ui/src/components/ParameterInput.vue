@@ -388,12 +388,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
-import {
-	CODE_NODE_TYPE,
-	CUSTOM_API_CALL_KEY,
-	HTML_NODE_TYPE,
-	PARAMETER_TYPES_WITH_CUSTOM_LOADING,
-} from '@/constants';
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
@@ -535,11 +530,9 @@ export default mixins(
 	},
 	watch: {
 		dependentParametersValues() {
-			if (!PARAMETER_TYPES_WITH_CUSTOM_LOADING.includes(this.parameter.type)) {
-				// Reload the remote parameters whenever a parameter
-				// on which the current field depends on changes
-				this.loadRemoteParameterOptions();
-			}
+			// Reload the remote parameters whenever a parameter
+			// on which the current field depends on changes
+			this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {

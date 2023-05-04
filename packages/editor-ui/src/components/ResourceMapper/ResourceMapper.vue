@@ -26,7 +26,7 @@ interface Props {
 	inputSize: string;
 	labelSize: string;
 	dependentParametersValues: string | null;
-	nodeValues: INodeParameters | undefined;
+	// nodeValues: INodeParameters | undefined;
 }
 
 const nodeTypesStore = useNodeTypesStore();
@@ -45,6 +45,7 @@ const state = reactive({
 		matchingColumns: [],
 		schema: [],
 	} as ResourceMapperValue,
+	parameterValues: {} as INodeParameters,
 	loading: false,
 	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
@@ -62,20 +63,21 @@ watch(
 );
 
 onMounted(async () => {
-	if (props.nodeValues && props.nodeValues.parameters) {
-		const params = props.nodeValues.parameters as INodeParameters;
-		const parameterName = props.parameter.name;
-		if (parameterName in params) {
-			state.paramValue = params[parameterName] as unknown as ResourceMapperValue;
-			if (!state.paramValue.schema) {
-				state.paramValue.schema = [];
-			}
-			Object.keys(state.paramValue.value || {}).forEach((key) => {
-				if (state.paramValue.value && state.paramValue.value[key] === '') {
-					state.paramValue.value[key] = null;
-				}
-			});
+	if (props.node) {
+		state.parameterValues.parameters = props.node.parameters;
+	}
+	const params = state.parameterValues.parameters as INodeParameters;
+	const parameterName = props.parameter.name;
+	if (parameterName in params) {
+		state.paramValue = params[parameterName] as unknown as ResourceMapperValue;
+		if (!state.paramValue.schema) {
+			state.paramValue.schema = [];
 		}
+		Object.keys(state.paramValue.value || {}).forEach((key) => {
+			if (state.paramValue.value && state.paramValue.value[key] === '') {
+				state.paramValue.value[key] = null;
+			}
+		});
 	}
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
@@ -359,7 +361,7 @@ defineExpose({
 			v-if="showMappingFields"
 			:parameter="props.parameter"
 			:path="props.path"
-			:nodeValues="props.nodeValues"
+			:nodeValues="state.parameterValues"
 			:fieldsToMap="state.paramValue.schema"
 			:paramValue="state.paramValue"
 			:labelSize="labelSize"

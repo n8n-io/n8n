@@ -86,10 +86,9 @@
 				:parameter="parameter"
 				:node="node"
 				:path="getPath(parameter.name)"
-				inputSize="small"
-				labelSize="small"
 				:dependentParametersValues="getDependentParametersValues(parameter)"
-				:nodeValues="nodeValues"
+				labelSize="small"
+				inputSize="small"
 				@valueChanged="valueChanged"
 			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
