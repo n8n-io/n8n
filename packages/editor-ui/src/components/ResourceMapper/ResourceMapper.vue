@@ -80,7 +80,9 @@ onMounted(async () => {
 	}
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
-	setDefaultFieldValues();
+	if (!state.paramValue.value) {
+		setDefaultFieldValues();
+	}
 	updateNodeIssues();
 });
 
@@ -183,7 +185,8 @@ async function loadFieldsToMap(): Promise<void> {
 			if (existingField) {
 				field.removed = existingField.removed;
 			} else if (state.paramValue.value !== null && !(field.id in state.paramValue.value)) {
-				field.display = false;
+				// New fields are shown by default
+				field.removed = false;
 			}
 			return field;
 		});
@@ -203,19 +206,22 @@ async function onModeChanged(mode: string): Promise<void> {
 }
 
 function setDefaultFieldValues(): void {
-	if (!state.paramValue.value) {
-		Vue.set(state.paramValue, 'value', {});
-		state.paramValue.schema.forEach((field) => {
-			if (state.paramValue.value) {
-				if (field.type === 'boolean') {
-					Vue.set(state.paramValue.value, field.id, false);
-				} else {
-					Vue.set(state.paramValue.value, field.id, null);
-				}
+	Vue.set(state.paramValue, 'value', {});
+	const hideAllFields = props.parameter.typeOptions?.resourceMapper?.addAllFields === false;
+	state.paramValue.schema.forEach((field) => {
+		if (state.paramValue.value) {
+			// Hide all non-required fields if it's configured in node definition
+			if (hideAllFields) {
+				Vue.set(field, 'removed', !field.required);
 			}
-		});
-		emitValueChanged();
-	}
+			if (field.type === 'boolean') {
+				Vue.set(state.paramValue.value, field.id, false);
+			} else {
+				Vue.set(state.paramValue.value, field.id, null);
+			}
+		}
+	});
+	emitValueChanged();
 	if (!state.paramValue.matchingColumns) {
 		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
 		emitValueChanged();

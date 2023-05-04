@@ -119,7 +119,7 @@ const properties: INodeProperties[] = [
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
 				mode: 'add',
-				addAllFields: true,
+				addAllFields: false,
 				multiKeyMatch: true,
 			},
 		},
