@@ -63,17 +63,28 @@ export class ActiveExecutions {
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-			const executionResult = await Db.collections.Execution.save(execution as IExecutionFlattedDb);
-			// TODO: what is going on here?
-			executionId =
-				typeof executionResult.id === 'object'
-					? // @ts-ignore
-					  executionResult.id!.toString()
-					: executionResult.id + '';
-			if (executionId === undefined) {
-				throw new Error('There was an issue assigning an execution id to the execution');
+			try {
+				const executionResult = await Db.collections.Execution.save(
+					execution as IExecutionFlattedDb,
+				);
+				// TODO: what is going on here?
+				executionId =
+					typeof executionResult.id === 'object'
+						? // @ts-ignore
+						  executionResult.id!.toString()
+						: executionResult.id + '';
+				if (executionId === undefined) {
+					throw new Error('There was an issue assigning an execution id to the execution');
+				}
+				executionStatus = 'running';
+			} catch (error) {
+				const workflowIds = (await Db.collections.Workflow.find({ select: ['id'] })).map(
+					({ id }) => id,
+				);
+				console.trace('ActiveExecutions');
+				console.log(fullExecutionData.workflowId, workflowIds);
+				throw error;
 			}
-			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
