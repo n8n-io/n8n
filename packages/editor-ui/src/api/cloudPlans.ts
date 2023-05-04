@@ -23,9 +23,6 @@ export function getCurrentPlan(
 				},
 			},
 		},
-		instance: {
-			createdAt: '2023-05-01T01:47:47Z',
-		},
 		usage: {
 			executions: 100,
 			activeWorkflows: 10,
