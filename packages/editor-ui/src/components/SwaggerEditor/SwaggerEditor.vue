@@ -1,22 +1,22 @@
 <template>
 	<div>
-		<iframe  class="swagger-iframe" ref="swaggerIframe" :src="swaggerIframeURL" />
+		<iframe class="swagger-iframe" ref="swaggerIframe" :src="swaggerIframeURL" />
 	</div>
 </template>
 
 <script lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import {
-	jsonParse,
+import type {
 	INodeParameters,
 	INodeProperties,
 	IWebhookDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import base from './base.json';
@@ -26,6 +26,7 @@ interface Data {
 	isFirstMount: boolean;
 	suppressEvent: boolean;
 	swaggerIframeURL: string;
+	runOtherListeners: boolean;
 	swaggerElement: any;
 }
 
@@ -64,19 +65,21 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	data(): Data {
-		const swaggerIframeURL = import.meta.env.MODE === "production"? `/deep-consulting-swagger`  : 'http://localhost:3000';
 		return {
 			isFirstMount: true,
 			suppressEvent: false,
-			input: JSON.stringify(base, null, 2),
-			swaggerIframeURL,
+			runOtherListeners: false,
 			swaggerElement: null,
+			input: JSON.stringify(base, null, 2),
+			swaggerIframeURL:
+				import.meta.env.MODE === 'production'
+					? '/deep-consulting-swagger'
+					: 'http://localhost:3000',
 		};
 	},
 	mounted() {
-		this.updateSpec(this.$props.nodeValues);
-		window.addEventListener('message', this.messageHandler);
 		this.swaggerElement = this.$refs.swaggerIframe;
+		window.addEventListener('message', this.messageHandler);
 	},
 	computed: {
 		webhooksNode(): IWebhookDescription[] {
@@ -93,9 +96,19 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		messageHandler(ev: MessageEvent) {
-			if (ev.data.name === 'editor_onChange' && ev.data.body) {
-				this.parseSpec(ev.data.body);
-				this.input = ev.data.body;
+			if (this.runOtherListeners) {
+				if (ev.data.name === 'editor_onChange' && ev.data.body) {
+					this.parseSpec(ev.data.body);
+					this.input = ev.data.body;
+					return;
+				}
+			}
+
+			if (ev.data.name === 'editor_loaded') {
+				this.isFirstMount = true;
+				this.updateSpec(this.$props.nodeValues);
+				this.runOtherListeners = true;
+				return;
 			}
 		},
 		parsePath(path: string, method: string) {
@@ -110,7 +123,7 @@ export default mixins(workflowHelpers).extend({
 				schema: { type: 'string' },
 			}));
 
-			const stringPath = path.replaceAll(/:\w+/g, (match) => `{${match.slice(1)}}`);
+			const stringPath = `/${path.replaceAll(/:\w+/g, (match) => `{${match.slice(1)}}`)}`;
 
 			const baseObject = {
 				[stringPath]: {
@@ -125,11 +138,11 @@ export default mixins(workflowHelpers).extend({
 				},
 			};
 
-			const queryIndex = path.indexOf('?');
+			const queryIndex = stringPath.indexOf('?');
 
 			if (queryIndex === -1) return baseObject;
 
-			const queryString = new URLSearchParams(path.slice(queryIndex));
+			const queryString = new URLSearchParams(stringPath.slice(queryIndex));
 
 			const qvMap = Array.from(queryString.entries()).map(([key, value]) => ({
 				name: key,
@@ -138,7 +151,7 @@ export default mixins(workflowHelpers).extend({
 				schema: { type: 'string', ...(value && { default: value }) },
 			}));
 
-			const newPath = stringPath.slice(0, pathVariables?.length ? queryIndex + 1 : queryIndex);
+			const newPath = stringPath.slice(0, queryIndex);
 
 			baseObject[newPath] = baseObject[stringPath];
 			delete baseObject[stringPath];
@@ -150,7 +163,6 @@ export default mixins(workflowHelpers).extend({
 			return baseObject;
 		},
 		updateSpec(values: INodeParameters) {
-			const swaggerIframe = document.getElementById("swagger-iframe")
 			if (this.suppressEvent) {
 				this.suppressEvent = false;
 				return;
@@ -161,15 +173,16 @@ export default mixins(workflowHelpers).extend({
 				this.suppressEvent = true;
 				const swagger = this.$props.nodeValues.parameters.swagger;
 
-				this.swaggerElement?.contentWindow?.postMessage(
-					{
-						body: swagger === '{}' ? base : swagger,
-						name: 'editor_change',
-					},
-					"*",
-				);
-
-				return;
+				if (swagger !== '{}') {
+					this.swaggerElement?.contentWindow?.postMessage(
+						{
+							body: swagger,
+							name: 'editor_change',
+						},
+						'*',
+					);
+					return;
+				}
 			}
 
 			const path = this.getParameterValue(values, 'path', 'parameters');
@@ -194,6 +207,7 @@ export default mixins(workflowHelpers).extend({
 
 			if (!auth || auth === 'none') {
 				if (copy.components?.securitySchemes) {
+					delete copy.security;
 					delete copy.components.securitySchemes;
 				}
 			} else {
@@ -205,6 +219,12 @@ export default mixins(workflowHelpers).extend({
 						scheme: 'bearer',
 					},
 				};
+
+				(copy.security as any) = [
+					{
+						bearerAuth: [],
+					},
+				];
 			}
 
 			copy.servers = [
@@ -224,7 +244,7 @@ export default mixins(workflowHelpers).extend({
 					body: copyString,
 					name: 'editor_change',
 				},
-				"*",
+				'*',
 			);
 
 			this.input = copyString;
@@ -238,9 +258,9 @@ export default mixins(workflowHelpers).extend({
 			try {
 				const [pathString, pathObject] = Object.entries(paths)[0];
 
-				const { parameters } = Object.values<{ parameters: PathParameter[] }>(pathObject)[0];
+				const { parameters = [] } = Object.values<{ parameters: PathParameter[] }>(pathObject)[0];
 
-				let stringCopy = pathString.slice();
+				let stringCopy = pathString.slice(1);
 				const queryString = new URLSearchParams();
 
 				parameters.forEach((parameter) => {
@@ -263,7 +283,9 @@ export default mixins(workflowHelpers).extend({
 					}
 				});
 
-				return `${stringCopy}?${queryString.toString()}`;
+				if (queryString.toString()) return `${stringCopy}?${queryString.toString()}`;
+
+				return stringCopy;
 			} catch {
 				return '';
 			}
@@ -306,7 +328,7 @@ export default mixins(workflowHelpers).extend({
 			// Path UI element
 			const nextPath = this.reconstructPath(specObject.paths);
 			if (nextPath) {
-				parameterValue.value['parameters.path'] = this.reconstructPath(specObject.paths);
+				parameterValue.value['parameters.path'] = nextPath;
 			}
 
 			this.suppressEvent = true;
@@ -329,7 +351,7 @@ export default mixins(workflowHelpers).extend({
 
 <style lang="scss">
 .swagger-iframe {
-		width: 100% !important;
-		height: 800px;
+	width: 100% !important;
+	height: 800px;
 }
 </style>
