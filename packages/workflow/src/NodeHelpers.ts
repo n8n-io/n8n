@@ -1245,13 +1245,13 @@ export function getParameterIssues(
 				value.schema.forEach((field) => {
 					if (field.required) {
 						const key = `${nodeProperties.name}.${field.id}`;
-						if (foundIssues.parameters === undefined) {
-							foundIssues.parameters = {};
-						}
-						if (foundIssues.parameters[key] === undefined) {
-							foundIssues.parameters[key] = [];
-						}
 						if (value.value === null || (value.value && value.value[field.id] === null)) {
+							if (foundIssues.parameters === undefined) {
+								foundIssues.parameters = {};
+							}
+							if (foundIssues.parameters[key] === undefined) {
+								foundIssues.parameters[key] = [];
+							}
 							const error = `${
 								fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1)
 							} "${field.id}" is required.`;
