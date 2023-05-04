@@ -4,7 +4,9 @@
 			<div :class="$style.execListHeader">
 				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
+					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
+						v-else
 						class="mr-xl"
 						v-model="autoRefresh"
 						@change="handleAutoRefreshToggle"
@@ -12,7 +14,7 @@
 					>
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
-					<execution-filter :workflows="workflows" @filterChanged="onFilterChanged" />
+					<execution-filter v-if="!isMounting" :workflows="workflows" @filterChanged="onFilterChanged" />
 				</div>
 			</div>
 
@@ -30,7 +32,12 @@
 				data-test-id="select-all-executions-checkbox"
 			/>
 
-			<table :class="$style.execTable">
+			<div v-if="isMounting">
+				<n8n-loading :class="$style.tableLoader" variant="custom" />
+				<n8n-loading :class="$style.tableLoader" variant="custom" />
+				<n8n-loading :class="$style.tableLoader" variant="custom" />
+			</div>
+			<table v-else :class="$style.execTable">
 				<thead>
 					<tr>
 						<th>
@@ -210,7 +217,7 @@
 			</table>
 
 			<div
-				v-if="!combinedExecutions.length"
+				v-if="!combinedExecutions.length && !isMounting"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
@@ -231,7 +238,7 @@
 					data-test-id="load-more-button"
 				/>
 			</div>
-			<div v-else :class="$style.loadedAll" data-test-id="execution-all-loaded">
+			<div v-else-if="!isMounting" :class="$style.loadedAll" data-test-id="execution-all-loaded">
 				{{ $locale.baseText('executionsList.loadedAll') }}
 			</div>
 		</div>
@@ -300,6 +307,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 	},
 	data() {
 		return {
+			isMounting: true,
 			finishedExecutions: [] as IExecutionsSummary[],
 			finishedExecutionsCount: 0,
 			finishedExecutionsCountEstimated: false,
@@ -611,6 +619,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 
 			this.adjustSelectionAfterMoreItemsLoaded();
+			this.isMounting = false;
 		},
 		async loadFinishedExecutions(): Promise<void> {
 			if (this.filter.status === 'running') {
@@ -1133,5 +1142,16 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 	display: inline-block;
 	margin: 0 0 var(--spacing-s) var(--spacing-s);
 	color: var(--color-danger);
+}
+
+.filterLoader {
+	width: 220px;
+	height: 32px;
+}
+
+.tableLoader {
+	width: 100%;
+	height: 48px;
+	margin-bottom: var(--spacing-2xs);
 }
 </style>
