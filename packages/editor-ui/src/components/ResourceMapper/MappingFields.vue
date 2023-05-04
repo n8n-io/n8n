@@ -27,6 +27,7 @@ interface Props {
 	showMatchingColumnsSelector: boolean;
 	showMappingModeSelect: boolean;
 	loading: boolean;
+	refreshInProgress: boolean;
 }
 
 const props = defineProps<Props>();
@@ -164,6 +165,14 @@ const valuesLabel = computed<string>(() => {
 	return locale.baseText('resourceMapper.valuesToSend.label');
 });
 
+const fetchingFieldsLabel = computed<string>(() => {
+	return locale.baseText('resourceMapper.fetchingFields.message', {
+		interpolate: {
+			fieldWord: pluralFieldWord.value,
+		},
+	});
+});
+
 function getFieldLabel(field: ResourceMapperField): string {
 	if (isMatchingField(field.id)) {
 		const suffix = locale.baseText('resourceMapper.usingToMatch') || '';
@@ -237,8 +246,7 @@ function onParameterActionSelected(action: string): void {
 			emit('addField', action);
 			break;
 		case 'removeAllFields':
-			// TODO: Why is this calling addField?
-			emit('addField', action);
+			emit('removeField', action);
 			break;
 		case 'refreshFieldList':
 			emit('refreshFieldList');
@@ -268,6 +276,8 @@ defineExpose({
 					:parameter="parameter"
 					iconOrientation="horizontal"
 					:customActions="parameterActions"
+					:loading="props.refreshInProgress"
+					:loadingMessage="fetchingFieldsLabel"
 					@optionSelected="onParameterActionSelected"
 				/>
 			</template>
@@ -318,8 +328,7 @@ defineExpose({
 					:value="getParameterValue(nodeValues, field.name, path)"
 					:displayOptions="true"
 					:path="`${props.path}.${field.name}}`"
-					:isReadOnly="false"
-					:hideLabel="false"
+					:isReadOnly="props.refreshInProgress"
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"

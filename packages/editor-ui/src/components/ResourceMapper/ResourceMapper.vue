@@ -46,6 +46,7 @@ const state = reactive({
 		schema: [],
 	} as ResourceMapperValue,
 	loading: false,
+	refreshInProgress: false, // Shows inline loader when refreshing fields
 	loadingError: false,
 });
 
@@ -142,9 +143,13 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(): Promise<void> {
-	state.loading = true;
+async function initFetching(inlineLading = false): Promise<void> {
 	state.loadingError = false;
+	if (inlineLading) {
+		state.refreshInProgress = true;
+	} else {
+		state.loading = true;
+	}
 	try {
 		await loadFieldsToMap();
 		onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
@@ -152,6 +157,7 @@ async function initFetching(): Promise<void> {
 		state.loadingError = true;
 	} finally {
 		state.loading = false;
+		state.refreshInProgress = false;
 	}
 }
 
@@ -249,6 +255,9 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 }
 
 function removeField(name: string): void {
+	if (name === 'removeAllFields') {
+		return removeAllFields();
+	}
 	const fieldName = parseResourceMapperFieldName(name);
 	if (fieldName) {
 		if (state.paramValue.value) {
@@ -357,10 +366,11 @@ defineExpose({
 			:showMatchingColumnsSelector="showMatchingColumnsSelector"
 			:showMappingModeSelect="showMappingModeSelect"
 			:loading="state.loading"
+			:refreshInProgress="state.refreshInProgress"
 			@fieldValueChanged="fieldValueChanged"
 			@removeField="removeField"
 			@addField="addField"
-			@refreshFieldList="initFetching"
+			@refreshFieldList="initFetching(true)"
 		/>
 	</div>
 </template>

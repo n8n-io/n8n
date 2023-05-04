@@ -1,27 +1,35 @@
 <template>
 	<div :class="$style.container">
-		<n8n-action-toggle
-			v-if="shouldShowOptions"
-			placement="bottom-end"
-			size="small"
-			color="foreground-xdark"
-			iconSize="small"
-			:actions="actions"
-			:iconOrientation="iconOrientation"
-			@action="(action) => $emit('optionSelected', action)"
-			@visible-change="onMenuToggle"
-		/>
-		<n8n-radio-buttons
-			v-if="parameter.noDataExpression !== true && showExpressionSelector"
-			size="small"
-			:value="selectedView"
-			:disabled="isReadOnly"
-			@input="onViewSelected"
-			:options="[
-				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
-				{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
-			]"
-		/>
+		<div v-if="loading" :class="$style.loader">
+			<n8n-text v-if="loading" size="small">
+				<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+				{{ loadingMessage }}
+			</n8n-text>
+		</div>
+		<div v-else>
+			<n8n-action-toggle
+				v-if="shouldShowOptions"
+				placement="bottom-end"
+				size="small"
+				color="foreground-xdark"
+				iconSize="small"
+				:actions="actions"
+				:iconOrientation="iconOrientation"
+				@action="(action) => $emit('optionSelected', action)"
+				@visible-change="onMenuToggle"
+			/>
+			<n8n-radio-buttons
+				v-if="parameter.noDataExpression !== true && showExpressionSelector"
+				size="small"
+				:value="selectedView"
+				:disabled="isReadOnly"
+				@input="onViewSelected"
+				:options="[
+					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
+					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
+				]"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -59,6 +67,16 @@ export default defineComponent({
 			type: String,
 			default: 'vertical',
 			validator: (value: string): boolean => ['horizontal', 'vertical'].includes(value),
+		},
+		loading: {
+			type: Boolean,
+			default: false,
+		},
+		loadingMessage: {
+			type: String,
+			default() {
+				this.$locale.baseText('genericHelpers.loading');
+			},
 		},
 	},
 	computed: {
@@ -171,5 +189,8 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	display: flex;
+}
+.loader > span {
+	line-height: 1em;
 }
 </style>
