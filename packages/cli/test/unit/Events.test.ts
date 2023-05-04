@@ -1,6 +1,5 @@
 import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
-import { QueryFailedError } from 'typeorm';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
@@ -63,7 +62,7 @@ describe('Events', () => {
 
 	const mockDBCall = (count = 1) => {
 		if (dbType === 'sqlite') {
-			workflowStatisticsRepository.findOne.mockResolvedValueOnce(
+			workflowStatisticsRepository.findOneOrFail.mockResolvedValueOnce(
 				mock<WorkflowStatistics>({ count }),
 			);
 		} else {
@@ -121,6 +120,8 @@ describe('Events', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
+			mockDBCall();
+
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
@@ -144,6 +145,7 @@ describe('Events', () => {
 				startedAt: new Date(),
 			};
 			mockDBCall(2);
+
 			await workflowExecutionCompleted(workflow, runData);
 			expect(internalHooks.onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
@@ -161,6 +163,8 @@ describe('Events', () => {
 				position: [0, 0] as [number, number],
 				parameters: {},
 			};
+			mockDBCall();
+
 			await nodeFetchedData(workflowId, node);
 			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(internalHooks.onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
@@ -188,6 +192,8 @@ describe('Events', () => {
 					},
 				},
 			};
+			mockDBCall();
+
 			await nodeFetchedData(workflowId, node);
 			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(internalHooks.onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
@@ -202,9 +208,6 @@ describe('Events', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
-				throw new QueryFailedError('invalid insert', [], '');
-			});
 			const workflowId = '1';
 			const node = {
 				id: 'abcde',
@@ -214,6 +217,8 @@ describe('Events', () => {
 				position: [0, 0] as [number, number],
 				parameters: {},
 			};
+			mockDBCall();
+
 			await nodeFetchedData(workflowId, node);
 			expect(internalHooks.onFirstWorkflowDataLoad).toBeCalledTimes(0);
 		});
