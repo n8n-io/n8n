@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMigration {
-	transaction = false;
+	transaction = false as const;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowIds = (await queryRunner.query(`

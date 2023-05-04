@@ -1,7 +1,7 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
-	transaction = false;
+	transaction = false as const;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query('PRAGMA foreign_keys=OFF');
