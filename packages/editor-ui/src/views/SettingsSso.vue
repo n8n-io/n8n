@@ -29,11 +29,11 @@ const entityId = ref();
 
 const ipsOptions = ref([
 	{
-		label: i18n.baseText('settings.sso.settings.ips.options.url'),
+		label: locale.baseText('settings.sso.settings.ips.options.url'),
 		value: IdentityProviderSettingsType.URL,
 	},
 	{
-		label: i18n.baseText('settings.sso.settings.ips.options.xml'),
+		label: locale.baseText('settings.sso.settings.ips.options.xml'),
 		value: IdentityProviderSettingsType.XML,
 	},
 ]);
@@ -89,11 +89,11 @@ const onSave = async () => {
 
 		if (!previousValue && !ssoStore.isSamlLoginEnabled) {
 			const activateOrTest = await message.confirm(
-				i18n.baseText('settings.sso.settings.save.activate.message'),
-				i18n.baseText('settings.sso.settings.save.activate.title'),
+				locale.baseText('settings.sso.settings.save.activate.message'),
+				locale.baseText('settings.sso.settings.save.activate.title'),
 				{
-					confirmButtonText: i18n.baseText('settings.sso.settings.save.activate.activate'),
-					cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.test'),
+					confirmButtonText: locale.baseText('settings.sso.settings.save.activate.activate'),
+					cancelButtonText: locale.baseText('settings.sso.settings.save.activate.test'),
 				},
 			);
 
