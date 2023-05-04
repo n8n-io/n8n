@@ -1461,10 +1461,10 @@ export interface PlanSpec {
 	metadata: PlanMetadata;
 }
 export interface PlanMetadata {
-	version: string;
-	group: string;
-	slug: string;
-	trial: Trial;
+	version: 'v1';
+	group: 'opt-out' | 'opt-in';
+	slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
+	trial?: Trial;
 }
 export interface Trial {
 	length: number;

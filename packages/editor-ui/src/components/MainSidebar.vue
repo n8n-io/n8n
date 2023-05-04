@@ -26,7 +26,9 @@
 				</div>
 			</template>
 
-			<template #beforeLowerMenu> <ExecutionsUsage v-if="!isCollapsed" /></template>
+			<template #beforeLowerMenu>
+				<ExecutionsUsage :cloud-plan-data="cloudPlan" v-if="!isCollapsed && userIsTrialing"
+			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
@@ -112,7 +114,7 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { CloudPlanData, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -154,7 +156,8 @@ export default mixins(
 	},
 	data() {
 		return {
-			// @ts-ignore
+			cloudPlan: {} as CloudPlanData,
+			userIsTrialing: false,
 			basePath: '',
 			fullyExpanded: false,
 		};
@@ -343,6 +346,14 @@ export default mixins(
 		}
 		await Vue.nextTick();
 		this.fullyExpanded = !this.isCollapsed;
+
+		try {
+			const planData = await this.usersStore.getOwnerCurrentPLan();
+			if (planData.planSpec.metadata.slug === 'trial-1') {
+				this.userIsTrialing = true;
+				this.cloudPlan = planData;
+			}
+		} catch {}
 	},
 	created() {
 		window.addEventListener('resize', this.onResize);

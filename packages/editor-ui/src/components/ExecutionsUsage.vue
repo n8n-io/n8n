@@ -1,5 +1,5 @@
 <template>
-	<div v-if="userIsTrialing" :class="$style.container">
+	<div :class="$style.container">
 		<div v-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
 			<i18n path="executionUsage.currentUsage">
 				<template #text>
@@ -63,42 +63,51 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import type { CloudPlanData } from '@/Interface';
 import { DateTime } from 'luxon';
 
-const currentPlan = ref<CloudPlanData>({
-	planSpec: {
-		planId: 43039,
-		monthlyExecutionsLimit: 200,
-		activeWorkflowsLimit: 10,
-		credentialsLimit: 100,
-		isActive: false,
-		displayName: 'Trial',
-		expirationDate: '2023-05-06T01:47:47Z',
-		metadata: {
-			version: 'v1',
-			group: 'trial',
-			slug: 'trial-1',
-			trial: {
-				length: 7,
-				gracePeriod: 3,
-			},
-		},
-	},
-	instance: {
-		createdAt: '2023-05-01T01:47:47Z',
-	},
-	usage: {
-		executions: 100,
-		activeWorkflows: 10,
-	},
-});
+export interface CloudPlanData {
+	planSpec: PlanSpec;
+	instance: Instance;
+	usage: Usage;
+}
+
+export interface PlanSpec {
+	planId: number;
+	monthlyExecutionsLimit: number;
+	activeWorkflowsLimit: number;
+	credentialsLimit: number;
+	isActive: boolean;
+	displayName: string;
+	expirationDate: string;
+	metadata: PlanMetadata;
+}
+export interface PlanMetadata {
+	version: 'v1';
+	group: 'opt-out' | 'opt-in';
+	slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
+	trial?: Trial;
+}
+export interface Trial {
+	length: number;
+	gracePeriod: number;
+}
+export interface Instance {
+	createdAt: string;
+}
+export interface Usage {
+	executions: number;
+	activeWorkflows: number;
+}
+
+const props = defineProps<{ cloudPlanData: CloudPlanData }>();
 
 const now = DateTime.utc();
 
-onMounted(async () => {});
+onMounted(async () => {
+	console.log('monte');
+});
 
 const daysLeftOnTrial = computed(() => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
@@ -106,21 +115,19 @@ const daysLeftOnTrial = computed(() => {
 });
 
 const isTrialExpired = computed(() => {
-	const trialEndsAt = DateTime.fromISO(currentPlan.value.planSpec.expirationDate);
+	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.planSpec.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
 });
 
-const getPlanExpirationDate = () => DateTime.fromISO(currentPlan.value.planSpec.expirationDate);
+const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.planSpec.expirationDate);
 
 const trialHasExecutionsLeft = computed(
-	() => currentPlan.value.usage.executions < currentPlan.value.planSpec.monthlyExecutionsLimit,
+	() => props.cloudPlanData.usage.executions < props.cloudPlanData.planSpec.monthlyExecutionsLimit,
 );
 
-const userIsTrialing = computed(() => currentPlan.value.planSpec.metadata.group === 'trial');
+const currentExecutions = computed(() => props.cloudPlanData.usage.executions);
 
-const currentExecutions = computed(() => currentPlan.value.usage.executions);
-
-const maxExecutions = computed(() => currentPlan.value.planSpec.monthlyExecutionsLimit);
+const maxExecutions = computed(() => props.cloudPlanData.planSpec.monthlyExecutionsLimit);
 
 const onUpgradeClicked = () => {};
 </script>
