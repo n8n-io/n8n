@@ -54,7 +54,7 @@ const tablesToTruncate = [
 	'installed_nodes',
 	'user',
 	'role',
-	'variables'
+	'variables',
 ];
 
 const truncateAll = async () => {
