@@ -9,7 +9,7 @@ export class RemoveWorkflowDataLoadedFlag1671726148419 implements MigrationInter
 			FROM "${tablePrefix}workflow_entity"
 		`)) as Array<{ id: number; dataLoaded: boolean }>;
 
-		workflowIds.map(({ id, dataLoaded }) => {
+		workflowIds.map(async ({ id, dataLoaded }) => {
 			if (dataLoaded) {
 				const [insertQuery, insertParams] = queryRunner.connection.driver.escapeQueryWithParameters(
 					`

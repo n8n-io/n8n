@@ -28,7 +28,7 @@ export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 				await Promise.all(
 					// eslint-disable-next-line @typescript-eslint/no-shadow
 					duplicates.map(async ({ id, name }, index: number) => {
-						if (index === 0) return Promise.resolve();
+						if (index === 0) return;
 						const [updateQuery, updateParams] =
 							queryRunner.connection.driver.escapeQueryWithParameters(
 								`
