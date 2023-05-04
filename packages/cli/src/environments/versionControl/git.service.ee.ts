@@ -6,6 +6,7 @@ import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import { constants as fsConstants } from 'fs';
 import type {
 	CommitResult,
+	DiffResult,
 	FetchResult,
 	PullResult,
 	PushResult,
@@ -187,17 +188,43 @@ export class VersionControlGitService {
 		return this.git.fetch();
 	}
 
-	async pull(): Promise<PullResult> {
+	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		return this.git.pull(undefined, undefined, { '--ff-only': null });
+		const currentBranch = (await this.git.branch()).current;
+		return {
+			current: currentBranch,
+			remote: 'origin/' + currentBranch,
+		};
 	}
 
-	async push(): Promise<PushResult> {
+	async diff(options?: { target?: string }): Promise<DiffResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
+		}
+		const currentBranch = await this.getCurrentBranch();
+		const target = options?.target ?? currentBranch.remote;
+		return this.git.diffSummary([target]);
+	}
+
+	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		if (options.ffOnly) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			return this.git.pull(undefined, undefined, { '--ff-only': null });
+		}
+		return this.git.pull();
+	}
+
+	async push(options: { force: boolean } = { force: false }): Promise<PushResult> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		if (options.force) {
+			return this.git.push(['-f']);
 		}
 		return this.git.push();
 	}
@@ -209,11 +236,16 @@ export class VersionControlGitService {
 		return this.git.add(Array.from(files));
 	}
 
-	async resetHead(): Promise<string> {
+	async resetBranch(
+		options: { hard?: boolean; target: string } = { hard: false, target: 'HEAD' },
+	): Promise<string> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		return this.git.raw(['reset', 'HEAD']);
+		if (options?.hard) {
+			return this.git.raw(['reset', '--hard', options.target]);
+		}
+		return this.git.raw(['reset', options.target]);
 		// built-in reset method does not work
 		// return this.git.reset();
 	}

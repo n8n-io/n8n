@@ -18,7 +18,14 @@ import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
 import { writeFile as fsWriteFile } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
-import type { CommitResult, FetchResult, PullResult, PushResult, StatusResult } from 'simple-git';
+import type {
+	CommitResult,
+	DiffResult,
+	FetchResult,
+	PullResult,
+	PushResult,
+	StatusResult,
+} from 'simple-git';
 import type { ExportResult } from './types/exportResult';
 import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
@@ -243,9 +250,9 @@ export class VersionControlService {
 		return result;
 	}
 
-	async import(): Promise<ImportResult | undefined> {
+	async import(userId: string): Promise<ImportResult | undefined> {
 		try {
-			return await this.versionControlExportService.importFromWorkFolder();
+			return await this.versionControlExportService.importFromWorkFolder(userId);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -266,12 +273,35 @@ export class VersionControlService {
 		return this.gitService.fetch();
 	}
 
+	async diff(): Promise<DiffResult> {
+		return this.gitService.diff();
+	}
+
 	async pull(): Promise<PullResult> {
 		return this.gitService.pull();
 	}
 
-	async push(): Promise<PushResult> {
-		return this.gitService.push();
+	// will reset the branch to the remote branch and pull
+	// this will discard all local changes
+	async resetWorkfolder(): Promise<PullResult> {
+		const currentBranch = await this.gitService.getCurrentBranch();
+		await this.gitService.resetBranch({
+			hard: true,
+			target: currentBranch.remote,
+		});
+		return this.gitService.pull();
+		// TODO: import
+	}
+
+	async push(force = false): Promise<PushResult> {
+		return this.gitService.push({ force });
+	}
+
+	async pushWorkfolder(force = false): Promise<PushResult> {
+		await this.export(); // refresh workfolder
+		await this.stage(); // stage all files
+		await this.commit('Updated workfolder'); // commit
+		return this.push(force);
 	}
 
 	async stage(files?: Set<string>): Promise<StatusResult | string> {
@@ -292,7 +322,7 @@ export class VersionControlService {
 	}
 
 	async unstage(): Promise<StatusResult | string> {
-		const stageResult = await this.gitService.resetHead();
+		const stageResult = await this.gitService.resetBranch();
 		if (!stageResult) {
 			return this.gitService.status();
 		}

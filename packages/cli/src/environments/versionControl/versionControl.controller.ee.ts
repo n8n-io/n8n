@@ -5,6 +5,7 @@ import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { BadRequestError } from '@/ResponseHelper';
 import type { PullResult, PushResult, StatusResult } from 'simple-git';
+import { AuthenticatedRequest } from '../../requests';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -85,11 +86,31 @@ export class VersionControlController {
 		}
 	}
 
+	@Authorized('any')
+	@Get('/diff')
+	async diff() {
+		try {
+			return await this.versionControlService.diff();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
 	@Authorized(['global', 'owner'])
 	@Post('/push')
-	async push(): Promise<PushResult> {
+	async push(req: VersionControlRequest.Push): Promise<PushResult> {
 		try {
-			return await this.versionControlService.push();
+			return await this.versionControlService.push(req.body.force);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Post('/push-workfolder')
+	async pushWorkfolder(req: VersionControlRequest.Push): Promise<PushResult> {
+		try {
+			return await this.versionControlService.pushWorkfolder(req.body.force);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -100,6 +121,16 @@ export class VersionControlController {
 	async pull(): Promise<PullResult> {
 		try {
 			return await this.versionControlService.pull();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/reset-workfolder')
+	async resetWorkfolder(): Promise<PullResult> {
+		try {
+			return await this.versionControlService.resetWorkfolder();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -170,9 +201,9 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Get('/import', { middlewares: [versionControlLicensedMiddleware] })
-	async import() {
+	async import(req: AuthenticatedRequest) {
 		try {
-			return await this.versionControlService.import();
+			return await this.versionControlService.import(req.user.id);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

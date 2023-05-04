@@ -27,6 +27,9 @@ import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import type { Variables } from '@/databases/entities/Variables';
 import type { ImportResult } from './types/importResult';
+import { UM_FIX_INSTRUCTION } from '../../commands/BaseCommand';
+import config from '../../config';
+// import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 
 @Service()
 export class VersionControlExportService {
@@ -48,6 +51,30 @@ export class VersionControlExportService {
 
 	getWorkflowPath(workflowId: string): string {
 		return path.join(this.workflowExportFolder, `${workflowId}.json`);
+	}
+
+	private async getOwnerCredentialRole() {
+		const ownerCredentiallRole = await Db.collections.Role.findOne({
+			where: { name: 'owner', scope: 'global' },
+		});
+
+		if (!ownerCredentiallRole) {
+			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return ownerCredentiallRole;
+	}
+
+	private async getOwnerWorkflowRole() {
+		const ownerWorkflowRole = await Db.collections.Role.findOne({
+			where: { name: 'owner', scope: 'workflow' },
+		});
+
+		if (!ownerWorkflowRole) {
+			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return ownerWorkflowRole;
 	}
 
 	private async rmDeletedWorkflowsFromExportFolder(
@@ -190,7 +217,7 @@ export class VersionControlExportService {
 		}
 	}
 
-	private async importCredentialsFromFiles(): Promise<CredentialsEntity[]> {
+	private async importCredentialsFromFiles(userId: string): Promise<CredentialsEntity[]> {
 		const credentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
@@ -198,6 +225,7 @@ export class VersionControlExportService {
 		const existingCredentials = await Db.collections.Credentials.find({
 			select: ['id', 'name', 'type'],
 		});
+		const ownerCredentialRole = await this.getOwnerCredentialRole();
 		const importCredentialsResult = await Promise.all(
 			credentialFiles.map(async (file) => {
 				const credential = jsonParse<ExportableCredential>(
@@ -206,22 +234,32 @@ export class VersionControlExportService {
 				const existingCredential = existingCredentials.find(
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
-				if (!existingCredential) {
-					// create new credential
-					const newCredential = Db.collections.Credentials.create({
-						id: credential.id,
-						name: credential.name,
-						data: undefined,
-						type: credential.type,
-						nodesAccess: credential.nodesAccess,
-					});
-					await Db.collections.Credentials.save(newCredential);
-					return newCredential;
+				const newCredential = Db.collections.Credentials.create({
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					data: existingCredential?.data ?? '',
+					nodesAccess: credential.nodesAccess,
+				});
+				await Db.collections.Credentials.upsert({ ...newCredential }, ['id']);
+				await Db.collections.SharedCredentials.upsert(
+					{
+						credentialsId: newCredential.id,
+						userId,
+						roleId: ownerCredentialRole.id,
+					},
+					['credentialsId', 'userId'],
+				);
+				// TODO: once IDs are unique, remove this
+				if (config.getEnv('database.type') === 'postgresdb') {
+					await Db.getConnection().query(
+						"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
+					);
 				}
-				return existingCredential;
+				return newCredential;
 			}),
 		);
-		return importCredentialsResult;
+		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 
 	private async importVariablesFromFile(): Promise<Variables[]> {
@@ -236,10 +274,13 @@ export class VersionControlExportService {
 			);
 			await Promise.all(
 				variables.map(async (variable) => {
-					await Db.collections.Variables.upsert(variable, {
-						skipUpdateIfNoValuesChanged: true,
-						conflictPaths: { id: true },
-					});
+					await Db.collections.Variables.upsert(
+						{ ...variable },
+						{
+							skipUpdateIfNoValuesChanged: true,
+							conflictPaths: { id: true },
+						},
+					);
 				}),
 			);
 			return variables;
@@ -247,43 +288,60 @@ export class VersionControlExportService {
 		return [];
 	}
 
-	async importFromWorkFolder(): Promise<ImportResult> {
+	// TODO: TEMP IMPLEMENTATION
+	private async importWorkflowsFromFiles(
+		userId: string,
+	): Promise<Array<{ id: string; name: string }>> {
+		const workflowFiles = await glob('*.json', {
+			cwd: this.workflowExportFolder,
+			absolute: true,
+		});
+
+		const existingWorkflows = await Db.collections.Workflow.find({
+			select: ['id', 'name', 'active', 'versionId'],
+		});
+
+		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
+
+		const importWorkflowsResult = await Promise.all(
+			workflowFiles.map(async (file) => {
+				const newWorkflow = jsonParse<IWorkflowToImport>(
+					await fsReadFile(file, { encoding: 'utf8' }),
+				);
+				const existingWorkflow = existingWorkflows.find((e) => e.id === newWorkflow.id);
+				newWorkflow.active = existingWorkflow?.active ?? false;
+				await Db.collections.Workflow.upsert({ ...newWorkflow }, ['id']);
+				await Db.collections.SharedWorkflow.upsert(
+					{
+						workflowId: newWorkflow.id,
+						userId,
+						roleId: ownerWorkflowRole.id,
+					},
+					['workflowId', 'userId'],
+				);
+				// TODO: once IDs are unique, remove this
+				if (config.getEnv('database.type') === 'postgresdb') {
+					await Db.getConnection().query(
+						"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+					);
+				}
+				return {
+					id: newWorkflow.id ?? 'unknown',
+					name: file,
+				};
+			}),
+		);
+		return importWorkflowsResult;
+	}
+
+	async importFromWorkFolder(userId: string): Promise<ImportResult> {
 		try {
 			const importedVariables = await this.importVariablesFromFile();
-			const importedCredentials = await this.importCredentialsFromFiles();
-			const workflowFiles = await glob('*.json', {
-				cwd: this.workflowExportFolder,
-				absolute: true,
-			});
+			const importedCredentials = await this.importCredentialsFromFiles(userId);
+			const importWorkflows = await this.importWorkflowsFromFiles(userId);
 
-			const existingWorkflows = await Db.collections.Workflow.find({
-				select: ['id', 'name', 'versionId'],
-			});
-			const importWorkflowsResult = await Promise.all(
-				workflowFiles.map(async (file) => {
-					const workflow = jsonParse<IWorkflowToImport>(
-						await fsReadFile(file, { encoding: 'utf8' }),
-					);
-
-					//TODO: TEMP IMPLEMENTATION
-
-					if (
-						existingWorkflows.find(
-							(e) => e.name === workflow.name && e.versionId === workflow.versionId,
-						)
-					) {
-						// Workflow with same id and version already exists, skip
-						console.log(`Skipping workflow ${workflow.name} with same id and version`);
-					}
-					return {
-						id: workflow.id ?? 'unknown',
-						name: file,
-					};
-					// TODO: run actual import
-				}),
-			);
 			return {
-				workflows: importWorkflowsResult,
+				workflows: importWorkflows,
 				variables: importedVariables,
 				credentials: importedCredentials,
 			};
