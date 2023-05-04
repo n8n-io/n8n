@@ -997,7 +997,7 @@ export class HubspotV2 implements INodeType {
 				return {
 					// tslint:disable-next-line: no-any
 					results: searchResults.map((b: any) => ({
-						name: b.properties?.name?.value || b.companyId,
+						name: b.properties?.name?.value || `Comapany ${b.companyId}`,
 						value: b.companyId,
 					})),
 				};
@@ -1020,7 +1020,7 @@ export class HubspotV2 implements INodeType {
 				)) as Array<{ vid: string; properties: { email: { value: string } } }>;
 				const results: INodeListSearchItems[] = contacts
 					.map((c) => ({
-						name: c.properties.email.value || c.vid,
+						name: c.properties.email.value || `Contact: ${c.vid}`,
 						value: c.vid,
 					}))
 					.filter(
@@ -1053,7 +1053,7 @@ export class HubspotV2 implements INodeType {
 				)) as Array<{ dealId: string; properties: { dealname: { value: string } } }>;
 				const results: INodeListSearchItems[] = deals
 					.map((c) => ({
-						name: c.properties?.dealname?.value || c.dealId,
+						name: c.properties?.dealname?.value || `Deal: ${c.dealId}`,
 						value: c.dealId,
 					}))
 					.filter(
@@ -1078,7 +1078,7 @@ export class HubspotV2 implements INodeType {
 				return {
 					// tslint:disable-next-line: no-any
 					results: engagements.results.map((b: any) => ({
-						name: b.properties?.name?.value || b.engagement.id,
+						name: b.properties?.name?.value || `Engagement: ${b.engagement.id}`,
 						value: b.engagement.id,
 					})),
 				};
@@ -1099,7 +1099,7 @@ export class HubspotV2 implements INodeType {
 				return {
 					// tslint:disable-next-line: no-any
 					results: tickets.map((b: any) => ({
-						name: b.objectId,
+						name: `Ticket: ${b.objectId}`,
 						value: b.objectId,
 					})),
 				};
