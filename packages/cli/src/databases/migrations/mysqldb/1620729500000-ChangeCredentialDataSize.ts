@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class ChangeCredentialDataSize1620729500000 implements MigrationInterface {
+export class ChangeCredentialDataSize1620729500000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' +

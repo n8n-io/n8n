@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class CertifyCorrectCollation1623936588000 implements MigrationInterface {
+export class CertifyCorrectCollation1623936588000 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix, dbType, dbName }: MigrationContext) {
 		if (dbType === 'mariadb') {
 			// This applies to MySQL only.

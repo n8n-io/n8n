@@ -1,10 +1,10 @@
 import type { IConnections, INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import { NodeTypes } from '@/NodeTypes';
 import { Container } from 'typedi';
 
-export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationInterface {
+export class PurgeInvalidWorkflowConnections1675940580449 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix, migrationName, logger }: MigrationContext) {
 		const workflows = (await queryRunner.query(`
 			SELECT id, nodes, connections

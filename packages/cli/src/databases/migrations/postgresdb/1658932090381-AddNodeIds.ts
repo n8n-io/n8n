@@ -3,13 +3,13 @@
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
 import { runInBatches } from '@db/utils/migrationHelpers';
 
 // add node ids in workflow objects
 
-export class AddNodeIds1658932090381 implements MigrationInterface {
+export class AddNodeIds1658932090381 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowsQuery = `
 			SELECT id, nodes

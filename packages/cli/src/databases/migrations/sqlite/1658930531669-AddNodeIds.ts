@@ -5,13 +5,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { INode } from 'n8n-workflow';
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 import { v4 as uuid } from 'uuid';
 
 // add node ids in workflow objects
 
-export class AddNodeIds1658930531669 implements MigrationInterface {
+export class AddNodeIds1658930531669 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowsQuery = `
 			SELECT id, nodes

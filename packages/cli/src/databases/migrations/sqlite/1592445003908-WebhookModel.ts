@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class WebhookModel1592445003908 implements MigrationInterface {
+export class WebhookModel1592445003908 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS ${tablePrefix}webhook_entity ("workflowId" integer NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, PRIMARY KEY ("webhookPath", "method"))`,

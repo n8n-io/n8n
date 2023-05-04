@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateCredentialUsageTable1665484192211 implements MigrationInterface {
+export class CreateCredentialUsageTable1665484192211 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}credential_usage" (` +

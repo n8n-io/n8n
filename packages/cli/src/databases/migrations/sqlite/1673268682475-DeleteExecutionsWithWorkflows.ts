@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInterface {
+export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMigration {
 	transaction = false;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

@@ -14,14 +14,19 @@ export interface MigrationContext {
 
 type MigrationFn = (ctx: MigrationContext) => Promise<void>;
 
-export interface MigrationInterface {
+export interface ReversibleMigration {
 	transaction?: boolean;
 	up: MigrationFn;
-	down?: MigrationFn;
+	down: MigrationFn;
+}
+
+export interface IrreversibleMigration {
+	up: MigrationFn;
+	down?: never;
 }
 
 export interface Migration extends Function {
-	prototype: MigrationInterface;
+	prototype: ReversibleMigration | IrreversibleMigration;
 }
 
 export type InsertResult = Array<{ insertId: number }>;

@@ -1,7 +1,7 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 
-export class CreateLdapEntities1674509946020 implements MigrationInterface {
+export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}user ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,

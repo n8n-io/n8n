@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class IntroducePinData1654090467022 implements MigrationInterface {
+export class IntroducePinData1654090467022 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity ADD "pinData" json`);
 	}

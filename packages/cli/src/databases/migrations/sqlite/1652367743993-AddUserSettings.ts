@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddUserSettings1652367743993 implements MigrationInterface {
+export class AddUserSettings1652367743993 implements ReversibleMigration {
 	transaction = false;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

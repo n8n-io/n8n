@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddExecutionEntityIndexes1644422880309 implements MigrationInterface {
+export class AddExecutionEntityIndexes1644422880309 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX IF EXISTS IDX_${tablePrefix}c4d999a5e90784e8caccf5589d`);
 		await queryRunner.query(`DROP INDEX IF EXISTS IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2`);

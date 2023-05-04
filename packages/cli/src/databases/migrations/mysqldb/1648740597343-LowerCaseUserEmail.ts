@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class LowerCaseUserEmail1648740597343 implements MigrationInterface {
+export class LowerCaseUserEmail1648740597343 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			UPDATE ${tablePrefix}user

@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateExecutionMetadataTable1679416281778 implements MigrationInterface {
+export class CreateExecutionMetadataTable1679416281778 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}execution_metadata (

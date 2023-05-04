@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddWebhookId1611144599516 implements MigrationInterface {
+export class AddWebhookId1611144599516 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}webhook_entity ADD "webhookId" character varying`,

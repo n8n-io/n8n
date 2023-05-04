@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class MakeStoppedAtNullable1607431743769 implements MigrationInterface {
+export class MakeStoppedAtNullable1607431743769 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// SQLite does not allow us to simply "alter column"
 		// We're hacking the way sqlite identifies tables

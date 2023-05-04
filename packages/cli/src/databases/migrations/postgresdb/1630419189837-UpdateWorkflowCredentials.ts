@@ -4,13 +4,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
 
-export class UpdateWorkflowCredentials1630419189837 implements MigrationInterface {
+export class UpdateWorkflowCredentials1630419189837 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type

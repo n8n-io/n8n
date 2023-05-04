@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
+export class UniqueWorkflowNames1620824779533 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowNames = (await queryRunner.query(`
 			SELECT name

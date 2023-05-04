@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class InitialMigration1588157391238 implements MigrationInterface {
+export class InitialMigration1588157391238 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'CREATE TABLE IF NOT EXISTS `' +

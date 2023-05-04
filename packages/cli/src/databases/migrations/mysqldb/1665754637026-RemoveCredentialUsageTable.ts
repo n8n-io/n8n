@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class RemoveCredentialUsageTable1665754637026 implements MigrationInterface {
+export class RemoveCredentialUsageTable1665754637026 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE \`${tablePrefix}credential_usage\``);
 	}

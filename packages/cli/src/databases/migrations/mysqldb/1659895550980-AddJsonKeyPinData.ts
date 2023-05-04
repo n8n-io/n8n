@@ -1,4 +1,4 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 import { addJsonKeyToPinDataColumn } from '../sqlite/1659888469333-AddJsonKeyPinData';
 
@@ -6,7 +6,7 @@ import { addJsonKeyToPinDataColumn } from '../sqlite/1659888469333-AddJsonKeyPin
  * Convert JSON-type `pinData` column in `workflow_entity` table from
  * `{ [nodeName: string]: IDataObject[] }` to `{ [nodeName: string]: INodeExecutionData[] }`
  */
-export class AddJsonKeyPinData1659895550980 implements MigrationInterface {
+export class AddJsonKeyPinData1659895550980 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		const { queryRunner, tablePrefix } = context;
 		const workflowTable = `${tablePrefix}workflow_entity`;

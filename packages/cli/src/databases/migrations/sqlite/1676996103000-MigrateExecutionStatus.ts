@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class MigrateExecutionStatus1676996103000 implements MigrationInterface {
+export class MigrateExecutionStatus1676996103000 implements IrreversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`UPDATE "${tablePrefix}execution_entity" SET "status" = 'waiting' WHERE "status" IS NULL AND "waitTill" IS NOT NULL;`,

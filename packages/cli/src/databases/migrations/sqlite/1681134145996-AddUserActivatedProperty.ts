@@ -1,7 +1,7 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import type { UserSettings } from '@/Interfaces';
 
-export class AddUserActivatedProperty1681134145996 implements MigrationInterface {
+export class AddUserActivatedProperty1681134145996 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const activatedUsers = (await queryRunner.query(
 			`SELECT DISTINCT sw.userId AS id,

@@ -1,7 +1,7 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 
-export class RemoveWorkflowDataLoadedFlag1671726148420 implements MigrationInterface {
+export class RemoveWorkflowDataLoadedFlag1671726148420 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// If any existing workflow has dataLoaded set to true, insert the relevant information to the statistics table
 		const workflowIds = (await queryRunner.query(`

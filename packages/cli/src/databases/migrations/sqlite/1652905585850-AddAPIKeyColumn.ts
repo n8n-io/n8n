@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
+export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
 	transaction = false;
 
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

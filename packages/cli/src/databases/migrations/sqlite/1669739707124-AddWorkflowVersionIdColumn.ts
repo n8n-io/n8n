@@ -1,7 +1,7 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuidv4 } from 'uuid';
 
-export class AddWorkflowVersionIdColumn1669739707124 implements MigrationInterface {
+export class AddWorkflowVersionIdColumn1669739707124 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "versionId" char(36)`,

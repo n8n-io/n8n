@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateVariables1677501636752 implements MigrationInterface {
+export class CreateVariables1677501636752 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			CREATE TABLE ${tablePrefix}variables (

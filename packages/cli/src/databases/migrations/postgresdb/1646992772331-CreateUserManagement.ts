@@ -1,8 +1,8 @@
-import type { InsertResult, MigrationContext, MigrationInterface } from '@db/types';
+import type { InsertResult, MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
 import { loadSurveyFromDisk } from '@db/utils/migrationHelpers';
 
-export class CreateUserManagement1646992772331 implements MigrationInterface {
+export class CreateUserManagement1646992772331 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}role (

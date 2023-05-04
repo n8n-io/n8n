@@ -1,6 +1,6 @@
-import type { MigrationContext, MigrationInterface } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateWorkflowsEditorRole1663755770894 implements MigrationInterface {
+export class CreateWorkflowsEditorRole1663755770894 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			INSERT IGNORE INTO ${tablePrefix}role (name, scope)
