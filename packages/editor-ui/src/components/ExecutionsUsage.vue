@@ -105,10 +105,6 @@ const props = defineProps<{ cloudPlanData: CloudPlanData }>();
 
 const now = DateTime.utc();
 
-onMounted(async () => {
-	console.log('monte');
-});
-
 const daysLeftOnTrial = computed(() => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
 	return Math.ceil(days);
