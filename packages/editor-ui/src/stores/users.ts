@@ -117,7 +117,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			};
 		},
 		userIsTrialing(): boolean {
-			return this.cloudPlan?.planSpec?.metadata?.slug === 'trial-1';
+			return this.cloudPlan?.plan?.metadata?.slug === 'trial-1';
 		},
 		currentPlanData(): CloudPlanData | null {
 			return this.cloudPlan;

@@ -186,7 +186,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			setInterval(async () => {
 				try {
 					const planData = await this.usersStore.getOwnerCurrentPLan();
-					if (planData.planSpec.metadata.slug === 'trial-1') {
+					if (planData.plan.metadata.slug === 'trial-1') {
 						planData.usage.executions += acc;
 						acc += 20;
 						this.usersStore.setCloudPLan(planData);

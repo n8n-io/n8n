@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
+		<div v-if="!isTrialExpired() && trialHasExecutionsLeft()" :class="$style.usageText">
 			<i18n path="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="xsmall" color="text-dark">
@@ -11,39 +11,39 @@
 					<n8n-text size="xsmall" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
-								interpolate: { days: daysLeftOnTrial.toString() },
+								interpolate: { days: daysLeftOnTrial().toString() },
 							})
 						}}
 					</n8n-text>
 				</template>
 			</i18n>
 		</div>
-		<div v-if="isTrialExpired" :class="$style.usageText">
+		<div v-if="isTrialExpired()" :class="$style.usageText">
 			<n8n-text size="xsmall" color="danger">
 				{{ locale.baseText('executionUsage.expired.text') }}
 			</n8n-text>
 		</div>
-		<div v-if="!trialHasExecutionsLeft" :class="$style.usageText">
+		<div v-if="!trialHasExecutionsLeft()" :class="$style.usageText">
 			<n8n-text size="xsmall">
 				{{ locale.baseText('executionUsage.ranOutOfExecutions.text') }}
 			</n8n-text>
 		</div>
-		<div v-if="!isTrialExpired" :class="$style.usageCounter">
+		<div v-if="!isTrialExpired()" :class="$style.usageCounter">
 			<div>
 				<progress
 					:class="[
-						trialHasExecutionsLeft ? $style.progressBarSuccess : $style.progressBarDanger,
+						trialHasExecutionsLeft() ? $style.progressBarSuccess : $style.progressBarDanger,
 						$style.progressBar,
 					]"
-					:value="currentExecutions"
-					:max="maxExecutions"
+					:value="currentExecutions()"
+					:max="maxExecutions()"
 				></progress>
 			</div>
 			<div :class="$style.executionsCountSection">
-				<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">
-					{{ currentExecutions }}/{{ maxExecutions }}
+				<n8n-text size="xsmall" :color="trialHasExecutionsLeft() ? 'text-dark' : 'danger'">
+					{{ currentExecutions() }}/{{ maxExecutions() }}
 				</n8n-text>
-				<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">{{
+				<n8n-text size="xsmall" :color="trialHasExecutionsLeft() ? 'text-dark' : 'danger'">{{
 					locale.baseText('executionUsage.label.executions')
 				}}</n8n-text>
 			</div>
@@ -63,17 +63,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 
 export interface CloudPlanData {
-	planSpec: PlanSpec;
+	plan: Plan;
 	instance: Instance;
 	usage: Usage;
 }
 
-export interface PlanSpec {
+export interface Plan {
 	planId: number;
 	monthlyExecutionsLimit: number;
 	activeWorkflowsLimit: number;
@@ -103,29 +102,33 @@ export interface Usage {
 
 const props = defineProps<{ cloudPlanData: CloudPlanData }>();
 
+const emit = defineEmits(['onUpgradePlanClicked']);
+
 const now = DateTime.utc();
 
-const daysLeftOnTrial = computed(() => {
+const daysLeftOnTrial = () => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
 	return Math.ceil(days);
-});
+};
 
-const isTrialExpired = computed(() => {
-	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.planSpec.expirationDate);
+const isTrialExpired = () => {
+	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.plan.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
-});
+};
 
-const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.planSpec.expirationDate);
+const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.plan.expirationDate);
 
-const trialHasExecutionsLeft = computed(
-	() => props.cloudPlanData.usage.executions < props.cloudPlanData.planSpec.monthlyExecutionsLimit,
-);
+const trialHasExecutionsLeft = () =>
+	props.cloudPlanData.usage.executions < props.cloudPlanData.plan.monthlyExecutionsLimit;
 
-const currentExecutions = computed(() => props.cloudPlanData.usage.executions);
+const currentExecutions = () => props.cloudPlanData.usage.executions;
 
-const maxExecutions = computed(() => props.cloudPlanData.planSpec.monthlyExecutionsLimit);
+const maxExecutions = () => props.cloudPlanData.plan.monthlyExecutionsLimit;
 
-const onUpgradeClicked = () => {};
+const onUpgradeClicked = () => {
+	console.log(1);
+	emit('onUpgradePlanClicked');
+};
 </script>
 
 <style module lang="scss">
