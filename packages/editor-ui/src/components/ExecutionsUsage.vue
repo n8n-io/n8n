@@ -130,8 +130,6 @@ const onUpgradeClicked = () => {};
 	display: flex;
 	flex-direction: column;
 	background-color: var(--color-background-light);
-	border-radius: 0px;
-	margin: 0;
 	border: var(--border-base);
 	border-right: 0;
 }
