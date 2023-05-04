@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { ColorPicker } from 'element-ui';
 
 export type ColorFormat = 'hex' | 'rgb' | 'hsl' | 'hsv';
@@ -11,22 +11,19 @@ export type IN8nColorPicker = {
 	colorFormat?: ColorFormat;
 	popperClass?: string;
 	predefine?: ColorFormat[];
-	value: string;
+	modelValue: string;
 };
 
 const colorPickerProps = defineProps<IN8nColorPicker>();
 
 const emit = defineEmits<{
-	(event: 'input', value: unknown): void;
+	(event: 'update:modelValue', value: unknown): void;
 }>();
 
-const internalValue = ref<IN8nColorPicker['value']>(colorPickerProps.value);
-
 const value = computed({
-	get: () => internalValue.value,
+	get: () => colorPickerProps.modelValue,
 	set: (newValue: IN8nColorPicker['value']) => {
-		internalValue.value = newValue;
-		emit('input', newValue);
+		emit('update:modelValue', newValue);
 	},
 });
 </script>
