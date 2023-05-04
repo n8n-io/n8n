@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.224.0",
+  "version": "0.225.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -39,6 +39,7 @@
       "dist/credentials/AffinityApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AirtableApi.credentials.js",
+      "dist/credentials/AirtableTokenApi.credentials.js",
       "dist/credentials/Amqp.credentials.js",
       "dist/credentials/ApiTemplateIoApi.credentials.js",
       "dist/credentials/AsanaApi.credentials.js",

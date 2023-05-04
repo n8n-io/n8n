@@ -18,13 +18,16 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 						AND r.scope = 'workflow'`,
 		)) as UserSettings[];
 
-		const updatedUsers = activatedUsers.map(async (user) =>
-			queryRunner.query(
-				`UPDATE ${tablePrefix}user SET settings = '${JSON.stringify(user.settings)}' WHERE id = '${
-					user.id
-				}' `,
-			),
-		);
+		const updatedUsers = activatedUsers.map(async (user) => {
+			/*
+				MariaDB returns settings as a string and MySQL as a JSON
+			*/
+			const userSettings =
+				typeof user.settings === 'string' ? user.settings : JSON.stringify(user.settings);
+			await queryRunner.query(
+				`UPDATE ${tablePrefix}user SET settings = '${userSettings}' WHERE id = '${user.id}' `,
+			);
+		});
 
 		await Promise.all(updatedUsers);
 

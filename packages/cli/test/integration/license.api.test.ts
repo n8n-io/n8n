@@ -68,13 +68,13 @@ describe('POST /license/activate', () => {
 
 	test('errors out properly', async () => {
 		License.prototype.activate = jest.fn().mockImplementation(() => {
-			throw new Error(INVALID_ACIVATION_KEY_MESSAGE);
+			throw new Error(ACTIVATION_FAILED_MESSAGE);
 		});
 
 		await authOwnerAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(400, { code: 400, message: INVALID_ACIVATION_KEY_MESSAGE });
+			.expect(400, { code: 400, message: ACTIVATION_FAILED_MESSAGE });
 	});
 });
 
@@ -135,5 +135,5 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 };
 
 const NON_OWNER_ACTIVATE_RENEW_MESSAGE = 'Only an instance owner may activate or renew a license';
-const INVALID_ACIVATION_KEY_MESSAGE = 'Invalid activation key';
+const ACTIVATION_FAILED_MESSAGE = 'Failed to activate license';
 const RENEW_ERROR_MESSAGE = 'Something went wrong when trying to renew license';

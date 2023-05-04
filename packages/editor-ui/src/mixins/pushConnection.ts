@@ -123,7 +123,7 @@ export const pushConnection = mixins(
 			this.connectRetries++;
 			this.reconnectTimeout = setTimeout(
 				this.attemptReconnect,
-				Math.min(this.connectRetries * 3000, 30000), // maximum 30 seconds backoff
+				Math.min(this.connectRetries * 2000, 8000), // maximum 8 seconds backoff
 			);
 		},
 
