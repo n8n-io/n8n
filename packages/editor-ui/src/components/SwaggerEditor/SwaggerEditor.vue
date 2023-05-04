@@ -79,6 +79,12 @@ export default mixins(workflowHelpers).extend({
 	},
 	mounted() {
 		this.swaggerElement = this.$refs.swaggerIframe;
+		const swaggerValue = this.$props.nodeValues.parameters.swagger
+		localStorage.setItem("swagger-editor-content", swaggerValue);
+		if(!swaggerValue || swaggerValue === "{}" ){
+			const spec = this.updateSpec(this.$props.nodeValues);
+			localStorage.setItem("swagger-editor-content", spec);
+		}
 		window.addEventListener('message', this.messageHandler);
 	},
 	computed: {
@@ -162,16 +168,17 @@ export default mixins(workflowHelpers).extend({
 
 			return baseObject;
 		},
-		updateSpec(values: INodeParameters) {
+		updateSpec(values: INodeParameters): string {
+			const swagger = this.$props.nodeValues.parameters.swagger;
 			if (this.suppressEvent) {
 				this.suppressEvent = false;
-				return;
+				return swagger;
 			}
 
 			if (this.isFirstMount) {
 				this.isFirstMount = false;
 				this.suppressEvent = true;
-				const swagger = this.$props.nodeValues.parameters.swagger;
+				
 
 				if (swagger !== '{}') {
 					this.swaggerElement?.contentWindow?.postMessage(
@@ -181,7 +188,7 @@ export default mixins(workflowHelpers).extend({
 						},
 						'*',
 					);
-					return;
+					return swagger;
 				}
 			}
 
@@ -253,6 +260,8 @@ export default mixins(workflowHelpers).extend({
 				name: 'parameters.swagger',
 				value: copyString,
 			});
+
+			return copyString;
 		},
 		reconstructPath(paths: Record<string, any>): string {
 			try {
