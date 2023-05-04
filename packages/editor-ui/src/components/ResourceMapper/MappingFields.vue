@@ -50,7 +50,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				// Set part of the path to each param name so value can be fetched properly by input parameter list component
 				name: `value["${field.id}"]`,
 				type: (field.type as NodePropertyTypes) || 'string',
-				default: '',
+				default: field.type === 'boolean' ? false : '',
 				required: field.required,
 				description: getFieldDescription(field),
 			};
@@ -205,21 +205,21 @@ function isMatchingField(field: string): boolean {
 	return false;
 }
 
-function getParameterValue(
-	nodeValues: INodeParameters | undefined,
-	parameterName: string,
-	path: string,
-) {
-	return get(nodeValues, path ? path + '.' + parameterName : parameterName);
+function getParameterValue(parameterName: string) {
+	const fieldName = parseResourceMapperFieldName(parameterName);
+	if (fieldName && props.paramValue.value) {
+		return props.paramValue.value[fieldName];
+	}
+	return null;
 }
 
 function getFieldIssues(field: INodeProperties): string[] {
 	let fieldIssues: string[] = [];
 	if (ndvStore.activeNode) {
 		const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
-		const filedName = parseResourceMapperFieldName(field.name);
-		if (filedName) {
-			const key = `${props.parameter.name}.${filedName}`;
+		const fieldName = parseResourceMapperFieldName(field.name);
+		if (fieldName) {
+			const key = `${props.parameter.name}.${fieldName}`;
 			if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
 				fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
 			}
@@ -254,7 +254,7 @@ function onParameterActionSelected(action: string): void {
 		default:
 			break;
 	}
-};
+}
 
 defineExpose({
 	orderedFields,
@@ -325,9 +325,9 @@ defineExpose({
 			<div :class="$style.parameterInput">
 				<parameter-input-full
 					:parameter="field"
-					:value="getParameterValue(nodeValues, field.name, path)"
+					:value="getParameterValue(field.name)"
 					:displayOptions="true"
-					:path="`${props.path}.${field.name}}`"
+					:path="`${props.path}.${field.name}`"
 					:isReadOnly="props.refreshInProgress"
 					:hideIssues="true"
 					:nodeValues="nodeValues"

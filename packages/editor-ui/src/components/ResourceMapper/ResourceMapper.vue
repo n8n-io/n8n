@@ -26,7 +26,6 @@ interface Props {
 	inputSize: string;
 	labelSize: string;
 	dependentParametersValues: string | null;
-	// nodeValues: INodeParameters | undefined;
 }
 
 const nodeTypesStore = useNodeTypesStore();
@@ -64,18 +63,18 @@ watch(
 
 onMounted(async () => {
 	if (props.node) {
-		state.parameterValues.parameters = props.node.parameters;
+		Vue.set(state, 'parameterValues', { parameters: props.node.parameters });
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
 	if (parameterName in params) {
 		state.paramValue = params[parameterName] as unknown as ResourceMapperValue;
 		if (!state.paramValue.schema) {
-			state.paramValue.schema = [];
+			Vue.set(state.paramValue, 'schema', []);
 		}
 		Object.keys(state.paramValue.value || {}).forEach((key) => {
 			if (state.paramValue.value && state.paramValue.value[key] === '') {
-				state.paramValue.value[key] = null;
+				Vue.set(state.paramValue.value, key, null);
 			}
 		});
 	}
@@ -205,15 +204,21 @@ async function onModeChanged(mode: string): Promise<void> {
 
 function setDefaultFieldValues(): void {
 	if (!state.paramValue.value) {
-		state.paramValue.value = {};
+		Vue.set(state.paramValue, 'value', {});
 		state.paramValue.schema.forEach((field) => {
 			if (state.paramValue.value) {
-				state.paramValue.value[field.id] = null;
+				if (field.type === 'boolean') {
+					Vue.set(state.paramValue.value, field.id, false);
+				} else {
+					Vue.set(state.paramValue.value, field.id, null);
+				}
 			}
 		});
+		emitValueChanged();
 	}
 	if (!state.paramValue.matchingColumns) {
 		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
+		emitValueChanged();
 	}
 }
 
@@ -251,7 +256,7 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	}
 	const fieldName = parseResourceMapperFieldName(updateInfo.name);
 	if (fieldName && state.paramValue.value) {
-		state.paramValue.value[fieldName] = newValue;
+		Vue.set(state.paramValue.value, fieldName, newValue);
 		emitValueChanged();
 	}
 }
