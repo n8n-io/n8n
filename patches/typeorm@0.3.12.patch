@@ -1,0 +1,12 @@
+diff --git a/error/QueryFailedError.js b/error/QueryFailedError.js
+index 5449b10151ac31da2dfcd51b7a0ac1c7d206f1f4..ea67d9f2f8f4fd7f09ab1015e02c82b86d86e2cf 100644
+--- a/error/QueryFailedError.js
++++ b/error/QueryFailedError.js
+@@ -13,6 +13,7 @@ class QueryFailedError extends TypeORMError_1.TypeORMError {
+             .replace(/^error: /, "")
+             .replace(/^Error: /, "")
+             .replace(/^Request/, ""));
++        console.log('QueryFailedError:', query);
+         this.query = query;
+         this.parameters = parameters;
+         this.driverError = driverError;
