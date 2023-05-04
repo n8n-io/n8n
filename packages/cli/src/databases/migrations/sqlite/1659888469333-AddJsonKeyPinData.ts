@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-use-before-define */
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import { runInBatches, escapeQuery } from '@db/utils/migrationHelpers';
-import type { PinData } from '@db/utils/migrations.types';
-import { isJsonKeyObject } from '@db/utils/migrations.types';
 
 /**
  * Convert TEXT-type `pinData` column in `workflow_entity` table from
@@ -32,6 +31,26 @@ export class AddJsonKeyPinData1659888469333 implements IrreversibleMigration {
 			addJsonKeyToPinDataColumn(context, PINDATA_UPDATE_STATEMENT),
 		);
 	}
+}
+
+namespace PinData {
+	export type Old = { [nodeName: string]: IDataObject[] };
+
+	export type New = { [nodeName: string]: INodeExecutionData[] };
+
+	export type FetchedWorkflow = { id: number; pinData: string | Old };
+}
+
+function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
+	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
+}
+
+function isJsonKeyObject(item: unknown): item is {
+	json: unknown;
+	[keys: string]: unknown;
+} {
+	if (!isObjectLiteral(item)) return false;
+	return Object.keys(item).includes('json');
 }
 
 export const addJsonKeyToPinDataColumn =
