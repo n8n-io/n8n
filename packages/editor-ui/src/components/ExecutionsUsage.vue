@@ -119,7 +119,6 @@ const currentExecutions = () => props.cloudPlanData.usage.executions;
 const maxExecutions = () => props.cloudPlanData.monthlyExecutionsLimit;
 
 const onUpgradeClicked = () => {
-	console.log(1);
 	emit('onUpgradePlanClicked');
 };
 </script>
