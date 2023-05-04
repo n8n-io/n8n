@@ -744,7 +744,7 @@ export default mixins(
 		},
 		editorLanguage(): CodeNodeEditorLanguage {
 			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
-			return 'javaScript';
+			return (this.getArgument('editorLanguage') as CodeNodeEditorLanguage) ?? 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
