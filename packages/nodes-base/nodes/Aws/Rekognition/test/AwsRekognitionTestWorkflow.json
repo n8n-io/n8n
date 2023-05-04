@@ -1,0 +1,344 @@
+{
+  "name": "node-37-aws-rekognition-empty-response-data",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6b79e1a7-8d17-470a-9423-d97042060170",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "type": "detectText",
+        "bucket": "test",
+        "name": "test",
+        "additionalFields": {}
+      },
+      "id": "86b957c8-fdec-462e-b55d-40dccf7bc253",
+      "name": "AWS Rekognition",
+      "type": "n8n-nodes-base.awsRekognition",
+      "typeVersion": 1,
+      "position": [
+        500,
+        280
+      ],
+      "credentials": {
+        "aws": {
+          "id": "114",
+          "name": "NodeQA"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "AWS Rekognition": [
+      {
+        "json": {
+          "LabelModelVersion": "3.0",
+          "Labels": [
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 99.81004333496094,
+              "Instances": [],
+              "Name": "Alcohol",
+              "Parents": [
+                {
+                  "Name": "Beverage"
+                }
+              ]
+            },
+            {
+              "Aliases": [
+                {
+                  "Name": "Drink"
+                }
+              ],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 99.81004333496094,
+              "Instances": [],
+              "Name": "Beverage",
+              "Parents": []
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 99.81004333496094,
+              "Instances": [],
+              "Name": "Liquor",
+              "Parents": [
+                {
+                  "Name": "Alcohol"
+                },
+                {
+                  "Name": "Beverage"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 99.75448608398438,
+              "Instances": [],
+              "Name": "Red Wine",
+              "Parents": [
+                {
+                  "Name": "Alcohol"
+                },
+                {
+                  "Name": "Beverage"
+                },
+                {
+                  "Name": "Liquor"
+                },
+                {
+                  "Name": "Wine"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 99.75448608398438,
+              "Instances": [],
+              "Name": "Wine",
+              "Parents": [
+                {
+                  "Name": "Alcohol"
+                },
+                {
+                  "Name": "Beverage"
+                },
+                {
+                  "Name": "Liquor"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Everyday Objects"
+                }
+              ],
+              "Confidence": 99.52116394042969,
+              "Instances": [],
+              "Name": "Bottle",
+              "Parents": []
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 94.69605255126953,
+              "Instances": [],
+              "Name": "Wine Bottle",
+              "Parents": [
+                {
+                  "Name": "Alcohol"
+                },
+                {
+                  "Name": "Beverage"
+                },
+                {
+                  "Name": "Bottle"
+                },
+                {
+                  "Name": "Liquor"
+                },
+                {
+                  "Name": "Wine"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 90.0589370727539,
+              "Instances": [],
+              "Name": "Food",
+              "Parents": []
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 90.0589370727539,
+              "Instances": [
+                {
+                  "BoundingBox": {
+                    "Height": 0.9467026591300964,
+                    "Left": 0.23295101523399353,
+                    "Top": 0.02573961764574051,
+                    "Width": 0.5303559899330139
+                  },
+                  "Confidence": 90.0589370727539
+                }
+              ],
+              "Name": "Ketchup",
+              "Parents": [
+                {
+                  "Name": "Food"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Food and Beverage"
+                }
+              ],
+              "Confidence": 65.56095123291016,
+              "Instances": [],
+              "Name": "Beer",
+              "Parents": [
+                {
+                  "Name": "Alcohol"
+                },
+                {
+                  "Name": "Beverage"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Text and Documents"
+                }
+              ],
+              "Confidence": 61.83842468261719,
+              "Instances": [],
+              "Name": "Document",
+              "Parents": [
+                {
+                  "Name": "Text"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Text and Documents"
+                }
+              ],
+              "Confidence": 61.83842468261719,
+              "Instances": [],
+              "Name": "Id Cards",
+              "Parents": [
+                {
+                  "Name": "Document"
+                },
+                {
+                  "Name": "Text"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Text and Documents"
+                }
+              ],
+              "Confidence": 61.83842468261719,
+              "Instances": [
+                {
+                  "BoundingBox": {
+                    "Height": 0.5003108382225037,
+                    "Left": 0.2603513300418854,
+                    "Top": 0.2912488579750061,
+                    "Width": 0.4734913110733032
+                  },
+                  "Confidence": 61.83842468261719
+                }
+              ],
+              "Name": "Passport",
+              "Parents": [
+                {
+                  "Name": "Document"
+                },
+                {
+                  "Name": "Id Cards"
+                },
+                {
+                  "Name": "Text"
+                }
+              ]
+            },
+            {
+              "Aliases": [],
+              "Categories": [
+                {
+                  "Name": "Text and Documents"
+                }
+              ],
+              "Confidence": 61.83842468261719,
+              "Instances": [],
+              "Name": "Text",
+              "Parents": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "AWS Rekognition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "26ee97c0-3122-4281-96ac-ad4ded7b4ee5",
+  "id": "55",
+  "meta": {
+    "instanceId": "8e9416f42a954d0a370d988ac3c0f916f44074a6e45189164b1a8559394a7516"
+  },
+  "tags": []
+}
