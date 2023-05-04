@@ -1,15 +1,25 @@
 import { anyNumber, mock } from 'jest-mock-extended';
+import { NodeVM } from 'vm2';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { normalizeItems } from 'n8n-core';
-import { testWorkflows, getWorkflowFilenames } from '../../../test/nodes/Helpers';
+import {
+	testWorkflows,
+	getWorkflowFilenames,
+	initBinaryDataManager,
+} from '../../../test/nodes/Helpers';
 import { Code } from '../Code.node';
-import { Sandbox } from '../Sandbox';
 import { ValidationError } from '../ValidationError';
 
-const workflows = getWorkflowFilenames(__dirname);
+describe('Test Code Node', () => {
+	const workflows = getWorkflowFilenames(__dirname);
 
-describe('Test Code Node', () => testWorkflows(workflows));
+	beforeAll(async () => {
+		await initBinaryDataManager();
+	});
+
+	testWorkflows(workflows);
+});
 
 describe('Code Node unit test', () => {
 	const node = new Code();
@@ -48,7 +58,7 @@ describe('Code Node unit test', () => {
 
 			Object.entries(tests).forEach(([title, [input, expected]]) =>
 				test(title, async () => {
-					jest.spyOn(Sandbox.prototype, 'run').mockResolvedValueOnce(input);
+					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
 					expect(output).toEqual([expected]);
@@ -68,14 +78,14 @@ describe('Code Node unit test', () => {
 
 			Object.entries(tests).forEach(([title, returnData]) =>
 				test(`return error if \`.json\` is ${title}`, async () => {
-					jest.spyOn(Sandbox.prototype, 'run').mockResolvedValueOnce([{ json: returnData }]);
+					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce([{ json: returnData }]);
 
 					try {
 						await node.execute.call(thisArg);
 						throw new Error("Validation error wasn't thrown");
 					} catch (error) {
 						expect(error).toBeInstanceOf(ValidationError);
-						expect(error.message).toEqual("A 'json' property isn't an object");
+						expect(error.message).toEqual("A 'json' property isn't an object [item 0]");
 					}
 				}),
 			);
@@ -100,7 +110,7 @@ describe('Code Node unit test', () => {
 
 			Object.entries(tests).forEach(([title, [input, expected]]) =>
 				test(title, async () => {
-					jest.spyOn(Sandbox.prototype, 'run').mockResolvedValueOnce(input);
+					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce(input);
 
 					const output = await node.execute.call(thisArg);
 					expect(output).toEqual([[{ json: expected?.json, pairedItem: { item: 0 } }]]);
@@ -120,7 +130,7 @@ describe('Code Node unit test', () => {
 
 			Object.entries(tests).forEach(([title, returnData]) =>
 				test(`return error if \`.json\` is ${title}`, async () => {
-					jest.spyOn(Sandbox.prototype, 'run').mockResolvedValueOnce({ json: returnData });
+					jest.spyOn(NodeVM.prototype, 'run').mockResolvedValueOnce({ json: returnData });
 
 					try {
 						await node.execute.call(thisArg);
