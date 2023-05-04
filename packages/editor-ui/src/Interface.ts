@@ -1171,6 +1171,7 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
+	cloudPlan: CloudPlanData | null;
 }
 
 export interface IWorkflowsState {

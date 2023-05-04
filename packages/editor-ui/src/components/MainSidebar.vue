@@ -27,7 +27,7 @@
 			</template>
 
 			<template #beforeLowerMenu>
-				<ExecutionsUsage :cloud-plan-data="cloudPlan" v-if="!isCollapsed && userIsTrialing"
+				<ExecutionsUsage :cloud-plan-data="currentPlanData" v-if="!isCollapsed && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
@@ -156,8 +156,6 @@ export default mixins(
 	},
 	data() {
 		return {
-			cloudPlan: {} as CloudPlanData,
-			userIsTrialing: false,
 			basePath: '',
 			fullyExpanded: false,
 		};
@@ -333,6 +331,12 @@ export default mixins(
 			];
 			return [...items, ...regularItems];
 		},
+		userIsTrialing(): boolean {
+			return this.usersStore.userIsTrialing;
+		},
+		currentPlanData(): CloudPlanData {
+			return this.usersStore.currentPlanData;
+		},
 	},
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
@@ -346,14 +350,6 @@ export default mixins(
 		}
 		await Vue.nextTick();
 		this.fullyExpanded = !this.isCollapsed;
-
-		try {
-			const planData = await this.usersStore.getOwnerCurrentPLan();
-			if (planData.planSpec.metadata.slug === 'trial-1') {
-				this.userIsTrialing = true;
-				this.cloudPlan = planData;
-			}
-		} catch {}
 	},
 	created() {
 		window.addEventListener('resize', this.onResize);

@@ -53,6 +53,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
 		currentUserId: null,
 		users: {},
+		cloudPlan: null,
 	}),
 	getters: {
 		allUsers(): IUser[] {
@@ -115,7 +116,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return permissions.use;
 			};
 		},
-		getCloudPlan() {},
+		userIsTrialing(): boolean {
+			return this.cloudPlan?.planSpec?.metadata?.slug === 'trial-1';
+		},
+		currentPlanData(): CloudPlanData | null {
+			return this.cloudPlan;
+		},
 	},
 	actions: {
 		addUsers(users: IUserResponse[]) {
@@ -139,6 +145,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		deleteUserById(userId: string): void {
 			Vue.delete(this.users, userId);
+		},
+		setCloudPLan(plan: CloudPlanData) {
+			this.cloudPlan = plan;
 		},
 		setPersonalizationAnswers(answers: IPersonalizationLatestVersion): void {
 			if (!this.currentUser) {
