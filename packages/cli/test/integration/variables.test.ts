@@ -5,7 +5,6 @@ import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
 
 import type { AuthAgent } from './shared/types';
-import type { ClassLike, MockedClass } from 'jest-mock';
 import { License } from '@/License';
 
 // mock that credentialsSharing is not enabled
@@ -14,7 +13,7 @@ let ownerUser: User;
 let memberUser: User;
 let authAgent: AuthAgent;
 let variablesSpy: jest.SpyInstance<boolean>;
-let licenseLike = {
+const licenseLike = {
 	isVariablesEnabled: jest.fn().mockReturnValue(true),
 	getVariablesLimit: jest.fn().mockReturnValue(-1),
 };
