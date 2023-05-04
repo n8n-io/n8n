@@ -802,9 +802,6 @@ importers:
       storybook:
         specifier: ^7.0.8
         version: 7.0.8
-      storybook-addon-designs:
-        specifier: ^7.0.0-beta.2
-        version: 7.0.0-beta.2(@storybook/addon-docs@7.0.8)(@storybook/addons@7.0.8)(@storybook/api@7.0.8)(@storybook/components@7.0.8)(@storybook/theming@7.0.8)(react-dom@18.2.0)(react@18.2.0)
       storybook-addon-themes:
         specifier: ^6.1.0
         version: 6.1.0(react-dom@18.2.0)(react@18.2.0)(vue@2.7.14)
@@ -4912,22 +4909,6 @@ packages:
     resolution: {integrity: sha512-cEee/Z+I12mZcFJshKcCqC8tuX5hG3s+d+9nZ3LabqKF1vKdF41B92pJVCBggjAGORAeOzyyDDKrZwIkLffeOQ==}
     dev: true
 
-  /@figspec/components@1.0.1:
-    resolution: {integrity: sha512-UvnEamPEAMh9HExViqpobWmX25g1+soA9kcJu+It3VerMa7CeVyaIbQydNf1Gys5v/rxJVdTDRgQ7OXW2zAAig==}
-    dependencies:
-      lit: 2.6.1
-    dev: true
-
-  /@figspec/react@1.0.3(react@18.2.0):
-    resolution: {integrity: sha512-r683qOko+5CbT48Ox280fMx2MNAtaFPgCNJvldOqN3YtmAzlcTT+YSxd3OahA+kjXGGrnzDbUgeTOX1cPLII+g==}
-    peerDependencies:
-      react: ^16.14.0 || ^17.0.0 || ^18.0.0
-    dependencies:
-      '@figspec/components': 1.0.1
-      '@lit-labs/react': 1.1.1
-      react: 18.2.0
-    dev: true
-
   /@fontsource/open-sans@4.5.12:
     resolution: {integrity: sha512-WKCexsVbOECJUSOgG7GnrUxe+3ds4Sa1yhsTjSnszI+0TaJvMZnDnn5YDKwA/KwLbkZqCaV3nvMTH97jJuxWNA==}
     dev: false
@@ -5450,20 +5431,6 @@ packages:
     dependencies:
       '@lezer/common': 1.0.1
     dev: false
-
-  /@lit-labs/react@1.1.1:
-    resolution: {integrity: sha512-9TC+/ZWb6BJlWCyUr14FKFlaGnyKpeEDorufXozQgke/VoVrslUQNaL7nBmrAWdNrmzx5jWgi8lFmWwrxMjnlA==}
-    dev: true
-
-  /@lit-labs/ssr-dom-shim@1.0.0:
-    resolution: {integrity: sha512-ic93MBXfApIFTrup4a70M/+ddD8xdt2zxxj9sRwHQzhS9ag/syqkD8JPdTXsc1gUy2K8TTirhlCqyTEM/sifNw==}
-    dev: true
-
-  /@lit/reactive-element@1.6.1:
-    resolution: {integrity: sha512-va15kYZr7KZNNPZdxONGQzpUr+4sxVu7V/VG7a8mRfPPXUyhEYj5RzXCQmGrlP3tAh0L3HHm5AjBMFYRqlM9SA==}
-    dependencies:
-      '@lit-labs/ssr-dom-shim': 1.0.0
-    dev: true
 
   /@mapbox/node-pre-gyp@1.0.10:
     resolution: {integrity: sha512-4ySo4CjzStuprMwk35H5pPbkymjv1SF3jGLj6rAHp/xT/RF7TL7bd9CTm1xDY49K2qF7jmR/g7k+SkLETP6opA==}
@@ -8199,10 +8166,6 @@ packages:
 
   /@types/tough-cookie@4.0.2:
     resolution: {integrity: sha512-Q5vtl1W5ue16D+nIaW8JWebSSraJVlK+EthKn7e7UcD4KWsaSJ8BqGPXNaPghgtcn/fhvrN17Tv8ksUsQpiplw==}
-    dev: true
-
-  /@types/trusted-types@2.0.2:
-    resolution: {integrity: sha512-F5DIZ36YVLE+PN+Zwws4kJogq47hNgX3Nx6WyDJ3kcplxyke3XIzB8uK5n/Lpm1HBsbGzd6nmGehL8cPekP+Tg==}
     dev: true
 
   /@types/tunnel@0.0.3:
@@ -16660,27 +16623,6 @@ packages:
       wrap-ansi: 7.0.0
     dev: true
 
-  /lit-element@3.2.2:
-    resolution: {integrity: sha512-6ZgxBR9KNroqKb6+htkyBwD90XGRiqKDHVrW/Eh0EZ+l+iC+u+v+w3/BA5NGi4nizAVHGYvQBHUDuSmLjPp7NQ==}
-    dependencies:
-      '@lit/reactive-element': 1.6.1
-      lit-html: 2.6.1
-    dev: true
-
-  /lit-html@2.6.1:
-    resolution: {integrity: sha512-Z3iw+E+3KKFn9t2YKNjsXNEu/LRLI98mtH/C6lnFg7kvaqPIzPn124Yd4eT/43lyqrejpc5Wb6BHq3fdv4S8Rw==}
-    dependencies:
-      '@types/trusted-types': 2.0.2
-    dev: true
-
-  /lit@2.6.1:
-    resolution: {integrity: sha512-DT87LD64f8acR7uVp7kZfhLRrHkfC/N4BVzAtnw9Yg8087mbBJ//qedwdwX0kzDbxgPccWRW6mFwGbRQIxy0pw==}
-    dependencies:
-      '@lit/reactive-element': 1.6.1
-      lit-element: 3.2.2
-      lit-html: 2.6.1
-    dev: true
-
   /load-json-file@1.1.0:
     resolution: {integrity: sha512-cy7ZdNRXdablkXYNI049pthVeXFurRyb9+hA/dZzerZ0pGTx42z+y+ssxBaVV2l70t1muq5IdKhn4UtcoGUY9A==}
     engines: {node: '>=0.10.0'}
@@ -21307,32 +21249,6 @@ packages:
 
   /store2@2.14.2:
     resolution: {integrity: sha512-siT1RiqlfQnGqgT/YzXVUNsom9S0H1OX+dpdGN1xkyYATo4I6sep5NmsRD/40s3IIOvlCq6akxkqG82urIZW1w==}
-    dev: true
-
-  /storybook-addon-designs@7.0.0-beta.2(@storybook/addon-docs@7.0.8)(@storybook/addons@7.0.8)(@storybook/api@7.0.8)(@storybook/components@7.0.8)(@storybook/theming@7.0.8)(react-dom@18.2.0)(react@18.2.0):
-    resolution: {integrity: sha512-ljBNmyCJdPTXhiBSfA1S+GBxtMooW2M7nxlt49OoCRH7jcxZOYQdiI8JYQiMF5Ur0MGakbSci0Xm+JzAvcm02g==}
-    peerDependencies:
-      '@storybook/addon-docs': ^6.4.0 || ^7.0.0
-      '@storybook/addons': ^6.4.0 || ^7.0.0
-      '@storybook/api': ^6.4.0 || ^7.0.0
-      '@storybook/components': ^6.4.0 || ^7.0.0
-      '@storybook/theming': ^6.4.0 || ^7.0.0
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
-    dependencies:
-      '@figspec/react': 1.0.3(react@18.2.0)
-      '@storybook/addon-docs': 7.0.8(react-dom@18.2.0)(react@18.2.0)
-      '@storybook/addons': 7.0.8(react-dom@18.2.0)(react@18.2.0)
-      '@storybook/api': 7.0.8(react-dom@18.2.0)(react@18.2.0)
-      '@storybook/components': 7.0.8(react-dom@18.2.0)(react@18.2.0)
-      '@storybook/theming': 7.0.8(react-dom@18.2.0)(react@18.2.0)
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
     dev: true
 
   /storybook-addon-themes@6.1.0(react-dom@18.2.0)(react@18.2.0)(vue@2.7.14):

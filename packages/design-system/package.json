@@ -65,7 +65,6 @@
     "sass": "^1.58.0",
     "sass-loader": "^13.2.0",
     "storybook": "^7.0.8",
-    "storybook-addon-designs": "^7.0.0-beta.2",
     "storybook-addon-themes": "^6.1.0",
     "trim": "^1.0.1",
     "vite": "^4.0.4",
