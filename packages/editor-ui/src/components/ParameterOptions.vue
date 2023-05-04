@@ -121,7 +121,7 @@ export default defineComponent({
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
 			if (Array.isArray(this.$props.customActions) && this.$props.customActions.length > 0) {
 				return this.$props.customActions;
-			};
+			}
 
 			if (this.isHtmlEditor && !this.isValueExpression) {
 				return [

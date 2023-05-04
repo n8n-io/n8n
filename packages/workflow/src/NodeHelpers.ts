@@ -1241,7 +1241,8 @@ export function getParameterIssues(
 		if (nodeProperties.typeOptions?.resourceMapper?.mode === 'add') {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 			if (isResourceMapperValue(value)) {
-				const fieldWordSingular = nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
+				const fieldWordSingular =
+					nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
 				value.schema.forEach((field) => {
 					if (field.required) {
 						const key = `${nodeProperties.name}.${field.id}`;

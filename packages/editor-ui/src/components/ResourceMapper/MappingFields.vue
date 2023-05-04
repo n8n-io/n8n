@@ -13,7 +13,6 @@ import ParameterIssues from '../ParameterIssues.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { get } from 'lodash-es';
 import { useNDVStore } from '@/stores';
 import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils';
 

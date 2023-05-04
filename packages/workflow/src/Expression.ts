@@ -552,7 +552,9 @@ export class Expression {
 		// The parameter value is complex so resolve depending on type
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
-			const returnData = parameterValue.map((item) => resolveParameterValue(item, {}));
+			const returnData = parameterValue.map((item) =>
+				resolveParameterValue(item as NodeParameterValueType, {}),
+			);
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 
