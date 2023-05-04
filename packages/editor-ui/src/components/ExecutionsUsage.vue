@@ -67,11 +67,6 @@ import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 
 export interface CloudPlanData {
-	plan: Plan;
-	usage: Usage;
-}
-
-export interface Plan {
 	planId: number;
 	monthlyExecutionsLimit: number;
 	activeWorkflowsLimit: number;
@@ -80,6 +75,7 @@ export interface Plan {
 	displayName: string;
 	expirationDate: string;
 	metadata: PlanMetadata;
+	usage: Usage;
 }
 export interface PlanMetadata {
 	version: 'v1';
@@ -109,18 +105,18 @@ const daysLeftOnTrial = () => {
 };
 
 const isTrialExpired = () => {
-	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.plan.expirationDate);
+	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
 };
 
-const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.plan.expirationDate);
+const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.expirationDate);
 
 const trialHasExecutionsLeft = () =>
-	props.cloudPlanData.usage.executions < props.cloudPlanData.plan.monthlyExecutionsLimit;
+	props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit;
 
 const currentExecutions = () => props.cloudPlanData.usage.executions;
 
-const maxExecutions = () => props.cloudPlanData.plan.monthlyExecutionsLimit;
+const maxExecutions = () => props.cloudPlanData.monthlyExecutionsLimit;
 
 const onUpgradeClicked = () => {
 	console.log(1);

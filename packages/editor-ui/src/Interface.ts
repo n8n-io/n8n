@@ -1444,13 +1444,7 @@ export type VersionControlPreferences = {
 	branchColor: string;
 	publicKey?: string;
 };
-
 export interface CloudPlanData {
-	plan: Plan;
-	usage: Usage;
-}
-
-export interface Plan {
 	planId: number;
 	monthlyExecutionsLimit: number;
 	activeWorkflowsLimit: number;
@@ -1459,6 +1453,7 @@ export interface Plan {
 	displayName: string;
 	expirationDate: string;
 	metadata: PlanMetadata;
+	usage: Usage;
 }
 export interface PlanMetadata {
 	version: 'v1';
