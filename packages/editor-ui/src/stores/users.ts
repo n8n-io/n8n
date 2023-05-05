@@ -337,9 +337,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			// TODO: uncomment before releasing
 			// const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 			const cloudUserId = '123';
-			const hasCloudPlan =
-				this.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-			if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
+			// const hasCloudPlan =
+			// 	this.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
+			// if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
 			const rootStore = useRootStore();
 			return getCurrentPlan(rootStore.getRestApiContext, cloudUserId as string);
 		},

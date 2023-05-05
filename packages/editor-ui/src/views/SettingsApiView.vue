@@ -62,6 +62,13 @@
 			</div>
 		</div>
 		<n8n-action-box
+			v-else-if="isTrialing"
+			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
+			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
+			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
+			@click="onUpgrade"
+		/>
+		<n8n-action-box
 			v-else-if="mounted"
 			:buttonText="
 				$locale.baseText(
@@ -84,7 +91,7 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useUsersStore } from '@/stores/users';
-import { DOCS_DOMAIN } from '@/constants';
+import { CHANGE_PLAN_PAGE_PRODUCTION, CHANGE_PLAN_PAGE_STAGING, DOCS_DOMAIN } from '@/constants';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsApiView',
@@ -115,8 +122,17 @@ export default mixins(showMessage).extend({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
+		isTrialing(): boolean {
+			return this.usersStore.userIsTrialing;
+		},
 	},
 	methods: {
+		onUpgrade() {
+			location.href =
+				this.settingsStore.settings.license.environment === 'production'
+					? CHANGE_PLAN_PAGE_PRODUCTION
+					: CHANGE_PLAN_PAGE_STAGING;
+		},
 		async showDeleteModal() {
 			const confirmed = await this.confirmMessage(
 				this.$locale.baseText('settings.api.delete.description'),
@@ -135,6 +151,7 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
+				// @todo need to wait on plans results first
 				this.mounted = true;
 			}
 		},
