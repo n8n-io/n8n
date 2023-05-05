@@ -13,6 +13,7 @@ import type {
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
@@ -105,6 +106,7 @@ export class MessageEventBusDestinationWebhook
 		if (foundCredential) {
 			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
+				{} as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',

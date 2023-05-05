@@ -853,10 +853,13 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.InternalServerError(error.message);
 				}
 
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+
 				const mode: WorkflowExecuteMode = 'internal';
 				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+					additionalData,
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
@@ -865,6 +868,7 @@ export class Server extends AbstractServer {
 				);
 
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+					additionalData,
 					decryptedDataOriginal,
 					credential.type,
 					mode,
@@ -986,10 +990,13 @@ export class Server extends AbstractServer {
 						throw new ResponseHelper.InternalServerError(error.message);
 					}
 
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+
 					const mode: WorkflowExecuteMode = 'internal';
 					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+						additionalData,
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
@@ -997,6 +1004,7 @@ export class Server extends AbstractServer {
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+						additionalData,
 						decryptedDataOriginal,
 						credential.type,
 						mode,

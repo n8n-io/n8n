@@ -49,6 +49,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -864,5 +865,6 @@ export function WorkflowExecuteAdditionalData(
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
 		userId: '123',
+		variables: {},
 	};
 }

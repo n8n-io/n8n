@@ -32,6 +32,7 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -339,6 +340,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 */
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
@@ -354,6 +356,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return this.applyDefaultsAndOverwrites(
+			additionalData,
 			decryptedDataOriginal,
 			type,
 			mode,
@@ -366,6 +369,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Applies credential default data and overwrites
 	 */
 	applyDefaultsAndOverwrites(
+		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
@@ -392,6 +396,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
+		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null);
+
 		if (expressionResolveValues) {
 			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
 
@@ -405,7 +411,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.connectionInputData,
 					mode,
 					timezone,
-					{},
+					additionalKeys,
 					undefined,
 					false,
 					decryptedData,
@@ -429,7 +435,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedData as INodeParameters,
 				mode,
 				defaultTimezone,
-				{},
+				additionalKeys,
 				undefined,
 				undefined,
 				decryptedData,
