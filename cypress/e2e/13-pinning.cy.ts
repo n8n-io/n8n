@@ -1,6 +1,6 @@
 import {
 	HTTP_REQUEST_NODE_NAME,
-	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
 	SET_NODE_NAME,
 } from '../constants';
@@ -75,7 +75,7 @@ describe('Data pinning', () => {
 	});
 
 	it('Should be able to reference paired items in a node located before pinned data', () => {
-		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
 		ndv.actions.setPinnedData([{ http: 123 }]);
 		ndv.actions.close();

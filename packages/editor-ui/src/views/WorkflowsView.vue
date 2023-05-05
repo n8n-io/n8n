@@ -98,10 +98,10 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
-import { EnterpriseEditionFeature, ASSUMPTION_EXPERIMENT, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
-import { ITag, IUser, IWorkflowDb } from '@/Interface';
+import type Vue from 'vue';
+import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -109,7 +109,6 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useCredentialsStore } from '@/stores/credentials';
-import { usePostHog } from '@/stores/posthog';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 

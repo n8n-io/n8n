@@ -3,7 +3,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { genericHelpers } from './genericHelpers';
-import { IExecutionsSummary } from 'n8n-workflow';
+import type { IExecutionsSummary } from 'n8n-workflow';
 
 export interface IExecutionUIData {
 	name: string;

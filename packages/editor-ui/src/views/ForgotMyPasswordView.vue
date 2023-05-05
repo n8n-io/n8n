@@ -7,7 +7,7 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
+import type { IFormBoxConfig } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';

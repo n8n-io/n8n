@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { useHistoryStore } from '@/stores/history';
-import { INodeUi, XYPosition } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import type {
@@ -18,7 +18,8 @@ import { newInstance } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
-import { EndpointFactory, Connectors, Connection } from '@jsplumb/core';
+import type { Connection } from '@jsplumb/core';
+import { EndpointFactory, Connectors } from '@jsplumb/core';
 import { MoveNodeCommand } from '@/models/history';
 import {
 	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
@@ -32,7 +33,7 @@ import {
 	CONNECTOR_PAINT_STYLE_PRIMARY,
 	CONNECTOR_ARROW_OVERLAYS,
 } from '@/utils/nodeViewUtils';
-import { PointXY } from '@jsplumb/util';
+import type { PointXY } from '@jsplumb/util';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();

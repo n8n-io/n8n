@@ -1,11 +1,10 @@
 <template>
 	<div>
-		<aside :class="{ 'node-creator-scrim': true, active: nodeCreatorStore.showScrim }" />
-
+		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
 		<slide-transition>
 			<div
 				v-if="active"
-				class="node-creator"
+				:class="$style.nodeCreator"
 				ref="nodeCreator"
 				v-click-outside="onClickOutside"
 				@dragover="onDragOver"
@@ -14,38 +13,51 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<NodesListPanel @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs } from 'vue';
+import { watch, reactive, toRefs, computed } from 'vue';
+
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
-import MainPanel from './MainPanel.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useViewStacks } from './composables/useViewStacks';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { useActionsGenerator } from './composables/useActionsGeneration';
+import NodesListPanel from './Panel/NodesListPanel.vue';
 
 export interface Props {
 	active?: boolean;
 }
 
 const props = defineProps<Props>();
-
+const { resetViewStacks } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void;
+	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
 
-const nodeCreatorStore = useNodeCreatorStore();
+const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { generateMergedNodesAndActions } = useActionsGenerator();
+
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
 });
 
+const showScrim = computed(() => useNodeCreatorStore().showScrim);
+
+const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
+
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator
-	// and try to drag undraggable element. In that case the click event would
+	// and try to drag non-draggable element. In that case the click event would
 	// be fired and the node creator would be closed. So we stop that if we detect
 	// that the click event originated from inside the node creator. And fire click even on the
 	// original target.
@@ -93,21 +105,49 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) nodeCreatorStore.setShowScrim(false);
+		if (isActive === false) {
+			setShowScrim(false);
+			resetViewStacks();
+		}
 	},
 );
 
+// Close node creator when the last view stacks is closed
+watch(viewStacksLength, (viewStacksLength) => {
+	if (viewStacksLength === 0) {
+		emit('closeNodeCreator');
+		setShowScrim(false);
+	}
+});
+
+registerKeyHook('NodeCreatorCloseEscape', {
+	keyboardKeys: ['Escape'],
+	handler: () => emit('closeNodeCreator'),
+});
+registerKeyHook('NodeCreatorCloseTab', {
+	keyboardKeys: ['Tab'],
+	handler: () => emit('closeNodeCreator'),
+});
+
+watch(
+	() => useNodeTypesStore().visibleNodeTypes,
+	(nodeTypes) => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+
+		setActions(actions);
+		setMergeNodes(mergedNodes);
+	},
+	{ immediate: true },
+);
 const { nodeCreator } = toRefs(state);
 </script>
 
-<style scoped lang="scss">
-::v-deep *,
-*:before,
-*:after {
-	box-sizing: border-box;
+<style module lang="scss">
+:global(strong) {
+	font-weight: var(--font-weight-bold);
 }
-
-.node-creator {
+.nodeCreator {
+	--node-icon-color: var(--color-text-base);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -117,7 +157,7 @@ const { nodeCreator } = toRefs(state);
 	color: $node-creator-text-color;
 }
 
-.node-creator-scrim {
+.nodeCreatorScrim {
 	position: fixed;
 	top: $header-height;
 	right: 0;

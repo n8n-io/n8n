@@ -2,7 +2,7 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router/composables';
 import { Notification } from 'element-ui';
-import { IFormBoxConfig } from 'n8n-design-system';
+import type { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useSSOStore } from '@/stores/sso';
