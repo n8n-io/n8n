@@ -129,7 +129,7 @@ export const schema = {
 		},
 		mysqldb: {
 			database: {
-				doc: 'MySQL Database',
+				doc: '[DEPRECATED] MySQL Database',
 				format: String,
 				default: 'n8n',
 				env: 'DB_MYSQLDB_DATABASE',

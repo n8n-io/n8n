@@ -55,6 +55,14 @@ export abstract class BaseCommand extends Command {
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
 
+		const dbType = config.getEnv('database.type');
+
+		if (['mysqldb', 'mariadb'].includes(dbType)) {
+			LoggerProxy.warn(
+				'MySQL/MariaDB has been deprecated and will have support removed when n8n 1.0 is released. Please migrate to PostgreSQL.',
+			);
+		}
+
 		this.instanceId = this.userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(this.instanceId);
 		await Container.get(InternalHooks).init(this.instanceId);
