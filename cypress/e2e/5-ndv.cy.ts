@@ -15,6 +15,7 @@ describe('NDV', () => {
 		workflowPage.actions.renameWorkflow(uuid());
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
+
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.getters.canvasNodes().first().dblclick();
@@ -88,5 +89,142 @@ describe('NDV', () => {
 			cy.get('.has-issues').should('have.length', 3);
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 		});
+	});
+
+	it('should save workflow using keyboard shortcut from NDV', () => {
+		workflowPage.actions.addNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		ndv.getters.container().should('be.visible');
+		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		workflowPage.getters.isWorkflowSaved();
+	})
+
+	describe('test output schema view', () => {
+		const schemaKeys = ['id', 'name', 'email', 'notes', 'country', 'created', 'objectValue', 'prop1', 'prop2'];
+		function setupSchemaWorkflow() {
+			cy.createFixtureWorkflow('Test_workflow_schema_test.json', `NDV test schema view ${uuid()}`);
+			workflowPage.actions.zoomToFit();
+			workflowPage.actions.openNode('Set');
+			ndv.actions.execute();
+		}
+
+		it('should switch to output schema view and validate it', () => {
+			setupSchemaWorkflow()
+			ndv.getters.outputDisplayMode().children().should('have.length', 3);
+			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
+
+			schemaKeys.forEach((key) => {
+				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('exist');
+			});
+		});
+		it('should preserve schema view after execution', () => {
+			setupSchemaWorkflow()
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.execute();
+			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
+		})
+		it('should collapse and expand nested schema object', () => {
+			setupSchemaWorkflow()
+			const expandedObjectProps = ['prop1', 'prop2'];;
+			const getObjectValueItem = () => ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').filter(':contains("objectValue")');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+
+			expandedObjectProps.forEach((key) => {
+				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('be.visible');
+			});
+			getObjectValueItem().find('label').click();
+			expandedObjectProps.forEach((key) => {
+				ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item]').contains(key).should('not.be.visible');
+			});
+		})
+		it('should not display pagination for schema', () => {
+			setupSchemaWorkflow()
+			ndv.getters.backToCanvas().click();
+			workflowPage.getters.canvasNodeByName('Set').click();
+			workflowPage.actions.addNodeToCanvas('Customer Datastore (n8n training)', true, true, 'Get All People');
+			ndv.actions.execute();
+			ndv.getters.outputPanel().contains('25 items').should('exist');
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
+			ndv.getters.outputDisplayMode().contains('JSON').click();
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
+		})
+		it('should display large schema', () => {
+			cy.createFixtureWorkflow('Test_workflow_schema_test_pinned_data.json', `NDV test schema view ${uuid()}`);
+			workflowPage.actions.zoomToFit();
+			workflowPage.actions.openNode('Set');
+
+			ndv.getters.outputPanel().contains('20 items').should('exist');
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
+			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
+			ndv.getters.outputPanel().find('[data-test-id=run-data-schema-item] [data-test-id=run-data-schema-item]').should('have.length', 20);
+		})
+	});
+
+	it('can link and unlink run selectors between input and output', () => {
+		cy.createFixtureWorkflow('Test_workflow_5.json', 'Test');
+		workflowPage.actions.zoomToFit();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Set3');
+
+		ndv.getters.inputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
+		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.inputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+		ndv.getters.inputTbodyCell(1, 0).should('have.text', '1111');
+		ndv.getters.outputTbodyCell(1, 0).should('have.text', '1111');
+
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		// unlink
+		ndv.actions.toggleOutputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
+		ndv.getters.inputRunSelector()
+			.should('exist')
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
+
+		// link again
+		ndv.actions.toggleOutputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.getters.inputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+		
+		// unlink again
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.actions.changeInputRunSelector('2 of 2 (6 items)');
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '1 of 2 (6 items)');
+
+		// link again
+		ndv.actions.toggleInputRunLinking();
+		ndv.getters.inputTbodyCell(1, 0).click(); // remove tooltip
+		ndv.getters.outputRunSelector()
+			.find('input')
+			.should('include.value', '2 of 2 (6 items)');
 	});
 });

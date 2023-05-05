@@ -55,6 +55,8 @@ export abstract class AbstractServer {
 
 	protected endpointWebhookWaiting: string;
 
+	protected instanceId = '';
+
 	abstract configure(): Promise<void>;
 
 	constructor() {
@@ -302,7 +304,7 @@ export abstract class AbstractServer {
 	// ----------------------------------------
 	protected setupWaitingWebhookEndpoint() {
 		const endpoint = this.endpointWebhookWaiting;
-		const waitingWebhooks = new WaitingWebhooks();
+		const waitingWebhooks = Container.get(WaitingWebhooks);
 
 		// Register all webhook-waiting requests
 		this.app.all(`/${endpoint}/*`, async (req, res) => {

@@ -16,7 +16,7 @@ export class If implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Splits a stream based on comparisons',
+		description: 'Route items to different branches (true/false)',
 		defaults: {
 			name: 'IF',
 			color: '#408000',
@@ -290,12 +290,12 @@ export class If implements INodeType {
 				options: [
 					{
 						name: 'ALL',
-						description: 'Only if all conditions are meet it goes into "true" branch',
+						description: 'Only if all conditions are met it goes into "true" branch',
 						value: 'all',
 					},
 					{
 						name: 'ANY',
-						description: 'If any of the conditions is meet it goes into "true" branch',
+						description: 'If any of the conditions is met it goes into "true" branch',
 						value: 'any',
 					},
 				],

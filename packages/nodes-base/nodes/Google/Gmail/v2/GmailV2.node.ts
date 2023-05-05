@@ -146,7 +146,7 @@ export class GmailV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -382,7 +382,7 @@ export class GmailV2 implements INodeType {
 						const options = this.getNodeParameter('options', i, {});
 						const filters = this.getNodeParameter('filters', i, {});
 						const qs: IDataObject = {};
-						Object.assign(qs, prepareQuery.call(this, filters), options);
+						Object.assign(qs, prepareQuery.call(this, filters, i), options, i);
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -708,7 +708,7 @@ export class GmailV2 implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						const qs: IDataObject = {};
-						Object.assign(qs, prepareQuery.call(this, filters));
+						Object.assign(qs, prepareQuery.call(this, filters, i));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(

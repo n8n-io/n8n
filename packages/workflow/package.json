@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "0.140.0",
+  "version": "0.148.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -47,8 +47,8 @@
     "@types/lodash.isequal": "^4.5.6",
     "@types/lodash.merge": "^4.6.6",
     "@types/lodash.set": "^4.3.6",
-    "@types/luxon": "^2.0.9",
-    "@types/xml2js": "^0.4.3"
+    "@types/luxon": "^3.2.0",
+    "@types/xml2js": "^0.4.11"
   },
   "dependencies": {
     "@n8n_io/riot-tmpl": "^3.0.0",
@@ -62,10 +62,10 @@
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "luxon": "^3.1.0",
+    "luxon": "^3.3.0",
     "recast": "^0.21.5",
     "title-case": "^3.0.3",
     "transliteration": "^2.3.5",
-    "xml2js": "^0.4.23"
+    "xml2js": "^0.5.0"
   }
 }

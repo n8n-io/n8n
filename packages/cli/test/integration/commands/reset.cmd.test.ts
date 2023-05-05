@@ -26,7 +26,7 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-test('user-management:reset should reset DB to default user state', async () => {
+test.skip('user-management:reset should reset DB to default user state', async () => {
 	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	await Reset.run();

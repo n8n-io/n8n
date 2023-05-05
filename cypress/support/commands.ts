@@ -39,6 +39,8 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	workflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
+
+	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
 
 	workflowPage.getters.saveButton().should('contain', 'Saved');
@@ -52,7 +54,13 @@ Cypress.Commands.add(
 	},
 );
 
-Cypress.Commands.add('waitForLoad', () => {
+Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
+	// These aliases are set-up before each test in cypress/support/e2e.ts
+	// we can't set them up here because at this point it would be too late
+	// and the requests would already have been made
+	if (waitForIntercepts) {
+		cy.wait(['@loadSettings', '@loadLogin']);
+	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
 });
@@ -97,18 +105,22 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
+			cy.intercept('/rest/users/*').as('userSignup')
 			signupPage.getters.firstName().type(firstName);
 			signupPage.getters.lastName().type(lastName);
 			signupPage.getters.password().type(password);
 			signupPage.getters.submit().click();
+			cy.wait('@userSignup');
 		});
 	});
 });
 
-Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }, skipIntercept = false) => {
 	const signupPage = new SignupPage();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -117,7 +129,13 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
 				signupPage.getters.password().type(password);
+
+				cy.intercept('POST', '/rest/owner/setup').as('setupRequest');
 				signupPage.getters.submit().click();
+
+				if(!skipIntercept) {
+					cy.wait('@setupRequest');
+				}
 			} else {
 				cy.log('User already signed up');
 			}
@@ -160,7 +178,9 @@ Cypress.Commands.add('skipSetup', () => {
 	const workflowPage = new WorkflowPage();
 	const Confirmation = new MessageBox();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -191,7 +211,11 @@ Cypress.Commands.add('setupOwner', (payload) => {
 });
 
 Cypress.Commands.add('enableFeature', (feature) => {
-	cy.task('enable-feature', feature);
+	cy.task('set-feature', { feature, enabled: true });
+});
+
+Cypress.Commands.add('disableFeature', (feature) => {
+	cy.task('set-feature', { feature, enabled: false });
 });
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
@@ -224,18 +248,19 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, pos) => {
+Cypress.Commands.add('drag', (selector, pos, options) => {
+	const index = options?.index || 0;
 	const [xDiff, yDiff] = pos;
-	const element = cy.get(selector);
+	const element = cy.get(selector).eq(index);
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
 
 	element.trigger('mousedown');
 	element.trigger('mousemove', {
 		which: 1,
-		pageX: originalLocation.right + xDiff,
-		pageY: originalLocation.top + yDiff,
+		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,
+		pageY: options?.abs ? yDiff : originalLocation.top + yDiff,
 		force: true,
 	});
 	element.trigger('mouseup', { force: true });

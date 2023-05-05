@@ -7,10 +7,10 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
-import { history } from '@codemirror/commands';
-import { autocompletion, completionStatus } from '@codemirror/autocomplete';
+import { history, redo } from '@codemirror/commands';
+import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
@@ -78,6 +78,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(
 				keymap.of([
+					{ key: 'Tab', run: acceptCompletion },
 					{
 						any(view: EditorView, event: KeyboardEvent) {
 							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
@@ -87,6 +88,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 							return false;
 						},
 					},
+					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
 			autocompletion(),
@@ -95,6 +97,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorView.editable.of(!this.isReadOnly),
+			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({
 				focus: () => {
 					this.$emit('focus');

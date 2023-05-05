@@ -24,11 +24,11 @@ import * as GenericHelpers from '@/GenericHelpers';
 import * as Server from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
-import { handleLdapInit } from '@/Ldap/helpers';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
+import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -60,7 +60,7 @@ export class Start extends BaseCommand {
 		}),
 	};
 
-	protected activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	/**
 	 * Opens the UI in browser
@@ -144,6 +144,7 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = config.getEnv('path');
+		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -167,6 +168,7 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -182,11 +184,35 @@ export class Start extends BaseCommand {
 		await Promise.all(files.map(compileFile));
 	}
 
+	async initLicense(): Promise<void> {
+		const license = Container.get(License);
+		await license.init(this.instanceId);
+
+		const activationKey = config.getEnv('license.activationKey');
+
+		if (activationKey) {
+			const hasCert = (await license.loadCertStr()).length > 0;
+
+			if (hasCert) {
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
+			try {
+				LoggerProxy.debug('Attempting license activation');
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
+			}
+		}
+	}
+
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 
@@ -252,11 +278,10 @@ export class Start extends BaseCommand {
 					// Optimistic approach - stop if any installation fails
 					// eslint-disable-next-line no-restricted-syntax
 					for (const missingPackage of missingPackages) {
-						// eslint-disable-next-line no-await-in-loop
-						void (await this.loadNodesAndCredentials.loadNpmModule(
+						await this.loadNodesAndCredentials.installNpmModule(
 							missingPackage.packageName,
 							missingPackage.version,
-						));
+						);
 						missingPackages.delete(missingPackage);
 					}
 					LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
@@ -325,8 +350,6 @@ export class Start extends BaseCommand {
 				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
 			);
 		}
-
-		await handleLdapInit();
 
 		await Server.start();
 

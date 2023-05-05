@@ -7,27 +7,23 @@ import { CronJob } from 'cron';
 import express from 'express';
 import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-import {
+import type {
 	ICredentialType,
-	ICredentialTypes,
-	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy,
-	NodeHelpers,
-	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import superagent from 'superagent';
+import { deepCopy } from 'n8n-workflow';
+import { LoggerProxy, NodeHelpers, toCronExpression } from 'n8n-workflow';
+import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 import { mock } from 'jest-mock-extended';
-import { DeepPartial } from 'ts-essentials';
+import type { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -41,7 +37,7 @@ import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
 import { issueJWT } from '@/auth/jwt';
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -58,7 +54,6 @@ import type {
 	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { registerController } from '@/decorators';
 import {
 	AuthController,
@@ -76,10 +71,17 @@ import { v4 as uuid } from 'uuid';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
+import { variablesController } from '@/environments/variables/variables.controller';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { LDAP_ENABLED } from '@/Ldap/constants';
 import { handleLdapInit } from '@/Ldap/helpers';
 import { Push } from '@/push';
+import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
+import { SamlService } from '@/sso/saml/saml.service.ee';
+import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
+import { EventBusController } from '@/eventbus/eventBus.controller';
+import { License } from '@/License';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -89,13 +91,6 @@ export const mockInstance = <T>(
 	Container.set(ctor, instance);
 	return instance;
 };
-
-const loadNodesAndCredentials: INodesAndCredentials = {
-	loaded: { nodes: {}, credentials: {} },
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
-};
-Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -157,7 +152,7 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			license: { controller: licenseController, path: 'license' },
-			eventBus: { controller: eventBusRouter, path: 'eventbus' },
+			variables: { controller: variablesController, path: 'variables' },
 		};
 
 		if (enablePublicAPI) {
@@ -177,11 +172,14 @@ export async function initTestServer({
 	if (functionEndpoints.length) {
 		const externalHooks = Container.get(ExternalHooks);
 		const internalHooks = Container.get(InternalHooks);
-		const mailer = UserManagementMailer.getInstance();
+		const mailer = Container.get(UserManagementMailer);
 		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
 			switch (group) {
+				case 'eventBus':
+					registerController(testServer.app, config, new EventBusController());
+					break;
 				case 'auth':
 					registerController(
 						testServer.app,
@@ -190,13 +188,26 @@ export async function initTestServer({
 					);
 					break;
 				case 'ldap':
-					config.set(LDAP_ENABLED, true);
+					Container.get(License).isLdapEnabled = () => true;
 					await handleLdapInit();
 					const { service, sync } = LdapManager.getInstance();
 					registerController(
 						testServer.app,
 						config,
 						new LdapController(service, sync, internalHooks),
+					);
+					break;
+				case 'saml':
+					await setSamlLoginEnabled(true);
+					const samlService = Container.get(SamlService);
+					registerController(testServer.app, config, new SamlController(samlService));
+					break;
+				case 'versionControl':
+					const versionControlService = Container.get(VersionControlService);
+					registerController(
+						testServer.app,
+						config,
+						new VersionControlController(versionControlService),
 					);
 					break;
 				case 'nodes':
@@ -226,6 +237,7 @@ export async function initTestServer({
 							logger,
 							externalHooks,
 							internalHooks,
+							mailer,
 							repositories,
 						}),
 					);
@@ -266,7 +278,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'eventBus', 'license'];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -354,7 +366,7 @@ export async function initNodeTypes() {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					return this.prepareOutputData(items);
@@ -557,7 +569,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -571,13 +583,13 @@ export async function initNodeTypes() {
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
-						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+						const options = this.getNodeParameter('options', itemIndex, {});
 
 						const newItem: INodeExecutionData = {
 							json: {},
 						};
 
-						if (keepOnlySet !== true) {
+						if (!keepOnlySet) {
 							if (item.binary !== undefined) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
@@ -586,7 +598,7 @@ export async function initNodeTypes() {
 								Object.assign(newItem.binary, item.binary);
 							}
 
-							newItem.json = JSON.parse(JSON.stringify(item.json));
+							newItem.json = deepCopy(item.json);
 						}
 
 						// Add boolean values
@@ -694,7 +706,7 @@ export function createAuthAgent(app: express.Application) {
  * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
  */
 export function prefix(pathSegment: string) {
-	return function (request: superagent.SuperAgentRequest) {
+	return async function (request: superagent.SuperAgentRequest) {
 		const url = new URL(request.url);
 
 		// enforce consistency at call sites
@@ -739,6 +751,15 @@ export async function isInstanceOwnerSetUp() {
 	return Boolean(value);
 }
 
+export const setInstanceOwnerSetUp = async (value: boolean) => {
+	config.set('userManagement.isInstanceOwnerSetUp', value);
+
+	await Db.collections.Settings.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: JSON.stringify(value) },
+	);
+};
+
 // ----------------------------------
 //              misc
 // ----------------------------------
@@ -776,11 +797,11 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	};
 }
 
-export const emptyPackage = () => {
+export const emptyPackage = async () => {
 	const installedPackage = new InstalledPackages();
 	installedPackage.installedNodes = [];
 
-	return Promise.resolve(installedPackage);
+	return installedPackage;
 };
 
 // ----------------------------------

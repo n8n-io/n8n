@@ -3,13 +3,9 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import {
-	createDeferredPromise,
-	IDeferredPromise,
-	IExecuteResponsePromiseData,
-	IRun,
-} from 'n8n-workflow';
-import { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -18,7 +14,7 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Execution: {
-				save: jest.fn(async () => Promise.resolve({ id: FAKE_EXECUTION_ID })),
+				save: jest.fn(async () => ({ id: FAKE_EXECUTION_ID })),
 				update: jest.fn(),
 			},
 		},
@@ -160,12 +156,12 @@ function mockFullRunData(): IRun {
 	};
 }
 
-function mockCancelablePromise(): PCancelable<IRun> {
+async function mockCancelablePromise(): PCancelable<IRun> {
 	return new PCancelable(async (resolve) => {
 		resolve();
 	});
 }
 
-function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
+async function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
 	return createDeferredPromise<IExecuteResponsePromiseData>();
 }

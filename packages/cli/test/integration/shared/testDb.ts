@@ -1,9 +1,7 @@
 import { UserSettings } from 'n8n-core';
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	Repository,
-} from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
+import { Container } from 'typedi';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -14,7 +12,7 @@ import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -22,7 +20,8 @@ import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ICredentialsDb } from '@/Interfaces';
+import { RoleRepository } from '@db/repositories';
+import type { ICredentialsDb } from '@/Interfaces';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
@@ -104,8 +103,7 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		const repository: Repository<any> = Db.collections[collection];
-		await repository.delete({});
+		await (Db.collections[collection] as Repository<any>).delete({});
 	}
 }
 
@@ -142,7 +140,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOneBy({ scope: 'credential', name: 'user' });
+	const role = await Container.get(RoleRepository).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
@@ -172,7 +170,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
 		...rest,
 	};
 
@@ -210,6 +208,7 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
+	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();
@@ -266,38 +265,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
+	return Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
 }
 
 export async function getGlobalMemberRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'member',
-		scope: 'global',
-	});
+	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
 }
 
 export async function getWorkflowEditorRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'editor',
-		scope: 'workflow',
-	});
+	return Container.get(RoleRepository).findWorkflowEditorRoleOrFail();
 }
 
 export async function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	return Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
 }
 
 export async function getAllRoles() {
@@ -489,6 +473,10 @@ export async function createWorkflowWithTrigger(
 	return workflow;
 }
 
+export async function getAllWorkflows() {
+	return Db.collections.Workflow.find();
+}
+
 // ----------------------------------
 //        workflow sharing
 // ----------------------------------
@@ -496,6 +484,33 @@ export async function createWorkflowWithTrigger(
 export async function getWorkflowSharing(workflow: WorkflowEntity) {
 	return Db.collections.SharedWorkflow.findBy({
 		workflowId: workflow.id,
+	});
+}
+
+// ----------------------------------
+//             variables
+// ----------------------------------
+
+export async function createVariable(key: string, value: string) {
+	return Db.collections.Variables.save({
+		key,
+		value,
+	});
+}
+
+export async function getVariableByKey(key: string) {
+	return Db.collections.Variables.findOne({
+		where: {
+			key,
+		},
+	});
+}
+
+export async function getVariableById(id: number) {
+	return Db.collections.Variables.findOne({
+		where: {
+			id,
+		},
 	});
 }
 
@@ -512,7 +527,7 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
 		name,
 		type: 'sqlite',
 		database: ':memory:',
-		entityPrefix: '',
+		entityPrefix: config.getEnv('database.tablePrefix'),
 		dropSchema: true,
 		migrations: sqliteMigrations,
 		migrationsTableName: 'migrations',
@@ -525,6 +540,7 @@ const baseOptions = (type: TestDBType) => ({
 	port: config.getEnv(`database.${type}db.port`),
 	username: config.getEnv(`database.${type}db.user`),
 	password: config.getEnv(`database.${type}db.password`),
+	entityPrefix: config.getEnv('database.tablePrefix'),
 	schema: type === 'postgres' ? config.getEnv('database.postgresdb.schema') : undefined,
 });
 

@@ -1,5 +1,19 @@
 import type { BinaryFileType } from './Interfaces';
 
+const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
+
+export const isObjectEmpty = (obj: object | null | undefined): boolean => {
+	if (obj === undefined || obj === null) return true;
+	if (typeof obj === 'object') {
+		if (Array.isArray(obj)) return obj.length === 0;
+		if (obj instanceof Set || obj instanceof Map) return obj.size === 0;
+		if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) return obj.byteLength === 0;
+		if (Symbol.iterator in obj || readStreamClasses.has(obj.constructor.name)) return false;
+		return Object.keys(obj).length === 0;
+	}
+	return true;
+};
+
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
@@ -60,6 +74,27 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 
 		throw error;
 	}
+};
+
+type JSONStringifyOptions = {
+	replaceCircularRefs?: boolean;
+};
+
+const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
+	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
+	if (knownObjects.has(value)) return '[Circular Reference]' as T;
+	knownObjects.add(value);
+	const copy = (Array.isArray(value) ? [] : {}) as T;
+	for (const key in value) {
+		copy[key] = replaceCircularReferences(value[key], knownObjects);
+	}
+	knownObjects.delete(value);
+	return copy;
+};
+
+export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}): string => {
+	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
 };
 
 export const sleep = async (ms: number): Promise<void> =>

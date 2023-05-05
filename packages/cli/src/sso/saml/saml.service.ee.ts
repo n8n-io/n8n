@@ -1,6 +1,7 @@
 import type express from 'express';
+import { Service } from 'typedi';
 import * as Db from '@/Db';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
@@ -19,16 +20,16 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '../../databases/entities/Settings';
+import type { Settings } from '@db/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
 import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
+@Service()
 export class SamlService {
-	private static instance: SamlService;
-
 	private identityProviderInstance: IdentityProviderInstance | undefined;
 
 	private _samlPreferences: SamlPreferences = {
@@ -48,6 +49,14 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
+		relayState: getInstanceBaseUrl(),
+		signatureConfig: {
+			prefix: 'ds',
+			location: {
+				reference: '/samlp:Response/saml:Issuer',
+				action: 'after',
+			},
+		},
 	};
 
 	public get samlPreferences(): SamlPreferences {
@@ -58,22 +67,14 @@ export class SamlService {
 		};
 	}
 
-	static getInstance(): SamlService {
-		if (!SamlService.instance) {
-			SamlService.instance = new SamlService();
-		}
-		return SamlService.instance;
-	}
-
 	async init(): Promise<void> {
 		await this.loadFromDbAndApplySamlPreferences();
 		setSchemaValidator({
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					return Promise.reject(new Error('Invalid SAML response'));
+					throw new Error('Invalid SAML response');
 				}
-				return Promise.resolve();
 			},
 		});
 	}
@@ -92,7 +93,10 @@ export class SamlService {
 		return getServiceProviderInstance(this._samlPreferences);
 	}
 
-	getLoginRequestUrl(binding?: SamlLoginBinding): {
+	getLoginRequestUrl(
+		relayState?: string,
+		binding?: SamlLoginBinding,
+	): {
 		binding: SamlLoginBinding;
 		context: BindingContext | PostBindingContext;
 	} {
@@ -100,28 +104,29 @@ export class SamlService {
 		if (binding === 'post') {
 			return {
 				binding,
-				context: this.getPostLoginRequestUrl(),
+				context: this.getPostLoginRequestUrl(relayState),
 			};
 		} else {
 			return {
 				binding,
-				context: this.getRedirectLoginRequestUrl(),
+				context: this.getRedirectLoginRequestUrl(relayState),
 			};
 		}
 	}
 
-	private getRedirectLoginRequestUrl(): BindingContext {
-		const loginRequest = this.getServiceProviderInstance().createLoginRequest(
-			this.getIdentityProviderInstance(),
-			'redirect',
-		);
+	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
+		const sp = this.getServiceProviderInstance();
+		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
 		//TODO:SAML: debug logging
 		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
-	private getPostLoginRequestUrl(): PostBindingContext {
-		const loginRequest = this.getServiceProviderInstance().createLoginRequest(
+	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
+		const sp = this.getServiceProviderInstance();
+		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		const loginRequest = sp.createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'post',
 		) as PostBindingContext;
@@ -133,14 +138,11 @@ export class SamlService {
 	async handleSamlLogin(
 		req: express.Request,
 		binding: SamlLoginBinding,
-	): Promise<
-		| {
-				authenticatedUser: User | undefined;
-				attributes: SamlUserAttributes;
-				onboardingRequired: boolean;
-		  }
-		| undefined
-	> {
+	): Promise<{
+		authenticatedUser: User | undefined;
+		attributes: SamlUserAttributes;
+		onboardingRequired: boolean;
+	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const user = await Db.collections.User.findOne({
@@ -148,7 +150,7 @@ export class SamlService {
 				relations: ['globalRole', 'authIdentities'],
 			});
 			if (user) {
-				// Login path for existing users that are fully set up
+				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
 				if (
 					user.authIdentities.find(
 						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
@@ -162,10 +164,11 @@ export class SamlService {
 				} else {
 					// Login path for existing users that are NOT fully set up for SAML
 					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
+					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
-						onboardingRequired: true,
+						onboardingRequired,
 					};
 				}
 			} else {
@@ -180,7 +183,11 @@ export class SamlService {
 				}
 			}
 		}
-		return undefined;
+		return {
+			authenticatedUser: undefined,
+			attributes,
+			onboardingRequired: false,
+		};
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
@@ -189,6 +196,8 @@ export class SamlService {
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
+		this._samlPreferences.signatureConfig =
+			prefs.signatureConfig ?? this._samlPreferences.signatureConfig;
 		this._samlPreferences.authnRequestsSigned =
 			prefs.authnRequestsSigned ?? this._samlPreferences.authnRequestsSigned;
 		this._samlPreferences.wantAssertionsSigned =
@@ -202,13 +211,15 @@ export class SamlService {
 				this._samlPreferences.metadata = fetchedMetadata;
 			}
 		} else if (prefs.metadata) {
+			// remove metadataUrl if metadata is set directly
+			this._samlPreferences.metadataUrl = undefined;
 			const validationResult = await validateMetadata(prefs.metadata);
 			if (!validationResult) {
 				throw new Error('Invalid SAML metadata');
 			}
 			this._samlPreferences.metadata = prefs.metadata;
 		}
-		setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
 		this.getIdentityProviderInstance(true);
 		const result = await this.saveSamlPreferencesToDb();
@@ -292,7 +303,9 @@ export class SamlService {
 			);
 		} catch (error) {
 			// throw error;
-			throw new AuthError('SAML Authentication failed. Could not parse SAML response.');
+			throw new AuthError(
+				`SAML Authentication failed. Could not parse SAML response. ${(error as Error).message}`,
+			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(
 			parsedSamlResponse,

@@ -69,9 +69,9 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
 
-import { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -84,13 +84,22 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
-import { BaseTextKey } from '@/plugins/i18n';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+} from 'n8n-workflow';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useSegment } from '@/stores/segment';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
 import { getMappedResult } from '../utils/mappingUtils';
+
+type ParamterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
+
+const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
 export default mixins(showMessage, externalHooks).extend({
 	name: 'parameter-input-full',
@@ -190,7 +199,8 @@ export default mixins(showMessage, externalHooks).extend({
 				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
-				!this.isInputDataEmpty
+				!this.isInputDataEmpty &&
+				DISPLAY_MODES_WITH_DATA_MAPPING.includes(this.displayMode)
 			);
 		},
 	},
@@ -216,18 +226,17 @@ export default mixins(showMessage, externalHooks).extend({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			const paramRef = this.$refs.param as ParamterInputWrapperRef | undefined;
+			paramRef?.$emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const param = this.$refs.param as Vue | undefined;
+			const paramRef = this.$refs.param as ParamterInputWrapperRef | undefined;
 
 			if (isValueExpression(this.parameter, parameterData.value)) {
-				param?.$emit('optionSelected', 'addExpression');
+				paramRef?.$emit('optionSelected', 'addExpression');
 			}
 		},
 		onDrop(newParamValue: string) {
