@@ -93,10 +93,10 @@ import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useTemplatesStore } from '@/stores/templates';
-import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
 
 interface ISearchEvent {
 	search_string: string;

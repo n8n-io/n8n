@@ -71,13 +71,13 @@
 import { onMounted, ref } from 'vue';
 import Modal from '@/components/Modal.vue';
 import { USER_ACTIVATION_SURVEY_MODAL } from '@/constants';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 
 import confetti from 'canvas-confetti';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@/event-bus';
 
 const FEEDBACK_MAX_LENGTH = 300;

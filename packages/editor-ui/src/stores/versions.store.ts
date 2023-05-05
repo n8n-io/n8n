@@ -2,7 +2,7 @@ import { getNextVersions } from '@/api/versions';
 import { STORES } from '@/constants';
 import type { IVersion, IVersionNotificationSettings, IVersionsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRootStore';
+import { useRootStore } from './n8nRoot.store';
 
 export const useVersionsStore = defineStore(STORES.VERSIONS, {
 	state: (): IVersionsState => ({

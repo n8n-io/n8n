@@ -3,7 +3,7 @@ import type { PropType } from 'vue';
 import { PiniaVuePlugin, createPinia } from 'pinia';
 import { render, screen, fireEvent } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { mockSimplifiedNodeType } from './utils';
 import NodesListPanel from '../Panel/NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';

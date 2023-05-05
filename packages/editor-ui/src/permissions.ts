@@ -6,7 +6,7 @@
 
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useSettingsStore } from './stores/settings';
+import { useSettingsStore } from './stores/settings.store';
 
 export const enum UserRole {
 	InstanceOwner = 'isInstanceOwner',

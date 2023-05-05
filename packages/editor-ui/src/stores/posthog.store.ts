@@ -1,16 +1,16 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags } from 'n8n-workflow';
 import {
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	TEMPLATE_EXPERIMENT,
 } from '@/constants';
-import { useTelemetryStore } from './telemetry';
+import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
 
 const EVENTS = {
