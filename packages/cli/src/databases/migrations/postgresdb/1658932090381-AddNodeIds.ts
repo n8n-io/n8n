@@ -1,15 +1,16 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { v4 as uuid } from 'uuid';
-import { getTablePrefix, runInBatches } from '@db/utils/migrationHelpers';
+import { runInBatches } from '@db/utils/migrationHelpers';
 
 // add node ids in workflow objects
 
-export class AddNodeIds1658932090381 implements MigrationInterface {
-	name = 'AddNodeIds1658932090381';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+export class AddNodeIds1658932090381 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowsQuery = `
 			SELECT id, nodes
 			FROM ${tablePrefix}workflow_entity
@@ -36,14 +37,12 @@ export class AddNodeIds1658932090381 implements MigrationInterface {
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			});
 		});
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		const workflowsQuery = `
 			SELECT id, nodes
 			FROM ${tablePrefix}workflow_entity
@@ -57,16 +56,14 @@ export class AddNodeIds1658932090381 implements MigrationInterface {
 				nodes.forEach((node) => delete node.id);
 
 				const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
-					`
-							UPDATE ${tablePrefix}workflow_entity
-							SET nodes = :nodes
-							WHERE id = '${workflow.id}'
-						`,
+					`UPDATE ${tablePrefix}workflow_entity
+						SET nodes = :nodes
+						WHERE id = '${workflow.id}'`,
 					{ nodes: JSON.stringify(nodes) },
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			});
 		});
 	}
