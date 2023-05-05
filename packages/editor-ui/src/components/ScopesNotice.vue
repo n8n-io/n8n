@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 

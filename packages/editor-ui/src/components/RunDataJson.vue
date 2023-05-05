@@ -79,10 +79,10 @@ import { executionDataToJson, isString, shorten } from '@/utils';
 import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');

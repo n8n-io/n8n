@@ -5,7 +5,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes

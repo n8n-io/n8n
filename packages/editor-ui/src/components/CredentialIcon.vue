@@ -7,9 +7,9 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
