@@ -51,7 +51,6 @@ import type {
 	EndpointGroup,
 	InstalledNodePayload,
 	InstalledPackagePayload,
-	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
 import { registerController } from '@/decorators';
@@ -759,22 +758,6 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 		{ value: JSON.stringify(value) },
 	);
 };
-
-// ----------------------------------
-//              misc
-// ----------------------------------
-
-export function getPostgresSchemaSection(
-	schema = config.getSchema(),
-): PostgresSchemaSection | null {
-	for (const [key, value] of Object.entries(schema)) {
-		if (key === 'postgresdb') {
-			return value._cvtProperties;
-		}
-	}
-
-	return null;
-}
 
 // ----------------------------------
 //           community nodes
