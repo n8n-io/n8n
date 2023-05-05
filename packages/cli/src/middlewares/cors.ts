@@ -11,5 +11,10 @@ export const corsMiddleware: RequestHandler = (req, res, next) => {
 			'Origin, X-Requested-With, Content-Type, Accept, sessionid',
 		);
 	}
-	next();
+
+	if (req.method === 'OPTIONS') {
+		res.writeHead(204).end();
+	} else {
+		next();
+	}
 };

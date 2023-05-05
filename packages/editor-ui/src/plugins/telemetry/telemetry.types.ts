@@ -9,10 +9,6 @@ declare module 'vue/types/vue' {
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
-		posthog: {
-			isFeatureEnabled(flagName: string): boolean;
-			getFeatureFlag(flagName: string): boolean | string;
-		};
 	}
 }
 

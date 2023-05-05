@@ -11,10 +11,12 @@ if (inE2ETests) {
 	process.env = {
 		E2E_TESTS: 'true',
 		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
+		EXECUTIONS_PROCESS: 'main',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		NODE_FUNCTION_ALLOW_EXTERNAL: 'node-fetch',
 	};
 } else if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
@@ -23,11 +25,7 @@ if (inE2ETests) {
 	dotenv.config();
 }
 
-const config = convict(schema);
-
-if (inE2ETests) {
-	config.set('enterprise.features.sharing', true);
-}
+const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;

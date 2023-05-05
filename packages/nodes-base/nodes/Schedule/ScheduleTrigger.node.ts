@@ -1,5 +1,10 @@
-import type { ITriggerFunctions } from 'n8n-core';
-import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
@@ -376,7 +381,7 @@ export class ScheduleTrigger implements INodeType {
 							},
 							{
 								displayName:
-									'You can find help generating your cron expression <a href="http://www.cronmaker.com/?1" target="_blank">here</a>',
+									'You can find help generating your cron expression <a href="https://crontab.guru/examples.html" target="_blank">here</a>',
 								name: 'notice',
 								type: 'notice',
 								displayOptions: {
@@ -457,7 +462,7 @@ export class ScheduleTrigger implements INodeType {
 					cronJobs.push(cronJob);
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
-						description: 'More information on how to build them at http://www.cronmaker.com',
+						description: 'More information on how to build them at https://crontab.guru/',
 					});
 				}
 			}

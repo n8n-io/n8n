@@ -4,7 +4,7 @@ import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
 import type { PropType } from 'vue';
@@ -95,15 +95,15 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
 				const { from, to, text, token } = segment;
 
-				if (token === 'Plaintext') {
-					acc.push({ kind: 'plaintext', from, to, plaintext: text });
+				if (token === 'Resolvable') {
+					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
+
+					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
 
 					return acc;
 				}
 
-				const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-
-				acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+				acc.push({ kind: 'plaintext', from, to, plaintext: text });
 
 				return acc;
 			}, []);
@@ -170,16 +170,21 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			};
 
 			try {
-				if (!useNDVStore().activeNode) {
+				const ndvStore = useNDVStore();
+				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
 				} else {
-					result.resolved = this.resolveExpression('=' + resolvable, undefined, {
-						targetItem: targetItem ?? undefined,
-						inputNodeName: this.ndvStore.ndvInputNodeName,
-						inputRunIndex: this.ndvStore.ndvInputRunIndex,
-						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-					});
+					let opts;
+					if (ndvStore.isInputParentOfActiveNode) {
+						opts = {
+							targetItem: targetItem ?? undefined,
+							inputNodeName: this.ndvStore.ndvInputNodeName,
+							inputRunIndex: this.ndvStore.ndvInputRunIndex,
+							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						};
+					}
+					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

@@ -1,12 +1,12 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber } from '@/utils';
-import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
-import { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
-import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import { Endpoint, Connection } from '@jsplumb/core';
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
+import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
+import type { Endpoint, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
-import {
+import type {
 	IConnection,
 	INode,
 	ITaskData,
@@ -59,17 +59,6 @@ export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
 	parameters: {
 		height: PLACEHOLDER_TRIGGER_NODE_SIZE,
 		width: PLACEHOLDER_TRIGGER_NODE_SIZE,
-	},
-};
-
-export const WELCOME_STICKY_NODE = {
-	name: QUICKSTART_NOTE_NAME,
-	type: STICKY_NODE_TYPE,
-	typeVersion: 1,
-	position: [0, 0] as XYPosition,
-	parameters: {
-		height: 320,
-		width: 380,
 	},
 };
 
@@ -541,7 +530,11 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 	const outputMap: {
 		[sourceOutputIndex: string]: {
 			[targetNodeName: string]: {
-				[targetInputIndex: string]: { total: number; iterations: number };
+				[targetInputIndex: string]: {
+					total: number;
+					iterations: number;
+					isArtificialRecoveredEventItem?: boolean;
+				};
 			};
 		};
 	} = {};
@@ -553,6 +546,13 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 
 		run.data.main.forEach((output: INodeExecutionData[] | null, i: number) => {
 			const sourceOutputIndex = i;
+
+			// executionData that was recovered by recoverEvents in the CLI will have an isArtificialRecoveredEventItem property
+			// to indicate that it was not part of the original executionData
+			// we do not want to count these items in the summary
+			// if (output?.[0]?.json?.isArtificialRecoveredEventItem) {
+			// 	return outputMap;
+			// }
 
 			if (!outputMap[sourceOutputIndex]) {
 				outputMap[sourceOutputIndex] = {};
@@ -589,10 +589,19 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 					};
 				}
 
-				outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output
-					? output.length
-					: 0;
-				outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
+				if (output?.[0]?.json?.isArtificialRecoveredEventItem) {
+					outputMap[sourceOutputIndex][targetNodeName][
+						targetInputIndex
+					].isArtificialRecoveredEventItem = true;
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total = 0;
+				} else {
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output
+						? output.length
+						: 0;
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output
+						? 1
+						: 0;
+				}
 			});
 		});
 	});
@@ -605,6 +614,13 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+};
+
+export const recoveredConnection = (connection: Connection) => {
+	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
+	connection.addClass('success');
+	showOrHideMidpointArrow(connection);
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 };
 
 export const getRunItemsLabel = (output: { total: number; iterations: number }): string => {
@@ -741,6 +757,21 @@ export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 	}
 };
 
+export const addConnectionTestData = (
+	source: HTMLElement,
+	target: HTMLElement,
+	el: HTMLElement | undefined,
+) => {
+	// TODO: Only do this if running in test mode
+	const sourceNodeName = source.getAttribute('data-name')?.toString();
+	const targetNodeName = target.getAttribute('data-name')?.toString();
+
+	if (el && sourceNodeName && targetNodeName) {
+		el.setAttribute('data-source-node', sourceNodeName);
+		el.setAttribute('data-target-node', targetNodeName);
+	}
+};
+
 export const addConnectionActionsOverlay = (
 	connection: Connection,
 	onDelete: Function,
@@ -756,15 +787,13 @@ export const addConnectionActionsOverlay = (
 				const deleteButton = document.createElement('button');
 
 				div.classList.add(OVERLAY_CONNECTION_ACTIONS_ID);
+				addConnectionTestData(component.source, component.target, div);
 				addButton.classList.add('add');
 				deleteButton.classList.add('delete');
-
 				addButton.innerHTML = getIcon('plus');
 				deleteButton.innerHTML = getIcon('trash');
-
 				addButton.addEventListener('click', () => onAdd());
 				deleteButton.addEventListener('click', () => onDelete());
-
 				// We have to manually trigger connection mouse events because the overlay
 				// is not part of the connection element
 				div.addEventListener('mouseout', () =>
@@ -773,7 +802,6 @@ export const addConnectionActionsOverlay = (
 				div.addEventListener('mouseover', () =>
 					connection.instance.fire(EVENT_CONNECTION_MOUSEOVER, component),
 				);
-
 				div.appendChild(addButton);
 				div.appendChild(deleteButton);
 				return div;

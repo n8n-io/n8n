@@ -9,7 +9,7 @@ import type {
 	IWorkflowStatisticsDataLoaded,
 	IWorkflowStatisticsTimestamps,
 } from '@/Interfaces';
-import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
 import type { ExecutionRequest } from '../requests';
 
@@ -38,7 +38,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 }
 
 /**
- * Initialise Logger if needed
+ * Initialize Logger if needed
  */
 workflowStatsController.use((req, res, next) => {
 	try {

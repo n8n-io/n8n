@@ -2,7 +2,6 @@ import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy, LoggerProxy } from 'n8n-workflow';
 import * as Db from '@/Db';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
@@ -10,6 +9,8 @@ import type { CredentialRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import type { CredentialWithSharings } from './credentials.types';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
@@ -174,7 +175,7 @@ EECredentialsController.put(
 			}
 		});
 
-		void InternalHooksManager.getInstance().onUserSharedCredentials({
+		void Container.get(InternalHooks).onUserSharedCredentials({
 			user: req.user,
 			credential_name: credential.name,
 			credential_type: credential.type,

@@ -325,6 +325,16 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
 		},
+
+		// Additional pruning option to delete executions if total count exceeds the configured max.
+		// Deletes the oldest entries first
+		// Default is 0 = No limit
+		pruneDataMaxCount: {
+			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			format: Number,
+			default: 0,
+			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
+		},
 	},
 
 	queue: {
@@ -803,6 +813,11 @@ export const schema = {
 				},
 			},
 		},
+		authenticationMethod: {
+			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
+			format: ['email', 'ldap', 'saml'] as const,
+			default: 'email',
+		},
 	},
 
 	externalFrontendHooksUrls: {
@@ -925,6 +940,15 @@ export const schema = {
 		},
 	},
 
+	push: {
+		backend: {
+			format: ['sse', 'websocket'] as const,
+			default: 'sse',
+			env: 'N8N_PUSH_BACKEND',
+			doc: 'Backend to use for push notifications',
+		},
+	},
+
 	binaryDataManager: {
 		availableModes: {
 			format: String,
@@ -966,31 +990,37 @@ export const schema = {
 		},
 	},
 
-	enterprise: {
-		features: {
-			sharing: {
-				format: Boolean,
-				default: false,
-			},
-			ldap: {
-				format: Boolean,
-				default: false,
-			},
-			logStreaming: {
-				format: Boolean,
-				default: false,
-			},
-		},
-	},
-
-	ldap: {
-		loginEnabled: {
+	sso: {
+		justInTimeProvisioning: {
 			format: Boolean,
-			default: false,
+			default: true,
+			doc: 'Whether to automatically create users when they login via SSO.',
 		},
-		loginLabel: {
-			format: String,
-			default: '',
+		redirectLoginToSso: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
+		},
+		saml: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+				doc: 'Whether to enable SAML SSO.',
+			},
+			loginLabel: {
+				format: String,
+				default: '',
+			},
+		},
+		ldap: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+			},
+			loginLabel: {
+				format: String,
+				default: '',
+			},
 		},
 	},
 
@@ -1012,6 +1042,15 @@ export const schema = {
 		},
 	},
 
+	userActivationSurvey: {
+		enabled: {
+			doc: 'Whether user activation survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
+		},
+	},
+
 	diagnostics: {
 		enabled: {
 			doc: 'Whether diagnostic mode is enabled.',
@@ -1030,7 +1069,7 @@ export const schema = {
 				apiHost: {
 					doc: 'API host for PostHog',
 					format: String,
-					default: 'https://app.posthog.com',
+					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
 				disableSessionRecording: {
@@ -1091,7 +1130,7 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether autorenew for licenses is enabled.',
+			doc: 'Whether auto renewal for licenses is enabled.',
 		},
 		autoRenewOffset: {
 			format: Number,
@@ -1110,6 +1149,12 @@ export const schema = {
 			default: 1,
 			env: 'N8N_LICENSE_TENANT_ID',
 			doc: 'Tenant id used by the license manager',
+		},
+		cert: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_CERT',
+			doc: 'Ephemeral license certificate',
 		},
 	},
 
@@ -1137,7 +1182,7 @@ export const schema = {
 			maxFileSizeInKB: {
 				doc: 'Maximum size of an event log file before a new one is started.',
 				format: Number,
-				default: 102400, // 100MB
+				default: 10240, // 10MB
 				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
 			},
 			logBaseName: {

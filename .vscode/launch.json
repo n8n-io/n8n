@@ -39,7 +39,7 @@
 			"name": "Launch n8n CLI dev with debug",
 			"runtimeExecutable": "pnpm",
 			"cwd": "${workspaceFolder}/packages/cli",
-			"runtimeArgs": ["run", "dev", "--", "--inspect-brk"],
+			"runtimeArgs": ["run", "buildAndDev", "--", "--inspect-brk"],
 			"console": "integratedTerminal",
 			"restart": true,
 			"autoAttachChildProcesses": true,

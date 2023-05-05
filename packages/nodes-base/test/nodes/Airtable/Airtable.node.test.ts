@@ -1,11 +1,7 @@
-import { INodeType } from 'n8n-workflow';
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
-import { WorkflowTestData } from '../types';
+import type { WorkflowTestData } from '../types';
 import nock from 'nock';
-
-import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
-import { Airtable } from '../../../nodes/Airtable/Airtable.node';
 
 const records = [
 	{
@@ -30,7 +26,7 @@ describe('Execute Airtable Node', () => {
 		nock.restore();
 	});
 
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'List Airtable Records',
 			input: {
@@ -38,14 +34,13 @@ describe('Execute Airtable Node', () => {
 			},
 			output: {
 				nodeData: {
-					Airtable: [[...records]],
+					Airtable: [[...records.map((r) => ({ json: r }))]],
 				},
 			},
 		},
 	];
 
-	const nodes: INodeType[] = [new ManualTrigger(), new Airtable()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {

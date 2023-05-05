@@ -4,11 +4,9 @@ import { createHash } from 'crypto';
 
 import { Builder } from 'xml2js';
 
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -201,7 +199,7 @@ export class AwsS3 implements INodeType {
 							responseData = responseData.slice(0, qs.limit);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -221,8 +219,8 @@ export class AwsS3 implements INodeType {
 							qs['encoding-type'] = additionalFields.encodingType as string;
 						}
 
-						if (additionalFields.delmiter) {
-							qs.delimiter = additionalFields.delmiter as string;
+						if (additionalFields.delimiter) {
+							qs.delimiter = additionalFields.delimiter as string;
 						}
 
 						if (additionalFields.fetchOwner) {
@@ -274,7 +272,7 @@ export class AwsS3 implements INodeType {
 							responseData = responseData.ListBucketResult.Contents;
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -314,7 +312,7 @@ export class AwsS3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region,
+							region as string,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -343,7 +341,7 @@ export class AwsS3 implements INodeType {
 							{ 'list-type': 2, prefix: folderKey },
 							{},
 							{},
-							region,
+							region as string,
 						);
 
 						// folder empty then just delete it
@@ -357,7 +355,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 
 							responseData = { deleted: [{ Key: folderKey }] };
@@ -395,7 +393,7 @@ export class AwsS3 implements INodeType {
 								{ delete: '' },
 								headers,
 								{},
-								region,
+								region as string,
 							);
 
 							responseData = { deleted: responseData.DeleteResult.Deleted };
@@ -439,7 +437,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -453,7 +451,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						}
 						if (Array.isArray(responseData)) {
@@ -574,10 +572,10 @@ export class AwsS3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region,
+							region as string,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.CopyObjectResult),
+							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -593,7 +591,7 @@ export class AwsS3 implements INodeType {
 						if (fileKey.substring(fileKey.length - 1) === '/') {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Downloding a whole directory is not yet supported, please provide a file key',
+								'Downloading a whole directory is not yet supported, please provide a file key',
 							);
 						}
 
@@ -612,7 +610,7 @@ export class AwsS3 implements INodeType {
 							qs,
 							{},
 							{ encoding: null, resolveWithFullResponse: true },
-							region,
+							region as string,
 						);
 
 						let mimeType: string | undefined;
@@ -671,7 +669,7 @@ export class AwsS3 implements INodeType {
 							qs,
 							{},
 							{},
-							region,
+							region as string,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -714,7 +712,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -728,7 +726,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 							responseData = responseData.splice(0, qs.limit);
 						}
@@ -836,23 +834,8 @@ export class AwsS3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
-
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 								i,
 								binaryPropertyName,
@@ -860,7 +843,7 @@ export class AwsS3 implements INodeType {
 
 							body = binaryDataBuffer;
 
-							headers['Content-Type'] = binaryData.mimeType;
+							headers['Content-Type'] = binaryPropertyData.mimeType;
 
 							headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
 
@@ -868,12 +851,12 @@ export class AwsS3 implements INodeType {
 								this,
 								`${bucketName}.s3`,
 								'PUT',
-								`${path}${fileName || binaryData.fileName}`,
+								`${path}${fileName || binaryPropertyData.fileName}`,
 								body,
 								qs,
 								headers,
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
@@ -893,7 +876,7 @@ export class AwsS3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region,
+								region as string,
 							);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(

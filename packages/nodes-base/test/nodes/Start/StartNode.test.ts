@@ -1,11 +1,9 @@
-import { INodeType } from 'n8n-workflow';
 import * as Helpers from '../Helpers';
-import { Start } from '../../../nodes/Start/Start.node';
-import { WorkflowTestData } from '../types';
+import type { WorkflowTestData } from '../types';
 import { executeWorkflow } from '../ExecuteWorkflow';
 
 describe('Execute Start Node', () => {
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'should run start node',
 			input: {
@@ -30,8 +28,7 @@ describe('Execute Start Node', () => {
 		},
 	];
 
-	const nodes: INodeType[] = [new Start()];
-	const nodeTypes = Helpers.setup(nodes);
+	const nodeTypes = Helpers.setup(tests);
 
 	for (const testData of tests) {
 		test(testData.description, async () => {

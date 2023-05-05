@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -66,6 +65,9 @@ export class Snowflake implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				typeOptions: {
+					editor: 'sqlEditor',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],

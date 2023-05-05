@@ -5,6 +5,7 @@
 		:ref="data.name"
 		:style="stickyPosition"
 		:data-name="data.name"
+		data-test-id="sticky"
 	>
 		<div
 			:class="{
@@ -41,7 +42,12 @@
 			</div>
 
 			<div v-show="showActions" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					data-test-id="delete-sticky"
+					:title="$locale.baseText('node.deleteNode')"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
 			</div>
@@ -57,21 +63,21 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { getStyleTokenValue, isNumber, isString } from '@/utils';
-import {
+import { isNumber, isString } from '@/utils';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
 
-import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',

@@ -16,7 +16,7 @@
 import type express from 'express';
 import get from 'lodash.get';
 
-import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
+import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
 import type {
 	IBinaryKeyData,
@@ -35,6 +35,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
@@ -52,10 +53,11 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { Container } from 'typedi';
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -460,7 +462,7 @@ export async function executeWebhook(
 		);
 
 		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = ActiveExecutions.getInstance().getPostExecutePromise(
+		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
 			executionId,
 		) as Promise<IExecutionDb | undefined>;
 		executePromise

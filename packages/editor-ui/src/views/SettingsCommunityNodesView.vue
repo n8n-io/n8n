@@ -35,14 +35,10 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.communityNodes.empty.title')"
 				:description="getEmptyStateDescription"
-				:buttonText="
-					shouldShowInstallButton
-						? $locale.baseText('settings.communityNodes.empty.installPackageLabel')
-						: ''
-				"
+				:buttonText="getEmptyStateButtonText"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="openInstallModal"
+				@click="onClickEmptyStateButton"
 			/>
 		</div>
 		<div :class="$style.cardsContainer" v-else>
@@ -63,17 +59,18 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { showMessage } from '@/mixins/showMessage';
+import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { useUIStore } from '@/stores/ui';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, pushConnection).extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
 		CommunityPackageCard,
@@ -84,6 +81,9 @@ export default mixins(showMessage).extend({
 		};
 	},
 	async mounted() {
+		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
+		this.pushConnect();
+
 		try {
 			this.$data.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
@@ -127,10 +127,18 @@ export default mixins(showMessage).extend({
 			this.$data.loading = false;
 		}
 	},
+	beforeDestroy() {
+		this.pushDisconnect();
+	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
-		getEmptyStateDescription() {
+		getEmptyStateDescription(): string {
 			const packageCount = this.communityNodesStore.availablePackageCount;
+
+			if (this.settingsStore.isDesktopDeployment) {
+				return this.$locale.baseText('contextual.communityNodes.unavailable.description.desktop');
+			}
+
 			return packageCount < PACKAGE_COUNT_THRESHOLD
 				? this.$locale.baseText('settings.communityNodes.empty.description.no-packages', {
 						interpolate: {
@@ -144,18 +152,23 @@ export default mixins(showMessage).extend({
 						},
 				  });
 		},
-		shouldShowInstallButton() {
-			return !this.settingsStore.isDesktopDeployment && this.settingsStore.isNpmAvailable;
-		},
-		actionBoxConfig() {
+		getEmptyStateButtonText(): string {
 			if (this.settingsStore.isDesktopDeployment) {
-				return {
-					calloutText: this.$locale.baseText('settings.communityNodes.notAvailableOnDesktop'),
-					calloutTheme: 'warning',
-					hideButton: true,
-				};
+				return this.$locale.baseText('contextual.communityNodes.unavailable.button.desktop');
 			}
 
+			return this.shouldShowInstallButton
+				? this.$locale.baseText('settings.communityNodes.empty.installPackageLabel')
+				: '';
+		},
+		shouldShowInstallButton(): boolean {
+			return this.settingsStore.isDesktopDeployment || this.settingsStore.isNpmAvailable;
+		},
+		actionBoxConfig(): {
+			calloutText: string;
+			calloutTheme: 'warning' | string;
+			hideButton: boolean;
+		} {
 			if (!this.settingsStore.isNpmAvailable) {
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.npmUnavailable.warning', {
@@ -184,7 +197,21 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		openInstallModal(event: MouseEvent) {
+		onClickEmptyStateButton(): void {
+			if (this.settingsStore.isDesktopDeployment) {
+				return this.goToUpgrade();
+			}
+
+			this.openInstallModal();
+		},
+		goToUpgrade(): void {
+			const linkUrl = `${this.$locale.baseText(
+				'contextual.upgradeLinkUrl.desktop',
+			)}&utm_campaign=upgrade-community-nodes&selfHosted=true`;
+
+			window.open(linkUrl, '_blank');
+		},
+		openInstallModal(): void {
 			const telemetryPayload = {
 				is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0,
 			};

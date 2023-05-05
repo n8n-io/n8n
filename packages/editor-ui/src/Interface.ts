@@ -1,7 +1,7 @@
-import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IMenuItem } from 'n8n-design-system';
-import {
+import type { IMenuItem } from 'n8n-design-system';
+import type {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -17,7 +17,6 @@ import {
 	IRun,
 	IRunData,
 	ITaskData,
-	ITelemetrySettings,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
@@ -26,15 +25,64 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
-	INodeActionTypeDescription,
 	IDisplayOptions,
-	IAbstractEventMessage,
+	IExecutionsSummary,
+	FeatureFlags,
+	ExecutionStatus,
+	ITelemetryTrackProperties,
+	IN8nUISettings,
+	IUserManagementSettings,
+	WorkflowSettings,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
-import { SignInType } from './constants';
-import { BulkCommand, Undoable } from '@/models/history';
+import type { SignInType } from './constants';
+import type {
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+} from './constants';
+import type { BulkCommand, Undoable } from '@/models/history';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
+
+declare global {
+	interface Window {
+		posthog?: {
+			init(
+				key: string,
+				options?: {
+					api_host?: string;
+					autocapture?: boolean;
+					disable_session_recording?: boolean;
+					debug?: boolean;
+					bootstrap?: {
+						distinctId?: string;
+						isIdentifiedID?: boolean;
+						featureFlags: FeatureFlags;
+					};
+				},
+			): void;
+			isFeatureEnabled?(flagName: string): boolean;
+			getFeatureFlag?(flagName: string): boolean | string;
+			identify?(
+				id: string,
+				userProperties?: Record<string, string | number>,
+				userPropertiesOnce?: Record<string, string>,
+			): void;
+			reset?(resetDeviceId?: boolean): void;
+			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
+			reloadFeatureFlags?(): void;
+		};
+		analytics?: {
+			track(event: string, proeprties?: ITelemetryTrackProperties): void;
+		};
+		featureFlags?: {
+			getAll: () => FeatureFlags;
+			getVariant: (name: string) => string | boolean | undefined;
+			override: (name: string, value: string) => void;
+		};
+	}
+}
 
 export type EndpointStyle = {
 	width?: number;
@@ -91,43 +139,6 @@ export interface INodeTypesMaxCount {
 
 export interface IExternalHooks {
 	run(eventName: string, metadata?: IDataObject): Promise<void>;
-}
-
-/**
- * @deprecated Do not add methods to this interface.
- */
-export interface IRestApi {
-	getActiveWorkflows(): Promise<string[]>;
-	getActivationError(id: string): Promise<IActivationError | undefined>;
-	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(
-		filter: object,
-		limit: number,
-		lastId?: string,
-		firstId?: string,
-	): Promise<IExecutionsListResponse>;
-	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
-	getCredentialTranslation(credentialType: string): Promise<object>;
-	removeTestWebhook(workflowId: string): Promise<boolean>;
-	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
-	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
-	updateWorkflow(id: string, data: IWorkflowDataUpdate, forceSave?: boolean): Promise<IWorkflowDb>;
-	deleteWorkflow(name: string): Promise<void>;
-	getWorkflow(id: string): Promise<IWorkflowDb>;
-	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
-	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	getExecution(id: string): Promise<IExecutionResponse | undefined>;
-	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
-	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
-	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(
-		dataPath: string,
-		mode: 'view' | 'download',
-		fileName?: string,
-		mimeType?: string,
-	): string;
-	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
 export interface INodeTranslationHeaders {
@@ -350,24 +361,12 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
-}
-
-export interface IExecutionsSummary {
-	id: string;
-	mode: WorkflowExecuteMode;
-	finished?: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
-	filters?: IDataObject;
+	filters?: ExecutionsQueryFilter;
 	ids?: string[];
 }
 
@@ -379,7 +378,13 @@ export type IPushData =
 	| PushDataConsoleMessage
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
-	| PushDataTestWebhook;
+	| PushDataTestWebhook
+	| PushDataExecutionRecovered;
+
+type PushDataExecutionRecovered = {
+	data: IPushDataExecutionRecovered;
+	type: 'executionRecovered';
+};
 
 type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
@@ -428,6 +433,9 @@ export interface IPushDataExecutionStarted {
 	retryOf?: string;
 	workflowId: string;
 	workflowName?: string;
+}
+export interface IPushDataExecutionRecovered {
+	executionId: string;
 }
 
 export interface IPushDataExecutionFinished {
@@ -509,9 +517,28 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSm?: string[] | null;
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
+	email?: string | null;
 };
 
-export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
+export type IPersonalizationSurveyAnswersV4 = {
+	version: 'v4';
+	automationGoalDevops?: string[] | null;
+	automationGoalDevopsOther?: string | null;
+	companyIndustryExtended?: string[] | null;
+	otherCompanyIndustryExtended?: string[] | null;
+	companySize?: string | null;
+	companyType?: string | null;
+	automationGoalSm?: string[] | null;
+	automationGoalSmOther?: string | null;
+	usageModes?: string[] | null;
+	email?: string | null;
+	role?: string | null;
+	roleOther?: string | null;
+	reportedSource?: string | null;
+	reportedSourceOther?: string | null;
+};
+
+export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
@@ -525,6 +552,7 @@ export interface IUserResponse {
 	firstName?: string;
 	lastName?: string;
 	email?: string;
+	createdAt?: string;
 	globalRole?: {
 		name: IRole;
 		id: string;
@@ -533,6 +561,16 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
+	settings?: {
+		isOnboarded?: boolean;
+		showUserActivationSurvey?: boolean;
+		firstSuccessfulWorkflowId?: string;
+		userActivated?: boolean;
+	};
+}
+
+export interface CurrentUserResponse extends IUserResponse {
+	featureFlags?: FeatureFlags;
 }
 
 export interface IUser extends IUserResponse {
@@ -541,7 +579,6 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
-	createdAt?: Date;
 }
 
 export interface IVersionNotificationSettings {
@@ -565,10 +602,10 @@ export interface IN8nPromptResponse {
 	updated: boolean;
 }
 
-export interface IUserManagementConfig {
-	enabled: boolean;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
+export const enum UserManagementAuthenticationMethod {
+	Email = 'email',
+	Ldap = 'ldap',
+	Saml = 'saml',
 }
 
 export interface IPermissionGroup {
@@ -655,78 +692,14 @@ export interface ITemplatesCategory {
 
 export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
 
-export interface IN8nUISettings {
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
-	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
-	timezone: string;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	urlBaseEditor: string;
-	urlBaseWebhook: string;
-	versionCli: string;
-	n8nMetadata?: {
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
-	instanceId: string;
-	personalizationSurveyEnabled: boolean;
-	telemetry: ITelemetrySettings;
-	userManagement: IUserManagementConfig;
-	defaultLocale: string;
-	workflowTagsDisabled: boolean;
-	logLevel: ILogLevel;
-	hiringBannerEnabled: boolean;
-	templates: {
-		enabled: boolean;
-		host: string;
-	};
-	executionMode: string;
-	communityNodesEnabled: boolean;
-	isNpmAvailable: boolean;
-	publicApi: {
-		enabled: boolean;
-		latestVersion: number;
-		path: string;
-		swaggerUi: {
-			enabled: boolean;
-		};
-	};
-	ldap: {
-		loginLabel: string;
-		loginEnabled: boolean;
-	};
-	onboardingCallPromptEnabled: boolean;
-	allowedModules: {
-		builtIn?: string[];
-		external?: string[];
-	};
-	enterprise: Record<string, boolean>;
-	deployment?: {
-		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
-	};
-	hideUsagePage: boolean;
-	license: {
-		environment: 'development' | 'production';
-	};
-}
-
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
-	saveDataErrorExecution?: string;
-	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+	maxExecutionTimeout?: number;
 	callerIds?: string;
-	callerPolicy?: WorkflowCallerPolicyDefaultOption;
+	callerPolicy?: WorkflowSettings.CallerPolicy;
 }
 
 export interface ITimeoutHMS {
@@ -737,76 +710,98 @@ export interface ITimeoutHMS {
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 
-export interface ISubcategoryItemProps {
-	subcategory: string;
-	description: string;
-	key?: string;
+export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
+
+export type ActionsRecord<T extends SimplifiedNodeType[]> = {
+	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
+};
+
+export interface SimplifiedNodeType
+	extends Pick<
+		INodeTypeDescription,
+		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+	> {}
+export interface SubcategoryItemProps {
+	description?: string;
+	iconType?: string;
 	icon?: string;
+	title?: string;
+	subcategory?: string;
 	defaults?: INodeParameters;
-	iconData?: {
-		type: string;
-		icon?: string;
-		fileBuffer?: string;
+	forceIncludeNodes?: string[];
+}
+export interface ViewItemProps {
+	title: string;
+	description: string;
+	icon: string;
+}
+export interface LabelItemProps {
+	key: string;
+}
+export interface ActionTypeDescription extends SimplifiedNodeType {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
+	codex: {
+		label: string;
+		categories: string[];
 	};
 }
 
-export interface INodeItemProps {
-	subcategory: string;
-	nodeType: INodeTypeDescription;
-}
-
-export interface IActionItemProps {
-	subcategory: string;
-	nodeType: INodeActionTypeDescription;
-}
-
-export interface ICategoryItemProps {
-	expanded: boolean;
+export interface CategoryItemProps {
+	name: string;
+	count: number;
 }
 
 export interface CreateElementBase {
-	category: string;
+	uuid?: string;
 	key: string;
-	includedByTrigger?: boolean;
-	includedByRegular?: boolean;
 }
 
 export interface NodeCreateElement extends CreateElementBase {
 	type: 'node';
-	properties: INodeItemProps;
+	subcategory: string;
+	properties: SimplifiedNodeType;
 }
 
 export interface CategoryCreateElement extends CreateElementBase {
 	type: 'category';
-	properties: ICategoryItemProps;
+	subcategory: string;
+	properties: CategoryItemProps;
 }
 
 export interface SubcategoryCreateElement extends CreateElementBase {
 	type: 'subcategory';
-	properties: ISubcategoryItemProps;
+	properties: SubcategoryItemProps;
+}
+export interface ViewCreateElement extends CreateElementBase {
+	type: 'view';
+	properties: ViewItemProps;
+}
+
+export interface LabelCreateElement extends CreateElementBase {
+	type: 'label';
+	subcategory: string;
+	properties: LabelItemProps;
 }
 
 export interface ActionCreateElement extends CreateElementBase {
 	type: 'action';
-	properties: IActionItemProps;
+	subcategory: string;
+	properties: ActionTypeDescription;
 }
 
 export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
 	| SubcategoryCreateElement
+	| ViewCreateElement
+	| LabelCreateElement
 	| ActionCreateElement;
 
-export interface ICategoriesWithNodes {
-	[category: string]: {
-		[subcategory: string]: {
-			regularCount: number;
-			triggerCount: number;
-			nodes: INodeCreateElement[];
-		};
-	};
+export interface SubcategorizedNodeTypes {
+	[subcategory: string]: INodeCreateElement[];
 }
-
 export interface ITag {
 	id: string;
 	name: string;
@@ -889,6 +884,7 @@ export interface WorkflowsState {
 
 export interface RootState {
 	baseUrl: string;
+	restEndpoint: string;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -1042,6 +1038,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	isMappingOnboarded: boolean;
 }
 
 export interface UIState {
@@ -1072,9 +1069,6 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 }
-
-export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
-
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;
@@ -1093,19 +1087,30 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
+export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW;
+
+export type NodeCreatorOpenSource =
+	| ''
+	| 'no_trigger_execution_tooltip'
+	| 'plus_endpoint'
+	| 'trigger_placeholder_button'
+	| 'tab'
+	| 'node_connection_action'
+	| 'node_connection_drop'
+	| 'add_node_button';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
-	showTabs: boolean;
 	showScrim: boolean;
-	selectedType: INodeFilterType;
+	rootViewHistory: NodeFilterType[];
+	selectedView: NodeFilterType;
+	openSource: NodeCreatorOpenSource;
 }
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
-	userManagement: IUserManagementConfig;
+	userManagement: IUserManagementSettings;
 	templatesEndpointHealthy: boolean;
 	api: {
 		enabled: boolean;
@@ -1116,6 +1121,10 @@ export interface ISettingsState {
 		};
 	};
 	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
 	};
@@ -1348,4 +1357,89 @@ export type NodeAuthenticationOption = {
 	name: string;
 	value: string;
 	displayOptions?: IDisplayOptions;
+};
+
+export interface EnvironmentVariable {
+	id: number;
+	key: string;
+	value: string;
+}
+
+export interface TemporaryEnvironmentVariable extends Omit<EnvironmentVariable, 'id'> {
+	id: string;
+}
+
+export type ExecutionFilterMetadata = {
+	key: string;
+	value: string;
+};
+
+export type ExecutionFilterType = {
+	status: string;
+	workflowId: string;
+	startDate: string | Date;
+	endDate: string | Date;
+	tags: string[];
+	metadata: ExecutionFilterMetadata[];
+};
+
+export type ExecutionsQueryFilter = {
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	finished?: boolean;
+	waitTill?: boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
+};
+
+export type SamlAttributeMapping = {
+	email: string;
+	firstName: string;
+	lastName: string;
+	userPrincipalName: string;
+};
+
+export type SamlLoginBinding = 'post' | 'redirect';
+
+export type SamlSignatureConfig = {
+	prefix: 'ds';
+	location: {
+		reference: '/samlp:Response/saml:Issuer';
+		action: 'after';
+	};
+};
+
+export type SamlPreferencesLoginEnabled = {
+	loginEnabled: boolean;
+};
+
+export type SamlPreferences = {
+	mapping?: SamlAttributeMapping;
+	metadata?: string;
+	metadataUrl?: string;
+	ignoreSSL?: boolean;
+	loginBinding?: SamlLoginBinding;
+	acsBinding?: SamlLoginBinding;
+	authnRequestsSigned?: boolean;
+	loginLabel?: string;
+	wantAssertionsSigned?: boolean;
+	wantMessageSigned?: boolean;
+	signatureConfig?: SamlSignatureConfig;
+} & PartialBy<SamlPreferencesLoginEnabled, 'loginEnabled'>;
+
+export type SamlPreferencesExtractedData = {
+	entityID: string;
+	returnUrl: string;
+};
+
+export type VersionControlPreferences = {
+	connected: boolean;
+	repositoryUrl: string;
+	authorName: string;
+	authorEmail: string;
+	branchName: string;
+	branchReadOnly: boolean;
+	branchColor: string;
+	publicKey?: string;
 };

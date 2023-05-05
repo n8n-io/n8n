@@ -61,6 +61,7 @@
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				data-test-id="credential-sharing-modal-users-select"
 				@input="onAddSharee"
 			>
 				<template #prefix>
@@ -79,15 +80,15 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction, UIState } from '@/Interface';
+import type { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useUsageStore } from '@/stores/usage';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 export default mixins(showMessage).extend({
@@ -135,7 +136,7 @@ export default mixins(showMessage).extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 	},
 	methods: {
@@ -176,15 +177,10 @@ export default mixins(showMessage).extend({
 		},
 		goToUsersSettings() {
 			this.$router.push({ name: VIEWS.USERS_SETTINGS });
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl);
-			if (linkUrl.includes('subscription')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=credential_sharing`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
 	},
 	mounted() {
