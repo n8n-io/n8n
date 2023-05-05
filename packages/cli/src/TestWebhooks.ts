@@ -55,6 +55,8 @@ export class TestWebhooks {
 		// Reset request parameters
 		request.params = {};
 
+		path = path.split(/[?#]/)[0];
+
 		// Remove trailing slash
 		if (path.endsWith('/')) {
 			path = path.slice(0, -1);
@@ -81,9 +83,19 @@ export class TestWebhooks {
 				);
 
 				for (const webhook of webhooks) {
+					/**
+					 * @TODO: move the removal from hashtag,querystring and trailing slash to where the webhook( including its path ) will be saved
+					 */
+					let webhookPath = webhook.path.split(/[?#]/)[0];
+
+					// remove trailing slash
+					if (webhookPath.endsWith('/')) {
+						webhookPath = webhookPath.slice(0, -1);
+					}
+
 					// using this approach means that all webhooks in all workflows must have a unique path to avoid matching a request to the wrong webhook
 					// which in this case the first one that matches is selected
-					if (new UrlPattern(webhook.path.split(/[?#]/)[0]).match(path.split(/[?#]/)[0])) {
+					if (new UrlPattern(webhookPath).match(path)) {
 						webhookId = webhook.webhookId;
 						break;
 					}
@@ -235,6 +247,13 @@ export class TestWebhooks {
 		const activatedKey: string[] = [];
 		// eslint-disable-next-line no-restricted-syntax
 		for (const webhookData of webhooks) {
+			webhookData.path = webhookData.path.split(/[?#]/)[0];
+
+			// remove trailing
+			if (webhookData.path.endsWith('/')) {
+				webhookData.path = webhookData.path.slice(0, -1);
+			}
+
 			key = `${activeWebhooks.getWebhookKey(
 				webhookData.httpMethod,
 				webhookData.path,
