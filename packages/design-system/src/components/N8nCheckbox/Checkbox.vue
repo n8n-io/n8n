@@ -10,6 +10,7 @@
 	>
 		<slot></slot>
 		<n8n-input-label
+			v-if="label"
 			:label="label"
 			:tooltipText="tooltipText"
 			:bold="false"
