@@ -26,7 +26,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import type { IWorkflowDb } from '../Interface';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',

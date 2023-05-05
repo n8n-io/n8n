@@ -54,7 +54,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { abbreviateNumber, filterTemplateNodes } from '@/utils';
 import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 export default defineComponent({
 	name: 'TemplateDetails',

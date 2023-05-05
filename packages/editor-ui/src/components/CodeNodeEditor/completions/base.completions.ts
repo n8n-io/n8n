@@ -5,9 +5,9 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-function getAutocompletableNodeNames(nodes: INodeUi[]) {
+function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
 		.filter((node: INodeUi) => !NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type))
 		.map((node: INodeUi) => node.name);
@@ -49,54 +49,55 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 * - Complete `$` to `$json $binary $itemIndex` in single-item mode.
 		 */
 		baseCompletions(context: CompletionContext): CompletionResult | null {
-			const preCursor = context.matchBefore(/\$\w*/);
+			const prefix = this.language === 'python' ? '_' : '$';
+			const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\w*`));
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
 			const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
 				{
-					label: '$execution',
+					label: `${prefix}execution`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$execution'),
 				},
-				{ label: '$input', info: this.$locale.baseText('codeNodeEditor.completer.$input') },
+				{ label: `${prefix}input`, info: this.$locale.baseText('codeNodeEditor.completer.$input') },
 				{
-					label: '$prevNode',
+					label: `${prefix}prevNode`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$prevNode'),
 				},
 				{
-					label: '$workflow',
+					label: `${prefix}workflow`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$workflow'),
 				},
 				{
-					label: '$vars',
+					label: `${prefix}vars`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$vars'),
 				},
 				{
-					label: '$now',
+					label: `${prefix}now`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$now'),
 				},
 				{
-					label: '$today',
+					label: `${prefix}today`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$today'),
 				},
 				{
-					label: '$jmespath()',
+					label: `${prefix}jmespath()`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$jmespath'),
 				},
 				{
-					label: '$if()',
+					label: `${prefix}if()`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$if'),
 				},
 				{
-					label: '$min()',
+					label: `${prefix}min()`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$min'),
 				},
 				{
-					label: '$max()',
+					label: `${prefix}max()`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$max'),
 				},
 				{
-					label: '$runIndex',
+					label: `${prefix}runIndex`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$runIndex'),
 				},
 			];
@@ -104,9 +105,9 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
 			options.push(
-				...getAutocompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
+				...getAutoCompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
 					return {
-						label: `$('${nodeName}')`,
+						label: `${prefix}('${nodeName}')`,
 						type: 'variable',
 						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
 							interpolate: { nodeName },
@@ -117,10 +118,10 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (this.mode === 'runOnceForEachItem') {
 				const TOP_LEVEL_COMPLETIONS_IN_SINGLE_ITEM_MODE = [
-					{ label: '$json' },
-					{ label: '$binary' },
+					{ label: `${prefix}json` },
+					{ label: `${prefix}binary` },
 					{
-						label: '$itemIndex',
+						label: `${prefix}itemIndex`,
 						info: this.$locale.baseText('codeNodeEditor.completer.$itemIndex'),
 					},
 				];
@@ -138,14 +139,15 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 * Complete `$(` to `$('nodeName')`.
 		 */
 		nodeSelectorCompletions(context: CompletionContext): CompletionResult | null {
-			const preCursor = context.matchBefore(/\$\(.*/);
+			const prefix = this.language === 'python' ? '_' : '$';
+			const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\(.*`));
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = getAutocompletableNodeNames(this.workflowsStore.allNodes).map(
+			const options: Completion[] = getAutoCompletableNodeNames(this.workflowsStore.allNodes).map(
 				(nodeName) => {
 					return {
-						label: `$('${nodeName}')`,
+						label: `${prefix}('${nodeName}')`,
 						type: 'variable',
 						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
 							interpolate: { nodeName },

@@ -262,26 +262,26 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
-import { useSegment } from '@/stores/segment';
-import { useTemplatesStore } from '@/stores/templates';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useTagsStore } from '@/stores/tags';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { useCanvasStore } from '@/stores/canvas';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useEnvironmentsStore } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
-import { useHistoryStore } from '@/stores/history';
+import { useHistoryStore } from '@/stores/history.store';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -1672,13 +1672,19 @@ export default mixins(
 		},
 
 		async getNewNodeWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
+			let nodeVersion = nodeTypeData.defaultVersion;
+
+			if (nodeVersion === undefined) {
+				nodeVersion = Array.isArray(nodeTypeData.version)
+					? nodeTypeData.version.slice(-1)[0]
+					: nodeTypeData.version;
+			}
+
 			const newNodeData: INodeUi = {
 				id: uuid(),
 				name: nodeTypeData.defaults.name as string,
 				type: nodeTypeData.name,
-				typeVersion: Array.isArray(nodeTypeData.version)
-					? nodeTypeData.version.slice(-1)[0]
-					: nodeTypeData.version,
+				typeVersion: nodeVersion,
 				position: [0, 0],
 				parameters: {},
 			};

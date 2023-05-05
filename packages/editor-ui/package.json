@@ -30,6 +30,7 @@
     "@codemirror/commands": "^6.1.0",
     "@codemirror/lang-javascript": "^6.1.2",
     "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-python": "^6.1.2",
     "@codemirror/lang-sql": "^6.4.1",
     "@codemirror/language": "^6.2.1",
     "@codemirror/lint": "^6.0.0",

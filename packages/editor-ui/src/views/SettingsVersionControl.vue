@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { useVersionControlStore } from '@/stores/versionControl';
-import { useUIStore } from '@/stores/ui';
+import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables';
 
 const versionControlStore = useVersionControlStore();

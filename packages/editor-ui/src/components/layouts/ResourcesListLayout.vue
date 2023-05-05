@@ -194,8 +194,8 @@ import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput } from 'n8n-design-system';
 import type { DatatableColumn } from 'n8n-design-system';
 

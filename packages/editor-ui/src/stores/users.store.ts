@@ -34,10 +34,10 @@ import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
-import { useRootStore } from './n8nRootStore';
-import { usePostHog } from './posthog';
-import { useSettingsStore } from './settings';
-import { useUIStore } from './ui';
+import { useRootStore } from './n8nRoot.store';
+import { usePostHog } from './posthog.store';
+import { useSettingsStore } from './settings.store';
+import { useUIStore } from './ui.store';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);

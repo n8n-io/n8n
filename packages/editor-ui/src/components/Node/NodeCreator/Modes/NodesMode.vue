@@ -5,8 +5,8 @@ import type { INodeCreateElement, NodeFilterType } from '@/Interface';
 import { TRIGGER_NODE_CREATOR_VIEW, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView } from '../viewsData';
 import { transformNodeType } from '../utils';

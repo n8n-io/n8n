@@ -29,8 +29,8 @@ import type { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import type { Route } from 'vue-router';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export default mixins(pushConnection, workflowHelpers).extend({
 	name: 'MainHeader',

@@ -157,11 +157,11 @@ import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
 import { createEventBus, dataPinningEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import useDeviceSupport from '@/composables/useDeviceSupport';
 
 export default mixins(
