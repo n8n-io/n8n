@@ -16,7 +16,8 @@ describe('Community Nodes', () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
-	})
+	});
+
 	beforeEach(() => {
 		cy.intercept('/types/nodes.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -24,9 +25,13 @@ describe('Community Nodes', () => {
 			req.on('response', (res) => {
 				const nodes = res.body || [];
 
-				nodes.push(CustomNodeFixture, CustomNodeWithN8nCredentialFixture, CustomNodeWithCustomCredentialFixture);
+				nodes.push(
+					CustomNodeFixture,
+					CustomNodeWithN8nCredentialFixture,
+					CustomNodeWithCustomCredentialFixture,
+				);
 			});
-		})
+		});
 
 		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -35,8 +40,8 @@ describe('Community Nodes', () => {
 				const credentials = res.body || [];
 
 				credentials.push(CustomCredential);
-			})
-		})
+			});
+		});
 		workflowPage.actions.visit();
 	});
 

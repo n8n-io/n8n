@@ -7,6 +7,8 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Authentication', () => {
+	// This should be the only test doing a db-reset in `beforeEach`
+	// All other tests should do this in a `before` instead
 	beforeEach(() => {
 		cy.resetAll();
 	});

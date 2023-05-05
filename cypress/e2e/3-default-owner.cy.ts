@@ -34,9 +34,12 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Default owner', () => {
-	it('should be able to create workflows', () => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
+	});
+
+	it('should be able to create workflows', () => {
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
 
 		// reload page, ensure owner still has access

@@ -6,7 +6,7 @@ const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Execution', () => {
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
@@ -263,7 +263,6 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
-
 
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters
