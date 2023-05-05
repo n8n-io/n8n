@@ -4,15 +4,15 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ExecutionBaseError } from 'n8n-workflow';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import * as Db from '@/Db';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
-import { findCliWorkflowStart } from '@/utils';
+import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
+import { Container } from 'typedi';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -100,7 +100,7 @@ export class Execute extends BaseCommand {
 			throw new Error('Failed to retrieve workflow data for requested workflow');
 		}
 
-		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+		if (!isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;
 		}
 
@@ -117,7 +117,7 @@ export class Execute extends BaseCommand {
 		const workflowRunner = new WorkflowRunner();
 		const executionId = await workflowRunner.run(runData);
 
-		const activeExecutions = ActiveExecutions.getInstance();
+		const activeExecutions = Container.get(ActiveExecutions);
 		const data = await activeExecutions.getPostExecutePromise(executionId);
 
 		if (data === undefined) {

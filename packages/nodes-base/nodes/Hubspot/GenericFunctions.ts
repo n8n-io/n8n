@@ -1,16 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
-	IDataObject,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -97,9 +94,10 @@ export async function hubspotApiRequestAllItems(
 		if (responseData.paging) {
 			body.after = responseData.paging.next.after;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
-		if (query.limit && query.limit <= returnData.length && endpoint.includes('/tickets/paged')) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;
 		}
 	} while (responseData.hasMore || responseData['has-more'] || responseData.paging);

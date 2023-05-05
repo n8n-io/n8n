@@ -14,9 +14,9 @@
 <script lang="ts">
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'PageViewLayout',
 	data() {
 		return {

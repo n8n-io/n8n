@@ -1,5 +1,6 @@
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
+import { Container } from 'typedi';
 import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
@@ -11,13 +12,13 @@ import * as CrashJournal from '@/CrashJournal';
 import { inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
-import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
+import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -27,11 +28,13 @@ export abstract class BaseCommand extends Command {
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected loadNodesAndCredentials: LoadNodesAndCredentialsClass;
+	protected loadNodesAndCredentials: LoadNodesAndCredentials;
 
 	protected nodeTypes: INodeTypes;
 
 	protected userSettings: IUserSettings;
+
+	protected instanceId: string;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -42,17 +45,19 @@ export abstract class BaseCommand extends Command {
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
 
-		this.loadNodesAndCredentials = LoadNodesAndCredentials();
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await this.loadNodesAndCredentials.init();
-		this.nodeTypes = NodeTypes(this.loadNodesAndCredentials);
-		const credentialTypes = CredentialTypes(this.loadNodesAndCredentials);
+		this.nodeTypes = Container.get(NodeTypes);
+		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
-
-		await InternalHooksManager.init(this.userSettings.instanceId ?? '', this.nodeTypes);
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
+
+		this.instanceId = this.userSettings.instanceId ?? '';
+		await Container.get(PostHogClient).init(this.instanceId);
+		await Container.get(InternalHooks).init(this.instanceId);
 	}
 
 	protected async stopProcess() {
@@ -83,7 +88,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async initExternalHooks() {
-		this.externalHooks = ExternalHooks();
+		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
 	}
 
@@ -91,7 +96,7 @@ export abstract class BaseCommand extends Command {
 		if (inTest || this.id === 'start') return;
 		if (Db.isInitialized) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.connection.destroy();
+			await Db.getConnection().destroy();
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

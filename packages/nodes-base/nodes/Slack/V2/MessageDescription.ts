@@ -182,6 +182,12 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'C0122KQ70S7E',
 			},
 			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: '#general',
+			},
+			{
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
@@ -324,6 +330,21 @@ export const messageFields: INodeProperties[] = [
 			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		default: '',
+	},
+	{
+		displayName: 'Notification Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['post'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		description:
+			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
 		displayName: 'This is a legacy Slack feature. Slack advises to instead use Blocks.',

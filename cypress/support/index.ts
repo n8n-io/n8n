@@ -36,18 +36,19 @@ declare global {
 			signin(payload: SigninPayload): void;
 			signout(): void;
 			signup(payload: SignupPayload): void;
-			setup(payload: SetupPayload): void;
+			setup(payload: SetupPayload, skipIntercept?: boolean): void;
 			setupOwner(payload: SetupPayload): void;
 			inviteUsers(payload: InviteUsersPayload): void;
 			interceptREST(method: string, url: string): Chainable<Interception>;
 			skipSetup(): void;
 			resetAll(): void;
 			enableFeature(feature: string): void;
-			waitForLoad(): void;
+			disableFeature(feature: string): void;
+			waitForLoad(waitForIntercepts?: boolean): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
 			paste(pastePayload: string): void;
-			drag(selector: string, target: [number, number]): void;
+			drag(selector: string, target: [number, number], options?: {abs?: true, index?: number}): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
 		}
 	}

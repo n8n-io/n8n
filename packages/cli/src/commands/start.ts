@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { Container } from 'typedi';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
@@ -16,26 +17,22 @@ import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
-import * as ActiveExecutions from '@/ActiveExecutions';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ActiveExecutions } from '@/ActiveExecutions';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import * as Server from '@/Server';
-import * as TestWebhooks from '@/TestWebhooks';
-import { WaitTracker } from '@/WaitTracker';
+import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
-import { handleLdapInit } from '@/Ldap/helpers';
-import { createPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
+import { InternalHooks } from '@/InternalHooks';
+import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
 const pipeline = promisify(stream.pipeline);
-
-let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -63,6 +60,8 @@ export class Start extends BaseCommand {
 		}),
 	};
 
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
+
 	/**
 	 * Opens the UI in browser
 	 */
@@ -87,7 +86,7 @@ export class Start extends BaseCommand {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
+			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
 			await this.externalHooks.run('n8n.stop', []);
 
@@ -98,25 +97,25 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
-			await InternalHooksManager.getInstance().onN8nStop();
+			await Container.get(InternalHooks).onN8nStop();
 
 			const skipWebhookDeregistration = config.getEnv(
 				'endpoints.skipWebhooksDeregistrationOnShutdown',
 			);
 
 			const removePromises = [];
-			if (activeWorkflowRunner !== undefined && !skipWebhookDeregistration) {
-				removePromises.push(activeWorkflowRunner.removeAll());
+			if (!skipWebhookDeregistration) {
+				removePromises.push(this.activeWorkflowRunner.removeAll());
 			}
 
 			// Remove all test webhooks
-			const testWebhooks = TestWebhooks.getInstance();
+			const testWebhooks = Container.get(TestWebhooks);
 			removePromises.push(testWebhooks.removeAll());
 
 			await Promise.all(removePromises);
 
 			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = ActiveExecutions.getInstance();
+			const activeExecutionsInstance = Container.get(ActiveExecutions);
 			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 
 			let count = 0;
@@ -145,6 +144,7 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = config.getEnv('path');
+		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -152,20 +152,6 @@ export class Start extends BaseCommand {
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
 				return `${acc}<script src="${curr}"></script>`;
 			}, '');
-		}
-
-		if (config.getEnv('diagnostics.enabled')) {
-			const phLoadingScript = createPostHogLoadingScript({
-				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-				autocapture: false,
-				disableSessionRecording: config.getEnv(
-					'diagnostics.config.posthog.disableSessionRecording',
-				),
-				debug: config.getEnv('logs.level') === 'debug',
-			});
-
-			scriptsString += phLoadingScript;
 		}
 
 		const closingTitleTag = '</title>';
@@ -182,6 +168,7 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -197,11 +184,35 @@ export class Start extends BaseCommand {
 		await Promise.all(files.map(compileFile));
 	}
 
+	async initLicense(): Promise<void> {
+		const license = Container.get(License);
+		await license.init(this.instanceId);
+
+		const activationKey = config.getEnv('license.activationKey');
+
+		if (activationKey) {
+			const hasCert = (await license.loadCertStr()).length > 0;
+
+			if (hasCert) {
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
+			try {
+				LoggerProxy.debug('Attempting license activation');
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
+			}
+		}
+	}
+
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
 		this.logger.info('Initializing n8n process');
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 
@@ -252,7 +263,7 @@ export class Start extends BaseCommand {
 		// Load settings from database and set them to config.
 		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
 		databaseSettings.forEach((setting) => {
-			config.set(setting.key, jsonParse(setting.value));
+			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
 		config.set('nodes.packagesMissing', '');
@@ -267,11 +278,10 @@ export class Start extends BaseCommand {
 					// Optimistic approach - stop if any installation fails
 					// eslint-disable-next-line no-restricted-syntax
 					for (const missingPackage of missingPackages) {
-						// eslint-disable-next-line no-await-in-loop
-						void (await this.loadNodesAndCredentials.loadNpmModule(
+						await this.loadNodesAndCredentials.installNpmModule(
 							missingPackage.packageName,
 							missingPackage.version,
-						));
+						);
 						missingPackages.delete(missingPackage);
 					}
 					LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
@@ -344,12 +354,7 @@ export class Start extends BaseCommand {
 		await Server.start();
 
 		// Start to get active workflows and run their triggers
-		activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-		await activeWorkflowRunner.init();
-
-		WaitTracker();
-
-		await handleLdapInit();
+		await this.activeWorkflowRunner.init();
 
 		const editorUrl = GenericHelpers.getBaseUrl();
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
@@ -393,6 +398,7 @@ export class Start extends BaseCommand {
 	}
 
 	async catch(error: Error) {
+		console.log(error.stack);
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 }

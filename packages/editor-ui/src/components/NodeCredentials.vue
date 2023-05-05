@@ -20,6 +20,7 @@
 						:value="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
+						data-test-id="node-credentials-select"
 					/>
 				</div>
 				<div
@@ -96,15 +97,14 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import { restApi } from '@/mixins/restApi';
-import {
+import type { PropType } from 'vue';
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
-import {
+import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
@@ -141,7 +141,7 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
+export default mixins(genericHelpers, nodeHelpers, showMessage).extend({
 	name: 'NodeCredentials',
 	props: {
 		readonly: {

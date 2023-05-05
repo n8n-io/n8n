@@ -35,7 +35,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import Modal from '@/components/Modal.vue';
 import {
@@ -49,8 +49,9 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { createEventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ActivationModal',
 	components: {
 		Modal,
@@ -60,7 +61,7 @@ export default Vue.extend({
 		return {
 			WORKFLOW_ACTIVE_MODAL_KEY,
 			checked: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	methods: {

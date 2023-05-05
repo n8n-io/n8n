@@ -1,4 +1,4 @@
-import { INode, IConnections } from 'n8n-workflow';
+import type { INode, IConnections } from 'n8n-workflow';
 
 export interface WorkflowTestData {
 	description: string;

@@ -1,6 +1,10 @@
-import { ICredentialsDecryptedResponse, ICredentialsResponse, IRestApiContext } from '@/Interface';
+import type {
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+	IRestApiContext,
+} from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	IDataObject,
@@ -10,7 +14,7 @@ import {
 import axios from 'axios';
 
 export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {
-	const { data } = await axios.get(baseUrl + 'types/credentials.json');
+	const { data } = await axios.get(baseUrl + 'types/credentials.json', { withCredentials: true });
 	return data;
 }
 

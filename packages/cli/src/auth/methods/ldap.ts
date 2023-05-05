@@ -1,4 +1,4 @@
-import { InternalHooksManager } from '@/InternalHooksManager';
+import { InternalHooks } from '@/InternalHooks';
 import {
 	createLdapUserOnLocalDb,
 	findAndAuthenticateLdapUser,
@@ -12,6 +12,7 @@ import {
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
+import { Container } from 'typedi';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -51,7 +52,7 @@ export const handleLdapLogin = async (
 		} else {
 			const role = await getLdapUserRole();
 			const user = await createLdapUserOnLocalDb(role, ldapAttributesValues, ldapId);
-			void InternalHooksManager.getInstance().onUserSignup(user, {
+			void Container.get(InternalHooks).onUserSignup(user, {
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});

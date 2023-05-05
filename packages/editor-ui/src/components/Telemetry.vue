@@ -6,7 +6,7 @@
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { ITelemetrySettings } from 'n8n-workflow';
+import type { ITelemetrySettings } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -53,11 +53,6 @@ export default mixins(externalHooks).extend({
 				versionCli: this.rootStore.versionCli,
 			});
 
-			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.rootStore.instanceId,
-				userId: this.currentUserId,
-			});
-
 			this.isTelemetryInitialized = true;
 		},
 	},
@@ -69,10 +64,6 @@ export default mixins(externalHooks).extend({
 			if (this.isTelemetryEnabled) {
 				this.$telemetry.identify(this.rootStore.instanceId, userId);
 			}
-			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.rootStore.instanceId,
-				userId,
-			});
 		},
 		isTelemetryEnabledOnRoute(enabled) {
 			if (enabled) {

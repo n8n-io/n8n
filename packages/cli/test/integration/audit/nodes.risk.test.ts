@@ -6,6 +6,13 @@ import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
+import { mockInstance } from '../shared/utils';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
+
+const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
+mockInstance(NodeTypes);
 
 beforeAll(async () => {
 	await testDb.init();

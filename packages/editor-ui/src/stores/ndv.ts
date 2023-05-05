@@ -1,6 +1,12 @@
-import { STORES } from '@/constants';
-import { INodeUi, IRunDataDisplayMode, NDVState, NodePanelType, XYPosition } from '@/Interface';
-import { IRunData } from 'n8n-workflow';
+import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
+import type {
+	INodeUi,
+	IRunDataDisplayMode,
+	NDVState,
+	NodePanelType,
+	XYPosition,
+} from '@/Interface';
+import type { IRunData } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useWorkflowsStore } from './workflows';
@@ -40,6 +46,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			canDrop: false,
 			stickyPosition: null,
 		},
+		isMappingOnboarded: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED) === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -109,6 +116,15 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 		isDNVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
+		},
+		isInputParentOfActiveNode(): boolean {
+			const inputNodeName = this.ndvInputNodeName;
+			if (!this.activeNode || !inputNodeName) {
+				return false;
+			}
+			const workflow = useWorkflowsStore().getCurrentWorkflow();
+			const parentNodes = workflow.getParentNodes(this.activeNode.name, 'main', 1);
+			return parentNodes.includes(inputNodeName);
 		},
 	},
 	actions: {
@@ -183,6 +199,12 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 		setNDVPanelDataIsEmpty(payload: { panel: 'input' | 'output'; isEmpty: boolean }): void {
 			Vue.set(this[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
+		disableMappingHint(store = true) {
+			this.isMappingOnboarded = true;
+			if (store) {
+				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+			}
 		},
 	},
 });

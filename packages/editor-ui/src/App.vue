@@ -30,14 +30,13 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, POSTHOG_ASSUMPTION_TEST, VIEWS } from './constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -45,9 +44,12 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
-import { historyHelper } from '@/mixins/history';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { newVersions } from '@/mixins/newVersions';
+import { useRoute } from 'vue-router/composables';
+import { useVersionControlStore } from '@/stores/versionControl';
 
-export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
+export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -55,10 +57,9 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		Modals,
 	},
 	setup() {
-		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 		return {
-			registerCustomAction,
-			unregisterCustomAction,
+			...useGlobalLinkActions(),
+			...useHistoryHelper(useRoute()),
 		};
 	},
 	computed: {
@@ -69,6 +70,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
+			useVersionControlStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -179,17 +181,6 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		trackExperiments() {
-			const assumption = window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST);
-			const isVideo = assumption === 'assumption-video';
-			const isDemo = assumption === 'assumption-demo';
-
-			if (isVideo) {
-				this.$telemetry.track('User is part of video experiment');
-			} else if (isDemo) {
-				this.$telemetry.track('User is part of demo experiment');
-			}
-		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -197,6 +188,7 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
+		this.checkForNewVersions();
 
 		this.loading = false;
 
@@ -207,9 +199,12 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
 
-		setTimeout(() => {
-			this.trackExperiments();
-		}, 0);
+		if (
+			this.versionControlStore.isEnterpriseVersionControlEnabled &&
+			this.usersStore.isInstanceOwner
+		) {
+			this.versionControlStore.getPreferences();
+		}
 	},
 	watch: {
 		$route(route) {

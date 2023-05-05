@@ -32,7 +32,6 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
-	ICredentialTypes,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -54,6 +53,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { Container } from 'typedi';
 
 const mockNode = {
 	name: '',
@@ -87,8 +87,8 @@ const mockNodeTypes: INodeTypes = {
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
 		encryptionKey: string,
-		private credentialTypes: ICredentialTypes = CredentialTypes(),
-		private nodeTypes: INodeTypes = NodeTypes(),
+		private credentialTypes = Container.get(CredentialTypes),
+		private nodeTypes = Container.get(NodeTypes),
 	) {
 		super(encryptionKey);
 	}
@@ -224,7 +224,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		defaultTimezone: string,
 	): string {
-		if (parameterValue.charAt(0) !== '=') {
+		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
 		}
 
@@ -393,8 +393,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (expressionResolveValues) {
-			const timezone =
-				(expressionResolveValues.workflow.settings.timezone as string) || defaultTimezone;
+			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
 
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
@@ -452,7 +451,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		if (!Db.isInitialized) {
@@ -544,10 +542,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {

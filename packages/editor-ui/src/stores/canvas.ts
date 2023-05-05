@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { useHistoryStore } from '@/stores/history';
-import { INodeUi, XYPosition } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import type {
@@ -18,6 +18,7 @@ import { newInstance } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
+import type { Connection } from '@jsplumb/core';
 import { EndpointFactory, Connectors } from '@jsplumb/core';
 import { MoveNodeCommand } from '@/models/history';
 import {
@@ -28,8 +29,11 @@ import {
 	PLACEHOLDER_TRIGGER_NODE_SIZE,
 	CONNECTOR_FLOWCHART_TYPE,
 	GRID_SIZE,
+	CONNECTOR_PAINT_STYLE_DEFAULT,
+	CONNECTOR_PAINT_STYLE_PRIMARY,
+	CONNECTOR_ARROW_OVERLAYS,
 } from '@/utils/nodeViewUtils';
-import { PointXY } from '@jsplumb/util';
+import type { PointXY } from '@jsplumb/util';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -39,6 +43,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
+	const lastSelectedConnection = ref<Connection | null>(null);
+	const newNodeInsertPosition = ref<XYPosition | null>(null);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(() =>
@@ -153,6 +159,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
+			endpoint: {
+				type: 'Dot',
+				options: { radius: 5 },
+			},
+			paintStyle: CONNECTOR_PAINT_STYLE_DEFAULT,
+			hoverPaintStyle: CONNECTOR_PAINT_STYLE_PRIMARY,
+			connectionOverlays: CONNECTOR_ARROW_OVERLAYS,
 			dragOptions: {
 				cursor: 'pointer',
 				grid: { w: GRID_SIZE, h: GRID_SIZE },
@@ -246,6 +259,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,
+		lastSelectedConnection,
+		newNodeInsertPosition,
+		jsPlumbInstance,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
 		setZoomLevel,
@@ -255,6 +271,5 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
-		jsPlumbInstance,
 	};
 });

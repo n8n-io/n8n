@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { XYPosition } from '@/Interface';
+import type { XYPosition } from '@/Interface';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
@@ -82,7 +82,7 @@ const containerCssVars = computed(() => ({
 	}
 }
 
-.tooltip {
+:root .tooltip {
 	max-width: 180px;
 }
 

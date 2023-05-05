@@ -1,4 +1,4 @@
-import { INodeUi } from './../Interface';
+import type { INodeUi, IUsedCredential } from './../Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -12,9 +12,9 @@ import {
 	updateCredential,
 } from '@/api/credentials';
 import { setCredentialSharedWith } from '@/api/credentials.ee';
-import { getAppNameFromCredType } from '@/utils';
+import { getAppNameFromCredType, makeRestApiRequest } from '@/utils';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
-import {
+import type {
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -22,7 +22,7 @@ import {
 	ICredentialTypeMap,
 } from '@/Interface';
 import { i18n } from '@/plugins/i18n';
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
@@ -177,11 +177,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 		},
 		getCredentialOwnerName() {
-			return (credentialId: string): string => {
-				const credential = this.getCredentialById(credentialId);
-				return credential && credential.ownedBy && credential.ownedBy.firstName
+			return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
+				return credential?.ownedBy?.firstName
 					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
 					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			};
+		},
+		getCredentialOwnerNameById() {
+			return (credentialId: string): string => {
+				const credential = this.getCredentialById(credentialId);
+
+				return this.getCredentialOwnerName(credential);
 			};
 		},
 	},
@@ -368,6 +374,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				(this.credentials[payload.credentialId].sharedWith || []).filter(
 					(sharee) => sharee.id !== payload.sharee.id,
 				),
+			);
+		},
+
+		async getCredentialTranslation(credentialType: string): Promise<object> {
+			const rootStore = useRootStore();
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/credential-translation',
+				{ credentialType },
 			);
 		},
 	},
