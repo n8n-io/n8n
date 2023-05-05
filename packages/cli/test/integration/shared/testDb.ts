@@ -35,13 +35,15 @@ import type {
 
 export type TestDBType = 'postgres' | 'mysql';
 
+export const testDbPrefix = 'n8n_test_';
+
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
 	jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 	const dbType = config.getEnv('database.type');
-	const testDbName = `n8n_test_${randomString(6, 10)}_${Date.now()}`;
+	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
