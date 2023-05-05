@@ -130,8 +130,8 @@ import { get, set } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import type { Component, PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 

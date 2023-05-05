@@ -1,5 +1,5 @@
 import { i18n } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export function useI18n() {
 	const isEnglishLocale = useRootStore().defaultLocale === 'en';

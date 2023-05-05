@@ -17,11 +17,11 @@ import {
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Telemetry } from '@/plugins/telemetry';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { runExternalHook } from '@/utils';
-import { useWebhooksStore } from '@/stores/webhooks';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 

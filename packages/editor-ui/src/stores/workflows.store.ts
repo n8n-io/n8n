@@ -57,7 +57,7 @@ import type {
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import Vue from 'vue';
 
-import { useRootStore } from './n8nRootStore';
+import { useRootStore } from './n8nRoot.store';
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
@@ -67,7 +67,7 @@ import {
 	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
-import { useUIStore } from './ui';
+import { useUIStore } from './ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
@@ -78,11 +78,11 @@ import {
 	makeRestApiRequest,
 	unflattenExecutionData,
 } from '@/utils';
-import { useNDVStore } from './ndv';
-import { useNodeTypesStore } from './nodeTypes';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useNDVStore } from './ndv.store';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
 	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,

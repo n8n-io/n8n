@@ -1,4 +1,4 @@
-import type { INodeUi, IUsedCredential } from './../Interface';
+import type { INodeUi, IUsedCredential } from '../Interface';
 import {
 	createNewCredential,
 	deleteCredential,
@@ -32,10 +32,10 @@ import type {
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
-import { useRootStore } from './n8nRootStore';
-import { useNodeTypesStore } from './nodeTypes';
-import { useSettingsStore } from './settings';
-import { useUsersStore } from './users';
+import { useRootStore } from './n8nRoot.store';
+import { useNodeTypesStore } from './nodeTypes.store';
+import { useSettingsStore } from './settings.store';
+import { useUsersStore } from './users.store';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';

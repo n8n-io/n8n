@@ -104,11 +104,11 @@ import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 

@@ -27,10 +27,10 @@ import type {
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
-import { useRootStore } from './n8nRootStore';
-import { useUIStore } from './ui';
-import { useUsersStore } from './users';
-import { useVersionsStore } from './versions';
+import { useRootStore } from './n8nRoot.store';
+import { useUIStore } from './ui.store';
+import { useUsersStore } from './users.store';
+import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {

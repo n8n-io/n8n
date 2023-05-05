@@ -88,8 +88,8 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
