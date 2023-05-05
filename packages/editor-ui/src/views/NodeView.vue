@@ -184,7 +184,6 @@ import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
-	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRMED,
 	NODE_OUTPUT_DEFAULT_KEY,
@@ -265,7 +264,7 @@ import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import type { Route, RawLocation } from 'vue-router';
+import type { Route } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -635,28 +634,33 @@ export default mixins(
 		};
 	},
 	beforeDestroy() {
-		this.$root.$off('newWorkflow', this.newWorkflow);
-		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
-		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		historyBus.$off('nodeMove', this.onMoveNode);
-		historyBus.$off('revertAddNode', this.onRevertAddNode);
-		historyBus.$off('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.$off('revertAddConnection', this.onRevertAddConnection);
-		historyBus.$off('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.$off('revertRenameNode', this.onRevertNameChange);
-		historyBus.$off('enableNodeToggle', this.onRevertEnableToggle);
-		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+		this.resetWorkspace();
+		// Make sure the event listeners get removed again else we
+		// could add up with them registered multiple times
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
+
+		this.$root.$off('newWorkflow', this.newWorkflow);
+		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
+		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 		this.uiStore.stateIsDirty = false;
 		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		this.unbindCanvasEvents();
 		this.instance.unbind();
 		this.instance.destroy();
-		this.resetWorkspace();
+
+		historyBus.off('nodeMove', this.onMoveNode);
+		historyBus.off('revertAddNode', this.onRevertAddNode);
+		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.off('revertAddConnection', this.onRevertAddConnection);
+		historyBus.off('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.off('revertRenameNode', this.onRevertNameChange);
+		historyBus.off('enableNodeToggle', this.onRevertEnableToggle);
+
+		dataPinningEventBus.off('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.off('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
 	},
 	methods: {
 		showTriggerMissingToltip(isVisible: boolean) {
@@ -3761,17 +3765,17 @@ export default mixins(
 		this.$root.$on('newWorkflow', this.newWorkflow);
 		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		historyBus.$on('nodeMove', this.onMoveNode);
-		historyBus.$on('revertAddNode', this.onRevertAddNode);
-		historyBus.$on('revertRemoveNode', this.onRevertRemoveNode);
-		historyBus.$on('revertAddConnection', this.onRevertAddConnection);
-		historyBus.$on('revertRemoveConnection', this.onRevertRemoveConnection);
-		historyBus.$on('revertRenameNode', this.onRevertNameChange);
-		historyBus.$on('enableNodeToggle', this.onRevertEnableToggle);
+		historyBus.on('nodeMove', this.onMoveNode);
+		historyBus.on('revertAddNode', this.onRevertAddNode);
+		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.on('revertAddConnection', this.onRevertAddConnection);
+		historyBus.on('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.on('revertRenameNode', this.onRevertNameChange);
+		historyBus.on('enableNodeToggle', this.onRevertEnableToggle);
 
-		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
-		nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+		dataPinningEventBus.on('pin-data', this.addPinDataConnections);
+		dataPinningEventBus.on('unpin-data', this.removePinDataConnections);
+		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
