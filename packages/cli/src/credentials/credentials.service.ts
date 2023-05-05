@@ -297,6 +297,8 @@ export class CredentialsService {
 		};
 		const properties = getExtendedProps(credType);
 
+		console.log(copiedData);
+
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData') {
@@ -307,7 +309,8 @@ export class CredentialsService {
 			if (!prop) {
 				continue;
 			}
-			if (prop.typeOptions?.password) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			if (prop.typeOptions?.password && !(copiedData[dataKey] as string).startsWith('={{')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 			}

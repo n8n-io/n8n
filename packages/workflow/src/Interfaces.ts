@@ -224,6 +224,7 @@ export abstract class ICredentialsHelper {
 	): Promise<ICredentials>;
 
 	abstract getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,

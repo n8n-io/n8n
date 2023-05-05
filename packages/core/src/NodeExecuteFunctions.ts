@@ -1831,6 +1831,7 @@ export async function getCredentials(
 	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
+		additionalData,
 		nodeCredentials,
 		type,
 		mode,
