@@ -25,7 +25,7 @@ The official n8n documentation can be found on our [documentation website](https
 
 Additional information and example workflows on the [n8n.io website](https://n8n.io)
 
-The release notes can be found [here](https://docs.n8n.io/reference/release-notes/) and the list of breaking
+The release notes can be found [here](https://docs.n8n.io/release-notes/) and the list of breaking
 changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md).
 
 ## Usage
@@ -87,6 +87,8 @@ development environment ready in minutes.
 n8n is [fair-code](http://faircode.io) distributed under the
 [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) and the
 [**n8n Enterprise License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE_EE.md).
+
+Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
 
 Additional information about the license model can be found in the
 [docs](https://docs.n8n.io/reference/license/).

@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -189,8 +188,7 @@ export class Stackby implements INodeType {
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					returnData.push.apply(
 						returnData,
-
-						responseData.map((data: any) => data.field),
+						responseData.map((data: any) => data.field) as INodeExecutionData[],
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {
@@ -223,7 +221,7 @@ export class Stackby implements INodeType {
 					responseData = responseData.records;
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject),
 						{ itemData: { item: i } },
 					);
 
@@ -280,8 +278,7 @@ export class Stackby implements INodeType {
 
 				returnData.push.apply(
 					returnData,
-
-					responseData.map((data: any) => data.field),
+					responseData.map((data: any) => data.field) as INodeExecutionData[],
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -330,8 +327,7 @@ export class Stackby implements INodeType {
 
 					returnData.push.apply(
 						returnData,
-
-						responseData.map((data: any) => data.field),
+						responseData.map((data: any) => data.field) as INodeExecutionData[],
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {

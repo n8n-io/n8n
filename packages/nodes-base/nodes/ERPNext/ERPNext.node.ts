@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -90,6 +89,7 @@ export class ERPNext implements INodeType {
 
 				docFields.unshift({ name: '*', value: '*' });
 
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -107,6 +107,7 @@ export class ERPNext implements INodeType {
 					},
 				);
 
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 		},
@@ -284,7 +285,7 @@ export class ERPNext implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

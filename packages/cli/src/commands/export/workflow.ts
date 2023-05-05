@@ -1,8 +1,9 @@
 import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
-import type { IDataObject } from 'n8n-workflow';
+import type { FindOptionsWhere } from 'typeorm';
 import * as Db from '@/Db';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';
 
 export class ExportWorkflowsCommand extends BaseCommand {
@@ -98,7 +99,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const findQuery: IDataObject = {};
+		const findQuery: FindOptionsWhere<WorkflowEntity> = {};
 		if (flags.id) {
 			findQuery.id = flags.id;
 		}

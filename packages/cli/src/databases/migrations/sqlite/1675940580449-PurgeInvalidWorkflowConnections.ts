@@ -1,28 +1,21 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { IConnections, INode } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import { NodeTypes } from '@/NodeTypes';
-import { IConnections, INode } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
+import { Container } from 'typedi';
 
-export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationInterface {
-	name = 'PurgeInvalidWorkflowConnections1675940580449';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = getTablePrefix();
-
-		const workflows: Array<{ id: number; nodes: string; connections: string }> =
-			await queryRunner.query(`
+export class PurgeInvalidWorkflowConnections1675940580449 implements IrreversibleMigration {
+	async up({ queryRunner, tablePrefix, migrationName, logger }: MigrationContext) {
+		const workflows = (await queryRunner.query(`
 			SELECT id, nodes, connections
 			FROM "${tablePrefix}workflow_entity"
-		`);
+		`)) as Array<{ id: number; nodes: string; connections: string }>;
 
-		const nodeTypes = NodeTypes();
+		const nodeTypes = Container.get(NodeTypes);
 
 		workflows.forEach(async (workflow) => {
-			let connections: IConnections = JSON.parse(workflow.connections);
-			const nodes: INode[] = JSON.parse(workflow.nodes);
+			const connections = jsonParse<IConnections>(workflow.connections);
+			const nodes = jsonParse<INode[]>(workflow.nodes);
 
 			const nodesThatCannotReceiveInput: string[] = nodes.reduce((acc, node) => {
 				try {
@@ -31,7 +24,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 						acc.push(node.name);
 					}
 				} catch (error) {
-					getLogger().warn(`Migration ${this.name} failed with error: ${error.message}`);
+					logger.warn(`Migration ${migrationName} failed with error: ${(error as Error).message}`);
 				}
 				return acc;
 			}, [] as string[]);
@@ -40,7 +33,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 				const connection = connections[sourceNodeName];
 				const outputs = Object.keys(connection);
 
-				outputs.forEach((outputConnectionName /* Like `main` */, idx) => {
+				outputs.forEach((outputConnectionName /* Like `main` */) => {
 					const outputConnection = connection[outputConnectionName];
 
 					// It filters out all connections that are connected to a node that cannot receive input
@@ -50,22 +43,7 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 								!nodesThatCannotReceiveInput.includes(outgoingConnections.node),
 						);
 					});
-
-					// Filter out output connection items that are empty
-					connection[outputConnectionName] = connection[outputConnectionName].filter(
-						(item) => item.length > 0,
-					);
-
-					// Delete the output connection container if it is empty
-					if (connection[outputConnectionName].length === 0) {
-						delete connection[outputConnectionName];
-					}
 				});
-
-				// Finally delete the source node if it has no output connections
-				if (Object.keys(connection).length === 0) {
-					delete connections[sourceNodeName];
-				}
 			});
 
 			// Update database with new connections
@@ -81,11 +59,5 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements MigrationIn
 
 			await queryRunner.query(updateQuery, updateParams);
 		});
-
-		logMigrationEnd(this.name);
-	}
-
-	async down(queryRunner: QueryRunner): Promise<void> {
-		// No need to revert this migration
 	}
 }

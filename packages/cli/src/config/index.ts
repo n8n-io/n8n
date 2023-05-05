@@ -16,6 +16,7 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		NODE_FUNCTION_ALLOW_EXTERNAL: 'node-fetch',
 	};
 } else if (inTest) {
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
@@ -24,11 +25,7 @@ if (inE2ETests) {
 	dotenv.config();
 }
 
-const config = convict(schema);
-
-if (inE2ETests) {
-	config.set('enterprise.features.sharing', true);
-}
+const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;

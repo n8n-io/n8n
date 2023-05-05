@@ -1,14 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { listFields, listOperations } from './ListDescription';
 
@@ -169,7 +167,7 @@ export class SendGrid implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -210,7 +208,7 @@ export class SendGrid implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -305,7 +303,7 @@ export class SendGrid implements INodeType {
 						{ list_ids: lists, contacts },
 						qs,
 					);
-					returnData.push(responseData);
+					returnData.push(responseData as INodeExecutionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
@@ -331,7 +329,7 @@ export class SendGrid implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -368,7 +366,7 @@ export class SendGrid implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -399,7 +397,7 @@ export class SendGrid implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -429,7 +427,7 @@ export class SendGrid implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -490,7 +488,7 @@ export class SendGrid implements INodeType {
 							qs,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -588,22 +586,13 @@ export class SendGrid implements INodeType {
 							const binaryProperties = attachments.split(',').map((p) => p.trim());
 
 							for (const property of binaryProperties) {
-								if (!items[i].binary?.hasOwnProperty(property)) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`The binary property ${property} does not exist`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryProperty = items[i].binary![property];
-
+								const binaryData = this.helpers.assertBinaryData(i, property);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
 
 								attachmentsToSend.push({
 									content: dataBuffer.toString('base64'),
-									filename: binaryProperty.fileName || 'unknown',
-									type: binaryProperty.mimeType,
+									filename: binaryData.fileName || 'unknown',
+									type: binaryData.mimeType,
 								});
 							}
 

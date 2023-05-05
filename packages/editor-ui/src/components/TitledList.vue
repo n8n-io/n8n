@@ -2,15 +2,15 @@
 	<div class="titled-list">
 		<p v-text="title" />
 		<ul>
-			<li v-for="item in items" class="titled-list-item" :key="item" v-text="item" />
+			<li v-for="item in items" class="titled-list-item" :key="item" v-html="item" />
 		</ul>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TitledList',
 	props: {
 		title: {

@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="node-wrapper"
+		:class="{ 'node-wrapper': true, 'node-wrapper--trigger': isTriggerNode }"
 		:style="nodePosition"
 		:id="nodeId"
 		data-test-id="canvas-node"
@@ -22,6 +22,14 @@
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
 			>
+				<i class="trigger-icon" v-if="isTriggerNode">
+					<n8n-tooltip placement="bottom">
+						<template #content>
+							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+						</template>
+						<font-awesome-icon icon="bolt" size="lg" />
+					</n8n-tooltip>
+				</i>
 				<div
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
@@ -34,7 +42,7 @@
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
-					<div v-else-if="waiting" class="waiting">
+					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
 						<n8n-tooltip placement="bottom">
 							<template #content>
 								<div v-text="waiting"></div>
@@ -45,6 +53,9 @@
 					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
 						<font-awesome-icon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
+					<span v-else-if="nodeExecutionStatus === 'unknown'">
+						<!-- Do nothing, unknown means the node never executed -->
 					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
 						<font-awesome-icon icon="check" />
@@ -136,7 +147,10 @@
 				</div>
 			</div>
 			<div
-				:class="{ 'disabled-linethrough': true, success: workflowDataItems > 0 }"
+				:class="{
+					'disabled-linethrough': true,
+					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
+				}"
 				v-if="showDisabledLinethrough"
 			></div>
 		</div>
@@ -168,28 +182,25 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import { IDataObject, INodeTypeDescription, ITaskData, NodeHelpers } from 'n8n-workflow';
+import type { INodeTypeDescription, ITaskData } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import mixins from 'vue-typed-mixins';
 
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import {
-	IExecutionsSummary,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	XYPosition,
-} from '@/Interface';
+import type { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default mixins(
 	externalHooks,
@@ -202,6 +213,7 @@ export default mixins(
 	name: 'Node',
 	components: {
 		TitledList,
+		FontAwesomeIcon,
 		NodeIcon,
 	},
 	props: {
@@ -228,8 +240,13 @@ export default mixins(
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
 		hasIssues(): boolean {
+			if (
+				this.nodeExecutionStatus &&
+				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
+			)
+				return true;
 			if (this.hasPinData) return false;
-			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
+			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
 			return false;
@@ -303,12 +320,31 @@ export default mixins(
 				executing: this.isExecuting,
 			};
 		},
-		nodeIssues(): string[] {
-			if (this.data.issues === undefined) {
-				return [];
+		nodeExecutionStatus(): string {
+			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
+			if (nodeExecutionRunData) {
+				return nodeExecutionRunData[0].executionStatus ?? '';
 			}
-
-			return NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
+			return '';
+		},
+		nodeIssues(): string[] {
+			const issues: string[] = [];
+			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
+			if (nodeExecutionRunData) {
+				nodeExecutionRunData.forEach((executionRunData) => {
+					if (executionRunData.error) {
+						issues.push(
+							`${executionRunData.error.message}${
+								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
+							}`,
+						);
+					}
+				});
+			}
+			if (this.data?.issues !== undefined) {
+				issues.push(...NodeHelpers.nodeIssuesToString(this.data.issues, this.data));
+			}
+			return issues;
 		},
 		nodeDisabledIcon(): string {
 			if (this.data.disabled === false) {
@@ -387,6 +423,8 @@ export default mixins(
 					borderColor = getStyleTokenValue('--color-danger');
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
+				} else if (this.nodeExecutionStatus === 'unknown') {
+					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
 				}
@@ -641,7 +679,6 @@ export default mixins(
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
 			background-color: var(--color-background-xlight);
-
 			&.executing {
 				background-color: var(--color-primary-tint-3) !important;
 
@@ -761,6 +798,22 @@ export default mixins(
 			}
 		}
 	}
+	&--trigger .node-default .node-box {
+		border-radius: 32px 8px 8px 32px;
+	}
+	.trigger-icon {
+		position: absolute;
+		right: 100%;
+		top: 0;
+		bottom: 0;
+		margin: auto;
+		color: var(--color-primary);
+		align-items: center;
+		justify-content: center;
+		height: fit-content;
+		// Increase click radius of the bolt icon
+		padding: var(--spacing-2xs);
+	}
 }
 
 .select-background {
@@ -778,6 +831,10 @@ export default mixins(
 	top: -8px !important;
 	height: 116px;
 	width: 116px !important;
+
+	.node-wrapper--trigger & {
+		border-radius: 36px 8px 8px 36px;
+	}
 }
 
 .disabled-linethrough {

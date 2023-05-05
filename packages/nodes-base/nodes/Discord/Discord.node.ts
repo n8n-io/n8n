@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
@@ -133,13 +137,13 @@ export class Discord implements INodeType {
 				try {
 					//@ts-expect-error
 					body.embeds = JSON.parse(options.embeds);
-					if (!Array.isArray(body.embeds)) {
-						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
-							itemIndex: i,
-						});
-					}
 				} catch (e) {
 					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', {
+						itemIndex: i,
+					});
+				}
+				if (!Array.isArray(body.embeds)) {
+					throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
 						itemIndex: i,
 					});
 				}

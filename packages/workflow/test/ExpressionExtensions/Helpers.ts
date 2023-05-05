@@ -1,4 +1,5 @@
-import { Expression, IDataObject, Workflow } from '../../src';
+import type { IDataObject } from '../../src';
+import { Expression, Workflow } from '../../src';
 import * as Helpers from '../Helpers';
 
 export const TEST_TIMEZONE = 'America/New_York';
@@ -18,6 +19,9 @@ export const workflow = new Workflow({
 	connections: {},
 	active: false,
 	nodeTypes,
+	settings: {
+		timezone: TEST_TIMEZONE,
+	},
 });
 export const expression = new Expression(workflow);
 

@@ -5,9 +5,11 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
+import { Container } from 'typedi';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });
@@ -57,12 +59,9 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
 
-	await ExternalHooks().run('credentials.create', [encryptedData]);
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
 	return Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -84,7 +83,7 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
-	await ExternalHooks().run('credentials.delete', [credentials.id]);
+	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 	return Db.collections.Credentials.remove(credentials);
 }
 

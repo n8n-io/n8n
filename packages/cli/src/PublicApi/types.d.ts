@@ -1,5 +1,5 @@
 import type express from 'express';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
@@ -7,11 +7,9 @@ import type { Role } from '@db/entities/Role';
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { UserManagementMailer } from '@/UserManagement/email';
 
 import type { Risk } from '@/audit/types';
-
-export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -28,10 +26,10 @@ export type AuthenticatedRequest<
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
 	globalMemberRole?: Role;
-	mailer?: UserManagementMailer.UserManagementMailer;
+	mailer?: UserManagementMailer;
 };
 
-export type PaginatatedRequest = AuthenticatedRequest<
+export type PaginatedRequest = AuthenticatedRequest<
 	{},
 	{},
 	{},
