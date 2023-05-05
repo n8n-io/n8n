@@ -3,7 +3,7 @@ import type { ElNotificationComponent, ElNotificationOptions } from 'element-ui/
 import type { MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 
