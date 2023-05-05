@@ -16,7 +16,8 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	);
 
 	const preferences = reactive<VersionControlPreferences>({
-		branchName: '',
+		currentBranch: '',
+		branches: [],
 		authorName: '',
 		authorEmail: '',
 		repositoryUrl: '',
@@ -77,6 +78,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
+		preferences,
 		initSsh,
 		initRepository,
 		sync,
