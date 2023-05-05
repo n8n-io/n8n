@@ -644,8 +644,10 @@ export default mixins(
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		this.uiStore.stateIsDirty = false;
-		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+
+		// TODO: Handle this properly when user just switches tabs between the editor and executions
+		//this.uiStore.stateIsDirty = false;
+		//this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		this.unbindCanvasEvents();
 		this.instance.unbind();
 		this.instance.destroy();
