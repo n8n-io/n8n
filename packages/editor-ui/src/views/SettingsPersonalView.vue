@@ -61,9 +61,9 @@
 import { showMessage } from '@/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import type { IFormInputs, IUser } from '@/Interface';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { createEventBus } from '@/event-bus';

@@ -3,7 +3,7 @@ import type { IRestApiContext, RootState } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
-import { useNodeTypesStore } from './nodeTypes';
+import { useNodeTypesStore } from './nodeTypes.store';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 

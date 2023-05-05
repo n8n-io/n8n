@@ -67,11 +67,11 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useUsageStore } from '@/stores/usage';
-import { useSSOStore } from '@/stores/sso';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useSSOStore } from '@/stores/sso.store';
 
 export default mixins(showMessage, copyPaste).extend({
 	name: 'SettingsUsersView',

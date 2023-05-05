@@ -9,7 +9,7 @@ import type {
 import type { IRunData } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
-import { useWorkflowsStore } from './workflows';
+import { useWorkflowsStore } from './workflows.store';
 
 export const useNDVStore = defineStore(STORES.NDV, {
 	state: (): NDVState => ({

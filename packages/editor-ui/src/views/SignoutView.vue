@@ -1,7 +1,7 @@
 <script lang="ts">
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 

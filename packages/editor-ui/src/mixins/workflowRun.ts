@@ -10,9 +10,9 @@ import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).extend({
 	setup() {

@@ -2,9 +2,9 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import type { IDataObject } from 'n8n-workflow';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 import * as vcApi from '@/api/versionControl';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import type { VersionControlPreferences } from '@/Interface';
 
 export const useVersionControlStore = defineStore('versionControl', () => {
