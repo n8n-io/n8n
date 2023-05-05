@@ -7,8 +7,7 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useTitleChange, useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -36,15 +35,11 @@ import { useSettingsStore } from '@/stores/settings';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment';
 
-export const pushConnection = mixins(
-	externalHooks,
-	nodeHelpers,
-	// showMessage,
-	workflowHelpers,
-).extend({
+export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
 	setup() {
 		return {
 			...useTitleChange(),
+			...useToast(),
 		};
 	},
 	data() {
@@ -368,7 +363,7 @@ export const pushConnection = mixins(
 
 					// Workflow did start but had been put to wait
 					this.titleSet(workflow.name as string, 'IDLE');
-					this.$showToast({
+					this.showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 						type: 'success',
@@ -423,7 +418,7 @@ export const pushConnection = mixins(
 
 						this.workflowsStore.subWorkflowExecutionError = error;
 
-						this.$showMessage({
+						this.showMessage({
 							title: error.message,
 							message: error.description,
 							type: 'error',
@@ -437,7 +432,7 @@ export const pushConnection = mixins(
 							title = 'Problem executing workflow';
 						}
 
-						this.$showMessage({
+						this.showMessage({
 							title,
 							message: runDataExecutedErrorMessage,
 							type: 'error',
@@ -460,7 +455,7 @@ export const pushConnection = mixins(
 							execution.data.resultData.runData &&
 							execution.data.resultData.runData[execution.executedNode];
 						if (node && nodeType && !nodeOutput) {
-							this.$showMessage({
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
 										service: getTriggerNodeServiceName(nodeType),
@@ -474,13 +469,13 @@ export const pushConnection = mixins(
 								type: 'success',
 							});
 						} else {
-							this.$showMessage({
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
 						}
 					} else {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
 							type: 'success',
 						});
