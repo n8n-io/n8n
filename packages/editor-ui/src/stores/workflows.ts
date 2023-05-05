@@ -397,7 +397,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflow;
 		},
 
-		async createNewWorkflow(name?: string): Promise<INewWorkflowData> {
+		// Creates a new workflow
+		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			return makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'POST',
+				'/workflows',
+				sendData as unknown as IDataObject,
+			);
+		},
+
+		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
@@ -1116,17 +1127,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				`/executions/${id}`,
 			);
 			return response && unflattenExecutionData(response);
-		},
-
-		// Creates a new workflow
-		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows',
-				sendData as unknown as IDataObject,
-			);
 		},
 
 		// Updates an existing workflow
