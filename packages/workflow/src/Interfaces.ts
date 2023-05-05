@@ -636,12 +636,12 @@ namespace ExecuteFunctions {
 			fallbackValue?: number,
 			options?: IGetNodeParameterOptions,
 		): number;
-		getNodeParameter<T = NodeParameterValueType | object>(
+		getNodeParameter(
 			parameterName: string,
 			itemIndex: number,
 			fallbackValue?: any,
 			options?: IGetNodeParameterOptions,
-		): T;
+		): NodeParameterValueType | object;
 	};
 }
 
