@@ -55,6 +55,12 @@ export abstract class BaseCommand extends Command {
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
 
+		if (process.env.WEBHOOK_TUNNEL_URL) {
+			LoggerProxy.warn(
+				'You are still using the WEBHOOK_TUNNEL_URL environment variable. It has been deprecated and will be removed in a future version of n8n. Please switch to using WEBHOOK_URL instead.',
+			);
+		}
+
 		this.instanceId = this.userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(this.instanceId);
 		await Container.get(InternalHooks).init(this.instanceId);
