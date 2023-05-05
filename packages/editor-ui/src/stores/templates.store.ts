@@ -11,7 +11,7 @@ import type {
 	IWorkflowTemplate,
 } from '@/Interface';
 import Vue from 'vue';
-import { useSettingsStore } from './settings';
+import { useSettingsStore } from './settings.store';
 import {
 	getCategories,
 	getCollectionById,

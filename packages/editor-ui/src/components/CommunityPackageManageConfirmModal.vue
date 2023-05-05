@@ -43,7 +43,7 @@ import {
 } from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useCommunityNodesStore } from '@/stores/communityNodes';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({

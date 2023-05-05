@@ -28,9 +28,9 @@ import type { IFakeDoor } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default mixins(userHelpers).extend({
 	name: 'SettingsSidebar',

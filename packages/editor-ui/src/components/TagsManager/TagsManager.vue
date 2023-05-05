@@ -38,7 +38,7 @@ import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
 import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
 import { mapStores } from 'pinia';
-import { useTagsStore } from '@/stores/tags';
+import { useTagsStore } from '@/stores/tags.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
