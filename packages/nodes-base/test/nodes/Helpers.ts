@@ -318,9 +318,9 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 
 	// check if result node data matches expected test data
 	const resultNodeData = getResultNodeData(result, testData);
-
 	resultNodeData.forEach(({ nodeName, resultData }) => {
-		return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+		const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
 	expect(result.finished).toEqual(true);
