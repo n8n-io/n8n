@@ -4,8 +4,9 @@ import { Connections } from '../transport';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('postgres');
+	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
+	const { db } = (await Connections.getInstance(credentials, options)) as ConnectionsData;
 
 	try {
 		const response = await db.any('SELECT schema_name FROM information_schema.schemata');
@@ -22,8 +23,9 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('postgres');
+	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
+	const { db } = (await Connections.getInstance(credentials, options)) as ConnectionsData;
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,

@@ -16,10 +16,10 @@ import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export default mixins(showMessage).extend({
 	name: 'SetupView',

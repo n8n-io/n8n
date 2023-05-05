@@ -44,11 +44,11 @@ import type {
 } from '@/Interface';
 import Vue from 'vue';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRootStore';
+import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from './workflows';
-import { useSettingsStore } from './settings';
-import { useUsageStore } from './usage';
+import { useWorkflowsStore } from './workflows.store';
+import { useSettingsStore } from './settings.store';
+import { useUsageStore } from './usage.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 

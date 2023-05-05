@@ -58,7 +58,7 @@ import { get } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import type { Component } from 'vue';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export default mixins(nodeHelpers).extend({
 	name: 'CollectionParameter',

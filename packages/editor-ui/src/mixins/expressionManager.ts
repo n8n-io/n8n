@@ -4,7 +4,7 @@ import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
 import type { PropType } from 'vue';

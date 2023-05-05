@@ -8,7 +8,7 @@ import {
 	saveDestinationToDb,
 	sendTestMessageToDestination,
 } from '../api/eventbus.ee';
-import { useRootStore } from './n8nRootStore';
+import { useRootStore } from './n8nRoot.store';
 
 export interface EventSelectionItem {
 	selected: boolean;

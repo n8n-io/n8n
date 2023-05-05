@@ -26,9 +26,9 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default mixins(workflowRun, pinData).extend({
 	props: {

@@ -3,9 +3,9 @@
 </template>
 
 <script lang="ts">
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { ITelemetrySettings } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';

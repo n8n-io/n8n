@@ -1,23 +1,22 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
 
-export class UpdateWorkflowCredentials1630330987096 implements MigrationInterface {
-	name = 'UpdateWorkflowCredentials1630330987096';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		const credentialsEntities = await queryRunner.query(`
+export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type
 			FROM "${tablePrefix}credentials_entity"
-		`);
+		`)) as Array<{ id: string; name: string; type: string }>;
 
 		const workflowsQuery = `
 			SELECT id, nodes
@@ -57,7 +56,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -100,7 +99,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -143,20 +142,16 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		const credentialsEntities = await queryRunner.query(`
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
+		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type
 			FROM "${tablePrefix}credentials_entity"
-		`);
+		`)) as Array<{ id: string; name: string; type: string }>;
 
 		const workflowsQuery = `
 			SELECT id, nodes
@@ -176,7 +171,9 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 						for (const [type, creds] of allNodeCredentials) {
 							if (typeof creds === 'object') {
 								const matchingCredentials = credentialsEntities.find(
-									// @ts-ignore double-equals because creds.id can be string or number
+									// @ts-ignore
+									// double-equals because creds.id can be string or number
+									// eslint-disable-next-line eqeqeq
 									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
@@ -202,7 +199,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -226,7 +223,9 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 						for (const [type, creds] of allNodeCredentials) {
 							if (typeof creds === 'object') {
 								const matchingCredentials = credentialsEntities.find(
-									// @ts-ignore double-equals because creds.id can be string or number
+									// @ts-ignore
+									// double-equals because creds.id can be string or number
+									// eslint-disable-next-line eqeqeq
 									(credentials) => credentials.id == creds.id && credentials.type === type,
 								);
 								if (matchingCredentials) {
@@ -276,7 +275,9 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 					for (const [type, creds] of allNodeCredentials) {
 						if (typeof creds === 'object') {
 							const matchingCredentials = credentialsEntities.find(
-								// @ts-ignore double-equals because creds.id can be string or number
+								// @ts-ignore
+								// double-equals because creds.id can be string or number
+								// eslint-disable-next-line eqeqeq
 								(credentials) => credentials.id == creds.id && credentials.type === type,
 							);
 							if (matchingCredentials) {
@@ -301,7 +302,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
 	}

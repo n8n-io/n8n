@@ -3,7 +3,7 @@ import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue
 import type { INodeCreateElement } from '@/Interface';
 import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';

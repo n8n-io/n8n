@@ -7,7 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { merge } from 'lodash-es';
 import RunData from '@/components/RunData.vue';
 import { STORES, VIEWS } from '@/constants';
-import { useSSOStore } from '@/stores/sso';
+import { useSSOStore } from '@/stores/sso.store';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';

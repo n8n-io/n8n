@@ -10,8 +10,8 @@ import {
 	NPM_PACKAGE_DOCS_BASE_URL,
 } from '@/constants';
 import type { INodeUi, ITab } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 

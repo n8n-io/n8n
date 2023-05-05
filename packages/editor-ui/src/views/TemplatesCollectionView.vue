@@ -66,7 +66,7 @@ import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesCollectionView',
