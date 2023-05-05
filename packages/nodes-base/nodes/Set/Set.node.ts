@@ -15,7 +15,7 @@ export class Set implements INodeType {
 		name: 'set',
 		icon: 'fa:pen',
 		group: ['input'],
-		version: 1,
+		version: [1, 2],
 		description: 'Sets values on items and optionally remove other values',
 		defaults: {
 			name: 'Set',
@@ -137,6 +137,7 @@ export class Set implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (items.length === 0) {
 			items.push({ json: {} });
@@ -182,6 +183,13 @@ export class Set implements INodeType {
 			// Add number values
 			(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach(
 				(setItem) => {
+					if (
+						nodeVersion >= 2 &&
+						typeof setItem.value === 'string' &&
+						!Number.isNaN(Number(setItem.value))
+					) {
+						setItem.value = Number(setItem.value);
+					}
 					if (options.dotNotation === false) {
 						newItem.json[setItem.name as string] = setItem.value;
 					} else {

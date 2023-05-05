@@ -4,11 +4,11 @@
  * @usage getCredentialPermissions(user, credential).isOwner;
  */
 
-import { IUser, ICredentialsResponse, IRootState, IWorkflowDb } from '@/Interface';
+import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useSettingsStore } from './stores/settings';
+import { useSettingsStore } from './stores/settings.store';
 
-export enum UserRole {
+export const enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
 	ResourceOwner = 'isOwner',
 	ResourceEditor = 'isEditor',
@@ -126,6 +126,26 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 			name: 'use',
 			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
 		},
+	];
+
+	return parsePermissionsTable(user, table);
+};
+
+export const getVariablesPermissions = (user: IUser | null) => {
+	const table: IPermissionsTable = [
+		{
+			name: 'create',
+			test: [UserRole.InstanceOwner],
+		},
+		{
+			name: 'edit',
+			test: [UserRole.InstanceOwner],
+		},
+		{
+			name: 'delete',
+			test: [UserRole.InstanceOwner],
+		},
+		{ name: 'use', test: () => true },
 	];
 
 	return parsePermissionsTable(user, table);

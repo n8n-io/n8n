@@ -2,7 +2,7 @@ import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/utils/nodeViewUtils';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
 export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 	data() {
@@ -39,7 +39,7 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 
-			// Don't indicate move start just yet if middle button is pressed
+			// Prevent moving canvas on anything but middle button
 			if (e.button !== 1) {
 				this.uiStore.nodeViewMoveInProgress = true;
 			}
@@ -77,7 +77,7 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 			}
 
 			// Signal that moving canvas is active if middle button is pressed and mouse is moved
-			if (e.button === 1) {
+			if (e.buttons === 4) {
 				this.uiStore.nodeViewMoveInProgress = true;
 			}
 

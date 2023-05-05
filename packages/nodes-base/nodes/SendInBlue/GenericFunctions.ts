@@ -18,13 +18,13 @@ export namespace SendInBlueNode {
 	type BBCEmail = { bbc: Email[] };
 	type ValidatedEmail = ToEmail | SenderEmail | CCEmail | BBCEmail;
 
-	enum OVERRIDE_MAP_VALUES {
+	const enum OVERRIDE_MAP_VALUES {
 		'CATEGORY' = 'category',
 		'NORMAL' = 'boolean',
 		'TRANSACTIONAL' = 'id',
 	}
 
-	enum OVERRIDE_MAP_TYPE {
+	const enum OVERRIDE_MAP_TYPE {
 		'CATEGORY' = 'category',
 		'NORMAL' = 'normal',
 		'TRANSACTIONAL' = 'transactional',

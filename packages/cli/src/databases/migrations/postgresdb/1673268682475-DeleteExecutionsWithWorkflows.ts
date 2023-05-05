@@ -1,20 +1,15 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInterface {
-	name = 'DeleteExecutionsWithWorkflows1673268682475';
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity
 			 ALTER COLUMN "workflowId" TYPE INTEGER USING "workflowId"::integer`,
 		);
 
-		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
+		const workflowIds = (await queryRunner.query(`
 			SELECT id FROM ${tablePrefix}workflow_entity
-		`);
+		`)) as Array<{ id: number }>;
 
 		await queryRunner.query(
 			`DELETE FROM ${tablePrefix}execution_entity
@@ -32,12 +27,9 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 			 FOREIGN KEY ("workflowId") REFERENCES ${tablePrefix}workflow_entity ("id")
 			 ON DELETE CASCADE`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity
 			 DROP CONSTRAINT "FK_${tablePrefix}execution_entity_workflowId"`,

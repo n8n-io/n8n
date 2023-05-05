@@ -1,5 +1,5 @@
 import { parsePermissionsTable } from '@/permissions';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 
 describe('parsePermissionsTable()', () => {
 	const user: IUser = {

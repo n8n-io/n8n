@@ -71,7 +71,7 @@ import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
+import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -583,9 +583,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					const workflowHasCrashed = fullRunData.status === 'crashed';
-					const workflowDidSucceed = !fullRunData.data.resultData.error && !workflowHasCrashed;
+					const workflowWasCanceled = fullRunData.status === 'canceled';
+					const workflowDidSucceed =
+						!fullRunData.data.resultData.error && !workflowHasCrashed && !workflowWasCanceled;
 					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
+					if (workflowWasCanceled) workflowStatusFinal = 'canceled';
 
 					if (
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
@@ -638,7 +641,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					};
 
 					if (this.retryOf !== undefined) {
-						fullExecutionData.retryOf = this.retryOf.toString();
+						fullExecutionData.retryOf = this.retryOf?.toString();
 					}
 
 					const workflowId = this.workflowData.id;
@@ -755,9 +758,12 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowHasCrashed = fullRunData.status === 'crashed';
-					const workflowDidSucceed = !fullRunData.data.resultData.error && !workflowHasCrashed;
+					const workflowWasCanceled = fullRunData.status === 'canceled';
+					const workflowDidSucceed =
+						!fullRunData.data.resultData.error && !workflowHasCrashed && !workflowWasCanceled;
 					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
+					if (workflowWasCanceled) workflowStatusFinal = 'canceled';
 
 					if (!workflowDidSucceed) {
 						executeErrorWorkflow(
@@ -1054,7 +1060,7 @@ async function executeWorkflow(
 			mode: 'integrated',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
-			status: 'error',
+			status: 'failed',
 		};
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
@@ -1072,6 +1078,9 @@ async function executeWorkflow(
 		if (workflowData.id) {
 			fullExecutionData.workflowId = workflowData.id;
 		}
+
+		// remove execution from active executions
+		Container.get(ActiveExecutions).remove(executionId, fullRunData);
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
@@ -1161,7 +1170,10 @@ export async function getBase(
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
-	const encryptionKey = await UserSettings.getEncryptionKey();
+	const [encryptionKey, variables] = await Promise.all([
+		UserSettings.getEncryptionKey(),
+		WorkflowHelpers.getVariables(),
+	]);
 
 	return {
 		credentialsHelper: new CredentialsHelper(encryptionKey),
@@ -1176,6 +1188,7 @@ export async function getBase(
 		executionTimeoutTimestamp,
 		userId,
 		setExecutionStatus,
+		variables,
 	};
 }
 

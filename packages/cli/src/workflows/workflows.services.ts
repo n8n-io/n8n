@@ -186,7 +186,7 @@ export class WorkflowsService {
 		user: User,
 		workflow: WorkflowEntity,
 		workflowId: string,
-		tags?: string[],
+		tagIds?: string[],
 		forceSave?: boolean,
 		roles?: string[],
 	): Promise<WorkflowEntity> {
@@ -285,13 +285,11 @@ export class WorkflowsService {
 			]),
 		);
 
-		if (tags && !config.getEnv('workflowTagsDisabled')) {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			await TagHelpers.removeRelations(workflowId, tablePrefix);
-
-			if (tags.length) {
-				await TagHelpers.createRelations(workflowId, tags, tablePrefix);
-			}
+		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
+			await Db.collections.WorkflowTagMapping.delete({ workflowId });
+			await Db.collections.WorkflowTagMapping.insert(
+				tagIds.map((tagId) => ({ tagId, workflowId })),
+			);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -309,9 +307,9 @@ export class WorkflowsService {
 			);
 		}
 
-		if (updatedWorkflow.tags?.length && tags?.length) {
+		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tags,
+				requestOrder: tagIds,
 			});
 		}
 

@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nButton from '../Button.vue';
 
 const classToTypeMap = {
@@ -13,7 +13,9 @@ const classToTypeMap = {
 	'el-picker-panel__link-btn': 'secondary',
 };
 
-export default Vue.extend({
+type ButtonRef = InstanceType<typeof N8nButton>;
+
+export default defineComponent({
 	components: {
 		N8nButton,
 	},
@@ -32,7 +34,7 @@ export default Vue.extend({
 			}
 
 			Object.entries(classToTypeMap).forEach(([className, mappedType]) => {
-				if (this.$refs.button && (this.$refs.button as Vue).$el.classList.contains(className)) {
+				if ((this.$refs.button as ButtonRef)?.$el.classList.contains(className)) {
 					type = mappedType;
 				}
 			});
