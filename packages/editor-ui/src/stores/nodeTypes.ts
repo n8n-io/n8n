@@ -1,42 +1,60 @@
-import { getNodeParameterOptions, getNodesInformation, getNodeTranslationHeaders, getNodeTypes, getResourceLocatorResults } from "@/api/nodeTypes";
-import { DEFAULT_NODETYPE_VERSION, STORES } from "@/constants";
-import { ICategoriesWithNodes, INodeCreateElement, INodeTypesState, IResourceLocatorReqParams } from "@/Interface";
-import { getCategoriesWithNodes, getCategorizedList } from "@/stores/nodeTypesHelpers";
-import { addHeaders, addNodeTranslation } from "@/plugins/i18n";
-import { omit } from "@/utils";
-import { ILoadOptions, INodeCredentials, INodeListSearchResult, INodeParameters, INodePropertyOptions, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
-import { defineStore } from "pinia";
-import Vue from "vue";
-import { useCredentialsStore } from "./credentials";
-import { useRootStore } from "./n8nRootStore";
-import { useUsersStore } from "./users";
+import {
+	getNodeParameterOptions,
+	getNodesInformation,
+	getNodeTranslationHeaders,
+	getNodeTypes,
+	getResourceLocatorResults,
+} from '@/api/nodeTypes';
+import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
+import type { INodeTypesState, IResourceLocatorReqParams } from '@/Interface';
+import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
+import { omit } from '@/utils';
+import type {
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchResult,
+	INodeParameters,
+	INodePropertyOptions,
+	INodeTypeDescription,
+	INodeTypeNameVersion,
+} from 'n8n-workflow';
+import { defineStore } from 'pinia';
+import Vue from 'vue';
+import { useCredentialsStore } from './credentials';
+import { useRootStore } from './n8nRootStore';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }
 
-export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
+export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 	state: (): INodeTypesState => ({
 		nodeTypes: {},
 	}),
 	getters: {
 		allNodeTypes(): INodeTypeDescription[] {
-			return Object.values(this.nodeTypes).reduce<INodeTypeDescription[]>((allNodeTypes, nodeType) => {
-				const versionNumbers = Object.keys(nodeType).map(Number);
-				const allNodeVersions = versionNumbers.map(version => nodeType[version]);
+			return Object.values(this.nodeTypes).reduce<INodeTypeDescription[]>(
+				(allNodeTypes, nodeType) => {
+					const versionNumbers = Object.keys(nodeType).map(Number);
+					const allNodeVersions = versionNumbers.map((version) => nodeType[version]);
 
-				return [...allNodeTypes, ...allNodeVersions];
-			}, []);
+					return [...allNodeTypes, ...allNodeVersions];
+				},
+				[],
+			);
 		},
 		allLatestNodeTypes(): INodeTypeDescription[] {
-			return Object.values(this.nodeTypes).reduce<INodeTypeDescription[]>((allLatestNodeTypes, nodeVersions) => {
-				const versionNumbers = Object.keys(nodeVersions).map(Number);
-				const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
+			return Object.values(this.nodeTypes).reduce<INodeTypeDescription[]>(
+				(allLatestNodeTypes, nodeVersions) => {
+					const versionNumbers = Object.keys(nodeVersions).map(Number);
+					const latestNodeVersion = nodeVersions[Math.max(...versionNumbers)];
 
-				if (!latestNodeVersion) return allLatestNodeTypes;
+					if (!latestNodeVersion) return allLatestNodeTypes;
 
-				return [...allLatestNodeTypes, latestNodeVersion];
-			}, []);
+					return [...allLatestNodeTypes, latestNodeVersion];
+				},
+				[],
+			);
 		},
 		getNodeType() {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
@@ -56,40 +74,46 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				return !!(nodeType && nodeType.group.includes('trigger'));
 			};
 		},
+		isCoreNodeType() {
+			return (nodeType: INodeTypeDescription) => {
+				return nodeType.codex?.categories?.includes('Core Nodes');
+			};
+		},
 		visibleNodeTypes(): INodeTypeDescription[] {
 			return this.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
-		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			const usersStore = useUsersStore();
-			return getCategoriesWithNodes(this.visibleNodeTypes, usersStore.personalizedNodeTypes);
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return getCategorizedList(this.categoriesWithNodes);
 		},
 	},
 	actions: {
 		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {
-			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>((acc, newNodeType) => {
-				const newNodeVersions = getNodeVersions(newNodeType);
+			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>(
+				(acc, newNodeType) => {
+					const newNodeVersions = getNodeVersions(newNodeType);
 
-				if (newNodeVersions.length === 0) {
-					const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
+					if (newNodeVersions.length === 0) {
+						const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
 
-					acc[newNodeType.name] = singleVersion;
-					return acc;
-				}
-
-				for (const version of newNodeVersions) {
-					if (acc[newNodeType.name]) {
-						acc[newNodeType.name][version] = newNodeType;
-					} else {
-						acc[newNodeType.name] = { [version]: newNodeType };
+						acc[newNodeType.name] = singleVersion;
+						return acc;
 					}
-				}
 
-				return acc;
-			}, { ...this.nodeTypes });
+					for (const version of newNodeVersions) {
+						// Node exists with the same name
+						if (acc[newNodeType.name]) {
+							acc[newNodeType.name][version] = Object.assign(
+								acc[newNodeType.name][version] ?? {},
+								newNodeType,
+							);
+						} else {
+							acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, {
+								[version]: newNodeType,
+							});
+						}
+					}
 
+					return acc;
+				},
+				{ ...this.nodeTypes },
+			);
 			Vue.set(this, 'nodeTypes', nodeTypes);
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
@@ -98,21 +122,23 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				this.nodeTypes,
 			);
 		},
-		async getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+		async getNodesInformation(
+			nodeInfos: INodeTypeNameVersion[],
+			replace = true,
+		): Promise<INodeTypeDescription[]> {
 			const rootStore = useRootStore();
 			const nodesInformation = await getNodesInformation(rootStore.getRestApiContext, nodeInfos);
 
-			nodesInformation.forEach(nodeInformation => {
+			nodesInformation.forEach((nodeInformation) => {
 				if (nodeInformation.translation) {
 					const nodeType = nodeInformation.name.replace('n8n-nodes-base.', '');
 
-					addNodeTranslation(
-						{ [nodeType]: nodeInformation.translation },
-						rootStore.defaultLocale,
-					);
+					addNodeTranslation({ [nodeType]: nodeInformation.translation }, rootStore.defaultLocale);
 				}
 			});
-			this.setNodeTypes(nodesInformation);
+			if (replace) this.setNodeTypes(nodesInformation);
+
+			return nodesInformation;
 		},
 		async getFullNodesProperties(nodesToBeFetched: INodeTypeNameVersion[]): Promise<void> {
 			const credentialsStore = useCredentialsStore();
@@ -121,7 +147,7 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 		},
 		async getNodeTypes(): Promise<void> {
 			const rootStore = useRootStore();
-			const nodeTypes = await getNodeTypes(rootStore.getRestApiContext);
+			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
 			if (nodeTypes.length) {
 				this.setNodeTypes(nodeTypes);
 			}
@@ -134,16 +160,14 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				addHeaders(headers, rootStore.defaultLocale);
 			}
 		},
-		async getNodeParameterOptions(
-			sendData: {
-				nodeTypeAndVersion: INodeTypeNameVersion,
-				path: string,
-				methodName?: string,
-				loadOptions?: ILoadOptions,
-				currentNodeParameters: INodeParameters,
-				credentials?: INodeCredentials,
-			},
-		): Promise<INodePropertyOptions[]> {
+		async getNodeParameterOptions(sendData: {
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			path: string;
+			methodName?: string;
+			loadOptions?: ILoadOptions;
+			currentNodeParameters: INodeParameters;
+			credentials?: INodeCredentials;
+		}): Promise<INodePropertyOptions[]> {
 			const rootStore = useRootStore();
 			return getNodeParameterOptions(rootStore.getRestApiContext, sendData);
 		},

@@ -14,7 +14,7 @@
 				[$style.show]: this.showPreview,
 			}"
 			ref="preview_iframe"
-			src="/workflows/demo"
+			:src="`${rootStore.baseUrl}workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		></iframe>
@@ -23,8 +23,10 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
-import { IWorkflowDb } from '../Interface';
+import { showMessage } from '@/mixins/showMessage';
+import type { IWorkflowDb } from '../Interface';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',
@@ -36,8 +38,7 @@ export default mixins(showMessage).extend({
 		mode: {
 			type: String,
 			default: 'workflow',
-			validator: (value: string): boolean =>
-				['workflow', 'execution', 'medium'].includes(value),
+			validator: (value: string): boolean => ['workflow', 'execution'].includes(value),
 		},
 		workflow: {
 			type: Object as () => IWorkflowDb,
@@ -47,11 +48,14 @@ export default mixins(showMessage).extend({
 			type: String,
 			required: false,
 		},
+		executionMode: {
+			type: String,
+			required: false,
+		},
 		loaderType: {
 			type: String,
 			default: 'image',
-			validator: (value: string): boolean =>
-				['image', 'spinner'].includes(value),
+			validator: (value: string): boolean => ['image', 'spinner'].includes(value),
 		},
 	},
 	data() {
@@ -64,13 +68,14 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
+		...mapStores(useRootStore),
 		showPreview(): boolean {
-			return !this.loading &&
-				(
-					(this.mode === 'workflow' && !!this.workflow) ||
-					(this.mode === 'execution' && !!this.executionId)
-				) &&
-				this.ready;
+			return (
+				!this.loading &&
+				((this.mode === 'workflow' && !!this.workflow) ||
+					(this.mode === 'execution' && !!this.executionId)) &&
+				this.ready
+			);
 		},
 	},
 	methods: {
@@ -91,9 +96,9 @@ export default mixins(showMessage).extend({
 					throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
 				}
 
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
+				const iframeRef = this.$refs.preview_iframe as HTMLIFrameElement | undefined;
+				if (iframeRef?.contentWindow) {
+					iframeRef.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openWorkflow',
 							workflow: this.workflow,
@@ -114,12 +119,13 @@ export default mixins(showMessage).extend({
 				if (!this.executionId) {
 					throw new Error(this.$locale.baseText('workflowPreview.showError.missingExecution'));
 				}
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
+				const iframeRef = this.$refs.preview_iframe as HTMLIFrameElement | undefined;
+				if (iframeRef?.contentWindow) {
+					iframeRef.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openExecution',
 							executionId: this.executionId,
+							executionMode: this.executionMode || '',
 						}),
 						'*',
 					);
@@ -144,8 +150,7 @@ export default mixins(showMessage).extend({
 				} else if (json.command === 'error') {
 					this.$emit('close');
 				}
-			} catch (e) {
-			}
+			} catch (e) {}
 		},
 		onDocumentScroll() {
 			if (this.insideIframe) {
@@ -214,8 +219,8 @@ export default mixins(showMessage).extend({
 	color: var(--color-primary);
 	position: absolute;
 	top: 50% !important;
-  -ms-transform: translateY(-50%);
-  transform: translateY(-50%);
+	-ms-transform: translateY(-50%);
+	transform: translateY(-50%);
 }
 
 .imageLoader {

@@ -1,8 +1,14 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 export interface IProduct {
 	fields: {
@@ -21,7 +27,6 @@ export async function activeCampaignApiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('activeCampaignApi');
 
@@ -49,7 +54,7 @@ export async function activeCampaignApiRequest(
 		);
 
 		if (responseData.success === false) {
-			throw new NodeApiError(this.getNode(), responseData);
+			throw new NodeApiError(this.getNode(), responseData as JsonObject);
 		}
 
 		if (dataKey === undefined) {
@@ -58,7 +63,7 @@ export async function activeCampaignApiRequest(
 			return responseData[dataKey] as IDataObject;
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -75,7 +80,6 @@ export async function activeCampaignApiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -92,23 +96,19 @@ export async function activeCampaignApiRequestAllItems(
 		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query);
 
 		if (dataKey === undefined) {
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (returnData !== undefined) {
 				itemsReceived += returnData.length;
 			}
 		} else {
-			returnData.push.apply(returnData, responseData[dataKey]);
+			returnData.push.apply(returnData, responseData[dataKey] as IDataObject[]);
 			if (responseData[dataKey] !== undefined) {
 				itemsReceived += responseData[dataKey].length;
 			}
 		}
 
 		query.offset = itemsReceived;
-	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.total !== undefined &&
-		responseData.meta.total > itemsReceived
-	);
+	} while (responseData.meta?.total !== undefined && responseData.meta.total > itemsReceived);
 
 	return returnData;
 }

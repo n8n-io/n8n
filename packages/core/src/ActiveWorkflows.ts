@@ -4,24 +4,21 @@
 /* eslint-disable no-restricted-syntax */
 import { CronJob } from 'cron';
 
-import {
+import type {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
-	LoggerProxy as Logger,
 	TriggerTime,
-	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, toCronExpression, WorkflowActivationError } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import type { IWorkflowData } from '.';
+import type { IWorkflowData } from './Interfaces';
 
 export class ActiveWorkflows {
 	private workflowData: {

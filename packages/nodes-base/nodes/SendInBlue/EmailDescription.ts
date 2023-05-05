@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { SendInBlueNode } from './GenericFunctions';
 
 export const emailOperations: INodeProperties[] = [
@@ -426,7 +426,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 						values: [
 							{
 								displayName: 'Parameter',
-								name: 'parmeters',
+								name: 'parameters',
 								type: 'string',
 								default: '',
 								placeholder: 'key=value',

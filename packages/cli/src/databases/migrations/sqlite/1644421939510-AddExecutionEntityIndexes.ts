@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
-import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class AddExecutionEntityIndexes1644421939510 implements MigrationInterface {
 	name = 'AddExecutionEntityIndexes1644421939510';

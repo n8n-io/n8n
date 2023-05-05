@@ -1,10 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import {
+import type {
 	GristCredentials,
 	GristDefinedFields,
 	GristFilterProperties,
@@ -49,9 +53,9 @@ export async function gristApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -80,12 +84,7 @@ export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
 	}, {});
 }
 
-export function parseAutoMappedInputs(
-	incomingKeys: string[],
-	inputsToIgnore: string[],
-	item: any, // tslint:disable-line:no-any
-) {
-	// tslint:disable-next-line:no-any
+export function parseAutoMappedInputs(incomingKeys: string[], inputsToIgnore: string[], item: any) {
 	return incomingKeys.reduce<{ [key: string]: any }>((acc, curKey) => {
 		if (inputsToIgnore.includes(curKey)) return acc;
 		acc = { ...acc, [curKey]: item[curKey] };

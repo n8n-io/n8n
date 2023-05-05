@@ -1,6 +1,4 @@
-/* tslint:disable:variable-name */
-
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import N8nSelect from './Select.vue';
 import N8nOption from '../N8nOption';
 import N8nIcon from '../N8nIcon';
@@ -54,7 +52,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nOption,
 		N8nIcon,
 	},
-	template: '<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>',
+	template:
+		'<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>',
 	data() {
 		return {
 			val: '',
@@ -71,7 +70,12 @@ Filterable.args = {
 	defaultFirstOption: true,
 };
 
-const selects = ['large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
+const selects = ['large', 'medium', 'small', 'mini']
+	.map(
+		(size) =>
+			`<n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange" size="${size}"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`,
+	)
+	.join('');
 
 const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
@@ -96,7 +100,12 @@ Sizes.args = {
 	placeholder: 'placeholder...',
 };
 
-const selectsWithIcon = ['xlarge', 'large', 'medium', 'small', 'mini'].map((size) => `<n8n-select v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-icon icon="search" slot="prefix" /><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`).join('');
+const selectsWithIcon = ['xlarge', 'large', 'medium', 'small', 'mini']
+	.map(
+		(size) =>
+			`<n8n-select v-bind="$props" v-model="val" @input="onInput" size="${size}"><n8n-icon icon="search" slot="prefix" /><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option></n8n-select>`,
+	)
+	.join('');
 
 const ManyTemplateWithIcon: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
@@ -121,7 +130,6 @@ WithIcon.args = {
 	placeholder: 'placeholder...',
 };
 
-
 const LimitedWidthTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
@@ -129,7 +137,8 @@ const LimitedWidthTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nOption,
 		N8nIcon,
 	},
-	template: '<div style="width:100px;"><n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1" label="opt1 11 1111" /><n8n-option value="2" label="opt2 test very long ipsum"/></n8n-select></div>',
+	template:
+		'<div style="width:100px;"><n8n-select v-bind="$props" v-model="val" @input="onInput" @change="onChange"><n8n-option value="1" label="opt1 11 1111" /><n8n-option value="2" label="opt2 test very long ipsum"/></n8n-select></div>',
 	data() {
 		return {
 			val: '',

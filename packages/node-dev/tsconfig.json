@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"types": ["node"],
+		"preserveSymlinks": true,
 		// TODO: remove all options below this line
 		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false

@@ -1,4 +1,4 @@
-@use "mixins/function";
+@use 'mixins/function';
 @use 'common/var';
 
 *,
@@ -159,12 +159,7 @@ a {
 	color: var(--color-primary);
 
 	&:active {
-		color: function.saturation(
-			--color-primary-h,
-			--color-primary-s,
-			--color-primary-l,
-			-(30%)
-		);
+		color: function.saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
 	}
 }
 

@@ -1,6 +1,6 @@
-@use "mixins/mixins";
-@use "./common/var";
-@use "input";
+@use 'mixins/mixins';
+@use './common/var';
+@use 'input';
 
 @include mixins.b(input-number) {
 	position: relative;

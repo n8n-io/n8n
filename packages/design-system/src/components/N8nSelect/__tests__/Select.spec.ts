@@ -1,6 +1,6 @@
-import {render} from '@testing-library/vue';
-import N8nSelect from "../Select.vue";
-import N8nOption from "../../N8nOption/Option.vue";
+import { render } from '@testing-library/vue';
+import N8nSelect from '../Select.vue';
+import N8nOption from '../../N8nOption/Option.vue';
 
 describe('components', () => {
 	describe('N8nSelect', () => {

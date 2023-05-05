@@ -1,17 +1,23 @@
-import { STORES } from "@/constants";
-import { INodeUi, IRunDataDisplayMode, NDVState, XYPosition } from "@/Interface";
-import { IRunData } from "n8n-workflow";
-import { defineStore } from "pinia";
-import Vue from "vue";
-import { useWorkflowsStore } from "./workflows";
+import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
+import type {
+	INodeUi,
+	IRunDataDisplayMode,
+	NDVState,
+	NodePanelType,
+	XYPosition,
+} from '@/Interface';
+import type { IRunData } from 'n8n-workflow';
+import { defineStore } from 'pinia';
+import Vue from 'vue';
+import { useWorkflowsStore } from './workflows';
 
-export const useNDVStore =  defineStore(STORES.NDV, {
+export const useNDVStore = defineStore(STORES.NDV, {
 	state: (): NDVState => ({
 		activeNodeName: null,
 		mainPanelDimensions: {},
 		sessionId: '',
 		input: {
-			displayMode: 'table',
+			displayMode: 'schema',
 			nodeName: undefined,
 			run: undefined,
 			branch: undefined,
@@ -40,6 +46,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 			canDrop: false,
 			stickyPosition: null,
 		},
+		isMappingOnboarded: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED) === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -51,16 +58,22 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 			const executionData = workflowsStore.getWorkflowExecution;
 			const inputNodeName: string | undefined = this.input.nodeName;
 			const inputRunIndex: number = this.input.run ?? 0;
-			const inputBranchIndex: number = this.input.branch?? 0;
+			const inputBranchIndex: number = this.input.branch ?? 0;
 
-			if (!executionData || !inputNodeName || inputRunIndex === undefined || inputBranchIndex === undefined) {
+			if (
+				!executionData ||
+				!inputNodeName ||
+				inputRunIndex === undefined ||
+				inputBranchIndex === undefined
+			) {
 				return [];
 			}
 
-			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[inputBranchIndex];
+			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data
+				?.main?.[inputBranchIndex];
 		},
 		getPanelDisplayMode() {
-			return (panel: 'input' | 'output') => this[panel].displayMode;
+			return (panel: NodePanelType) => this[panel].displayMode;
 		},
 		inputPanelDisplayMode(): IRunDataDisplayMode {
 			return this.input.displayMode;
@@ -86,7 +99,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		getMainPanelDimensions() {
 			return (panelType: string) => {
 				const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
-				return {...defaults, ...this.mainPanelDimensions[panelType]};
+				return { ...defaults, ...this.mainPanelDimensions[panelType] };
 			};
 		},
 		draggableStickyPos(): XYPosition | null {
@@ -104,31 +117,42 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		isDNVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
+		isInputParentOfActiveNode(): boolean {
+			const inputNodeName = this.ndvInputNodeName;
+			if (!this.activeNode || !inputNodeName) {
+				return false;
+			}
+			const workflow = useWorkflowsStore().getCurrentWorkflow();
+			const parentNodes = workflow.getParentNodes(this.activeNode.name, 'main', 1);
+			return parentNodes.includes(inputNodeName);
+		},
 	},
 	actions: {
 		setInputNodeName(name: string | undefined): void {
 			Vue.set(this.input, 'nodeName', name);
 		},
-		setInputRunIndex(run?: string): void  {
+		setInputRunIndex(run?: string): void {
 			Vue.set(this.input, 'run', run);
 		},
-		setMainPanelDimensions(params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}): void  {
-			Vue.set(
-				this.mainPanelDimensions,
-				params.panelType,
-				{...this.mainPanelDimensions[params.panelType], ...params.dimensions },
-			);
+		setMainPanelDimensions(params: {
+			panelType: string;
+			dimensions: { relativeLeft?: number; relativeRight?: number; relativeWidth?: number };
+		}): void {
+			Vue.set(this.mainPanelDimensions, params.panelType, {
+				...this.mainPanelDimensions[params.panelType],
+				...params.dimensions,
+			});
 		},
-		setNDVSessionId(): void  {
+		setNDVSessionId(): void {
 			Vue.set(this, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
 		},
-		resetNDVSessionId(): void  {
+		resetNDVSessionId(): void {
 			Vue.set(this, 'sessionId', '');
 		},
-		setPanelDisplayMode(params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}): void {
+		setPanelDisplayMode(params: { pane: NodePanelType; mode: IRunDataDisplayMode }): void {
 			Vue.set(this[params.pane], 'displayMode', params.mode);
 		},
-		setOutputPanelEditModeEnabled(isEnabled: boolean): void  {
+		setOutputPanelEditModeEnabled(isEnabled: boolean): void {
 			Vue.set(this.output.editMode, 'enabled', isEnabled);
 		},
 		setOutputPanelEditModeValue(payload: string): void {
@@ -137,7 +161,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		setMappableNDVInputFocus(paramName: string): void {
 			Vue.set(this, 'focusedMappableInput', paramName);
 		},
-		draggableStartDragging({type, data}: {type: string, data: string}): void {
+		draggableStartDragging({ type, data }: { type: string; data: string }): void {
 			this.draggable = {
 				isDragging: true,
 				type,
@@ -161,8 +185,8 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		setDraggableCanDrop(canDrop: boolean): void {
 			Vue.set(this.draggable, 'canDrop', canDrop);
 		},
-		setMappingTelemetry(telemetry: {[key: string]: string | number | boolean}): void {
-			this.mappingTelemetry = {...this.mappingTelemetry, ...telemetry};
+		setMappingTelemetry(telemetry: { [key: string]: string | number | boolean }): void {
+			this.mappingTelemetry = { ...this.mappingTelemetry, ...telemetry };
 		},
 		resetMappingTelemetry(): void {
 			this.mappingTelemetry = {};
@@ -170,11 +194,17 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		setHoveringItem(item: null | NDVState['hoveringItem']): void {
 			Vue.set(this, 'hoveringItem', item);
 		},
-		setNDVBranchIndex(e: {pane: 'input' | 'output', branchIndex: number}): void {
+		setNDVBranchIndex(e: { pane: 'input' | 'output'; branchIndex: number }): void {
 			Vue.set(this[e.pane], 'branch', e.branchIndex);
 		},
-		setNDVPanelDataIsEmpty(payload: {panel: 'input' | 'output', isEmpty: boolean}): void {
+		setNDVPanelDataIsEmpty(payload: { panel: 'input' | 'output'; isEmpty: boolean }): void {
 			Vue.set(this[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
+		disableMappingHint(store = true) {
+			this.isMappingOnboarded = true;
+			if (store) {
+				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+			}
 		},
 	},
 });

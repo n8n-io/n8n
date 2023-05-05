@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const paymentOperations: INodeProperties[] = [
 	{
@@ -184,7 +184,7 @@ export const paymentFields: INodeProperties[] = [
 		name: 'paymentId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getpayment',
+			loadOptionsMethod: 'getPayments',
 		},
 		default: '',
 		required: true,

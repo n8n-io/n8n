@@ -6,7 +6,7 @@
 		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
@@ -21,7 +21,7 @@
 				</n8n-input-label>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-notice
 					:class="$style.notice"
@@ -40,19 +40,19 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	IMPORT_CURL_MODAL_KEY,
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
-import { INodeUi } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useNDVStore } from '@/stores/ndv';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'ImportCurlModal',
@@ -63,21 +63,18 @@ export default mixins(showMessage).extend({
 		return {
 			IMPORT_CURL_MODAL_KEY,
 			curlCommand: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useUIStore,
-		),
+		...mapStores(useNDVStore, useUIStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
 	},
 	methods: {
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onInput(value: string): void {
 			this.curlCommand = value;

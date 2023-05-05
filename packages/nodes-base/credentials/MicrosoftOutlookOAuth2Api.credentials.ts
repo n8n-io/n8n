@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'openid',
@@ -17,9 +17,13 @@ const scopes = [
 
 export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 	name = 'microsoftOutlookOAuth2Api';
+
 	extends = ['microsoftOAuth2Api'];
+
 	displayName = 'Microsoft Outlook OAuth2 API';
+
 	documentationUrl = 'microsoft';
+
 	properties: INodeProperties[] = [
 		//https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
 		{

@@ -3,7 +3,7 @@ import {
 	logMigrationEnd,
 	logMigrationStart,
 	runInBatches,
-} from '../../utils/migrationHelpers';
+} from '@db/utils/migrationHelpers';
 import { addJsonKeyToPinDataColumn } from '../sqlite/1659888469333-AddJsonKeyPinData';
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 

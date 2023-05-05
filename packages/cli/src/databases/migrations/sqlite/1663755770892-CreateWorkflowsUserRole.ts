@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CreateWorkflowsEditorRole1663755770892 implements MigrationInterface {
 	name = 'CreateWorkflowsEditorRole1663755770892';

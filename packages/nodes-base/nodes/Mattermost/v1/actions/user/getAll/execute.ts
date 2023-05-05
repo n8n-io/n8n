@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
 
@@ -10,8 +9,8 @@ export async function getAll(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
@@ -87,7 +86,7 @@ export async function getAll(
 		} else {
 			throw new NodeOperationError(
 				this.getNode(),
-				`When sort is defined either 'in team' or 'in channel' must be defined`,
+				"When sort is defined either 'in team' or 'in channel' must be defined",
 				{ itemIndex: index },
 			);
 		}
@@ -97,8 +96,8 @@ export async function getAll(
 		qs.sort = '';
 	}
 
-	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('limit', index) as number;
+	if (!returnAll) {
+		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
 	let responseData;
@@ -109,5 +108,5 @@ export async function getAll(
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	}
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

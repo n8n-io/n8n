@@ -1,17 +1,15 @@
 import set from 'lodash.set';
-import { BinaryDataManager } from 'n8n-core';
-import {
+import type {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import FormData from 'form-data';
+import { getUploadFormData } from './MediaFunctions';
 
 interface WhatsAppApiError {
 	error: {
@@ -39,7 +37,7 @@ export async function addTemplateComponents(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as {}, 'template.components', components);
+	set(requestOptions.body as IDataObject, 'template.components', components);
 	return requestOptions;
 }
 
@@ -63,29 +61,7 @@ export async function mediaUploadFromItem(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ) {
-	const mediaPropertyName = this.getNodeParameter('mediaPropertyName') as string;
-	if (this.getInputData().binary?.[mediaPropertyName] === undefined) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`The binary property "${mediaPropertyName}" does not exist. So no file can be written!`,
-		);
-	}
-	const binaryFile = this.getInputData().binary![mediaPropertyName]!;
-	const mediaFileName = (this.getNodeParameter('additionalFields') as IDataObject).mediaFilename as
-		| string
-		| undefined;
-	const binaryFileName = binaryFile.fileName;
-	if (!mediaFileName && !binaryFileName) {
-		throw new NodeOperationError(this.getNode(), 'No file name given for media upload.');
-	}
-	const mimeType = binaryFile.mimeType;
-
-	const data = new FormData();
-	data.append('file', await BinaryDataManager.getInstance().retrieveBinaryData(binaryFile), {
-		contentType: mimeType,
-		filename: mediaFileName || binaryFileName,
-	});
-	data.append('messaging_product', 'whatsapp');
+	const uploadData = await getUploadFormData.call(this);
 
 	const phoneNumberId = this.getNodeParameter('phoneNumberId') as string;
 
@@ -93,16 +69,16 @@ export async function mediaUploadFromItem(
 		url: `/${phoneNumberId}/media`,
 		baseURL: requestOptions.baseURL,
 		method: 'POST',
-		body: data,
+		body: uploadData.formData,
 	})) as IDataObject;
 
 	const operation = this.getNodeParameter('messageType') as string;
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as {}, `${operation}.id`, result.id);
+	set(requestOptions.body as IDataObject, `${operation}.id`, result.id);
 	if (operation === 'document') {
-		set(requestOptions.body as {}, `${operation}.filename`, mediaFileName || binaryFileName);
+		set(requestOptions.body as IDataObject, `${operation}.filename`, uploadData.fileName);
 	}
 
 	return requestOptions;
@@ -117,8 +93,8 @@ export async function templateInfo(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as {}, 'template.name', name);
-	set(requestOptions.body as {}, 'template.language.code', language);
+	set(requestOptions.body as IDataObject, 'template.name', name);
+	set(requestOptions.body as IDataObject, 'template.language.code', language);
 	return requestOptions;
 }
 
@@ -187,7 +163,7 @@ export async function componentsRequest(
 		requestOptions.body = {};
 	}
 
-	set(requestOptions.body as {}, 'template.components', componentsRet);
+	set(requestOptions.body as IDataObject, 'template.components', componentsRet);
 
 	return requestOptions;
 }
@@ -203,7 +179,7 @@ export async function cleanPhoneNumber(
 		requestOptions.body = {};
 	}
 
-	set(requestOptions.body as {}, 'to', phoneNumber);
+	set(requestOptions.body as IDataObject, 'to', phoneNumber);
 
 	return requestOptions;
 }

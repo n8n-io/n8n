@@ -1,0 +1,976 @@
+{
+	"name": "If node unit tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "38a682ce-6cde-4f90-bfd0-a80c61e2b22d",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				-3120,
+				600
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  { name: \"Elon Musk\" },\n  { name: \"Arnold Schwarzenegger\"},\n];"
+			},
+			"id": "a35687af-99c1-43b2-aa43-955fcd87ff81",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				-2920,
+				600
+			]
+		},
+		{
+			"parameters": {},
+			"id": "466a0b11-7826-4ba9-9563-9ac5d6d08457",
+			"name": "On True",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				-500
+			]
+		},
+		{
+			"parameters": {},
+			"id": "91363030-4550-4ee2-9dea-f3adad8c1190",
+			"name": "On False",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				-460
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "contains",
+							"value2": "Elon"
+						}
+					]
+				}
+			},
+			"id": "93db20a4-9781-4de1-a298-87e885a21f31",
+			"name": "IF Contains",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				-480
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notContains",
+							"value2": "Elon"
+						}
+					]
+				}
+			},
+			"id": "9f286ba6-f2a6-4aa1-895a-65992c1d5eae",
+			"name": "IF Not Contains",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				-300
+			]
+		},
+		{
+			"parameters": {},
+			"id": "45be466f-da36-40da-993c-fb6f3de313e2",
+			"name": "On True Contains",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				-320
+			]
+		},
+		{
+			"parameters": {},
+			"id": "578dc9f0-0224-475e-89bb-af8b474c5d4e",
+			"name": "On False Contains",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				-280
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "endsWith",
+							"value2": "Musk"
+						}
+					]
+				}
+			},
+			"id": "715f2210-7dd0-47e9-bcd7-3a62728d993e",
+			"name": "IF Ends With",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				-120
+			]
+		},
+		{
+			"parameters": {},
+			"id": "847291c1-3040-4289-a8f9-a23e82b8ff85",
+			"name": "On True Ends With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				-140
+			]
+		},
+		{
+			"parameters": {},
+			"id": "bb312b9d-5bda-4869-a790-932a85374bf1",
+			"name": "On False Ends With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				-100
+			]
+		},
+		{
+			"parameters": {},
+			"id": "1f507ed5-1602-40c0-ba3d-7b0095f1c346",
+			"name": "On True Not Ends With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				20
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notEndsWith",
+							"value2": "Musk"
+						}
+					]
+				}
+			},
+			"id": "c9423daa-de29-4f05-9dde-5b90006fe1a0",
+			"name": "IF Not Ends With",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				40
+			]
+		},
+		{
+			"parameters": {},
+			"id": "ad89d258-3fc4-4f96-93f4-0c4c4d0b4aca",
+			"name": "On False Not Ends With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				60
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"value2": "Elon Musk"
+						}
+					]
+				}
+			},
+			"id": "ac91ef56-3bab-42db-b800-13f53be03a43",
+			"name": "IF Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				240
+			]
+		},
+		{
+			"parameters": {},
+			"id": "db00d63e-0e74-4d89-a8f4-4de3492fe5e6",
+			"name": "On True Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				220
+			]
+		},
+		{
+			"parameters": {},
+			"id": "3314da40-e56a-4a6b-932e-8a31335f2535",
+			"name": "On False Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				260
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notEqual",
+							"value2": "Elon Musk"
+						}
+					]
+				}
+			},
+			"id": "765195fc-6cba-4918-89b8-ad5ca456e89e",
+			"name": "IF Not Equal",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				420
+			]
+		},
+		{
+			"parameters": {},
+			"id": "e720d65f-13f5-4888-ab14-8b022b2fc08e",
+			"name": "On True Not Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				400
+			]
+		},
+		{
+			"parameters": {},
+			"id": "f14a2032-b734-4f40-84a3-42426eec932e",
+			"name": "On False Not Equal",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				440
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "regex",
+							"value2": "([E])"
+						}
+					]
+				}
+			},
+			"id": "caa56347-323c-4671-abae-71a0d6586315",
+			"name": "IF Regex",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				600
+			]
+		},
+		{
+			"parameters": {},
+			"id": "5a83ee44-5b71-472d-8a6c-ee3fddd78482",
+			"name": "On True Regex",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				580
+			]
+		},
+		{
+			"parameters": {},
+			"id": "a82388fc-6b93-4327-bb99-da6b0b0824cd",
+			"name": "On False Regex",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				620
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notRegex",
+							"value2": "([E])"
+						}
+					]
+				}
+			},
+			"id": "6139ed77-889d-4b89-8c2f-c26601ffb54a",
+			"name": "IF Not Regex",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				780
+			]
+		},
+		{
+			"parameters": {},
+			"id": "f61258e3-44aa-4fd5-9602-a135ad4a8e6b",
+			"name": "On True Not Regex",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				760
+			]
+		},
+		{
+			"parameters": {},
+			"id": "d547895d-5dd2-4fba-9076-dbd21db7559d",
+			"name": "On False Not Regex",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				800
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "startsWith",
+							"value2": "Elon"
+						}
+					]
+				}
+			},
+			"id": "45ea72ae-6ee0-492f-9f6c-237b95c5516f",
+			"name": "IF Starts With",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				980
+			]
+		},
+		{
+			"parameters": {},
+			"id": "7102319b-10d2-46af-a04f-84dcee678038",
+			"name": "On True Starts With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				960
+			]
+		},
+		{
+			"parameters": {},
+			"id": "1f986310-a6b1-40a5-aff3-c595b414c3cd",
+			"name": "On False Starts With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				1000
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notStartsWith",
+							"value2": "Elon"
+						}
+					]
+				}
+			},
+			"id": "16513014-99f8-4d36-b5ef-1c8c28aa1d1d",
+			"name": "IF Not Starts With",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				1180
+			]
+		},
+		{
+			"parameters": {},
+			"id": "31b15c96-9075-4892-baa1-683d7ce802d1",
+			"name": "On True Not Starts With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				1160
+			]
+		},
+		{
+			"parameters": {},
+			"id": "33786edf-86af-4769-9fa2-f8ba78b67588",
+			"name": "On False Not Starts With",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				1200
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "isEmpty"
+						}
+					]
+				}
+			},
+			"id": "7e90e29c-186c-4c22-a7a9-e1a7a620a53f",
+			"name": "IF Is Empty",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				1380
+			]
+		},
+		{
+			"parameters": {},
+			"id": "adde8115-8279-43e6-b5b3-211378ccb56a",
+			"name": "On False Is Empty",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2220,
+				1400
+			]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "isNotEmpty"
+						}
+					]
+				}
+			},
+			"id": "2e0f102e-b1a0-42c3-a523-47095233b357",
+			"name": "IF Is Not Empty",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [
+				-2660,
+				1560
+			]
+		},
+		{
+			"parameters": {},
+			"id": "37a9085f-89e0-4b15-93a9-69f583330f2b",
+			"name": "On True Is Not Empty",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				-2460,
+				1540
+			]
+		}
+	],
+	"pinData": {
+		"On True": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On False": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On True Contains": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On False Contains": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On True Ends With": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On False Ends With": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On True Not Ends With": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On False Not Ends With": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On True Equal": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On False Equal": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On True Not Equal": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On False Not Equal": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On True Regex": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On False Regex": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On True Not Regex": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On False Not Regex": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On True Starts With": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On False Starts With": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On True Not Starts With": [
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On False Not Starts With": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			}
+		],
+		"On False Is Empty": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			},
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		],
+		"On True Is Not Empty": [
+			{
+				"json": {
+					"name": "Elon Musk"
+				}
+			},
+			{
+				"json": {
+					"name": "Arnold Schwarzenegger"
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "IF Contains",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Contains",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Ends With",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Ends With",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Equal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Equal",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Regex",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Regex",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Starts With",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Not Starts With",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Is Empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "IF Is Not Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Contains": {
+			"main": [
+				[
+					{
+						"node": "On True",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Contains": {
+			"main": [
+				[
+					{
+						"node": "On True Contains",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Contains",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Ends With": {
+			"main": [
+				[
+					{
+						"node": "On True Ends With",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Ends With",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Ends With": {
+			"main": [
+				[
+					{
+						"node": "On True Not Ends With",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Not Ends With",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Equal",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Equal": {
+			"main": [
+				[
+					{
+						"node": "On True Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Not Equal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Regex": {
+			"main": [
+				[
+					{
+						"node": "On True Regex",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Regex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Regex": {
+			"main": [
+				[
+					{
+						"node": "On True Not Regex",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Not Regex",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Starts With": {
+			"main": [
+				[
+					{
+						"node": "On True Starts With",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Starts With",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Not Starts With": {
+			"main": [
+				[
+					{
+						"node": "On True Not Starts With",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "On False Not Starts With",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Is Empty": {
+			"main": [
+				[],
+				[
+					{
+						"node": "On False Is Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF Is Not Empty": {
+			"main": [
+				[
+					{
+						"node": "On True Is Not Empty",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "76683cf0-dd49-4220-b196-88d8b37c7207",
+	"id": "181",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

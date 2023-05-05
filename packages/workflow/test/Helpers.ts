@@ -1,13 +1,11 @@
 import get from 'lodash.get';
-import {
+import type {
 	CredentialInformation,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IContextObject,
 	ICredentialDataDecryptedObject,
-	ICredentials,
 	ICredentialsEncrypted,
-	ICredentialsHelper,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -32,13 +30,14 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
-	NodeHelpers,
 	NodeParameterValue,
-	Workflow,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	WorkflowHooks,
-} from '../src';
+} from '@/Interfaces';
+import { ICredentials, ICredentialsHelper } from '@/Interfaces';
+import type { Workflow } from '@/Workflow';
+import { WorkflowDataProxy } from '@/WorkflowDataProxy';
+import { WorkflowHooks } from '@/WorkflowHooks';
+import * as NodeHelpers from '@/NodeHelpers';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
@@ -77,7 +76,7 @@ export class Credentials extends ICredentials {
 		const fullData = this.getData(encryptionKey, nodeType);
 
 		if (fullData === null) {
-			throw new Error(`No data was set.`);
+			throw new Error('No data was set.');
 		}
 
 		// eslint-disable-next-line no-prototype-builtins
@@ -90,7 +89,7 @@ export class Credentials extends ICredentials {
 
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error(`No credentials were set to save.`);
+			throw new Error('No credentials were set to save.');
 		}
 
 		return {
@@ -278,7 +277,7 @@ export function getExecuteFunctions(
 				return mode;
 			},
 			getNode: () => {
-				return JSON.parse(JSON.stringify(node));
+				return deepCopy(node);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -445,7 +444,7 @@ export function getExecuteSingleFunctions(
 				return mode;
 			},
 			getNode: () => {
-				return JSON.parse(JSON.stringify(node));
+				return deepCopy(node);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -674,14 +673,8 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
-
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
-	}
-
-	getByName(nodeType: string): INodeType | IVersionedNodeType | undefined {
-		return this.getByNameAndVersion(nodeType);
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.nodeTypes[nodeType].type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {

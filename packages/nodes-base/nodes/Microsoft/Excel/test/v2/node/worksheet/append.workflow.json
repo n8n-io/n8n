@@ -1,0 +1,166 @@
+{
+	"name": "microsoft excel 365 - tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "2e1ec8f6-a2e2-4aa9-909c-d0a279584131",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [800, 260]
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "append",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "={A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "id"
+				},
+				"fieldsUi": {
+					"values": [
+						{
+							"column": "id",
+							"fieldValue": "4"
+						},
+						{
+							"column": "name",
+							"fieldValue": "Sam"
+						},
+						{
+							"column": "age",
+							"fieldValue": "34"
+						},
+						{
+							"column": "data",
+							"fieldValue": "data 4"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "86f2a240-3acf-45c2-b97f-63dd655d296b",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1280, 260],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "append",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{426949D7-797F-43A9-A8A4-8FE283495A82}",
+					"mode": "list",
+					"cachedResultName": "Sheet5"
+				},
+				"dataMode": "autoMap",
+				"options": {}
+			},
+			"id": "531949d8-1ffa-4e1c-ae3e-032360b74f06",
+			"name": "Microsoft Excel 3651",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1280, 500],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\n  id: 4,\n  name: 'Don',\n  age: 37,\n  data: 'data 44',\n};"
+			},
+			"id": "2919f9b9-e3ac-42cd-a792-774738fd2195",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1080, 500]
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 3651": [
+			{
+				"json": {
+					"id": 4,
+					"name": "Don",
+					"age": 37,
+					"data": "data 44"
+				}
+			}
+		],
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"id": 4,
+					"name": "Sam",
+					"age": 34,
+					"data": "data 4"
+				}
+			}
+		],
+		"Code": [
+			{
+				"json": {
+					"id": 4,
+					"name": "Don",
+					"age": 37,
+					"data": "data 44"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 3651",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

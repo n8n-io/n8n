@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -15,7 +13,6 @@ export async function deleteTicket(
 	const endpoint = `tickets/${id}`;
 	const body = {} as IDataObject;
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-	return this.helpers.returnJsonArray(responseData);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

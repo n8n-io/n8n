@@ -1,5 +1,5 @@
-import {render} from '@testing-library/vue';
-import N8nCard from "../Card.vue";
+import { render } from '@testing-library/vue';
+import N8nCard from '../Card.vue';
 
 describe('components', () => {
 	describe('N8nCard', () => {

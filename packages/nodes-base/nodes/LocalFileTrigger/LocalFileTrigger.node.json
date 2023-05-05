@@ -12,9 +12,6 @@
 	},
 	"alias": ["Watch", "Monitor"],
 	"subcategories": {
-		"Core Nodes":[
-			"Files",
-			"Other Trigger Nodes"
-		]
+		"Core Nodes": ["Files", "Other Trigger Nodes"]
 	}
 }
