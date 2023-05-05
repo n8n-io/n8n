@@ -181,6 +181,21 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
+		checkForExecutionsCount() {
+			let acc = 0;
+			const interval = setInterval(async () => {
+				try {
+					const plan = await this.usersStore.getOwnerCurrentPLan();
+					if (plan.metadata.slug !== 'trial-1') {
+						clearTimeout(interval);
+					}
+					// TODO: remove before releasing
+					plan.usage.executions += acc;
+					acc += 20;
+					this.usersStore.setCloudPLan(plan);
+				} catch {}
+			}, 5000);
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -189,6 +204,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		this.authenticate();
 		this.redirectIfNecessary();
 		this.checkForNewVersions();
+		this.checkForExecutionsCount();
 
 		this.loading = false;
 

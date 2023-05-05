@@ -25,6 +25,13 @@
 					/>
 				</div>
 			</template>
+
+			<template #beforeLowerMenu>
+				<ExecutionsUsage
+					:cloud-plan-data="currentPlanData"
+					v-if="!isCollapsed && userIsTrialing"
+					@onUpgradePlanClicked="onUpgradePlanClicked"
+			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
@@ -110,7 +117,7 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { CloudPlanData, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -121,7 +128,13 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import {
+	ABOUT_MODAL_KEY,
+	CHANGE_PLAN_PAGE_PRODUCTION,
+	CHANGE_PLAN_PAGE_STAGING,
+	VERSIONS_MODAL_KEY,
+	VIEWS,
+} from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
@@ -134,6 +147,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useVersionsStore } from '@/stores/versions';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl';
+import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 
 export default mixins(
 	genericHelpers,
@@ -147,10 +161,10 @@ export default mixins(
 	components: {
 		GiftNotificationIcon,
 		WorkflowSettings,
+		ExecutionsUsage,
 	},
 	data() {
 		return {
-			// @ts-ignore
 			basePath: '',
 			fullyExpanded: false,
 		};
@@ -325,6 +339,12 @@ export default mixins(
 				},
 			];
 			return [...items, ...regularItems];
+		},
+		userIsTrialing(): boolean {
+			return this.usersStore.userIsTrialing;
+		},
+		currentPlanData(): CloudPlanData {
+			return this.usersStore.currentPlanData;
 		},
 	},
 	async mounted() {
@@ -504,6 +524,12 @@ export default mixins(
 			if (prompt.value) {
 				this.versionControlStore.sync({ commitMessage: prompt.value });
 			}
+		},
+		onUpgradePlanClicked() {
+			location.href =
+				this.settingsStore.settings.license.environment === 'production'
+					? CHANGE_PLAN_PAGE_PRODUCTION
+					: CHANGE_PLAN_PAGE_STAGING;
 		},
 	},
 });

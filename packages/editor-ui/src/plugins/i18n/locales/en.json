@@ -1811,5 +1811,12 @@
 	"userActivationSurveyModal.sharedFeedback.success": "Thanks for your feedback",
 	"userActivationSurveyModal.sharedFeedback.error": "Problem sharing feedback, try again",
 	"sso.login.divider": "or",
-	"sso.login.button": "Continue with SSO"
+	"sso.login.button": "Continue with SSO",
+	"executionUsage.currentUsage": "{text} {count}",
+	"executionUsage.currentUsage.text": "You are in a free trial with limited executions. You have",
+	"executionUsage.currentUsage.count": "{days} days left.",
+	"executionUsage.label.executions": "Executions",
+	"executionUsage.button.upgrade": "Upgrade plan",
+	"executionUsage.expired.text": "You're trial is over. Upgrade now to keep your automation data",
+	"executionUsage.ranOutOfExecutions.text": "You’re out of executions. Upgrade your plan to keep automating."
 }

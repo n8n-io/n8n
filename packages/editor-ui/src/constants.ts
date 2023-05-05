@@ -548,3 +548,7 @@ export const ALLOWED_HTML_TAGS = [
 	'details',
 	'summary',
 ];
+
+export const CHANGE_PLAN_PAGE_PRODUCTION = 'https://app.n8n.cloud/account/change-plan';
+
+export const CHANGE_PLAN_PAGE_STAGING = 'https://stage-app.n8n.cloud/account/change-plan';
