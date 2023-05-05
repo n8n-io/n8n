@@ -13,17 +13,15 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
-import { VIEWS, ASSUMPTION_EXPERIMENT } from '@/constants';
-import { restApi } from '@/mixins/restApi';
+import type { IFormBoxConfig } from '@/Interface';
+import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from '@/stores/credentials';
-import { usePostHog } from '@/stores/posthog';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	name: 'SetupView',
 	components: {
 		AuthView,

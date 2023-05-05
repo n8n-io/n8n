@@ -4,8 +4,8 @@ import { Message, MessageBox } from 'element-ui';
 export function useMessage() {
 	async function alert(
 		message: string,
-		configOrTitle: string | ElMessageBoxOptions | undefined,
-		config: ElMessageBoxOptions | undefined,
+		configOrTitle?: string | ElMessageBoxOptions,
+		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
 			...(config || (typeof configOrTitle === 'object' ? configOrTitle : {})),
@@ -21,8 +21,8 @@ export function useMessage() {
 
 	async function confirm(
 		message: string,
-		configOrTitle: string | ElMessageBoxOptions | undefined,
-		config: ElMessageBoxOptions | undefined,
+		configOrTitle?: string | ElMessageBoxOptions,
+		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
 			...(config || (typeof configOrTitle === 'object' ? configOrTitle : {})),
@@ -41,8 +41,8 @@ export function useMessage() {
 
 	async function prompt(
 		message: string,
-		configOrTitle: string | ElMessageBoxOptions | undefined,
-		config: ElMessageBoxOptions | undefined,
+		configOrTitle?: string | ElMessageBoxOptions,
+		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
 			...(config || (typeof configOrTitle === 'object' ? configOrTitle : {})),

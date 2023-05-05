@@ -43,12 +43,13 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { useUIStore } from '@/stores/ui';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import { EventBus } from '@/event-bus';
+import type { EventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Modal',
 	props: {
 		name: {

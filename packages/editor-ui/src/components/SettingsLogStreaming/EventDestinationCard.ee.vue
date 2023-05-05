@@ -50,16 +50,13 @@
 import mixins from 'vue-typed-mixins';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import Vue, { PropType } from 'vue';
+import { useLogStreamingStore } from '../../stores/logStreaming.store';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import {
-	deepCopy,
-	defaultMessageEventBusDestinationOptions,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
-import { BaseTextKey } from '../../plugins/i18n';
-import { EventBus } from '@/event-bus';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
+import type { BaseTextKey } from '../../plugins/i18n';
+import type { EventBus } from '@/event-bus';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',

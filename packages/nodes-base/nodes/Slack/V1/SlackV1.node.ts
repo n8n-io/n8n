@@ -22,6 +22,8 @@ import { userProfileFields, userProfileOperations } from './UserProfileDescripti
 import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
 import type { IAttachment } from './MessageInterface';
 
+import { oldVersionNotice } from '../../../utils/descriptions';
+
 import moment from 'moment';
 
 interface Attachment {
@@ -97,6 +99,7 @@ export class SlackV1 implements INodeType {
 				},
 			],
 			properties: [
+				oldVersionNotice,
 				{
 					displayName: 'Authentication',
 					name: 'authentication',

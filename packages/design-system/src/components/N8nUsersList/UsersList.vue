@@ -37,7 +37,8 @@ import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-users-list',

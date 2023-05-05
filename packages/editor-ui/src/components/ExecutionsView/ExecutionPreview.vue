@@ -122,16 +122,18 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import NodeView from '@/views/NodeView.vue';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 import { Dropdown as ElDropdown } from 'element-ui';
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
+
+export default mixins(showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
 		ElDropdown,
@@ -176,9 +178,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
-			const retryDropdown = this.$refs.retryDropdown as (Vue & { hide: () => void }) | undefined;
-			if (retryDropdown && event.relatedTarget === null) {
-				retryDropdown.hide();
+			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
+			if (retryDropdownRef && event.relatedTarget === null) {
+				retryDropdownRef.hide();
 			}
 		},
 	},

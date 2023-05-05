@@ -37,11 +37,13 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
-import { createEventBus, EventBus } from '../../utils';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
 
 export default defineComponent({
 	name: 'n8n-form-inputs',

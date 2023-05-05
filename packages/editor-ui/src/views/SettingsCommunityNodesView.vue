@@ -61,13 +61,12 @@ import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { showMessage } from '@/mixins/showMessage';
 import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { useUIStore } from '@/stores/ui';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { BaseTextKey } from '@/plugins/i18n';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 

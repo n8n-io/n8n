@@ -44,7 +44,7 @@
 <script lang="ts" setup>
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useCanvasStore } from '@/stores/canvas';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;

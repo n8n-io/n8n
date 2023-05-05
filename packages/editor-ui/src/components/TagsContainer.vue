@@ -39,13 +39,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
-import { useTagsStore } from '@/stores/tags';
+import { useTagsStore } from '@/stores/tags.store';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -56,7 +56,7 @@ interface TagEl extends ITag {
 	isCount?: boolean;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],

@@ -36,7 +36,3 @@ export function standardizeOutput(output: IDataObject) {
 	standardizeOutputRecursive(output);
 	return output;
 }
-
-export type CodeNodeMode = 'runOnceForAllItems' | 'runOnceForEachItem';
-
-export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);

@@ -123,7 +123,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import {
 	DUPLICATE_MODAL_KEY,
@@ -145,21 +144,21 @@ import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
+import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useTagsStore } from '@/stores/tags';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users';
-import { useUsageStore } from '@/stores/usage';
-import { BaseTextKey } from '@/plugins/i18n';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTagsStore } from '@/stores/tags.store';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { createEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -171,7 +170,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(workflowHelpers, titleChange).extend({
+export default mixins(workflowHelpers).extend({
 	name: 'WorkflowDetails',
 	components: {
 		TagsContainer,
@@ -182,6 +181,11 @@ export default mixins(workflowHelpers, titleChange).extend({
 		TagsDropdown,
 		InlineTextEdit,
 		BreakpointsObserver,
+	},
+	setup() {
+		return {
+			...useTitleChange(),
+		};
 	},
 	data() {
 		return {
@@ -417,9 +421,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 				this.$root.$emit('importWorkflowData', { data: workflowData });
 			};
 
-			const input = this.$refs.importFile as HTMLInputElement;
-			if (input !== null && input.files !== null && input.files.length !== 0) {
-				reader.readAsText(input!.files[0]!);
+			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
+			if (inputRef?.files && inputRef.files.length !== 0) {
+				reader.readAsText(inputRef.files[0]);
 			}
 		},
 		async onWorkflowMenuSelect(action: string): Promise<void> {
@@ -502,17 +506,14 @@ export default mixins(workflowHelpers, titleChange).extend({
 					}
 
 					try {
-						await this.restApi().deleteWorkflow(this.currentWorkflowId);
+						await this.workflowsStore.deleteWorkflow(this.currentWorkflowId);
 					} catch (error) {
-						this.$showError(
-							error,
-							this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-						);
+						this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 						return;
 					}
 					this.uiStore.stateIsDirty = false;
 					// Reset tab title since workflow is deleted.
-					this.$titleReset();
+					this.titleReset();
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 						type: 'success',

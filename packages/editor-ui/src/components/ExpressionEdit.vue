@@ -78,7 +78,7 @@ import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/Expre
 import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
-import { IVariableItemSelected } from '@/Interface';
+import type { IVariableItemSelected } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -88,8 +88,8 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';

@@ -9,7 +9,7 @@ import { InternalHooks } from '@/InternalHooks';
 import config from '@/config';
 import { UserService } from '@/user/user.service';
 
-enum StatisticsUpsertResult {
+const enum StatisticsUpsertResult {
 	insert = 'insert',
 	update = 'update',
 	failed = 'failed',
@@ -114,7 +114,7 @@ export async function workflowExecutionCompleted(
 				workflow_id: workflowId,
 			};
 
-			if (!owner.settings?.firstSuccessfulWorkflowId) {
+			if (!owner.settings?.userActivated) {
 				await UserService.updateUserSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,

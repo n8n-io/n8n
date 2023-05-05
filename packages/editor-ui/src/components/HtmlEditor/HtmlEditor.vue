@@ -18,7 +18,9 @@ import {
 	indentOnInput,
 	LanguageSupport,
 } from '@codemirror/language';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -26,7 +28,6 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
 
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
@@ -169,11 +170,12 @@ export default mixins(expressionManager).extend({
 
 	methods: {
 		root() {
-			const root = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			const rootRef = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			if (!rootRef) {
+				throw new Error('Expected div with ref "htmlEditor"');
+			}
 
-			if (!root) throw new Error('Expected div with ref "htmlEditor"');
-
-			return root;
+			return rootRef;
 		},
 
 		isMissingHtmlTags() {
