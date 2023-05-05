@@ -59,7 +59,7 @@ export abstract class BaseCommand extends Command {
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			LoggerProxy.warn(
-				'MySQL/MariaDB has been deprecated and will have support removed when n8n 1.0 is released. Please migrate to PostgreSQL.',
+				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
 			);
 		}
 
