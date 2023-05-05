@@ -626,7 +626,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment;
+								return settingsStore.isDesktopDeployment;
 							},
 						},
 					},
