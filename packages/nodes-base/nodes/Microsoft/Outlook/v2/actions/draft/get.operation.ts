@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
 
@@ -85,33 +85,33 @@ export async function execute(
 	const qs: IDataObject = {};
 
 	const draftId = this.getNodeParameter('draftId', index) as string;
-	const options = this.getNodeParameter('options', index, {}) as IDataObject;
+	const options = this.getNodeParameter('options', index, {});
 	const output = this.getNodeParameter('output', index) as string;
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
-		qs['$select'] = fields.join(',');
+		qs.$select = fields.join(',');
 	}
 
 	if (output === 'simple') {
-		qs['$select'] =
+		qs.$select =
 			'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 	}
 
 	responseData = await microsoftApiRequest.call(this, 'GET', `/messages/${draftId}`, undefined, qs);
 
 	if (output === 'simple') {
-		responseData = simplifyOutputMessages([responseData]);
+		responseData = simplifyOutputMessages([responseData as IDataObject]);
 	}
 
 	let executionData: INodeExecutionData[] = [];
 
 	if (options.downloadAttachments) {
 		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-		executionData = await downloadAttachments.call(this, responseData, prefix);
+		executionData = await downloadAttachments.call(this, responseData as IDataObject, prefix);
 	} else {
 		executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(responseData),
+			this.helpers.returnJsonArray(responseData as IDataObject),
 			{ itemData: { item: index } },
 		);
 	}

@@ -1,5 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 import { DateTime } from 'luxon';
@@ -242,9 +243,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
-
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const calendarId = this.getNodeParameter('calendarId', index, '') as string;
 	if (calendarId === '') {
 		throw new NodeOperationError(this.getNode(), 'Calendar ID is required');
@@ -297,10 +296,10 @@ export async function execute(
 		...additionalFields,
 	};
 
-	responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
+	const responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

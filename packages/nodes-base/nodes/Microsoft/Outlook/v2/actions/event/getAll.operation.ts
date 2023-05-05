@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { eventfields } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
@@ -128,17 +128,17 @@ export async function execute(
 	const qs = {} as IDataObject;
 
 	const calendarId = this.getNodeParameter('calendarId', index) as string;
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const filters = this.getNodeParameter('filters', index, {}) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const filters = this.getNodeParameter('filters', index, {});
 	const output = this.getNodeParameter('output', index) as string;
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
-		qs['$select'] = fields.join(',');
+		qs.$select = fields.join(',');
 	}
 
 	if (output === 'simple') {
-		qs['$select'] = 'id,subject,bodyPreview,start,end,organizer,attendees,webLink';
+		qs.$select = 'id,subject,bodyPreview,start,end,organizer,attendees,webLink';
 	}
 
 	if (Object.keys(filters).length) {
@@ -149,13 +149,13 @@ export async function execute(
 		}
 
 		if (filterString.length) {
-			qs['$filter'] = filterString.join(' and ');
+			qs.$filter = filterString.join(' and ');
 		}
 	}
 
 	const endpoint = `/calendars/${calendarId}/events`;
 
-	if (returnAll === true) {
+	if (returnAll) {
 		responseData = await microsoftApiRequestAllItems.call(
 			this,
 			'value',
@@ -165,13 +165,13 @@ export async function execute(
 			qs,
 		);
 	} else {
-		qs['$top'] = this.getNodeParameter('limit', index) as number;
+		qs.$top = this.getNodeParameter('limit', index);
 		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 		responseData = responseData.value;
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject[]),
 		{ itemData: { item: index } },
 	);
 

@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -25,6 +25,6 @@ export class MicrosoftOutlookV2 implements INodeType {
 	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return await router.call(this);
+		return router.call(this);
 	}
 }

@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { makeRecipient } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -33,12 +33,12 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const draftId = this.getNodeParameter('draftId', index);
-	const additionalFields = this.getNodeParameter('additionalFields', index, {}) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index, {});
 
-	if (additionalFields && additionalFields.recipients) {
-		const recipients = ((additionalFields.recipients as string).split(',') as string[]).filter(
-			(email) => !!email,
-		);
+	if (additionalFields?.recipients) {
+		const recipients = (additionalFields.recipients as string)
+			.split(',')
+			.filter((email) => !!email);
 		if (recipients.length !== 0) {
 			await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, {
 				toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),

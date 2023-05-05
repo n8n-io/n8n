@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -236,13 +236,11 @@ export async function execute(
 	index: number,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	let responseData;
-
 	const messageId = this.getNodeParameter('messageId', index) as string;
 	const replyType = this.getNodeParameter('replyType', index) as string;
 	const comment = this.getNodeParameter('comment', index) as string;
 	const send = this.getNodeParameter('send', index, false) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index, {}) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index, {});
 
 	const body: IDataObject = {};
 
@@ -258,7 +256,7 @@ export async function execute(
 		delete (body.message as IDataObject).attachments;
 	}
 
-	responseData = await microsoftApiRequest.call(
+	const responseData = await microsoftApiRequest.call(
 		this,
 		'POST',
 		`/messages/${messageId}/${action}`,
@@ -307,12 +305,12 @@ export async function execute(
 		}
 	}
 
-	if (send === true) {
+	if (send) {
 		await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

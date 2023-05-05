@@ -1,4 +1,5 @@
-import { INodeTypeBaseDescription, IVersionedNodeType, VersionedNodeType } from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
 import { MicrosoftOutlookV1 } from './v1/MicrosoftOutlookV1.node';
 import { MicrosoftOutlookV2 } from './v2/MicrosoftOutlookV2.node';

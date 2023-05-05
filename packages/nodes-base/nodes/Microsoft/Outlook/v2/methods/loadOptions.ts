@@ -1,4 +1,4 @@
-import { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequestAllItems } from '../transport';
 
 export async function getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

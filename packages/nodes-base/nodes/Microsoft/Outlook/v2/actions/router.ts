@@ -1,7 +1,8 @@
-import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { MicrosoftOutlook } from './node.type';
+import type { MicrosoftOutlook } from './node.type';
 import * as calendar from './calendar/Calendar.resource';
 import * as contact from './contact/Contact.resource';
 import * as draft from './draft/Draft.resource';
@@ -15,7 +16,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const resource = this.getNodeParameter<MicrosoftOutlook>('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
+	const operation = this.getNodeParameter('operation', 0);
 
 	let responseData;
 

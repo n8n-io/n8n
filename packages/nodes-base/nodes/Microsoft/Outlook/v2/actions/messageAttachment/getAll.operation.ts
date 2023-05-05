@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -97,22 +97,22 @@ export async function execute(
 	const qs = {} as IDataObject;
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const options = this.getNodeParameter('options', index) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const options = this.getNodeParameter('options', index);
 
 	// Have sane defaults so we don't fetch attachment data in this operation
-	qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
+	qs.$select = 'id,lastModifiedDateTime,name,contentType,size,isInline';
 
 	if (options.fields && (options.fields as string[]).length) {
-		qs['$select'] = (options.fields as string[]).map((field) => field.trim()).join(',');
+		qs.$select = (options.fields as string[]).map((field) => field.trim()).join(',');
 	}
 
 	if (options.filter) {
-		qs['$filter'] = options.filter;
+		qs.$filter = options.filter;
 	}
 
 	const endpoint = `/messages/${messageId}/attachments`;
-	if (returnAll === true) {
+	if (returnAll) {
 		responseData = await microsoftApiRequestAllItems.call(
 			this,
 			'value',
@@ -122,13 +122,13 @@ export async function execute(
 			qs,
 		);
 	} else {
-		qs['$top'] = this.getNodeParameter('limit', index) as number;
+		qs.$top = this.getNodeParameter('limit', index);
 		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 		responseData = responseData.value;
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

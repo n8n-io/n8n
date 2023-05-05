@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import * as calendar from './calendar/Calendar.resource';
 import * as contact from './contact/Contact.resource';
 import * as draft from './draft/Draft.resource';

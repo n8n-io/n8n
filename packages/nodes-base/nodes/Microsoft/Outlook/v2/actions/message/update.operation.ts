@@ -1,5 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -178,7 +179,7 @@ export async function execute(
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
 
-	const updateFields = this.getNodeParameter('updateFields', index) as IDataObject;
+	const updateFields = this.getNodeParameter('updateFields', index);
 
 	if (updateFields.folder) {
 		const body: IDataObject = {
@@ -204,7 +205,7 @@ export async function execute(
 	responseData = await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, body, {});
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

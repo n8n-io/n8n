@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -229,7 +229,7 @@ export async function execute(
 	index: number,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const toRecipients = this.getNodeParameter('toRecipients', index) as string;
 	const subject = this.getNodeParameter('subject', index) as string;
 	const bodyContent = this.getNodeParameter('bodyContent', index, '') as string;
@@ -249,7 +249,7 @@ export async function execute(
 		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
 
 		// // Handle attachments
-		message['attachments'] = attachments.map((attachment) => {
+		message.attachments = attachments.map((attachment) => {
 			const binaryPropertyName = attachment.binaryPropertyName as string;
 
 			if (items[index].binary === undefined) {
@@ -283,7 +283,7 @@ export async function execute(
 		saveToSentItems,
 	};
 
-	await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
+	await microsoftApiRequest.call(this, 'POST', '/sendMail', body, {});
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

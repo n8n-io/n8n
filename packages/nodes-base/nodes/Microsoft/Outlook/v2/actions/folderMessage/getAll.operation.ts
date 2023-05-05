@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { messageFields, prepareFilterString, simplifyOutputMessages } from '../../helpers/utils';
 import {
 	downloadAttachments,
@@ -277,30 +277,30 @@ export async function execute(
 	const qs: IDataObject = {};
 
 	const folderId = this.getNodeParameter('folderId', index) as string;
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filtersUI.values', index, {}) as IDataObject;
-	const options = this.getNodeParameter('options', index, {}) as IDataObject;
+	const options = this.getNodeParameter('options', index, {});
 	const output = this.getNodeParameter('output', index) as string;
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
-		qs['$select'] = fields.join(',');
+		qs.$select = fields.join(',');
 	}
 
 	if (output === 'simple') {
-		qs['$select'] =
+		qs.$select =
 			'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 	}
 
 	if (filters.filterBy === 'search' && filters.search !== '') {
-		qs['$search'] = `"${filters.search}"`;
+		qs.$search = `"${filters.search}"`;
 	}
 
 	if (filters.filterBy === 'filters') {
 		const filterString = prepareFilterString(filters);
 
 		if (filterString) {
-			qs['$filter'] = filterString;
+			qs.$filter = filterString;
 		}
 	}
 
@@ -316,23 +316,23 @@ export async function execute(
 			qs,
 		);
 	} else {
-		qs['$top'] = this.getNodeParameter('limit', index) as number;
+		qs.$top = this.getNodeParameter('limit', index);
 		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 		responseData = responseData.value;
 	}
 
 	if (output === 'simple') {
-		responseData = simplifyOutputMessages(responseData);
+		responseData = simplifyOutputMessages(responseData as IDataObject[]);
 	}
 
 	let executionData: INodeExecutionData[] = [];
 
 	if (options.downloadAttachments) {
 		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-		executionData = await downloadAttachments.call(this, responseData, prefix);
+		executionData = await downloadAttachments.call(this, responseData as IDataObject, prefix);
 	} else {
 		executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(responseData),
+			this.helpers.returnJsonArray(responseData as IDataObject[]),
 			{ itemData: { item: index } },
 		);
 	}

@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { eventfields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -50,7 +50,6 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
 	const qs = {} as IDataObject;
 
 	const eventId = this.getNodeParameter('eventId', index) as string;
@@ -58,19 +57,19 @@ export async function execute(
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
-		qs['$select'] = fields.join(',');
+		qs.$select = fields.join(',');
 	}
 
 	if (output === 'simple') {
-		qs['$select'] = 'id,subject,bodyPreview,start,end,organizer,attendees,webLink';
+		qs.$select = 'id,subject,bodyPreview,start,end,organizer,attendees,webLink';
 	}
 
 	const endpoint = `/calendar/events/${eventId}`;
 
-	responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+	const responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject[]),
 		{ itemData: { item: index } },
 	);
 

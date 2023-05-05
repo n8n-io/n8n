@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [];
@@ -8,12 +8,11 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
 	const qs: IDataObject = {};
 
 	const calendarId = this.getNodeParameter('calendarId', index) as string;
 
-	responseData = await microsoftApiRequest.call(
+	const responseData = await microsoftApiRequest.call(
 		this,
 		'GET',
 		`/calendars/${calendarId}`,
@@ -22,7 +21,7 @@ export async function execute(
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

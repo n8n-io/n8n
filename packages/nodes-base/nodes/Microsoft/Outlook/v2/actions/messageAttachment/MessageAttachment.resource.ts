@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import * as add from './add.operation';
 import * as download from './download.operation';
 import * as get from './get.operation';

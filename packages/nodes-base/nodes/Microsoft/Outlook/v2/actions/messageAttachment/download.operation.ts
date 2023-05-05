@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -26,7 +26,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const messageId = this.getNodeParameter('messageId', index) as string;
 	const attachmentId = this.getNodeParameter('attachmentId', index) as string;
-	const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', index) as string;
+	const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', index);
 
 	// Get attachment details first
 	const attachmentDetails = await microsoftApiRequest.call(
@@ -70,7 +70,7 @@ export async function execute(
 	const data = Buffer.from(response.body as string, 'utf8');
 	items[index].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 		data as unknown as Buffer,
-		fileName,
+		fileName as string,
 		mimeType,
 	);
 

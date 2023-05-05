@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { contactFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -50,7 +50,6 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
 	const qs: IDataObject = {};
 
 	const contactId = this.getNodeParameter('contactId', index) as string;
@@ -59,14 +58,14 @@ export async function execute(
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
-		qs['$select'] = fields.join(',');
+		qs.$select = fields.join(',');
 	}
 
 	if (output === 'simple') {
-		qs['$select'] = 'id,displayName,emailAddresses,businessPhones,mobilePhone';
+		qs.$select = 'id,displayName,emailAddresses,businessPhones,mobilePhone';
 	}
 
-	responseData = await microsoftApiRequest.call(
+	const responseData = await microsoftApiRequest.call(
 		this,
 		'GET',
 		`/contacts/${contactId}`,
@@ -75,7 +74,7 @@ export async function execute(
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

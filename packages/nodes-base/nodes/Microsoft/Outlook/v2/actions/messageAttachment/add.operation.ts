@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -57,8 +57,8 @@ export async function execute(
 	let responseData;
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-	const options = this.getNodeParameter('options', index) as IDataObject;
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+	const options = this.getNodeParameter('options', index);
 
 	if (items[index].binary === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -110,7 +110,7 @@ export async function execute(
 		const uploadUrl = responseData.uploadUrl;
 
 		if (uploadUrl === undefined) {
-			throw new NodeApiError(this.getNode(), responseData, {
+			throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 				message: 'Failed to get upload session',
 			});
 		}

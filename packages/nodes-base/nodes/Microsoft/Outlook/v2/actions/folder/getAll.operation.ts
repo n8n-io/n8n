@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -80,18 +80,18 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const options = this.getNodeParameter('options', index) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const options = this.getNodeParameter('options', index);
 
 	if (options.fields) {
-		qs['$select'] = options.fields;
+		qs.$select = options.fields;
 	}
 
 	if (options.filter) {
-		qs['$filter'] = options.filter;
+		qs.$filter = options.filter;
 	}
 
-	if (returnAll === true) {
+	if (returnAll) {
 		responseData = await microsoftApiRequestAllItems.call(
 			this,
 			'value',
@@ -101,17 +101,17 @@ export async function execute(
 			qs,
 		);
 	} else {
-		qs['$top'] = this.getNodeParameter('limit', index) as number;
+		qs.$top = this.getNodeParameter('limit', index);
 		responseData = await microsoftApiRequest.call(this, 'GET', '/mailFolders', {}, qs);
 		responseData = responseData.value;
 	}
 
 	if (options.includeChildFolders) {
-		responseData = await getSubfolders.call(this, responseData);
+		responseData = await getSubfolders.call(this, responseData as IDataObject[]);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject[]),
 		{ itemData: { item: index } },
 	);
 

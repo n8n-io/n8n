@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 import { DateTime } from 'luxon';
@@ -202,9 +202,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
-
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const eventId = this.getNodeParameter('eventId', index) as string;
 
 	let timeZone = 'UTC';
@@ -262,10 +260,10 @@ export async function execute(
 
 	const endpoint = `/calendar/events/${eventId}`;
 
-	responseData = await microsoftApiRequest.call(this, 'PATCH', endpoint, body);
+	const responseData = await microsoftApiRequest.call(this, 'PATCH', endpoint, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray(responseData as IDataObject),
 		{ itemData: { item: index } },
 	);
 

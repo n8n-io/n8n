@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [];
