@@ -675,7 +675,17 @@ export default mixins(
 			this.updateNodesExecutionIssues();
 		},
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
-			let saved = await this.saveCurrentWorkflow();
+			let currentId = undefined;
+			if (this.currentWorkflow !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				currentId = this.currentWorkflow;
+			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+				currentId = this.$route.params.name;
+			}
+			const saved = await this.saveCurrentWorkflow({
+				id: currentId,
+				name: this.workflowName,
+				tags: this.workflowsStore.workflow.tags,
+			});
 			if (saved) await this.settingsStore.fetchPromptsData();
 			if (this.activeNode) {
 				// If NDV is open, save will not work from editable input fields
@@ -712,11 +722,8 @@ export default mixins(
 			if (data === undefined) {
 				throw new Error(`Execution with id "${executionId}" could not be found!`);
 			}
-			this.workflowsStore.setWorkflowName({
-				newName: data.workflowData.name,
-				setStateDirty: false,
-			});
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			this.workflowsStore.addWorkflow(data.workflowData);
+			this.workflowsStore.setWorkflowId(data.workflowData.id);
 			this.workflowsStore.setWorkflowExecutionData(data);
 			if (data.workflowData.pinData) {
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);

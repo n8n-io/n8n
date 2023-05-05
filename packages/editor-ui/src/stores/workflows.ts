@@ -525,6 +525,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflowsById = workflows;
 		},
 
+		deleteTemporaryWorkflow(): void {
+			delete this.workflowsById[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+		},
+
 		addWorkflow(workflow: IWorkflowDb): void {
 			Vue.set(this.workflowsById, workflow.id, {
 				...this.workflowsById[workflow.id],

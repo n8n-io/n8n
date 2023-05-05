@@ -847,7 +847,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 				}
 
 				this.workflowsStore.currentWorkflowId = workflowData.id;
-				delete this.workflowsStore.workflowsById[PLACEHOLDER_EMPTY_WORKFLOW_ID];
+				this.workflowsStore.deleteTemporaryWorkflow();
 				this.uiStore.stateIsDirty = false;
 				Object.keys(changedNodes).forEach((nodeName) => {
 					const changes = {
