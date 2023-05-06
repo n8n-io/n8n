@@ -53,7 +53,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
 		currentUserId: null,
 		users: {},
-		cloudPlan: null,
 	}),
 	getters: {
 		allUsers(): IUser[] {
