@@ -6,6 +6,7 @@
 		:autoComplete="autocomplete"
 		ref="innerInput"
 		v-on="$listeners"
+		:name="name"
 	>
 		<template #prepend>
 			<slot name="prepend" />
@@ -23,18 +24,18 @@
 </template>
 
 <script lang="ts">
-import ElInput from 'element-ui/lib/input';
+import { Input as ElInput } from 'element-ui';
+import { defineComponent } from 'vue';
 
-import Vue from 'vue';
+type InputRef = InstanceType<typeof ElInput>;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
 		ElInput,
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
@@ -52,6 +53,9 @@ export default Vue.extend({
 		disabled: {
 			type: Boolean,
 		},
+		readonly: {
+			type: Boolean,
+		},
 		clearable: {
 			type: Boolean,
 		},
@@ -62,6 +66,9 @@ export default Vue.extend({
 			type: Number,
 		},
 		title: {
+			type: String,
+		},
+		name: {
 			type: String,
 		},
 		autocomplete: {
@@ -87,22 +94,43 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).focus();
-			}
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.focus();
 		},
 		blur() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).blur();
-			}
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.blur();
 		},
 		select() {
-			if (this.$refs.innerInput.$el) {
-				// @ts-ignore
-				(this.$refs.innerInput.$el.querySelector(this.type === 'textarea' ? 'textarea' : 'input') as HTMLInputElement).select();
-			}
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
+
+			if (!innerInput) return;
+
+			const inputElement = innerInput.$el.querySelector(
+				this.type === 'textarea' ? 'textarea' : 'input',
+			);
+
+			if (!inputElement) return;
+
+			inputElement.select();
 		},
 	},
 });

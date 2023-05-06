@@ -5,9 +5,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
-export default Vue.extend({
+import { defineComponent } from 'vue';
+export default defineComponent({
 	name: 'n8n-text',
 	props: {
 		bold: {
@@ -17,11 +16,22 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
+			validator: (value: string): boolean =>
+				['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
+			validator: (value: string): boolean =>
+				[
+					'primary',
+					'text-dark',
+					'text-base',
+					'text-light',
+					'text-xlight',
+					'danger',
+					'success',
+					'warning',
+				].includes(value),
 		},
 		align: {
 			type: String,
@@ -40,6 +50,7 @@ export default Vue.extend({
 		classes() {
 			const applied = [];
 			if (this.align) {
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				applied.push(`align-${this.align}`);
 			}
 			if (this.color) {
@@ -50,12 +61,13 @@ export default Vue.extend({
 				applied.push('compact');
 			}
 
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			applied.push(`size-${this.size}`);
 
-			applied.push(this.bold? 'bold': 'regular');
+			applied.push(this.bold ? 'bold' : 'regular');
 
 			return applied.map((c) => this.$style[c]);
-		}
+		},
 	},
 });
 </script>
@@ -122,6 +134,14 @@ export default Vue.extend({
 	color: var(--color-danger);
 }
 
+.success {
+	color: var(--color-success);
+}
+
+.warning {
+	color: var(--color-warning);
+}
+
 .align-left {
 	text-align: left;
 }
@@ -133,5 +153,4 @@ export default Vue.extend({
 .align-center {
 	text-align: center;
 }
-
 </style>

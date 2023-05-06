@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export interface IMessage {
 	name?: string;
@@ -31,7 +31,7 @@ export interface IUser {
 	type?: Type;
 	isAnonymous?: boolean;
 }
-enum Type {
+const enum Type {
 	'TYPE_UNSPECIFIED',
 	'HUMAN',
 	'BOT',

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const connectorOperations: INodeProperties[] = [
 	{
@@ -149,6 +149,7 @@ export const connectorFields: INodeProperties[] = [
 		name: 'password',
 		description: 'ServiceNow ITSM password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		displayOptions: {

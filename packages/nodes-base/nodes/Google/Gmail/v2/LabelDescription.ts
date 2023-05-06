@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const labelOperations: INodeProperties[] = [
 	{
@@ -10,11 +8,10 @@ export const labelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
+				resource: ['label'],
 			},
 		},
+
 		options: [
 			{
 				name: 'Create',
@@ -29,15 +26,15 @@ export const labelOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				action: 'Get a label',
+				action: 'Get a label info',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all labels',
+				action: 'Get many labels',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -50,12 +47,8 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
 		placeholder: 'invoices',
@@ -69,76 +62,65 @@ export const labelFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['label'],
+				operation: ['get', 'delete'],
 			},
 		},
 		description: 'The ID of the label',
 	},
 	{
-		displayName: 'Label List Visibility',
-		name: 'labelListVisibility',
-		type: 'options',
-		options: [
-			{
-				name: 'Hide',
-				value: 'labelHide',
-			},
-			{
-				name: 'Show',
-				value: 'labelShow',
-			},
-			{
-				name: 'Show If Unread',
-				value: 'labelShowIfUnread',
-			},
-		],
-		default: 'labelShow',
-		required: true,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['label'],
+				operation: ['create'],
 			},
 		},
-		description: 'The visibility of the label in the label list in the Gmail web interface',
-	},
-	{
-		displayName: 'Message List Visibility',
-		name: 'messageListVisibility',
-		type: 'options',
+		default: {},
 		options: [
 			{
-				name: 'Hide',
-				value: 'hide',
+				displayName: 'Label List Visibility',
+				name: 'labelListVisibility',
+				type: 'options',
+				options: [
+					{
+						name: 'Hide',
+						value: 'labelHide',
+					},
+					{
+						name: 'Show',
+						value: 'labelShow',
+					},
+					{
+						name: 'Show If Unread',
+						value: 'labelShowIfUnread',
+					},
+				],
+				default: 'labelShow',
+				description: 'The visibility of the label in the label list in the Gmail web interface',
 			},
 			{
-				name: 'Show',
-				value: 'show',
+				displayName: 'Message List Visibility',
+				name: 'messageListVisibility',
+				type: 'options',
+				options: [
+					{
+						name: 'Hide',
+						value: 'hide',
+					},
+					{
+						name: 'Show',
+						value: 'show',
+					},
+				],
+				default: 'show',
+				description:
+					'The visibility of messages with this label in the message list in the Gmail web interface',
 			},
 		],
-		default: 'show',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'The visibility of messages with this label in the message list in the Gmail web interface',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 label:getAll                               */
@@ -149,12 +131,8 @@ export const labelFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
+				operation: ['getAll'],
+				resource: ['label'],
 			},
 		},
 		default: false,
@@ -166,15 +144,9 @@ export const labelFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'label',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['label'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

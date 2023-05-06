@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { makeSimpleField, petitionAdditionalFieldsOptions } from './SharedFields';
 
@@ -25,9 +25,9 @@ export const petitionOperations: INodeProperties[] = [
 				action: 'Get a petition',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all petitions',
+				action: 'Get many petitions',
 			},
 			{
 				name: 'Update',

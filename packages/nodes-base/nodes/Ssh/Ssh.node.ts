@@ -1,25 +1,19 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IBinaryData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 
-import {
-	readFile,
-	rm,
-	writeFile,
-} from 'fs/promises';
+import { rm, writeFile } from 'fs/promises';
 
-import { file } from 'tmp-promise';
+import { file as tmpFile } from 'tmp-promise';
 
-const nodeSSH = require('node-ssh');
+import type { Config } from 'node-ssh';
+import { NodeSSH } from 'node-ssh';
+import type { Readable } from 'stream';
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,9 +36,7 @@ export class Ssh implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'password',
-						],
+						authentication: ['password'],
 					},
 				},
 			},
@@ -53,9 +45,7 @@ export class Ssh implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'privateKey',
-						],
+						authentication: ['privateKey'],
 					},
 				},
 			},
@@ -101,9 +91,7 @@ export class Ssh implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'command',
-						],
+						resource: ['command'],
 					},
 				},
 				options: [
@@ -122,12 +110,8 @@ export class Ssh implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'command',
-						],
-						operation: [
-							'execute',
-						],
+						resource: ['command'],
+						operation: ['execute'],
 					},
 				},
 				default: '',
@@ -139,12 +123,8 @@ export class Ssh implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'command',
-						],
-						operation: [
-							'execute',
-						],
+						resource: ['command'],
+						operation: ['execute'],
 					},
 				},
 				default: '/',
@@ -157,9 +137,7 @@ export class Ssh implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
+						resource: ['file'],
 					},
 				},
 				options: [
@@ -186,16 +164,13 @@ export class Ssh implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['upload'],
+						resource: ['file'],
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be uploaded',
+				description:
+					'Name of the binary property which contains the data for the file to be uploaded',
 			},
 			{
 				displayName: 'Target Directory',
@@ -203,48 +178,38 @@ export class Ssh implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
-						operation: [
-							'upload',
-						],
+						resource: ['file'],
+						operation: ['upload'],
 					},
 				},
 				default: '',
 				required: true,
 				placeholder: '/home/user',
-				description: 'The directory to upload the file to. The name of the file does not need to be specified, it\'s taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.',
+				description:
+					'The directory to upload the file to. The name of the file does not need to be specified, it\'s taken from the binary data file name. To override this behavior, set the parameter "File Name" under options.',
 			},
 			{
 				displayName: 'Path',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
-						operation: [
-							'download',
-						],
+						resource: ['file'],
+						operation: ['download'],
 					},
 				},
 				name: 'path',
 				type: 'string',
 				default: '',
 				placeholder: '/home/user/invoice.txt',
-				description: 'The file path of the file to download. Has to contain the full path including file name.',
+				description:
+					'The file path of the file to download. Has to contain the full path including file name.',
 				required: true,
 			},
 			{
 				displayName: 'Binary Property',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
-						operation: [
-							'download',
-						],
+						resource: ['file'],
+						operation: ['download'],
 					},
 				},
 				name: 'binaryPropertyName',
@@ -260,12 +225,8 @@ export class Ssh implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
-						operation: [
-							'upload',
-						],
+						resource: ['file'],
+						operation: ['upload'],
 					},
 				},
 				default: {},
@@ -287,17 +248,16 @@ export class Ssh implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 
 		const temporaryFiles: string[] = [];
 
-		const ssh = new nodeSSH.NodeSSH();
+		const ssh = new NodeSSH();
 
 		try {
 			if (authentication === 'password') {
-
 				const credentials = await this.getCredentials('sshPassword');
 
 				await ssh.connect({
@@ -306,21 +266,19 @@ export class Ssh implements INodeType {
 					port: credentials.port as number,
 					password: credentials.password as string,
 				});
-
 			} else if (authentication === 'privateKey') {
-
 				const credentials = await this.getCredentials('sshPrivateKey');
 
-				const { path, } = await file({ prefix: 'n8n-ssh-' });
+				const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
 				await writeFile(path, credentials.privateKey as string);
 
-				const options = {
+				const options: Config = {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,
 					privateKey: path,
-				} as any; // tslint:disable-line: no-any
+				};
 
 				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;
@@ -332,13 +290,11 @@ export class Ssh implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				try {
 					if (resource === 'command') {
-
 						if (operation === 'execute') {
-
 							const command = this.getNodeParameter('command', i) as string;
 							const cwd = this.getNodeParameter('cwd', i) as string;
 							returnItems.push({
-								json: await ssh.execCommand(command, { cwd, }),
+								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},
@@ -347,13 +303,11 @@ export class Ssh implements INodeType {
 					}
 
 					if (resource === 'file') {
-
 						if (operation === 'download') {
-
-							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const parameterPath = this.getNodeParameter('path', i) as string;
 
-							const { path } = await file({ prefix: 'n8n-ssh-' });
+							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
 
 							await ssh.getFile(path, parameterPath);
@@ -366,7 +320,7 @@ export class Ssh implements INodeType {
 								},
 							};
 
-							if (items[i].binary !== undefined) {
+							if (items[i].binary !== undefined && newItem.binary) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
 								// but the incoming data does not get changed.
@@ -375,37 +329,36 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
-							const data = await readFile(path as string);
-
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data, parameterPath);
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
+								path,
+								parameterPath,
+							);
 						}
 
 						if (operation === 'upload') {
-
 							const parameterPath = this.getNodeParameter('path', i) as string;
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
-							const item = items[i];
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
+							let uploadData: Buffer | Readable;
+							if (binaryData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryData.id);
+							} else {
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							const binaryData = item.binary[propertyNameUpload] as IBinaryData;
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${propertyNameUpload}" does not exists on item!`, { itemIndex: i });
-							}
-
-							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
-
-							const { path } = await file({ prefix: 'n8n-ssh-' });
+							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
-							await writeFile(path, dataBuffer);
+							await writeFile(path, uploadData);
 
-							await ssh.putFile(path, `${parameterPath}${(parameterPath.charAt(parameterPath.length - 1) === '/') ? '' : '/'}${fileName || binaryData.fileName}`);
+							await ssh.putFile(
+								path,
+								`${parameterPath}${
+									parameterPath.charAt(parameterPath.length - 1) === '/' ? '' : '/'
+								}${fileName || binaryData.fileName}`,
+							);
 
 							returnItems.push({
 								json: {

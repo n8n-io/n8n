@@ -1,21 +1,21 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
 
 import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
 
-import { DocumentProperties, processNames, toSQL } from './utils';
+import type { DocumentProperties } from './utils';
+import { processNames, toSQL } from './utils';
 
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,6 +89,7 @@ export class ERPNext implements INodeType {
 
 				docFields.unshift({ name: '*', value: '*' });
 
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -106,6 +107,7 @@ export class ERPNext implements INodeType {
 					},
 				);
 
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				return processNames(docFields);
 			},
 		},
@@ -114,14 +116,14 @@ export class ERPNext implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
@@ -185,10 +187,10 @@ export class ERPNext implements INodeType {
 						);
 					}
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.limit_page_length = limit;
 						qs.limit_start = 0;
 						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -282,10 +284,12 @@ export class ERPNext implements INodeType {
 				}
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

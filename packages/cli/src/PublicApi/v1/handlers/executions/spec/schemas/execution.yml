@@ -12,12 +12,12 @@ properties:
     type: string
     enum: ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook']
   retryOf:
-    type: string
+    type: number
     nullable: true
   retrySuccessId:
-    type: string
+    type: number
     nullable: true
-    example: 2
+    example: '2'
   startedAt:
     type: string
     format: date-time
@@ -25,8 +25,8 @@ properties:
     type: string
     format: date-time
   workflowId:
-    type: string
-    example: 1000
+    type: number
+    example: '1000'
   waitTill:
     type: string
     nullable: true

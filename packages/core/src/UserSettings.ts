@@ -5,20 +5,18 @@
 import fs from 'fs';
 import path from 'path';
 import { createHash, randomBytes } from 'crypto';
-// eslint-disable-next-line import/no-cycle
+import { promisify } from 'util';
+import { deepCopy } from 'n8n-workflow';
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
 	DOWNLOADED_NODES_SUBDIRECTORY,
-	IUserSettings,
 	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
-} from '.';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { promisify } = require('util');
+} from './Constants';
+import type { IUserSettings } from './Interfaces';
 
 const fsAccess = promisify(fs.access);
 const fsReadFile = promisify(fs.readFile);
@@ -30,7 +28,6 @@ let settingsCache: IUserSettings | undefined;
 /**
  * Creates the user settings if they do not exist yet
  *
- * @export
  */
 export async function prepareUserSettings(): Promise<IUserSettings> {
 	const settingsPath = getUserSettingsPath();
@@ -71,13 +68,11 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
  * Returns the encryption key which is used to encrypt
  * the credentials.
  *
- * @export
- * @returns
  */
 
 export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
 	}
 
 	const userSettings = await getUserSettings();
@@ -92,8 +87,6 @@ export async function getEncryptionKey(): Promise<string> {
 /**
  * Returns the instance ID
  *
- * @export
- * @returns
  */
 export async function getInstanceId(): Promise<string> {
 	const userSettings = await getUserSettings();
@@ -123,10 +116,8 @@ async function generateInstanceId(key?: string) {
  * Adds/Overwrite the given settings in the currently
  * saved user settings
  *
- * @export
  * @param {IUserSettings} addSettings  The settings to add/overwrite
  * @param {string} [settingsPath] Optional settings file path
- * @returns {Promise<IUserSettings>}
  */
 export async function addToUserSettings(
 	addSettings: IUserSettings,
@@ -151,10 +142,8 @@ export async function addToUserSettings(
 /**
  * Writes a user settings file
  *
- * @export
  * @param {IUserSettings} userSettings The settings to write
  * @param {string} [settingsPath] Optional settings file path
- * @returns {Promise<IUserSettings>}
  */
 export async function writeUserSettings(
 	userSettings: IUserSettings,
@@ -182,7 +171,7 @@ export async function writeUserSettings(
 	}
 
 	await fsWriteFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
-	settingsCache = JSON.parse(JSON.stringify(userSettings));
+	settingsCache = deepCopy(userSettings);
 
 	return userSettings;
 }
@@ -190,8 +179,6 @@ export async function writeUserSettings(
 /**
  * Returns the content of the user settings
  *
- * @export
- * @returns {UserSettings}
  */
 export async function getUserSettings(
 	settingsPath?: string,
@@ -229,8 +216,6 @@ export async function getUserSettings(
 /**
  * Returns the path to the user settings
  *
- * @export
- * @returns {string}
  */
 export function getUserSettingsPath(): string {
 	const n8nFolder = getUserN8nFolderPath();
@@ -239,29 +224,18 @@ export function getUserSettingsPath(): string {
 }
 
 /**
- * Retruns the path to the n8n folder in which all n8n
+ * Returns the path to the n8n folder in which all n8n
  * related data gets saved
  *
- * @export
- * @returns {string}
  */
 export function getUserN8nFolderPath(): string {
-	let userFolder;
-	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
-		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE] as string;
-	} else {
-		userFolder = getUserHome();
-	}
-
-	return path.join(userFolder, USER_SETTINGS_SUBFOLDER);
+	return path.join(getUserHome(), USER_SETTINGS_SUBFOLDER);
 }
 
 /**
  * Returns the path to the n8n user folder with the custom
  * extensions like nodes and credentials
  *
- * @export
- * @returns {string}
  */
 export function getUserN8nFolderCustomExtensionPath(): string {
 	return path.join(getUserN8nFolderPath(), EXTENSIONS_SUBDIRECTORY);
@@ -271,10 +245,8 @@ export function getUserN8nFolderCustomExtensionPath(): string {
  * Returns the path to the n8n user folder with the nodes that
  * have been downloaded
  *
- * @export
- * @returns {string}
  */
-export function getUserN8nFolderDowloadedNodesPath(): string {
+export function getUserN8nFolderDownloadedNodesPath(): string {
 	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 
@@ -283,20 +255,21 @@ export function getUserN8nFolderDowloadedNodesPath(): string {
  * none can be found it falls back to the current
  * working directory
  *
- * @export
- * @returns {string}
  */
 export function getUserHome(): string {
-	let variableName = 'HOME';
-	if (process.platform === 'win32') {
-		variableName = 'USERPROFILE';
-	}
+	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
+		return process.env[USER_FOLDER_ENV_OVERWRITE];
+	} else {
+		let variableName = 'HOME';
+		if (process.platform === 'win32') {
+			variableName = 'USERPROFILE';
+		}
 
-	if (process.env[variableName] === undefined) {
-		// If for some reason the variable does not exist
-		// fall back to current folder
-		return process.cwd();
+		if (process.env[variableName] === undefined) {
+			// If for some reason the variable does not exist
+			// fall back to current folder
+			return process.cwd();
+		}
+		return process.env[variableName] as string;
 	}
-
-	return process.env[variableName] as string;
 }

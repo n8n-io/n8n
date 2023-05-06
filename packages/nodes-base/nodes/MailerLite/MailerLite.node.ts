@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,15 +8,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	mailerliteApiRequest,
-	mailerliteApiRequestAllItems,
-} from './GenericFunctions';
+import { mailerliteApiRequest, mailerliteApiRequestAllItems } from './GenericFunctions';
 
-import {
-	subscriberFields,
-	subscriberOperations,
-} from './SubscriberDescription';
+import { subscriberFields, subscriberOperations } from './SubscriberDescription';
 
 export class MailerLite implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,7 +54,7 @@ export class MailerLite implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -81,12 +72,12 @@ export class MailerLite implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'subscriber') {
@@ -94,7 +85,7 @@ export class MailerLite implements INodeType {
 					if (operation === 'create') {
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -104,7 +95,8 @@ export class MailerLite implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (additionalFields.customFieldsUi) {
-							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							const customFieldsValues = (additionalFields.customFieldsUi as IDataObject)
+								.customFieldsValues as IDataObject[];
 
 							if (customFieldsValues) {
 								const fields = {};
@@ -125,37 +117,47 @@ export class MailerLite implements INodeType {
 					if (operation === 'get') {
 						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
-						responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers/${subscriberId}`);
+						responseData = await mailerliteApiRequest.call(
+							this,
+							'GET',
+							`/subscribers/${subscriberId}`,
+						);
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
 						if (returnAll) {
-
-							responseData = await mailerliteApiRequestAllItems.call(this, 'GET', `/subscribers`, {}, qs);
+							responseData = await mailerliteApiRequestAllItems.call(
+								this,
+								'GET',
+								'/subscribers',
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
+							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
 						}
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber
 					if (operation === 'update') {
 						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
 						Object.assign(body, updateFields);
 
 						if (updateFields.customFieldsUi) {
-							const customFieldsValues = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+							const customFieldsValues = (updateFields.customFieldsUi as IDataObject)
+								.customFieldsValues as IDataObject[];
 
 							if (customFieldsValues) {
 								const fields = {};
@@ -170,23 +172,34 @@ export class MailerLite implements INodeType {
 							}
 						}
 
-						responseData = await mailerliteApiRequest.call(this, 'PUT', `/subscribers/${subscriberId}`, body);
+						responseData = await mailerliteApiRequest.call(
+							this,
+							'PUT',
+							`/subscribers/${subscriberId}`,
+							body,
+						);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
 
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }

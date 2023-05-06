@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { makeSimpleField, personAdditionalFieldsOptions } from './SharedFields';
 
@@ -25,9 +25,9 @@ export const personOperations: INodeProperties[] = [
 				action: 'Get a person',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all people',
+				action: 'Get many people',
 			},
 			{
 				name: 'Update',

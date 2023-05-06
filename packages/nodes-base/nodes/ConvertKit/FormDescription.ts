@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const formOperations: INodeProperties[] = [
 	{
@@ -19,10 +19,10 @@ export const formOperations: INodeProperties[] = [
 				action: 'Add a subscriber',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all forms',
-				action: 'Get all forms',
+				description: 'Get many forms',
+				action: 'Get many forms',
 			},
 			{
 				name: 'Get Subscriptions',

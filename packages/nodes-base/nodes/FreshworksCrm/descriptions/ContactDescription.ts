@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const contactOperations: INodeProperties[] = [
 				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all contacts',
-				action: 'Get all contacts',
+				description: 'Retrieve many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',
@@ -508,9 +508,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'lead_source_id',
 				type: 'options',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getLeadSources',
-				},
 				description:
 					'ID of the source where contact came from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
@@ -580,9 +577,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'subscription_status',
 				type: 'options',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getSubscriptionStatuses',
-				},
 				description:
 					'Status of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
@@ -591,9 +585,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'subscription_types',
 				type: 'options',
 				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getSubscriptionTypes',
-				},
 				description:
 					'Type of subscription that the contact is in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},

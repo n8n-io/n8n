@@ -1,13 +1,13 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export interface IUpdateBody extends IDataObject {
 	requests: IDataObject[];
 	writeControl?: { [key: string]: string };
 }
 
-export interface IUpdateFields {
+export type IUpdateFields = IDataObject & {
 	writeControlObject: {
-		control: string,
-		value: string,
+		control: string;
+		value: string;
 	};
-}
+};

@@ -5,9 +5,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-tag',
 	props: {
 		text: {
@@ -20,10 +20,20 @@ export default Vue.extend({
 <style lang="scss" module>
 .tag {
 	min-width: max-content;
-	padding: var(--spacing-4xs);
-	background-color: var(--color-foreground-base);
+	padding: 1px var(--spacing-4xs);
+	color: var(--color-text-dark);
+	background-color: var(--color-background-base);
 	border-radius: var(--border-radius-base);
 	font-size: var(--font-size-2xs);
 	cursor: pointer;
+	transition: background-color 0.3s ease;
+
+	&:hover {
+		background-color: hsl(
+			var(--color-background-base-h),
+			var(--color-background-base-s),
+			calc(var(--color-background-base-l) - 4%)
+		);
+	}
 }
 </style>

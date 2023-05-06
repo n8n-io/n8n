@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.mailchimp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Marketing & Content",
-		"Communication"
-	],
+	"categories": ["Marketing & Content", "Communication"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mailchimp/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailchimp/"
 			}
 		],
 		"generic": [

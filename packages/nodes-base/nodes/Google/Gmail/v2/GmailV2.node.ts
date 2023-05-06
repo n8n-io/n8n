@@ -1,10 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -12,51 +8,31 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IEmail } from '../GenericFunctions';
 import {
 	encodeEmail,
-	extractEmail,
 	googleApiRequest,
 	googleApiRequestAllItems,
-	IEmail,
 	parseRawEmail,
+	prepareEmailAttachments,
+	prepareEmailBody,
+	prepareEmailsInput,
+	prepareQuery,
+	replayToEmail,
+	simplifyOutput,
+	unescapeSnippets,
 } from '../GenericFunctions';
 
-import {
-	messageFields,
-	messageOperations,
-} from './MessageDescription';
+import { messageFields, messageOperations } from './MessageDescription';
 
-// import {
-// 	messageLabelFields,
-// 	messageLabelOperations,
-// } from './MessageLabelDescription';
+import { labelFields, labelOperations } from './LabelDescription';
 
-import {
-	labelFields,
-	labelOperations,
-} from './LabelDescription';
+import { draftFields, draftOperations } from './DraftDescription';
 
-import {
-	draftFields,
-	draftOperations,
-} from './DraftDescription';
-
-import {
-	threadFields,
-	threadOperations,
-} from './ThreadDescription';
-
-// import {
-// 	threadLabelFields,
-// 	threadLabelOperations,
-// } from './ThreadLabelDescription';
-
-import {
-	isEmpty,
-} from 'lodash';
+import { threadFields, threadOperations } from './ThreadDescription';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -77,9 +53,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 			displayOptions: {
 				show: {
-					authentication: [
-						'serviceAccount',
-					],
+					authentication: ['serviceAccount'],
 				},
 			},
 		},
@@ -88,9 +62,7 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 			displayOptions: {
 				show: {
-					authentication: [
-						'oAuth2',
-					],
+					authentication: ['oAuth2'],
 				},
 			},
 		},
@@ -102,7 +74,8 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'OAuth2 (Recommended)',
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'OAuth2 (recommended)',
 					value: 'oAuth2',
 				},
 				{
@@ -122,18 +95,6 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Message',
 					value: 'message',
 				},
-				// {
-				// 	name: 'Message Label',
-				// 	value: 'messageLabel',
-				// },
-				{
-					name: 'Thread',
-					value: 'thread',
-				},
-				// {
-				// 	name: 'Thread Label',
-				// 	value: 'threadLabel',
-				// },
 				{
 					name: 'Label',
 					value: 'label',
@@ -142,8 +103,12 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Draft',
 					value: 'draft',
 				},
+				{
+					name: 'Thread',
+					value: 'thread',
+				},
 			],
-			default: 'draft',
+			default: 'message',
 		},
 		//-------------------------------
 		// Draft Operations
@@ -161,20 +126,11 @@ const versionDescription: INodeTypeDescription = {
 		...messageOperations,
 		...messageFields,
 		//-------------------------------
-		// MessageLabel Operations
-		//-------------------------------
-		// ...messageLabelOperations,
-		// ...messageLabelFields,
-		//-------------------------------
 		// Thread Operations
 		//-------------------------------
 		...threadOperations,
 		...threadFields,
 		//-------------------------------
-		// ThreadLabels Operations
-		//-------------------------------
-		// ...threadLabelOperations,
-		// ...threadLabelFields,
 	],
 };
 
@@ -190,438 +146,259 @@ export class GmailV2 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
-			async getLabels(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+
 				const labels = await googleApiRequestAllItems.call(
 					this,
 					'labels',
 					'GET',
 					'/gmail/v1/users/me/labels',
 				);
+
 				for (const label of labels) {
 					returnData.push({
 						name: label.name,
 						value: label.id,
 					});
 				}
+
 				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
+			},
+
+			async getThreadMessages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const id = this.getNodeParameter('threadId', 0) as string;
+				const { messages } = await googleApiRequest.call(
+					this,
+					'GET',
+					`/gmail/v1/users/me/threads/${id}`,
+					{},
+					{ format: 'minimal' },
+				);
+
+				for (const message of messages || []) {
+					returnData.push({
+						name: message.snippet,
+						value: message.id,
+					});
+				}
+
+				return returnData;
 			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const returnData: INodeExecutionData[] = [];
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
-		let method = '';
-		let body: IDataObject = {};
-		let qs: IDataObject = {};
-		let endpoint = '';
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
+				//------------------------------------------------------------------//
+				//                            labels                                //
+				//------------------------------------------------------------------//
 				if (resource === 'label') {
 					if (operation === 'create') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/create
 						const labelName = this.getNodeParameter('name', i) as string;
-						const labelListVisibility = this.getNodeParameter('labelListVisibility', i) as string;
-						const messageListVisibility = this.getNodeParameter('messageListVisibility', i) as string;
+						const labelListVisibility = this.getNodeParameter(
+							'options.labelListVisibility',
+							i,
+							'labelShow',
+						) as string;
+						const messageListVisibility = this.getNodeParameter(
+							'options.messageListVisibility',
+							i,
+							'show',
+						) as string;
 
-						method = 'POST';
-						endpoint = '/gmail/v1/users/me/labels';
-
-						body = {
+						const body = {
 							labelListVisibility,
 							messageListVisibility,
 							name: labelName,
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							'/gmail/v1/users/me/labels',
+							body,
+						);
 					}
 					if (operation === 'delete') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/delete
 						const labelId = this.getNodeParameter('labelId', i) as string[];
+						const endpoint = `/gmail/v1/users/me/labels/${labelId}`;
 
-						method = 'DELETE';
-						endpoint = `/gmail/v1/users/me/labels/${labelId}`;
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
-
 					}
 					if (operation === 'get') {
 						// https://developers.google.com/gmail/api/v1/reference/users/labels/get
 						const labelId = this.getNodeParameter('labelId', i);
+						const endpoint = `/gmail/v1/users/me/labels/${labelId}`;
 
-						method = 'GET';
-						endpoint = `/gmail/v1/users/me/labels/${labelId}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await googleApiRequest.call(
-							this,
-							'GET',
-							`/gmail/v1/users/me/labels`,
-							{},
-							qs,
-						);
+						responseData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 
-						responseData = responseData.labels;
+						responseData = this.helpers.returnJsonArray(responseData.labels as IDataObject[]);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
 				}
-				// if (resource === 'messageLabel') {
-				// 	if (operation === 'remove') {
-				// 		//https://developers.google.com/gmail/api/v1/reference/users/messages/modify
-				// 		const messageID = this.getNodeParameter('messageId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/messages/${messageID}/modify`;
-				// 		body = {
-				// 			removeLabelIds: labelIds,
-				// 		};
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// 	if (operation === 'add') {
-				// 		// https://developers.google.com/gmail/api/v1/reference/users/messages/modify
-				// 		const messageID = this.getNodeParameter('messageId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/messages/${messageID}/modify`;
-
-				// 		body = {
-				// 			addLabelIds: labelIds,
-				// 		};
-
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// }
+				//------------------------------------------------------------------//
+				//                            messages                              //
+				//------------------------------------------------------------------//
 				if (resource === 'message') {
 					if (operation === 'send') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/send
-
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						let toStr = '';
-						let ccStr = '';
-						let bccStr = '';
-						let attachmentsList: IDataObject[] = [];
-
+						const options = this.getNodeParameter('options', i);
 						const sendTo = this.getNodeParameter('sendTo', i) as string;
+						let qs: IDataObject = {};
 
-						sendTo.split(',').forEach(entry => {
-							const email = entry.trim();
+						const to = prepareEmailsInput.call(this, sendTo, 'To', i);
+						let cc = '';
+						let bcc = '';
 
-							if (email.indexOf('@') === -1) {
-								throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
-							}
-
-							toStr += `<${email}>, `;
-						});
-
-						if (additionalFields.ccList) {
-							const ccList = additionalFields.ccList as IDataObject[];
-
-							ccList.forEach((email) => {
-								ccStr += `<${email}>, `;
-							});
+						if (options.ccList) {
+							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
 						}
 
-						if (additionalFields.bccList) {
-							const bccList = additionalFields.bccList as IDataObject[];
-
-							bccList.forEach((email) => {
-								bccStr += `<${email}>, `;
-							});
+						if (options.bccList) {
+							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
 
-						if (additionalFields.attachmentsUi) {
-							const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
-							const attachmentsBinary = [];
-							if (!isEmpty(attachmentsUi)) {
-								if (attachmentsUi.hasOwnProperty('attachmentsBinary')
-									&& !isEmpty(attachmentsUi.attachmentsBinary)
-									&& items[i].binary) {
-									// @ts-ignore
-									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
-										for (const binaryProperty of (property as string).split(',')) {
-											if (items[i].binary![binaryProperty] !== undefined) {
-												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
-													type: binaryData.mimeType,
-												});
-											}
-										}
-									}
-								}
+						let attachments: IDataObject[] = [];
 
+						if (options.attachmentsUi) {
+							attachments = await prepareEmailAttachments.call(
+								this,
+								options.attachmentsUi as IDataObject,
+								items,
+								i,
+							);
+							if (attachments.length) {
 								qs = {
 									userId: 'me',
 									uploadType: 'media',
 								};
-								attachmentsList = attachmentsBinary;
 							}
 						}
 
 						let from = '';
-						if (additionalFields.senderName) {
-							const {emailAddress} = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
-							from = `${additionalFields.senderName as string} <${emailAddress}>`;
+						if (options.senderName) {
+							const { emailAddress } = await googleApiRequest.call(
+								this,
+								'GET',
+								'/gmail/v1/users/me/profile',
+							);
+							from = `${options.senderName as string} <${emailAddress}>`;
 						}
-
-
-						const emailType = this.getNodeParameter('emailType', i) as string;
-
-						let messageBody = '';
-						let messageBodyHtml = '';
-
-						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
-						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
-						}
-
 
 						const email: IEmail = {
 							from,
-							to: toStr,
-							cc: ccStr,
-							bcc: bccStr,
+							to,
+							cc,
+							bcc,
 							subject: this.getNodeParameter('subject', i) as string,
-							body: messageBody,
-							htmlBody: messageBodyHtml,
-							attachments: attachmentsList,
+							...prepareEmailBody.call(this, i),
+							attachments,
 						};
 
-						endpoint = '/gmail/v1/users/me/messages/send';
-						method = 'POST';
+						const endpoint = '/gmail/v1/users/me/messages/send';
 
-						body = {
+						const body = {
 							raw: await encodeEmail(email),
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
 					if (operation === 'reply') {
+						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
+						const options = this.getNodeParameter('options', i);
 
-						const id = this.getNodeParameter('messageId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						let toStr = '';
-						let ccStr = '';
-						let bccStr = '';
-						let attachmentsList: IDataObject[] = [];
-
-						const sendTo = this.getNodeParameter('sendTo', i) as string;
-
-						sendTo.split(',').forEach(entry => {
-							const email = entry.trim();
-
-							if (email.indexOf('@') === -1) {
-								throw new NodeOperationError(this.getNode(), `Email address ${email} inside "Send To" input field is not valid`, { itemIndex: i });
-							}
-
-							toStr += `<${email}>, `;
-						});
-
-						if (additionalFields.ccList) {
-							const ccList = additionalFields.ccList as IDataObject[];
-
-							ccList.forEach((email) => {
-								ccStr += `<${email}>, `;
-							});
-						}
-
-						if (additionalFields.bccList) {
-							const bccList = additionalFields.bccList as IDataObject[];
-
-							bccList.forEach((email) => {
-								bccStr += `<${email}>, `;
-							});
-						}
-
-						if (additionalFields.attachmentsUi) {
-							const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
-							const attachmentsBinary = [];
-							if (!isEmpty(attachmentsUi)) {
-								if (attachmentsUi.hasOwnProperty('attachmentsBinary')
-									&& !isEmpty(attachmentsUi.attachmentsBinary)
-									&& items[i].binary) {
-									// @ts-ignore
-									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
-										for (const binaryProperty of (property as string).split(',')) {
-											if (items[i].binary![binaryProperty] !== undefined) {
-												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
-													type: binaryData.mimeType,
-												});
-											}
-										}
-									}
-								}
-
-								qs = {
-									userId: 'me',
-									uploadType: 'media',
-								};
-								attachmentsList = attachmentsBinary;
-							}
-						}
-
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
-
-						qs.format = 'metadata';
-
-						const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);
-
-						if (toStr === '') {
-							for (const header of payload.headers as IDataObject[]) {
-								if (header.name === 'From') {
-									toStr = `<${extractEmail(header.value as string)}>,`;
-									break;
-								}
-							}
-						}
-
-						const subject = payload.headers.filter((data: { [key: string]: string }) => data.name === 'Subject')[0]?.value  || '';
-						const references = payload.headers.filter((data: { [key: string]: string }) => data.name === 'References')[0]?.value || '';
-
-						let from = '';
-						if (additionalFields.senderName) {
-							const {emailAddress} = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
-							from = `${additionalFields.senderName as string} <${emailAddress}>`;
-						}
-
-						const emailType = this.getNodeParameter('emailType', i) as string;
-
-						let messageBody = '';
-						let messageBodyHtml = '';
-
-						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
-						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
-						}
-
-						const email: IEmail = {
-							from,
-							to: toStr,
-							cc: ccStr,
-							bcc: bccStr,
-							subject,
-							body: messageBody,
-							htmlBody: messageBodyHtml,
-							attachments: attachmentsList,
-						};
-
-						endpoint = '/gmail/v1/users/me/messages/send';
-						method = 'POST';
-
-						email.inReplyTo = id;
-						email.reference = references;
-
-						body = {
-							raw: await encodeEmail(email),
-							threadId: this.getNodeParameter('threadId', i) as string,
-						};
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
-						method = 'GET';
-
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/messages/${id}`;
+						const qs: IDataObject = {};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const format = additionalFields.format || 'resolved';
+						const options = this.getNodeParameter('options', i, {});
+						const simple = this.getNodeParameter('simple', i) as boolean;
 
-						if (format === 'resolved') {
-							qs.format = 'raw';
+						if (simple) {
+							qs.format = 'metadata';
+							qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
 						} else {
-							qs.format = format;
+							qs.format = 'raw';
 						}
 
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 						let nodeExecutionData: INodeExecutionData;
-						if (format === 'resolved') {
-							const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
+						if (!simple) {
+							const dataPropertyNameDownload =
+								(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
-							nodeExecutionData = await parseRawEmail.call(this, responseData, dataPropertyNameDownload);
+							nodeExecutionData = await parseRawEmail.call(
+								this,
+								responseData,
+								dataPropertyNameDownload,
+							);
 						} else {
-							nodeExecutionData = {
-								json: responseData,
-							};
+							const [json, _] = await simplifyOutput.call(this, [responseData as IDataObject]);
+							nodeExecutionData = { json };
 						}
 
-						responseData = nodeExecutionData;
+						responseData = [nodeExecutionData];
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						Object.assign(qs, additionalFields);
-
-						if (qs.labelIds) {
-							// tslint:disable-next-line: triple-equals
-							if (qs.labelIds == '') {
-								delete qs.labelIds;
-							} else {
-								qs.labelIds = qs.labelIds as string[];
-							}
-						}
-
-						if (qs.sender) {
-							if (qs.q) {
-								qs.q += ` from:${qs.sender}`;
-							} else {
-								qs.q = `from:${qs.sender}`;
-							}
-							delete qs.sender;
-						}
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i, {});
+						const filters = this.getNodeParameter('filters', i, {});
+						const qs: IDataObject = {};
+						Object.assign(qs, prepareQuery.call(this, filters, i), options, i);
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
 								'messages',
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -632,250 +409,219 @@ export class GmailV2 implements INodeType {
 							responseData = [];
 						}
 
-						const format = additionalFields.format || 'resolved';
+						const simple = this.getNodeParameter('simple', i) as boolean;
 
-						if (format !== 'ids') {
+						if (simple) {
+							qs.format = 'metadata';
+							qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
+						} else {
+							qs.format = 'raw';
+						}
 
-							if (format === 'resolved') {
-								qs.format = 'raw';
-							} else {
-								qs.format = format;
-							}
+						for (let index = 0; index < responseData.length; index++) {
+							responseData[index] = await googleApiRequest.call(
+								this,
+								'GET',
+								`/gmail/v1/users/me/messages/${responseData[index].id}`,
+								{},
+								qs,
+							);
 
-							for (let i = 0; i < responseData.length; i++) {
-								responseData[i] = await googleApiRequest.call(
+							if (!simple) {
+								const dataPropertyNameDownload =
+									(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+
+								responseData[index] = await parseRawEmail.call(
 									this,
-									'GET',
-									`/gmail/v1/users/me/messages/${responseData[i].id}`,
-									body,
-									qs,
+									responseData[index],
+									dataPropertyNameDownload,
 								);
-
-								if (format === 'resolved') {
-									const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-
-									responseData[i] = await parseRawEmail.call(this, responseData[i], dataPropertyNameDownload);
-								}
 							}
 						}
 
-						if (format !== 'resolved') {
-							responseData = this.helpers.returnJsonArray(responseData);
+						if (simple) {
+							responseData = this.helpers.returnJsonArray(
+								await simplifyOutput.call(this, responseData as IDataObject[]),
+							);
 						}
-
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/delete
-						method = 'DELETE';
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/messages/${id}`;
 
-						endpoint = `/gmail/v1/users/me/messages/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint);
 
 						responseData = { success: true };
 					}
 					if (operation === 'markAsRead') {
 						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
-						method = 'POST';
 						const id = this.getNodeParameter('messageId', i);
-
-						endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
 
 						const body = {
 							removeLabelIds: ['UNREAD'],
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
 
 					if (operation === 'markAsUnread') {
 						// https://developers.google.com/gmail/api/reference/rest/v1/users.messages/modify
-						method = 'POST';
 						const id = this.getNodeParameter('messageId', i);
-
-						endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
 
 						const body = {
 							addLabelIds: ['UNREAD'],
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
+
+					if (operation === 'addLabels') {
+						const id = this.getNodeParameter('messageId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+
+						const body = {
+							addLabelIds: labelIds,
+						};
+
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
+					if (operation === 'removeLabels') {
+						const id = this.getNodeParameter('messageId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/messages/${id}/modify`;
+
+						const body = {
+							removeLabelIds: labelIds,
+						};
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
+				//------------------------------------------------------------------//
+				//                            drafts                                //
+				//------------------------------------------------------------------//
 				if (resource === 'draft') {
 					if (operation === 'create') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/create
+						const options = this.getNodeParameter('options', i);
+						let qs: IDataObject = {};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						let to = '';
+						let cc = '';
+						let bcc = '';
 
-						let toStr = '';
-						let ccStr = '';
-						let bccStr = '';
-						let attachmentsList: IDataObject[] = [];
-
-						if (additionalFields.sendTo) {
-							(additionalFields.sendTo as string).split(',').forEach(entry => {
-								const email = entry.trim();
-
-								if (email.indexOf('@') === -1) {
-									throw new NodeOperationError(this.getNode(), `Email address ${email} is not valid`, { itemIndex: i });
-								}
-
-								toStr += `<${email}>, `;
-							});
+						if (options.sendTo) {
+							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
 						}
 
-						if (additionalFields.ccList) {
-							const ccList = additionalFields.ccList as IDataObject[];
-
-							ccList.forEach((email) => {
-								ccStr += `<${email}>, `;
-							});
+						if (options.ccList) {
+							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
 						}
 
-						if (additionalFields.bccList) {
-							const bccList = additionalFields.bccList as IDataObject[];
-
-							bccList.forEach((email) => {
-								bccStr += `<${email}>, `;
-							});
+						if (options.bccList) {
+							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
 						}
 
-						if (additionalFields.attachmentsUi) {
-							const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
-							const attachmentsBinary = [];
-							if (!isEmpty(attachmentsUi)) {
-								if (!isEmpty(attachmentsUi)) {
-									if (attachmentsUi.hasOwnProperty('attachmentsBinary')
-										&& !isEmpty(attachmentsUi.attachmentsBinary)
-										&& items[i].binary) {
-										for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
-											for (const binaryProperty of (property as string).split(',')) {
-												if (items[i].binary![binaryProperty] !== undefined) {
-													const binaryData = items[i].binary![binaryProperty];
-													const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
-													attachmentsBinary.push({
-														name: binaryData.fileName || 'unknown',
-														content: binaryDataBuffer,
-														type: binaryData.mimeType,
-													});
-												}
-											}
-										}
-									}
-								}
-
+						let attachments: IDataObject[] = [];
+						if (options.attachmentsUi) {
+							attachments = await prepareEmailAttachments.call(
+								this,
+								options.attachmentsUi as IDataObject,
+								items,
+								i,
+							);
+							if (attachments.length) {
 								qs = {
 									userId: 'me',
 									uploadType: 'media',
 								};
-
-								attachmentsList = attachmentsBinary;
 							}
 						}
 
-						const emailType = this.getNodeParameter('emailType', i) as string;
-
-						let messageBody = '';
-						let messageBodyHtml = '';
-
-						if (emailType === 'html') {
-							messageBodyHtml = this.getNodeParameter('message', i) as string;
-						} else {
-							messageBody = this.getNodeParameter('message', i) as string;
-						}
-
 						const email: IEmail = {
-							to: toStr,
-							cc: ccStr,
-							bcc: bccStr,
+							to,
+							cc,
+							bcc,
 							subject: this.getNodeParameter('subject', i) as string,
-							body: messageBody,
-							htmlBody: messageBodyHtml,
-							attachments: attachmentsList,
+							...prepareEmailBody.call(this, i),
+							attachments,
 						};
 
-						endpoint = '/gmail/v1/users/me/drafts';
-						method = 'POST';
-
-						body = {
+						const body = {
 							message: {
 								raw: await encodeEmail(email),
 							},
 						};
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							'/gmail/v1/users/me/drafts',
+							body,
+							qs,
+						);
 					}
 					if (operation === 'get') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/get
-						method = 'GET';
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/drafts/${id}`;
+						const qs: IDataObject = {};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const format = additionalFields.format || 'resolved';
+						const options = this.getNodeParameter('options', i);
+						qs.format = 'raw';
 
-						if (format === 'resolved') {
-							qs.format = 'raw';
-						} else {
-							qs.format = format;
-						}
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-						endpoint = `/gmail/v1/users/me/drafts/${id}`;
+						const dataPropertyNameDownload =
+							(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						const nodeExecutionData = await parseRawEmail.call(
+							this,
+							responseData.message,
+							dataPropertyNameDownload,
+						);
 
-						const binaryData: IBinaryKeyData = {};
+						// Add the draft-id
+						nodeExecutionData.json.messageId = nodeExecutionData.json.id;
+						nodeExecutionData.json.id = responseData.id;
 
-						let nodeExecutionData: INodeExecutionData;
-						if (format === 'resolved') {
-							const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-
-							nodeExecutionData = await parseRawEmail.call(this, responseData.message, dataPropertyNameDownload);
-
-							// Add the draft-id
-							nodeExecutionData.json.messageId = nodeExecutionData.json.id;
-							nodeExecutionData.json.id = responseData.id;
-						} else {
-							nodeExecutionData = {
-								json: responseData,
-								binary: Object.keys(binaryData).length ? binaryData : undefined,
-							};
-						}
-
-						responseData = nodeExecutionData;
+						responseData = [nodeExecutionData];
 					}
 					if (operation === 'delete') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/delete
-						method = 'DELETE';
 						const id = this.getNodeParameter('messageId', i);
+						const endpoint = `/gmail/v1/users/me/drafts/${id}`;
 
-						endpoint = `/gmail/v1/users/me/drafts/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint);
 
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						Object.assign(qs, additionalFields);
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
+						const qs: IDataObject = {};
+						Object.assign(qs, options);
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
 								'drafts',
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -886,105 +632,99 @@ export class GmailV2 implements INodeType {
 							responseData = [];
 						}
 
-						const format = additionalFields.format || 'resolved';
+						qs.format = 'raw';
 
-						if (format !== 'ids') {
-							if (format === 'resolved') {
-								qs.format = 'raw';
-							} else {
-								qs.format = format;
-							}
+						for (let index = 0; index < responseData.length; index++) {
+							responseData[index] = await googleApiRequest.call(
+								this,
+								'GET',
+								`/gmail/v1/users/me/drafts/${responseData[index].id}`,
+								{},
+								qs,
+							);
 
-							for (let i = 0; i < responseData.length; i++) {
+							const dataPropertyNameDownload =
+								(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
+							const id = responseData[index].id;
+							responseData[index] = await parseRawEmail.call(
+								this,
+								responseData[index].message,
+								dataPropertyNameDownload,
+							);
 
-								responseData[i] = await googleApiRequest.call(
-									this,
-									'GET',
-									`/gmail/v1/users/me/drafts/${responseData[i].id}`,
-									body,
-									qs,
-								);
-
-								if (format === 'resolved') {
-									const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-									const id = responseData[i].id;
-									responseData[i] = await parseRawEmail.call(this, responseData[i].message, dataPropertyNameDownload);
-
-									// Add the draft-id
-									responseData[i].json.messageId = responseData[i].json.id;
-									responseData[i].json.id = id;
-								}
-							}
-						}
-
-						if (format !== 'resolved') {
-							responseData = this.helpers.returnJsonArray(responseData);
+							// Add the draft-id
+							responseData[index].json.messageId = responseData[index].json.id;
+							responseData[index].json.id = id;
 						}
 					}
 				}
+				//------------------------------------------------------------------//
+				//                           threads                                //
+				//------------------------------------------------------------------//
 				if (resource === 'thread') {
 					if (operation === 'delete') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/delete
-						method = 'DELETE';
-
 						const id = this.getNodeParameter('threadId', i);
+						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
-						endpoint = `/gmail/v1/users/me/threads/${id}`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'DELETE', endpoint);
 
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/get
-						method = 'GET';
-
 						const id = this.getNodeParameter('threadId', i);
+						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const format = options.format || 'minimal';
+						const options = this.getNodeParameter('options', i);
 						const onlyMessages = options.returnOnlyMessages || false;
+						const qs: IDataObject = {};
 
-						qs.format = format;
+						const simple = this.getNodeParameter('simple', i) as boolean;
 
-						endpoint = `/gmail/v1/users/me/threads/${id}`;
+						if (simple) {
+							qs.format = 'metadata';
+							qs.metadataHeaders = ['From', 'To', 'Cc', 'Bcc', 'Subject'];
+						} else {
+							qs.format = 'full';
+						}
 
-						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 						if (onlyMessages) {
-							responseData = responseData.messages;
+							responseData = this.helpers.returnJsonArray(
+								await simplifyOutput.call(this, responseData.messages as IDataObject[]),
+							);
+						} else {
+							responseData.messages = await simplifyOutput.call(
+								this,
+								responseData.messages as IDataObject[],
+							);
+							responseData = [{ json: responseData }];
 						}
 					}
 					if (operation === 'getAll') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						Object.assign(qs, filters);
-
-						if (qs.labelIds) {
-							// tslint:disable-next-line: triple-equals
-							if (qs.labelIds == '') {
-								delete qs.labelIds;
-							} else {
-								qs.labelIds = qs.labelIds as string[];
-							}
-						}
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
+						const qs: IDataObject = {};
+						Object.assign(qs, prepareQuery.call(this, filters, i));
 
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
 								'threads',
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);
@@ -994,73 +734,81 @@ export class GmailV2 implements INodeType {
 						if (responseData === undefined) {
 							responseData = [];
 						}
+
+						responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
+					}
+					if (operation === 'reply') {
+						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
+						const options = this.getNodeParameter('options', i);
+
+						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
-						method = 'POST';
-
 						const id = this.getNodeParameter('threadId', i);
+						const endpoint = `/gmail/v1/users/me/threads/${id}/trash`;
 
-						endpoint = `/gmail/v1/users/me/threads/${id}/trash`;
-
-						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint);
 					}
 					if (operation === 'untrash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/untrash
-						method = 'POST';
-
 						const id = this.getNodeParameter('threadId', i);
 
-						endpoint = `/gmail/v1/users/me/threads/${id}/untrash`;
+						const endpoint = `/gmail/v1/users/me/threads/${id}/untrash`;
 
-						responseData = await googleApiRequest.call(this, method, endpoint, {}, qs);
+						responseData = await googleApiRequest.call(this, 'POST', endpoint);
+					}
+					if (operation === 'addLabels') {
+						const id = this.getNodeParameter('threadId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/threads/${id}/modify`;
+
+						const body = {
+							addLabelIds: labelIds,
+						};
+
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
+					}
+					if (operation === 'removeLabels') {
+						const id = this.getNodeParameter('threadId', i);
+						const labelIds = this.getNodeParameter('labelIds', i) as string[];
+
+						const endpoint = `/gmail/v1/users/me/threads/${id}/modify`;
+
+						const body = {
+							removeLabelIds: labelIds,
+						};
+						responseData = await googleApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}
-				// if (resource === 'threadLabel') {
-				// 	if (operation === 'remove') {
-				// 		//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/modify
-				// 		const threadId = this.getNodeParameter('threadId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
+				//------------------------------------------------------------------//
 
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/threads/${threadId}/modify`;
-				// 		body = {
-				// 			removeLabelIds: labelIds,
-				// 		};
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// 	if (operation === 'add') {
-				// 		//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/modify
-				// 		const threadId = this.getNodeParameter('threadId', i);
-				// 		const labelIds = this.getNodeParameter('labelIds', i) as string[];
-
-				// 		method = 'POST';
-				// 		endpoint = `/gmail/v1/users/me/threads/${threadId}/modify`;
-
-				// 		body = {
-				// 			addLabelIds: labelIds,
-				// 		};
-
-				// 		responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-				// 	}
-				// }
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{
+						itemData: { item: i },
+					},
+				);
+				returnData.push(...executionData);
 			} catch (error) {
+				error.message = `${error.message} (item ${i})`;
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}
-				throw error;
+				throw new NodeOperationError(this.getNode(), error as Error, {
+					description: error.description,
+					itemIndex: i,
+				});
 			}
 		}
-		if (['draft', 'message'].includes(resource) && ['get', 'getAll'].includes(operation)) {
-			//@ts-ignore
-			return this.prepareOutputData(returnData);
+		if (
+			['draft', 'message', 'thread'].includes(resource) &&
+			['get', 'getAll'].includes(operation)
+		) {
+			return this.prepareOutputData(unescapeSnippets(returnData));
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

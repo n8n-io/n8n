@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GithubOAuth2Api implements ICredentialType {
 	name = 'githubOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'GitHub OAuth2 API';
+
 	documentationUrl = 'github';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
@@ -40,7 +44,7 @@ export class GithubOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'repo,admin:repo_hook,admin:org,admin:org_hook,gist,notifications,user,write:packages,read:packages,delete:packages,worfklow',
+				'repo,admin:repo_hook,admin:org,admin:org_hook,gist,notifications,user,write:packages,read:packages,delete:packages,workflow',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

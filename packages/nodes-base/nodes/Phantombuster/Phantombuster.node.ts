@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,15 +8,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	phantombusterApiRequest,
-	validateJSON,
-} from './GenericFunctions';
+import { phantombusterApiRequest, validateJSON } from './GenericFunctions';
 
-import {
-	agentFields,
-	agentOperations,
-} from './AgentDescription';
+import { agentFields, agentOperations } from './AgentDescription';
 
 // import {
 // 	sentenceCase,
@@ -67,15 +58,10 @@ export class Phantombuster implements INodeType {
 
 	methods = {
 		loadOptions: {
-
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const responseData = await phantombusterApiRequest.call(
-					this,
-					'GET',
-					'/agents/fetch-all',
-				);
+				const responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
 				for (const item of responseData) {
 					returnData.push({
@@ -86,7 +72,7 @@ export class Phantombuster implements INodeType {
 				return returnData;
 			},
 
-			// Get all the arguments to display them to user so that he can
+			// Get all the arguments to display them to user so that they can
 			// select them easily
 			// async getArguments(
 			// 	this: ILoadOptionsFunctions,
@@ -115,26 +101,22 @@ export class Phantombuster implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
-
 			try {
 				if (resource === 'agent') {
 					//https://hub.phantombuster.com/reference#post_agents-delete-1
 					if (operation === 'delete') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						responseData = await phantombusterApiRequest.call(
-							this,
-							'POST',
-							'/agents/delete',
-							{ id: agentId },
-						);
+						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/delete', {
+							id: agentId,
+						});
 
 						responseData = { success: true };
 					}
@@ -154,9 +136,9 @@ export class Phantombuster implements INodeType {
 					if (operation === 'getOutput') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -170,7 +152,7 @@ export class Phantombuster implements INodeType {
 							qs,
 						);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							const { resultObject } = await phantombusterApiRequest.call(
 								this,
 								'GET',
@@ -182,22 +164,18 @@ export class Phantombuster implements INodeType {
 							if (resultObject === null) {
 								responseData = {};
 							} else {
-								responseData = JSON.parse(resultObject);
+								responseData = JSON.parse(resultObject as string);
 							}
 						}
 					}
 					//https://api.phantombuster.com/api/v2/agents/fetch-all
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await phantombusterApiRequest.call(
-							this,
-							'GET',
-							'/agents/fetch-all',
-						);
+						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -205,11 +183,11 @@ export class Phantombuster implements INodeType {
 					if (operation === 'launch') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							id: agentId,
@@ -217,23 +195,35 @@ export class Phantombuster implements INodeType {
 
 						if (jsonParameters) {
 							if (additionalFields.argumentsJson) {
-								body.arguments = validateJSON(this, additionalFields.argumentsJson as string, 'Arguments');
+								body.arguments = validateJSON(
+									this,
+									additionalFields.argumentsJson as string,
+									'Arguments',
+								);
 
 								delete additionalFields.argumentsJson;
 							}
 							if (additionalFields.bonusArgumentJson) {
-								body.bonusArgument = validateJSON(this, additionalFields.bonusArgumentJson as string, 'Bonus Argument');
+								body.bonusArgument = validateJSON(
+									this,
+									additionalFields.bonusArgumentJson as string,
+									'Bonus Argument',
+								);
 								delete additionalFields.bonusArgumentJson;
 							}
 						} else {
-							const argumentParameters = ((additionalFields.argumentsUi as IDataObject || {}).argumentValues as IDataObject[]) || [];
+							const argumentParameters =
+								((additionalFields.argumentsUi as IDataObject)?.argumentValues as IDataObject[]) ||
+								[];
 							body.arguments = argumentParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
 							}, {});
 							delete additionalFields.argumentsUi;
 
-							const bonusParameters = ((additionalFields.bonusArgumentUi as IDataObject || {}).bonusArgumentValue as IDataObject[]) || [];
+							const bonusParameters =
+								((additionalFields.bonusArgumentUi as IDataObject)
+									?.bonusArgumentValue as IDataObject[]) || [];
 							body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
@@ -243,14 +233,9 @@ export class Phantombuster implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await phantombusterApiRequest.call(
-							this,
-							'POST',
-							'/agents/launch',
-							body,
-						);
+						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/launch', body);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							responseData = await phantombusterApiRequest.call(
 								this,
 								'GET',
@@ -261,20 +246,23 @@ export class Phantombuster implements INodeType {
 						}
 					}
 				}
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

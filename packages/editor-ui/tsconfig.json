@@ -1,45 +1,26 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"rootDir": ".",
+		"outDir": "dist",
 		"target": "esnext",
 		"module": "esnext",
-		"removeComments": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"strict": true,
-		"jsx": "preserve",
 		"skipLibCheck": true,
+		"allowJs": true,
 		"importHelpers": true,
-		"moduleResolution": "node",
-		"esModuleInterop": true,
+		"incremental": false,
 		"allowSyntheticDefaultImports": true,
-		"useUnknownInCatchVariables": false,
 		"resolveJsonModule": true,
-		"sourceMap": true,
 		"baseUrl": ".",
-		"types": [
-			"webpack-env",
-			"jest"
-		],
+		"types": ["vitest/globals"],
 		"paths": {
-			"@/*": [
-				"src/*"
-			]
+			"@/*": ["src/*"],
+			"n8n-design-system/*": ["../design-system/src/*"]
 		},
-		"lib": [
-			"esnext",
-			"dom",
-			"dom.iterable",
-			"scripthost"
-		]
+		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
+		// TODO: remove all options below this line
+		"noUnusedLocals": false,
+		"useUnknownInCatchVariables": false
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.tsx",
-		"src/**/*.vue",
-		"tests/**/*.ts",
-		"tests/**/*.tsx",
-	],
-	"exclude": [
-		"node_modules"
-	]
+	"include": ["src/**/*.ts", "src/**/*.vue"]
 }

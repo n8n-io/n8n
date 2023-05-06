@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Snowflake implements ICredentialType {
 	name = 'snowflake';
+
 	displayName = 'Snowflake';
+
 	documentationUrl = 'snowflake';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Account',

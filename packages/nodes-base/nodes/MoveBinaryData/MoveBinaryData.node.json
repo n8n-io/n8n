@@ -2,19 +2,15 @@
 	"node": "n8n-nodes-base.moveBinaryData",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.moveBinaryData/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.movebinarydata/"
 			}
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Files"
-		]
+		"Core Nodes": ["Files"]
 	}
 }

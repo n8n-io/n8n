@@ -1,15 +1,17 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class NocoDbApiToken implements ICredentialType {
 	name = 'nocoDbApiToken';
+
 	displayName = 'NocoDB API Token';
+
 	documentationUrl = 'nocoDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
@@ -32,6 +34,13 @@ export class NocoDbApiToken implements ICredentialType {
 			headers: {
 				'xc-token': '={{$credentials.apiToken}}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{ $credentials.host }}',
+			url: '/api/v1/auth/user/me',
 		},
 	};
 }

@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Kafka implements ICredentialType {
 	name = 'kafka';
+
 	displayName = 'Kafka';
+
 	documentationUrl = 'kafka';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Client ID',
@@ -11,6 +14,7 @@ export class Kafka implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'my-app',
+			hint: 'Will not affect the connection, but will be used to identify the client in the Kafka server logs. Read more <a href="https://kafka.apache.org/documentation/#design_quotasgroups">here</a>',
 		},
 		{
 			displayName: 'Brokers',

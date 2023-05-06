@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -27,7 +25,7 @@ export async function download(this: IExecuteFunctions, index: number) {
 	mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 	const contentDisposition = response.headers['content-disposition'];
 	const fileNameRegex = /(?<=filename=").*\b/;
-	const match = fileNameRegex.exec(contentDisposition);
+	const match = fileNameRegex.exec(contentDisposition as string);
 	let fileName = '';
 
 	// file name was found
@@ -40,7 +38,7 @@ export async function download(this: IExecuteFunctions, index: number) {
 		binary: {},
 	};
 
-	if (items[index].binary !== undefined) {
+	if (items[index].binary !== undefined && newItem.binary) {
 		// Create a shallow copy of the binary data so that the old
 		// data references which do not get changed still stay behind
 		// but the incoming data does not get changed.

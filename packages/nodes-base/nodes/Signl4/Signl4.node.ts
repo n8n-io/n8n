@@ -1,17 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	SIGNL4ApiRequest,
-} from './GenericFunctions';
+import { SIGNL4ApiRequest } from './GenericFunctions';
 
 export class Signl4 implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,9 +51,7 @@ export class Signl4 implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'alert',
-						],
+						resource: ['alert'],
 					},
 				},
 				options: [
@@ -80,18 +74,11 @@ export class Signl4 implements INodeType {
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
+						operation: ['send'],
+						resource: ['alert'],
 					},
 				},
 				description: 'A more detailed description for the alert',
@@ -103,12 +90,8 @@ export class Signl4 implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
+						operation: ['send'],
+						resource: ['alert'],
 					},
 				},
 				default: {},
@@ -126,7 +109,8 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Multi ACK',
 								value: 'multi_ack',
-								description: 'In case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
+								description:
+									'In case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
 							},
 						],
 						default: 'single_ack',
@@ -150,7 +134,8 @@ export class Signl4 implements INodeType {
 										type: 'string',
 										placeholder: 'data',
 										default: '',
-										description: 'Name of the binary properties which contain data which should be added as attachment',
+										description:
+											'Name of the binary properties which contain data which should be added as attachment',
 									},
 								],
 							},
@@ -162,14 +147,16 @@ export class Signl4 implements INodeType {
 						name: 'externalId',
 						type: 'string',
 						default: '',
-						description: 'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.',
+						description:
+							'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.',
 					},
 					{
 						displayName: 'Filtering',
 						name: 'filtering',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)',
+						description:
+							'Whether to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)',
 					},
 					{
 						displayName: 'Location',
@@ -177,7 +164,8 @@ export class Signl4 implements INodeType {
 						type: 'fixedCollection',
 						placeholder: 'Add Location',
 						default: {},
-						description: 'Transmit location information (\'latitude, longitude\') with your event and display a map in the mobile app',
+						description:
+							"Transmit location information ('latitude, longitude') with your event and display a map in the mobile app",
 						options: [
 							{
 								name: 'locationFieldsValues',
@@ -226,15 +214,12 @@ export class Signl4 implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'resolve',
-						],
-						resource: [
-							'alert',
-						],
+						operation: ['resolve'],
+						resource: ['alert'],
 					},
 				},
-				description: 'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.',
+				description:
+					'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert. If you resolve / close an alert you must use the same External ID as in the original alert.',
 			},
 		],
 	};
@@ -243,10 +228,9 @@ export class Signl4 implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'alert') {
@@ -254,7 +238,7 @@ export class Signl4 implements INodeType {
 					// Send alert
 					if (operation === 'send') {
 						const message = this.getNodeParameter('message', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const data: IDataObject = {
 							message,
@@ -268,7 +252,8 @@ export class Signl4 implements INodeType {
 							data.service = additionalFields.service as string;
 						}
 						if (additionalFields.locationFieldsUi) {
-							const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+							const locationUi = (additionalFields.locationFieldsUi as IDataObject)
+								.locationFieldsValues as IDataObject;
 							if (locationUi) {
 								data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
 							}
@@ -292,34 +277,31 @@ export class Signl4 implements INodeType {
 
 						// Attachments
 						const attachments = additionalFields.attachmentsUi as IDataObject;
-						if (attachments) {
-							if (attachments.attachmentsBinary && items[i].binary) {
+						if (attachments?.attachmentsBinary) {
+							const propertyName = (attachments.attachmentsBinary as IDataObject)
+								.property as string;
 
-								const propertyName = (attachments.attachmentsBinary as IDataObject).property as string;
+							const binaryData = this.helpers.assertBinaryData(i, propertyName);
 
-								const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
+							if (binaryData) {
+								const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
 
-								if (binaryProperty) {
-
-									const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
-
-									if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
-
-										throw new NodeOperationError(this.getNode(), `Invalid extension, just ${supportedFileExtension.join(',')} are supported}`, { itemIndex: i });
-									}
-
-									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
-									data.attachment = {
-										value: binaryDataBuffer,
-										options: {
-											filename: binaryProperty.fileName,
-											contentType: binaryProperty.mimeType,
-										},
-									};
-
-								} else {
-									throw new NodeOperationError(this.getNode(), `Binary property ${propertyName} does not exist on input`, { itemIndex: i });
+								if (!supportedFileExtension.includes(binaryData.fileExtension as string)) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`,
+										{ itemIndex: i },
+									);
 								}
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
+								data.attachment = {
+									value: binaryDataBuffer,
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								};
 							}
 						}
 
@@ -335,7 +317,6 @@ export class Signl4 implements INodeType {
 					}
 					// Resolve alert
 					if (operation === 'resolve') {
-
 						const data: IDataObject = {};
 
 						data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;

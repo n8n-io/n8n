@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const emailOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const emailOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
+				resource: ['email'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const emailOperations: INodeProperties[] = [
 ];
 
 export const emailFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                email:send                                  */
 	/* -------------------------------------------------------------------------- */
@@ -46,12 +41,8 @@ export const emailFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		placeholder: 'admin@example.com',
@@ -67,12 +58,8 @@ export const emailFields: INodeProperties[] = [
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -88,17 +75,10 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		default: '',
@@ -108,17 +88,10 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'HTML',
 		name: 'html',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		default: '',
@@ -131,12 +104,8 @@ export const emailFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -148,12 +117,8 @@ export const emailFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['email'],
+				operation: ['send'],
 			},
 		},
 		options: [
@@ -250,20 +215,11 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Variables (JSON)',
 		name: 'variablesJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['email'],
+				operation: ['send'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -278,15 +234,9 @@ export const emailFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['email'],
+				operation: ['send'],
+				jsonParameters: [false],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -323,12 +273,8 @@ export const emailFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 		placeholder: 'admin@example.com',
@@ -344,12 +290,8 @@ export const emailFields: INodeProperties[] = [
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 	},
@@ -357,7 +299,8 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Template Name or ID',
 		name: 'templateId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTemplates',
 		},
@@ -365,12 +308,8 @@ export const emailFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 	},
@@ -381,12 +320,8 @@ export const emailFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 	},
@@ -398,12 +333,8 @@ export const emailFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
 			},
 		},
 		options: [
@@ -477,15 +408,9 @@ export const emailFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
+				jsonParameters: [false],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -515,20 +440,11 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Variables (JSON)',
 		name: 'variablesJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'sendTemplate',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['email'],
+				operation: ['sendTemplate'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',

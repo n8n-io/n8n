@@ -5,12 +5,11 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { showMessage } from './mixins/showMessage';
-import { ElMessageComponent } from 'element-ui/types/message';
+import { showMessage } from '@/mixins/showMessage';
+import type { ElMessageComponent } from 'element-ui/types/message';
+import { sanitizeHtml } from '@/utils';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'PageAlert',
 	props: {
 		message: {
@@ -28,7 +27,7 @@ export default mixins(
 	},
 	mounted() {
 		this.alert = this.$showAlert({
-			message: this.message,
+			message: sanitizeHtml(this.message),
 			type: 'warning',
 			duration: 0,
 			showClose: true,
@@ -44,4 +43,3 @@ export default mixins(
 	},
 });
 </script>
-

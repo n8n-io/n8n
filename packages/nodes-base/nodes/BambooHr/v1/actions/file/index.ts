@@ -4,7 +4,7 @@ import * as getAll from './getAll';
 import * as update from './update';
 import * as upload from './upload';
 
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export { del, download, getAll, update, upload };
 
@@ -33,10 +33,10 @@ export const descriptions: INodeProperties[] = [
 				action: 'Download a file',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all company files',
-				action: 'Get all files',
+				description: 'Get many company files',
+				action: 'Get many files',
 			},
 			{
 				name: 'Update',

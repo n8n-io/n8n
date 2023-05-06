@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations: INodeProperties[] = [
 	{
@@ -10,12 +8,15 @@ export const threadOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
+				resource: ['thread'],
 			},
 		},
 		options: [
+			{
+				name: 'Add Label',
+				value: 'addLabels',
+				action: 'Add label to thread',
+			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -24,14 +25,22 @@ export const threadOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a thread',
 				action: 'Get a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all threads',
-				action: 'Get all threads',
+				action: 'Get many threads',
+			},
+			{
+				name: 'Remove Label',
+				value: 'removeLabels',
+				action: 'Remove label from thread',
+			},
+			{
+				name: 'Reply',
+				value: 'reply',
+				action: 'Reply to a message',
 			},
 			{
 				name: 'Trash',
@@ -44,7 +53,7 @@ export const threadOperations: INodeProperties[] = [
 				action: 'Untrash a thread',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 	},
 ];
 
@@ -55,19 +64,165 @@ export const threadFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
+		description: 'The ID of the thread you are operating on',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'get',
-					'delete',
-					'trash',
-					'untrash',
-				],
+				resource: ['thread'],
+				operation: ['get', 'delete', 'reply', 'trash', 'untrash'],
 			},
 		},
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 thread:reply                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Message Snippet or ID',
+		name: 'messageId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getThreadMessages',
+			loadOptionsDependsOn: ['threadId'],
+		},
+		default: '',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['reply'],
+			},
+		},
+	},
+	{
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'text',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['reply'],
+			},
+		},
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['reply'],
+			},
+		},
+		hint: 'Get better Text and Expressions writing experience by using the expression editor',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['reply'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Attachments',
+				name: 'attachmentsUi',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'attachmentsBinary',
+						displayName: 'Attachment Binary',
+						values: [
+							{
+								displayName: 'Attachment Field Name',
+								name: 'property',
+								type: 'string',
+								default: '',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
+							},
+						],
+					},
+				],
+				default: {},
+				description: 'Array of supported attachments to add to the message',
+			},
+			{
+				displayName: 'BCC',
+				name: 'bccList',
+				type: 'string',
+				description:
+					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				placeholder: 'info@example.com',
+				default: '',
+			},
+			{
+				displayName: 'CC',
+				name: 'ccList',
+				type: 'string',
+				description:
+					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				placeholder: 'info@example.com',
+				default: '',
+			},
+			{
+				displayName: 'Sender Name',
+				name: 'senderName',
+				type: 'string',
+				placeholder: 'e.g. Nathan',
+				default: '',
+				description: 'The name displayed in your contacts inboxes',
+			},
+			{
+				displayName: 'Reply to Sender Only',
+				name: 'replyToSenderOnly',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to reply to the sender only or to the entire list of recipients',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 thread:get                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['thread'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Options',
@@ -76,39 +231,12 @@ export const threadFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['thread'],
+				operation: ['get'],
 			},
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Full',
-						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field; the raw field is not used',
-					},
-					{
-						name: 'Metadata',
-						value: 'metadata',
-						description: 'Returns only email message IDs, labels, and email headers',
-					},
-					{
-						name: 'Minimal',
-						value: 'minimal',
-						description: 'Returns only email message IDs and labels; does not return the email headers, body, or payload',
-					},
-				],
-				default: 'minimal',
-			},
 			{
 				displayName: 'Return Only Messages',
 				name: 'returnOnlyMessages',
@@ -128,12 +256,8 @@ export const threadFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		default: false,
@@ -145,15 +269,9 @@ export const threadFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -164,19 +282,29 @@ export const threadFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
+		displayName:
+			'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
+		name: 'filtersNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['thread'],
+				returnAll: [true],
+			},
+		},
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -195,18 +323,93 @@ export const threadFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Only return threads with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Matches Search Query',
+				displayName: 'Search',
 				name: 'q',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+				placeholder: 'has:attachment',
+				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
+				description: 'Only return messages matching the specified query',
+			},
+			{
+				displayName: 'Read Status',
+				name: 'readStatus',
+				type: 'options',
+				default: 'unread',
+				hint: 'Filter emails by whether they have been read or not',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread and read emails',
+						value: 'both',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread emails only',
+						value: 'unread',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Read emails only',
+						value: 'read',
+					},
+				],
+			},
+			{
+				displayName: 'Received After',
+				name: 'receivedAfter',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+			},
+			{
+				displayName: 'Received Before',
+				name: 'receivedBefore',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                      label:addLabel, removeLabel                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Thread ID',
+		name: 'threadId',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: '172ce2c4a72cc243',
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+	},
+	{
+		displayName: 'Label Names or IDs',
+		name: 'labelIds',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getLabels',
+		},
+		default: [],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['thread'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];

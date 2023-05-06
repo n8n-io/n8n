@@ -1,21 +1,13 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
 /**
  * Make an authenticated API request to Lemlist.
@@ -28,18 +20,8 @@ export async function lemlistApiRequest(
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-
-	const { apiKey } = await this.getCredentials('lemlistApi') as {
-		apiKey: string,
-	};
-
-	const encodedApiKey = Buffer.from(':' + apiKey).toString('base64');
-
 	const options: OptionsWithUri = {
-		headers: {
-			'user-agent': 'n8n',
-			'Authorization': `Basic ${encodedApiKey}`,
-		},
+		headers: {},
 		method,
 		uri: `https://api.lemlist.com/api${endpoint}`,
 		qs,
@@ -59,11 +41,7 @@ export async function lemlistApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
 }
 
 /**
@@ -84,16 +62,13 @@ export async function lemlistApiRequestAllItems(
 
 	do {
 		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-		returnData.push(...responseData);
+		returnData.push(...(responseData as IDataObject[]));
 		qs.offset += qs.limit;
-	} while (
-		responseData.length !== 0
-	);
+	} while (responseData.length !== 0);
 	return returnData;
 }
 
 export function getEvents() {
-
 	const events = [
 		'*',
 		'emailsBounced',
@@ -108,5 +83,8 @@ export function getEvents() {
 		'emailsUnsubscribed',
 	];
 
-	return events.map((event: string) => ({ name: (event === '*') ? '*' : capitalCase(event), value: event }));
+	return events.map((event: string) => ({
+		name: event === '*' ? '*' : capitalCase(event),
+		value: event,
+	}));
 }

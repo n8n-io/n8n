@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -10,12 +8,15 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
+			{
+				name: 'Add Label',
+				value: 'addLabels',
+				action: 'Add label to message',
+			},
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -27,9 +28,9 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all messages',
+				action: 'Get many messages',
 			},
 			{
 				name: 'Mark as Read',
@@ -42,6 +43,11 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Mark a message as unread',
 			},
 			{
+				name: 'Remove Label',
+				value: 'removeLabels',
+				action: 'Remove label from message',
+			},
+			{
 				name: 'Reply',
 				value: 'reply',
 				action: 'Reply to a message',
@@ -52,7 +58,7 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 		],
-		default: 'getAll',
+		default: 'send',
 	},
 ];
 
@@ -65,33 +71,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-					'delete',
-					'markAsRead',
-					'markAsUnread',
-				],
-			},
-		},
-		placeholder: '172ce2c4a72cc243',
-	},
-	{
-		displayName: 'Thread ID',
-		name: 'threadId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['get', 'delete', 'markAsRead', 'markAsUnread'],
 			},
 		},
 		placeholder: '172ce2c4a72cc243',
@@ -104,35 +85,27 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
-		placeholder: 'CAHNQoFsC6JMMbOBJgtjsqN0eEc+gDg2a=SQj-tWUebQeHMDgqQ@mail.gmail.com',
+		placeholder: '172ce2c4a72cc243',
 	},
 	{
-		displayName: 'Send To',
+		displayName: 'To',
 		name: 'sendTo',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		placeholder: 'info@example.com',
-		description: 'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+		description:
+			'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 	},
 	{
 		displayName: 'Subject',
@@ -142,12 +115,8 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		placeholder: 'Hello World!',
@@ -161,23 +130,18 @@ export const messageFields: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'HTML',
-				value: 'html',
-			},
-			{
 				name: 'Text',
 				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['send', 'reply'],
 			},
 		},
 	},
@@ -189,37 +153,26 @@ export const messageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'reply',
-					'send',
-				],
+				resource: ['message'],
+				operation: ['reply', 'send'],
 			},
 		},
-		hint: 'Get better Text and Expressions writing experience by using the expression editor',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
+				resource: ['message'],
+				operation: ['send', 'reply'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Attachment',
+				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachment',
 				type: 'fixedCollection',
@@ -232,11 +185,13 @@ export const messageFields: INodeProperties[] = [
 						displayName: 'Attachment Binary',
 						values: [
 							{
-								displayName: 'Attachment Field Name (in Input)',
+								displayName: 'Attachment Field Name',
 								name: 'property',
 								type: 'string',
-								default: '',
-								description: 'Add the field name from the input node. Multiple properties can be set separated by comma.',
+								default: 'data',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
+								hint: 'The name of the field with the attachment in the node input',
 							},
 						],
 					},
@@ -245,106 +200,84 @@ export const messageFields: INodeProperties[] = [
 				description: 'Array of supported attachments to add to the message',
 			},
 			{
-				displayName: 'BCC Email',
+				displayName: 'BCC',
 				name: 'bccList',
 				type: 'string',
-				description: 'The email addresses of the blind copy recipients',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add BCC Email',
-				},
+				description:
+					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
-				default: [],
+				default: '',
 			},
 			{
-				displayName: 'CC Email',
+				displayName: 'CC',
 				name: 'ccList',
 				type: 'string',
-				description: 'The email addresses of the copy recipients',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add CC Email',
-				},
+				description:
+					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 				placeholder: 'info@example.com',
-				default: [],
+				default: '',
 			},
 			{
-				displayName: 'Override Sender Name',
+				displayName: 'Sender Name',
 				name: 'senderName',
 				type: 'string',
-				placeholder: '',
+				placeholder: 'e.g. Nathan',
 				default: '',
-				description: 'The name displayed in your contacts inboxes',
+				description: "The name that will be shown in recipients' inboxes",
+			},
+			{
+				displayName: 'Reply to Sender Only',
+				name: 'replyToSenderOnly',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to reply to the sender only or to the entire list of recipients',
 			},
 		],
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-				],
+				operation: ['get'],
+				resource: ['message'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['get'],
+			},
+			hide: {
+				simple: [true],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Full',
-						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
-					},
-					{
-						name: 'Metadata',
-						value: 'metadata',
-						description: 'Returns only email message ID, labels, and email headers',
-					},
-					{
-						name: 'Minimal',
-						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
-					},
-					{
-						name: 'RAW',
-						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
-					},
-					{
-						name: 'Resolved',
-						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
-					},
-				],
-				default: 'resolved',
-				description: 'The format to return the message in',
-			},
-			{
 				displayName: 'Attachment Prefix',
 				name: 'dataPropertyAttachmentsPrefixName',
 				type: 'string',
 				default: 'attachment_',
-				displayOptions: {
-					hide: {
-						format: [
-							'full',
-							'metadata',
-							'minimal',
-							'raw',
-						],
-					},
-				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
+				description:
+					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
+			},
+			{
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether the email's attachments will be downloaded and included in the output",
 			},
 		],
 	},
@@ -358,12 +291,8 @@ export const messageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 		default: false,
@@ -375,15 +304,9 @@ export const messageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['message'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -394,79 +317,45 @@ export const messageFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['message'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	},
+	{
+		displayName:
+			'Fetching a lot of messages may take a long time. Consider using filters to speed things up',
+		name: 'filtersNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['message'],
+				returnAll: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['getAll'],
+				resource: ['message'],
 			},
 		},
 		options: [
-			{
-				displayName: 'Attachment Prefix',
-				name: 'dataPropertyAttachmentsPrefixName',
-				type: 'string',
-				default: 'attachment_',
-				displayOptions: {
-					hide: {
-						format: [
-							'full',
-							'ids',
-							'metadata',
-							'minimal',
-							'raw',
-						],
-					},
-				},
-				description: 'Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0".',
-			},
-			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Full',
-						value: 'full',
-						description: 'Returns the full email message data with body content parsed in the payload field',
-					},
-					{
-						name: 'IDs',
-						value: 'ids',
-						description: 'Returns only the IDs of the emails',
-					},
-					{
-						name: 'Metadata',
-						value: 'metadata',
-						description: 'Returns only email message ID, labels, and email headers',
-					},
-					{
-						name: 'Minimal',
-						value: 'minimal',
-						description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
-					},
-					{
-						name: 'RAW',
-						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used',
-					},
-					{
-						name: 'Resolved',
-						value: 'resolved',
-						description: 'Returns the full email with all data resolved and attachments saved as binary data',
-					},
-				],
-				default: 'resolved',
-				description: 'The format to return the message in',
-			},
 			{
 				displayName: 'Include Spam and Trash',
 				name: 'includeSpamTrash',
@@ -482,17 +371,57 @@ export const messageFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				description: 'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Matches Search Query',
+				displayName: 'Search',
 				name: 'q',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:name@email.com is:unread". See more <a href="https://support.google.com/mail/answer/7190?hl=en">here</a>',
+				placeholder: 'has:attachment',
+				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
+				description: 'Only return messages matching the specified query',
+			},
+			{
+				displayName: 'Read Status',
+				name: 'readStatus',
+				type: 'options',
+				default: 'unread',
+				hint: 'Filter emails by whether they have been read or not',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread and read emails',
+						value: 'both',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread emails only',
+						value: 'unread',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Read emails only',
+						value: 'read',
+					},
+				],
+			},
+			{
+				displayName: 'Received After',
+				name: 'receivedAfter',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Get all emails received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+			},
+			{
+				displayName: 'Received Before',
+				name: 'receivedBefore',
+				type: 'dateTime',
+				default: '',
+				description:
+					'Get all emails received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
 			},
 			{
 				displayName: 'Sender',
@@ -500,7 +429,78 @@ export const messageFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Sender name or email to filter by',
+				hint: 'Enter an email or part of a sender name',
 			},
 		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['message'],
+			},
+			hide: {
+				simple: [true],
+			},
+		},
+		options: [
+			{
+				displayName: 'Attachment Prefix',
+				name: 'dataPropertyAttachmentsPrefixName',
+				type: 'string',
+				default: 'attachment_',
+				description:
+					"Prefix for name of the binary property to which to write the attachment. An index starting with 0 will be added. So if name is 'attachment_' the first attachment is saved to 'attachment_0'.",
+			},
+			{
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether the email's attachments will be downloaded and included in the output",
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                      label:addLabel, removeLabel                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Message ID',
+		name: 'messageId',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: '172ce2c4a72cc243',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+	},
+	{
+		displayName: 'Label Names or IDs',
+		name: 'labelIds',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getLabels',
+		},
+		default: [],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['addLabels', 'removeLabels'],
+			},
+		},
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];

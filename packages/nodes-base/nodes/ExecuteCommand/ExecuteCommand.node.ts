@@ -1,10 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { exec } from 'child_process';
 
@@ -18,10 +18,8 @@ export interface IExecReturnData {
 /**
  * Promisifiy exec manually to also get the exit code
  *
- * @param {string} command
- * @returns {Promise<IExecReturnData>}
  */
-function execPromise(command: string): Promise<IExecReturnData> {
+async function execPromise(command: string): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
 		error: undefined,
 		exitCode: 0,
@@ -29,7 +27,7 @@ function execPromise(command: string): Promise<IExecReturnData> {
 		stdout: '',
 	};
 
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve, _reject) => {
 		exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
 			returnData.stdout = stdout.trim();
 			returnData.stderr = stderr.trim();
@@ -87,7 +85,7 @@ export class ExecuteCommand implements INodeType {
 		let command: string;
 		const executeOnce = this.getNodeParameter('executeOnce', 0) as boolean;
 
-		if (executeOnce === true) {
+		if (executeOnce) {
 			items = [items[0]];
 		}
 

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -9,9 +9,9 @@ export const eventOperations: INodeProperties[] = [
 		default: 'get',
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all events',
+				action: 'Get many events',
 			},
 		],
 		displayOptions: {

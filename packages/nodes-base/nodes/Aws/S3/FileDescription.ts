@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Download a file',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all files',
-				action: 'Get all files',
+				description: 'Get many files',
+				action: 'Get many files',
 			},
 			{
 				name: 'Upload',
@@ -531,7 +531,7 @@ export const fileFields: INodeProperties[] = [
 				name: 'parentFolderKey',
 				type: 'string',
 				default: '',
-				description: 'Parent file you want to create the file in',
+				description: 'Parent folder you want to create the file in',
 			},
 			{
 				displayName: 'Requester Pays',

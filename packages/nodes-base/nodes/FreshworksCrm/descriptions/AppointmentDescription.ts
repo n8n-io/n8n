@@ -1,6 +1,6 @@
 import { tz } from 'moment-timezone';
 
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const appointmentOperations: INodeProperties[] = [
 	{
@@ -33,10 +33,10 @@ export const appointmentOperations: INodeProperties[] = [
 				action: 'Get an appointment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all appointments',
-				action: 'Get all appointments',
+				description: 'Retrieve many appointments',
+				action: 'Get many appointments',
 			},
 			{
 				name: 'Update',
@@ -260,7 +260,7 @@ export const appointmentFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
-				options: tz.names().map((tz) => ({ name: tz, value: tz })),
+				options: tz.names().map((timeZone) => ({ name: timeZone, value: timeZone })),
 			},
 		],
 	},
@@ -576,7 +576,7 @@ export const appointmentFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
-				options: tz.names().map((tz) => ({ name: tz, value: tz })),
+				options: tz.names().map((timeZone) => ({ name: timeZone, value: timeZone })),
 			},
 			{
 				displayName: 'Title',

@@ -1,4 +1,5 @@
 type: object
+additionalProperties: false
 required:
   - name
   - nodes

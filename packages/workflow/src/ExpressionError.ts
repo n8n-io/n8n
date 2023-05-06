@@ -1,53 +1,66 @@
-// eslint-disable-next-line import/no-cycle
+import type { IDataObject } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 
 /**
  * Class for instantiating an expression error
  */
 export class ExpressionError extends ExecutionBaseError {
+	clientOnly = false;
+
 	constructor(
 		message: string,
 		options?: {
+			cause?: Error;
 			causeDetailed?: string;
 			description?: string;
 			descriptionTemplate?: string;
-			runIndex?: number;
+			failExecution?: boolean;
+			clientOnly?: boolean; // whether to throw error only on frontend
+			functionality?: 'pairedItem';
 			itemIndex?: number;
 			messageTemplate?: string;
+			nodeCause?: string;
 			parameter?: string;
-			failExecution?: boolean;
+			runIndex?: number;
+			type?: string;
 		},
 	) {
-		super(new Error(message));
+		super(message, { cause: options?.cause });
 
 		if (options?.description !== undefined) {
 			this.description = options.description;
 		}
 
-		if (options?.descriptionTemplate !== undefined) {
-			this.context.descriptionTemplate = options.descriptionTemplate;
-		}
-
-		if (options?.causeDetailed !== undefined) {
-			this.context.causeDetailed = options.causeDetailed;
-		}
-
-		if (options?.runIndex !== undefined) {
-			this.context.runIndex = options.runIndex;
-		}
-
-		if (options?.itemIndex !== undefined) {
-			this.context.itemIndex = options.itemIndex;
-		}
-
-		if (options?.parameter !== undefined) {
-			this.context.parameter = options.parameter;
-		}
-
-		if (options?.messageTemplate !== undefined) {
-			this.context.messageTemplate = options.messageTemplate;
+		if (options?.clientOnly) {
+			this.clientOnly = options.clientOnly;
 		}
 
 		this.context.failExecution = !!options?.failExecution;
+
+		const allowedKeys = [
+			'causeDetailed',
+			'descriptionTemplate',
+			'functionality',
+			'itemIndex',
+			'messageTemplate',
+			'nodeCause',
+			'parameter',
+			'runIndex',
+			'type',
+		];
+		if (options !== undefined) {
+			Object.keys(options as IDataObject).forEach((key) => {
+				if (allowedKeys.includes(key)) {
+					this.context[key] = (options as IDataObject)[key];
+				}
+			});
+		}
+	}
+}
+
+export class ExpressionExtensionError extends ExpressionError {
+	constructor(message: string) {
+		super(message);
+		this.context.failExecution = true;
 	}
 }

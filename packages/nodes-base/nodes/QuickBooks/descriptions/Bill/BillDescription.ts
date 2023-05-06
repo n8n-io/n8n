@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-import {
-	billAdditionalFieldsOptions,
-} from './BillAdditionalFieldsOptions';
+import { billAdditionalFieldsOptions } from './BillAdditionalFieldsOptions';
 
 export const billOperations: INodeProperties[] = [
 	{
@@ -30,9 +26,9 @@ export const billOperations: INodeProperties[] = [
 				action: 'Get a bill',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all bills',
+				action: 'Get many bills',
 			},
 			{
 				name: 'Update',
@@ -42,9 +38,7 @@ export const billOperations: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
+				resource: ['bill'],
 			},
 		},
 	},
@@ -59,19 +53,16 @@ export const billFields: INodeProperties[] = [
 		name: 'VendorRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the vendor who the bill is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getVendors',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['bill'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,12 +78,8 @@ export const billFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['bill'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -115,9 +102,6 @@ export const billFields: INodeProperties[] = [
 				description: 'Textual description of the line item',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Detail Type',
@@ -139,7 +123,8 @@ export const billFields: INodeProperties[] = [
 				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
@@ -162,12 +147,8 @@ export const billFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['bill'],
+				operation: ['create'],
 			},
 		},
 		options: billAdditionalFieldsOptions,
@@ -185,12 +166,8 @@ export const billFields: INodeProperties[] = [
 		description: 'The ID of the bill to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['bill'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -207,12 +184,8 @@ export const billFields: INodeProperties[] = [
 		description: 'The ID of the bill to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['bill'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -228,12 +201,8 @@ export const billFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['bill'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -249,15 +218,9 @@ export const billFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['bill'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -273,21 +236,15 @@ export const billFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting bills. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting bills. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['bill'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -304,12 +261,8 @@ export const billFields: INodeProperties[] = [
 		description: 'The ID of the bill to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['bill'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -322,15 +275,13 @@ export const billFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'bill',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['bill'],
+				operation: ['update'],
 			},
 		},
 		// filter out fields that cannot be updated
-		options: billAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
+		options: billAdditionalFieldsOptions.filter(
+			(property) => property.name !== 'TotalAmt' && property.name !== 'Balance',
+		),
 	},
 ];

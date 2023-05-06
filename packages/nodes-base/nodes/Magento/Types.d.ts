@@ -1,3 +1,4 @@
+import type { IDataObject } from 'n8n-workflow';
 
 export interface NewCustomer {
 	customer?: Customer;
@@ -118,10 +119,7 @@ export interface CustomerAttributeMetadata {
 export interface CustomerAttributeMetadataOption {
 	label?: string;
 	value?: string;
-	options?: OptionOption[];
-}
-
-export interface OptionOption {
+	options?: IDataObject[];
 }
 
 export interface ValidationRule {
@@ -174,19 +172,21 @@ export interface Product {
 	updated_at?: string;
 	weight?: number;
 	extension_attributes?: {
-		category_links?: [{
-			category_id?: string,
-		}]
-	}
+		category_links?: [
+			{
+				category_id?: string;
+			},
+		];
+	};
 	custom_attributes?: CustomAttribute[];
 }
 
 export interface ProductAttribute {
-	is_filterable_in_search: boolean,
+	is_filterable_in_search: boolean;
 	default_frontend_label: string;
 	attribute_id: string;
 	is_filterable: boolean;
 	used_for_sort_by: boolean;
-	is_searchable: string,
-	attribute_code: string,
+	is_searchable: string;
+	attribute_code: string;
 }

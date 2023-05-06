@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const senderOperations: INodeProperties[] = [
 	{
@@ -39,7 +39,7 @@ export const senderOperations: INodeProperties[] = [
 				action: 'Delete a sender',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				routing: {
 					request: {
@@ -60,7 +60,7 @@ export const senderOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all senders',
+				action: 'Get many senders',
 			},
 		],
 		default: 'create',

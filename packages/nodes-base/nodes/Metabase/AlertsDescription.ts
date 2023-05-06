@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const alertsOperations: INodeProperties[] = [
 	{
@@ -25,16 +25,16 @@ export const alertsOperations: INodeProperties[] = [
 				action: 'Get an alert',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the alerts',
+				description: 'Get many alerts',
 				routing: {
 					request: {
 						method: 'GET',
 						url: '/api/alert/',
 					},
 				},
-				action: 'Get all alerts',
+				action: 'Get many alerts',
 			},
 		],
 		default: 'getAll',

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -8,9 +8,7 @@ export const messageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -55,7 +53,6 @@ export const messageOperations: INodeProperties[] = [
 ];
 
 export const messageFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                message:sendPrivate                         */
 	/* -------------------------------------------------------------------------- */
@@ -71,15 +68,12 @@ export const messageFields: INodeProperties[] = [
 		default: [],
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'sendPrivate',
-				],
+				resource: ['message'],
+				operation: ['sendPrivate'],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -87,17 +81,10 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'sendPrivate',
-				],
+				resource: ['message'],
+				operation: ['sendPrivate'],
 			},
 		},
 		description: 'The content of the message',
@@ -116,39 +103,31 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'sendStream',
-				],
+				resource: ['message'],
+				operation: ['sendStream'],
 			},
 		},
-		description: 'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The destination stream, or a comma-separated list containing the usernames (emails) of the recipients. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Topic Name or ID',
 		name: 'topic',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'stream',
-			],
+			loadOptionsDependsOn: ['stream'],
 			loadOptionsMethod: 'getTopics',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'sendStream',
-				],
+				resource: ['message'],
+				operation: ['sendStream'],
 			},
 		},
 		default: '',
-		description: 'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The topic of the message. Only required if type is stream, ignored otherwise. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Content',
@@ -156,17 +135,10 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'sendStream',
-				],
+				resource: ['message'],
+				operation: ['sendStream'],
 			},
 		},
 		description: 'The content of the message',
@@ -182,12 +154,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
 		description: 'Unique identifier for the message',
@@ -200,12 +168,8 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['message'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -213,9 +177,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The content of the message',
 			},
@@ -238,7 +199,8 @@ export const messageFields: INodeProperties[] = [
 					},
 				],
 				default: 'changeOne',
-				description: 'Which message(s) should be edited: just the one indicated in message_id, messages in the same topic that had been sent after this one, or all of them',
+				description:
+					'Which message(s) should be edited: just the one indicated in message_id, messages in the same topic that had been sent after this one, or all of them',
 			},
 			{
 				displayName: 'Topic',
@@ -260,12 +222,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['message'],
+				operation: ['get'],
 			},
 		},
 		description: 'Unique identifier for the message',
@@ -281,12 +239,8 @@ export const messageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['message'],
+				operation: ['delete'],
 			},
 		},
 		description: 'Unique identifier for the message',
@@ -302,12 +256,8 @@ export const messageFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'updateFile',
-				],
+				resource: ['message'],
+				operation: ['updateFile'],
 			},
 		},
 		description: 'Name of the binary property to which to write the data of the read file',

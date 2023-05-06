@@ -1,19 +1,19 @@
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	IHookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function kitemakerRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	body: IDataObject = {},
 ) {
-	const { personalAccessToken } = await this.getCredentials('kitemakerApi') as { personalAccessToken: string };
+	const { personalAccessToken } = (await this.getCredentials('kitemakerApi')) as {
+		personalAccessToken: string;
+	};
 
 	const options = {
 		headers: {
@@ -25,40 +25,13 @@ export async function kitemakerRequest(
 		json: true,
 	};
 
-	const responseData = await this.helpers.request!.call(this, options);
+	const responseData = await this.helpers.request.call(this, options);
 
 	if (responseData.errors) {
-		throw new NodeApiError(this.getNode(), responseData);
+		throw new NodeApiError(this.getNode(), responseData as JsonObject);
 	}
 
 	return responseData;
-}
-
-export async function kitemakerRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	body: { query: string; variables: { [key: string]: string } },
-) {
-	const resource = this.getNodeParameter('resource', 0) as 'space' | 'user' | 'workItem';
-	const [group, items] = getGroupAndItems(resource);
-
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
-
-	const returnData: IDataObject[] = [];
-	let responseData;
-
-	do {
-		responseData = await kitemakerRequest.call(this, body);
-		body.variables.cursor = responseData.data[group].cursor;
-		returnData.push(...responseData.data[group][items]);
-
-		if (!returnAll && returnData.length > limit) {
-			return returnData.slice(0, limit);
-		}
-
-	} while (responseData.data[group].hasMore);
-
-	return returnData;
 }
 
 function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
@@ -68,18 +41,42 @@ function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
 		workItem: { group: 'workItems', items: 'workItems' },
 	};
 
-	return [
-		map[resource]['group'],
-		map[resource]['items'],
-	];
+	return [map[resource].group, map[resource].items];
 }
 
+export async function kitemakerRequestAllItems(
+	this: IExecuteFunctions,
+	body: { query: string; variables: { [key: string]: string } },
+) {
+	const resource = this.getNodeParameter('resource', 0) as 'space' | 'user' | 'workItem';
+	const [group, items] = getGroupAndItems(resource);
+
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
+	const limit = this.getNodeParameter('limit', 0, 0);
+
+	const returnData: IDataObject[] = [];
+	let responseData;
+
+	do {
+		responseData = await kitemakerRequest.call(this, body);
+		body.variables.cursor = responseData.data[group].cursor;
+		returnData.push(...(responseData.data[group][items] as IDataObject[]));
+
+		if (!returnAll && returnData.length > limit) {
+			return returnData.slice(0, limit);
+		}
+	} while (responseData.data[group].hasMore);
+
+	return returnData;
+}
+
+export type LoadOptions = { name?: string; username?: string; title?: string; id: string };
 export function createLoadOptions(
-	resources: Array<{ name?: string; username?: string; title?: string; id: string }>,
+	resources: LoadOptions[],
 ): Array<{ name: string; value: string }> {
-	return resources.map(option => {
-		if (option.username) return ({ name: option.username, value: option.id });
-		if (option.title) return ({ name: option.title, value: option.id });
-		return ({ name: option.name ?? 'Unnamed', value: option.id });
+	return resources.map((option) => {
+		if (option.username) return { name: option.username, value: option.id };
+		if (option.title) return { name: option.title, value: option.id };
+		return { name: option.name ?? 'Unnamed', value: option.id };
 	});
 }

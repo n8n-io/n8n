@@ -1,0 +1,55 @@
+name: Test Master
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v2.2.4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: packages/cli/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/design-system/coverage/cobertura-coverage.xml,packages/editor-ui/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
+
+      - name: Lint
+        env:
+          CI_LINT_MASTER: true
+        run: pnpm lint
+
+      - name: Notify Slack on failure
+        uses: act10ns/slack@v2.0.0
+        if: failure()
+        with:
+          status: ${{ job.status }}
+          channel: '#updates-build-alerts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Master branch (build or test or lint) failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

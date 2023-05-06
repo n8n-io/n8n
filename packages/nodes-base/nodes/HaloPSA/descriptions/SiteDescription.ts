@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const siteOperations: INodeProperties[] = [
 	{
@@ -31,10 +31,10 @@ export const siteOperations: INodeProperties[] = [
 				action: 'Get a site',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sites',
-				action: 'Get all sites',
+				description: 'Get many sites',
+				action: 'Get many sites',
 			},
 			{
 				name: 'Update',
@@ -96,7 +96,8 @@ export const siteFields: INodeProperties[] = [
 		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -133,9 +134,6 @@ export const siteFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -305,9 +303,6 @@ export const siteFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

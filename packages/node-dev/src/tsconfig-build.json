@@ -1,21 +1,15 @@
 {
 	"compilerOptions": {
-		"lib": [
-			"es2017"
-		],
-		"types": [],
+		"strict": true,
 		"module": "commonjs",
+		"moduleResolution": "node",
+		"target": "es2019",
+		"lib": ["es2019", "es2020"],
 		"importHelpers": true,
-		"preserveConstEnums": true,
+		"esModuleInterop": true,
 		"declaration": true,
-		"target": "es2017",
+		"incremental": true,
 		"sourceMap": true
 	},
-	"include": [
-		"*.credentials.ts",
-		"*.node.ts"
-	],
-	"exclude": [
-		"node_modules"
-	]
+	"include": ["**/*.credentials.ts", "**/*.node.ts"]
 }

@@ -1,8 +1,13 @@
 /* eslint-disable no-await-in-loop */
 import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
-import { QueryRunner } from 'typeorm/query-runner/QueryRunner';
-import { getLogger } from '../../Logger';
+import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import config from '@/config';
+import { getLogger } from '@/Logger';
+import { inTest } from '@/constants';
+import type { Migration } from '@db/types';
+
+const logger = getLogger();
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
@@ -35,28 +40,50 @@ export function loadSurveyFromDisk(): string | null {
 }
 
 let logFinishTimeout: NodeJS.Timeout;
-const disableLogging = process.argv[1].split('/').includes('jest');
 
-export function logMigrationStart(migrationName: string): void {
+export function logMigrationStart(migrationName: string, disableLogging = inTest): void {
 	if (disableLogging) return;
-	const logger = getLogger();
+
 	if (!logFinishTimeout) {
 		logger.warn('Migrations in progress, please do NOT stop the process.');
 	}
+
 	logger.debug(`Starting migration ${migrationName}`);
+
 	clearTimeout(logFinishTimeout);
 }
 
-export function logMigrationEnd(migrationName: string): void {
+export function logMigrationEnd(migrationName: string, disableLogging = inTest): void {
 	if (disableLogging) return;
-	const logger = getLogger();
+
 	logger.debug(`Finished migration ${migrationName}`);
+
 	logFinishTimeout = setTimeout(() => {
 		logger.warn('Migrations finished.');
 	}, 100);
 }
 
-export function chunkQuery(query: string, limit: number, offset = 0): string {
+export const wrapMigration = (migration: Migration) => {
+	const dbType = config.getEnv('database.type');
+	const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
+	const tablePrefix = config.getEnv('database.tablePrefix');
+	const migrationName = migration.name;
+	const context = { tablePrefix, dbType, dbName, migrationName };
+
+	const { up, down } = migration.prototype;
+	Object.assign(migration.prototype, {
+		up: async (queryRunner: QueryRunner) => {
+			logMigrationStart(migrationName);
+			await up.call(this, { queryRunner, ...context });
+			logMigrationEnd(migrationName);
+		},
+		down: async (queryRunner: QueryRunner) => {
+			await down?.call(this, { queryRunner, ...context });
+		},
+	});
+};
+
+function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
 			LIMIT ${limit}
@@ -64,7 +91,7 @@ export function chunkQuery(query: string, limit: number, offset = 0): string {
 		`;
 }
 
-export async function runChunked(
+export async function runInBatches(
 	queryRunner: QueryRunner,
 	query: string,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,14 +99,31 @@ export async function runChunked(
 	limit = 100,
 ): Promise<void> {
 	let offset = 0;
-	let chunkedQuery: string;
-	let chunkedQueryResults: unknown[];
+	let batchedQuery: string;
+	let batchedQueryResults: unknown[];
+
+	// eslint-disable-next-line no-param-reassign
+	if (query.trim().endsWith(';')) query = query.trim().slice(0, -1);
 
 	do {
-		chunkedQuery = chunkQuery(query, limit, offset);
-		chunkedQueryResults = (await queryRunner.query(chunkedQuery)) as unknown[];
+		batchedQuery = batchQuery(query, limit, offset);
+		batchedQueryResults = (await queryRunner.query(batchedQuery)) as unknown[];
 		// pass a copy to prevent errors from mutation
-		await operation([...chunkedQueryResults]);
+		await operation([...batchedQueryResults]);
 		offset += limit;
-	} while (chunkedQueryResults.length === limit);
+	} while (batchedQueryResults.length === limit);
 }
+
+export const escapeQuery = (
+	queryRunner: QueryRunner,
+	query: string,
+	params: { [property: string]: unknown },
+): [string, unknown[]] =>
+	queryRunner.connection.driver.escapeQueryWithParameters(
+		query,
+		{
+			pinData: params.pinData,
+			id: params.id,
+		},
+		{},
+	);

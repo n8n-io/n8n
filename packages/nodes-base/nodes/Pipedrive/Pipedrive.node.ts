@@ -1,18 +1,16 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-import {
-	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { ICustomProperties } from './GenericFunctions';
 import {
-	ICustomProperties,
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
 	pipedriveEncodeCustomProperties,
@@ -21,9 +19,7 @@ import {
 	sortOptionParameters,
 } from './GenericFunctions';
 
-import {
-	currencies,
-} from './utils';
+import { currencies } from './utils';
 
 interface CustomProperty {
 	name: string;
@@ -38,8 +34,12 @@ interface CustomProperty {
  */
 function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 	for (const key of Object.keys(additionalFields)) {
-		if (key === 'customProperties' && (additionalFields.customProperties as IDataObject).property !== undefined) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!.property! as CustomProperty[]) {
+		if (
+			key === 'customProperties' &&
+			(additionalFields.customProperties as IDataObject).property !== undefined
+		) {
+			for (const customProperty of (additionalFields.customProperties as IDataObject)!
+				.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
 		} else {
@@ -68,9 +68,7 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiToken',
-						],
+						authentication: ['apiToken'],
 					},
 				},
 				testedBy: {
@@ -85,9 +83,7 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -163,8 +159,6 @@ export class Pipedrive implements INodeType {
 				default: 'deal',
 			},
 
-
-
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
@@ -175,9 +169,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'activity',
-						],
+						resource: ['activity'],
 					},
 				},
 				options: [
@@ -200,10 +192,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get an activity',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all activities',
-						action: 'Get all activities',
+						description: 'Get data of many activities',
+						action: 'Get many activities',
 					},
 					{
 						name: 'Update',
@@ -222,9 +214,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'deal',
-						],
+						resource: ['deal'],
 					},
 				},
 				options: [
@@ -253,10 +243,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a deal',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all deals',
-						action: 'Get all deals',
+						description: 'Get data of many deals',
+						action: 'Get many deals',
 					},
 					{
 						name: 'Search',
@@ -281,17 +271,15 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'dealActivity',
-						],
+						resource: ['dealActivity'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all activities of a deal',
-						action: 'Get all deal activities',
+						description: 'Get many activities of a deal',
+						action: 'Get many deal activities',
 					},
 				],
 				default: 'getAll',
@@ -304,9 +292,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'dealProduct',
-						],
+						resource: ['dealProduct'],
 					},
 				},
 				options: [
@@ -317,10 +303,10 @@ export class Pipedrive implements INodeType {
 						action: 'Add a deal product',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all products in a deal',
-						action: 'Get all deal products',
+						description: 'Get many products in a deal',
+						action: 'Get many deal products',
 					},
 					{
 						name: 'Remove',
@@ -345,9 +331,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'file',
-						],
+						resource: ['file'],
 					},
 				},
 				options: [
@@ -396,9 +380,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
+						resource: ['lead'],
 					},
 				},
 				options: [
@@ -421,10 +403,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a lead',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all leads',
-						action: 'Get all leads',
+						description: 'Get data of many leads',
+						action: 'Get many leads',
 					},
 					{
 						name: 'Update',
@@ -442,9 +424,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'note',
-						],
+						resource: ['note'],
 					},
 				},
 				options: [
@@ -467,10 +447,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a note',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all notes',
-						action: 'Get all notes',
+						description: 'Get data of many notes',
+						action: 'Get many notes',
 					},
 					{
 						name: 'Update',
@@ -489,9 +469,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'organization',
-						],
+						resource: ['organization'],
 					},
 				},
 				options: [
@@ -514,10 +492,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get an organization',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all organizations',
-						action: 'Get all organizations',
+						description: 'Get data of many organizations',
+						action: 'Get many organizations',
 					},
 					{
 						name: 'Search',
@@ -542,9 +520,7 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'person',
-						],
+						resource: ['person'],
 					},
 				},
 				options: [
@@ -567,10 +543,10 @@ export class Pipedrive implements INodeType {
 						action: 'Get a person',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all persons',
-						action: 'Get all people',
+						description: 'Get data of many persons',
+						action: 'Get many people',
 					},
 					{
 						name: 'Search',
@@ -595,23 +571,19 @@ export class Pipedrive implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'product',
-						],
+						resource: ['product'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get data of all products',
-						action: 'Get all products',
+						description: 'Get data of many products',
+						action: 'Get many products',
 					},
 				],
 				default: 'getAll',
 			},
-
-
 
 			// ----------------------------------
 			//         Activity
@@ -628,12 +600,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['create'],
+						resource: ['activity'],
 					},
 				},
 				description: 'The subject of the activity to create',
@@ -644,12 +612,8 @@ export class Pipedrive implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['create'],
+						resource: ['activity'],
 					},
 				},
 				options: [
@@ -673,12 +637,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['create'],
+						resource: ['activity'],
 					},
 				},
 				placeholder: 'call',
@@ -691,12 +651,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['create'],
+						resource: ['activity'],
 					},
 				},
 				default: {},
@@ -720,7 +676,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -734,7 +689,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -751,7 +707,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -798,19 +755,14 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['delete'],
+						resource: ['activity'],
 					},
 				},
 				default: 0,
 				required: true,
 				description: 'ID of the activity to delete',
 			},
-
 
 			// ----------------------------------
 			//         activity:get
@@ -821,12 +773,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['get'],
+						resource: ['activity'],
 					},
 				},
 				default: 0,
@@ -842,12 +790,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['update'],
+						resource: ['activity'],
 					},
 				},
 				default: 0,
@@ -861,12 +805,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['update'],
+						resource: ['activity'],
 					},
 				},
 				default: {},
@@ -908,7 +848,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -922,7 +861,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this activity will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -954,7 +894,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -992,8 +933,6 @@ export class Pipedrive implements INodeType {
 				],
 			},
 
-
-
 			// ----------------------------------
 			//         deal
 			// ----------------------------------
@@ -1009,12 +948,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['create'],
+						resource: ['deal'],
 					},
 				},
 				description: 'The title of the deal to create',
@@ -1038,12 +973,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'deal',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['deal'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -1056,15 +987,9 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-						associateWith: [
-							'organization',
-						],
+						operation: ['create'],
+						resource: ['deal'],
+						associateWith: ['organization'],
 					},
 				},
 			},
@@ -1076,15 +1001,9 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the person this deal will be associated with',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-						associateWith: [
-							'person',
-						],
+						operation: ['create'],
+						resource: ['deal'],
+						associateWith: ['person'],
 					},
 				},
 			},
@@ -1095,12 +1014,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['create'],
+						resource: ['deal'],
 					},
 				},
 				default: {},
@@ -1110,7 +1025,8 @@ export class Pipedrive implements INodeType {
 						name: 'currency',
 						type: 'string',
 						default: 'USD',
-						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
+						description:
+							'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -1135,7 +1051,8 @@ export class Pipedrive implements INodeType {
 											loadOptionsMethod: 'getDealCustomFields',
 										},
 										default: '',
-										description: 'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										description:
+											'Name of the property to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1152,7 +1069,8 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDealLabels',
 						},
@@ -1172,9 +1090,7 @@ export class Pipedrive implements INodeType {
 						default: 0,
 						displayOptions: {
 							show: {
-								'/associateWith': [
-									'person',
-								],
+								'/associateWith': ['person'],
 							},
 						},
 						description: 'ID of the organization this deal will be associated with',
@@ -1186,9 +1102,7 @@ export class Pipedrive implements INodeType {
 						default: 0,
 						displayOptions: {
 							show: {
-								'/associateWith': [
-									'organization',
-								],
+								'/associateWith': ['organization'],
 							},
 						},
 						description: 'ID of the person this deal will be associated with',
@@ -1212,7 +1126,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getStageIds',
 						},
 						default: '',
-						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status',
@@ -1237,7 +1152,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: 'open',
-						description: 'The status of the deal. If not provided it will automatically be set to "open".',
+						description:
+							'The status of the deal. If not provided it will automatically be set to "open".',
 					},
 					{
 						displayName: 'User Name or ID',
@@ -1247,7 +1163,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -1271,7 +1188,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: '3',
-						description: 'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+						description:
+							'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 				],
 			},
@@ -1285,12 +1203,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['delete'],
+						resource: ['deal'],
 					},
 				},
 				default: 0,
@@ -1307,12 +1221,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'duplicate',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['duplicate'],
+						resource: ['deal'],
 					},
 				},
 				default: 0,
@@ -1329,12 +1239,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['get'],
+						resource: ['deal'],
 					},
 				},
 				default: 0,
@@ -1351,12 +1257,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['update'],
+						resource: ['deal'],
 					},
 				},
 				default: 0,
@@ -1370,12 +1272,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['update'],
+						resource: ['deal'],
 					},
 				},
 				default: {},
@@ -1385,7 +1283,8 @@ export class Pipedrive implements INodeType {
 						name: 'currency',
 						type: 'string',
 						default: 'USD',
-						description: 'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
+						description:
+							'Currency of the deal. Accepts a 3-character currency code. Like EUR, USD, ...',
 					},
 					{
 						displayName: 'Custom Properties',
@@ -1410,7 +1309,8 @@ export class Pipedrive implements INodeType {
 											loadOptionsMethod: 'getDealCustomFields',
 										},
 										default: '',
-										description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										description:
+											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -1431,13 +1331,15 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the active user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDealLabels',
 						},
@@ -1458,7 +1360,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -1486,7 +1389,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getStageIds',
 						},
 						default: '',
-						description: 'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the stage this deal will be placed in a pipeline. If omitted, the deal will be placed in the first stage of the default pipeline. (PIPELINE > STAGE). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status',
@@ -1511,7 +1415,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: 'open',
-						description: 'The status of the deal. If not provided it will automatically be set to "open".',
+						description:
+							'The status of the deal. If not provided it will automatically be set to "open".',
 					},
 					{
 						displayName: 'Title',
@@ -1542,7 +1447,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: '3',
-						description: 'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+						description:
+							'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 				],
 			},
@@ -1560,15 +1466,12 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'add',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['add'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'The ID of the deal to add a product to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the deal to add a product to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Product Name or ID',
@@ -1581,15 +1484,12 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'add',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['add'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'The ID of the product to add to a deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the product to add to a deal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Item Price',
@@ -1598,17 +1498,13 @@ export class Pipedrive implements INodeType {
 				typeOptions: {
 					numberPrecision: 2,
 				},
-				default: 0.00,
+				default: 0.0,
 				required: true,
 				description: 'Price at which to add or update this product in a deal',
 				displayOptions: {
 					show: {
-						operation: [
-							'add',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['add'],
+						resource: ['dealProduct'],
 					},
 				},
 			},
@@ -1624,12 +1520,8 @@ export class Pipedrive implements INodeType {
 				description: 'How many items of this product to add/update in a deal',
 				displayOptions: {
 					show: {
-						operation: [
-							'add',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['add'],
+						resource: ['dealProduct'],
 					},
 				},
 			},
@@ -1640,12 +1532,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'add',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['add'],
+						resource: ['dealProduct'],
 					},
 				},
 				default: {},
@@ -1694,15 +1582,12 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['update'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'The ID of the deal whose product to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the deal whose product to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Product Attachment Name or ID',
@@ -1711,22 +1596,17 @@ export class Pipedrive implements INodeType {
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getProductsDeal',
-					loadOptionsDependsOn: [
-						'dealId',
-					],
+					loadOptionsDependsOn: ['dealId'],
 				},
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['update'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Update Fields',
@@ -1735,12 +1615,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['update'],
+						resource: ['dealProduct'],
 					},
 				},
 				default: {},
@@ -1773,7 +1649,7 @@ export class Pipedrive implements INodeType {
 						typeOptions: {
 							numberPrecision: 2,
 						},
-						default: 0.00,
+						default: 0.0,
 						description: 'Price at which to add or update this product in a deal',
 					},
 					{
@@ -1809,15 +1685,12 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'remove',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['remove'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'The ID of the deal whose product to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the deal whose product to remove. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Product Attachment Name or ID',
@@ -1826,22 +1699,17 @@ export class Pipedrive implements INodeType {
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getProductsDeal',
-					loadOptionsDependsOn: [
-						'dealId',
-					],
+					loadOptionsDependsOn: ['dealId'],
 				},
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'remove',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['remove'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'ID of the deal-product (the ID of the product attached to the deal). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			// ----------------------------------
 			//        dealProduct:getAll
@@ -1857,15 +1725,12 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'dealProduct',
-						],
+						operation: ['getAll'],
+						resource: ['dealProduct'],
 					},
 				},
-				description: 'The ID of the deal whose products to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the deal whose products to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// ----------------------------------
@@ -1878,16 +1743,13 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['search'],
+						resource: ['deal'],
 					},
 				},
 				default: '',
-				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+				description:
+					'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 			},
 			{
 				displayName: 'Exact Match',
@@ -1895,16 +1757,13 @@ export class Pipedrive implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['search'],
+						resource: ['deal'],
 					},
 				},
 				default: false,
-				description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
+				description:
+					'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 			},
 			{
 				displayName: 'Return All',
@@ -1912,9 +1771,7 @@ export class Pipedrive implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
+						operation: ['search'],
 					},
 				},
 				default: false,
@@ -1926,12 +1783,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['search'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -1948,12 +1801,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['search'],
+						resource: ['deal'],
 					},
 				},
 				default: {},
@@ -1963,7 +1812,8 @@ export class Pipedrive implements INodeType {
 						name: 'includeFields',
 						type: 'string',
 						default: '',
-						description: 'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email.',
+						description:
+							'Supports including optional fields in the results which are not provided by default. Example: deal.cc_email.',
 					},
 					{
 						displayName: 'Organization ID',
@@ -1997,12 +1847,9 @@ export class Pipedrive implements INodeType {
 								value: 'title',
 							},
 						],
-						default: [
-							'custom_fields',
-							'notes',
-							'title',
-						],
-						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+						default: ['custom_fields', 'notes', 'title'],
+						description:
+							'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
 					},
 					{
 						displayName: 'Status',
@@ -2023,11 +1870,11 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: 'open',
-						description: 'The status of the deal. If not provided it will automatically be set to "open".',
+						description:
+							'The status of the deal. If not provided it will automatically be set to "open".',
 					},
 				],
 			},
-
 
 			// ----------------------------------
 			//         file
@@ -2044,17 +1891,13 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['create'],
+						resource: ['file'],
 					},
-
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file to be created',
+				description:
+					'Name of the binary property which contains the data for the file to be created',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -2063,12 +1906,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['create'],
+						resource: ['file'],
 					},
 				},
 				default: {},
@@ -2095,7 +1934,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -2123,12 +1963,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['delete'],
+						resource: ['file'],
 					},
 				},
 				default: 0,
@@ -2145,12 +1981,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['download'],
+						resource: ['file'],
 					},
 				},
 				default: 0,
@@ -2165,15 +1997,12 @@ export class Pipedrive implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						operation: [
-							'download',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['download'],
+						resource: ['file'],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the downloaded file',
+				description:
+					'Name of the binary property to which to write the data of the downloaded file',
 			},
 
 			// ----------------------------------
@@ -2185,12 +2014,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'file',
-						],
+						operation: ['get'],
+						resource: ['file'],
 					},
 				},
 				default: 0,
@@ -2210,12 +2035,8 @@ export class Pipedrive implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['lead'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -2238,12 +2059,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['lead'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -2256,15 +2073,9 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'create',
-						],
-						associateWith: [
-							'organization',
-						],
+						resource: ['lead'],
+						operation: ['create'],
+						associateWith: ['organization'],
 					},
 				},
 			},
@@ -2277,15 +2088,9 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'create',
-						],
-						associateWith: [
-							'person',
-						],
+						resource: ['lead'],
+						operation: ['create'],
+						associateWith: ['person'],
 					},
 				},
 			},
@@ -2297,12 +2102,8 @@ export class Pipedrive implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['lead'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -2321,7 +2122,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getLeadLabels',
 						},
 						default: [],
-						description: 'ID of the labels to attach to the lead to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the labels to attach to the lead to create. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Organization ID',
@@ -2331,9 +2133,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the organization to link to this lead',
 						displayOptions: {
 							show: {
-								'/associateWith': [
-									'person',
-								],
+								'/associateWith': ['person'],
 							},
 						},
 					},
@@ -2345,7 +2145,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the user who will own the lead to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the user who will own the lead to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -2355,9 +2156,7 @@ export class Pipedrive implements INodeType {
 						description: 'ID of the person to link to this lead',
 						displayOptions: {
 							show: {
-								'/associateWith': [
-									'organization',
-								],
+								'/associateWith': ['organization'],
 							},
 						},
 					},
@@ -2404,12 +2203,8 @@ export class Pipedrive implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'delete',
-						],
+						resource: ['lead'],
+						operation: ['delete'],
 					},
 				},
 			},
@@ -2426,12 +2221,8 @@ export class Pipedrive implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['lead'],
+						operation: ['get'],
 					},
 				},
 			},
@@ -2448,12 +2239,8 @@ export class Pipedrive implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['lead'],
+						operation: ['update'],
 					},
 				},
 			},
@@ -2465,12 +2252,8 @@ export class Pipedrive implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['lead'],
+						operation: ['update'],
 					},
 				},
 				options: [
@@ -2489,7 +2272,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the user who will own the lead to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Label Names or IDs',
@@ -2499,7 +2283,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getLeadLabels',
 						},
 						default: [],
-						description: 'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the labels to attach to the lead to update. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person Name or ID',
@@ -2509,7 +2294,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getPersons',
 						},
 						default: '',
-						description: 'ID of the person to link to this lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the person to link to this lead. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -2549,8 +2335,6 @@ export class Pipedrive implements INodeType {
 				],
 			},
 
-
-
 			// ----------------------------------
 			//         note
 			// ----------------------------------
@@ -2569,12 +2353,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'note',
-						],
+						operation: ['create'],
+						resource: ['note'],
 					},
 				},
 				description: 'The content of the note to create',
@@ -2633,12 +2413,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'note',
-						],
+						operation: ['delete'],
+						resource: ['note'],
 					},
 				},
 				default: 0,
@@ -2655,12 +2431,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'note',
-						],
+						operation: ['get'],
+						resource: ['note'],
 					},
 				},
 				default: 0,
@@ -2677,12 +2449,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'note',
-						],
+						operation: ['update'],
+						resource: ['note'],
 					},
 				},
 				default: 0,
@@ -2696,12 +2464,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'note',
-						],
+						operation: ['update'],
+						resource: ['note'],
 					},
 				},
 				default: {},
@@ -2738,7 +2502,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -2749,8 +2514,6 @@ export class Pipedrive implements INodeType {
 					},
 				],
 			},
-
-
 
 			// ----------------------------------
 			//         organization
@@ -2767,12 +2530,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['create'],
+						resource: ['organization'],
 					},
 				},
 				description: 'The name of the organization to create',
@@ -2784,12 +2543,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['create'],
+						resource: ['organization'],
 					},
 				},
 				default: {},
@@ -2831,7 +2586,8 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getOrganizationLabels',
 						},
@@ -2852,7 +2608,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: '3',
-						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+						description:
+							'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 				],
 			},
@@ -2866,12 +2623,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['delete'],
+						resource: ['organization'],
 					},
 				},
 				default: 0,
@@ -2888,12 +2641,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['get'],
+						resource: ['organization'],
 					},
 				},
 				default: 0,
@@ -2911,16 +2660,13 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['search'],
+						resource: ['organization'],
 					},
 				},
 				default: '',
-				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+				description:
+					'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -2929,12 +2675,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['search'],
+						resource: ['organization'],
 					},
 				},
 				default: {},
@@ -2944,7 +2686,8 @@ export class Pipedrive implements INodeType {
 						name: 'exactMatch',
 						type: 'boolean',
 						default: false,
-						description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
+						description:
+							'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 					},
 					{
 						displayName: 'Fields',
@@ -2976,7 +2719,8 @@ export class Pipedrive implements INodeType {
 						name: 'rawData',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to return the data exactly in the way it got received from the API',
+						description:
+							'Whether to return the data exactly in the way it got received from the API',
 					},
 				],
 			},
@@ -2991,12 +2735,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['update'],
+						resource: ['organization'],
 					},
 				},
 				description: 'The ID of the organization to create',
@@ -3008,12 +2748,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['update'],
+						resource: ['organization'],
 					},
 				},
 				default: {},
@@ -3055,7 +2791,8 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getOrganizationLabels',
 						},
@@ -3073,7 +2810,8 @@ export class Pipedrive implements INodeType {
 						name: 'owner_id',
 						type: 'number',
 						default: 0,
-						description: 'The ID of the user who will be marked as the owner of this Organization. When omitted, the authorized User ID will be used.',
+						description:
+							'The ID of the user who will be marked as the owner of this Organization. When omitted, the authorized User ID will be used.',
 					},
 					{
 						displayName: 'Visible To',
@@ -3090,12 +2828,11 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: '3',
-						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+						description:
+							'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 				],
 			},
-
-
 
 			// ----------------------------------
 			//         person
@@ -3112,12 +2849,8 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['create'],
+						resource: ['person'],
 					},
 				},
 				description: 'The name of the person to create',
@@ -3129,12 +2862,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['create'],
+						resource: ['person'],
 					},
 				},
 				default: {},
@@ -3162,7 +2891,8 @@ export class Pipedrive implements INodeType {
 											loadOptionsMethod: 'getPersonCustomFields',
 										},
 										default: '',
-										description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										description:
+											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -3190,7 +2920,8 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getPersonLabels',
 						},
@@ -3219,7 +2950,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: 'subscribed',
-						description: 'Please be aware that it is only allowed once to change the marketing status from an old status to a new one',
+						description:
+							'Please be aware that it is only allowed once to change the marketing status from an old status to a new one',
 					},
 					{
 						displayName: 'Organization Name or ID',
@@ -3229,7 +2961,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Phone',
@@ -3256,7 +2989,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: '3',
-						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+						description:
+							'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 					{
 						displayName: 'User Name or ID',
@@ -3266,7 +3000,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the User this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the User this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -3280,12 +3015,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['delete'],
+						resource: ['person'],
 					},
 				},
 				default: 0,
@@ -3302,12 +3033,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['get'],
+						resource: ['person'],
 					},
 				},
 				default: 0,
@@ -3324,12 +3051,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['update'],
+						resource: ['person'],
 					},
 				},
 				default: 0,
@@ -3344,12 +3067,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['update'],
+						resource: ['person'],
 					},
 				},
 				default: {},
@@ -3377,7 +3096,8 @@ export class Pipedrive implements INodeType {
 											loadOptionsMethod: 'getPersonCustomFields',
 										},
 										default: '',
-										description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										description:
+											'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Property Value',
@@ -3405,7 +3125,8 @@ export class Pipedrive implements INodeType {
 						displayName: 'Label Name or ID',
 						name: 'label',
 						type: 'options',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getPersonLabels',
 						},
@@ -3434,7 +3155,8 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: 'subscribed',
-						description: 'Please be aware that it is only allowed once to change the marketing status from an old status to a new one',
+						description:
+							'Please be aware that it is only allowed once to change the marketing status from an old status to a new one',
 					},
 					{
 						displayName: 'Name',
@@ -3451,7 +3173,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Phone',
@@ -3471,7 +3194,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the User this person will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Visible To',
@@ -3488,13 +3212,11 @@ export class Pipedrive implements INodeType {
 							},
 						],
 						default: '3',
-						description: 'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+						description:
+							'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
 					},
 				],
 			},
-
-
-
 
 			// ----------------------------------
 			//         activity / deal / note / organization / person / product
@@ -3505,22 +3227,14 @@ export class Pipedrive implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'activity',
-							'deal',
-							'organization',
-							'person',
-							'product',
-						],
-						operation: [
-							'get',
-							'getAll',
-						],
+						resource: ['activity', 'deal', 'organization', 'person', 'product'],
+						operation: ['get', 'getAll'],
 					},
 				},
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
+				description:
+					'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
 			},
 			{
 				displayName: 'Encode Properties',
@@ -3528,21 +3242,14 @@ export class Pipedrive implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'activity',
-							'deal',
-							'organization',
-							'person',
-							'product',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['activity', 'deal', 'organization', 'person', 'product'],
+						operation: ['update'],
 					},
 				},
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.',
+				description:
+					'By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.',
 			},
 			{
 				displayName: 'Return All',
@@ -3550,9 +3257,7 @@ export class Pipedrive implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -3564,12 +3269,8 @@ export class Pipedrive implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -3594,15 +3295,12 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'dealActivity',
-						],
+						operation: ['getAll'],
+						resource: ['dealActivity'],
 					},
 				},
-				description: 'The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of the deal whose activity to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -3611,12 +3309,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'dealActivity',
-						],
+						operation: ['getAll'],
+						resource: ['dealActivity'],
 					},
 				},
 				default: {},
@@ -3633,7 +3327,8 @@ export class Pipedrive implements INodeType {
 						name: 'exclude',
 						type: 'string',
 						default: '',
-						description: 'A comma-separated Activity IDs, to exclude from result. Ex. 4, 9, 11, ...',
+						description:
+							'A comma-separated Activity IDs, to exclude from result. Ex. 4, 9, 11, ...',
 					},
 				],
 			},
@@ -3649,12 +3344,8 @@ export class Pipedrive implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'lead',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['lead'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -3691,12 +3382,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'organization',
-						],
+						operation: ['getAll'],
+						resource: ['organization'],
 					},
 				},
 				default: {},
@@ -3706,7 +3393,8 @@ export class Pipedrive implements INodeType {
 						name: 'firstChar',
 						type: 'string',
 						default: '',
-						description: 'If supplied, only organizations whose name starts with the specified letter will be returned',
+						description:
+							'If supplied, only organizations whose name starts with the specified letter will be returned',
 					},
 					{
 						displayName: 'Predefined Filter Name or ID',
@@ -3716,7 +3404,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getFilters',
 						},
 						default: '',
-						description: 'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -3731,12 +3420,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['getAll'],
+						resource: ['person'],
 					},
 				},
 				default: {},
@@ -3749,14 +3434,16 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getFilters',
 						},
 						default: '',
-						description: 'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the filter to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'First Char',
 						name: 'firstChar',
 						type: 'string',
 						default: '',
-						description: 'If supplied, only persons whose name starts with the specified letter will be returned',
+						description:
+							'If supplied, only persons whose name starts with the specified letter will be returned',
 					},
 				],
 			},
@@ -3771,16 +3458,13 @@ export class Pipedrive implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['search'],
+						resource: ['person'],
 					},
 				},
 				default: '',
-				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+				description:
+					'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -3789,12 +3473,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'search',
-						],
-						resource: [
-							'person',
-						],
+						operation: ['search'],
+						resource: ['person'],
 					},
 				},
 				default: {},
@@ -3804,21 +3484,24 @@ export class Pipedrive implements INodeType {
 						name: 'exactMatch',
 						type: 'boolean',
 						default: false,
-						description: 'Whether only full exact matches against the given term are returned. It is not case sensitive.',
+						description:
+							'Whether only full exact matches against the given term are returned. It is not case sensitive.',
 					},
 					{
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
 						default: '',
-						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+						description:
+							'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
 					},
 					{
 						displayName: 'Include Fields',
 						name: 'includeFields',
 						type: 'string',
 						default: '',
-						description: 'Supports including optional fields in the results which are not provided by default',
+						description:
+							'Supports including optional fields in the results which are not provided by default',
 					},
 					{
 						displayName: 'Organization ID',
@@ -3832,7 +3515,8 @@ export class Pipedrive implements INodeType {
 						name: 'rawData',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to return the data exactly in the way it got received from the API',
+						description:
+							'Whether to return the data exactly in the way it got received from the API',
 					},
 				],
 			},
@@ -3847,13 +3531,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-							'getAll',
-						],
-						resource: [
-							'note',
-						],
+						operation: ['create', 'getAll'],
+						resource: ['note'],
 					},
 				},
 				default: {},
@@ -3880,7 +3559,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getOrganizationIds',
 						},
 						default: '',
-						description: 'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the organization this deal will be associated with. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Person ID',
@@ -3901,12 +3581,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'activity',
-						],
+						operation: ['getAll'],
+						resource: ['activity'],
 					},
 				},
 				default: {},
@@ -3916,14 +3592,16 @@ export class Pipedrive implements INodeType {
 						name: 'done',
 						type: 'boolean',
 						default: false,
-						description: 'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
+						description:
+							'Whether the Activity is done or not. 0 = Not done, 1 = Done. If omitted returns both Done and Not done activities.',
 					},
 					{
 						displayName: 'End Date',
 						name: 'end_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
+						description:
+							'Use the Activity due date where you wish to stop fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
 						displayName: 'Predefined Filter Name or ID',
@@ -3933,14 +3611,16 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getFilters',
 						},
 						default: '',
-						description: 'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The ID of the Filter to use (will narrow down results if used together with user_id parameter). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Star Date',
 						name: 'start_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
+						description:
+							'Use the Activity due date where you wish to begin fetching Activities from. Insert due date in YYYY-MM-DD format.',
 					},
 					{
 						displayName: 'Type Names or IDs',
@@ -3950,7 +3630,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getActivityTypes',
 						},
 						default: [],
-						description: 'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Type of the Activity. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'User Name or ID',
@@ -3960,7 +3641,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The ID of the User whose Activities will be fetched. If omitted, the User associated with the API token will be used. If 0, Activities for all company Users will be fetched based on the permission sets. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -3974,12 +3656,8 @@ export class Pipedrive implements INodeType {
 				placeholder: 'Add Filter',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'deal',
-						],
+						operation: ['getAll'],
+						resource: ['deal'],
 					},
 				},
 				default: {},
@@ -3992,7 +3670,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getFilters',
 						},
 						default: '',
-						description: 'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Predefined filter to apply to the deals to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Stage Name or ID',
@@ -4002,7 +3681,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getStageIds',
 						},
 						default: '',
-						description: 'ID of the stage to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the stage to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status',
@@ -4041,7 +3721,8 @@ export class Pipedrive implements INodeType {
 							loadOptionsMethod: 'getUserIds',
 						},
 						default: '',
-						description: 'ID of the user to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the user to filter deals by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -4050,7 +3731,7 @@ export class Pipedrive implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all Organizations to display them to user so that he can
+			// Get all Organizations to display them to user so that they can
 			// select them easily
 			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4064,19 +3745,25 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Filters to display them to user so that he can
+			// Get all Filters to display them to user so that they can
 			// select them easily
 			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const resource = this.getNodeParameter('resource') as string;
 				const type = {
-					'deal': 'deals',
-					'activity': 'activity',
-					'person': 'people',
-					'organization': 'org',
+					deal: 'deals',
+					activity: 'activity',
+					person: 'people',
+					organization: 'org',
 				} as { [id: string]: string };
 
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: type[resource] as string });
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					'/filters',
+					{},
+					{ type: type[resource] },
+				);
 				for (const filter of data) {
 					returnData.push({
 						name: filter.name,
@@ -4086,7 +3773,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Organizations to display them to user so that he can
+			// Get all Organizations to display them to user so that they can
 			// select them easily
 			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4100,7 +3787,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Users to display them to user so that he can
+			// Get all Users to display them to user so that they can
 			// select them easily
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4115,7 +3802,7 @@ export class Pipedrive implements INodeType {
 					}
 				}
 
-				if(resource === 'activity'){
+				if (resource === 'activity') {
 					returnData.push({
 						name: 'All Users',
 						value: 0,
@@ -4124,33 +3811,37 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all Deals to display them to user so that he can
+			// Get all Deals to display them to user so that they can
 			// select them easily
 			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {}) as {
-					data: Array<{ id: string; title: string; }>
+				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/deals', {})) as {
+					data: Array<{ id: string; title: string }>;
 				};
 				return sortOptionParameters(data.map(({ id, title }) => ({ value: id, name: title })));
 			},
-			// Get all Products to display them to user so that he can
+			// Get all Products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/products', {}) as {
-					data: Array<{ id: string; name: string; }>
+				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/products', {})) as {
+					data: Array<{ id: string; name: string }>;
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
-			// Get all Products related to a deal and display them to user so that he can
+			// Get all Products related to a deal and display them to user so that they can
 			// select them easily
 			async getProductsDeal(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-
 				const dealId = this.getCurrentNodeParameter('dealId');
-				const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {}) as {
-					data: Array<{ id: string; name: string; }>
+				const { data } = (await pipedriveApiRequest.call(
+					this,
+					'GET',
+					`/deals/${dealId}/products`,
+					{},
+				)) as {
+					data: Array<{ id: string; name: string }>;
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
-			// Get all Stages to display them to user so that he can
+			// Get all Stages to display them to user so that they can
 			// select them easily
 			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4164,9 +3855,11 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Organization Custom Fields to display them to user so that he can
+			// Get all the Organization Custom Fields to display them to user so that they can
 			// select them easily
-			async getOrganizationCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getOrganizationCustomFields(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
 				for (const field of data) {
@@ -4180,7 +3873,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Deal Custom Fields to display them to user so that he can
+			// Get all the Deal Custom Fields to display them to user so that they can
 			// select them easily
 			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4196,7 +3889,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the Person Custom Fields to display them to user so that he can
+			// Get all the Person Custom Fields to display them to user so that they can
 			// select them easily
 			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4212,7 +3905,7 @@ export class Pipedrive implements INodeType {
 
 				return sortOptionParameters(returnData);
 			},
-			// Get all the person labels to display them to user so that he can
+			// Get all the person labels to display them to user so that they can
 			// select them easily
 			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4241,7 +3934,7 @@ export class Pipedrive implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getOrganizationLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4271,27 +3964,27 @@ export class Pipedrive implements INodeType {
 				return returnData;
 			},
 
-			// Get all the persons to display them to user so that he can
+			// Get all the persons to display them to user so that they can
 			// select them easily
 			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/persons', {}) as {
-					data: Array<{ id: string; name: string; }>
+				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/persons', {})) as {
+					data: Array<{ id: string; name: string }>;
 				};
 
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
-			// Get all the lead labels to display them to user so that he can
+			// Get all the lead labels to display them to user so that they can
 			// select them easily
 			async getLeadLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {}) as {
-					data: Array<{ id: string; name: string; }>
+				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {})) as {
+					data: Array<{ id: string; name: string }>;
 				};
 
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
 			},
 
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -4323,10 +4016,9 @@ export class Pipedrive implements INodeType {
 		},
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		// For Post
 		let body: IDataObject;
@@ -4341,11 +4033,14 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let customProperties: ICustomProperties | undefined;
-		if (['get', 'getAll', 'update'].includes(operation) && ['activity', 'deal', 'organization', 'person', 'product'].includes(resource)) {
+		if (
+			['get', 'getAll', 'update'].includes(operation) &&
+			['activity', 'deal', 'organization', 'person', 'product'].includes(resource)
+		) {
 			// Request the custom properties once in the beginning to not query it multiple
 			// times if multiple items get updated
 
@@ -4356,13 +4051,12 @@ export class Pipedrive implements INodeType {
 				getCustomProperties = this.getNodeParameter('resolveProperties', 0, false) as boolean;
 			}
 
-			if (getCustomProperties === true) {
+			if (getCustomProperties) {
 				customProperties = await pipedriveGetCustomProperties.call(this, resource);
 			}
 		}
 
 		for (let i = 0; i < items.length; i++) {
-
 			requestMethod = 'GET';
 			endpoint = '';
 			downloadFile = false;
@@ -4382,9 +4076,8 @@ export class Pipedrive implements INodeType {
 						body.subject = this.getNodeParameter('subject', i) as string;
 						body.done = this.getNodeParameter('done', i) as string;
 						body.type = this.getNodeParameter('type', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         activity:delete
@@ -4394,7 +4087,6 @@ export class Pipedrive implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i) as number;
 						endpoint = `/activities/${activityId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         activity:get
@@ -4405,7 +4097,6 @@ export class Pipedrive implements INodeType {
 						const activityId = this.getNodeParameter('activityId', i) as number;
 
 						endpoint = `/activities/${activityId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         activity:getAll
@@ -4413,12 +4104,12 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(qs, additionalFields);
 
 						if (qs.filterId) {
@@ -4430,8 +4121,7 @@ export class Pipedrive implements INodeType {
 							qs.type = (qs.type as string[]).join(',');
 						}
 
-						endpoint = `/activities`;
-
+						endpoint = '/activities';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         activity:update
@@ -4442,9 +4132,8 @@ export class Pipedrive implements INodeType {
 						const activityId = this.getNodeParameter('activityId', i) as number;
 						endpoint = `/activities/${activityId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
-
 					}
 				} else if (resource === 'deal') {
 					if (operation === 'create') {
@@ -4457,7 +4146,9 @@ export class Pipedrive implements INodeType {
 
 						body.title = this.getNodeParameter('title', i) as string;
 
-						const associateWith = this.getNodeParameter('associateWith', i) as 'organization' | 'person';
+						const associateWith = this.getNodeParameter('associateWith', i) as
+							| 'organization'
+							| 'person';
 
 						if (associateWith === 'organization') {
 							body.org_id = this.getNodeParameter('org_id', i) as string;
@@ -4465,9 +4156,8 @@ export class Pipedrive implements INodeType {
 							body.person_id = this.getNodeParameter('person_id', i) as string;
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         deal:delete
@@ -4477,7 +4167,6 @@ export class Pipedrive implements INodeType {
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
 						endpoint = `/deals/${dealId}`;
-
 					} else if (operation === 'duplicate') {
 						// ----------------------------------
 						//         deal:duplicate
@@ -4487,7 +4176,6 @@ export class Pipedrive implements INodeType {
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
 						endpoint = `/deals/${dealId}/duplicate`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         deal:get
@@ -4497,7 +4185,6 @@ export class Pipedrive implements INodeType {
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
 						endpoint = `/deals/${dealId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         deal:getAll
@@ -4505,15 +4192,14 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						addAdditionalFields(qs, filters);
 
-						endpoint = `/deals`;
-
+						endpoint = '/deals';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         deal:update
@@ -4524,7 +4210,7 @@ export class Pipedrive implements INodeType {
 						const dealId = this.getNodeParameter('dealId', i) as number;
 						endpoint = `/deals/${dealId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
 
 						if (body.label === 'null') {
@@ -4538,13 +4224,13 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
 							qs.fields = (additionalFields.fields as string[]).join(',');
@@ -4565,13 +4251,10 @@ export class Pipedrive implements INodeType {
 							qs.status = additionalFields.status as string;
 						}
 
-						endpoint = `/deals/search`;
-
+						endpoint = '/deals/search';
 					}
-
 				} else if (resource === 'dealActivity') {
-
-					 if (operation === 'getAll') {
+					if (operation === 'getAll') {
 						// ----------------------------------
 						//        dealActivity: getAll
 						// ----------------------------------
@@ -4579,27 +4262,25 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 						const dealId = this.getNodeParameter('dealId', i) as string;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.exclude) {
-							qs.exclude = (additionalFields.exclude as string);
+							qs.exclude = additionalFields.exclude as string;
 						}
 
-						if (additionalFields && additionalFields.done !== undefined) {
+						if (additionalFields?.done !== undefined) {
 							qs.done = additionalFields.done === true ? 1 : 0;
 						}
 
 						endpoint = `/deals/${dealId}/activities`;
-
 					}
 				} else if (resource === 'dealProduct') {
-
 					if (operation === 'add') {
 						// ----------------------------------
 						//          dealProduct: add
@@ -4610,13 +4291,12 @@ export class Pipedrive implements INodeType {
 
 						endpoint = `/deals/${dealId}/products`;
 
-						body.product_id  = this.getNodeParameter('productId', i) as string;
+						body.product_id = this.getNodeParameter('productId', i) as string;
 						body.item_price = this.getNodeParameter('item_price', i) as string;
 						body.quantity = this.getNodeParameter('quantity', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(body, additionalFields);
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//        dealProduct: getAll
@@ -4626,7 +4306,6 @@ export class Pipedrive implements INodeType {
 						const dealId = this.getNodeParameter('dealId', i) as string;
 
 						endpoint = `/deals/${dealId}/products`;
-
 					} else if (operation === 'remove') {
 						// ----------------------------------
 						//       dealProduct: remove
@@ -4637,7 +4316,6 @@ export class Pipedrive implements INodeType {
 						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
 
 						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         dealProduct: update
@@ -4649,10 +4327,9 @@ export class Pipedrive implements INodeType {
 
 						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
 					}
-
 				} else if (resource === 'file') {
 					if (operation === 'create') {
 						// ----------------------------------
@@ -4661,31 +4338,20 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/files';
 
-						const item = items[i];
-
-						if (item.binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
-						}
-
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (item.binary[binaryPropertyName] === undefined) {
-							throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`, { itemIndex: i });
-						}
-
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						formData.file = {
 							value: fileBufferData,
 							options: {
-								contentType: item.binary[binaryPropertyName].mimeType,
-								filename: item.binary[binaryPropertyName].fileName,
+								contentType: binaryData.mimeType,
+								filename: binaryData.fileName,
 							},
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(formData, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         file:delete
@@ -4695,7 +4361,6 @@ export class Pipedrive implements INodeType {
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
 						endpoint = `/files/${fileId}`;
-
 					} else if (operation === 'download') {
 						// ----------------------------------
 						//         file:download
@@ -4706,7 +4371,6 @@ export class Pipedrive implements INodeType {
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
 						endpoint = `/files/${fileId}/download`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         file:get
@@ -4716,7 +4380,6 @@ export class Pipedrive implements INodeType {
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
 						endpoint = `/files/${fileId}`;
-
 					}
 				} else if (resource === 'note') {
 					if (operation === 'create') {
@@ -4728,9 +4391,8 @@ export class Pipedrive implements INodeType {
 						endpoint = '/notes';
 
 						body.content = this.getNodeParameter('content', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         note:delete
@@ -4740,7 +4402,6 @@ export class Pipedrive implements INodeType {
 
 						const noteId = this.getNodeParameter('noteId', i) as number;
 						endpoint = `/notes/${noteId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         note:get
@@ -4750,22 +4411,20 @@ export class Pipedrive implements INodeType {
 
 						const noteId = this.getNodeParameter('noteId', i) as number;
 						endpoint = `/notes/${noteId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         note:getAll
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = `/notes`;
+						endpoint = '/notes';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(qs, additionalFields);
-
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         note:update
@@ -4776,15 +4435,11 @@ export class Pipedrive implements INodeType {
 						const noteId = this.getNodeParameter('noteId', i) as number;
 						endpoint = `/notes/${noteId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
-
 					}
-
 				} else if (resource === 'lead') {
-
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//               lead: create
 						// ----------------------------------------
@@ -4795,7 +4450,9 @@ export class Pipedrive implements INodeType {
 							title: this.getNodeParameter('title', i),
 						} as IDataObject;
 
-						const associateWith = this.getNodeParameter('associateWith', i) as 'organization' | 'person';
+						const associateWith = this.getNodeParameter('associateWith', i) as
+							| 'organization'
+							| 'person';
 
 						if (associateWith === 'organization') {
 							body.organization_id = this.getNodeParameter('organization_id', i) as number;
@@ -4803,16 +4460,19 @@ export class Pipedrive implements INodeType {
 							body.person_id = this.getNodeParameter('person_id', i) as number;
 						}
 
-						const { value, expected_close_date, ...rest } = this.getNodeParameter('additionalFields', i) as {
+						const { value, expected_close_date, ...rest } = this.getNodeParameter(
+							'additionalFields',
+							i,
+						) as {
 							value: {
 								valueProperties: {
 									amount: number;
 									currency: string;
-								}
+								};
 							};
 							expected_close_date: string;
-							person_id: number,
-							organization_id: number,
+							person_id: number;
+							organization_id: number;
 						};
 
 						if (Object.keys(rest).length) {
@@ -4829,9 +4489,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'POST';
 						endpoint = '/leads';
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//               lead: delete
 						// ----------------------------------------
@@ -4842,9 +4500,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'DELETE';
 						endpoint = `/leads/${leadId}`;
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                lead: get
 						// ----------------------------------------
@@ -4855,21 +4511,19 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 						endpoint = `/leads/${leadId}`;
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//               lead: getAll
 						// ----------------------------------------
 
 						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -4877,21 +4531,22 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 						endpoint = '/leads';
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//               lead: update
 						// ----------------------------------------
 
 						// https://developers.pipedrive.com/docs/api/v1/Leads#updateLead
 
-						const { value, expected_close_date, ...rest } = this.getNodeParameter('updateFields', i) as {
+						const { value, expected_close_date, ...rest } = this.getNodeParameter(
+							'updateFields',
+							i,
+						) as {
 							value: {
 								valueProperties: {
 									amount: number;
 									currency: string;
-								}
+								};
 							};
 							expected_close_date: string;
 						};
@@ -4916,9 +4571,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'PATCH';
 						endpoint = `/leads/${leadId}`;
-
 					}
-
 				} else if (resource === 'organization') {
 					if (operation === 'create') {
 						// ----------------------------------
@@ -4929,9 +4582,8 @@ export class Pipedrive implements INodeType {
 						endpoint = '/organizations';
 
 						body.name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         organization:delete
@@ -4941,7 +4593,6 @@ export class Pipedrive implements INodeType {
 
 						const organizationId = this.getNodeParameter('organizationId', i) as number;
 						endpoint = `/organizations/${organizationId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         organization:get
@@ -4951,7 +4602,6 @@ export class Pipedrive implements INodeType {
 
 						const organizationId = this.getNodeParameter('organizationId', i) as number;
 						endpoint = `/organizations/${organizationId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         organization:getAll
@@ -4959,12 +4609,12 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (filters.filterId) {
 							qs.filter_id = filters.filterId as string;
@@ -4975,8 +4625,7 @@ export class Pipedrive implements INodeType {
 							qs.first_char = qs.first_char.substring(0, 1);
 						}
 
-						endpoint = `/organizations`;
-
+						endpoint = '/organizations';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         organization:update
@@ -4987,13 +4636,12 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'PUT';
 						endpoint = `/organizations/${id}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
 
 						if (body.label === 'null') {
 							body.label = null;
 						}
-
 					} else if (operation === 'search') {
 						// ----------------------------------
 						//         organization:search
@@ -5002,9 +4650,9 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
@@ -5019,7 +4667,7 @@ export class Pipedrive implements INodeType {
 							qs.exact_match = additionalFields.exactMatch as boolean;
 						}
 
-						endpoint = `/organizations/search`;
+						endpoint = '/organizations/search';
 					}
 				} else if (resource === 'person') {
 					if (operation === 'create') {
@@ -5031,9 +4679,8 @@ export class Pipedrive implements INodeType {
 						endpoint = '/persons';
 
 						body.name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						addAdditionalFields(body, additionalFields);
-
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         person:delete
@@ -5043,7 +4690,6 @@ export class Pipedrive implements INodeType {
 
 						const personId = this.getNodeParameter('personId', i) as number;
 						endpoint = `/persons/${personId}`;
-
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         person:get
@@ -5053,7 +4699,6 @@ export class Pipedrive implements INodeType {
 
 						const personId = this.getNodeParameter('personId', i) as number;
 						endpoint = `/persons/${personId}`;
-
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         person:getAll
@@ -5061,12 +4706,12 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.filterId) {
 							qs.filter_id = additionalFields.filterId as string;
@@ -5076,8 +4721,7 @@ export class Pipedrive implements INodeType {
 							qs.first_char = additionalFields.firstChar as string;
 						}
 
-						endpoint = `/persons`;
-
+						endpoint = '/persons';
 					} else if (operation === 'search') {
 						// ----------------------------------
 						//         persons:search
@@ -5086,12 +4730,12 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
 							qs.fields = additionalFields.fields as string;
@@ -5109,8 +4753,7 @@ export class Pipedrive implements INodeType {
 							qs.include_fields = additionalFields.includeFields as string;
 						}
 
-						endpoint = `/persons/search`;
-
+						endpoint = '/persons/search';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         person:update
@@ -5121,13 +4764,12 @@ export class Pipedrive implements INodeType {
 						const personId = this.getNodeParameter('personId', i) as number;
 						endpoint = `/persons/${personId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
 
 						if (body.label === 'null') {
 							body.label = null;
 						}
-
 					}
 				} else if (resource === 'product') {
 					if (operation === 'getAll') {
@@ -5137,31 +4779,42 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						returnAll = this.getNodeParameter('returnAll', i);
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						endpoint = `/products`;
-
+						endpoint = '/products';
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
 				let responseData;
-				if (returnAll === true) {
-
-					responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-
+				if (returnAll) {
+					responseData = await pipedriveApiRequestAllItems.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs,
+					);
 				} else {
-
 					if (customProperties !== undefined) {
-						pipedriveEncodeCustomProperties(customProperties!, body);
+						pipedriveEncodeCustomProperties(customProperties, body);
 					}
 
-					responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
-
+					responseData = await pipedriveApiRequest.call(
+						this,
+						requestMethod,
+						endpoint,
+						body,
+						qs,
+						formData,
+						downloadFile,
+					);
 				}
 
 				if (resource === 'file' && operation === 'download') {
@@ -5174,47 +4827,53 @@ export class Pipedrive implements INodeType {
 						// Create a shallow copy of the binary data so that the old
 						// data references which do not get changed still stay behind
 						// but the incoming data does not get changed.
-						Object.assign(newItem.binary, items[i].binary);
+						Object.assign(newItem.binary!, items[i].binary);
 					}
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
+					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+						responseData.data as Buffer,
+					);
 				} else {
-
 					if (responseData.data === null) {
 						responseData.data = [];
 					}
 
 					if (operation === 'search' && responseData.data && responseData.data.items) {
 						responseData.data = responseData.data.items;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.rawData !== true) {
-							responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
-								return {
-									result_score: item.result_score,
-									...item.item,
-								};
-							});
+							responseData.data = responseData.data.map(
+								(item: { result_score: number; item: object }) => {
+									return {
+										result_score: item.result_score,
+										...item.item,
+									};
+								},
+							);
 						}
 					}
 
-					if (Array.isArray(responseData.data)) {
-						returnData.push.apply(returnData, responseData.data as IDataObject[]);
-					} else if (responseData.data === true) {
-						returnData.push({ success: true });
-					} else {
-						returnData.push(responseData.data as IDataObject);
+					responseData = responseData.data;
+					if (responseData.data === true) {
+						responseData = { success: true };
 					}
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}
@@ -5224,7 +4883,7 @@ export class Pipedrive implements INodeType {
 
 		if (customProperties !== undefined) {
 			for (const item of returnData) {
-				await pipedriveResolveCustomProperties(customProperties, item);
+				pipedriveResolveCustomProperties(customProperties, item);
 			}
 		}
 
@@ -5233,7 +4892,7 @@ export class Pipedrive implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

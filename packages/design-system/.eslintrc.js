@@ -1,19 +1,54 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
+/**
+ * @type {import('@types/eslint').ESLint.ConfigData}
+ */
 module.exports = {
-	root: true,
-	env: {
-		node: true,
-	},
-	extends: ['plugin:vue/essential', '@vue/typescript'],
+	extends: ['@n8n_io/eslint-config/frontend'],
+
+	...sharedOptions(__dirname, 'frontend'),
+
 	rules: {
-		'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
-		'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
-		semi: [2, 'always'],
-		indent: ['error', 'tab'],
-		'comma-dangle': ['error', 'always-multiline'],
-		'no-tabs': 0,
-		'no-labels': 0,
+		// TODO: Remove these
+		'import/no-default-export': 'off',
+		'import/order': 'off',
+		'@typescript-eslint/no-unsafe-argument': 'warn',
+		'@typescript-eslint/no-unsafe-return': 'warn',
+		'@typescript-eslint/no-unsafe-member-access': 'warn',
+		'@typescript-eslint/prefer-optional-chain': 'off',
+		'@typescript-eslint/prefer-nullish-coalescing': 'off',
 	},
-	parserOptions: {
-		parser: '@typescript-eslint/parser',
-	},
+
+	overrides: [
+		{
+			files: ['src/**/*.stories.ts'],
+			rules: {
+				'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+			},
+		},
+		{
+			files: ['src/**/*.stories.ts', 'src/**/*.vue', 'src/**/*.spec.ts'],
+			rules: {
+				'@typescript-eslint/naming-convention': [
+					'warn',
+					{
+						selector: ['variable', 'property'],
+						format: ['PascalCase', 'camelCase', 'UPPER_CASE'],
+					},
+				],
+			},
+		},
+		{
+			files: ['src/components/N8nFormInput/validators.ts'],
+			rules: {
+				'@typescript-eslint/naming-convention': [
+					'error',
+					{
+						selector: ['property'],
+						format: ['camelCase', 'UPPER_CASE'],
+					},
+				],
+			},
+		},
+	],
 };

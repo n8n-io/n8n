@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const chatMessageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const chatMessageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'chatMessage',
-				],
+				resource: ['chatMessage'],
 			},
 		},
 		options: [
@@ -29,10 +25,10 @@ export const chatMessageOperations: INodeProperties[] = [
 				action: 'Get a chat message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all messages',
-				action: 'Get all chat messages',
+				description: 'Get many messages',
+				action: 'Get many chat messages',
 			},
 		],
 		default: 'create',
@@ -40,7 +36,6 @@ export const chatMessageOperations: INodeProperties[] = [
 ];
 
 export const chatMessageFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 chatMessage:create                         */
 	/* -------------------------------------------------------------------------- */
@@ -49,19 +44,15 @@ export const chatMessageFields: INodeProperties[] = [
 		name: 'chatId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChats',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'get',
-				],
-				resource: [
-					'chatMessage',
-				],
+				operation: ['create', 'get'],
+				resource: ['chatMessage'],
 			},
 		},
 		default: '',
@@ -83,12 +74,8 @@ export const chatMessageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'chatMessage',
-				],
+				operation: ['create'],
+				resource: ['chatMessage'],
 			},
 		},
 		default: 'text',
@@ -99,17 +86,10 @@ export const chatMessageFields: INodeProperties[] = [
 		name: 'message',
 		required: true,
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'chatMessage',
-				],
+				operation: ['create'],
+				resource: ['chatMessage'],
 			},
 		},
 		default: '',
@@ -126,12 +106,8 @@ export const chatMessageFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'chatMessage',
-				],
+				operation: ['get'],
+				resource: ['chatMessage'],
 			},
 		},
 		default: '',
@@ -144,18 +120,15 @@ export const chatMessageFields: INodeProperties[] = [
 		name: 'chatId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChats',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'chatMessage',
-				],
+				operation: ['getAll'],
+				resource: ['chatMessage'],
 			},
 		},
 		default: '',
@@ -166,12 +139,8 @@ export const chatMessageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'chatMessage',
-				],
+				operation: ['getAll'],
+				resource: ['chatMessage'],
 			},
 		},
 		default: false,
@@ -183,15 +152,9 @@ export const chatMessageFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'chatMessage',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['chatMessage'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

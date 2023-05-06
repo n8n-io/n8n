@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { eventAdditionalFieldsOptions, makeSimpleField } from './SharedFields';
 
@@ -25,9 +25,9 @@ export const eventOperations: INodeProperties[] = [
 				action: 'Get an event',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				action: 'Get all events',
+				action: 'Get many events',
 			},
 		],
 		default: 'create',

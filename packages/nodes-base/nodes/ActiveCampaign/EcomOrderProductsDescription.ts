@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
@@ -15,10 +15,10 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all order products',
-				action: 'Get all ecommerce orders',
+				description: 'Get data of many order products',
+				action: 'Get many ecommerce orders',
 			},
 			{
 				name: 'Get by Product ID',

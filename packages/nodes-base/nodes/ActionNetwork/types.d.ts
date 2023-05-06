@@ -1,4 +1,6 @@
-import { languageOptions } from './descriptions/SharedFields';
+import type { INodeProperties } from 'n8n-workflow';
+
+export type LanguageOptions = INodeProperties['options'];
 
 export type Resource =
 	| 'attendance'
@@ -12,7 +14,7 @@ export type Resource =
 export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 
 // @ts-ignore
-export type LanguageCodes = typeof languageOptions[number]['value'];
+export type LanguageCodes = (typeof LanguageOptions)[number]['value'];
 
 // ----------------------------------------
 //              UI fields

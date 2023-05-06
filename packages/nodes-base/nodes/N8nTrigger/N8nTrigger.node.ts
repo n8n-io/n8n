@@ -1,5 +1,5 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
+import type {
+	ITriggerFunctions,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
@@ -14,7 +14,7 @@ export class N8nTrigger implements INodeType {
 		icon: 'file:n8nTrigger.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle events from your n8n instance',
+		description: 'Handle events and perform actions on your n8n instance',
 		eventTriggerDescription: '',
 		mockManualExecution: true,
 		defaults: {
@@ -29,7 +29,8 @@ export class N8nTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'Specifies under which conditions an execution should happen: <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
+				description:
+					'Specifies under which conditions an execution should happen: <b>Instance started</b>: Triggers when this n8n instance is started or re-started',
 				options: [
 					{
 						name: 'Instance Started',
@@ -40,7 +41,6 @@ export class N8nTrigger implements INodeType {
 			},
 		],
 	};
-
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const events = this.getNodeParameter('events', []) as string[];
@@ -54,15 +54,22 @@ export class N8nTrigger implements INodeType {
 			}
 			this.emit([
 				this.helpers.returnJsonArray([
-					{ event, timestamp: (new Date()).toISOString(), workflow_id: this.getWorkflow().id },
+					{ event, timestamp: new Date().toISOString(), workflow_id: this.getWorkflow().id },
 				]),
 			]);
 		}
 
-		const self = this;
-		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{ event: 'Manual execution', timestamp: (new Date()).toISOString(), workflow_id: self.getWorkflow().id }])]);
-		}
+		const manualTriggerFunction = async () => {
+			this.emit([
+				this.helpers.returnJsonArray([
+					{
+						event: 'Manual execution',
+						timestamp: new Date().toISOString(),
+						workflow_id: this.getWorkflow().id,
+					},
+				]),
+			]);
+		};
 
 		return {
 			manualTriggerFunction,

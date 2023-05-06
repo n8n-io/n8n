@@ -2,12 +2,10 @@
 
 Starts n8n with MariaDB as database.
 
-
 ## Start
 
 To start n8n with MariaDB simply start docker-compose by executing the following
 command in the current folder.
-
 
 **IMPORTANT:** But before you do that change the default users and passwords in the [`.env`](.env) file!
 

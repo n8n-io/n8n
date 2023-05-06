@@ -1,9 +1,6 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -12,13 +9,9 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	workableApiRequest,
-} from './GenericFunctions';
+import { workableApiRequest } from './GenericFunctions';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
 export class WorkableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -82,7 +75,8 @@ export class WorkableTrigger implements INodeType {
 							loadOptionsMethod: 'getJobs',
 						},
 						default: '',
-						description: 'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Get notifications only for one job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Stage Name or ID',
@@ -92,7 +86,8 @@ export class WorkableTrigger implements INodeType {
 							loadOptionsMethod: 'getStages',
 						},
 						default: '',
-						description: 'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'Get notifications for specific stages. e.g. \'hired\'. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 				],
 			},
@@ -126,7 +121,6 @@ export class WorkableTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -134,7 +128,7 @@ export class WorkableTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const { subscriptions } = await workableApiRequest.call(this, 'GET', `/subscriptions`);
+				const { subscriptions } = await workableApiRequest.call(this, 'GET', '/subscriptions');
 				for (const subscription of subscriptions) {
 					if (subscription.target === webhookUrl) {
 						webhookData.webhookId = subscription.id as string;
@@ -144,7 +138,10 @@ export class WorkableTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('workableApi') as { accessToken: string, subdomain: string };
+				const credentials = (await this.getCredentials('workableApi')) as {
+					accessToken: string;
+					subdomain: string;
+				};
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
@@ -155,8 +152,8 @@ export class WorkableTrigger implements INodeType {
 					event: snakeCase(triggerOn).toLowerCase(),
 					args: {
 						account_id: credentials.subdomain,
-						...(job) && { job_shortcode: job },
-						...(stage) && { stage_slug: stage },
+						...(job && { job_shortcode: job }),
+						...(stage && { stage_slug: stage }),
 					},
 					target: webhookUrl,
 				};
@@ -174,7 +171,6 @@ export class WorkableTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/subscriptions/${webhookData.webhookId}`;
 					try {
 						await workableApiRequest.call(this, 'DELETE', endpoint);
@@ -182,7 +178,7 @@ export class WorkableTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -193,9 +189,7 @@ export class WorkableTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

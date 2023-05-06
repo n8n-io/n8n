@@ -32,7 +32,7 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import TemplateCard from './TemplateCard.vue';
 
@@ -59,23 +59,29 @@ export default mixins(genericHelpers).extend({
 	},
 	mounted() {
 		if (this.infiniteScrollEnabled) {
-			window.addEventListener('scroll', this.onScroll);
+			const content = document.getElementById('content');
+			if (content) {
+				content.addEventListener('scroll', this.onScroll);
+			}
 		}
 	},
 	destroyed() {
-		window.removeEventListener('scroll', this.onScroll);
+		const content = document.getElementById('content');
+		if (content) {
+			content.removeEventListener('scroll', this.onScroll);
+		}
 	},
 	components: {
 		TemplateCard,
 	},
 	methods: {
 		onScroll() {
-			const el = this.$refs.loader;
-			if (!el || this.loading) {
+			const loaderRef = this.$refs.loader as HTMLElement | undefined;
+			if (!loaderRef || this.loading) {
 				return;
 			}
 
-			const rect = (el as Element).getBoundingClientRect();
+			const rect = loaderRef.getBoundingClientRect();
 			const inView =
 				rect.top >= 0 &&
 				rect.left >= 0 &&
@@ -87,10 +93,10 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openTemplate', {event, id});
+			this.$emit('openTemplate', { event, id });
 		},
 		onUseWorkflow(event: MouseEvent, id: string) {
-			this.$emit('useWorkflow', {event, id});
+			this.$emit('useWorkflow', { event, id });
 		},
 	},
 });
@@ -112,5 +118,4 @@ export default mixins(genericHelpers).extend({
 		}
 	}
 }
-
 </style>
