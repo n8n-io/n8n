@@ -139,6 +139,7 @@ import { useVersionsStore } from '@/stores/versions';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan';
 
 export default mixins(
 	genericHelpers,
@@ -169,6 +170,7 @@ export default mixins(
 			useVersionsStore,
 			useWorkflowsStore,
 			useVersionControlStore,
+			useCloudPlanStore,
 		),
 		currentBranch(): string {
 			return this.versionControlStore.state.currentBranch;
@@ -332,10 +334,10 @@ export default mixins(
 			return [...items, ...regularItems];
 		},
 		userIsTrialing(): boolean {
-			return this.usersStore.userIsTrialing;
+			return this.cloudPlanStore.userIsTrialing;
 		},
 		currentPlanData(): Cloud.PlanData {
-			return this.usersStore.currentPlanData;
+			return this.cloudPlanStore.currentPlanData;
 		},
 	},
 	async mounted() {

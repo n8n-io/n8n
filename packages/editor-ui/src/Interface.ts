@@ -1476,6 +1476,10 @@ export declare namespace Cloud {
 	}
 }
 
+export interface CloudPlanState {
+	data: Cloud.PlanData;
+}
+
 // export interface CloudPlanData {
 // 	planId: number;
 // 	monthlyExecutionsLimit: number;

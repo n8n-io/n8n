@@ -41,6 +41,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
 import { useUsersStore } from './stores/users';
+import { useCloudPlanStore } from './stores/cloudPlan';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
@@ -72,6 +73,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			useUIStore,
 			useUsersStore,
 			useVersionControlStore,
+			useCloudPlanStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -184,9 +186,9 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		},
 		async monitorExecutionUsageOnCloudPlan() {
 			try {
-				const plan = await this.usersStore.getOwnerCurrentPLan();
+				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
 				if (!plan.metadata.slug.includes('trial')) return;
-				this.usersStore.setCloudPLan(plan);
+				this.cloudPlanStore.setData(plan);
 				this.startPollingPlanData();
 			} catch {}
 		},
@@ -195,7 +197,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			let acc = 0;
 			const interval = setInterval(async () => {
 				try {
-					const plan = await this.usersStore.getOwnerCurrentPLan();
+					const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
 					const trialExpired =
 						DateTime.now().toMillis() >= DateTime.fromISO(plan.expirationDate).toMillis();
 					const allExecutionsUsed = plan.usage.executions === plan.monthlyExecutionsLimit;
@@ -207,7 +209,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 					// TODO: remove before releasing
 					plan.usage.executions += acc;
 					acc += 20;
-					this.usersStore.setCloudPLan(plan);
+					this.cloudPlanStore.setData(plan);
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},

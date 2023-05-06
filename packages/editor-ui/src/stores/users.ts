@@ -116,12 +116,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return permissions.use;
 			};
 		},
-		userIsTrialing(): boolean {
-			return this.cloudPlan?.metadata?.slug === 'trial-1';
-		},
-		currentPlanData(): Cloud.PlanData | null {
-			return this.cloudPlan;
-		},
 	},
 	actions: {
 		addUsers(users: IUserResponse[]) {
@@ -145,9 +139,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		deleteUserById(userId: string): void {
 			Vue.delete(this.users, userId);
-		},
-		setCloudPLan(plan: Cloud.PlanData) {
-			this.cloudPlan = plan;
 		},
 		setPersonalizationAnswers(answers: IPersonalizationLatestVersion): void {
 			if (!this.currentUser) {
@@ -331,17 +322,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				settingsStore.stopShowingSetupPage();
 				await skipOwnerSetup(rootStore.getRestApiContext);
 			} catch (error) {}
-		},
-		async getOwnerCurrentPLan(): Promise<Cloud.PlanData> {
-			const settingsStore = useSettingsStore();
-			// TODO: uncomment before releasing
-			// const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-			const cloudUserId = '123';
-			const hasCloudPlan =
-				this.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-			if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
-			const rootStore = useRootStore();
-			return getCurrentPlan(rootStore.getRestApiContext, cloudUserId as string);
 		},
 	},
 });
