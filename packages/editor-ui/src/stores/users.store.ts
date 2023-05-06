@@ -20,10 +20,8 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { getCurrentPlan } from '@/api/cloudPlans';
 import { PERSONALIZATION_MODAL_KEY, USER_ACTIVATION_SURVEY_MODAL, STORES } from '@/constants';
 import type {
-	Cloud,
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
