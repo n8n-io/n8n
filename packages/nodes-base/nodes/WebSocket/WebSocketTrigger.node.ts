@@ -1,15 +1,10 @@
-import { ITriggerFunctions } from 'n8n-core';
+import type { ITriggerFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	jsonParse,
-} from 'n8n-workflow';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { WebSocket } from 'ws';
-import { ClientBinaryType } from './interface';
+import type { ClientBinaryType } from './interface';
 
 export class WebSocketTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -90,6 +85,7 @@ export class WebSocketTrigger implements INodeType {
 		const options = this.getNodeParameter('options', 0) as IDataObject;
 		const encoding = options?.encoding ? (options.encoding as string) : 'utf8';
 
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 		const client = new WebSocket(address);
 

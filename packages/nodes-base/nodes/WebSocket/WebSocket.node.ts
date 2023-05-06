@@ -1,7 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { WebSocket as WebSocketClient } from 'ws';
-import { ClientBinaryType } from './interface';
+import type { ClientBinaryType } from './interface';
 
 export class WebSocket implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,7 +94,7 @@ export class WebSocket implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const address = this.getNodeParameter('address', 0) as string;
-		const options = this.getNodeParameter('options', 0) as IDataObject;
+		const options = this.getNodeParameter('options', 0);
 		const useInputData = this.getNodeParameter('useInputData', 0) as boolean;
 
 		const client = new WebSocketClient(address);
@@ -103,10 +103,11 @@ export class WebSocket implements INodeType {
 			client.binaryType = options.binaryType as ClientBinaryType;
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 
 		async function manualTriggerFunction() {
-			return await new Promise((resolve, reject) => {
+			return new Promise((resolve, reject) => {
 				client.on('open', () => {
 					if (useInputData) {
 						for (let i = 0; i < items.length; i++) {
