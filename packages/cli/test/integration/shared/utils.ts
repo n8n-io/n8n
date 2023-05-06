@@ -284,11 +284,7 @@ export async function initTestServer({
 						}),
 					);
 				case 'mfa':
-					registerController(
-						testServer.app,
-						config,
-						new MFAController(mfaService),
-					);
+					registerController(testServer.app, config, new MFAController(mfaService));
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
@@ -322,9 +322,8 @@ describe('Change password with MFA enabled', () => {
 				mfaToken: new TOTPService().generateTOTP(rawSecret),
 			});
 
-			expect(loginResponse.statusCode).toBe(200);
-			expect(loginResponse.body).toHaveProperty('data');
-
+		expect(loginResponse.statusCode).toBe(200);
+		expect(loginResponse.body).toHaveProperty('data');
 	});
 });
 
