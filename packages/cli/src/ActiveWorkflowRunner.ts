@@ -637,6 +637,7 @@ export class ActiveWorkflowRunner {
 				);
 
 				if (donePromise) {
+					// eslint-disable-next-line @typescript-eslint/no-floating-promises
 					executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
@@ -694,6 +695,7 @@ export class ActiveWorkflowRunner {
 				);
 
 				if (donePromise) {
+					// eslint-disable-next-line @typescript-eslint/no-floating-promises
 					executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)

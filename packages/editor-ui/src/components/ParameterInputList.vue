@@ -140,7 +140,9 @@ export default mixins(workflowHelpers).extend({
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		ImportParameter,
 	},

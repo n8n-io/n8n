@@ -27,7 +27,7 @@ export function useHistoryHelper(activeRoute: Route) {
 
 	const isNDVOpen = ref<boolean>(ndvStore.activeNodeName !== null);
 
-	const undo = () =>
+	const undo = async () =>
 		callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToUndo();
@@ -56,7 +56,7 @@ export function useHistoryHelper(activeRoute: Route) {
 			{ debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL },
 		);
 
-	const redo = () =>
+	const redo = async () =>
 		callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToRedo();

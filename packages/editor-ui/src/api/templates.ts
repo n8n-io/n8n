@@ -18,7 +18,7 @@ export async function testHealthEndpoint(apiEndpoint: string) {
 	return get(apiEndpoint, '/health');
 }
 
-export function getCategories(
+export async function getCategories(
 	apiEndpoint: string,
 	headers?: IDataObject,
 ): Promise<{ categories: ITemplatesCategory[] }> {
