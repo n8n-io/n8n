@@ -1,5 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -7,8 +7,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
 
@@ -114,9 +114,6 @@ export class AwsLambda implements INodeType {
 				},
 				default: '',
 				description: 'The JSON that you want to provide to your Lambda function as input',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	};
@@ -189,14 +186,14 @@ export class AwsLambda implements INodeType {
 					},
 				);
 
-				if (responseData !== null && responseData?.errorMessage !== undefined) {
+				if (responseData?.errorMessage !== undefined) {
 					let _errorMessage = responseData.errorMessage;
 
 					if (responseData.stackTrace) {
 						_errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
 					}
 
-					throw new NodeApiError(this.getNode(), responseData);
+					throw new NodeApiError(this.getNode(), responseData as JsonObject);
 				} else {
 					returnData.push({
 						result: responseData,

@@ -7,9 +7,9 @@
 
 <script lang="ts">
 import { VIEWS } from '@/constants';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'GoBackButton',
 	data() {
 		return {
@@ -23,7 +23,7 @@ export default Vue.extend({
 		},
 	},
 	mounted() {
-		window.history.state ? this.routeHasHistory = true : this.routeHasHistory = false;
+		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
 	},
 });
 </script>

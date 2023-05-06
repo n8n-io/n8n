@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { gotifyApiRequest, gotifyApiRequestAllItems } from './GenericFunctions';
 
@@ -163,8 +167,8 @@ export class Gotify implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
@@ -179,7 +183,7 @@ export class Gotify implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await gotifyApiRequest.call(this, 'POST', `/message`, body);
+						responseData = await gotifyApiRequest.call(this, 'POST', '/message', body);
 					}
 					if (operation === 'delete') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
@@ -202,14 +206,14 @@ export class Gotify implements INodeType {
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await gotifyApiRequest.call(this, 'GET', `/message`, {}, qs);
+							responseData = await gotifyApiRequest.call(this, 'GET', '/message', {}, qs);
 							responseData = responseData.messages;
 						}
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

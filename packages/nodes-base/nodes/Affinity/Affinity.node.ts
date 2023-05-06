@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -19,9 +18,9 @@ import { listFields, listOperations } from './ListDescription';
 
 import { listEntryFields, listEntryOperations } from './ListEntryDescription';
 
-import { IOrganization } from './OrganizationInterface';
+import type { IOrganization } from './OrganizationInterface';
 
-import { IPerson } from './PersonInterface';
+import type { IPerson } from './PersonInterface';
 
 export class Affinity implements INodeType {
 	description: INodeTypeDescription = {
@@ -83,7 +82,7 @@ export class Affinity implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available organizations to display them to user so that he can
+			// Get all the available organizations to display them to user so that they can
 			// select them easily
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -104,7 +103,7 @@ export class Affinity implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available persons to display them to user so that he can
+			// Get all the available persons to display them to user so that they can
 			// select them easily
 			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -128,11 +127,11 @@ export class Affinity implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await affinityApiRequest.call(this, 'GET', `/lists`);
+				const lists = await affinityApiRequest.call(this, 'GET', '/lists');
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,
@@ -150,8 +149,8 @@ export class Affinity implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'list') {
@@ -163,8 +162,8 @@ export class Affinity implements INodeType {
 					//https://api-docs.affinity.co/#get-all-lists
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
-						if (returnAll === false) {
+						responseData = await affinityApiRequest.call(this, 'GET', '/lists', {}, qs);
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -203,7 +202,7 @@ export class Affinity implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const listId = this.getNodeParameter('listId', i) as string;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await affinityApiRequestAllItems.call(
 								this,
 								'list_entries',
@@ -298,7 +297,7 @@ export class Affinity implements INodeType {
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await affinityApiRequestAllItems.call(
 								this,
 								'persons',
@@ -386,7 +385,7 @@ export class Affinity implements INodeType {
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await affinityApiRequestAllItems.call(
 								this,
 								'organizations',
@@ -415,7 +414,7 @@ export class Affinity implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

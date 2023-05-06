@@ -10,4 +10,4 @@ export type IUpdateFields = IDataObject & {
 		control: string;
 		value: string;
 	};
-}
+};

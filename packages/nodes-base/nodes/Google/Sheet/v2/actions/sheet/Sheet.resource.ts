@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import * as append from './append.operation';
 import * as appendOrUpdate from './appendOrUpdate.operation';
 import * as clear from './clear.operation';
@@ -139,6 +139,9 @@ export const descriptions: INodeProperties[] = [
 		default: { mode: 'list', value: '' },
 		// default: '', //empty string set to progresivly reveal fields
 		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['documentId.value'],
+		},
 		modes: [
 			{
 				displayName: 'From List',
@@ -155,13 +158,15 @@ export const descriptions: INodeProperties[] = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+					regex:
+						'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+							regex:
+								'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 							errorMessage: 'Not a valid Sheet URL',
 						},
 					},
@@ -175,7 +180,7 @@ export const descriptions: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '[0-9]{2,}',
+							regex: '((gid=)?[0-9]{1,})',
 							errorMessage: 'Not a valid Sheet ID',
 						},
 					},

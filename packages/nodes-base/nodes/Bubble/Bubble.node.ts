@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -54,8 +53,8 @@ export class Bubble implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -121,10 +120,10 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}`;
 
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const options = this.getNodeParameter('options', i);
 
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						if (options.filters) {
 							const { filter } = options.filters as IDataObject;
 							qs.constraints = JSON.stringify(filter);
@@ -145,7 +144,7 @@ export class Bubble implements INodeType {
 						Object.assign(qs, sortValue);
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await bubbleApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', 0);
@@ -174,7 +173,7 @@ export class Bubble implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

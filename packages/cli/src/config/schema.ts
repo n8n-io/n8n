@@ -1,8 +1,32 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import path from 'path';
-import * as core from 'n8n-core';
+import convict from 'convict';
+import { UserSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+
+convict.addFormat({
+	name: 'nodes-list',
+	// @ts-ignore
+	validate(values: string[], { env }: { env: string }): void {
+		try {
+			if (!Array.isArray(values)) {
+				throw new Error();
+			}
+
+			for (const value of values) {
+				if (typeof value !== 'string') {
+					throw new Error();
+				}
+			}
+		} catch (error) {
+			throw new TypeError(`${env} is not a valid Array of strings.`);
+		}
+	},
+	coerce(rawValue: string): string[] {
+		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
+	},
+});
 
 export const schema = {
 	database: {
@@ -193,8 +217,8 @@ export const schema = {
 		},
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList'] as const,
-			default: 'any',
+			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
@@ -301,6 +325,16 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
 		},
+
+		// Additional pruning option to delete executions if total count exceeds the configured max.
+		// Deletes the oldest entries first
+		// Default is 0 = No limit
+		pruneDataMaxCount: {
+			doc: 'Maximum number of executions to keep in DB. Default 0 = no limit',
+			format: Number,
+			default: 0,
+			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
+		},
 	},
 
 	queue: {
@@ -355,6 +389,12 @@ export const schema = {
 					format: Number,
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
+				},
+				username: {
+					doc: 'Redis Username (needs Redis >= 6)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_USERNAME',
 				},
 			},
 			queueRecoveryInterval: {
@@ -439,6 +479,14 @@ export const schema = {
 	},
 
 	security: {
+		audit: {
+			daysAbandonedWorkflow: {
+				doc: 'Days for a workflow to be considered abandoned if not executed',
+				format: Number,
+				default: 90,
+				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
+			},
+		},
 		excludeEndpoints: {
 			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
 			format: String,
@@ -535,13 +583,61 @@ export const schema = {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_METRICS',
-				doc: 'Enable metrics endpoint',
+				doc: 'Enable /metrics endpoint. Default: false',
 			},
 			prefix: {
 				format: String,
 				default: 'n8n_',
 				env: 'N8N_METRICS_PREFIX',
 				doc: 'An optional prefix for metric names. Default: n8n_',
+			},
+			includeDefaultMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_DEFAULT_METRICS',
+				doc: 'Whether to expose default system and node.js metrics. Default: true',
+			},
+			includeWorkflowIdLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL',
+				doc: 'Whether to include a label for the workflow ID on workflow metrics. Default: false',
+			},
+			includeNodeTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_NODE_TYPE_LABEL',
+				doc: 'Whether to include a label for the node type on node metrics. Default: false',
+			},
+			includeCredentialTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CREDENTIAL_TYPE_LABEL',
+				doc: 'Whether to include a label for the credential type on credential metrics. Default: false',
+			},
+			includeApiEndpoints: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_ENDPOINTS',
+				doc: 'Whether to expose metrics for API endpoints. Default: false',
+			},
+			includeApiPathLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_PATH_LABEL',
+				doc: 'Whether to include a label for the path of API invocations. Default: false',
+			},
+			includeApiMethodLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_METHOD_LABEL',
+				doc: 'Whether to include a label for the HTTP method (GET, POST, ...) of API invocations. Default: false',
+			},
+			includeApiStatusCodeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
+				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
 			},
 		},
 		rest: {
@@ -580,9 +676,9 @@ export const schema = {
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
-		skipWebhoooksDeregistrationOnShutdown: {
+		skipWebhooksDeregistrationOnShutdown: {
 			/**
-			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
+			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
 			 * and registers on startup / activation. If we skip
 			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
 			 * We don't have to worry about startup as it always
@@ -613,6 +709,14 @@ export const schema = {
 			env: 'N8N_PUBLIC_API_ENDPOINT',
 			doc: 'Path for the public api endpoints',
 		},
+		swaggerUi: {
+			disabled: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				doc: 'Whether to disable the Swagger UI for the Public API',
+			},
+		},
 	},
 
 	workflowTagsDisabled: {
@@ -634,6 +738,18 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		isInstanceOwnerSetUp: {
+			// n8n loads this setting from DB on startup
+			doc: "Whether the instance owner's account has been set up",
+			format: Boolean,
+			default: false,
+		},
+		skipInstanceOwnerSetup: {
+			// n8n loads this setting from DB on startup
+			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
+			format: Boolean,
+			default: false,
 		},
 		emails: {
 			mode: {
@@ -697,6 +813,11 @@ export const schema = {
 				},
 			},
 		},
+		authenticationMethod: {
+			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
+			format: ['email', 'ldap', 'saml'] as const,
+			default: 'email',
+		},
 	},
 
 	externalFrontendHooksUrls: {
@@ -716,47 +837,14 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: function check(rawValue: string): void {
-				if (rawValue === '') {
-					return;
-				}
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
-				}
-			},
+			format: 'nodes-list',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: function check(rawValue: string): void {
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
-				}
-			},
-			default: '[]',
+			format: 'nodes-list',
+			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
 		errorTriggerType: {
@@ -772,6 +860,12 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
+		},
+		packagesMissing: {
+			// Used to have a persistent list of packages
+			doc: 'Contains a comma separated list of packages that failed to load during startup',
+			format: String,
+			default: '',
 		},
 	},
 
@@ -804,7 +898,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -824,7 +918,7 @@ export const schema = {
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
-			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			doc: "Url in New Versions Panel with more information on updating one's instance.",
 			format: String,
 			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
@@ -846,6 +940,15 @@ export const schema = {
 		},
 	},
 
+	push: {
+		backend: {
+			format: ['sse', 'websocket'] as const,
+			default: 'sse',
+			env: 'N8N_PUSH_BACKEND',
+			doc: 'Backend to use for push notifications',
+		},
+	},
+
 	binaryDataManager: {
 		availableModes: {
 			format: String,
@@ -861,7 +964,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
@@ -887,18 +990,37 @@ export const schema = {
 		},
 	},
 
-	enterprise: {
-		features: {
-			sharing: {
+	sso: {
+		justInTimeProvisioning: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically create users when they login via SSO.',
+		},
+		redirectLoginToSso: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to automatically redirect users from login dialog to initialize SSO flow.',
+		},
+		saml: {
+			loginEnabled: {
+				format: Boolean,
+				default: false,
+				doc: 'Whether to enable SAML SSO.',
+			},
+			loginLabel: {
+				format: String,
+				default: '',
+			},
+		},
+		ldap: {
+			loginEnabled: {
 				format: Boolean,
 				default: false,
 			},
-		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
+			loginLabel: {
+				format: String,
+				default: '',
+			},
 		},
 	},
 
@@ -920,6 +1042,15 @@ export const schema = {
 		},
 	},
 
+	userActivationSurvey: {
+		enabled: {
+			doc: 'Whether user activation survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
+		},
+	},
+
 	diagnostics: {
 		enabled: {
 			doc: 'Whether diagnostic mode is enabled.',
@@ -938,7 +1069,7 @@ export const schema = {
 				apiHost: {
 					doc: 'API host for PostHog',
 					format: String,
-					default: 'https://app.posthog.com',
+					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
 				disableSessionRecording: {
@@ -985,6 +1116,81 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
+		},
+	},
+
+	license: {
+		serverUrl: {
+			format: String,
+			default: 'https://license.n8n.io/v1',
+			env: 'N8N_LICENSE_SERVER_URL',
+			doc: 'License server url to retrieve license.',
+		},
+		autoRenewEnabled: {
+			format: Boolean,
+			default: true,
+			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
+			doc: 'Whether auto renewal for licenses is enabled.',
+		},
+		autoRenewOffset: {
+			format: Number,
+			default: 60 * 60 * 72, // 72 hours
+			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
+			doc: 'How many seconds before expiry a license should get automatically renewed. ',
+		},
+		activationKey: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_ACTIVATION_KEY',
+			doc: 'Activation key to initialize license',
+		},
+		tenantId: {
+			format: Number,
+			default: 1,
+			env: 'N8N_LICENSE_TENANT_ID',
+			doc: 'Tenant id used by the license manager',
+		},
+		cert: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_CERT',
+			doc: 'Ephemeral license certificate',
+		},
+	},
+
+	hideUsagePage: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_HIDE_USAGE_PAGE',
+		doc: 'Hide or show the usage page',
+	},
+
+	eventBus: {
+		checkUnsentInterval: {
+			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
+			format: Number,
+			default: 0,
+			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
+		},
+		logWriter: {
+			keepLogCount: {
+				doc: 'How many event log files to keep.',
+				format: Number,
+				default: 3,
+				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
+			},
+			maxFileSizeInKB: {
+				doc: 'Maximum size of an event log file before a new one is started.',
+				format: Number,
+				default: 10240, // 10MB
+				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
+			},
+			logBaseName: {
+				doc: 'Basename of the event log file.',
+				format: String,
+				default: 'n8nEventLog',
+				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
 		},
 	},
 };

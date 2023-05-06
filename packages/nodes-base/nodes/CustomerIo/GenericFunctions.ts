@@ -1,8 +1,13 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -32,7 +37,7 @@ export async function customerIoApiRequest(
 		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
@@ -46,7 +51,6 @@ export function eventExists(currentEvents: string[], webhookEvents: IDataObject)
 	return true;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

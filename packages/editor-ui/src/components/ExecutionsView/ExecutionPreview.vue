@@ -1,5 +1,5 @@
 <template>
-	<div v-if="executionUIDetails && executionUIDetails.name === 'running'" :class="$style.runningInfo">
+	<div v-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
 			<n8n-spinner type="ring" />
 		</div>
@@ -11,38 +11,87 @@
 		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
-		<div :class="{[$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }" v-if="activeExecution">
+		<div
+			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
+			v-if="activeExecution"
+			:data-test-id="`execution-preview-details-${executionId}`"
+		>
 			<div>
-				<n8n-text size="large" color="text-base" :bold="true">{{ executionUIDetails.startTime }}</n8n-text><br>
-				<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
-				<n8n-text size="medium" :class="[$style.status, $style[executionUIDetails.name]]">{{ executionUIDetails.label }}</n8n-text>
+				<n8n-text size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
+					executionUIDetails?.startTime
+				}}</n8n-text
+				><br />
+				<n8n-spinner
+					v-if="executionUIDetails?.name === 'running'"
+					size="small"
+					:class="[$style.spinner, 'mr-4xs']"
+				/>
+				<n8n-text
+					size="medium"
+					:class="[$style.status, $style[executionUIDetails.name]]"
+					data-test-id="execution-preview-label"
+				>
+					{{ executionUIDetails.label }}
+				</n8n-text>
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
-					{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
-				</n8n-text>
-				<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="medium">
-					{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
-				</n8n-text>
-				<n8n-text v-else-if="executionUIDetails.name === 'waiting'" color="text-base" size="medium">
+					{{
+						$locale.baseText('executionDetails.runningTimeRunning', {
+							interpolate: { time: executionUIDetails?.runningTime },
+						})
+					}}
 					| ID#{{ activeExecution.id }}
 				</n8n-text>
-				<br><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size= "medium">
+				<n8n-text
+					v-else-if="executionUIDetails.name !== 'waiting'"
+					color="text-base"
+					size="medium"
+					data-test-id="execution-preview-id"
+				>
+					{{
+						$locale.baseText('executionDetails.runningTimeFinished', {
+							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
+						})
+					}}
+					| ID#{{ activeExecution.id }}
+				</n8n-text>
+				<n8n-text
+					v-else-if="executionUIDetails?.name === 'waiting'"
+					color="text-base"
+					size="medium"
+				>
+					| ID#{{ activeExecution.id }}
+				</n8n-text>
+				<br /><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size="medium">
 					{{ $locale.baseText('executionDetails.retry') }}
 					<router-link
 						:class="$style.executionLink"
-						:to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: activeExecution.workflowId, executionId: activeExecution.retryOf }}"
+						:to="{
+							name: VIEWS.EXECUTION_PREVIEW,
+							params: {
+								workflowId: activeExecution.workflowId,
+								executionId: activeExecution.retryOf,
+							},
+						}"
 					>
 						#{{ activeExecution.retryOf }}
 					</router-link>
 				</n8n-text>
 			</div>
 			<div>
-				<el-dropdown v-if="executionUIDetails.name === 'error'" trigger="click" class="mr-xs" @command="handleRetryClick" ref="retryDropdown">
+				<el-dropdown
+					v-if="executionUIDetails?.name === 'error'"
+					trigger="click"
+					class="mr-xs"
+					@command="handleRetryClick"
+					ref="retryDropdown"
+				>
 					<span class="retry-button">
 						<n8n-icon-button
 							size="large"
 							type="tertiary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
+							data-test-id="execution-preview-retry-button"
 							@blur="onRetryButtonBlur"
 						/>
 					</span>
@@ -57,27 +106,42 @@
 						</el-dropdown-menu>
 					</template>
 				</el-dropdown>
-				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
+				<n8n-icon-button
+					:title="$locale.baseText('executionDetails.deleteExecution')"
+					icon="trash"
+					size="large"
+					type="tertiary"
+					data-test-id="execution-preview-delete-button"
+					@click="onDeleteExecution"
+				/>
 			</div>
 		</div>
-		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId" :executionMode="executionMode"/>
+		<workflow-preview
+			mode="execution"
+			loaderType="spinner"
+			:executionId="executionId"
+			:executionMode="executionMode"
+		/>
 	</div>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '../mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
-import { VIEWS } from '../../constants';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
+import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import ElDropdown from 'element-ui/lib/dropdown';
+import { useUIStore } from '@/stores/ui.store';
+import { Dropdown as ElDropdown } from 'element-ui';
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
+
+export default mixins(showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
+		ElDropdown,
 		WorkflowPreview,
 	},
 	data() {
@@ -86,9 +150,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-		),
+		...mapStores(useUIStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
@@ -121,9 +183,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
-			const retryDropdown = this.$refs.retryDropdown as Vue & { hide: () => void } | undefined;
-			if (retryDropdown && event.relatedTarget === null) {
-				retryDropdown.hide();
+			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
+			if (retryDropdownRef && event.relatedTarget === null) {
+				retryDropdownRef.hide();
 			}
 		},
 	},
@@ -131,7 +193,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 </script>
 
 <style module lang="scss">
-
 .previewContainer {
 	height: calc(100% - $header-height);
 	overflow: hidden;
@@ -147,7 +208,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
 
-	& * { pointer-events: all; }
+	& * {
+		pointer-events: all;
+	}
 
 	&.sidebarCollapsed {
 		width: calc(100% - 375px);
@@ -162,10 +225,19 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	}
 }
 
-.running, .spinner { color: var(--color-warning); }
-.waiting { color: var(--color-secondary); }
-.success { color: var(--color-success); }
-.error { color: var(--color-danger); }
+.running,
+.spinner {
+	color: var(--color-warning);
+}
+.waiting {
+	color: var(--color-secondary);
+}
+.success {
+	color: var(--color-success);
+}
+.error {
+	color: var(--color-danger);
+}
 
 .runningInfo {
 	display: flex;

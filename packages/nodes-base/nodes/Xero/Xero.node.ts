@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,9 +15,9 @@ import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IInvoice, ILineItem } from './InvoiceInterface';
+import type { IInvoice, ILineItem } from './InvoiceInterface';
 
-import { IAddress, IContact, IPhone } from './IContactInterface';
+import type { IAddress, IContact, IPhone } from './IContactInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -69,7 +68,7 @@ export class Xero implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the item codes to display them to user so that he can
+			// Get all the item codes to display them to user so that they can
 			// select them easily
 			async getItemCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -87,7 +86,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the account codes to display them to user so that he can
+			// Get all the account codes to display them to user so that they can
 			// select them easily
 			async getAccountCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -105,7 +104,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tenants to display them to user so that he can
+			// Get all the tenants to display them to user so that they can
 			// select them easily
 			async getTenants(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -127,7 +126,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the brading themes to display them to user so that he can
+			// Get all the brading themes to display them to user so that they can
 			// select them easily
 			async getBrandingThemes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -148,7 +147,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the brading themes to display them to user so that he can
+			// Get all the brading themes to display them to user so that they can
 			// select them easily
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -166,7 +165,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tracking categories to display them to user so that he can
+			// Get all the tracking categories to display them to user so that they can
 			// select them easily
 			async getTrakingCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -187,7 +186,7 @@ export class Xero implements INodeType {
 				}
 				return returnData;
 			},
-			// // Get all the tracking categories to display them to user so that he can
+			// // Get all the tracking categories to display them to user so that they can
 			// // select them easily
 			// async getTrakingOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	const organizationId = this.getCurrentNodeParameter('organizationId');
@@ -216,8 +215,8 @@ export class Xero implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developer.xero.com/documentation/api/invoices
 				if (resource === 'invoice') {
 					if (operation === 'create') {
@@ -449,7 +448,7 @@ export class Xero implements INodeType {
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Invoices`,
+								'/Invoices',
 								{ organizationId },
 								qs,
 							);
@@ -602,7 +601,7 @@ export class Xero implements INodeType {
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Contacts`,
+								'/Contacts',
 								{ organizationId },
 								qs,
 							);
@@ -719,7 +718,7 @@ export class Xero implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

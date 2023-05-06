@@ -1,5 +1,7 @@
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { ITables } from './TableInterface';
+/* eslint-disable @typescript-eslint/ban-types */
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { ITables } from './TableInterface';
 
 /**
  * Returns a copy of the item which only contains the json data and
@@ -63,7 +65,6 @@ export function createTableStruct(
 export async function executeQueryQueue(
 	tables: ITables,
 	buildQueryQueue: Function,
-	// tslint:disable-next-line: no-any
 ): Promise<any[]> {
 	return Promise.all(
 		Object.keys(tables).map(async (table) => {
@@ -87,7 +88,7 @@ export async function executeQueryQueue(
  * @param {IDataObject} item The item to extract
  */
 export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item as any) // tslint:disable-line:no-any
+	return `(${Object.values(item)
 		.map((val) => {
 			//the column cannot be found in the input
 			//so, set it to null in the sql query

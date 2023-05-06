@@ -18,7 +18,7 @@
 			</span>
 			<template #content>
 				<span>
-					<slot name="content" />
+					<slot />
 				</span>
 			</template>
 		</n8n-tooltip>
@@ -35,9 +35,9 @@
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-info-tip',
 	components: {
 		N8nIcon,

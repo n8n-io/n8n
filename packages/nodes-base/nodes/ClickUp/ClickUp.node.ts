@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { clickupApiRequest, clickupApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -45,9 +44,9 @@ import { timeEntryTagFields, timeEntryTagOperations } from './TimeEntryTagDescri
 
 import { listFields, listOperations } from './ListDescription';
 
-import { ITask } from './TaskInterface';
+import type { ITask } from './TaskInterface';
 
-import { IList } from './ListInterface';
+import type { IList } from './ListInterface';
 
 import moment from 'moment-timezone';
 
@@ -222,7 +221,7 @@ export class ClickUp implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available teams to display them to user so that he can
+			// Get all the available teams to display them to user so that they can
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -237,7 +236,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available spaces to display them to user so that he can
+			// Get all the available spaces to display them to user so that they can
 			// select them easily
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const teamId = this.getCurrentNodeParameter('team') as string;
@@ -253,7 +252,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available folders to display them to user so that he can
+			// Get all the available folders to display them to user so that they can
 			// select them easily
 			async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spaceId = this.getCurrentNodeParameter('space') as string;
@@ -269,7 +268,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const folderId = this.getCurrentNodeParameter('folder') as string;
@@ -285,7 +284,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available lists without a folder to display them to user so that he can
+			// Get all the available lists without a folder to display them to user so that they can
 			// select them easily
 			async getFolderlessLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spaceId = this.getCurrentNodeParameter('space') as string;
@@ -301,7 +300,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available assignees to display them to user so that he can
+			// Get all the available assignees to display them to user so that they can
 			// select them easily
 			async getAssignees(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
@@ -327,7 +326,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spaceId = this.getCurrentNodeParameter('space') as string;
@@ -343,7 +342,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTimeEntryTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const teamId = this.getCurrentNodeParameter('team') as string;
@@ -363,7 +362,7 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
@@ -380,7 +379,7 @@ export class ClickUp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
@@ -397,7 +396,7 @@ export class ClickUp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
@@ -428,8 +427,8 @@ export class ClickUp implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -533,7 +532,7 @@ export class ClickUp implements INodeType {
 				}
 				if (resource === 'comment') {
 					if (operation === 'create') {
-						const resource = this.getNodeParameter('commentOn', i) as string;
+						const commentOn = this.getNodeParameter('commentOn', i) as string;
 						const id = this.getNodeParameter('id', i) as string;
 						const commentText = this.getNodeParameter('commentText', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -549,7 +548,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/${resource}/${id}/comment`,
+							`/${commentOn}/${id}/comment`,
 							body,
 						);
 					}
@@ -559,13 +558,13 @@ export class ClickUp implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
-						const resource = this.getNodeParameter('commentsOn', i) as string;
+						const commentsOn = this.getNodeParameter('commentsOn', i) as string;
 						const id = this.getNodeParameter('id', i) as string;
 						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/${resource}/${id}/comment`,
+							`/${commentsOn}/${id}/comment`,
 							{},
 							qs,
 						);
@@ -660,9 +659,9 @@ export class ClickUp implements INodeType {
 							body.color = additionalFields.color as string;
 						}
 						if (additionalFields.owners) {
-							body.owners = ((additionalFields.owners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							);
+							body.owners = (additionalFields.owners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/goal`, body);
 						responseData = responseData.goal;
@@ -707,14 +706,14 @@ export class ClickUp implements INodeType {
 							body.color = updateFields.color as string;
 						}
 						if (updateFields.addOwners) {
-							body.add_owners = ((updateFields.addOwners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							) as number[];
+							body.add_owners = (updateFields.addOwners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						if (updateFields.removeOwners) {
-							body.rem_owners = ((updateFields.removeOwners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							) as number[];
+							body.rem_owners = (updateFields.removeOwners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						responseData = await clickupApiRequest.call(this, 'PUT', `/goal/${goalId}`, body);
 						responseData = responseData.goal;
@@ -770,9 +769,9 @@ export class ClickUp implements INodeType {
 							body.list_ids = (additionalFields.listIds as string).split(',');
 						}
 						if (additionalFields.owners) {
-							body.owners = ((additionalFields.owners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							);
+							body.owners = (additionalFields.owners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						responseData = await clickupApiRequest.call(
 							this,
@@ -993,15 +992,15 @@ export class ClickUp implements INodeType {
 						}
 						if (updateFields.addAssignees) {
 							//@ts-ignore
-							body.assignees.add = (
-								(updateFields.addAssignees as string).split(',') as string[]
-							).map((e: string) => parseInt(e, 10));
+							body.assignees.add = (updateFields.addAssignees as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						if (updateFields.removeAssignees) {
 							//@ts-ignore
-							body.assignees.rem = (
-								(updateFields.removeAssignees as string).split(',') as string[]
-							).map((e: string) => parseInt(e, 10));
+							body.assignees.rem = (updateFields.removeAssignees as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
@@ -1077,7 +1076,7 @@ export class ClickUp implements INodeType {
 						}
 
 						const listId = this.getNodeParameter('list', i) as string;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await clickupApiRequestAllItems.call(
 								this,
 								'tasks',
@@ -1102,7 +1101,7 @@ export class ClickUp implements INodeType {
 					if (operation === 'member') {
 						const taskId = this.getNodeParameter('id', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await clickupApiRequest.call(
 								this,
 								'GET',
@@ -1132,7 +1131,7 @@ export class ClickUp implements INodeType {
 
 						const body: IDataObject = {};
 						body.value = value;
-						if (jsonParse === true) {
+						if (jsonParse) {
 							body.value = validateJSON(body.value);
 							if (body.value === undefined) {
 								throw new NodeOperationError(this.getNode(), 'Value is invalid JSON!', {
@@ -1163,14 +1162,12 @@ export class ClickUp implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const name = this.getNodeParameter('tagName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const qs: IDataObject = {};
-						Object.assign(qs, additionalFields);
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
 							`/task/${taskId}/tag/${name}`,
 							{},
-							qs,
+							additionalFields,
 						);
 						responseData = { success: true };
 					}
@@ -1178,14 +1175,12 @@ export class ClickUp implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const name = this.getNodeParameter('tagName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const qs: IDataObject = {};
-						Object.assign(qs, additionalFields);
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
 							`/task/${taskId}/tag/${name}`,
 							{},
-							qs,
+							additionalFields,
 						);
 						responseData = { success: true };
 					}
@@ -1297,7 +1292,7 @@ export class ClickUp implements INodeType {
 
 						responseData = responseData.data;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -1308,7 +1303,7 @@ export class ClickUp implements INodeType {
 
 						let endpoint = `/team/${teamId}/time_entries/current`;
 
-						if (running === false) {
+						if (!running) {
 							const timeEntryId = this.getNodeParameter('timeEntry', i) as string;
 							endpoint = `/team/${teamId}/time_entries/${timeEntryId}`;
 						}
@@ -1392,7 +1387,7 @@ export class ClickUp implements INodeType {
 						const body: IDataObject = {};
 						body.time_entry_ids = timeEntryIds.split(',');
 						if (tagsUi) {
-							const tags = (tagsUi as IDataObject).tagsValues as IDataObject[];
+							const tags = tagsUi.tagsValues as IDataObject[];
 							if (tags === undefined) {
 								throw new NodeOperationError(this.getNode(), 'At least one tag must be set', {
 									itemIndex: i,
@@ -1419,7 +1414,7 @@ export class ClickUp implements INodeType {
 
 						responseData = responseData.data;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -1476,7 +1471,7 @@ export class ClickUp implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 						responseData = responseData.tags;
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -1545,7 +1540,7 @@ export class ClickUp implements INodeType {
 					if (operation === 'member') {
 						const listId = this.getNodeParameter('id', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await clickupApiRequest.call(
 								this,
 								'GET',
@@ -1629,7 +1624,7 @@ export class ClickUp implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

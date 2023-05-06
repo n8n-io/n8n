@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { mondayComApiRequest, mondayComApiRequestAllItems } from './GenericFunctions';
 
@@ -120,7 +119,7 @@ export class MondayCom implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available boards to display them to user so that he can
+			// Get all the available boards to display them to user so that they can
 			// select them easily
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -153,7 +152,7 @@ export class MondayCom implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available columns to display them to user so that he can
+			// Get all the available columns to display them to user so that they can
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +187,7 @@ export class MondayCom implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -230,8 +229,8 @@ export class MondayCom implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'board') {
@@ -323,7 +322,7 @@ export class MondayCom implements INodeType {
 							},
 						};
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 						} else {
 							body.variables.limit = this.getNodeParameter('limit', i);
@@ -589,9 +588,9 @@ export class MondayCom implements INodeType {
 						responseData = responseData.data.delete_item;
 					}
 					if (operation === 'get') {
-						const itemIds = (
-							(this.getNodeParameter('itemId', i) as string).split(',') as string[]
-						).map((n) => parseInt(n, 10));
+						const itemIds = (this.getNodeParameter('itemId', i) as string)
+							.split(',')
+							.map((n) => parseInt(n, 10));
 
 						const body: IGraphqlBody = {
 							query: `query ($itemId: [Int!]){
@@ -728,7 +727,7 @@ export class MondayCom implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

@@ -17,8 +17,18 @@ $custom-expression-background: var(--color-background-lighter);
 $badge-danger-color: var(--color-danger);
 $badge-danger-background-color: var(--color-primary-tint-3);
 $badge-danger-border-color: var(--color-primary-tint-2);
-$badge-warning-background-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), .3);
-$badge-warning-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), .3);;
+$badge-warning-background-color: hsla(
+	var(--color-warning-h),
+	var(--color-warning-s),
+	var(--color-warning-l),
+	0.3
+);
+$badge-warning-color: hsla(
+	var(--color-warning-h),
+	var(--color-warning-s),
+	var(--color-warning-l),
+	0.3
+);
 $badge-warning-color: var(--color-text-dark);
 
 // Warning tooltip
@@ -88,5 +98,9 @@ $version-card-background-color: var(--color-background-xlight);
 $version-card-border: var(--border-base);
 $version-card-description-text-color: var(--color-text-base);
 $version-card-release-date-text-color: var(--color-foreground-xdark);
-$version-card-box-shadow-color: hsla(var(--color-background-dark-h), var(--color-background-dark-s), var(--color-background-dark-l), .07);
-
+$version-card-box-shadow-color: hsla(
+	var(--color-background-dark-h),
+	var(--color-background-dark-s),
+	var(--color-background-dark-l),
+	0.07
+);

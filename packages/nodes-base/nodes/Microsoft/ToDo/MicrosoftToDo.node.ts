@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
 
@@ -73,7 +72,7 @@ export class MicrosoftToDo implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the team's channels to display them to user so that he can
+			// Get all the team's channels to display them to user so that they can
 			// select them easily
 			async getTaskLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -96,8 +95,8 @@ export class MicrosoftToDo implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'linkedResource') {
@@ -108,7 +107,7 @@ export class MicrosoftToDo implements INodeType {
 						const body: IDataObject = {
 							applicationName: this.getNodeParameter('applicationName', i) as string,
 							displayName: this.getNodeParameter('displayName', i) as string,
-							...(this.getNodeParameter('additionalFields', i)),
+							...this.getNodeParameter('additionalFields', i),
 						};
 
 						responseData = await microsoftApiRequest.call(
@@ -154,7 +153,7 @@ export class MicrosoftToDo implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -164,7 +163,7 @@ export class MicrosoftToDo implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -262,7 +261,7 @@ export class MicrosoftToDo implements INodeType {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -272,7 +271,7 @@ export class MicrosoftToDo implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -354,7 +353,7 @@ export class MicrosoftToDo implements INodeType {
 						// https://docs.microsoft.com/en-us/graph/api/todo-list-lists?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -364,7 +363,7 @@ export class MicrosoftToDo implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -410,7 +409,7 @@ export class MicrosoftToDo implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 

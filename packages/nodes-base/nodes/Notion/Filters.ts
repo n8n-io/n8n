@@ -1,4 +1,3 @@
-// tslint:disable-next-line: no-any
 export const filters = (conditions: any) => [
 	{
 		displayName: 'Property Name or ID',

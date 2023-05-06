@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,9 +13,10 @@ import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
 
 import { itemFields, itemOperations } from './ItemDescription';
 
-import {
+import type {
 	FieldsUiValues,
 	IAttributeNameUi,
+	IAttributeValue,
 	IAttributeValueUi,
 	IRequestBody,
 	PutItemUi,
@@ -91,7 +91,7 @@ export class AwsDynamoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -175,7 +175,6 @@ export class AwsDynamoDB implements INodeType {
 
 						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html
 
-						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
 							TableName: this.getNodeParameter('tableName', i) as string,
 							Key: {},
@@ -195,16 +194,16 @@ export class AwsDynamoDB implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 
-						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [
+						const keyValues = this.getNodeParameter('keysUi.keyValues', i, []) as [
 							{ key: string; type: string; value: string },
 						];
 
-						for (const item of items) {
+						for (const item of keyValues) {
 							let value = item.value as NodeParameterValue;
 							// All data has to get send as string even numbers
 							// @ts-ignore
 							value = ![null, undefined].includes(value) ? value?.toString() : '';
-							body.Key[item.key as string] = { [item.type as string]: value };
+							body.Key[item.key] = { [item.type]: value };
 						}
 
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
@@ -230,10 +229,10 @@ export class AwsDynamoDB implements INodeType {
 
 						responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
 
-						if (!Object.keys(responseData).length) {
+						if (!Object.keys(responseData as IDataObject).length) {
 							responseData = { success: true };
-						} else if (simple === true) {
-							responseData = decodeItem(responseData.Attributes);
+						} else if (simple) {
+							responseData = decodeItem(responseData.Attributes as IAttributeValue);
 						}
 					} else if (operation === 'get') {
 						// ----------------------------------
@@ -252,7 +251,6 @@ export class AwsDynamoDB implements INodeType {
 							[],
 						) as IAttributeNameUi[];
 
-						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
 							TableName: tableName,
 							Key: {},
@@ -275,9 +273,9 @@ export class AwsDynamoDB implements INodeType {
 							body.ProjectionExpression = additionalFields.projectionExpression as string;
 						}
 
-						const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
+						const keyValues = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
 
-						for (const item of items) {
+						for (const item of keyValues) {
 							let value = item.value as NodeParameterValue;
 							// All data has to get send as string even numbers
 							// @ts-ignore
@@ -295,7 +293,7 @@ export class AwsDynamoDB implements INodeType {
 						responseData = responseData.Item;
 
 						if (simple && responseData) {
-							responseData = decodeItem(responseData);
+							responseData = decodeItem(responseData as IAttributeValue);
 						}
 					} else if (operation === 'getAll') {
 						// ----------------------------------
@@ -319,13 +317,13 @@ export class AwsDynamoDB implements INodeType {
 							TableName: this.getNodeParameter('tableName', i) as string,
 						};
 
-						if (scan === true) {
+						if (scan) {
 							const filterExpression = this.getNodeParameter('filterExpression', i) as string;
 							if (filterExpression) {
-								body['FilterExpression'] = filterExpression;
+								body.FilterExpression = filterExpression;
 							}
 						} else {
-							body['KeyConditionExpression'] = this.getNodeParameter(
+							body.KeyConditionExpression = this.getNodeParameter(
 								'keyConditionExpression',
 								i,
 							) as string;
@@ -373,7 +371,7 @@ export class AwsDynamoDB implements INodeType {
 							'X-Amz-Target': scan ? 'DynamoDB_20120810.Scan' : 'DynamoDB_20120810.Query',
 						};
 
-						if (returnAll === true && select !== 'COUNT') {
+						if (returnAll && select !== 'COUNT') {
 							responseData = await awsApiRequestAllItems.call(
 								this,
 								'dynamodb',
@@ -389,18 +387,23 @@ export class AwsDynamoDB implements INodeType {
 								responseData = responseData.Items;
 							}
 						}
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.map(simplify);
 						}
 					}
-
-					Array.isArray(responseData)
-						? returnData.push(...responseData)
-						: returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 
@@ -408,6 +411,6 @@ export class AwsDynamoDB implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

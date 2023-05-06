@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GotifyApi implements ICredentialType {
 	name = 'gotifyApi';
+
 	displayName = 'Gotify API';
+
 	documentationUrl = 'gotify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'App API Token',

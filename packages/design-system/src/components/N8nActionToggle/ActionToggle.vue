@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.container">
+	<span :class="$style.container" data-test-id="action-toggle">
 		<el-dropdown
 			:placement="placement"
 			:size="size"
@@ -9,7 +9,7 @@
 			@visible-change="onVisibleChange"
 		>
 			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-				<component :is="$options.components.N8nIcon" icon="ellipsis-v" :size="iconSize" />
+				<n8n-icon icon="ellipsis-v" :size="iconSize" />
 			</span>
 
 			<template #dropdown>
@@ -22,9 +22,8 @@
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
-							<component
+							<n8n-icon
 								v-if="action.type === 'external-link'"
-								:is="$options.components.N8nIcon"
 								icon="external-link-alt"
 								size="xsmall"
 								color="text-base"
@@ -38,23 +37,27 @@
 </template>
 
 <script lang="ts">
-import ElDropdown from 'element-ui/lib/dropdown';
-import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
-import ElDropdownItem from 'element-ui/lib/dropdown-item';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import {
+	Dropdown as ElDropdown,
+	DropdownMenu as ElDropdownMenu,
+	DropdownItem as ElDropdownItem,
+} from 'element-ui';
 import N8nIcon from '../N8nIcon';
-import Vue from 'vue';
+import type { UserAction } from '@/types';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-toggle',
 	components: {
-		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,
+		ElDropdownMenu,
+		ElDropdownItem,
 		N8nIcon,
 	},
 	props: {
 		actions: {
-			type: Array,
+			type: Array as PropType<UserAction[]>,
 			default: () => [],
 		},
 		placement: {

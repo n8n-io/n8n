@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -9,14 +8,14 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import { chunk, flatten } from '../../../utils/utilities';
 
 import mssql from 'mssql';
 
-import { ITables } from './TableInterface';
+import type { ITables } from './TableInterface';
 
 import {
 	copyInputItem,
@@ -92,7 +91,8 @@ export class MicrosoftSql implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					editor: 'sqlEditor',
+					sqlDialect: 'mssql',
 				},
 				displayOptions: {
 					show: {
@@ -238,6 +238,8 @@ export class MicrosoftSql implements INodeType {
 						options: {
 							encrypt: credentials.tls as boolean,
 							enableArithAbort: false,
+							tdsVersion: credentials.tdsVersion as string,
+							trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 						},
 					};
 					const pool = new mssql.ConnectionPool(config);
@@ -272,6 +274,7 @@ export class MicrosoftSql implements INodeType {
 				encrypt: credentials.tls as boolean,
 				enableArithAbort: false,
 				tdsVersion: credentials.tdsVersion as string,
+				trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
 			},
 		};
 
@@ -282,7 +285,7 @@ export class MicrosoftSql implements INodeType {
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		try {
 			if (operation === 'executeQuery') {
@@ -311,6 +314,7 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
@@ -346,6 +350,7 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
@@ -369,17 +374,17 @@ export class MicrosoftSql implements INodeType {
 				//         delete
 				// ----------------------------------
 
-				const tables = items.reduce((tables, item, index) => {
+				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (tables[table] === undefined) {
-						tables[table] = {};
+					if (acc[table] === undefined) {
+						acc[table] = {};
 					}
-					if (tables[table][deleteKey] === undefined) {
-						tables[table][deleteKey] = [];
+					if (acc[table][deleteKey] === undefined) {
+						acc[table][deleteKey] = [];
 					}
-					tables[table][deleteKey].push(item);
-					return tables;
+					acc[table][deleteKey].push(item);
+					return acc;
 				}, {} as ITables);
 
 				const queriesResults = await Promise.all(
@@ -396,7 +401,7 @@ export class MicrosoftSql implements INodeType {
 									.request()
 									.query(
 										`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-											deleteValues,
+											deleteValues as IDataObject[],
 											deleteKey,
 										)};`,
 									);
@@ -422,7 +427,7 @@ export class MicrosoftSql implements INodeType {
 				);
 			}
 		} catch (error) {
-			if (this.continueOnFail() === true) {
+			if (this.continueOnFail()) {
 				responseData = items;
 			} else {
 				await pool.close();

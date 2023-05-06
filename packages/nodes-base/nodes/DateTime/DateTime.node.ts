@@ -1,19 +1,51 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-import { set } from 'lodash';
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
+
+import set from 'lodash.set';
 
 import moment from 'moment-timezone';
+
+import { DateTime as LuxonDateTime } from 'luxon';
+
+function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
+	const date = moment(value, fromFormat, true);
+	if (moment(date).isValid()) return date;
+
+	throw new NodeOperationError(
+		this.getNode(),
+		'Date input cannot be parsed. Please recheck the value and the "From Format" field.',
+	);
+}
+
+function getIsoValue(this: IExecuteFunctions, value: string) {
+	try {
+		return new Date(value).toISOString(); // may throw due to unpredictable input
+	} catch (error) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Unrecognized date input. Please specify a format in the "From Format" field.',
+		);
+	}
+}
+
+function parseDateByDefault(this: IExecuteFunctions, value: string) {
+	const isoValue = getIsoValue.call(this, value);
+	if (moment(isoValue).isValid()) return moment(isoValue);
+
+	throw new NodeOperationError(
+		this.getNode(),
+		'Unrecognized date input. Please specify a format in the "From Format" field.',
+	);
+}
 
 export class DateTime implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,6 +63,13 @@ export class DateTime implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName:
+					"More powerful date functionality is available in <a href='https://docs.n8n.io/code-examples/expressions/luxon/' target='_blank'>expressions</a>,</br> e.g. <code>{{ $now.plus(1, 'week') }}</code>",
+				name: 'noticeDateTime',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Action',
 				name: 'action',
@@ -345,7 +384,7 @@ export class DateTime implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -376,19 +415,33 @@ export class DateTime implements INodeType {
 				item = items[i];
 
 				if (action === 'format') {
-					const currentDate = this.getNodeParameter('value', i) as string;
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+					let currentDate: string | number | LuxonDateTime = this.getNodeParameter(
+						'value',
+						i,
+					) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
 					const options = this.getNodeParameter('options', i);
 					let newDate;
 
+					if ((currentDate as unknown as IDataObject) instanceof LuxonDateTime) {
+						currentDate = (currentDate as unknown as LuxonDateTime).toISO();
+					}
+
+					// Check if the input is a number
+					if (!Number.isNaN(Number(currentDate))) {
+						//input is a number, convert to number in case it is a string
+						currentDate = Number(currentDate);
+						// check if the number is a timestamp in float format and convert to integer
+						if (!Number.isInteger(currentDate)) {
+							currentDate = currentDate * 1000;
+						}
+					}
+
 					if (currentDate === undefined) {
 						continue;
 					}
-					if (
-						options.fromFormat === undefined &&
-						!moment(currentDate as string | number).isValid()
-					) {
+					if (options.fromFormat === undefined && !moment(currentDate).isValid()) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'The date input format could not be recognized. Please set the "From Format" field',
@@ -396,8 +449,14 @@ export class DateTime implements INodeType {
 						);
 					}
 
-					if (Number.isInteger(currentDate as unknown as number)) {
-						newDate = moment.unix(currentDate as unknown as number);
+					if (Number.isInteger(currentDate)) {
+						const timestampLengthInMilliseconds1990 = 12;
+						// check if the number is a timestamp in seconds or milliseconds and create a moment object accordingly
+						if (currentDate.toString().length < timestampLengthInMilliseconds1990) {
+							newDate = moment.unix(currentDate as number);
+						} else {
+							newDate = moment(currentDate);
+						}
 					} else {
 						if (options.fromTimezone || options.toTimezone) {
 							const fromTimezone = options.fromTimezone || workflowTimezone;
@@ -408,13 +467,13 @@ export class DateTime implements INodeType {
 									fromTimezone as string,
 								);
 							} else {
-								newDate = moment.tz(currentDate as string, fromTimezone as string);
+								newDate = moment.tz(currentDate, fromTimezone as string);
 							}
 						} else {
 							if (options.fromFormat) {
-								newDate = moment(currentDate as string, options.fromFormat as string);
+								newDate = moment(currentDate, options.fromFormat as string);
 							} else {
-								newDate = moment(currentDate as string);
+								newDate = moment(currentDate);
 							}
 						}
 					}
@@ -462,7 +521,7 @@ export class DateTime implements INodeType {
 					const duration = this.getNodeParameter('duration', i) as number;
 					const timeUnit = this.getNodeParameter('timeUnit', i) as moment.DurationInputArg2;
 					const { fromFormat } = this.getNodeParameter('options', i) as { fromFormat?: string };
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 
 					const newDate = fromFormat
 						? parseDateByFormat.call(this, dateValue, fromFormat)
@@ -516,36 +575,5 @@ export class DateTime implements INodeType {
 		}
 
 		return this.prepareOutputData(returnData);
-	}
-}
-
-function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
-	const date = moment(value, fromFormat, true);
-	if (moment(date).isValid()) return date;
-
-	throw new NodeOperationError(
-		this.getNode(),
-		'Date input cannot be parsed. Please recheck the value and the "From Format" field.',
-	);
-}
-
-function parseDateByDefault(this: IExecuteFunctions, value: string) {
-	const isoValue = getIsoValue.call(this, value);
-	if (moment(isoValue).isValid()) return moment(isoValue);
-
-	throw new NodeOperationError(
-		this.getNode(),
-		'Unrecognized date input. Please specify a format in the "From Format" field.',
-	);
-}
-
-function getIsoValue(this: IExecuteFunctions, value: string) {
-	try {
-		return new Date(value).toISOString(); // may throw due to unpredictable input
-	} catch (error) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Unrecognized date input. Please specify a format in the "From Format" field.',
-		);
 	}
 }

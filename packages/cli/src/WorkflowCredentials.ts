@@ -1,5 +1,5 @@
 /* eslint-disable no-prototype-builtins */
-import { INode, IWorkflowCredentials } from 'n8n-workflow';
+import type { INode, IWorkflowCredentials } from 'n8n-workflow';
 import * as Db from '@/Db';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -33,7 +33,7 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 
 			if (!returnCredentials[type][nodeCredentials.id]) {
 				// eslint-disable-next-line no-await-in-loop
-				foundCredentials = await Db.collections.Credentials.findOne({
+				foundCredentials = await Db.collections.Credentials.findOneBy({
 					id: nodeCredentials.id,
 					type,
 				});

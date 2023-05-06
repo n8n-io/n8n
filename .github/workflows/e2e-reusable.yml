@@ -1,0 +1,191 @@
+name: Reusable e2e workflow
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        type: string
+      user:
+        description: 'User who kicked this off.'
+        required: false
+        type: string
+        default: 'schedule'
+      spec:
+        description: 'Specify specs.'
+        required: false
+        default: 'e2e/*'
+        type: string
+      run-env:
+        description: 'Node env version to run tests with.'
+        required: false
+        default: 'browsers:node16.18.0-chrome90-ff88'
+        type: string
+      cache-key:
+        description: 'Cache key for modules and build artifacts.'
+        required: false
+        default: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
+        type: string
+      record:
+        description: 'Record test run.'
+        required: false
+        default: true
+        type: boolean
+      parallel:
+        description: 'Run tests in parallel.'
+        required: false
+        default: true
+        type: boolean
+      containers:
+        description: 'Number of containers to run tests in.'
+        required: false
+        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
+        type: string
+      pr_number:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
+    secrets:
+      CYPRESS_RECORD_KEY:
+        description: 'Cypress record key.'
+        required: true
+    outputs:
+      tests_passed:
+        description: 'True if all E2E tests passed, otherwise false'
+        value: ${{ jobs.check_testing_matrix.outputs.all_tests_passed }}
+
+
+jobs:
+  # single job that generates and outputs a common id
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      uuid: ${{ steps.uuid.outputs.value }}
+    steps:
+      - name: Generate unique ID 💎
+        id: uuid
+        # take the current commit + timestamp together
+        # the typical value would be something like
+        # "sha-5d3fe...35d3-time-1620841214"
+        run: echo "value=sha-$GITHUB_SHA-time-$(date +"%s")" >> $GITHUB_OUTPUT
+
+  install:
+    runs-on: ubuntu-latest
+    needs: ['prepare']
+    container:
+      image: cypress/${{ inputs.run-env }}
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.branch }}
+
+      - name: Checkout PR
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          run_install: true
+
+      - name: Cache pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages
+          key: ${{ inputs.cache-key }}
+
+      - name: Cypress build
+        uses: cypress-io/github-action@v5
+        with:
+          # Disable running of tests within install job
+          runTests: false
+          install: false
+          build: pnpm build
+
+      - name: Cypress install
+        run: pnpm cypress:install
+
+  testing:
+    runs-on: ubuntu-latest
+    container:
+      image: cypress/${{ inputs.run-env }}
+      options: --user 1001
+    needs: ['prepare', 'install']
+    strategy:
+      fail-fast: false
+      matrix:
+        # If spec is not e2e/* then we run only one container to prevent
+        # running the same tests multiple times
+        containers: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.containers || '[1]' ) }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.branch }}
+
+      - name: Checkout PR
+        if: ${{ inputs.pr_number }}
+        run: |
+          git fetch origin pull/${{ inputs.pr_number }}/head
+          git checkout FETCH_HEAD
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2.2.4
+
+      - name: Restore cached pnpm modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            /github/home/.cache
+            /github/home/.pnpm-store
+            ./node_modules
+            ./packages
+          key: ${{ inputs.cache-key }}
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v5
+        with:
+          install: false
+          start: pnpm start
+          wait-on: 'http://localhost:5678'
+          wait-on-timeout: 120
+          record: ${{ inputs.record }}
+          parallel: ${{ fromJSON( inputs.spec == 'e2e/*' && inputs.parallel || false ) }}
+          # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
+          # in the same parent workflow
+          ci-build-id: ${{ needs.prepare.outputs.uuid }}
+          spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
+          config-file: /__w/n8n/n8n/cypress.config.js
+        env:
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          E2E_TESTS: true
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+
+  # Check if all tests passed and set the output variable
+  check_testing_matrix:
+    runs-on: ubuntu-latest
+    needs: [testing]
+    outputs:
+      all_tests_passed: ${{ steps.all_tests_passed.outputs.result }}
+    steps:
+      - name: Check all tests passed
+        id: all_tests_passed
+        run: |
+          success=true
+          for status in ${{ needs.testing.result }}; do
+            if [ $status != "success" ]; then
+              success=false
+              break
+            fi
+          done
+          echo "::set-output name=result::$success"

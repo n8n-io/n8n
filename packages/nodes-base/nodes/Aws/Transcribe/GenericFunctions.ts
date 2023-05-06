@@ -1,19 +1,22 @@
 import { URL } from 'url';
 
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 function getEndpointForService(
 	service: string,
@@ -37,7 +40,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -64,9 +66,9 @@ export async function awsApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
+		throw new NodeApiError(this.getNode(), error as JsonObject); // no XML parsing needed
 	}
 }
 
@@ -77,11 +79,10 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (error) {
 		return response;
 	}
@@ -98,7 +99,6 @@ export async function awsApiRequestRESTAllItems(
 	_headers: IDataObject = {},
 	_option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -110,16 +110,16 @@ export async function awsApiRequestRESTAllItems(
 		responseData = await awsApiRequestREST.call(this, service, method, path, body, query);
 
 		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
-			query['NextToken'] = get(
+			query.NextToken = get(
 				responseData,
 				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`,
 			);
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName));
+				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 			} else {
-				returnData.push(get(responseData, propertyName));
+				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
 	} while (

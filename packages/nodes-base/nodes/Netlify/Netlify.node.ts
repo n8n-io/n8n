@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -84,8 +83,8 @@ export class Netlify implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		const body: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -136,7 +135,7 @@ export class Netlify implements INodeType {
 					if (operation === 'getAll') {
 						const siteId = this.getNodeParameter('siteId', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
@@ -167,11 +166,11 @@ export class Netlify implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all' },
 							);
@@ -180,7 +179,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
-								`/sites`,
+								'/sites',
 								{},
 								{ filter: 'all', per_page: limit },
 							);
@@ -189,7 +188,7 @@ export class Netlify implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

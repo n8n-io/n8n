@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -112,8 +111,8 @@ export class DeepL implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 				const additionalFields = this.getNodeParameter('additionalFields', i);
 				if (resource === 'language') {
 					if (operation === 'translate') {
@@ -130,7 +129,7 @@ export class DeepL implements INodeType {
 
 						const { translations } = await deepLApiRequest.call(this, 'GET', '/translate', body);
 						const [translation] = translations;
-						const translationJsonArray = this.helpers.returnJsonArray(translation);
+						const translationJsonArray = this.helpers.returnJsonArray(translation as IDataObject[]);
 						const executionData = this.helpers.constructExecutionMetaData(translationJsonArray, {
 							itemData: { item: i },
 						});

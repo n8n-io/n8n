@@ -1,6 +1,11 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { flowApiRequest } from './GenericFunctions';
 
@@ -85,7 +90,7 @@ export class FlowTrigger implements INodeType {
 			},
 		],
 	};
-	// @ts-ignore
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -101,7 +106,7 @@ export class FlowTrigger implements INodeType {
 					return false;
 				}
 				qs.organization_id = credentials.organizationId as number;
-				const endpoint = `/integration_webhooks`;
+				const endpoint = '/integration_webhooks';
 				try {
 					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
 					webhooks = webhooks.integration_webhooks;
@@ -125,7 +130,7 @@ export class FlowTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
-				const endpoint = `/integration_webhooks`;
+				const endpoint = '/integration_webhooks';
 				if (resource === 'list') {
 					resourceIds = (this.getNodeParameter('listIds') as string).split(',');
 				}
@@ -187,7 +192,7 @@ export class FlowTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

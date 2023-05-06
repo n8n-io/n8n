@@ -14,7 +14,7 @@ export const Default: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nCard,
 	},
-	template: `<n8n-card v-bind="$props">This is a card.</n8n-card>`,
+	template: '<n8n-card v-bind="$props">This is a card.</n8n-card>',
 });
 
 export const Hoverable: StoryFn = (args, { argTypes }) => ({

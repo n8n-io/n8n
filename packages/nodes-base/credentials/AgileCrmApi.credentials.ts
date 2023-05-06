@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AgileCrmApi implements ICredentialType {
 	name = 'agileCrmApi';
+
 	displayName = 'AgileCRM API';
+
 	documentationUrl = 'agileCrm';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',

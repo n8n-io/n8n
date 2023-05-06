@@ -28,10 +28,9 @@
 
 	.el-select__tags + .el-input {
 		input {
-			box-sizing: content-box;
-			padding: 0;
-			text-indent: var(--spacing-xs);
-			width: calc(100% - 2px);
+			box-sizing: border-box;
+			padding: 0 0 0 var(--spacing-2xs);
+			text-indent: 0;
 		}
 	}
 
@@ -92,7 +91,7 @@
 		border: none;
 		outline: none;
 		padding: 0;
-		margin-left: 15px;
+		margin-left: var(--spacing-2xs);
 		color: var.$select-multiple-input-color;
 		font-size: var.$select-font-size;
 		appearance: none;

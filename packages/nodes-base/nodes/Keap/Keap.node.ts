@@ -1,14 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
@@ -29,7 +26,7 @@ import { fileFields, fileOperations } from './FileDescription';
 
 import { companyFields, companyOperations } from './CompanyDescription';
 
-import {
+import type {
 	IAddress,
 	IContact,
 	IEmailContact,
@@ -38,17 +35,17 @@ import {
 	ISocialAccount,
 } from './ConctactInterface';
 
-import { IAttachment, IEmail } from './EmaiIInterface';
+import type { IAttachment, IEmail } from './EmaiIInterface';
 
-import { INote } from './ContactNoteInterface';
+import type { INote } from './ContactNoteInterface';
 
-import { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
+import type { IEcommerceOrder, IItem, IShippingAddress } from './EcommerceOrderInterface';
 
-import { IEcommerceProduct } from './EcommerceProductInterface';
+import type { IEcommerceProduct } from './EcommerceProductInterface';
 
-import { IFile } from './FileInterface';
+import type { IFile } from './FileInterface';
 
-import { ICompany } from './CompanyInterface';
+import type { ICompany } from './CompanyInterface';
 
 import { capitalCase, pascalCase } from 'change-case';
 
@@ -146,7 +143,7 @@ export class Keap implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -161,7 +158,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -176,22 +173,22 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the countries to display them to user so that he can
+			// Get all the countries to display them to user so that they can
 			// select them easily
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { countries } = await keapApiRequest.call(this, 'GET', '/locales/countries');
-				for (const key of Object.keys(countries)) {
+				for (const key of Object.keys(countries as IDataObject)) {
 					const countryName = countries[key];
 					const countryId = key;
 					returnData.push({
 						name: countryName as string,
-						value: countryId as string,
+						value: countryId,
 					});
 				}
 				return returnData;
 			},
-			// Get all the provinces to display them to user so that he can
+			// Get all the provinces to display them to user so that they can
 			// select them easily
 			async getProvinces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('countryCode') as string;
@@ -201,17 +198,17 @@ export class Keap implements INodeType {
 					'GET',
 					`/locales/countries/${countryCode}/provinces`,
 				);
-				for (const key of Object.keys(provinces)) {
+				for (const key of Object.keys(provinces as IDataObject)) {
 					const provinceName = provinces[key];
 					const provinceId = key;
 					returnData.push({
 						name: provinceName as string,
-						value: provinceId as string,
+						value: provinceId,
 					});
 				}
 				return returnData;
 			},
-			// Get all the contact types to display them to user so that he can
+			// Get all the contact types to display them to user so that they can
 			// select them easily
 			async getContactTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -226,7 +223,7 @@ export class Keap implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -249,8 +246,8 @@ export class Keap implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'company') {
 				//https://developer.keap.com/docs/rest/#!/Company/createCompanyUsingPOST
@@ -590,9 +587,7 @@ export class Keap implements INodeType {
 						order_type: pascalCase(orderType),
 					};
 					if (additionalFields.promoCodes) {
-						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(
-							',',
-						) as string[];
+						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(',');
 					}
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
@@ -691,7 +686,7 @@ export class Keap implements INodeType {
 						sent_from_address: sentFromAddress,
 					};
 					Object.assign(body, additionalFields);
-					keysToSnakeCase(body as IDataObject);
+					keysToSnakeCase(body);
 					responseData = await keapApiRequest.call(this, 'POST', '/emails', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
@@ -724,9 +719,9 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
 				if (operation === 'send') {
 					const userId = this.getNodeParameter('userId', i) as number;
-					const contactIds = (
-						(this.getNodeParameter('contactIds', i) as string).split(',') as string[]
-					).map((e) => parseInt(e, 10));
+					const contactIds = (this.getNodeParameter('contactIds', i) as string)
+						.split(',')
+						.map((e) => parseInt(e, 10));
 					const subject = this.getNodeParameter('subject', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEmail = {
@@ -744,30 +739,15 @@ export class Keap implements INodeType {
 							keysToSnakeCase(attachmentsUi.attachmentsValues as IDataObject);
 							attachments = attachmentsUi.attachmentsValues as IAttachment[];
 						}
-						if (
-							attachmentsUi.attachmentsBinary &&
-							(attachmentsUi.attachmentsBinary as IDataObject).length
-						) {
-							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
-								const item = items[i].binary as IBinaryKeyData;
-
-								if (item[property as string] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Binary data property "${property}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+						const attachmentsBinary = attachmentsUi.attachmentsBinary as Array<{
+							property: string;
+						}>;
+						if (attachmentsBinary?.length) {
+							for (const { property } of attachmentsBinary) {
+								const binaryData = this.helpers.assertBinaryData(i, property);
 								attachments.push({
-									file_data: item[property as string].data,
-									file_name: item[property as string].fileName,
+									file_data: binaryData.data,
+									file_name: binaryData.fileName,
 								});
 							}
 						}
@@ -817,7 +797,6 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/createFileUsingPOST
 				if (operation === 'upload') {
-					const binaryData = this.getNodeParameter('binaryData', i);
 					const fileAssociation = this.getNodeParameter('fileAssociation', i) as string;
 					const isPublic = this.getNodeParameter('isPublic', i) as boolean;
 					const body: IFile = {
@@ -828,27 +807,11 @@ export class Keap implements INodeType {
 						const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
 						body.contact_id = contactId;
 					}
-					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-						if (items[i].binary === undefined) {
-							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-								itemIndex: i,
-							});
-						}
-
-						const item = items[i].binary as IBinaryKeyData;
-
-						if (item[binaryPropertyName as string] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
-
-						body.file_data = item[binaryPropertyName as string].data;
-						body.file_name = item[binaryPropertyName as string].fileName;
+					if (this.getNodeParameter('binaryData', i)) {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						body.file_data = binaryData.data;
+						body.file_name = binaryData.fileName;
 					} else {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileData = this.getNodeParameter('fileData', i) as string;
@@ -860,7 +823,7 @@ export class Keap implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

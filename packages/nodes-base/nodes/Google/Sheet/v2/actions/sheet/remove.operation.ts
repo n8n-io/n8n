@@ -1,7 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 
 export async function execute(
 	this: IExecuteFunctions,
@@ -20,16 +19,14 @@ export async function execute(
 			},
 		];
 
-		let responseData;
-
-		responseData = await apiRequest.call(
+		const responseData = await apiRequest.call(
 			this,
 			'POST',
 			`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
 			{ requests },
 		);
 		delete responseData.replies;
-		returnData.push(responseData);
+		returnData.push(responseData as IDataObject);
 	}
 
 	return this.helpers.returnJsonArray(returnData);

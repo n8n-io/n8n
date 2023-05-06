@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const ecommerceProductOperations: INodeProperties[] = [
 	{
@@ -80,9 +80,6 @@ export const ecommerceProductFields: INodeProperties[] = [
 			{
 				displayName: 'Product Description',
 				name: 'productDesc',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 			},

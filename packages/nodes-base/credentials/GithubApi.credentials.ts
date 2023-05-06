@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class GithubApi implements ICredentialType {
 	name = 'githubApi';
+
 	displayName = 'GitHub API';
+
 	documentationUrl = 'github';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Github Server',

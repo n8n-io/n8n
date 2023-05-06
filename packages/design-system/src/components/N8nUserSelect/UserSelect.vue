@@ -30,42 +30,40 @@
 </template>
 
 <script lang="ts">
-import 'vue';
 import N8nUserInfo from '../N8nUserInfo';
-import { IUser } from '../../types';
-import ElSelect from 'element-ui/lib/select';
-import ElOption from 'element-ui/lib/option';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
+import type { IUser } from '../../types';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-user-select',
+	mixins: [Locale],
 	components: {
 		N8nUserInfo,
-		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElOption, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		N8nSelect,
+		N8nOption,
 	},
 	props: {
 		users: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<IUser[]>,
+			default: () => [],
 		},
 		value: {
 			type: String,
 			default: '',
 		},
 		ignoreIds: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<string[]>,
+			default: () => [],
 			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
 		},
 		currentUserId: {
 			type: String,
+			default: '',
 		},
 		placeholder: {
 			type: String,
@@ -73,7 +71,8 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
-			validator: (value: string): boolean => ['mini', 'small', 'large'].includes(value),
+			default: '',
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
 	data() {
@@ -83,12 +82,12 @@ export default mixins(Locale).extend({
 	},
 	computed: {
 		filteredUsers(): IUser[] {
-			return (this.users as IUser[]).filter((user) => {
+			return this.users.filter((user) => {
 				if (user.isPendingUser || !user.email) {
 					return false;
 				}
 
-				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+				if (this.ignoreIds.includes(user.id)) {
 					return false;
 				}
 
@@ -150,7 +149,7 @@ export default mixins(Locale).extend({
 	--select-option-line-height: 1;
 }
 
-.limitPopperWidth {
+:root .limitPopperWidth {
 	width: 0;
 
 	li > span {

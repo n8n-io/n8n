@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,11 +10,11 @@ import {
 
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 
-import { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
+import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
 
-import { IUserDto } from './UserDtos';
+import type { IUserDto } from './UserDtos';
 
-import { IProjectDto } from './ProjectInterfaces';
+import type { IProjectDto } from './ProjectInterfaces';
 
 import { clientFields, clientOperations } from './ClientDescription';
 
@@ -243,9 +242,9 @@ export class Clockify implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -765,7 +764,7 @@ export class Clockify implements INodeType {
 							body.start = moment.tz(body.start, timezone).utc().format();
 						} else {
 							// even if you do not want to update the start time, it always has to be set
-							// to make it more simple to the user, if he did not set a start time look for the current start time
+							// to make it more simple to the user, if they did not set a start time look for the current start time
 							// and set it
 							const {
 								timeInterval: { start },
@@ -836,7 +835,7 @@ export class Clockify implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

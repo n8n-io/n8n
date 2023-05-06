@@ -1,6 +1,6 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to NextCloud
@@ -52,5 +52,5 @@ export async function nextCloudApiRequest(
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
-	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }

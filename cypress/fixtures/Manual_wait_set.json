@@ -1,0 +1,81 @@
+{
+	"name": "Manual wait set",
+	"nodes": [
+		{
+			"parameters": {
+				"amount": 2,
+				"unit": "seconds"
+			},
+			"id": "ed6e0168-1145-43d0-9082-970b8a8f3cb5",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1,
+			"position": [
+				900,
+				580
+			],
+			"webhookId": "0f6f94a4-c28d-46f9-8468-6ab315a9fec9"
+		},
+		{
+			"parameters": {},
+			"id": "59467b99-4e7c-4f19-8fc2-4329788f0951",
+			"name": "Manual",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				680,
+				580
+			]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "6ddf089f-4d01-4691-928f-6de168e3b089",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [
+				1120,
+				580
+			]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Manual": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"saveExecutionProgress": true,
+		"saveManualExecutions": true,
+		"callerPolicy": "workflowsFromSameOwner"
+	},
+	"versionId": "f11ff1bf-4273-46cb-bbec-65c7b2fa13cb",
+	"id": "1037",
+	"meta": {
+		"instanceId": "8a47b83b4479b11330fdf21ccc96d4a8117035a968612e452b4c87bfd09c16c7"
+	},
+	"tags": []
+}

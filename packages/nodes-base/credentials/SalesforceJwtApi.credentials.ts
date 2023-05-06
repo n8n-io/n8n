@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
+
 	displayName = 'Salesforce JWT API';
+
 	documentationUrl = 'salesforce';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment Type',

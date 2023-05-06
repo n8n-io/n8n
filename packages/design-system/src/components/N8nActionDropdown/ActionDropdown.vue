@@ -18,15 +18,9 @@
 						:disabled="item.disabled"
 						:divided="item.divided"
 					>
-						<div
-							:class="{
-								[$style.itemContainer]: true,
-								[$style.hasCustomStyling]: item.customClass !== undefined,
-								[item.customClass]: item.customClass !== undefined,
-							}"
-						>
+						<div :class="getItemClasses(item)" :data-test-id="`workflow-menu-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
-								<n8n-icon :icon="item.icon" :size="item.iconSize" />
+								<n8n-icon :icon="item.icon" :size="iconSize" />
 							</span>
 							<span :class="$style.label">
 								{{ item.label }}
@@ -40,13 +34,16 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import ElDropdown from 'element-ui/lib/dropdown';
-import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
-import ElDropdownItem from 'element-ui/lib/dropdown-item';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import {
+	Dropdown as ElDropdown,
+	DropdownMenu as ElDropdownMenu,
+	DropdownItem as ElDropdownItem,
+} from 'element-ui';
 import N8nIcon from '../N8nIcon';
 
-interface IActionDropdownItem {
+export interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;
@@ -61,12 +58,12 @@ interface IActionDropdownItem {
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-dropdown',
 	components: {
-		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,
+		ElDropdownMenu,
+		ElDropdownItem,
 		N8nIcon,
 	},
 	props: {
@@ -96,6 +93,13 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
+			return {
+				[this.$style.itemContainer]: true,
+				[this.$style.hasCustomStyling]: item.customClass !== undefined,
+				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+			};
+		},
 		onSelect(action: string): void {
 			this.$emit('select', action);
 		},
