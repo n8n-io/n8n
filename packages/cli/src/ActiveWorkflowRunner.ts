@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
+/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -626,7 +627,7 @@ export class ActiveWorkflowRunner {
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void WorkflowHelpers.saveStaticData(workflow);
+				WorkflowHelpers.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -683,7 +684,7 @@ export class ActiveWorkflowRunner {
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				void WorkflowHelpers.saveStaticData(workflow);
+				WorkflowHelpers.saveStaticData(workflow);
 				// eslint-disable-next-line id-denylist
 				const executePromise = this.runWorkflow(
 					workflowData,

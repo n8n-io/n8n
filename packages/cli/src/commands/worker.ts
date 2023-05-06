@@ -51,8 +51,8 @@ export class Worker extends BaseCommand {
 		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
-
-		await Worker.jobQueue.pause(true);
+		// eslint-disable-next-line @typescript-eslint/no-floating-promises
+		Worker.jobQueue.pause(true);
 
 		try {
 			await this.externalHooks.run('n8n.stop', []);

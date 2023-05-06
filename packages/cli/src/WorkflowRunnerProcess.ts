@@ -497,7 +497,8 @@ process.on('message', async (message: IProcessMessage) => {
 					status: 'canceled',
 				};
 
-				await workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
+				// eslint-disable-next-line @typescript-eslint/no-floating-promises
+				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
 			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {
