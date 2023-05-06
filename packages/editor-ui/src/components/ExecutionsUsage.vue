@@ -66,14 +66,16 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { Cloud } from '@/Interface';
+import { useSettingsStore } from '@/stores';
+import { CHANGE_PLAN_PAGE_PRODUCTION, CHANGE_PLAN_PAGE_STAGING } from '@/constants';
 
 type CloudPlanData = Cloud.PlanData & { metadata: Cloud.PlanMetadata; usage: Cloud.PlanUsage };
 
 const props = defineProps<{ cloudPlanData: CloudPlanData }>();
 
-const emit = defineEmits(['onUpgradePlanClicked']);
-
 const now = DateTime.utc();
+
+const settingsStore = useSettingsStore();
 
 const daysLeftOnTrial = () => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
@@ -95,7 +97,10 @@ const currentExecutions = () => props.cloudPlanData.usage.executions;
 const maxExecutions = () => props.cloudPlanData.monthlyExecutionsLimit;
 
 const onUpgradeClicked = () => {
-	emit('onUpgradePlanClicked');
+	location.href =
+		settingsStore.settings.license.environment === 'production'
+			? CHANGE_PLAN_PAGE_PRODUCTION
+			: CHANGE_PLAN_PAGE_STAGING;
 };
 </script>
 

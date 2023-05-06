@@ -27,10 +27,7 @@
 			</template>
 
 			<template #beforeLowerMenu>
-				<ExecutionsUsage
-					:cloud-plan-data="currentPlanData"
-					v-if="!isCollapsed && userIsTrialing"
-					@onUpgradePlanClicked="onUpgradePlanClicked"
+				<ExecutionsUsage :cloud-plan-data="currentPlanData" v-if="!isCollapsed && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
@@ -128,13 +125,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import {
-	ABOUT_MODAL_KEY,
-	CHANGE_PLAN_PAGE_PRODUCTION,
-	CHANGE_PLAN_PAGE_STAGING,
-	VERSIONS_MODAL_KEY,
-	VIEWS,
-} from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
@@ -524,12 +515,6 @@ export default mixins(
 			if (prompt.value) {
 				this.versionControlStore.sync({ commitMessage: prompt.value });
 			}
-		},
-		onUpgradePlanClicked() {
-			location.href =
-				this.settingsStore.settings.license.environment === 'production'
-					? CHANGE_PLAN_PAGE_PRODUCTION
-					: CHANGE_PLAN_PAGE_STAGING;
 		},
 	},
 });
