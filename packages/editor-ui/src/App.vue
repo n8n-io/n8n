@@ -30,7 +30,7 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
@@ -48,6 +48,7 @@ import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl';
+import { DateTime } from 'luxon';
 
 export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
@@ -181,20 +182,34 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		checkForExecutionsCount() {
+		async monitorExecutionUsageOnCloudPlan() {
+			try {
+				const plan = await this.usersStore.getOwnerCurrentPLan();
+				if (!plan.metadata.slug.includes('trial')) return;
+				this.usersStore.setCloudPLan(plan);
+				this.startPollingPlanData();
+			} catch {}
+		},
+		startPollingPlanData() {
+			// TODO: remove before releasing
 			let acc = 0;
 			const interval = setInterval(async () => {
 				try {
 					const plan = await this.usersStore.getOwnerCurrentPLan();
-					if (plan.metadata.slug !== 'trial-1') {
+					const trialExpired =
+						DateTime.now().toMillis() >= DateTime.fromISO(plan.expirationDate).toMillis();
+					const allExecutionsUsed = plan.usage.executions === plan.monthlyExecutionsLimit;
+
+					if (trialExpired || allExecutionsUsed) {
 						clearTimeout(interval);
+						return;
 					}
 					// TODO: remove before releasing
 					plan.usage.executions += acc;
 					acc += 20;
 					this.usersStore.setCloudPLan(plan);
 				} catch {}
-			}, 5000);
+			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
 	},
 	async mounted() {
@@ -204,7 +219,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		this.authenticate();
 		this.redirectIfNecessary();
 		this.checkForNewVersions();
-		this.checkForExecutionsCount();
+		this.monitorExecutionUsageOnCloudPlan();
 
 		this.loading = false;
 
