@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts">
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';

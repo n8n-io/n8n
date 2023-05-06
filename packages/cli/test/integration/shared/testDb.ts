@@ -1,9 +1,6 @@
 import { UserSettings } from 'n8n-core';
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	Repository,
-} from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
 
 import config from '@/config';
@@ -24,16 +21,16 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleRepository } from '@db/repositories';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { AES } from 'crypto-js';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { getPostgresSchemaSection } from './utils';
 import type {
 	CollectionName,
 	CredentialPayload,
 	InstalledNodePayload,
 	InstalledPackagePayload,
+	PostgresSchemaSection,
 } from './types';
 
 import { v4 as uuid } from 'uuid';
@@ -42,13 +39,26 @@ import { TOTPService } from '@/Mfa/totp.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
+export const testDbPrefix = 'n8n_test_';
+
+export function getPostgresSchemaSection(
+	schema = config.getSchema(),
+): PostgresSchemaSection | null {
+	for (const [key, value] of Object.entries(schema)) {
+		if (key === 'postgresdb') {
+			return value._cvtProperties;
+		}
+	}
+	return null;
+}
+
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
 	jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 	const dbType = config.getEnv('database.type');
-	const testDbName = `n8n_test_${randomString(6, 10)}_${Date.now()}`;
+	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
@@ -246,6 +256,7 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
+	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();

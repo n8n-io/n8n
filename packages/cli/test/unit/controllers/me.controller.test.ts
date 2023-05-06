@@ -1,11 +1,10 @@
-import { CookieOptions, Response } from 'express';
-import type { Repository } from 'typeorm';
+import type { CookieOptions, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject, captor } from 'jest-mock-extended';
 import type { ILogger } from 'n8n-workflow';
 import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories';
+import type { UserRepository } from '@db/repositories';
 import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';

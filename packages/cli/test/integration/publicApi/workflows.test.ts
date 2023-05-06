@@ -308,7 +308,7 @@ describe('GET /workflows/:id', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2', 'abcXYZ'));
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.get(`/workflows/2`);
+		const response = await authOwnerAgent.get('/workflows/2');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -374,7 +374,7 @@ describe('DELETE /workflows/:id', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('delete', '/workflows/2', 'abcXYZ'));
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.delete(`/workflows/2`);
+		const response = await authOwnerAgent.delete('/workflows/2');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -446,7 +446,7 @@ describe('POST /workflows/:id/activate', () => {
 	);
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post(`/workflows/2/activate`);
+		const response = await authOwnerAgent.post('/workflows/2/activate');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -548,7 +548,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	);
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+		const response = await authOwnerAgent.post('/workflows/2/deactivate');
 		expect(response.statusCode).toBe(404);
 	});
 
@@ -708,7 +708,7 @@ describe('PUT /workflows/:id', () => {
 	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/1', 'abcXYZ'));
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.put(`/workflows/1`).send({
+		const response = await authOwnerAgent.put('/workflows/1').send({
 			name: 'testing',
 			nodes: [
 				{
@@ -736,7 +736,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should fail due to invalid body', async () => {
-		const response = await authOwnerAgent.put(`/workflows/1`).send({
+		const response = await authOwnerAgent.put('/workflows/1').send({
 			nodes: [
 				{
 					id: 'uuid-1234',

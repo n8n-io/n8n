@@ -57,6 +57,7 @@ describe('User activation survey', () => {
 			cy.wait(['@getWorkflows', '@getCredentials', '@getActive']);
 			userActivationSurveyModal.getters.modalContainer().should('be.visible');
 			userActivationSurveyModal.getters.feedbackInput().should('be.visible');
+			userActivationSurveyModal.getters.skipButton().should('be.visible');
 			userActivationSurveyModal.getters.feedbackInput().type('testing');
 			userActivationSurveyModal.getters.feedbackInput().should('have.value', 'testing');
 			userActivationSurveyModal.getters.sendFeedbackButton().click();

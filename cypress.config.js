@@ -11,7 +11,7 @@ module.exports = defineConfig({
 	},
 	defaultCommandTimeout: 10000,
 	requestTimeout: 12000,
-	numTestsKeptInMemory: 0,
+	numTestsKeptInMemory: 2,
 	experimentalMemoryManagement: true,
 	e2e: {
 		baseUrl: BASE_URL,
@@ -34,6 +34,13 @@ module.exports = defineConfig({
 						console.error("setup-owner failed with: ", error)
 						return null
 					}
+				},
+				'set-feature': ({ feature, enabled }) => {
+					return fetch(BASE_URL + `/e2e/feature/${feature}`, {
+						method: 'PATCH',
+						body: JSON.stringify({ enabled }),
+						headers: { 'Content-Type': 'application/json' }
+					})
 				},
 				'enable-feature': (feature) =>
 					fetch(BASE_URL + `/e2e/enable-feature/${feature}`, { method: 'POST' }),

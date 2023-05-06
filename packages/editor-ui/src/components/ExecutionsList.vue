@@ -286,8 +286,8 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty, setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
@@ -800,16 +800,16 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				path = 'executionsList.statusWaiting';
 			} else if (status === 'canceled') {
 				path = 'executionsList.statusCanceled';
-			} else if (status === 'crashed') {
-				path = 'executionsList.statusText';
+			} else if (['crashed', 'failed', 'success'].includes(status)) {
+				if (!entry.stoppedAt) {
+					path = 'executionsList.statusTextWithoutTime';
+				} else {
+					path = 'executionsList.statusText';
+				}
 			} else if (status === 'new') {
 				path = 'executionsList.statusRunning';
 			} else if (status === 'running') {
 				path = 'executionsList.statusRunning';
-			} else if (status === 'success') {
-				path = 'executionsList.statusText';
-			} else if (status === 'failed') {
-				path = 'executionsList.statusText';
 			} else {
 				path = 'executionsList.statusUnknown';
 			}

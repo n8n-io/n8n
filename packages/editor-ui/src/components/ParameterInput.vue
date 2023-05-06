@@ -18,6 +18,7 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
+				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
 				:expressionComputedValue="expressionEvaluated"
@@ -387,11 +388,12 @@ import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { htmlEditorEventBus } from '@/event-bus';
+import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
@@ -742,7 +744,7 @@ export default mixins(
 		},
 		editorLanguage(): CodeNodeEditorLanguage {
 			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
-			return 'javaScript';
+			return (this.getArgument('editorLanguage') as CodeNodeEditorLanguage) ?? 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -970,8 +972,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			// Set focus on field
-			setTimeout(() => {
+			Vue.nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore

@@ -31,22 +31,10 @@
 					@submit="onSubmit"
 				/>
 			</div>
-			<div v-if="!signInWithLdap">
-				<div :class="$style.sectionHeader">
-					<n8n-heading size="large">{{
-						$locale.baseText('settings.personal.security')
-					}}</n8n-heading>
-				</div>
-				<div>
-					<n8n-input-label :label="$locale.baseText('auth.password')"> </n8n-input-label>
-					<n8n-button
-						:class="$style.button"
-						@click="openPasswordModal"
-						type="tertiary"
-						data-test-id="change-password-link"
-						:label="$locale.baseText('auth.changePassword')"
-					></n8n-button>
-				</div>
+		</div>
+		<div v-if="!signInWithLdap && !signInWithSaml">
+			<div :class="$style.sectionHeader">
+				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
 			<div v-if="isMfaFeatureEnabled">
 				<div :class="$style.mfaSection">
@@ -102,9 +90,9 @@
 import { showMessage } from '@/mixins/showMessage';
 import type { IFormInputs, IUser } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { createEventBus } from '@/event-bus';
@@ -156,7 +144,7 @@ export default mixins(showMessage).extend({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
 				},
 			},
 		];
@@ -171,6 +159,11 @@ export default mixins(showMessage).extend({
 		},
 		isLDAPFeatureEnabled(): boolean {
 			return this.settingsStore.settings.enterprise.ldap === true;
+		},
+		signInWithSaml(): boolean {
+			return (
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
+			);
 		},
 		mfaDisabled(): boolean {
 			return !this.usersStore.mfaEnabled;

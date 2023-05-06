@@ -11,9 +11,8 @@ import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
+import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
-import type { AuthAgent } from './shared/types';
 
 // mock that credentialsSharing is not enabled
 const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
@@ -122,7 +121,7 @@ describe('POST /credentials', () => {
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess![0].nodeType);
+		expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -276,7 +275,7 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
+		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -313,7 +312,7 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
+		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
@@ -350,7 +349,7 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess![0].nodeType);
+		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({

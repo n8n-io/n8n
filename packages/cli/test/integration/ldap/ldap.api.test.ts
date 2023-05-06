@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
 import { Container } from 'typedi';

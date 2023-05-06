@@ -52,7 +52,7 @@ export class Compression implements INodeType {
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"]}}',
 		version: 1,
-		description: 'Compress and uncompress files',
+		description: 'Compress and decompress files',
 		defaults: {
 			name: 'Compression',
 			color: '#408000',
@@ -197,7 +197,7 @@ export class Compression implements INodeType {
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-						if (binaryData.fileExtension === 'zip') {
+						if (binaryData.fileExtension?.toLowerCase() === 'zip') {
 							const files = await unzip(binaryDataBuffer);
 
 							for (const key of Object.keys(files)) {
@@ -213,7 +213,7 @@ export class Compression implements INodeType {
 
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
-						} else if (binaryData.fileExtension === 'gz') {
+						} else if (binaryData.fileExtension?.toLowerCase() === 'gz') {
 							const file = await gunzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];

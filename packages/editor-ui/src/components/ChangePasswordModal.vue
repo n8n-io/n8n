@@ -36,7 +36,7 @@ import Modal from './Modal.vue';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH } from '../constants';
 import type { IFormInputs } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
