@@ -1,13 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
-export class AddMfaColumns1680014214605 implements MigrationInterface {
+export class AddMfaColumns1680014214605 implements ReversibleMigration {
 	name = 'AddMfaColumns1680014214605';
 
-	async up(queryRunner: QueryRunner) {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		logMigrationStart(this.name);
-
-		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}user\` ADD COLUMN \`mfaEnabled\` boolean DEFAULT false`,
@@ -22,8 +20,7 @@ export class AddMfaColumns1680014214605 implements MigrationInterface {
 		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner) {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}user\` DROP COLUMN \`mfaEnabled\``);
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}user\` DROP COLUMN \`mfaSecret\``);
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}user\` DROP COLUMN \`mfaRecoveryCodes\``);
