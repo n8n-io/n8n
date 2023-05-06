@@ -23,7 +23,7 @@ import {
 import { getCurrentPlan } from '@/api/cloudPlans';
 import { PERSONALIZATION_MODAL_KEY, USER_ACTIVATION_SURVEY_MODAL, STORES } from '@/constants';
 import type {
-	CloudPlanData,
+	Cloud,
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
@@ -119,7 +119,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		userIsTrialing(): boolean {
 			return this.cloudPlan?.metadata?.slug === 'trial-1';
 		},
-		currentPlanData(): CloudPlanData | null {
+		currentPlanData(): Cloud.PlanData | null {
 			return this.cloudPlan;
 		},
 	},
@@ -146,7 +146,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		deleteUserById(userId: string): void {
 			Vue.delete(this.users, userId);
 		},
-		setCloudPLan(plan: CloudPlanData) {
+		setCloudPLan(plan: Cloud.PlanData) {
 			this.cloudPlan = plan;
 		},
 		setPersonalizationAnswers(answers: IPersonalizationLatestVersion): void {
@@ -332,7 +332,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				await skipOwnerSetup(rootStore.getRestApiContext);
 			} catch (error) {}
 		},
-		async getOwnerCurrentPLan(): Promise<CloudPlanData> {
+		async getOwnerCurrentPLan(): Promise<Cloud.PlanData> {
 			const settingsStore = useSettingsStore();
 			// TODO: uncomment before releasing
 			// const cloudUserId = settingsStore.settings.n8nMetadata?.userId;

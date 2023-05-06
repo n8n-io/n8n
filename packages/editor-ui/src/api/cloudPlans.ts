@@ -1,9 +1,9 @@
-import type { CloudPlanData, IRestApiContext } from '@/Interface';
+import type { Cloud, IRestApiContext } from '@/Interface';
 
 export function getCurrentPlan(
 	context: IRestApiContext,
 	cloudUserId: string,
-): Promise<CloudPlanData> {
+): Promise<Cloud.PlanData> {
 	return Promise.resolve({
 		planId: 43039,
 		monthlyExecutionsLimit: 200,

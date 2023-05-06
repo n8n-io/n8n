@@ -65,33 +65,9 @@
 <script setup lang="ts">
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
+import type { Cloud } from '@/Interface';
 
-export interface CloudPlanData {
-	planId: number;
-	monthlyExecutionsLimit: number;
-	activeWorkflowsLimit: number;
-	credentialsLimit: number;
-	isActive: boolean;
-	displayName: string;
-	expirationDate: string;
-	metadata: PlanMetadata;
-	usage: Usage;
-}
-export interface PlanMetadata {
-	version: 'v1';
-	group: 'opt-out' | 'opt-in';
-	slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-	trial?: Trial;
-}
-export interface Trial {
-	length: number;
-	gracePeriod: number;
-}
-
-export interface Usage {
-	executions: number;
-	activeWorkflows: number;
-}
+type CloudPlanData = Cloud.PlanData & { metadata: Cloud.PlanMetadata; usage: Cloud.PlanUsage };
 
 const props = defineProps<{ cloudPlanData: CloudPlanData }>();
 

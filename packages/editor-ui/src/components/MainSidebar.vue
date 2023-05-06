@@ -117,7 +117,7 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanData, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { Cloud, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -343,7 +343,7 @@ export default mixins(
 		userIsTrialing(): boolean {
 			return this.usersStore.userIsTrialing;
 		},
-		currentPlanData(): CloudPlanData {
+		currentPlanData(): Cloud.PlanData {
 			return this.usersStore.currentPlanData;
 		},
 	},
