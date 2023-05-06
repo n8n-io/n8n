@@ -1,5 +1,4 @@
 export interface ILead {
-	// tslint:disable-next-line: no-any
 	[key: string]: any;
 	Company?: string;
 	LastName?: string;
@@ -25,4 +24,5 @@ export interface ILead {
 	IsUnreadByOwner?: boolean;
 	NumberOfEmployees?: number;
 	MobilePhone?: string;
+	HasOptedOutOfEmail?: boolean;
 }

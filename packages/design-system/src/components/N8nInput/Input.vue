@@ -24,17 +24,18 @@
 </template>
 
 <script lang="ts">
-import ElInput from 'element-ui/lib/input';
-import Vue from 'vue';
+import { Input as ElInput } from 'element-ui';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+type InputRef = InstanceType<typeof ElInput>;
+
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
-		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElInput,
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
@@ -93,7 +94,7 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 
@@ -106,7 +107,7 @@ export default Vue.extend({
 			inputElement.focus();
 		},
 		blur() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 
@@ -119,7 +120,7 @@ export default Vue.extend({
 			inputElement.blur();
 		},
 		select() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 

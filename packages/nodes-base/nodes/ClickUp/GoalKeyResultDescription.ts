@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const goalKeyResultOperations: INodeProperties[] = [
 	{
@@ -218,9 +218,6 @@ export const goalKeyResultFields: INodeProperties[] = [
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

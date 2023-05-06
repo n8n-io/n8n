@@ -1,7 +1,7 @@
-@use "./common/var";
-@use "mixins/mixins";
-@use "mixins/_button";
-@use "mixins/utils";
+@use './common/var';
+@use 'mixins/mixins';
+@use 'mixins/_button';
+@use 'mixins/utils';
 
 @include mixins.b(checkbox) {
 	color: var.$checkbox-font-color;
@@ -96,7 +96,7 @@
 		white-space: nowrap;
 		cursor: pointer;
 		outline: none;
-		display: inline-block;
+		display: inline-flex;
 		line-height: 1;
 		position: relative;
 		vertical-align: middle;
@@ -190,6 +190,7 @@
 		position: relative;
 		border: var.$checkbox-input-border;
 		border-radius: var.$checkbox-border-radius;
+		margin-top: var(--spacing-5xs);
 		box-sizing: border-box;
 		width: var.$checkbox-input-width;
 		height: var.$checkbox-input-height;

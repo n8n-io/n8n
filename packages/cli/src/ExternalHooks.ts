@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
-// eslint-disable-next-line import/no-cycle
-import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
+import { Service } from 'typedi';
+import * as Db from '@/Db';
+import type {
+	IExternalHooksClass,
+	IExternalHooksFileData,
+	IExternalHooksFunctions,
+} from '@/Interfaces';
 
-import config from '../config';
+import config from '@/config';
 
-class ExternalHooksClass implements IExternalHooksClass {
+@Service()
+export class ExternalHooks implements IExternalHooksClass {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};
@@ -98,15 +104,4 @@ class ExternalHooksClass implements IExternalHooksClass {
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
 	}
-}
-
-let externalHooksInstance: ExternalHooksClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function ExternalHooks(): ExternalHooksClass {
-	if (externalHooksInstance === undefined) {
-		externalHooksInstance = new ExternalHooksClass();
-	}
-
-	return externalHooksInstance;
 }

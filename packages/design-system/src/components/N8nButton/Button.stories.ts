@@ -1,7 +1,6 @@
-/* tslint:disable:variable-name */
 import N8nButton from './Button.vue';
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from "@storybook/vue";
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Button',
@@ -59,22 +58,6 @@ const AllSizesTemplate: StoryFn = (args, { argTypes }) => ({
 		<n8n-button v-bind="$props" size="small" @click="onClick" />
 		<n8n-button v-bind="$props" :loading="true" @click="onClick" />
 		<n8n-button v-bind="$props" :disabled="true" @click="onClick" />
-	</div>`,
-	methods,
-});
-
-const AllColorsTemplate: StoryFn = (args, { argTypes }) => ({
-	props: Object.keys(argTypes),
-	components: {
-		N8nButton,
-	},
-	template: `<div>
-		<n8n-button v-bind="$props" type="primary" @click="onClick" />
-		<n8n-button v-bind="$props" type="secondary" @click="onClick" />
-		<n8n-button v-bind="$props" type="tertiary" @click="onClick" />
-		<n8n-button v-bind="$props" type="success" @click="onClick" />
-		<n8n-button v-bind="$props" type="warning" @click="onClick" />
-		<n8n-button v-bind="$props" type="danger" @click="onClick" />
 	</div>`,
 	methods,
 });
@@ -170,4 +153,3 @@ Square.args = {
 	label: '48',
 	square: true,
 };
-

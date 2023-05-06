@@ -1,4 +1,4 @@
-import {
+import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -19,7 +19,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Venafi events occur',
 		defaults: {
-			name: 'Venafi TLS Protect Cloud​ Trigger',
+			name: 'Venafi TLS Protect Cloud Trigger',
 		},
 		credentials: [
 			{
@@ -139,7 +139,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					},
 				};
 
-				const responseData = await venafiApiRequest.call(this, 'POST', `/v1/connectors`, body);
+				const responseData = await venafiApiRequest.call(this, 'POST', '/v1/connectors', body);
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
@@ -162,7 +162,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 

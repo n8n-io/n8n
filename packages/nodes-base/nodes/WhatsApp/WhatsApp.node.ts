@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { messageFields, messageTypeFields } from './MessagesDescription';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
@@ -13,7 +13,7 @@ export class WhatsApp implements INodeType {
 		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
 		description: 'Access WhatsApp API',
 		defaults: {
-			name: 'WhatsApp',
+			name: 'WhatsApp Business Cloud',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

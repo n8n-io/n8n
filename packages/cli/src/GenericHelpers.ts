@@ -1,49 +1,31 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import express from 'express';
-import { join as pathJoin } from 'path';
-import { readFile as fsReadFile } from 'fs/promises';
-import {
+import type express from 'express';
+import type {
 	ExecutionError,
-	IDataObject,
 	INode,
 	IRunExecutionData,
-	jsonParse,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
-import config from '../config';
-
-// eslint-disable-next-line import/no-cycle
-import {
-	Db,
-	ICredentialsDb,
-	IExecutionDb,
-	IExecutionFlattedDb,
-	IPackageVersions,
-	IWorkflowDb,
-	ResponseHelper,
-	IN8nNodePackageJson,
-} from '.';
-// eslint-disable-next-line import/order
 import { Like } from 'typeorm';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { TagEntity } from './databases/entities/TagEntity';
-import { User } from './databases/entities/User';
-
-let versionCache: IPackageVersions | undefined;
+import config from '@/config';
+import * as Db from '@/Db';
+import type { ICredentialsDb, IExecutionDb, IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { TagEntity } from '@db/entities/TagEntity';
+import type { User } from '@db/entities/User';
+import type { UserUpdatePayload } from '@/requests';
 
 /**
  * Returns the base URL n8n is reachable from
- *
  */
 export function getBaseUrl(): string {
 	const protocol = config.getEnv('protocol');
@@ -59,93 +41,9 @@ export function getBaseUrl(): string {
 
 /**
  * Returns the session id if one is set
- *
  */
 export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
-}
-
-/**
- * Returns information which version of the packages are installed
- *
- */
-export async function getVersions(): Promise<IPackageVersions> {
-	if (versionCache !== undefined) {
-		return versionCache;
-	}
-
-	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8');
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const packageData = jsonParse<IN8nNodePackageJson>(packageFile);
-
-	versionCache = {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		cli: packageData.version,
-	};
-
-	return versionCache;
-}
-
-/**
- * Extracts configuration schema for key
- *
- */
-function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
-	const configKeyParts = configKey.split('.');
-
-	// eslint-disable-next-line no-restricted-syntax
-	for (const key of configKeyParts) {
-		if (configSchema[key] === undefined) {
-			throw new Error(`Key "${key}" of ConfigKey "${configKey}" does not exist`);
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		} else if ((configSchema[key]! as IDataObject)._cvtProperties === undefined) {
-			configSchema = configSchema[key] as IDataObject;
-		} else {
-			configSchema = (configSchema[key] as IDataObject)._cvtProperties as IDataObject;
-		}
-	}
-	return configSchema;
-}
-
-/**
- * Gets value from config with support for "_FILE" environment variables
- *
- * @param {string} configKey The key of the config data to get
- */
-export async function getConfigValue(
-	configKey: string,
-): Promise<string | boolean | number | undefined> {
-	// Get the environment variable
-	const configSchema = config.getSchema();
-	// @ts-ignore
-	const currentSchema = extractSchemaForKey(configKey, configSchema._cvtProperties as IDataObject);
-	// Check if environment variable is defined for config key
-	if (currentSchema.env === undefined) {
-		// No environment variable defined, so return value from config
-		// @ts-ignore
-		return config.getEnv(configKey);
-	}
-
-	// Check if special file environment variable exists
-	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
-	if (fileEnvironmentVariable === undefined) {
-		// Does not exist, so return value from config
-		// @ts-ignore
-		return config.getEnv(configKey);
-	}
-
-	let data;
-	try {
-		data = await fsReadFile(fileEnvironmentVariable, 'utf8');
-	} catch (error) {
-		if (error.code === 'ENOENT') {
-			throw new Error(`The file "${fileEnvironmentVariable}" could not be found.`);
-		}
-
-		throw error;
-	}
-
-	return data;
 }
 
 /**
@@ -202,7 +100,7 @@ export async function generateUniqueName(
 }
 
 export async function validateEntity(
-	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User | UserUpdatePayload,
 ): Promise<void> {
 	const errors = await validate(entity);
 
@@ -215,7 +113,7 @@ export async function validateEntity(
 		.join(' | ');
 
 	if (errorMessages) {
-		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
+		throw new ResponseHelper.BadRequestError(errorMessages);
 	}
 }
 
@@ -293,6 +191,7 @@ export async function createErrorExecution(
 		workflowData,
 		workflowId: workflow.id,
 		stoppedAt: new Date(),
+		status: 'new',
 	};
 
 	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);

@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
+import { START_NODES } from './constants';
+
+/**
+ * Returns if the given id is a valid workflow id
+ */
+export function isWorkflowIdValid(id: string | null | undefined): boolean {
+	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
+}
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
@@ -10,7 +18,7 @@ function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 
 		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
 
-		const startNode = nodes.find((node) => node.type === 'n8n-nodes-base.start');
+		const startNode = nodes.find((node) => START_NODES.includes(node.type));
 
 		if (startNode) return startNode;
 
@@ -41,3 +49,40 @@ export const alphabetizeKeys = (obj: INode) =>
 			}),
 			{},
 		);
+
+export const separate = <T>(array: T[], test: (element: T) => boolean) => {
+	const pass: T[] = [];
+	const fail: T[] = [];
+
+	array.forEach((i) => (test(i) ? pass : fail).push(i));
+
+	return [pass, fail];
+};
+
+export const webhookNotFoundErrorMessage = (
+	path: string,
+	httpMethod?: string,
+	webhookMethods?: string[],
+) => {
+	let webhookPath = path;
+
+	if (httpMethod) {
+		webhookPath = `${httpMethod} ${webhookPath}`;
+	}
+
+	if (webhookMethods?.length && httpMethod) {
+		let methods = '';
+
+		if (webhookMethods.length === 1) {
+			methods = webhookMethods[0];
+		} else {
+			const lastMethod = webhookMethods.pop();
+
+			methods = `${webhookMethods.join(', ')} or ${lastMethod as string}`;
+		}
+
+		return `This webhook is not registered for ${httpMethod} requests. Did you mean to make a ${methods} request?`;
+	} else {
+		return `The requested webhook "${webhookPath}" is not registered.`;
+	}
+};

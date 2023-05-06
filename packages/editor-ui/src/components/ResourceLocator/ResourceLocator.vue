@@ -1,7 +1,11 @@
 <template>
-	<div class="resource-locator" ref="container">
+	<div
+		class="resource-locator"
+		ref="container"
+		:data-test-id="`resource-locator-${parameter.name}`"
+	>
 		<resource-locator-dropdown
-			:value="value ? value.value: ''"
+			:value="value ? value.value : ''"
 			:show="showResourceDropdown"
 			:filterable="isSearchable"
 			:filterRequired="requiresSearchFilter"
@@ -18,14 +22,17 @@
 			ref="dropdown"
 		>
 			<template #error>
-				<div :class="$style.error">
+				<div :class="$style.error" data-test-id="rlc-error-container">
 					<n8n-text color="text-dark" align="center" tag="div">
 						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
-					<n8n-text size="small" color="text-base" v-if="hasCredential">
+					<n8n-text size="small" color="text-base" v-if="hasCredential || credentialsNotSet">
 						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
-						<a @click="openCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2')
+						<a v-if="credentialsNotSet" @click="createNewCredential">{{
+							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
+						}}</a>
+						<a v-else-if="hasCredential" @click="openCredential">{{
+							$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
 						}}</a>
 					</n8n-text>
 				</div>
@@ -44,6 +51,7 @@
 						:disabled="isReadOnly"
 						@change="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+						data-test-id="rlc-mode-selector"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -61,15 +69,15 @@
 					</n8n-select>
 				</div>
 
-				<div :class="$style.inputContainer">
+				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
 					<draggable-target
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="4"
+						:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
 						@drop="onDrop"
 					>
-						<template v-slot="{ droppable, activeDrop }">
+						<template #default="{ droppable, activeDrop }">
 							<div
 								:class="{
 									[$style.listModeInputContainer]: isListMode,
@@ -78,19 +86,18 @@
 								}"
 								@keydown.stop="onKeyDown"
 							>
-								<n8n-input
-									v-if="isValueExpression || droppable || forceShowExpression"
-									type="text"
-									:size="inputSize"
+								<ExpressionParameterInput
+									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
-									:title="displayTitle"
-									:disabled="isReadOnly"
-									@keydown.stop
+									:path="path"
+									isForRecordLocator
+									@valueChanged="onInputChange"
+									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
 								/>
 								<n8n-input
 									v-else
-									:class="{[$style.selectInput]: isListMode}"
+									:class="{ [$style.selectInput]: isListMode }"
 									:size="inputSize"
 									:value="valueToDisplay"
 									:disabled="isReadOnly"
@@ -99,14 +106,12 @@
 									:placeholder="inputPlaceholder"
 									type="text"
 									ref="input"
+									data-test-id="rlc-input"
 									@input="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
-									<div
-										v-if="isListMode"
-										slot="suffix"
-									>
+									<template v-if="isListMode" #suffix>
 										<i
 											:class="{
 												['el-input__icon']: true,
@@ -114,8 +119,8 @@
 												[$style.selectIcon]: true,
 												[$style.isReverse]: showResourceDropdown,
 											}"
-										></i>
-									</div>
+										/>
+									</template>
 								</n8n-input>
 							</div>
 						</template>
@@ -123,16 +128,11 @@
 					<parameter-issues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
+						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<n8n-link
-							theme="text"
-							@click.stop="openResource(urlValue)"
-							>
-							<font-awesome-icon
-								icon="external-link-alt"
-								:title="getLinkAlt(valueToDisplay)"
-							/>
+						<n8n-link theme="text" @click.stop="openResource(urlValue)">
+							<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
 						</n8n-link>
 					</div>
 				</div>
@@ -144,34 +144,42 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import {
+import type {
 	ILoadOptions,
 	INode,
 	INodeCredentials,
 	INodeListSearchItems,
-	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import {
-	hasOnlyListMode,
-} from './helpers';
-
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
-import Vue, { PropType } from 'vue';
-import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
-import { debounceHelper } from '../mixins/debounce';
+import type { PropType } from 'vue';
+import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import { debounceHelper } from '@/mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
-import { workflowHelpers } from '../mixins/workflowHelpers';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { getAppNameFromNodeName } from '../helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import {
+	getAppNameFromNodeName,
+	isResourceLocatorValue,
+	hasOnlyListMode,
+	getMainAuthField,
+} from '@/utils';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
+type ResourceLocatorDropdownRef = InstanceType<typeof ResourceLocatorDropdown>;
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -185,6 +193,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
+		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
@@ -194,20 +203,24 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			required: true,
 		},
 		value: {
-			type: [Object, String] as PropType<INodeParameterResourceLocator | NodeParameterValue | undefined>,
+			type: [Object, String] as PropType<
+				INodeParameterResourceLocator | NodeParameterValue | undefined
+			>,
 		},
 		inputSize: {
 			type: String,
 			default: 'small',
-			validator: (size) => {
+			validator: (size: string) => {
 				return ['mini', 'small', 'medium', 'large', 'xlarge'].includes(size);
 			},
 		},
 		parameterIssues: {
 			type: Array as PropType<string[]>,
-			default() {
-				return [];
-			},
+			default: () => [],
+		},
+		dependentParametersValues: {
+			type: [String, null] as PropType<string | null>,
+			default: null,
 		},
 		displayTitle: {
 			type: String,
@@ -248,7 +261,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			mainPanelMutationSubscription: () => {},
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
@@ -257,21 +269,23 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
+		...mapStores(useNodeTypesStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
 		appName(): string {
 			if (!this.node) {
 				return '';
 			}
 
-			const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type);
-			return getAppNameFromNodeName(nodeType.displayName);
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
+			return getAppNameFromNodeName(nodeType?.displayName || '');
 		},
 		selectedMode(): string {
-			if (typeof this.value !== 'object') { // legacy mode
+			if (typeof this.value !== 'object') {
+				// legacy mode
 				return '';
 			}
 
 			if (!this.value) {
-				return this.parameter.modes? this.parameter.modes[0].name : '';
+				return this.parameter.modes ? this.parameter.modes[0].name : '';
 			}
 
 			return this.value.mode;
@@ -280,11 +294,22 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.selectedMode === 'list';
 		},
 		hasCredential(): boolean {
-			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
+			const node = this.ndvStore.activeNode;
 			if (!node) {
 				return false;
 			}
 			return !!(node && node.credentials && Object.keys(node.credentials).length === 1);
+		},
+		credentialsNotSet(): boolean {
+			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (nodeType) {
+				const usesCredentials =
+					nodeType.credentials !== undefined && nodeType.credentials.length > 0;
+				if (usesCredentials && !this.node?.credentials) {
+					return true;
+				}
+			}
+			return false;
 		},
 		inputPlaceholder(): string {
 			if (this.currentMode.placeholder) {
@@ -313,7 +338,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.isListMode) {
-				return this.value? (this.value.cachedResultName || this.value.value) : '';
+				return this.value ? this.value.cachedResultName || this.value.value : '';
 			}
 
 			return this.value ? this.value.value : '';
@@ -324,7 +349,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.selectedMode === 'url') {
-				if (this.isValueExpression && typeof this.expressionComputedValue === 'string' && this.expressionComputedValue.startsWith('http')) {
+				if (
+					this.isValueExpression &&
+					typeof this.expressionComputedValue === 'string' &&
+					this.expressionComputedValue.startsWith('http')
+				) {
 					return this.expressionComputedValue;
 				}
 
@@ -334,7 +363,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.currentMode.url) {
-				const value = this.isValueExpression? this.expressionComputedValue : this.valueToDisplay;
+				const value = this.isValueExpression ? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
 					const resolved = this.resolveExpression(expression);
@@ -349,7 +378,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			parameters: INodeParameters;
 			credentials: INodeCredentials | undefined;
 			filter: string;
-			} {
+		} {
 			return {
 				parameters: this.node.parameters,
 				credentials: this.node.credentials,
@@ -357,14 +386,17 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			};
 		},
 		currentRequestKey(): string {
-			const cacheKeys = {...this.currentRequestParams};
-			cacheKeys.parameters = Object.keys(this.node ? this.node.parameters : {}).reduce((accu: INodeParameters, param) => {
-				if (param !== this.parameter.name && this.node && this.node.parameters) {
-					accu[param] = this.node.parameters[param];
-				}
+			const cacheKeys = { ...this.currentRequestParams };
+			cacheKeys.parameters = Object.keys(this.node ? this.node.parameters : {}).reduce(
+				(accu: INodeParameters, param) => {
+					if (param !== this.parameter.name && this.node && this.node.parameters) {
+						accu[param] = this.node.parameters[param];
+					}
 
-				return accu;
-			}, {});
+					return accu;
+				},
+				{},
+			);
 			return stringify(cacheKeys);
 		},
 		currentResponse(): IResourceLocatorQuery | null {
@@ -373,12 +405,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
 			const results = this.currentResponse ? this.currentResponse.results : [];
 
-			return results.map((result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
-				...result,
-				...(
-					(result.name && result.url)? { linkAlt: this.getLinkAlt(result.name) } : {}
-				),
-			}));
+			return results.map(
+				(result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
+					...result,
+					...(result.name && result.url ? { linkAlt: this.getLinkAlt(result.name) } : {}),
+				}),
+			);
 		},
 		currentQueryHasMore(): boolean {
 			return !!(this.currentResponse && this.currentResponse.nextPageToken);
@@ -405,9 +437,9 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	watch: {
 		currentQueryError(curr: boolean, prev: boolean) {
 			if (this.showResourceDropdown && curr && !prev) {
-				const input = this.$refs.input;
-				if (input) {
-					(input as HTMLElement).focus();
+				const inputRef = this.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}
 		},
@@ -417,46 +449,66 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 		},
 		currentMode(mode: INodePropertyMode) {
-			if (mode.extractValue && mode.extractValue.regex && isResourceLocatorValue(this.value) && this.value.__regex !== mode.extractValue.regex) {
-				this.$emit('input', {...this.value, __regex: mode.extractValue.regex});
+			if (
+				mode.extractValue &&
+				mode.extractValue.regex &&
+				isResourceLocatorValue(this.value) &&
+				this.value.__regex !== mode.extractValue.regex
+			) {
+				this.$emit('input', { ...this.value, __regex: mode.extractValue.regex });
+			}
+		},
+		dependentParametersValues() {
+			// Reset value if dependent parameters change
+			if (this.value && isResourceLocatorValue(this.value) && this.value.value !== '') {
+				this.$emit('input', {
+					...this.value,
+					cachedResultName: '',
+					cachedResultUrl: '',
+					value: '',
+				});
 			}
 		},
 	},
 	mounted() {
 		this.$on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
-		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+		useNDVStore().$subscribe((mutation, state) => {
+			// Update the width when main panel dimension change
+			this.setWidth();
+		});
 		setTimeout(() => {
 			this.setWidth();
 		}, 0);
 	},
 	beforeDestroy() {
-		// Unsubscribe
-		this.mainPanelMutationSubscription();
 		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
 		setWidth() {
-			this.width = (this.$refs.container as HTMLElement).offsetWidth;
-		},
-		setWidthOnMainPanelResize(mutation: { type: string }) {
-			// Update the width when main panel dimension change
-			if(mutation.type === 'ndv/setMainPanelDimensions') this.setWidth();
+			const containerRef = this.$refs.container as HTMLElement | undefined;
+			if (containerRef) {
+				this.width = containerRef?.offsetWidth;
+			}
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
-				return this.$locale.baseText('resourceLocator.openSpecificResource', { interpolate: { entity, appName: this.appName } });
+				return this.$locale.baseText('resourceLocator.openSpecificResource', {
+					interpolate: { entity, appName: this.appName },
+				});
 			}
-			return this.$locale.baseText('resourceLocator.openResource', { interpolate: { appName: this.appName } });
+			return this.$locale.baseText('resourceLocator.openResource', {
+				interpolate: { appName: this.appName },
+			});
 		},
 		refreshList() {
 			this.cachedResponses = {};
 			this.trackEvent('User refreshed resource locator list');
 		},
 		onKeyDown(e: MouseEvent) {
-			const dropdown = this.$refs.dropdown;
-			if (dropdown && this.showResourceDropdown && !this.isSearchable) {
-				(dropdown as Vue).$emit('keyDown', e);
+			const dropdownRef = this.$refs.dropdown as ResourceLocatorDropdownRef | undefined;
+			if (dropdownRef && this.showResourceDropdown && !this.isSearchable) {
+				dropdownRef.$emit('keyDown', e);
 			}
 		},
 		openResource(url: string) {
@@ -480,7 +532,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return parameter.typeOptions[argumentName];
 		},
 		openCredential(): void {
-			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
+			const node = this.ndvStore.activeNode;
 			if (!node || !node.credentials) {
 				return;
 			}
@@ -489,7 +541,19 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
-			this.$store.dispatch('ui/openExistingCredential', { id });
+			this.uiStore.openExistingCredential(id);
+		},
+		createNewCredential(): void {
+			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!nodeType) {
+				return;
+			}
+			const mainAuthType = getMainAuthField(nodeType);
+			const showAuthSelector =
+				mainAuthType !== null &&
+				Array.isArray(mainAuthType.options) &&
+				mainAuthType.options?.length > 0;
+			this.uiStore.openNewCredential('', showAuthSelector);
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -531,10 +595,10 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
 		},
-		trackEvent(event: string, params?: {[key: string]: string}): void {
+		trackEvent(event: string, params?: { [key: string]: string }): void {
 			this.$telemetry.track(event, {
-				instance_id: this.$store.getters.instanceId,
-				workflow_id: this.$store.getters.workflowId,
+				instance_id: this.rootStore.instanceId,
+				workflow_id: this.workflowsStore.workflowId,
 				node_type: this.node && this.node.type,
 				resource: this.node && this.node.parameters && this.node.parameters.resource,
 				operation: this.node && this.node.parameters && this.node.parameters.operation,
@@ -618,10 +682,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					...(paginationToken ? { paginationToken } : {}),
 				};
 
-				const response: INodeListSearchResult = await this.$store.dispatch(
-					'nodeTypes/getResourceLocatorResults',
-					requestParams,
-				);
+				const response = await this.nodeTypesStore.getResourceLocatorResults(requestParams);
 
 				this.setResponse(paramsKey, {
 					results: (cachedResponse ? cachedResponse.results : []).concat(response.results),
@@ -657,7 +718,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('input', { __rl: true, value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
+					this.$emit('input', {
+						__rl: true,
+						value: this.value && typeof this.value === 'object' ? this.value.value : '',
+						mode: mode.name,
+					});
 				}
 			}
 		},
@@ -674,6 +739,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			if (!this.isSearchable || this.currentQueryError) {
 				this.showResourceDropdown = false;
 			}
+			this.$emit('blur');
 		},
 	},
 });
@@ -712,9 +778,8 @@ $--mode-selector-width: 92px;
 		align-items: center;
 		width: 100%;
 
-		div:first-child {
-			display: flex;
-			flex-grow: 1;
+		> div {
+			width: 100%;
 		}
 	}
 
@@ -734,7 +799,6 @@ $--mode-selector-width: 92px;
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
 	--input-border-style: dashed;
 }
 
@@ -779,6 +843,11 @@ $--mode-selector-width: 92px;
 }
 
 .openResourceLink {
+	width: 25px !important;
 	margin-left: var(--spacing-2xs);
+}
+
+.parameter-issues {
+	width: 25px !important;
 }
 </style>

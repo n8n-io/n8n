@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const mailOperations: INodeProperties[] = [
 	{
@@ -128,9 +128,6 @@ export const mailFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: 'Message body of the email to send',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['mail'],

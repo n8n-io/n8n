@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-description-boolean-without-whether */
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const certificateOperations: INodeProperties[] = [
 	{
@@ -623,8 +623,7 @@ export const certificateFields: INodeProperties[] = [
 				resource: ['certificate'],
 			},
 		},
-		description:
-			'The name of the input field containing the binary file data to be uploaded',
+		description: 'The name of the input field containing the binary file data to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',

@@ -1,5 +1,8 @@
 <template>
-	<div role="radiogroup" :class="{'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled}">
+	<div
+		role="radiogroup"
+		:class="{ 'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled }"
+	>
 		<RadioButton
 			v-for="option in options"
 			:key="option.value"
@@ -7,7 +10,7 @@
 			:active="value === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click="(e) => onClick(option, e)"
+			@click="() => onClick(option)"
 		/>
 	</div>
 </template>
@@ -15,15 +18,24 @@
 <script lang="ts">
 import RadioButton from './RadioButton.vue';
 
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export interface RadioOption {
+	label: string;
+	value: string;
+	disabled?: boolean;
+}
+
+export default defineComponent({
 	name: 'n8n-radio-buttons',
 	props: {
 		value: {
 			type: String,
 		},
 		options: {
+			type: Array as PropType<RadioOption[]>,
+			default: (): RadioOption[] => [],
 		},
 		size: {
 			type: String,
@@ -36,7 +48,7 @@ export default Vue.extend({
 		RadioButton,
 	},
 	methods: {
-		onClick(option: {label: string, value: string, disabled?: boolean}) {
+		onClick(option: { label: string; value: string; disabled?: boolean }) {
 			if (this.disabled || option.disabled) {
 				return;
 			}
@@ -47,7 +59,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-
 .radioGroup {
 	display: inline-flex;
 	line-height: 1;
@@ -61,6 +72,4 @@ export default Vue.extend({
 .disabled {
 	cursor: not-allowed;
 }
-
 </style>
-

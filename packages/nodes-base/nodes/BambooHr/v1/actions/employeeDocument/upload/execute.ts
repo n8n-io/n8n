@@ -1,6 +1,4 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
-
-import { IBinaryData, IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -8,34 +6,12 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	let body: IDataObject = {};
 	const requestMethod = 'POST';
 
-	const items = this.getInputData();
-
-	const category = this.getNodeParameter('categoryId', index) as string;
-	const options = this.getNodeParameter('options', index) as IDataObject;
-
-	if (items[index].binary === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-			itemIndex: index,
-		});
-	}
-
-	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
-
-	if (items[index]!.binary![propertyNameUpload] === undefined) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No binary data property "${propertyNameUpload}" does not exists on item!`,
-			{ itemIndex: index },
-		);
-	}
-
-	const item = items[index].binary as IBinaryKeyData;
-
-	const binaryData = item[propertyNameUpload] as IBinaryData;
-
-	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, propertyNameUpload);
-
 	const id: string = this.getNodeParameter('employeeId', index) as string;
+	const category = this.getNodeParameter('categoryId', index) as string;
+	const options = this.getNodeParameter('options', index);
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
+	const { fileName, mimeType } = this.helpers.assertBinaryData(index, binaryPropertyName);
+	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
 	body = {
 		json: false,
@@ -43,11 +19,11 @@ export async function upload(this: IExecuteFunctions, index: number) {
 			file: {
 				value: binaryDataBuffer,
 				options: {
-					filename: binaryData.fileName,
-					contentType: binaryData.mimeType,
+					filename: fileName,
+					contentType: mimeType,
 				},
 			},
-			fileName: binaryData.fileName,
+			fileName,
 			category,
 		},
 		resolveWithFullResponse: true,

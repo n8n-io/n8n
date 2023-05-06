@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class QuestDb implements ICredentialType {
 	name = 'questDb';
+
 	displayName = 'QuestDB';
+
 	documentationUrl = 'questDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

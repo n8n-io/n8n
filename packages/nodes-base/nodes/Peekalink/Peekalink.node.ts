@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { peekalinkApiRequest } from './GenericFunctions';
 
@@ -61,9 +65,8 @@ export class Peekalink implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -73,7 +76,7 @@ export class Peekalink implements INodeType {
 						link: url,
 					};
 
-					responseData = await peekalinkApiRequest.call(this, 'POST', `/is-available/`, body);
+					responseData = await peekalinkApiRequest.call(this, 'POST', '/is-available/', body);
 				}
 				if (operation === 'preview') {
 					const url = this.getNodeParameter('url', i) as string;
@@ -81,7 +84,7 @@ export class Peekalink implements INodeType {
 						link: url,
 					};
 
-					responseData = await peekalinkApiRequest.call(this, 'POST', `/`, body);
+					responseData = await peekalinkApiRequest.call(this, 'POST', '/', body);
 				}
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);

@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ZammadBasicAuthApi implements ICredentialType {
 	name = 'zammadBasicAuthApi';
+
 	displayName = 'Zammad Basic Auth API';
+
 	documentationUrl = 'zammad';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Base URL',

@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class LinkedInOAuth2Api implements ICredentialType {
 	name = 'linkedInOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'LinkedIn OAuth2 API';
+
 	documentationUrl = 'linkedIn';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

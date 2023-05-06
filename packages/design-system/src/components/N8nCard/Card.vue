@@ -1,29 +1,29 @@
 <template>
 	<div :class="classes" v-on="$listeners">
 		<div :class="$style.icon" v-if="$slots.prepend">
-			<slot name="prepend"/>
+			<slot name="prepend" />
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.header" v-if="$slots.header">
-				<slot name="header"/>
+				<slot name="header" />
 			</div>
 			<div :class="$style.body" v-if="$slots.default">
-				<slot/>
+				<slot />
 			</div>
 			<div :class="$style.footer" v-if="$slots.footer">
-				<slot name="footer"/>
+				<slot name="footer" />
 			</div>
 		</div>
 		<div :class="$style.actions" v-if="$slots.append">
-			<slot name="append"/>
+			<slot name="append" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-card',
 	inheritAttrs: true,
 	props: {
@@ -90,15 +90,15 @@ export default Vue.extend({
 }
 
 .hoverable {
-  cursor: pointer;
-  transition-property: border, color;
-  transition-duration: 0.3s;
-  transition-timing-function: ease;
+	cursor: pointer;
+	transition-property: border, color;
+	transition-duration: 0.3s;
+	transition-timing-function: ease;
 
-  &:hover,
-  &:focus {
-	color: var(--color-primary);
-	border-color: var(--color-primary);
-  }
+	&:hover,
+	&:focus {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
+	}
 }
 </style>

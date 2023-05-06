@@ -1,8 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-
-import { apiRequest, apiRequestAllItems } from '../../../transport';
+import { apiRequest } from '../../../transport';
 
 export async function restore(
 	this: IExecuteFunctions,
@@ -17,5 +15,5 @@ export async function restore(
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

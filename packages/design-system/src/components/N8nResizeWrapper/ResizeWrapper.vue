@@ -4,7 +4,7 @@
 			v-for="direction in enabledDirections"
 			:key="direction"
 			:data-dir="direction"
-			:class="[$style.resizer, $style[direction]]"
+			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
 			@mousedown="resizerMove"
 		/>
 		<slot></slot>
@@ -13,17 +13,16 @@
 
 <script lang="ts">
 /* eslint-disable @typescript-eslint/unbound-method */
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
 	const n1 = divisor * q;
 
-	const n2 = (value * divisor) > 0 ?
-		(divisor * (q + 1)) : (divisor * (q - 1));
+	const n2 = value * divisor > 0 ? divisor * (q + 1) : divisor * (q - 1);
 
-	if (Math.abs(value - n1) < Math.abs(value - n2))
-		return n1;
+	if (Math.abs(value - n1) < Math.abs(value - n2)) return n1;
 
 	return n2;
 }
@@ -35,7 +34,7 @@ function getSize(min: number, virtual: number, gridSize: number): number {
 	}
 
 	return min;
-};
+}
 
 const directionsCursorMaps: { [key: string]: string } = {
 	right: 'ew-resize',
@@ -43,12 +42,12 @@ const directionsCursorMaps: { [key: string]: string } = {
 	bottom: 'ns-resize',
 	left: 'ew-resize',
 	topLeft: 'nw-resize',
-	topRight : 'ne-resize',
+	topRight: 'ne-resize',
 	bottomLeft: 'sw-resize',
 	bottomRight: 'se-resize',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-resize',
 	props: {
 		isResizingEnabled: {
@@ -57,15 +56,19 @@ export default Vue.extend({
 		},
 		height: {
 			type: Number,
+			default: 0,
 		},
 		width: {
 			type: Number,
+			default: 0,
 		},
 		minHeight: {
 			type: Number,
+			default: 0,
 		},
 		minWidth: {
 			type: Number,
+			default: 0,
 		},
 		scale: {
 			type: Number,
@@ -73,10 +76,11 @@ export default Vue.extend({
 		},
 		gridSize: {
 			type: Number,
+			default: 20,
 		},
 		supportedDirections: {
-			type: Array,
-			default: () => [],
+			type: Array as PropType<string[]>,
+			default: (): string[] => [],
 		},
 	},
 	data() {
@@ -92,11 +96,11 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		enabledDirections() {
+		enabledDirections(): string[] {
 			const availableDirections = Object.keys(directionsCursorMaps);
 
-			if(!this.isResizingEnabled) return [];
-			if(this.supportedDirections.length === 0) return availableDirections;
+			if (!this.isResizingEnabled) return [];
+			if (this.supportedDirections.length === 0) return availableDirections;
 
 			return this.supportedDirections;
 		},
@@ -156,7 +160,7 @@ export default Vue.extend({
 			const width = getSize(this.minWidth, this.vWidth, this.gridSize);
 
 			const dX = left && width !== this.width ? -1 * (width - this.width) : 0;
-			const dY = top && height !== this.height ? -1 * (height - this.height): 0;
+			const dY = top && height !== this.height ? -1 * (height - this.height) : 0;
 			const x = event.x;
 			const y = event.y;
 			const direction = this.dir;
@@ -204,7 +208,7 @@ export default Vue.extend({
 	height: 12px;
 	top: -2px;
 	left: -2px;
-	cursor:  ns-resize;
+	cursor: ns-resize;
 }
 
 .bottom {

@@ -8,7 +8,7 @@ const prettier = path.resolve('node_modules', 'prettier', 'bin-prettier.js');
 
 if (!fs.existsSync(prettier)) {
 	throw new Error(
-		[`Prettier not found at path: ${prettier}`, 'Please run `npm i` first'].join('\n'),
+		[`Prettier not found at path: ${prettier}`, 'Please run `pnpm i` first'].join('\n'),
 	);
 }
 
@@ -16,7 +16,7 @@ const config = path.resolve('.prettierrc.js');
 const ignore = path.resolve('.prettierignore');
 
 const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages'];
-const EXTENSIONS_TO_FORMAT = ['.md', '.yml', '.js', '.json'];
+const EXTENSIONS_TO_FORMAT = ['.md', '.yml', '.js', '.json', '.ts'];
 
 const isDir = (path) => fs.lstatSync(path).isDirectory();
 

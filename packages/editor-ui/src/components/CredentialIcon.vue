@@ -7,37 +7,39 @@
 </template>
 
 <script lang="ts">
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import Vue from 'vue';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		credentialTypeName: {
 			type: String,
 		},
 	},
 	computed: {
+		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
 
 		filePath(): string | null {
-			if (!this.credentialWithIcon || !this.credentialWithIcon.icon || !this.credentialWithIcon.icon.startsWith('file:')) {
+			const iconUrl = this.credentialWithIcon?.iconUrl;
+			if (!iconUrl) {
 				return null;
 			}
-
-			const restUrl = this.$store.getters.getRestUrl;
-
-			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
+			return this.rootStore.getBaseUrl + iconUrl;
 		},
-		relevantNode(): INodeTypeDescription | null	 {
-			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
+
+		relevantNode(): INodeTypeDescription | null {
+			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
-
-				return this.$store.getters['nodeTypes/getNodeType'](nodeType);
+				return this.nodeTypesStore.getNodeType(nodeType);
 			}
-
-			const nodesWithAccess = this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 
 			if (nodesWithAccess.length) {
 				return nodesWithAccess[0];
@@ -47,21 +49,28 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getCredentialWithIcon(name: string): ICredentialType | null {
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](name);
+		getCredentialWithIcon(name: string | null): ICredentialType | null {
+			if (!name) {
+				return null;
+			}
+
+			const type = this.credentialsStore.getCredentialTypeByName(name);
 
 			if (!type) {
 				return null;
 			}
 
-			if (type.icon) {
+			if (type.icon || type.iconUrl) {
 				return type;
 			}
 
 			if (type.extends) {
-				return type.extends.reduce((accu: string | null, type: string) => {
-					return accu || this.getCredentialWithIcon(type);
-				}, null);
+				let parentCred = null;
+				type.extends.forEach((name) => {
+					parentCred = this.getCredentialWithIcon(name);
+					if (parentCred !== null) return;
+				});
+				return parentCred;
 			}
 
 			return null;

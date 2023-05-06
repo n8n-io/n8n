@@ -1,17 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { deriveUid, grafanaApiRequest, throwOnEmptyUpdate } from './GenericFunctions';
 
@@ -26,7 +22,7 @@ import {
 	userOperations,
 } from './descriptions';
 
-import {
+import type {
 	DashboardUpdateFields,
 	DashboardUpdatePayload,
 	LoadedDashboards,
@@ -126,8 +122,8 @@ export class Grafana implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -152,7 +148,7 @@ export class Grafana implements INodeType {
 							},
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							if (additionalFields.folderId === '') delete additionalFields.folderId;
@@ -194,16 +190,16 @@ export class Grafana implements INodeType {
 							type: 'dash-db',
 						};
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { limit });
 						}
 
@@ -243,7 +239,7 @@ export class Grafana implements INodeType {
 							const dashboards = (await grafanaApiRequest.call(this, 'GET', '/search')) as Array<{
 								title: string;
 							}>;
-							const titles = dashboards.map(({ title }) => title);
+							const titles = dashboards.map(({ title: entry }) => entry);
 
 							if (titles.includes(title)) {
 								throw new NodeApiError(this.getNode(), {
@@ -281,7 +277,7 @@ export class Grafana implements INodeType {
 							name: this.getNodeParameter('name', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -315,7 +311,7 @@ export class Grafana implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -324,10 +320,10 @@ export class Grafana implements INodeType {
 						responseData = await grafanaApiRequest.call(this, 'GET', '/teams/search', {}, qs);
 						responseData = responseData.teams;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -337,7 +333,7 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/team/#update-team
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 
@@ -407,10 +403,10 @@ export class Grafana implements INodeType {
 						const endpoint = `/teams/${teamId}/members`;
 						responseData = await grafanaApiRequest.call(this, 'GET', endpoint);
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}
@@ -450,10 +446,10 @@ export class Grafana implements INodeType {
 
 						responseData = await grafanaApiRequest.call(this, 'GET', '/org/users');
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -464,7 +460,7 @@ export class Grafana implements INodeType {
 						// https://grafana.com/docs/grafana/latest/http_api/org/#updates-the-given-user
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 
@@ -483,8 +479,8 @@ export class Grafana implements INodeType {
 				}
 
 				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
+					? returnData.push(...(responseData as IDataObject[]))
+					: returnData.push(responseData as IDataObject);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

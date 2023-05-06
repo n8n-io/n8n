@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const createEmployeeSharedDescription = (sync = false): INodeProperties[] => {
 	let elements: INodeProperties[] = [
@@ -293,7 +293,7 @@ export const createEmployeeSharedDescription = (sync = false): INodeProperties[]
 		},
 	];
 
-	if (sync === true) {
+	if (sync) {
 		elements = elements.map((element) => {
 			return Object.assign(element, {
 				displayOptions: {
