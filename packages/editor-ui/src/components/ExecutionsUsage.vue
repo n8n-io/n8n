@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="!isTrialExpired() && trialHasExecutionsLeft()" :class="$style.usageText">
+		<div v-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
 			<i18n path="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="xsmall" color="text-dark">
@@ -11,39 +11,39 @@
 					<n8n-text size="xsmall" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
-								interpolate: { days: daysLeftOnTrial().toString() },
+								interpolate: { days: daysLeftOnTrial.toString() },
 							})
 						}}
 					</n8n-text>
 				</template>
 			</i18n>
 		</div>
-		<div v-if="isTrialExpired()" :class="$style.usageText">
+		<div v-if="isTrialExpired" :class="$style.usageText">
 			<n8n-text size="xsmall" color="danger">
 				{{ locale.baseText('executionUsage.expired.text') }}
 			</n8n-text>
 		</div>
-		<div v-if="!trialHasExecutionsLeft()" :class="$style.usageText">
+		<div v-if="!trialHasExecutionsLeft" :class="$style.usageText">
 			<n8n-text size="xsmall">
 				{{ locale.baseText('executionUsage.ranOutOfExecutions.text') }}
 			</n8n-text>
 		</div>
-		<div v-if="!isTrialExpired()" :class="$style.usageCounter">
+		<div v-if="!isTrialExpired" :class="$style.usageCounter">
 			<div>
 				<progress
 					:class="[
-						trialHasExecutionsLeft() ? $style.progressBarSuccess : $style.progressBarDanger,
+						trialHasExecutionsLeft ? $style.progressBarSuccess : $style.progressBarDanger,
 						$style.progressBar,
 					]"
-					:value="currentExecutions()"
-					:max="maxExecutions()"
+					:value="currentExecutions"
+					:max="maxExecutions"
 				></progress>
 			</div>
 			<div :class="$style.executionsCountSection">
-				<n8n-text size="xsmall" :color="trialHasExecutionsLeft() ? 'text-dark' : 'danger'">
-					{{ currentExecutions() }}/{{ maxExecutions() }}
+				<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">
+					{{ currentExecutions }}/{{ maxExecutions }}
 				</n8n-text>
-				<n8n-text size="xsmall" :color="trialHasExecutionsLeft() ? 'text-dark' : 'danger'">{{
+				<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">{{
 					locale.baseText('executionUsage.label.executions')
 				}}</n8n-text>
 			</div>
@@ -68,6 +68,7 @@ import { DateTime } from 'luxon';
 import type { Cloud } from '@/Interface';
 import { useSettingsStore } from '@/stores';
 import { CHANGE_PLAN_PAGE_PRODUCTION, CHANGE_PLAN_PAGE_STAGING } from '@/constants';
+import { computed } from 'vue';
 
 type CloudPlanData = Cloud.PlanData & { metadata: Cloud.PlanMetadata; usage: Cloud.PlanUsage };
 
@@ -77,24 +78,25 @@ const now = DateTime.utc();
 
 const settingsStore = useSettingsStore();
 
-const daysLeftOnTrial = () => {
+const daysLeftOnTrial = computed(() => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
 	return Math.ceil(days);
-};
+});
 
-const isTrialExpired = () => {
+const isTrialExpired = computed(() => {
 	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
-};
+});
 
 const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.expirationDate);
 
-const trialHasExecutionsLeft = () =>
-	props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit;
+const trialHasExecutionsLeft = computed(
+	() => props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit,
+);
 
-const currentExecutions = () => props.cloudPlanData.usage.executions;
+const currentExecutions = computed(() => props.cloudPlanData.usage.executions);
 
-const maxExecutions = () => props.cloudPlanData.monthlyExecutionsLimit;
+const maxExecutions = computed(() => props.cloudPlanData.monthlyExecutionsLimit);
 
 const onUpgradeClicked = () => {
 	location.href =
