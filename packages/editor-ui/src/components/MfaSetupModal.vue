@@ -143,9 +143,9 @@ import {
 import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useUsersStore } from '@/stores/users.store';
 import CopyInput from '@/components/CopyInput.vue';
 import { copyPaste } from '@/mixins/copyPaste';
 import { createEventBus } from '@/event-bus';

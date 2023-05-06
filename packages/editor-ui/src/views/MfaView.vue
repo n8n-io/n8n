@@ -82,7 +82,7 @@ import {
 	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
 	VIEWS,
 } from '@/constants';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import { mapStores } from 'pinia';
 import { createEventBus } from '@/event-bus';
 
