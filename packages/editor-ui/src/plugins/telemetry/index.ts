@@ -4,9 +4,9 @@ import type { Route } from 'vue-router';
 
 import type { INodeCreateElement } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useTelemetryStore } from '@/stores/telemetry';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTelemetryStore } from '@/stores/telemetry.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: Route }>;

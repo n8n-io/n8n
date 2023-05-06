@@ -5,8 +5,9 @@ import { Connections } from '../transport';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const credentials = await this.getCredentials('postgres');
+	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
+	const { db } = (await Connections.getInstance(credentials, options)) as ConnectionsData;
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,

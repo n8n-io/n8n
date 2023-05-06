@@ -45,7 +45,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import type { EventBus } from '@/event-bus';
 

@@ -15,8 +15,8 @@ import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 
 export default mixins(showMessage).extend({
 	name: 'SignupView',

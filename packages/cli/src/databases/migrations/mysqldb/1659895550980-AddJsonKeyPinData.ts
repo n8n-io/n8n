@@ -1,23 +1,15 @@
-import {
-	logMigrationStart,
-	logMigrationEnd,
-	runInBatches,
-	getTablePrefix,
-} from '@db/utils/migrationHelpers';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
+import { runInBatches } from '@db/utils/migrationHelpers';
 import { addJsonKeyToPinDataColumn } from '../sqlite/1659888469333-AddJsonKeyPinData';
-import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * Convert JSON-type `pinData` column in `workflow_entity` table from
  * `{ [nodeName: string]: IDataObject[] }` to `{ [nodeName: string]: INodeExecutionData[] }`
  */
-export class AddJsonKeyPinData1659895550980 implements MigrationInterface {
-	name = 'AddJsonKeyPinData1659895550980';
-
-	async up(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-
-		const workflowTable = `${getTablePrefix()}workflow_entity`;
+export class AddJsonKeyPinData1659895550980 implements IrreversibleMigration {
+	async up(context: MigrationContext) {
+		const { queryRunner, tablePrefix } = context;
+		const workflowTable = `${tablePrefix}workflow_entity`;
 
 		const PINDATA_SELECT_QUERY = `
 			SELECT id, pinData
@@ -34,13 +26,7 @@ export class AddJsonKeyPinData1659895550980 implements MigrationInterface {
 		await runInBatches(
 			queryRunner,
 			PINDATA_SELECT_QUERY,
-			addJsonKeyToPinDataColumn(queryRunner, PINDATA_UPDATE_STATEMENT),
+			addJsonKeyToPinDataColumn(context, PINDATA_UPDATE_STATEMENT),
 		);
-
-		logMigrationEnd(this.name);
-	}
-
-	async down() {
-		// irreversible migration
 	}
 }

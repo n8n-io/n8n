@@ -22,6 +22,7 @@ const config = {
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
+	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: true,
 	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],

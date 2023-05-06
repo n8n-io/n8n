@@ -30,10 +30,10 @@
 
 <script lang="ts">
 import type { IFakeDoor } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 
