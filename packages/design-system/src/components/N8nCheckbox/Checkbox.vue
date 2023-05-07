@@ -8,7 +8,9 @@
 		:value="value"
 		@change="onChange"
 	>
+		<slot></slot>
 		<n8n-input-label
+			v-if="label"
 			:label="label"
 			:tooltipText="tooltipText"
 			:bold="false"
@@ -32,7 +34,6 @@ export default defineComponent({
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		disabled: {
 			type: Boolean,
@@ -40,7 +41,6 @@ export default defineComponent({
 		},
 		tooltipText: {
 			type: String,
-			required: false,
 		},
 		indeterminate: {
 			type: Boolean,
@@ -76,6 +76,7 @@ export default defineComponent({
 .n8nCheckbox {
 	display: flex !important;
 	white-space: normal !important;
+	margin-bottom: var(--spacing-2xs);
 
 	span {
 		white-space: normal;
@@ -83,6 +84,7 @@ export default defineComponent({
 
 	label {
 		cursor: pointer;
+		margin-bottom: 0;
 	}
 }
 </style>

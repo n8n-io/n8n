@@ -1,4 +1,5 @@
-import { INodeProperties, isResourceLocatorValue, NodeParameterValueType } from 'n8n-workflow';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
 export function generatePath(root: string, path: Array<string | number>): string {
 	return path.reduce((accu: string, part: string | number) => {

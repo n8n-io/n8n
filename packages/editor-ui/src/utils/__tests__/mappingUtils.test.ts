@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { getMappedResult, getMappedExpression } from '../mappingUtils';
 
 const RLC_PARAM: INodeProperties = {

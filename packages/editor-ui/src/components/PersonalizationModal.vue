@@ -127,14 +127,14 @@ import {
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
+import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils';
-import { GenericValue } from 'n8n-workflow';
+import type { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage, workflowHelpers).extend({

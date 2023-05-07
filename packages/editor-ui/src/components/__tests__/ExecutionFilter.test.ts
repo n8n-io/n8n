@@ -2,19 +2,28 @@ import { describe, test, expect } from 'vitest';
 import Vue from 'vue';
 import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { render, RenderOptions } from '@testing-library/vue';
+import type { RenderOptions } from '@testing-library/vue';
+import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { STORES } from '@/constants';
 import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
+import { useTelemetry } from '@/composables';
+
+vi.mock('@/composables', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => ({
+			track,
+		}),
+	};
+});
+
+let telemetry: ReturnType<typeof useTelemetry>;
 
 Vue.use(PiniaVuePlugin);
-
-const CLOUD_HOST = 'https://app.n8n.cloud';
-const PRODUCTION_SUBSCRIPTION_HOST = 'https://subscription.n8n.io';
-const DEVELOPMENT_SUBSCRIPTION_HOST = 'https://staging-subscription.n8n.io';
 
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
@@ -61,18 +70,22 @@ const renderOptions: RenderOptions<ExecutionFilter> = {
 };
 
 describe('ExecutionFilter', () => {
+	beforeEach(() => {
+		telemetry = useTelemetry();
+	});
+
 	test.each([
-		['development', 'default', DEVELOPMENT_SUBSCRIPTION_HOST, false, workflowsData],
-		['development', 'default', '', true, workflowsData],
-		['development', 'cloud', CLOUD_HOST, false, undefined],
-		['development', 'cloud', '', true, undefined],
-		['production', 'cloud', CLOUD_HOST, false, workflowsData],
-		['production', 'cloud', '', true, undefined],
-		['production', 'default', PRODUCTION_SUBSCRIPTION_HOST, false, undefined],
-		['production', 'default', '', true, workflowsData],
+		['development', 'default', false, workflowsData],
+		['development', 'default', true, workflowsData],
+		['development', 'cloud', false, undefined],
+		['development', 'cloud', true, undefined],
+		['production', 'cloud', false, workflowsData],
+		['production', 'cloud', true, undefined],
+		['production', 'default', false, undefined],
+		['production', 'default', true, workflowsData],
 	])(
 		'renders in %s environment on %s deployment with advancedExecutionFilters %s and workflows %s',
-		async (environment, deployment, plansLinkUrlBase, advancedExecutionFilters, workflows) => {
+		async (environment, deployment, advancedExecutionFilters, workflows) => {
 			initialState[STORES.SETTINGS].settings.license.environment = environment;
 			initialState[STORES.SETTINGS].settings.deployment.type = deployment;
 			initialState[STORES.SETTINGS].settings.enterprise.advancedExecutionFilters =
@@ -86,11 +99,7 @@ describe('ExecutionFilter', () => {
 			await userEvent.click(getByTestId('executions-filter-button'));
 			await userEvent.hover(getByTestId('execution-filter-saved-data-key-input'));
 
-			if (!advancedExecutionFilters) {
-				expect(getByTestId('executions-filter-view-plans-link').getAttribute('href')).contains(
-					plansLinkUrlBase,
-				);
-			} else {
+			if (advancedExecutionFilters) {
 				expect(queryByTestId('executions-filter-view-plans-link')).not.toBeInTheDocument();
 			}
 
@@ -126,5 +135,15 @@ describe('ExecutionFilter', () => {
 		expect(filterChangedEvent[2]).toEqual([defaultFilterState]);
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
+	});
+
+	test('telemetry sent only once after component is mounted', async () => {
+		const { getByTestId } = render(ExecutionFilter, renderOptions);
+		const customDataKeyInput = getByTestId('execution-filter-saved-data-key-input');
+
+		await userEvent.type(customDataKeyInput, 'test');
+		await userEvent.type(customDataKeyInput, 'key');
+
+		expect(telemetry.track).toHaveBeenCalledTimes(1);
 	});
 });

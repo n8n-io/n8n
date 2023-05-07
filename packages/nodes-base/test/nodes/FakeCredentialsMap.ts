@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 // If your test needs data from credentials, you can add it here.
 // as JSON.stringify({ id: 'credentials_ID', name: 'credentials_name' }) for specific credentials
@@ -18,5 +18,10 @@ export const FAKE_CREDENTIALS_DATA: IDataObject = {
 	totpApi: {
 		label: 'GitHub:john-doe',
 		secret: 'BVDRSBXQB2ZEL5HE',
+	},
+	aws: {
+		region: 'eu-central-1',
+		accessKeyId: 'key',
+		secretAccessKey: 'secret',
 	},
 };

@@ -1,4 +1,4 @@
-import {
+import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
@@ -8,10 +8,10 @@ import {
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange } from '@/composables/useTitleChange';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import {
+import type {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
@@ -19,29 +19,33 @@ import {
 	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
-	TelemetryHelpers,
 } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
-import { useSegment } from '@/stores/segment';
+import { useSegment } from '@/stores/segment.store';
 
 export const pushConnection = mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
-	titleChange,
 	workflowHelpers,
 ).extend({
+	setup() {
+		return {
+			...useTitleChange(),
+		};
+	},
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
@@ -119,7 +123,7 @@ export const pushConnection = mixins(
 			this.connectRetries++;
 			this.reconnectTimeout = setTimeout(
 				this.attemptReconnect,
-				Math.min(this.connectRetries * 3000, 30000), // maximum 30 seconds backoff
+				Math.min(this.connectRetries * 2000, 8000), // maximum 8 seconds backoff
 			);
 		},
 
@@ -362,7 +366,7 @@ export const pushConnection = mixins(
 					}
 
 					// Workflow did start but had been put to wait
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 					this.$showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
@@ -370,7 +374,7 @@ export const pushConnection = mixins(
 						duration: 0,
 					});
 				} else if (runDataExecuted.finished !== true) {
-					this.$titleSet(workflow.name as string, 'ERROR');
+					this.titleSet(workflow.name as string, 'ERROR');
 
 					if (
 						runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -441,7 +445,7 @@ export const pushConnection = mixins(
 					}
 				} else {
 					// Workflow did execute without a problem
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
 					if (execution && execution.executedNode) {

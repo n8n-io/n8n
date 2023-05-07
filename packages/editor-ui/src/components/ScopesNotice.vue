@@ -3,11 +3,11 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ScopesNotice',
 	props: ['activeCredentialType', 'scopes'],
 	computed: {

@@ -822,7 +822,7 @@ export class WorkflowExecute {
 					}
 
 					if (gotCancel) {
-						return Promise.resolve();
+						return;
 					}
 
 					nodeSuccessData = null;
@@ -954,7 +954,7 @@ export class WorkflowExecute {
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 						if (gotCancel) {
-							return Promise.resolve();
+							return;
 						}
 						try {
 							if (tryIndex !== 0) {
@@ -1210,10 +1210,8 @@ export class WorkflowExecute {
 									outputIndex
 								]) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
-										return Promise.reject(
-											new Error(
-												`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
-											),
+										throw new Error(
+											`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`,
 										);
 									}
 
@@ -1410,7 +1408,7 @@ export class WorkflowExecute {
 					}
 				}
 
-				return Promise.resolve();
+				return;
 			})()
 				.then(async () => {
 					if (gotCancel && executionError === undefined) {
@@ -1486,12 +1484,16 @@ export class WorkflowExecute {
 				message: executionError.message,
 				stack: executionError.stack,
 			} as ExecutionError;
+			if (executionError.message?.includes('canceled')) {
+				fullRunData.status = 'canceled';
+			}
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
+			fullRunData.status = 'waiting';
 		} else {
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
@@ -1504,7 +1506,6 @@ export class WorkflowExecute {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
 		}
-
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 		if (closeFunction) {

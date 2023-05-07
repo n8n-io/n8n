@@ -17,6 +17,7 @@
 				<div
 					:class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']"
 					@click="addStickyNote"
+					data-test-id="add-sticky-button"
 				>
 					<n8n-icon-button
 						size="medium"
@@ -36,7 +37,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {
 	DEFAULT_STICKY_HEIGHT,
@@ -45,9 +46,9 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'node-creation',
 	components: {
 		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),

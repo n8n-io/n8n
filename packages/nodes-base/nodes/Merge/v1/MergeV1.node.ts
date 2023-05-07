@@ -12,6 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
+import { oldVersionNotice } from '../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
 	name: 'merge',
@@ -30,6 +32,7 @@ const versionDescription: INodeTypeDescription = {
 	inputNames: ['Input 1', 'Input 2'],
 	forceInputNodeExecution: true,
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Mode',
 			name: 'mode',

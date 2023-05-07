@@ -35,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	icon: 'fa:code-branch',
 	group: ['transform'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merges data of multiple streams once data from both is available',
 	defaults: {
@@ -46,11 +46,11 @@ const versionDescription: INodeTypeDescription = {
 	inputs: ['main', 'main'],
 	outputs: ['main'],
 	inputNames: ['Input 1', 'Input 2'],
-	// If the node is of version 2 or if mode is chooseBranch data from both branches is required
+	// If the node is of version 2.2 or if mode is chooseBranch data from both branches is required
 	// to continue, else data from any input suffices
 	requiredInputs:
-		'={{ $version < 2.1 ? undefined : ($parameter["mode"] === "chooseBranch" ? [0, 1] : 1) }}',
-	forceInputNodeExecution: '={{ $version < 2.1 }}',
+		'={{ $version < 2.2 ? undefined : ($parameter["mode"] === "chooseBranch" ? [0, 1] : 1) }}',
+	forceInputNodeExecution: '={{ $version < 2.2 }}',
 	properties: [
 		{
 			displayName: 'Mode',
@@ -461,6 +461,8 @@ export class MergeV2 implements INodeType {
 				options.joinMode = joinMode;
 				options.outputDataFrom = outputDataFrom;
 
+				const nodeVersion = this.getNode().typeVersion;
+
 				let input1 = this.getInputData(0);
 				let input2 = this.getInputData(1);
 
@@ -478,6 +480,25 @@ export class MergeV2 implements INodeType {
 						// Return the data of any of the inputs that contains data
 						return [[...input1, ...input2]];
 					}
+				}
+
+				if (nodeVersion < 2.1) {
+					input1 = checkInput(
+						this.getInputData(0),
+						matchFields.map((pair) => pair.field1),
+						options.disableDotNotation || false,
+						'Input 1',
+					);
+					if (!input1) return [returnData];
+
+					input2 = checkInput(
+						this.getInputData(1),
+						matchFields.map((pair) => pair.field2),
+						options.disableDotNotation || false,
+						'Input 2',
+					);
+				} else {
+					if (!input1) return [returnData];
 				}
 
 				input1 = checkInput(

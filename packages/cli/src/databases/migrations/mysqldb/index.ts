@@ -1,3 +1,4 @@
+import type { Migration } from '@db/types';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -36,8 +37,9 @@ import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExec
 import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281779 } from './1679416281779-CreateExecutionMetadataTable';
 import { CreateVariables1677501636753 } from './1677501636753-CreateVariables';
+import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 
-export const mysqlMigrations = [
+export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
 	WebhookModel1592447867632,
 	CreateIndexStoppedAt1594902918301,
@@ -76,4 +78,5 @@ export const mysqlMigrations = [
 	UpdateRunningExecutionStatus1677236788851,
 	CreateExecutionMetadataTable1679416281779,
 	CreateVariables1677501636753,
+	AddUserActivatedProperty1681134145996,
 ];

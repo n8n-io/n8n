@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount } from 'vue';
+import { computed, reactive, onBeforeMount, ref } from 'vue';
 import debounce from 'lodash/debounce';
 import type { PopoverPlacement } from 'element-ui/types/popover';
 import type {
@@ -11,8 +11,10 @@ import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { getObjectKeys, isEmpty } from '@/utils';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsageStore } from '@/stores/usage';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useTelemetry } from '@/composables';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
@@ -20,10 +22,13 @@ export type ExecutionFilterProps = {
 };
 
 const DATE_TIME_MASK = 'yyyy-MM-dd HH:mm';
-const CLOUD_UPGRADE_LINK = 'https://app.n8n.cloud/manage?edition=cloud';
 
 const settingsStore = useSettingsStore();
 const usageStore = useUsageStore();
+const uiStore = useUIStore();
+
+const telemetry = useTelemetry();
+
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
 	popoverPlacement: 'bottom',
 });
@@ -32,11 +37,7 @@ const emit = defineEmits<{
 }>();
 const debouncedEmit = debounce(emit, 500);
 
-const viewPlansLink = computed(() =>
-	settingsStore.isCloudDeployment
-		? CLOUD_UPGRADE_LINK
-		: `${usageStore.viewPlansUrl}&source=custom-data-filter`,
-);
+const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
 );
@@ -113,6 +114,12 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 		};
 	}
 	filter.metadata[index][prop] = value;
+
+	if (!isCustomDataFilterTracked.value) {
+		telemetry.track('User filtered executions with custom data');
+		isCustomDataFilterTracked.value = true;
+	}
+
 	debouncedEmit('filterChanged', filter);
 };
 
@@ -128,7 +135,12 @@ const onFilterReset = () => {
 	emit('filterChanged', filter);
 };
 
+const goToUpgrade = () => {
+	uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
+};
+
 onBeforeMount(() => {
+	isCustomDataFilterTracked.value = false;
 	emit('filterChanged', filter);
 });
 </script>
@@ -261,8 +273,8 @@ onBeforeMount(() => {
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a
-											target="_blank"
-											:href="viewPlansLink"
+											href="#"
+											@click.prevent="goToUpgrade"
 											data-test-id="executions-filter-view-plans-link"
 											>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 										>
@@ -288,7 +300,7 @@ onBeforeMount(() => {
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
-										<a target="_blank" :href="viewPlansLink">{{
+										<a href="#" @click.prevent="goToUpgrade">{{
 											$locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>

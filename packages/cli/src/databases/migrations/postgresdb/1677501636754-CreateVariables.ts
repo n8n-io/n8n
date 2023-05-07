@@ -1,15 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart, getTablePrefix } from '@db/utils/migrationHelpers';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateVariables1677501636754 implements MigrationInterface {
-	name = 'CreateVariables1677501636754';
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class CreateVariables1677501636754 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
-			CREATE TABLE public.variables (
+			CREATE TABLE ${tablePrefix}variables (
 				id serial4 NOT NULL PRIMARY KEY,
 				"key" varchar(50) NOT NULL,
 				"type" varchar(50) NOT NULL DEFAULT 'string',
@@ -17,16 +11,9 @@ export class CreateVariables1677501636754 implements MigrationInterface {
 				UNIQUE ("key")
 			);
 		`);
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE ${tablePrefix}variables;`);
-
-		logMigrationEnd(this.name);
 	}
 }
