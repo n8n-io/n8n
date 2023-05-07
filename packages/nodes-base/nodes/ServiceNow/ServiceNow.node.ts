@@ -1,14 +1,13 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
-	IBinaryData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	mapEndpoint,
@@ -182,7 +181,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/doc/table/schema`,
+					'/now/doc/table/schema',
 					{},
 					{},
 				);
@@ -214,7 +213,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/table/sys_dictionary`,
+					'/now/table/sys_dictionary',
 					{},
 					qs,
 				);
@@ -236,7 +235,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					`/now/table/cmdb_ci_service`,
+					'/now/table/cmdb_ci_service',
 					{},
 					qs,
 				);
@@ -536,8 +535,8 @@ export class ServiceNow implements INodeType {
 									[outputField]: await serviceNowDownloadAttachment.call(
 										this,
 										endpoint,
-										fileMetadata.file_name,
-										fileMetadata.content_type,
+										fileMetadata.file_name as string,
+										fileMetadata.content_type as string,
 									),
 								},
 							};
@@ -605,17 +604,7 @@ export class ServiceNow implements INodeType {
 						const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						let binaryData: IBinaryData;
-
-						if (items[i].binary && items[i].binary![inputDataFieldName]) {
-							binaryData = items[i].binary![inputDataFieldName];
-						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No binary data property "${inputDataFieldName}" does not exists on item!`,
-								{ itemIndex: i },
-							);
-						}
+						const binaryData = this.helpers.assertBinaryData(i, inputDataFieldName);
 
 						const headers: IDataObject = {
 							'Content-Type': binaryData.mimeType,
@@ -779,7 +768,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							`/now/table/incident`,
+							'/now/table/incident',
 							body,
 						);
 						responseData = response.result;
@@ -821,7 +810,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/incident`,
+								'/now/table/incident',
 								{},
 								qs,
 							);
@@ -830,7 +819,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								`/now/table/incident`,
+								'/now/table/incident',
 								{},
 								qs,
 							);

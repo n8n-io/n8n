@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	adjustAddresses,
@@ -29,7 +28,7 @@ import { productFields, productOperations } from './ProductDescription';
 
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
-import {
+import type {
 	CustomAttribute,
 	CustomerAttributeMetadata,
 	Filter,
@@ -210,7 +209,7 @@ export class Magento2 implements INodeType {
 				const types = (await magentoApiRequest.call(
 					this,
 					'GET',
-					`/rest/default/V1/products/types`,
+					'/rest/default/V1/products/types',
 				)) as IDataObject[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const type of types) {
@@ -227,7 +226,7 @@ export class Magento2 implements INodeType {
 				const { items: categories } = (await magentoApiRequest.call(
 					this,
 					'GET',
-					`/rest/default/V1/categories/list`,
+					'/rest/default/V1/categories/list',
 					{},
 					{
 						search_criteria: {
@@ -260,7 +259,7 @@ export class Magento2 implements INodeType {
 				const { items: attributeSets } = (await magentoApiRequest.call(
 					this,
 					'GET',
-					`/rest/default/V1/products/attribute-sets/sets/list`,
+					'/rest/default/V1/products/attribute-sets/sets/list',
 					{},
 					{
 						search_criteria: 0,
@@ -439,7 +438,7 @@ export class Magento2 implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/rest/default/V1/customers/search`,
+								'/rest/default/V1/customers/search',
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -449,7 +448,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequest.call(
 								this,
 								'GET',
-								`/rest/default/V1/customers/search`,
+								'/rest/default/V1/customers/search',
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -617,7 +616,7 @@ export class Magento2 implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/rest/default/V1/orders`,
+								'/rest/default/V1/orders',
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -627,7 +626,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequest.call(
 								this,
 								'GET',
-								`/rest/default/V1/orders`,
+								'/rest/default/V1/orders',
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -739,7 +738,7 @@ export class Magento2 implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/rest/default/V1/products`,
+								'/rest/default/V1/products',
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -749,7 +748,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequest.call(
 								this,
 								'GET',
-								`/rest/default/V1/products`,
+								'/rest/default/V1/products',
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -793,7 +792,7 @@ export class Magento2 implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

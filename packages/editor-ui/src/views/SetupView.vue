@@ -13,28 +13,23 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
+import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
-import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
-
-export default mixins(
-	showMessage,
-	restApi,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'SetupView',
 	components: {
 		AuthView,
 	},
 	async mounted() {
-		const getAllCredentialsPromise = this.getAllCredentials();
-		const getAllWorkflowsPromise = this.getAllWorkflows();
-		await Promise.all([getAllCredentialsPromise, getAllWorkflowsPromise]);
+		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
+		this.credentialsCount = credentials;
+		this.workflowsCount = workflows;
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -103,42 +98,34 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-		),
+		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
 	},
 	methods: {
-		async getAllCredentials() {
-			const credentials = await this.credentialsStore.fetchAllCredentials();
-			this.credentialsCount = credentials.length;
-		},
-		async getAllWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
-			this.workflowsCount = workflows.length;
-		},
 		async confirmSetupOrGoBack(): Promise<boolean> {
 			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
 				return true;
 			}
 
-			const workflows = this.workflowsCount > 0
-				? this.$locale.baseText(
-					'auth.setup.setupConfirmation.existingWorkflows',
-					{ adjustToNumber: this.workflowsCount },
-				)
-				: '';
+			const workflows =
+				this.workflowsCount > 0
+					? this.$locale.baseText('auth.setup.setupConfirmation.existingWorkflows', {
+							adjustToNumber: this.workflowsCount,
+					  })
+					: '';
 
-			const credentials = this.credentialsCount > 0
-				? this.$locale.baseText(
-					'auth.setup.setupConfirmation.credentials',
-					{ adjustToNumber: this.credentialsCount },
-				)
-				: '';
+			const credentials =
+				this.credentialsCount > 0
+					? this.$locale.baseText('auth.setup.setupConfirmation.credentials', {
+							adjustToNumber: this.credentialsCount,
+					  })
+					: '';
 
-			const entities = workflows && credentials ? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {interpolate: { workflows, credentials }}) : (workflows || credentials);
+			const entities =
+				workflows && credentials
+					? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {
+							interpolate: { workflows, credentials },
+					  })
+					: workflows || credentials;
 			return await this.confirmMessage(
 				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
 					interpolate: {
@@ -151,7 +138,7 @@ export default mixins(
 				this.$locale.baseText('auth.setup.goBack'),
 			);
 		},
-		async onSubmit(values: {[key: string]: string | boolean}) {
+		async onSubmit(values: { [key: string]: string | boolean }) {
 			try {
 				const confirmSetup = await this.confirmSetupOrGoBack();
 				if (!confirmSetup) {
@@ -160,21 +147,21 @@ export default mixins(
 
 				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
-				await this.usersStore.createOwner(values as { firstName: string; lastName: string; email: string; password: string;});
+				await this.usersStore.createOwner(
+					values as { firstName: string; lastName: string; email: string; password: string },
+				);
 
 				if (values.agree === true) {
 					try {
 						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
-					} catch { }
+					} catch {}
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.HOMEPAGE });
-				}
-				else {
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
-
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
@@ -195,7 +182,7 @@ export default mixins(
 		onSkip() {
 			this.usersStore.skipOwnerSetup();
 			this.$router.push({
-				name: VIEWS.HOMEPAGE,
+				name: VIEWS.NEW_WORKFLOW,
 			});
 		},
 	},

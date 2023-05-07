@@ -1,8 +1,7 @@
-import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { WorkflowPage, NDV } from '../pages';
 
-const WorkflowsPage = new WorkflowsPageClass();
-const WorkflowPage = new WorkflowPageClass();
+const workflowPage = new WorkflowPage();
+const ndv = new NDV();
 
 describe('HTTP Request node', () => {
 	before(() => {
@@ -11,14 +10,13 @@ describe('HTTP Request node', () => {
 	});
 
 	it('should make a request with a URL and receive a response', () => {
-		WorkflowsPage.actions.createWorkflowFromCard();
-		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
-		WorkflowPage.actions.addNodeToCanvas('HTTP Request');
-		WorkflowPage.actions.openNodeNdv('HTTP Request');
-		WorkflowPage.actions.typeIntoParameterInput('url', 'https://catfact.ninja/fact');
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('HTTP Request');
+		workflowPage.actions.openNode('HTTP Request');
+		ndv.actions.typeIntoParameterInput('url', 'https://catfact.ninja/fact');
 
-		WorkflowPage.actions.executeNodeFromNdv();
+		ndv.actions.execute();
 
-		WorkflowPage.getters.ndvOutputPanel().contains('fact');
+		ndv.getters.outputPanel().contains('fact');
 	});
 });

@@ -1,13 +1,12 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function wufooApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -31,7 +30,7 @@ export async function wufooApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0 || method === 'PUT') {
+	if (Object.keys(options.body as IDataObject).length === 0 || method === 'PUT') {
 		delete options.body;
 	}
 

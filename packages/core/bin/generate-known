@@ -29,13 +29,14 @@ const generate = async (kind) => {
 		.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
 			cwd: packageDir,
 		})
-		.filter((filePath) => !/[vV]\d.node\.js$/.test(filePath))
 		.map(loadClass)
 		.filter((data) => !!data)
 		.reduce((obj, { className, sourcePath, instance }) => {
 			const name = kind === 'nodes' ? instance.description.name : instance.name;
-			if (name in obj) console.error('already loaded', kind, name, sourcePath);
-			else obj[name] = { className, sourcePath };
+			if (!/[vV]\d.node\.js$/.test(sourcePath)) {
+				if (name in obj) console.error('already loaded', kind, name, sourcePath);
+				else obj[name] = { className, sourcePath };
+			}
 
 			if (kind === 'nodes') {
 				const { credentials } = instance.description;

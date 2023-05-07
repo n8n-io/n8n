@@ -1,10 +1,13 @@
 import { jsonParse } from 'n8n-workflow';
-import { ValueTransformer } from 'typeorm';
+import type { ValueTransformer, FindOperator } from 'typeorm';
 import config from '@/config';
 
 export const idStringifier = {
-	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
-	to: (value: string): number | string => (typeof value === 'string' ? Number(value) : value),
+	from: (value?: number): string | undefined => value?.toString(),
+	to: (
+		value: string | FindOperator<unknown> | undefined,
+	): number | FindOperator<unknown> | undefined =>
+		typeof value === 'string' ? Number(value) : value,
 };
 
 export const lowerCaser = {

@@ -1,8 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function homeAssistantApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -31,7 +36,7 @@ export async function homeAssistantApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
@@ -39,7 +44,7 @@ export async function homeAssistantApiRequest(
 			return await this.helpers.request(options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -71,13 +76,18 @@ export async function getHomeAssistantServices(
 	if (domain === '') {
 		// If no domain specified return domains
 		const domains = services.map(({ domain: service }: IDataObject) => service as string).sort();
-		returnData.push(...domains.map((service: string) => ({ name: service, value: service })));
+		returnData.push(
+			...(domains.map((service: string) => ({
+				name: service,
+				value: service,
+			})) as INodePropertyOptions[]),
+		);
 		return returnData;
 	} else {
 		// If we have a domain, return all relevant services
 		const domainServices = services.filter((service: IDataObject) => service.domain === domain);
 		for (const domainService of domainServices) {
-			for (const [serviceID, value] of Object.entries(domainService.services)) {
+			for (const [serviceID, value] of Object.entries(domainService.services as IDataObject)) {
 				const serviceProperties = value as IDataObject;
 				const serviceName = serviceProperties.description || serviceID;
 				returnData.push({

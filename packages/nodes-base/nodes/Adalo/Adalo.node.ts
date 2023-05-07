@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -6,7 +6,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { collectionFields } from './CollectionDescription';
-import { FieldsUiValues } from './types';
+import type { FieldsUiValues } from './types';
 
 export class Adalo implements INodeType {
 	description: INodeTypeDescription = {

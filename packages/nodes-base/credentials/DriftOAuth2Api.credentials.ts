@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DriftOAuth2Api implements ICredentialType {
 	name = 'driftOAuth2Api';

@@ -1,10 +1,18 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
+import type { Connector, ElasticSecurityApiCredentials } from './types';
 
-import { Connector, ElasticSecurityApiCredentials } from './types';
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -44,13 +52,13 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -73,7 +81,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 	} while (returnData.length < responseData.total);
 
 	return returnData;
@@ -137,8 +145,4 @@ export async function getVersion(this: IExecuteFunctions, endpoint: string) {
 	}
 
 	return version;
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }

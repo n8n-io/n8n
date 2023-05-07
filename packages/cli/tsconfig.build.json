@@ -8,5 +8,12 @@
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
-	"exclude": ["test/**"]
+	"exclude": ["test/**"],
+	"tsc-alias": {
+		"replacers": {
+			"base-url": {
+				"enabled": false
+			}
+		}
+	}
 }

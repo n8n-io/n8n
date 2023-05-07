@@ -1,34 +1,33 @@
-import {
-	ICheckProcessedContextData,
-	ICheckProcessedOptions,
-	ICheckProcessedOutput,
-	IProcessedDataManager,
-	ProcessedDataContext,
-	ProcessedDataItemTypes,
-} from 'n8n-core';
+import type { ICheckProcessedContextData, IProcessedDataManager } from 'n8n-core';
 import { In, Not } from 'typeorm';
 import { createHash } from 'crypto';
 
-import {
-	DatabaseType,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
+import type {
 	IExternalHooksFileData,
 	IProcessedDataEntries,
 	IProcessedDataLatest,
+} from '@/Interfaces';
+import * as Db from '@/Db';
+import type { DatabaseType } from '@db/types';
+import { ExternalHooks } from '@/ExternalHooks';
+import config from '@/config';
+import { Container } from 'typedi';
+
+import type {
+	ICheckProcessedOptions,
+	ICheckProcessedOutput,
 	IWorkflowBase,
-} from '..';
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
+} from 'n8n-workflow';
 
 export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager {
 	private static dbType: string;
 
 	async init(): Promise<void> {
-		ProcessedDataManagerNativeDatabase.dbType = (await GenericHelpers.getConfigValue(
-			'database.type',
-		)) as DatabaseType;
+		ProcessedDataManagerNativeDatabase.dbType = config.getEnv('database.type') as DatabaseType;
 
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		const hookFileData: IExternalHooksFileData = {
 			workflow: {
 				afterUpdate: [
@@ -82,7 +81,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 	): string {
 		if (context === 'node') {
 			if (!contextData.node) {
-				throw new Error(`No node information has been provided and can so not use context 'node'`);
+				throw new Error("No node information has been provided and can so not use context 'node'");
 			}
 			// Use the node ID to make sure that the data can still be accessed and does not get deleted
 			// whenver the node gets renamed

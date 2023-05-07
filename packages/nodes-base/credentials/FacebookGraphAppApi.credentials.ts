@@ -1,11 +1,11 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class FacebookGraphAppApi implements ICredentialType {
 	name = 'facebookGraphAppApi';
 
 	displayName = 'Facebook Graph API (App)';
 
-	documentationUrl = 'facebookGraphApp';
+	documentationUrl = 'facebookapp';
 
 	extends = ['facebookGraphApi'];
 

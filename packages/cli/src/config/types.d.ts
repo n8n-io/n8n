@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { IBinaryDataConfig, IProcessedDataConfig } from 'n8n-core';
-import { schema } from './schema';
+import type { IBinaryDataConfig, IProcessedDataConfig } from 'n8n-core';
+import type { schema } from './schema';
 
 // -----------------------------------
 //          transformers

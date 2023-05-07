@@ -9,11 +9,15 @@
 		minHeight="250px"
 	>
 		<template #header>
-			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
+			<h2 :class="$style.title">
+				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
+			</h2>
 		</template>
 		<template #content>
 			<div>
-				<div :class="$style.subtitle">{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
+				<div :class="$style.subtitle">
+					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+				</div>
 				<n8n-select
 					filterable
 					defaultFirstOption
@@ -54,16 +58,15 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
@@ -73,38 +76,33 @@ export default mixins(externalHooks).extend({
 	async mounted() {
 		try {
 			await this.credentialsStore.fetchCredentialTypes(false);
-		} catch (e) {
-		}
+		} catch (e) {}
 		this.loading = false;
 
 		setTimeout(() => {
-			const element = this.$refs.select as HTMLSelectElement;
-			if (element) {
-				element.focus();
+			const elementRef = this.$refs.select as HTMLSelectElement | undefined;
+			if (elementRef) {
+				elementRef.focus();
 			}
 		}, 0);
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			selected: '',
 			loading: true,
 			CREDENTIAL_SELECT_MODAL_KEY,
 		};
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore),
 	},
 	methods: {
 		onSelect(type: string) {
 			this.selected = type;
 		},
-		openCredentialType () {
-			this.modalBus.$emit('close');
+		openCredentialType() {
+			this.modalBus.emit('close');
 			this.uiStore.openNewCredential(this.selected);
 
 			const telemetryPayload = {

@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftSql implements ICredentialType {
 	name = 'microsoftSql';
@@ -52,6 +52,13 @@ export class MicrosoftSql implements ICredentialType {
 			name: 'tls',
 			type: 'boolean',
 			default: true,
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 		{
 			displayName: 'Connect Timeout',

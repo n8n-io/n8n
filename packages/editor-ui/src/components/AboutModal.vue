@@ -54,14 +54,15 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { createEventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'About',
 	components: {
 		Modal,
@@ -69,18 +70,15 @@ export default Vue.extend({
 	data() {
 		return {
 			ABOUT_MODAL_KEY,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore),
 	},
 	methods: {
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 	},
 });

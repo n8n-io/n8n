@@ -1,14 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { pushoverApiRequest } from './GenericFunctions';
@@ -285,7 +282,7 @@ export class Pushover implements INodeType {
 			async getSounds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const { sounds } = await pushoverApiRequest.call(this, 'GET', '/sounds.json', {});
 				const returnData: INodePropertyOptions[] = [];
-				for (const key of Object.keys(sounds)) {
+				for (const key of Object.keys(sounds as IDataObject)) {
 					returnData.push({
 						name: sounds[key],
 						value: key,
@@ -298,7 +295,7 @@ export class Pushover implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -339,25 +336,7 @@ export class Pushover implements INodeType {
 
 							if (attachment) {
 								const binaryPropertyName = attachment.binaryPropertyName as string;
-
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-
-								const item = items[i].binary as IBinaryKeyData;
-
-								const binaryData = item[binaryPropertyName];
-
-								if (binaryData === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
+								const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								body.attachment = {
@@ -371,22 +350,26 @@ export class Pushover implements INodeType {
 							}
 						}
 
-						responseData = await pushoverApiRequest.call(this, 'POST', `/messages.json`, body);
+						responseData = await pushoverApiRequest.call(this, 'POST', '/messages.json', body);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData as IDataObject),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

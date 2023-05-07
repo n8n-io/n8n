@@ -1,23 +1,26 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { INodeUi, Schema } from "@/Interface";
-import RunDataSchemaItem from "@/components/RunDataSchemaItem.vue";
+import { merge } from 'lodash-es';
+import type { INodeUi, Schema } from '@/Interface';
+import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
-import { useNDVStore } from "@/stores/ndv";
-import { useWebhooksStore } from "@/stores/webhooks";
-import { runExternalHook } from "@/mixins/externalHooks";
-import { telemetry } from "@/plugins/telemetry";
-import { IDataObject } from "n8n-workflow";
-import { getSchema, mergeDeep } from "@/utils";
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWebhooksStore } from '@/stores/webhooks.store';
+import { telemetry } from '@/plugins/telemetry';
+import type { IDataObject } from 'n8n-workflow';
+import { getSchema, isEmpty, runExternalHook } from '@/utils';
+import { i18n } from '@/plugins/i18n';
+import MappingPill from './MappingPill.vue';
 
 type Props = {
-	data: IDataObject[]
-	mappingEnabled: boolean
-	distanceFromActive: number
-	runIndex: number
-	totalRuns: number
-	node: INodeUi | null
-}
+	data: IDataObject[];
+	mappingEnabled: boolean;
+	distanceFromActive: number;
+	runIndex: number;
+	totalRuns: number;
+	paneType: 'input' | 'output';
+	node: INodeUi | null;
+};
 
 const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 0,
@@ -29,7 +32,11 @@ const webhooksStore = useWebhooksStore();
 
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
-	return getSchema(mergeDeep([head, ...tail, head]));
+	return getSchema(merge({}, head, ...tail, head));
+});
+
+const isDataEmpty = computed(() => {
+	return isEmpty(props.data);
 });
 
 const onDragStart = (el: HTMLElement) => {
@@ -62,12 +69,15 @@ const onDragEnd = (el: HTMLElement) => {
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 };
-
 </script>
 
 <template>
 	<div :class="$style.schemaWrapper">
+		<n8n-info-tip v-if="isDataEmpty">{{
+			i18n.baseText('dataMapping.schemaView.emptyData')
+		}}</n8n-info-tip>
 		<draggable
+			v-else
 			type="mapping"
 			targetDataKey="mappable"
 			:disabled="!mappingEnabled"
@@ -75,7 +85,7 @@ const onDragEnd = (el: HTMLElement) => {
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
+				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
 			<template>
 				<div :class="$style.schema">
@@ -83,6 +93,7 @@ const onDragEnd = (el: HTMLElement) => {
 						:schema="schema"
 						:level="0"
 						:parent="null"
+						:paneType="paneType"
 						:subKey="`${schema.type}-0-0`"
 						:mappingEnabled="mappingEnabled"
 						:draggingPath="draggingPath"
@@ -108,50 +119,14 @@ const onDragEnd = (el: HTMLElement) => {
 	height: 100%;
 	width: 100%;
 	background-color: var(--color-background-base);
+
+	> div[class*='info'] {
+		padding: 0 var(--spacing-s);
+	}
 }
 
 .schema {
 	display: inline-block;
 	padding: 0 var(--spacing-s) var(--spacing-s);
-}
-
-.dragPill {
-	display: inline-flex;
-	height: 24px;
-	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
-	background: var(--color-background-xlight);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	white-space: nowrap;
-	align-items: center;
-
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-	}
-}
-
-.droppablePill {
-	&,
-	span span {
-		color: var(--color-success);
-		border-color: var(--color-success-light);
-		background: var(--color-success-tint-3);
-	}
-}
-
-.defaultPill {
-	transform: translate(-50%, -100%);
-	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-
-	&,
-	span span {
-		color: var(--color-primary);
-		border-color: var(--color-primary-tint-1);
-		background: var(--color-primary-tint-3);
-	}
 }
 </style>

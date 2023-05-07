@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 	NodeParameterValue,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class Switch implements INodeType {
 	description: INodeTypeDescription = {
@@ -618,7 +618,7 @@ export class Switch implements INodeType {
 			}
 		};
 
-		// Itterate over all items to check to which output they should be routed to
+		// Iterate over all items to check to which output they should be routed to
 		itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				item = items[itemIndex];

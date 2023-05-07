@@ -1,4 +1,4 @@
-import {
+import type {
 	GenericValue,
 	IBinaryKeyData,
 	IDataObject,
@@ -6,7 +6,12 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
+import assign from 'lodash.assign';
+import assignWith from 'lodash.assignwith';
+import get from 'lodash.get';
+import merge from 'lodash.merge';
+import mergeWith from 'lodash.mergewith';
+import { fuzzyCompare } from '../../../utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -18,6 +23,7 @@ export type MatchFieldsOptions = {
 	outputDataFrom: MatchFieldsOutput;
 	multipleMatches: MultipleMatches;
 	disableDotNotation: boolean;
+	fuzzyCompare?: boolean;
 };
 
 export type ClashResolveOptions = {
@@ -46,6 +52,8 @@ type EntryMatches = {
 	matches: INodeExecutionData[];
 };
 
+type CompareFunction = <T, U>(a: T, b: U) => boolean;
+
 export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: string) {
 	return data.map((entry) => {
 		const json: IDataObject = {};
@@ -60,6 +68,7 @@ function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	return data.reduce((acc, entry2, i) => {
 		if (entry2 === undefined) return acc;
@@ -74,7 +83,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -90,6 +99,7 @@ function findFirstMatch(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	const index = data.findIndex((entry2) => {
 		if (entry2 === undefined) return false;
@@ -104,7 +114,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}
@@ -129,6 +139,7 @@ export function findMatches(
 		[data1, data2] = [data2, data1];
 	}
 
+	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean);
 	const disableDotNotation = options.disableDotNotation || false;
 	const multipleMatches = (options.multipleMatches as string) || 'all';
 
@@ -163,8 +174,8 @@ export function findMatches(
 
 		const foundedMatches =
 			multipleMatches === 'all'
-				? findAllMatches(data2, lookup, disableDotNotation)
-				: findFirstMatch(data2, lookup, disableDotNotation);
+				? findAllMatches(data2, lookup, disableDotNotation, isEntriesEqual)
+				: findFirstMatch(data2, lookup, disableDotNotation, isEntriesEqual);
 
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
@@ -201,6 +212,38 @@ export function findMatches(
 	});
 
 	return filteredData;
+}
+
+export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
+	const mergeMode = clashResolveOptions.mergeMode as string;
+
+	if (clashResolveOptions.overrideEmpty) {
+		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
+			if (srcValue === undefined || srcValue === null || srcValue === '') {
+				return targetValue;
+			}
+		}
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return mergeWith(targetCopy, ...source, customizer);
+			};
+		}
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return assignWith(targetCopy, ...source, customizer);
+			};
+		}
+	} else {
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+		}
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
+		}
+	}
+	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
 export function mergeMatched(
@@ -283,38 +326,6 @@ export function mergeMatched(
 	}
 
 	return returnData;
-}
-
-export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
-	const mergeMode = clashResolveOptions.mergeMode as string;
-
-	if (clashResolveOptions.overrideEmpty) {
-		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
-			if (srcValue === undefined || srcValue === null || srcValue === '') {
-				return targetValue;
-			}
-		}
-		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => {
-				const targetCopy = Object.assign({}, target);
-				return mergeWith(targetCopy, ...source, customizer);
-			};
-		}
-		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => {
-				const targetCopy = Object.assign({}, target);
-				return assignWith(targetCopy, ...source, customizer);
-			};
-		}
-	} else {
-		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
-		}
-		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
-		}
-	}
-	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {

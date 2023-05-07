@@ -2,12 +2,10 @@ import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/utils/nodeViewUtils';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export const moveNodeWorkflow = mixins(
-	deviceSupportHelpers,
-).extend({
-	data () {
+export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
+	data() {
 		return {
 			moveLastPosition: [0, 0],
 		};
@@ -16,7 +14,7 @@ export const moveNodeWorkflow = mixins(
 		...mapStores(useUIStore),
 	},
 	methods: {
-		moveWorkflow (e: MouseEvent) {
+		moveWorkflow(e: MouseEvent) {
 			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
 
 			const [x, y] = getMousePosition(e);
@@ -29,8 +27,8 @@ export const moveNodeWorkflow = mixins(
 			this.moveLastPosition[0] = x;
 			this.moveLastPosition[1] = y;
 		},
-		mouseDownMoveWorkflow (e: MouseEvent) {
-			if (this.isCtrlKeyPressed(e) === false) {
+		mouseDownMoveWorkflow(e: MouseEvent, moveButtonPressed: boolean) {
+			if (this.isCtrlKeyPressed(e) === false && !moveButtonPressed) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
@@ -41,7 +39,10 @@ export const moveNodeWorkflow = mixins(
 				return;
 			}
 
-			this.uiStore.nodeViewMoveInProgress = true;
+			// Prevent moving canvas on anything but middle button
+			if (e.button !== 1) {
+				this.uiStore.nodeViewMoveInProgress = true;
+			}
 
 			const [x, y] = getMousePosition(e);
 
@@ -51,7 +52,7 @@ export const moveNodeWorkflow = mixins(
 			// @ts-ignore
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
 		},
-		mouseUpMoveWorkflow (e: MouseEvent) {
+		mouseUpMoveWorkflow(e: MouseEvent) {
 			if (this.uiStore.nodeViewMoveInProgress === false) {
 				// If it is not active return directly.
 				// Else normal node dragging will not work.
@@ -65,7 +66,7 @@ export const moveNodeWorkflow = mixins(
 
 			// Nothing else to do. Simply leave the node view at the current offset
 		},
-		mouseMoveNodeWorkflow (e: MouseEvent) {
+		mouseMoveNodeWorkflow(e: MouseEvent) {
 			// @ts-ignore
 			if (e.target && !e.target.id.includes('node-view')) {
 				return;
@@ -73,6 +74,11 @@ export const moveNodeWorkflow = mixins(
 
 			if (this.uiStore.isActionActive('dragActive')) {
 				return;
+			}
+
+			// Signal that moving canvas is active if middle button is pressed and mouse is moved
+			if (e.buttons === 4) {
+				this.uiStore.nodeViewMoveInProgress = true;
 			}
 
 			if (e.buttons === 0) {

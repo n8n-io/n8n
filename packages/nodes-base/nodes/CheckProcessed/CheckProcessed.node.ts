@@ -1,15 +1,13 @@
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	ICheckProcessedOutput,
-	IExecuteFunctions,
-	ProcessedDataContext,
-	ProcessedDataMode,
-} from 'n8n-core';
-import {
+	ICheckProcessedOptions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	ProcessedDataContext,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class CheckProcessed implements INodeType {
 	description: INodeTypeDescription = {
@@ -123,11 +121,11 @@ export class CheckProcessed implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const mode = this.getNodeParameter('mode', 0) as string;
-		const checkMode = this.getNodeParameter('checkMode', 0) as ProcessedDataMode;
-		const context = this.getNodeParameter('context', 0, 'workflow') as ProcessedDataContext;
+		const mode = this.getNodeParameter('mode', 0);
+		const checkMode = this.getNodeParameter('checkMode', 0);
+		const context = this.getNodeParameter('context', 0, 'workflow');
 
-		if (!['node', 'workflow'].includes(context)) {
+		if (!['node', 'workflow'].includes(context as string)) {
 			throw new NodeOperationError(
 				this.getNode(),
 				`The context '${context}' is not supported. Please select either "node" or "workflow".`,
@@ -155,29 +153,43 @@ export class CheckProcessed implements INodeType {
 		}
 
 		if (mode === 'add') {
-			const maxEntries = this.getNodeParameter('maxEntries', 0) as number;
-			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), context, {
-				mode: checkMode,
-				maxEntries,
-			});
+			const maxEntries = this.getNodeParameter('maxEntries', 0);
+			await this.helpers.checkProcessedAndRecord(
+				Object.keys(itemMapping),
+				context as ProcessedDataContext,
+				{
+					mode: checkMode,
+					maxEntries,
+				} as ICheckProcessedOptions,
+			);
 			return [items];
 		} else if (mode === 'remove') {
-			await this.helpers.removeProcessed(Object.keys(itemMapping), context);
+			await this.helpers.removeProcessed(
+				Object.keys(itemMapping),
+				context as ProcessedDataContext,
+				{
+					mode: checkMode,
+				} as ICheckProcessedOptions,
+			);
 			return [items];
 		} else {
 			// mode: filterOut
-			const maxEntries = this.getNodeParameter('maxEntries', 0) as number;
-			const addProcessedValue = this.getNodeParameter('addProcessedValue', 0) as string;
+			const maxEntries = this.getNodeParameter('maxEntries', 0);
+			const addProcessedValue = this.getNodeParameter('addProcessedValue', 0);
 
 			let itemsProcessed: ICheckProcessedOutput;
 			if (addProcessedValue) {
 				itemsProcessed = await this.helpers.checkProcessedAndRecord(
 					Object.keys(itemMapping),
-					context,
-					{ mode: checkMode, maxEntries },
+					context as ProcessedDataContext,
+					{ mode: checkMode, maxEntries } as ICheckProcessedOptions,
 				);
 			} else {
-				itemsProcessed = await this.helpers.checkProcessed(Object.keys(itemMapping), context);
+				itemsProcessed = await this.helpers.checkProcessed(
+					Object.keys(itemMapping),
+					context as ProcessedDataContext,
+					{ mode: checkMode } as ICheckProcessedOptions,
+				);
 			}
 
 			returnData = itemsProcessed.new

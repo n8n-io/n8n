@@ -13,6 +13,7 @@ import { luxonCompletions } from './completions/luxon.completions';
 import { itemIndexCompletions } from './completions/itemIndex.completions';
 import { itemFieldCompletions } from './completions/itemField.completions';
 import { jsonFieldCompletions } from './completions/jsonField.completions';
+import { variablesCompletions } from './completions/variables.completions';
 
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
@@ -24,6 +25,7 @@ export const completerExtension = mixins(
 	requireCompletions,
 	executionCompletions,
 	workflowCompletions,
+	variablesCompletions,
 	prevNodeCompletions,
 	luxonCompletions,
 	itemIndexCompletions,
@@ -31,7 +33,12 @@ export const completerExtension = mixins(
 	jsonFieldCompletions,
 ).extend({
 	methods: {
-		autocompletionExtension(): Extension {
+		autocompletionExtension(language: 'javaScript' | 'python'): Extension {
+			const completions = [];
+			if (language === 'javaScript') {
+				completions.push(jsSnippets, localCompletionSource);
+			}
+
 			return autocompletion({
 				compareCompletions: (a: Completion, b: Completion) => {
 					if (/\.json$|id$|id['"]\]$/.test(a.label)) return 0;
@@ -39,8 +46,7 @@ export const completerExtension = mixins(
 					return a.label.localeCompare(b.label);
 				},
 				override: [
-					jsSnippets,
-					localCompletionSource,
+					...completions,
 
 					// core
 					this.itemCompletions,
@@ -49,12 +55,13 @@ export const completerExtension = mixins(
 					this.nodeSelectorCompletions,
 					this.prevNodeCompletions,
 					this.workflowCompletions,
+					this.variablesCompletions,
 					this.executionCompletions,
 
 					// luxon
 					this.todayCompletions,
 					this.nowCompletions,
-					this.dateTimeCompltions,
+					this.dateTimeCompletions,
 
 					// item index
 					this.inputCompletions,
@@ -84,7 +91,7 @@ export const completerExtension = mixins(
 
 			try {
 				variablesToValues = this.variablesToValues();
-			} catch (_) {
+			} catch {
 				return null;
 			}
 
@@ -167,6 +174,7 @@ export const completerExtension = mixins(
 				// core
 
 				if (value === '$execution') return this.executionCompletions(context, variable);
+				if (value === '$vars') return this.variablesCompletions(context, variable);
 				if (value === '$workflow') return this.workflowCompletions(context, variable);
 				if (value === '$prevNode') return this.prevNodeCompletions(context, variable);
 
@@ -174,7 +182,7 @@ export const completerExtension = mixins(
 
 				if (value === '$now') return this.nowCompletions(context, variable);
 				if (value === '$today') return this.todayCompletions(context, variable);
-				if (value === 'DateTime') return this.dateTimeCompltions(context, variable);
+				if (value === 'DateTime') return this.dateTimeCompletions(context, variable);
 
 				// item index
 

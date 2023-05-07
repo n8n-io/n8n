@@ -1,13 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import { get, set, unset } from 'lodash';
+import get from 'lodash.get';
+import set from 'lodash.set';
+import unset from 'lodash.unset';
 
 interface IRenameKey {
 	currentKey: string;
@@ -51,6 +53,7 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'currentKey',
+								requiresDataPath: 'single',
 								description:
 									'The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 							},

@@ -1,8 +1,17 @@
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { SettingsUsersPage, SignupPage, WorkflowsPage, WorkflowPage, CredentialsPage, CredentialsModal, MessageBox } from '../pages';
+import {
+	SettingsUsersPage,
+	SignupPage,
+	WorkflowsPage,
+	WorkflowPage,
+	CredentialsPage,
+	CredentialsModal,
+	MessageBox,
+} from '../pages';
+import { SettingsUsagePage } from '../pages/settings-usage';
 
-import { MainSidebar, SettingsSidebar } from "../pages/sidebar";
+import { MainSidebar, SettingsSidebar } from '../pages/sidebar';
 
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
@@ -15,6 +24,7 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 const settingsUsersPage = new SettingsUsersPage();
+const settingsUsagePage = new SettingsUsagePage();
 
 const messageBox = new MessageBox();
 
@@ -24,26 +34,14 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Default owner', () => {
-	before(() => {
-		cy.resetAll();
-	});
-	beforeEach(() => {
-		cy.visit('/');
-	})
-
-	it('should skip owner setup', () => {
-		cy.skipSetup();
-	});
-
 	it('should be able to create workflows', () => {
-		workflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-		workflowsPage.getters.newWorkflowButtonCard().click();
-
+		cy.resetAll();
+		cy.skipSetup();
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
 
 		// reload page, ensure owner still has access
 		cy.reload();
-
+		cy.waitForLoad();
 		workflowPage.getters.workflowNameInput().should('contain.value', 'Test workflow');
 	});
 
@@ -72,8 +70,12 @@ describe('Default owner', () => {
 	});
 
 	it('should be able to setup UM from settings', () => {
+		cy.visit('/');
 		mainSidebar.getters.settings().should('be.visible');
 		mainSidebar.actions.goToSettings();
+		cy.url().should('include', settingsUsagePage.url);
+
+		settingsSidebar.actions.goToUsers();
 		cy.url().should('include', settingsUsersPage.url);
 
 		settingsUsersPage.actions.goToOwnerSetup();
@@ -82,11 +84,12 @@ describe('Default owner', () => {
 	});
 
 	it('should be able to setup instance and migrate workflows and credentials', () => {
-		cy.setup({ email, firstName, lastName, password });
+		cy.setup({ email, firstName, lastName, password }, true);
 
-		messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential')
+		messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential');
 
 		messageBox.actions.confirm();
+		cy.wait('@setupRequest');
 		cy.url().should('include', settingsUsersPage.url);
 		settingsSidebar.actions.back();
 
@@ -106,4 +109,3 @@ describe('Default owner', () => {
 		credentialsPage.getters.credentialCards().should('have.length', 1);
 	});
 });
-

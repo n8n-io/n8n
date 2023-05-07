@@ -1,12 +1,11 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
-
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
 import { utils as xlsxUtils } from 'xlsx';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -481,7 +480,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'The key row does not exist!');
 		}
 
 		// Create the keys array

@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'crm.objects.contacts.read',
@@ -58,6 +58,7 @@ export class HubspotDeveloperApi implements ICredentialType {
 			displayName: 'Developer API Key',
 			name: 'apiKey',
 			type: 'string',
+			required: true,
 			typeOptions: { password: true },
 			default: '',
 		},

@@ -4,21 +4,19 @@
 /* eslint-disable no-restricted-syntax */
 import { CronJob } from 'cron';
 
-import {
+import type {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
-	LoggerProxy as Logger,
 	TriggerTime,
-	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, toCronExpression, WorkflowActivationError } from 'n8n-workflow';
 
 import type { IWorkflowData } from './Interfaces';
 

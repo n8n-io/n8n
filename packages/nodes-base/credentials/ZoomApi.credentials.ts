@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -13,6 +13,13 @@ export class ZoomApi implements ICredentialType {
 	documentationUrl = 'zoom';
 
 	properties: INodeProperties[] = [
+		{
+			displayName:
+				'On 1 June, 2023 Zoom will remove JWT App support. You will have to connect to Zoom using the Oauth2 auth method. <a target="_blank" href="https://marketplace.zoom.us/docs/guides/build/jwt-app/jwt-faq/">More details (zoom.us)</a>',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
 		{
 			displayName: 'JWT Token',
 			name: 'accessToken',

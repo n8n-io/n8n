@@ -2,23 +2,21 @@
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
 			<template #default="{ modalName }">
-				<ContactPromptModal
-					:modalName="modalName"
-				/>
+				<ContactPromptModal :modalName="modalName" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
-				<CredentialEdit
-					:modalName="modalName"
-					:mode="mode"
-					:activeId="activeId"
-					/>
+				<CredentialEdit :modalName="modalName" :mode="mode" :activeId="activeId" />
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="ABOUT_MODAL_KEY">
 			<AboutModal />
+		</ModalRoot>
+
+		<ModalRoot :name="ASK_AI_MODAL_KEY">
+			<AskAiModal />
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
@@ -27,11 +25,7 @@
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<DuplicateWorkflowDialog
-					:data="data"
-					:isActive="active"
-					:modalName="modalName"
-				/>
+				<DuplicateWorkflowDialog :data="data" :isActive="active" :modalName="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -49,7 +43,7 @@
 
 		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
 			<template #default="{ active }">
-				<ValueSurvey :isActive="active"/>
+				<ValueSurvey :isActive="active" />
 			</template>
 		</ModalRoot>
 
@@ -67,15 +61,12 @@
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
 			<template #default="{ modalName, activeId }">
-				<DeleteUserModal
-					:modalName="modalName"
-					:activeId="activeId"
-				/>
+				<DeleteUserModal :modalName="modalName" :activeId="activeId" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="EXECUTIONS_MODAL_KEY">
-			<ExecutionsList />
+			<ExecutionsModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
@@ -84,11 +75,7 @@
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<WorkflowShareModal
-					:data="data"
-					:isActive="active"
-					:modalName="modalName"
-				/>
+				<WorkflowShareModal :data="data" :isActive="active" :modalName="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -104,6 +91,10 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
+		<ModalRoot :name="USER_ACTIVATION_SURVEY_MODAL">
+			<WorkflowSuccessModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -114,11 +105,21 @@
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<EventDestinationSettingsModal
+					:modalName="modalName"
+					:destination="data.destination"
+					:isNew="data.isNew"
+					:eventBus="data.eventBus"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from 'vue';
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -140,34 +141,41 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
+	LOG_STREAM_MODAL_KEY,
+	ASK_AI_MODAL_KEY,
+	USER_ACTIVATION_SURVEY_MODAL,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import AskAiModal from './AskAiModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
-import ChangePasswordModal from "./ChangePasswordModal.vue";
+import ChangePasswordModal from './ChangePasswordModal.vue';
 import ContactPromptModal from './ContactPromptModal.vue';
-import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
-import InviteUsersModal from "./InviteUsersModal.vue";
-import CredentialsSelectModal from "./CredentialsSelectModal.vue";
-import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
-import ModalRoot from "./ModalRoot.vue";
+import CredentialEdit from './CredentialEdit/CredentialEdit.vue';
+import InviteUsersModal from './InviteUsersModal.vue';
+import CredentialsSelectModal from './CredentialsSelectModal.vue';
+import DuplicateWorkflowDialog from './DuplicateWorkflowDialog.vue';
+import ModalRoot from './ModalRoot.vue';
 import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
-import PersonalizationModal from "./PersonalizationModal.vue";
-import TagsManager from "./TagsManager/TagsManager.vue";
-import UpdatesPanel from "./UpdatesPanel.vue";
-import ValueSurvey from "./ValueSurvey.vue";
-import WorkflowSettings from "./WorkflowSettings.vue";
-import DeleteUserModal from "./DeleteUserModal.vue";
-import ExecutionsList from "./ExecutionsList.vue";
-import ActivationModal from "./ActivationModal.vue";
+import PersonalizationModal from './PersonalizationModal.vue';
+import TagsManager from './TagsManager/TagsManager.vue';
+import UpdatesPanel from './UpdatesPanel.vue';
+import ValueSurvey from './ValueSurvey.vue';
+import WorkflowSettings from './WorkflowSettings.vue';
+import DeleteUserModal from './DeleteUserModal.vue';
+import ExecutionsModal from './ExecutionsModal.vue';
+import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
+import WorkflowSuccessModal from './UserActivationSurveyModal.vue';
+import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 
-export default Vue.extend({
-	name: "Modals",
+export default defineComponent({
+	name: 'Modals',
 	components: {
 		AboutModal,
+		AskAiModal,
 		ActivationModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
@@ -178,7 +186,7 @@ export default Vue.extend({
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
 		InviteUsersModal,
-		ExecutionsList,
+		ExecutionsModal,
 		ModalRoot,
 		OnboardingCallSignupModal,
 		PersonalizationModal,
@@ -188,6 +196,8 @@ export default Vue.extend({
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
+		EventDestinationSettingsModal,
+		WorkflowSuccessModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -196,6 +206,7 @@ export default Vue.extend({
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
+		ASK_AI_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,
@@ -210,6 +221,8 @@ export default Vue.extend({
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
+		LOG_STREAM_MODAL_KEY,
+		USER_ACTIVATION_SURVEY_MODAL,
 	}),
 });
 </script>

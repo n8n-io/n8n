@@ -10,28 +10,36 @@
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true" color="text-dark"
-					>{{ firstName }} {{ lastName }}
-					{{ isCurrentUser ? this.t('nds.userInfo.you') : '' }}</n8n-text
-				>
+				<n8n-text :bold="true" color="text-dark">
+					{{ firstName }} {{ lastName }}
+					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
+				</n8n-text>
+				<span v-if="disabled" :class="$style.pendingBadge">
+					<n8n-badge :bold="true">Disabled</n8n-badge>
+				</span>
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
+			</div>
+			<div v-if="!isOwner">
+				<n8n-text v-if="signInType" size="small" color="text-light">
+					Sign-in type: {{ signInType }}
+				</n8n-text>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-users-info',
+	mixins: [Locale],
 	components: {
 		N8nAvatar,
 		N8nText,
@@ -47,6 +55,9 @@ export default mixins(Locale).extend({
 		email: {
 			type: String,
 		},
+		isOwner: {
+			type: Boolean,
+		},
 		isPendingUser: {
 			type: Boolean,
 		},
@@ -55,7 +66,10 @@ export default mixins(Locale).extend({
 		},
 		disabled: {
 			type: Boolean,
-			default: false,
+		},
+		signInType: {
+			type: String,
+			required: false,
 		},
 	},
 	computed: {

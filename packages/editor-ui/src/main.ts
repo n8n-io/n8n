@@ -3,28 +3,28 @@
 import Vue from 'vue';
 
 import './plugins';
-import 'prismjs';
-import 'prismjs/themes/prism.css';
-import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
-
+import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
 
-import "@fontsource/open-sans/latin-400.css";
-import "@fontsource/open-sans/latin-600.css";
-import "@fontsource/open-sans/latin-700.css";
+import './styles/autocomplete-theme.scss';
+
+import '@fontsource/open-sans/latin-400.css';
+import '@fontsource/open-sans/latin-600.css';
+import '@fontsource/open-sans/latin-700.css';
 
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from '@/mixins/externalHooks';
+import { runExternalHook } from '@/utils';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { useWebhooksStore } from './stores/webhooks';
+import { useWebhooksStore, useUsersStore } from '@/stores';
+import { VIEWS } from '@/constants';
 
 Vue.config.productionTip = false;
 
@@ -38,14 +38,18 @@ new Vue({
 	i18n: i18nInstance,
 	router,
 	pinia,
-	render: h => h(App),
+	render: (h) => h(App),
 }).$mount('#app');
 
 router.afterEach((to, from) => {
 	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	const userStore = useUsersStore();
+	if (userStore.currentUser && to.name && to.name !== VIEWS.SIGNOUT && !to.name.includes('Modal')) {
+		userStore.showUserActivationSurveyModal();
+	}
 });
 
-if (import.meta.env.NODE_ENV !== 'production') {
+if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
 	window.onerror = (message, source, lineno, colno, error) => {

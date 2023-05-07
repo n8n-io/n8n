@@ -1,4 +1,4 @@
-import { BasePage } from "../base";
+import { BasePage } from '../base';
 
 export class MessageBox extends BasePage {
 	getters = {

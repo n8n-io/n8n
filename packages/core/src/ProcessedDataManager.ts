@@ -1,14 +1,16 @@
-import { IDataObject } from 'n8n-workflow';
-import get from 'lodash.get';
-import {
-	ICheckProcessedContextData,
+import type {
 	ICheckProcessedOptions,
 	ICheckProcessedOutput,
 	ICheckProcessedOutputItems,
-	IProcessedDataConfig,
-	IProcessedDataManagers,
+	IDataObject,
 	ProcessedDataContext,
 	ProcessedDataItemTypes,
+} from 'n8n-workflow';
+import get from 'lodash.get';
+import type {
+	ICheckProcessedContextData,
+	IProcessedDataConfig,
+	IProcessedDataManagers,
 } from './Interfaces';
 
 export class ProcessedDataManager {

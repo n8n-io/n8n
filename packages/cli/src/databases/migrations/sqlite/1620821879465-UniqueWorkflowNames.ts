@@ -1,19 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
-	name = 'UniqueWorkflowNames1620821879465';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		const workflowNames = await queryRunner.query(`
-				SELECT name
-				FROM "${tablePrefix}workflow_entity"
-			`);
+export class UniqueWorkflowNames1620821879465 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const workflowNames = (await queryRunner.query(`
+			SELECT name
+			FROM "${tablePrefix}workflow_entity"
+		`)) as Array<{ name: string }>;
 
 		for (const { name } of workflowNames) {
 			const [duplicatesQuery, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
@@ -27,12 +19,16 @@ export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 				{},
 			);
 
-			const duplicates = await queryRunner.query(duplicatesQuery, parameters);
+			const duplicates = (await queryRunner.query(duplicatesQuery, parameters)) as Array<{
+				id: number;
+				name: string;
+			}>;
 
 			if (duplicates.length > 1) {
 				await Promise.all(
-					duplicates.map(({ id, name }: { id: number; name: string }, index: number) => {
-						if (index === 0) return Promise.resolve();
+					// eslint-disable-next-line @typescript-eslint/no-shadow
+					duplicates.map(async ({ id, name }, index: number) => {
+						if (index === 0) return;
 						const [updateQuery, updateParams] =
 							queryRunner.connection.driver.escapeQueryWithParameters(
 								`
@@ -53,12 +49,9 @@ export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9" ON "${tablePrefix}workflow_entity" ("name") `,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}943d8f922be094eb507cb9a7f9"`);
 	}
 }

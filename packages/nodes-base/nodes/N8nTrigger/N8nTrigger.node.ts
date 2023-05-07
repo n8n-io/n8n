@@ -1,5 +1,9 @@
-import { ITriggerFunctions } from 'n8n-core';
-import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 
 type eventType = 'Instance started' | undefined;
 
@@ -10,7 +14,7 @@ export class N8nTrigger implements INodeType {
 		icon: 'file:n8nTrigger.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle events from your n8n instance',
+		description: 'Handle events and perform actions on your n8n instance',
 		eventTriggerDescription: '',
 		mockManualExecution: true,
 		defaults: {
@@ -55,18 +59,17 @@ export class N8nTrigger implements INodeType {
 			]);
 		}
 
-		const self = this;
-		async function manualTriggerFunction() {
-			self.emit([
-				self.helpers.returnJsonArray([
+		const manualTriggerFunction = async () => {
+			this.emit([
+				this.helpers.returnJsonArray([
 					{
 						event: 'Manual execution',
 						timestamp: new Date().toISOString(),
-						workflow_id: self.getWorkflow().id,
+						workflow_id: this.getWorkflow().id,
 					},
 				]),
 			]);
-		}
+		};
 
 		return {
 			manualTriggerFunction,

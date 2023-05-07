@@ -1,19 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { Converter } from 'showdown';
 
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
-import { isEmpty, set } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import set from 'lodash.set';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {

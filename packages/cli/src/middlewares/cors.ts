@@ -1,10 +1,7 @@
 import type { RequestHandler } from 'express';
 
-const { NODE_ENV } = process.env;
-const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
-
 export const corsMiddleware: RequestHandler = (req, res, next) => {
-	if (inDevelopment && 'origin' in req.headers) {
+	if ('origin' in req.headers) {
 		// Allow access also from frontend when developing
 		res.header('Access-Control-Allow-Origin', req.headers.origin);
 		res.header('Access-Control-Allow-Credentials', 'true');
@@ -14,5 +11,10 @@ export const corsMiddleware: RequestHandler = (req, res, next) => {
 			'Origin, X-Requested-With, Content-Type, Accept, sessionid',
 		);
 	}
-	next();
+
+	if (req.method === 'OPTIONS') {
+		res.writeHead(204).end();
+	} else {
+		next();
+	}
 };
