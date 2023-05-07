@@ -81,17 +81,17 @@
 
 <script lang="ts">
 import type { IUser, IUserListAction } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { useMessage } from '@/composables';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'CredentialSharing',
 	props: [
 		'credential',
@@ -101,6 +101,11 @@ export default mixins(showMessage).extend({
 		'credentialPermissions',
 		'modalBus',
 	],
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useUsageStore, useUIStore, useSettingsStore),
 		usersListActions(): IUserListAction[] {
@@ -148,21 +153,22 @@ export default mixins(showMessage).extend({
 			const user = this.usersStore.getUserById(userId);
 
 			if (user) {
-				const confirm = await this.confirmMessage(
+				const confirm = await this.confirm(
 					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', {
 						interpolate: { name: user.fullName || '' },
 					}),
 					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
-					null,
-					this.$locale.baseText(
-						'credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText',
-					),
-					this.$locale.baseText(
-						'credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText',
-					),
+					{
+						confirmButtonText: this.$locale.baseText(
+							'credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText',
+						),
+					},
 				);
 
-				if (confirm) {
+				if (confirm === MODAL_CONFIRM) {
 					this.$emit(
 						'change',
 						this.credentialData.sharedWith.filter((sharee: IUser) => {

@@ -1435,19 +1435,23 @@ export default mixins(
 						return;
 					}
 
-					const importConfirm = await this.confirmMessage(
+					const importConfirm = await this.confirm(
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.message', {
 							interpolate: { plainTextData },
 						}),
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
-						'warning',
-						this.$locale.baseText(
-							'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
-						),
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
+						{
+							type: 'warning',
+							confirmButtonText: this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText',
+							),
+						},
 					);
 
-					if (!importConfirm) {
+					if (importConfirm !== MODAL_CONFIRM) {
 						return;
 					}
 
@@ -1602,10 +1606,7 @@ export default mixins(
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 				}
 			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('nodeView.showError.importWorkflowData.title'),
-				);
+				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
 		onDragOver(event: DragEvent) {
