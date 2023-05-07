@@ -1,4 +1,4 @@
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { BadRequestError } from '@/ResponseHelper';
 import { MfaService } from '@/Mfa/mfa.service';
@@ -6,6 +6,7 @@ import Container from 'typedi';
 import { ExternalHooks } from '@/ExternalHooks';
 import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
 
+@Authorized()
 @RestController('/mfa')
 export class MFAController {
 	constructor(private mfaService: MfaService) {}
