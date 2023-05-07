@@ -15,7 +15,7 @@
 							<n8n-text :bold="true"> {{ workflowName }} </n8n-text>
 						</template>
 						<template #ranSuccessfully>
-							<n8n-text :bold="true" :class="$style.link">
+							<n8n-text>
 								{{
 									locale.baseText('userActivationSurveyModal.description.workflowRanSuccessfully')
 								}}
@@ -48,6 +48,13 @@
 		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-button
+					size="large"
+					type="secondary"
+					data-test-id="skip-button"
+					:label="locale.baseText('userActivationSurveyModal.form.button.skip')"
+					@click="onSkip"
+				/>
+				<n8n-button
 					:disabled="!hasAnyChanges"
 					@click="onShareFeedback"
 					size="large"
@@ -64,13 +71,13 @@
 import { onMounted, ref } from 'vue';
 import Modal from '@/components/Modal.vue';
 import { USER_ACTIVATION_SURVEY_MODAL } from '@/constants';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 
 import confetti from 'canvas-confetti';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from '@/event-bus';
 
 const FEEDBACK_MAX_LENGTH = 300;
@@ -90,13 +97,17 @@ onMounted(async () => {
 			currentSettings?.firstSuccessfulWorkflowId ?? '',
 		);
 		workflowName.value = name;
-		showConfetti();
+		setTimeout(showConfetti, 500);
 	} catch (e) {}
 });
 
 const onShareFeedback = () => {
 	telemetry.track('User responded to activation modal', { response: getFeedback() });
 	showSharedFeedbackSuccess();
+	modalBus.emit('close');
+};
+
+const onSkip = () => {
 	modalBus.emit('close');
 };
 
@@ -155,10 +166,6 @@ const showConfetti = () => {
 <style module lang="scss">
 .form {
 	margin-top: var(--spacing-l);
-}
-
-.link {
-	color: var(--color-primary);
 }
 
 .description > * {

@@ -29,6 +29,7 @@ const enabledFeatures = {
 	[LICENSE_FEATURES.SAML]: false,
 	[LICENSE_FEATURES.LOG_STREAMING]: false,
 	[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
+	[LICENSE_FEATURES.VERSION_CONTROL]: false,
 };
 
 type Feature = keyof typeof enabledFeatures;
@@ -53,14 +54,20 @@ const tablesToTruncate = [
 	'installed_nodes',
 	'user',
 	'role',
+	'variables',
 ];
 
 const truncateAll = async () => {
 	const connection = Db.getConnection();
+
 	for (const table of tablesToTruncate) {
-		await connection.query(
-			`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
-		);
+		try {
+			await connection.query(
+				`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
+			);
+		} catch (error) {
+			console.warn('Dropping Table for E2E Reset error: ', error);
+		}
 	}
 };
 
@@ -138,8 +145,14 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	res.writeHead(204).end();
 });
 
-e2eController.post('/enable-feature/:feature', async (req: Request<{ feature: Feature }>, res) => {
-	const { feature } = req.params;
-	enabledFeatures[feature] = true;
-	res.writeHead(204).end();
-});
+e2eController.patch(
+	'/feature/:feature',
+	bodyParser.json(),
+	async (req: Request<{ feature: Feature }>, res) => {
+		const { feature } = req.params;
+		const { enabled } = req.body;
+
+		enabledFeatures[feature] = enabled === undefined || enabled === true;
+		res.writeHead(204).end();
+	},
+);

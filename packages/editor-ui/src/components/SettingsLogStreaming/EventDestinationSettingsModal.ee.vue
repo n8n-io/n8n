@@ -175,42 +175,46 @@
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import { useNDVStore } from '../../stores/ndv';
-import { useWorkflowsStore } from '../../stores/workflows';
+import { useLogStreamingStore } from '../../stores/logStreaming.store';
+import { useNDVStore } from '../../stores/ndv.store';
+import { useWorkflowsStore } from '../../stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
+import type { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
+import type {
+	IDataObject,
+	INodeCredentials,
+	NodeParameterValue,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
 import {
 	deepCopy,
 	defaultMessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
-	IDataObject,
-	INodeCredentials,
-	NodeParameterValue,
 	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import { LOG_STREAM_MODAL_KEY } from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { showMessage } from '@/mixins/showMessage';
-import { useUIStore } from '../../stores/ui';
-import { useUsersStore } from '../../stores/users';
+import { useUIStore } from '../../stores/ui.store';
+import { useUsersStore } from '../../stores/users.store';
 import { destinationToFakeINodeUi } from './Helpers.ee';
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
-import { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { Checkbox } from 'element-ui';
-import { createEventBus, EventBus } from '@/event-bus';
+import type { EventBus } from '@/event-bus';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({
 	name: 'event-destination-settings-modal',

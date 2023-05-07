@@ -1,5 +1,6 @@
 import { WorkflowExecute } from 'n8n-core';
-import { createDeferredPromise, INodeTypes, IRun, Workflow } from 'n8n-workflow';
+import type { INodeTypes, IRun } from 'n8n-workflow';
+import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import * as Helpers from './Helpers';
 import type { WorkflowTestData } from './types';
 

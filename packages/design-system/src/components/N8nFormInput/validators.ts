@@ -1,4 +1,4 @@
-import { IValidator, RuleGroup, Validatable } from '../../types';
+import type { IValidator, RuleGroup, Validatable } from '../../types';
 
 export const emailRegex =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -93,6 +93,19 @@ export const containsUpperCaseValidator: IValidator<{ minimum: number }> = {
 	},
 };
 
+export const matchRegex: IValidator<{ regex: RegExp; message: string }> = {
+	validate: (value: Validatable, config: { regex: RegExp; message: string }) => {
+		if (!config.regex.test(`${value as string}`)) {
+			return {
+				message: config.message,
+				options: config,
+			};
+		}
+
+		return false;
+	},
+};
+
 export const defaultPasswordRules: RuleGroup = {
 	rules: [
 		{
@@ -117,6 +130,7 @@ export const VALIDATORS = {
 	VALID_EMAIL: emailValidator,
 	CONTAINS_UPPERCASE: containsUpperCaseValidator,
 	DEFAULT_PASSWORD_RULES: defaultPasswordRules,
+	MATCH_REGEX: matchRegex,
 };
 
 export const getValidationError = <T extends Validatable, C>(

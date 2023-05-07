@@ -2,8 +2,8 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './showMessage';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useVersionsStore } from '@/stores/versions';
+import { useUIStore } from '@/stores/ui.store';
+import { useVersionsStore } from '@/stores/versions.store';
 
 export const newVersions = mixins(showMessage).extend({
 	computed: {

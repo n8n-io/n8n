@@ -5,6 +5,7 @@ import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import type {
+	AuthenticationMethod,
 	ExecutionStatus,
 	INodesGraphResult,
 	IRun,
@@ -80,6 +81,7 @@ export class InternalHooks implements IInternalHooksClass {
 			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
 			smtp_set_up: diagnosticInfo.smtp_set_up,
 			ldap_allowed: diagnosticInfo.ldap_allowed,
+			saml_enabled: diagnosticInfo.saml_enabled,
 		};
 
 		return Promise.all([
@@ -271,11 +273,11 @@ export class InternalHooks implements IInternalHooksClass {
 		runData?: IRun,
 		userId?: string,
 	): Promise<void> {
-		const promises = [Promise.resolve()];
-
 		if (!workflow.id) {
-			return Promise.resolve();
+			return;
 		}
+
+		const promises = [];
 
 		const properties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
@@ -288,6 +290,10 @@ export class InternalHooks implements IInternalHooksClass {
 			properties.user_id = userId;
 		}
 
+		if (runData?.data.resultData.error?.message?.includes('canceled')) {
+			runData.status = 'canceled';
+		}
+
 		properties.success = !!runData?.finished;
 
 		let executionStatus: ExecutionStatus;
@@ -295,6 +301,8 @@ export class InternalHooks implements IInternalHooksClass {
 			executionStatus = 'crashed';
 		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
 			executionStatus = 'waiting';
+		} else if (runData?.status === 'canceled') {
+			executionStatus = 'canceled';
 		} else {
 			executionStatus = properties.success ? 'success' : 'failed';
 		}
@@ -732,6 +740,38 @@ export class InternalHooks implements IInternalHooksClass {
 		]);
 	}
 
+	async onUserLoginSuccess(userLoginData: {
+		user: User;
+		authenticationMethod: AuthenticationMethod;
+	}): Promise<void> {
+		void Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.login.success',
+				payload: {
+					authenticationMethod: userLoginData.authenticationMethod,
+					...userToPayload(userLoginData.user),
+				},
+			}),
+		]);
+	}
+
+	async onUserLoginFailed(userLoginData: {
+		user: string;
+		authenticationMethod: AuthenticationMethod;
+		reason?: string;
+	}): Promise<void> {
+		void Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.login.failed',
+				payload: {
+					authenticationMethod: userLoginData.authenticationMethod,
+					user: userLoginData.user,
+					reason: userLoginData.reason,
+				},
+			}),
+		]);
+	}
+
 	/**
 	 * Credentials
 	 */
@@ -980,5 +1020,9 @@ export class InternalHooks implements IInternalHooksClass {
 	 */
 	async onAuditGeneratedViaCli() {
 		return this.telemetry.track('Instance generated security audit via CLI command');
+	}
+
+	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
+		return this.telemetry.track('User created variable', createData);
 	}
 }
