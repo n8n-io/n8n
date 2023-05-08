@@ -54,3 +54,23 @@ export const isResourceMapperValue = (value: unknown): value is ResourceMapperVa
 		'value' in value
 	);
 };
+
+export const isNumeric = (value: unknown): value is number => {
+	return !isNaN(Number(value));
+};
+
+export const isBoolean = (value: unknown): value is boolean => {
+	if (typeof value === 'boolean') {
+		return true;
+	}
+	// TODO: Extend this to more types/values if needed
+	if (typeof value === 'string') {
+		return ['true', 'false'].includes(value.toLowerCase());
+	}
+	return false;
+};
+
+export const isDateTime = (value: unknown): value is Date => {
+	const d = new Date(String(value));
+	return d instanceof Date && !isNaN(d.valueOf());
+};

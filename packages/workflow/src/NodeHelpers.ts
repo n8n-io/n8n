@@ -38,7 +38,13 @@ import type {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
-import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
+import {
+	isBoolean,
+	isDateTime,
+	isNumeric,
+	isResourceMapperValue,
+	isValidResourceLocatorParameterValue,
+} from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
@@ -1097,6 +1103,24 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
+export const validateFieldType = (value: unknown, type: string): boolean => {
+	if (value === null || value === undefined) return true;
+	switch (type.toLocaleLowerCase()) {
+		case 'number': {
+			return isNumeric(value);
+		}
+		case 'boolean': {
+			return isBoolean(value);
+		}
+		case 'datetime': {
+			return isDateTime(value);
+		}
+		default: {
+			return true;
+		}
+	}
+};
+
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  *
@@ -1241,23 +1265,32 @@ export function getParameterIssues(
 		if (nodeProperties.typeOptions?.resourceMapper?.mode === 'add') {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 			if (isResourceMapperValue(value)) {
-				const fieldWordSingular =
+				let fieldWordSingular =
 					nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
+				fieldWordSingular = fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1);
 				value.schema.forEach((field) => {
+					const fieldValue = value.value ? value.value[field.id] : undefined;
+					const key = `${nodeProperties.name}.${field.id}`;
+					const fieldErrors: string[] = [];
 					if (field.required) {
-						const key = `${nodeProperties.name}.${field.id}`;
 						if (value.value === null || (value.value && value.value[field.id] === null)) {
-							if (foundIssues.parameters === undefined) {
-								foundIssues.parameters = {};
-							}
-							if (foundIssues.parameters[key] === undefined) {
-								foundIssues.parameters[key] = [];
-							}
-							const error = `${
-								fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1)
-							} "${field.id}" is required.`;
-							foundIssues.parameters[key].push(error);
+							const error = `${fieldWordSingular} "${field.id}" is required`;
+							fieldErrors.push(error);
 						}
+					}
+					if (field.type && !validateFieldType(fieldValue, field.type)) {
+						console.log(field.id, fieldValue, field.type);
+						const error = `${fieldWordSingular} "${field.id}" is not a valid ${field.type}`;
+						fieldErrors.push(error);
+					}
+					if (fieldErrors.length > 0) {
+						if (foundIssues.parameters === undefined) {
+							foundIssues.parameters = {};
+						}
+						if (foundIssues.parameters[key] === undefined) {
+							foundIssues.parameters[key] = [];
+						}
+						foundIssues.parameters[key].push(...fieldErrors);
 					}
 				});
 			}
