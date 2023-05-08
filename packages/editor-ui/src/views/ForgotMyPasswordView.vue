@@ -9,8 +9,8 @@ import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 
 export default mixins(showMessage).extend({
 	name: 'ForgotMyPasswordView',

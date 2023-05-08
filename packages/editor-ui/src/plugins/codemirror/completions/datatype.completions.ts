@@ -440,11 +440,12 @@ export const objectGlobalOptions = () => {
 };
 
 const regexes = {
-	generalRef: /\$[^$]+\.([^{\s])*/, // $input. or $json. or similar ones
+	generalRef: /\$[^$'"]+\.([^{\s])*/, // $input. or $json. or similar ones
 	selectorRef: /\$\(['"][\S\s]+['"]\)\.([^{\s])*/, // $('nodeName').
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.([^{\s])*/, // (123). or (123.4).
-	stringLiteral: /(".+"|('.+'))\.([^{\s])*/, // 'abc'. or "abc".
+	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
+	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/, // new Date(). or (new Date()).
 	arrayLiteral: /(\[.+\])\.([^{\s])*/, // [1, 2, 3].
 	objectLiteral: /\(\{.*\}\)\.([^{\s])*/, // ({}).

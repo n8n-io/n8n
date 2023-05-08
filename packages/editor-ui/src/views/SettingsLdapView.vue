@@ -160,8 +160,8 @@ import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/tab
 import { capitalizeFirstLetter } from '@/utils';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores';
 import { createEventBus } from '@/event-bus';
 import type { N8nFormInputs } from 'n8n-design-system';

@@ -81,17 +81,15 @@
 
 <script lang="ts">
 import type { IUser, IUserListAction } from '@/Interface';
-import { UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useUsageStore } from '@/stores/usage';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(showMessage).extend({
 	name: 'CredentialSharing',

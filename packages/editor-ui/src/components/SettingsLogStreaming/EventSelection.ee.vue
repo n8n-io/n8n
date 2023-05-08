@@ -72,7 +72,7 @@
 import { Checkbox } from 'element-ui';
 import { mapStores } from 'pinia';
 import type { BaseTextKey } from '../../plugins/i18n';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
+import { useLogStreamingStore } from '../../stores/logStreaming.store';
 
 export default {
 	name: 'event-selection',

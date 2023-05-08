@@ -38,7 +38,6 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue from 'vue';
 import { get } from 'lodash-es';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -48,8 +47,7 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { NodePanelType } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -436,6 +434,10 @@ export default mixins(debounceHelper).extend({
 
 .draggable {
 	visibility: hidden;
+}
+
+.double-width {
+	left: 90%;
 }
 
 .dragButtonContainer {

@@ -7,7 +7,9 @@ import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
+import type { PathLike } from 'fs';
 
+import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
@@ -15,7 +17,6 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
-import type { PathLike } from 'fs';
 import type { ExecutionStatus } from './ExecutionStatus';
 import type { AuthenticationMethod } from './Authentication';
 
@@ -1019,7 +1020,10 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
+export type EditorType = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
+export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
+export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
+export type SQLDialect = 'mssql' | 'mysql' | 'postgres';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1032,7 +1036,9 @@ export interface ILoadOptions {
 export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
-	editor?: EditorTypes; // Supported by: string
+	editor?: EditorType; // Supported by: string
+	editorLanguage?: CodeNodeEditorLanguage; // Supported by: string in combination with editor: codeNodeEditor
+	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
@@ -1389,12 +1395,6 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export interface INodeActionTypeDescription extends INodeTypeDescription {
-	displayOptions?: IDisplayOptions;
-	values?: IDataObject;
-	actionKey: string;
-}
-
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1433,7 +1433,6 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
-	actions?: INodeActionTypeDescription[];
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 

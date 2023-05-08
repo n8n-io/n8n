@@ -1,6 +1,6 @@
 import type { IExternalHooks } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { useWebhooksStore } from '@/stores/webhooks';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { defineComponent } from 'vue';
 import { runExternalHook } from '@/utils';
 

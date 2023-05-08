@@ -196,10 +196,9 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_CREATOR_VIEW,
 	EnterpriseEditionFeature,
-	ASSUMPTION_EXPERIMENT,
-	REGULAR_NODE_FILTER,
+	REGULAR_NODE_CREATOR_VIEW,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 } from '@/constants';
@@ -211,6 +210,8 @@ import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { showMessage } from '@/mixins/showMessage';
 import { useTitleChange } from '@/composables/useTitleChange';
+import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
+import { useI18n } from '@/composables/useI18n';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
@@ -261,26 +262,26 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
-import { useSegment } from '@/stores/segment';
-import { useTemplatesStore } from '@/stores/templates';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useTagsStore } from '@/stores/tags';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { useCanvasStore } from '@/stores/canvas';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useEnvironmentsStore } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
-import { useHistoryStore } from '@/stores/history';
+import { useHistoryStore } from '@/stores/history.store';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -342,6 +343,8 @@ export default mixins(
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
+			...useUniqueNodeName(),
+			...useI18n(),
 		};
 	},
 	errorCaptured: (err, vm, info) => {
@@ -477,12 +480,6 @@ export default mixins(
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
-		},
-		defaultLocale(): string {
-			return this.rootStore.defaultLocale;
-		},
-		isEnglishLocale(): boolean {
-			return this.defaultLocale === 'en';
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
@@ -679,78 +676,6 @@ export default mixins(
 			this.workflowsStore.workflowExecutionData = null;
 			this.updateNodesExecutionIssues();
 		},
-		translateName(type: string, originalName: string) {
-			return this.$locale.headerText({
-				key: `headers.${this.$locale.shortNodeType(type)}.displayName`,
-				fallback: originalName,
-			});
-		},
-		getUniqueNodeName({
-			originalName,
-			additionalUsedNames = [],
-			type = '',
-		}: {
-			originalName: string;
-			additionalUsedNames?: string[];
-			type?: string;
-		}) {
-			const allNodeNamesOnCanvas = this.workflowsStore.allNodes.map((n: INodeUi) => n.name);
-			originalName = this.isEnglishLocale ? originalName : this.translateName(type, originalName);
-
-			if (
-				!allNodeNamesOnCanvas.includes(originalName) &&
-				!additionalUsedNames.includes(originalName)
-			) {
-				return originalName; // already unique
-			}
-
-			let natives: string[] = this.nativelyNumberSuffixedDefaults;
-			natives = this.isEnglishLocale
-				? natives
-				: natives.map((name) => {
-						const type = name.toLowerCase().replace('_', '');
-						return this.translateName(type, name);
-				  });
-
-			const found = natives.find((n) => originalName.startsWith(n));
-
-			let ignore, baseName, nameIndex, uniqueName;
-			let index = 1;
-
-			if (found) {
-				// name natively ends with number
-				nameIndex = originalName.split(found).pop();
-				if (nameIndex) {
-					index = parseInt(nameIndex, 10);
-				}
-				baseName = uniqueName = found;
-			} else {
-				const nameMatch = originalName.match(/(.*\D+)(\d*)/);
-
-				if (nameMatch === null) {
-					// name is only a number
-					index = parseInt(originalName, 10);
-					baseName = '';
-					uniqueName = baseName + index;
-				} else {
-					// name is string or string/number combination
-					[ignore, baseName, nameIndex] = nameMatch;
-					if (nameIndex !== '') {
-						index = parseInt(nameIndex, 10);
-					}
-					uniqueName = baseName;
-				}
-			}
-
-			while (
-				allNodeNamesOnCanvas.includes(uniqueName) ||
-				additionalUsedNames.includes(uniqueName)
-			) {
-				uniqueName = baseName + index++;
-			}
-
-			return uniqueName;
-		},
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
 			let saved = await this.saveCurrentWorkflow();
 			if (saved) await this.settingsStore.fetchPromptsData();
@@ -772,7 +697,7 @@ export default mixins(
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
-			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_FILTER);
+			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 			this.nodeCreatorStore.setShowScrim(true);
 			this.onToggleNodeCreator({ source, createNodeActive: true });
 		},
@@ -1747,13 +1672,19 @@ export default mixins(
 		},
 
 		async getNewNodeWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
+			let nodeVersion = nodeTypeData.defaultVersion;
+
+			if (nodeVersion === undefined) {
+				nodeVersion = Array.isArray(nodeTypeData.version)
+					? nodeTypeData.version.slice(-1)[0]
+					: nodeTypeData.version;
+			}
+
 			const newNodeData: INodeUi = {
 				id: uuid(),
 				name: nodeTypeData.defaults.name as string,
 				type: nodeTypeData.name,
-				typeVersion: Array.isArray(nodeTypeData.version)
-					? nodeTypeData.version.slice(-1)[0]
-					: nodeTypeData.version,
+				typeVersion: nodeVersion,
 				position: [0, 0],
 				parameters: {},
 			};
@@ -1932,11 +1863,9 @@ export default mixins(
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
 
-			// Check if node-name is unique else find one that is
-			newNodeData.name = this.getUniqueNodeName({
-				originalName: newNodeData.name,
-				type: newNodeData.type,
-			});
+			const localizedName = this.localizeNodeName(newNodeData.name, newNodeData.type);
+
+			newNodeData.name = this.uniqueNodeName(localizedName);
 
 			if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
 				newNodeData.webhookId = uuid();
@@ -2733,11 +2662,9 @@ export default mixins(
 				const newNodeData = deepCopy(this.getNodeDataToSave(node));
 				newNodeData.id = uuid();
 
-				// Check if node-name is unique else find one that is
-				newNodeData.name = this.getUniqueNodeName({
-					originalName: newNodeData.name,
-					type: newNodeData.type,
-				});
+				const localizedName = this.localizeNodeName(newNodeData.name, newNodeData.type);
+
+				newNodeData.name = this.uniqueNodeName(localizedName);
 
 				newNodeData.position = NodeViewUtils.getNewNodePosition(
 					this.nodes,
@@ -3117,10 +3044,7 @@ export default mixins(
 				this.renamingActive = true;
 			}
 
-			// Check if node-name is unique else find one that is
-			newName = this.getUniqueNodeName({
-				originalName: newName,
-			});
+			newName = this.uniqueNodeName(newName);
 
 			// Rename the node and update the connections
 			const workflow = this.getCurrentWorkflow(true);
@@ -3387,11 +3311,10 @@ export default mixins(
 				}
 
 				oldName = node.name;
-				newName = this.getUniqueNodeName({
-					originalName: node.name,
-					additionalUsedNames: newNodeNames,
-					type: node.type,
-				});
+
+				const localized = this.localizeNodeName(node.name, node.type);
+
+				newName = this.uniqueNodeName(localized, newNodeNames);
 
 				newNodeNames.push(newName);
 				nodeNameTable[oldName] = newName;
@@ -3724,15 +3647,15 @@ export default mixins(
 
 			// Default to the trigger tab in node creator if there's no trigger node yet
 			this.nodeCreatorStore.setSelectedView(
-				this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
+				this.containsTrigger ? REGULAR_NODE_CREATOR_VIEW : TRIGGER_NODE_CREATOR_VIEW,
 			);
 
 			this.createNodeActive = createNodeActive;
 
 			const mode =
-				this.nodeCreatorStore.selectedView === TRIGGER_NODE_FILTER ? 'trigger' : 'regular';
+				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_VIEW ? 'trigger' : 'regular';
 
-			this.nodeCreatorStore.openSource = source || '';
+			if (createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
 			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,

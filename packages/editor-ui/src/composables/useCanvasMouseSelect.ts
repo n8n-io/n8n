@@ -1,8 +1,8 @@
 import type { INodeUi, XYPosition } from '@/Interface';
 
 import useDeviceSupport from './useDeviceSupport';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	getMousePosition,
 	getRelativePosition,
@@ -10,8 +10,8 @@ import {
 	SIDEBAR_WIDTH,
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
-import { ref, watchEffect, onMounted, computed, onUnmounted } from 'vue';
-import { useCanvasStore } from '@/stores/canvas';
+import { ref, onMounted, computed } from 'vue';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 interface ExtendedHTMLSpanElement extends HTMLSpanElement {
 	x: number;

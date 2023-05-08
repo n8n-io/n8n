@@ -17,6 +17,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	const credentials = await this.getCredentials('postgres');
 	const options = this.getNodeParameter('options', 0, {});
+	options.nodeVersion = this.getNode().typeVersion;
 
 	const { db, pgp, sshClient } = (await Connections.getInstance(
 		credentials,

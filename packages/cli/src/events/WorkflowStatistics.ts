@@ -114,7 +114,7 @@ export async function workflowExecutionCompleted(
 				workflow_id: workflowId,
 			};
 
-			if (!owner.settings?.firstSuccessfulWorkflowId) {
+			if (!owner.settings?.userActivated) {
 				await UserService.updateUserSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,

@@ -175,9 +175,9 @@
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import { useNDVStore } from '../../stores/ndv';
-import { useWorkflowsStore } from '../../stores/workflows';
+import { useLogStreamingStore } from '../../stores/logStreaming.store';
+import { useNDVStore } from '../../stores/ndv.store';
+import { useWorkflowsStore } from '../../stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import type { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
@@ -200,8 +200,8 @@ import Vue from 'vue';
 import { LOG_STREAM_MODAL_KEY } from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { showMessage } from '@/mixins/showMessage';
-import { useUIStore } from '../../stores/ui';
-import { useUsersStore } from '../../stores/users';
+import { useUIStore } from '../../stores/ui.store';
+import { useUsersStore } from '../../stores/users.store';
 import { destinationToFakeINodeUi } from './Helpers.ee';
 import {
 	webhookModalDescription,

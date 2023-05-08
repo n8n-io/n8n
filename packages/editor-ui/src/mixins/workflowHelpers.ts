@@ -1,8 +1,6 @@
 import {
-	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
@@ -27,7 +25,7 @@ import type {
 	INodeConnection,
 	IWebhookDescription,
 } from 'n8n-workflow';
-import { INodeTypeData, IPinData, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type {
 	INodeTypesMaxCount,
@@ -50,15 +48,15 @@ import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv';
-import { useTemplatesStore } from '@/stores/templates';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import type { ICredentialsResponse } from '@/Interface';

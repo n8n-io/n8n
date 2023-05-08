@@ -117,7 +117,7 @@
 			}}</n8n-text>
 		</template>
 
-		<template #recovered-artifical-output-data>
+		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
@@ -145,9 +145,9 @@ import {
 	START_NODE_TYPE,
 } from '@/constants';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default mixins(workflowHelpers).extend({
 	name: 'InputPanel',
