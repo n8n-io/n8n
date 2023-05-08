@@ -22,7 +22,6 @@ const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

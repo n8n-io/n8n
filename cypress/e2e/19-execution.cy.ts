@@ -6,8 +6,7 @@ const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Execution', () => {
-	beforeEach(() => {
-		cy.resetAll();
+	before(() => {
 		cy.skipSetup();
 	});
 

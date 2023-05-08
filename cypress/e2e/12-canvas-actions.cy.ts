@@ -12,7 +12,6 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 describe('Canvas Actions', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

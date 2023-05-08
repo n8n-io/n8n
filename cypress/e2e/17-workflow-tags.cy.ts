@@ -5,8 +5,7 @@ const wf = new WorkflowPage();
 const TEST_TAGS = ['Tag 1', 'Tag 2', 'Tag 3'];
 
 describe('Workflow tags', () => {
-	beforeEach(() => {
-		cy.resetAll();
+	before(() => {
 		cy.skipSetup();
 	});
 
