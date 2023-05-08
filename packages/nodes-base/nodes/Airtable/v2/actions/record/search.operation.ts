@@ -1,6 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import type { IRecord } from '../../helpers/interfaces';
 
@@ -51,8 +51,8 @@ const properties: INodeProperties[] = [
 			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.",
 	},
 	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		default: {},
 		description: 'Additional options which decide which records should be returned',
@@ -169,13 +169,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	try {
 		const returnAll = this.getNodeParameter('returnAll', 0);
 		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0);
-		const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
-		for (const key of Object.keys(additionalOptions)) {
-			if (key === 'sort' && (additionalOptions.sort as IDataObject).property !== undefined) {
-				qs[key] = (additionalOptions[key] as IDataObject).property;
+		for (const key of Object.keys(options)) {
+			if (key === 'sort' && (options.sort as IDataObject).property !== undefined) {
+				qs[key] = (options[key] as IDataObject).property;
 			} else {
-				qs[key] = additionalOptions[key];
+				qs[key] = options[key];
 			}
 		}
 
@@ -201,7 +201,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			return data;
 		}
 
-		returnData = this.helpers.constructExecutionMetaData(wrapData(returnData), {
+		returnData = returnData.map((record) => {
+			const { fields, ...rest } = record;
+			return {
+				json: {
+					...rest,
+					...(fields as IDataObject),
+				},
+			};
+		});
+
+		returnData = this.helpers.constructExecutionMetaData(returnData, {
 			itemData: { item: 0 },
 		});
 	} catch (error) {
