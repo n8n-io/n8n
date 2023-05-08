@@ -15,7 +15,7 @@ export const AddToDateDescription: INodeProperties[] = [
 	},
 	{
 		displayName: 'Date to Add To',
-		name: 'addToDate',
+		name: 'magnitude',
 		type: 'string',
 		description: 'The date that you want to change',
 		default: '',

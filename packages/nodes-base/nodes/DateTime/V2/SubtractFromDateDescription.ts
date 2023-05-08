@@ -15,7 +15,7 @@ export const SubtractFromDateDescription: INodeProperties[] = [
 	},
 	{
 		displayName: 'Date to Subtract From',
-		name: 'subtractFromDate',
+		name: 'magnitude',
 		type: 'string',
 		description: 'The date that you want to change',
 		default: '',

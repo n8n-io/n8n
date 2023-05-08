@@ -110,7 +110,7 @@ export class DateTimeV2 implements INodeType {
 						  },
 				);
 			} else if (operation === 'addToDate') {
-				const addToDate = this.getNodeParameter('addToDate', i) as string;
+				const addToDate = this.getNodeParameter('magnitude', i) as string;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
 				const duration = this.getNodeParameter('duration', i) as number;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
@@ -118,7 +118,7 @@ export class DateTimeV2 implements INodeType {
 				const returnedDate = dateToAdd.plus({ [timeUnit]: duration });
 				responseData.push({ [outputFieldName]: returnedDate.toString() });
 			} else if (operation === 'subtractFromDate') {
-				const subtractFromDate = this.getNodeParameter('subtractFromDate', i) as string;
+				const subtractFromDate = this.getNodeParameter('magnitude', i) as string;
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
 				const duration = this.getNodeParameter('duration', i) as number;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
