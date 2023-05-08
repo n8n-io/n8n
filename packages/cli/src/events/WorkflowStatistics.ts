@@ -137,12 +137,16 @@ export async function nodeFetchedData(
 	if (!workflowId) return;
 	// Try to insert the data loaded statistic
 	try {
-		await Db.collections.WorkflowStatistics.insert({
-			workflowId,
-			name: StatisticsNames.dataLoaded,
-			count: 1,
-			latestEvent: new Date(),
-		});
+		await Db.collections.WorkflowStatistics.createQueryBuilder('workflowStatistics')
+			.insert()
+			.values({
+				workflowId,
+				name: StatisticsNames.dataLoaded,
+				count: 1,
+				latestEvent: new Date(),
+			})
+			.orIgnore()
+			.execute();
 	} catch (error) {
 		// if it's a duplicate key error then that's fine, otherwise throw the error
 		if (!(error instanceof QueryFailedError)) {
