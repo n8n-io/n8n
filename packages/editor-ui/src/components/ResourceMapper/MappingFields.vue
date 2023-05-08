@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import type {
+	FieldType,
 	INodeIssues,
 	INodeParameters,
 	INodeProperties,
@@ -30,6 +31,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object'];
 
 const emit = defineEmits<{
 	(event: 'fieldValueChanged', value: IUpdateInformation): void;
@@ -48,7 +50,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				displayName: getFieldLabel(field),
 				// Set part of the path to each param name so value can be fetched properly by input parameter list component
 				name: `value["${field.id}"]`,
-				type: (field.type as NodePropertyTypes) || 'string',
+				type: getParamType(field),
 				default: field.type === 'boolean' ? false : '',
 				required: field.required,
 				description: getFieldDescription(field),
@@ -216,6 +218,13 @@ function getFieldIssues(field: INodeProperties): string[] {
 		}
 	}
 	return fieldIssues;
+}
+
+function getParamType(field: ResourceMapperField): NodePropertyTypes {
+	if (field.type && !FORCE_TEXT_INPUT_FOR_TYPES.includes(field.type)) {
+		return field.type as NodePropertyTypes;
+	}
+	return 'string';
 }
 
 function onValueChanged(value: IUpdateInformation): void {

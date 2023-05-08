@@ -1960,11 +1960,11 @@ export interface ResourceMapperField {
 	canBeUsedToMatch?: boolean;
 	required: boolean;
 	display: boolean;
-	type?: ResourceMapperFieldType;
+	type?: FieldType;
 	removed?: boolean;
 }
 
-export type ResourceMapperFieldType = 'string' | 'number' | 'dateTime' | 'boolean';
+export type FieldType = 'string' | 'number' | 'dateTime' | 'boolean' | 'time' | 'array' | 'object';
 
 export type ResourceMapperValue = {
 	mappingMode: string;

@@ -37,12 +37,15 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	WebhookHttpMethod,
+	FieldType,
 } from './Interfaces';
 import {
 	isBoolean,
 	isDateTime,
 	isNumeric,
+	isObject,
 	isResourceMapperValue,
+	isTime,
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
 import { deepCopy } from './utils';
@@ -1103,7 +1106,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
-export const validateFieldType = (value: unknown, type: string): boolean => {
+export const validateFieldType = (value: unknown, type: FieldType): boolean => {
 	if (value === null || value === undefined) return true;
 	switch (type.toLocaleLowerCase()) {
 		case 'number': {
@@ -1114,6 +1117,15 @@ export const validateFieldType = (value: unknown, type: string): boolean => {
 		}
 		case 'datetime': {
 			return isDateTime(value);
+		}
+		case 'time': {
+			return isTime(value);
+		}
+		case 'object': {
+			return isObject(value);
+		}
+		case 'array': {
+			return Array.isArray(value);
 		}
 		default: {
 			return true;

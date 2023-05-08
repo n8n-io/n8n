@@ -1,13 +1,9 @@
-import type {
-	ILoadOptionsFunctions,
-	ResourceMapperFields,
-	ResourceMapperFieldType,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
 import { getTableSchema, isColumnUnique } from '../helpers/utils';
 import { Connections } from '../transport';
 import type { ConnectionsData } from '../helpers/interfaces';
 
-const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
+const fieldTypeMapping: Record<FieldType, string[]> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
 	number: [
 		'integer',
@@ -29,15 +25,18 @@ const fieldTypeMapping: Record<ResourceMapperFieldType, string[]> = {
 		'timestamp without time zone',
 		'timestamp with time zone',
 	],
+	time: ['time', 'time without time zone', 'time with time zone'],
+	object: ['json', 'jsonb'],
+	array: [],
 };
 
-function mapPostgresType(postgresType: string): ResourceMapperFieldType {
-	let mappedType: ResourceMapperFieldType = 'string';
+function mapPostgresType(postgresType: string): FieldType {
+	let mappedType: FieldType = 'string';
 
 	for (const t of Object.keys(fieldTypeMapping)) {
-		const postgresTypes = fieldTypeMapping[t as ResourceMapperFieldType];
+		const postgresTypes = fieldTypeMapping[t as FieldType];
 		if (postgresTypes.includes(postgresType)) {
-			mappedType = t as ResourceMapperFieldType;
+			mappedType = t as FieldType;
 		}
 	}
 

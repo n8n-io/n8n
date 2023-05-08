@@ -63,9 +63,15 @@ export const isBoolean = (value: unknown): value is boolean => {
 	if (typeof value === 'boolean') {
 		return true;
 	}
-	// TODO: Extend this to more types/values if needed
 	if (typeof value === 'string') {
-		return ['true', 'false'].includes(value.toLowerCase());
+		const num = Number(value);
+		if (num === 0) {
+			return false;
+		} else if (num === 1) {
+			return true;
+		} else {
+			return ['true', 'false'].includes(value.toLowerCase());
+		}
 	}
 	return false;
 };
@@ -73,4 +79,28 @@ export const isBoolean = (value: unknown): value is boolean => {
 export const isDateTime = (value: unknown): value is Date => {
 	const d = new Date(String(value));
 	return d instanceof Date && !isNaN(d.valueOf());
+};
+
+export const isTime = (value: unknown): value is string => {
+	return /\d{2}:\d{2}(:\d{2})?(\-|\+\d{4})?/s.test(String(value));
+};
+
+export const isArray = (value: unknown): value is unknown[] => {
+	try {
+		return Array.isArray(JSON.parse(`[${String(value)}]`));
+	} catch (e) {
+		return false;
+	}
+};
+
+export const isObject = (value: unknown): value is object => {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const o = JSON.parse(String(value));
+
+		if (o && typeof o === 'object' && !isArray(o)) {
+			return true;
+		}
+	} catch (e) {}
+	return false;
 };
