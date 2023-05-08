@@ -8,18 +8,7 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-
-interface IAttachment {
-	url: string;
-	filename: string;
-	type: string;
-}
-
-export interface IRecord {
-	fields: {
-		[key: string]: string | IAttachment[];
-	};
-}
+import type { IAttachment, IRecord } from '../helpers/interfaces';
 
 /**
  * Make an API request to Airtable
@@ -29,17 +18,12 @@ export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
-	body: object,
+	body: IDataObject,
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	query = query || {};
-
-	// For some reason for some endpoints the bearer auth does not work
-	// and it returns 404 like for the /meta request. So we always send
-	// it as query string.
-	// query.api_key = credentials.apiKey;
 
 	const options: OptionsWithUri = {
 		headers: {},
@@ -58,8 +42,8 @@ export async function apiRequest(
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+
+	return this.helpers.requestWithAuthentication.call(this, 'airtableTokenApi', options);
 }
 
 /**
@@ -74,7 +58,7 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-): Promise<any> {
+) {
 	if (query === undefined) {
 		query = {};
 	}
