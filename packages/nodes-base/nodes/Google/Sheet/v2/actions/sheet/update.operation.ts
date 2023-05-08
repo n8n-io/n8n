@@ -159,7 +159,7 @@ export const description: SheetProperties = [
 			loadOptionsDependsOn: ['sheetName.value'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
-				mode: 'upsert',
+				mode: 'update',
 				fieldWords: {
 					singular: 'column',
 					plural: 'columns',

@@ -80,7 +80,11 @@ const singularFieldWord = computed<string>(() => {
 	const singularFieldWord =
 		props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
 		locale.baseText('generic.field');
-	return singularFieldWord.charAt(0).toUpperCase() + singularFieldWord.slice(1);
+	return singularFieldWord;
+});
+
+const singularFieldWordCapitalized = computed<string>(() => {
+	return singularFieldWord.value.charAt(0).toUpperCase() + singularFieldWord.value.slice(1);
 });
 
 const pluralFieldWord = computed<string>(() => {
@@ -90,31 +94,18 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
+const pluralFieldWordCapitalized = computed<string>(() => {
+	return pluralFieldWord.value.charAt(0).toUpperCase() + pluralFieldWord.value.slice(1);
+});
+
 const addFieldOptions = computed<Array<{ name: string; value: string; disabled?: boolean }>>(() => {
-	return [
-		{
-			name: locale.baseText('resourceMapper.addAllFields', {
-				interpolate: { fieldWord: pluralFieldWord.value },
-			}),
-			value: 'addAllFields',
-			disabled: removedFields.value.length === 0,
-		},
-		{
-			name: locale.baseText('resourceMapper.removeAllFields', {
-				interpolate: { fieldWord: pluralFieldWord.value },
-			}),
-			value: 'removeAllFields',
-			disabled: isRemoveAllAvailable.value === false,
-		},
-	].concat(
-		removedFields.value.map((field) => {
-			return {
-				name: field.displayName,
-				value: field.id,
-				disabled: false,
-			};
-		}),
-	);
+	return removedFields.value.map((field) => {
+		return {
+			name: field.displayName,
+			value: field.id,
+			disabled: false,
+		};
+	});
 });
 
 const parameterActions = computed<Array<{ label: string; value: string; disabled?: boolean }>>(
@@ -122,20 +113,20 @@ const parameterActions = computed<Array<{ label: string; value: string; disabled
 		return [
 			{
 				label: locale.baseText('resourceMapper.refreshFieldList', {
-					interpolate: { fieldWord: singularFieldWord.value },
+					interpolate: { fieldWord: singularFieldWordCapitalized.value },
 				}),
 				value: 'refreshFieldList',
 			},
 			{
 				label: locale.baseText('resourceMapper.addAllFields', {
-					interpolate: { fieldWord: pluralFieldWord.value },
+					interpolate: { fieldWord: pluralFieldWordCapitalized.value },
 				}),
 				value: 'addAllFields',
 				disabled: removedFields.value.length === 0,
 			},
 			{
 				label: locale.baseText('resourceMapper.removeAllFields', {
-					interpolate: { fieldWord: pluralFieldWord.value },
+					interpolate: { fieldWord: pluralFieldWordCapitalized.value },
 				}),
 				value: 'removeAllFields',
 				disabled: isRemoveAllAvailable.value === false,
@@ -185,7 +176,7 @@ function getFieldDescription(field: ResourceMapperField): string {
 		return (
 			locale.baseText('resourceMapper.usingToMatch.description', {
 				interpolate: {
-					fieldWord: singularFieldWord.value,
+					fieldWord: singularFieldWordCapitalized.value,
 				},
 			}) || ''
 		);
@@ -298,7 +289,7 @@ defineExpose({
 					<template #content>
 						<span>{{
 							locale.baseText('resourceMapper.mandatoryField.title', {
-								interpolate: { fieldWord: singularFieldWord },
+								interpolate: { fieldWord: singularFieldWordCapitalized },
 							})
 						}}</span>
 					</template>
@@ -314,7 +305,7 @@ defineExpose({
 					:title="
 						locale.baseText('resourceMapper.removeField', {
 							interpolate: {
-								fieldWord: singularFieldWord,
+								fieldWord: singularFieldWordCapitalized,
 							},
 						})
 					"
@@ -344,10 +335,11 @@ defineExpose({
 			<n8n-select
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {
-						interpolate: { fieldWord: singularFieldWord },
+						interpolate: { fieldWord: singularFieldWordCapitalized },
 					})
 				"
 				size="small"
+				:disabled="addFieldOptions.length == 0"
 				@change="addField"
 			>
 				<n8n-option

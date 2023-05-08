@@ -68,9 +68,7 @@ const fieldDescription = computed<string>(() => {
 	return locale.baseText(labeli18nKey, {
 		interpolate: {
 			fieldWord:
-				props.typeOptions?.multiKeyMatch === true
-					? `${pluralFieldWord.charAt(0).toUpperCase() + pluralFieldWord.slice(1)}`
-					: `${singularFieldWord.charAt(0).toUpperCase() + singularFieldWord.slice(1)}`,
+				props.typeOptions?.multiKeyMatch === true ? `${pluralFieldWord}` : `${singularFieldWord}`,
 		},
 	});
 });
