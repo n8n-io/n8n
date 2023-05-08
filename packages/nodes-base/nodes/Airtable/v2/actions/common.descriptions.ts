@@ -9,6 +9,15 @@ export const baseRLC: INodeProperties = {
 	description: 'The Airtable Base in which to operate on',
 	modes: [
 		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'baseSearch',
+				searchable: true,
+			},
+		},
+		{
 			displayName: 'By URL',
 			name: 'url',
 			type: 'string',
@@ -53,6 +62,15 @@ export const tableRLC: INodeProperties = {
 	default: { mode: 'url', value: '' },
 	required: true,
 	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'tableSearch',
+				searchable: true,
+			},
+		},
 		{
 			displayName: 'By URL',
 			name: 'url',

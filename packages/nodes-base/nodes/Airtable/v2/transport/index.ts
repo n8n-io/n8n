@@ -18,7 +18,7 @@ export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject,
+	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},

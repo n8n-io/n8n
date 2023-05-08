@@ -8,6 +8,7 @@ import type {
 
 import { versionDescription } from './actions/versionDescription';
 import { router } from './actions/router';
+import { listSearch } from './methods';
 
 export class AirtableV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -18,6 +19,10 @@ export class AirtableV2 implements INodeType {
 			...versionDescription,
 		};
 	}
+
+	methods = {
+		listSearch,
+	};
 
 	async execute(this: IExecuteFunctions) {
 		return router.call(this);
