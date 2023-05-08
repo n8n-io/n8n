@@ -1,0 +1,260 @@
+{
+	"name": "node-360-quick-overhaul-of-date-and-time-node",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "21ff2e15-375d-4e68-b1ca-d48a110be238",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-420, 20]
+		},
+		{
+			"parameters": {
+				"operation": "addToDate",
+				"magnitude": "={{ $json.currentDate }}",
+				"duration": 2
+			},
+			"id": "b99986f1-edeb-434c-b7ed-9cc86eaec522",
+			"name": "Add to date",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [140, 40]
+		},
+		{
+			"parameters": {
+				"operation": "subtractFromDate",
+				"magnitude": "={{ $json.newDate }}",
+				"duration": 2
+			},
+			"id": "aa75a04b-0d42-46ff-87e7-75d4b4f6c7ea",
+			"name": "Subtract date",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [300, 200]
+		},
+		{
+			"parameters": {
+				"operation": "formatDate",
+				"date": "={{ $json.newDate }}",
+				"format": "yyyy/MM/dd"
+			},
+			"id": "52076d89-bc6d-4253-8ca4-9aad3a058d17",
+			"name": "Format Date",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [420, 40]
+		},
+		{
+			"parameters": {
+				"operation": "roundDate",
+				"date": "={{ $json.formattedDate }}",
+				"toNearest": "day"
+			},
+			"id": "10016499-c9da-4984-9a5f-2f8c8844fb63",
+			"name": "Round Date",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [560, 200]
+		},
+		{
+			"parameters": {
+				"operation": "getTimeBetweenDates",
+				"startDate": "={{ $node['Subtract date'].json.newDate }}",
+				"endDate": "={{ $node['Add to date'].json.newDate }}",
+				"units": ["day"]
+			},
+			"id": "f62b6d0b-b13a-4fcd-b4eb-3ec7ea85e80c",
+			"name": "Get between date",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [660, 40]
+		},
+		{
+			"parameters": {
+				"operation": "extractDate",
+				"date": "={{ $node.Code.json.currentDate }}",
+				"part": "hour",
+				"outputFieldName": "date"
+			},
+			"id": "764e3e08-f71b-4e42-b059-36285076fe10",
+			"name": "Extract Date",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [780, 220]
+		},
+		{
+			"parameters": {
+				"options": {
+					"fromFormat": ""
+				}
+			},
+			"id": "f0b75198-74a4-4a13-8842-340539f41d80",
+			"name": "V1",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [0, -180],
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\"currentDate\":\"2023-04-11T13:51:59.965+00:00\"}\n"
+			},
+			"id": "7ba0c2a1-a683-4975-a2ca-70904111a3fc",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-140, 140]
+		}
+	],
+	"pinData": {
+		"Code": [
+			{
+				"json": {
+					"currentDate": "2023-04-11T13:51:59.965+00:00"
+				}
+			}
+		],
+		"Add to date": [
+			{
+				"json": {
+					"newDate": "2023-04-13T13:51:59.965+00:00"
+				}
+			}
+		],
+		"Subtract date": [
+			{
+				"json": {
+					"newDate": "2023-04-11T13:51:59.965+00:00"
+				}
+			}
+		],
+		"Format Date": [
+			{
+				"json": {
+					"formattedDate": "2023/04/11"
+				}
+			}
+		],
+		"Round Date": [
+			{
+				"json": {
+					"roundedDate": "2023-04-11T00:00:00.000+00:00"
+				}
+			}
+		],
+		"Get between date": [
+			{
+				"json": {
+					"timeDifference": {
+						"days": 2
+					}
+				}
+			}
+		],
+		"Extract Date": [
+			{
+				"json": {
+					"date": 13
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "V1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add to date": {
+			"main": [
+				[
+					{
+						"node": "Subtract date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Subtract date": {
+			"main": [
+				[
+					{
+						"node": "Format Date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Format Date": {
+			"main": [
+				[
+					{
+						"node": "Round Date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Round Date": {
+			"main": [
+				[
+					{
+						"node": "Get between date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get between date": {
+			"main": [
+				[
+					{
+						"node": "Extract Date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Add to date",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"saveManualExecutions": false,
+		"callerPolicy": "workflowsFromSameOwner",
+		"timezone": "Etc/GMT",
+		"executionTimeout": -1
+	},
+	"versionId": "c21daa0b-83ae-45f1-b680-d2e57423800b",
+	"id": "48",
+	"meta": {
+		"instanceId": "8e9416f42a954d0a370d988ac3c0f916f44074a6e45189164b1a8559394a7516"
+	},
+	"tags": []
+}
