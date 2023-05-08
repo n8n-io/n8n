@@ -4,6 +4,7 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { IS_V1_RELEASE } from '@/constants';
 
 convict.addFormat({
 	name: 'nodes-list',
@@ -129,7 +130,7 @@ export const schema = {
 		},
 		mysqldb: {
 			database: {
-				doc: 'MySQL Database',
+				doc: '[DEPRECATED] MySQL Database',
 				format: String,
 				default: 'n8n',
 				env: 'DB_MYSQLDB_DATABASE',
@@ -230,7 +231,7 @@ export const schema = {
 		process: {
 			doc: 'In what process workflows should be executed',
 			format: ['main', 'own'] as const,
-			default: 'own',
+			default: IS_V1_RELEASE ? 'main' : 'own',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -943,7 +944,7 @@ export const schema = {
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
-			default: 'sse',
+			default: IS_V1_RELEASE ? 'websocket' : 'sse',
 			env: 'N8N_PUSH_BACKEND',
 			doc: 'Backend to use for push notifications',
 		},
