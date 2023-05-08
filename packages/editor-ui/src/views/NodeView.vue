@@ -3015,7 +3015,7 @@ export default mixins(
 		},
 		async renameNodePrompt(currentName: string) {
 			try {
-				const promptResponsePromise = this.$prompt(
+				const promptResponsePromise = this.prompt(
 					this.$locale.baseText('nodeView.prompt.newName') + ':',
 					this.$locale.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
 					{
