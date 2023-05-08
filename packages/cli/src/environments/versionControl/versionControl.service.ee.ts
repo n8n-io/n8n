@@ -30,6 +30,7 @@ import type { ExportResult } from './types/exportResult';
 import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
 import type { ImportResult } from './types/importResult';
+import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 
 @Service()
 export class VersionControlService {
@@ -297,16 +298,16 @@ export class VersionControlService {
 		return this.gitService.push({ force });
 	}
 
-	async pushWorkfolder(force = false): Promise<PushResult> {
+	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult> {
 		await this.export(); // refresh workfolder
-		await this.stage(); // stage all files
-		await this.commit('Updated workfolder'); // commit
-		return this.push(force);
+		await this.stage(options.files); // stage all files
+		await this.commit(options.message); // commit
+		return this.push(options.force);
 	}
 
 	async stage(files?: Set<string>): Promise<StatusResult | string> {
 		const status = await this.gitService.status();
-		if (!files) {
+		if (!files || files.size === 0) {
 			files = new Set<string>([
 				...status.not_added,
 				...status.created,

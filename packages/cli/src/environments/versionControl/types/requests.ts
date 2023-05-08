@@ -4,6 +4,7 @@ import type { VersionControlSetBranch } from './versionControlSetBranch';
 import type { VersionControlCommit } from './versionControlCommit';
 import type { VersionControlStage } from './versionControlStage';
 import type { VersionControlPush } from './versionControlPush';
+import type { VersionControlPushWorkFolder } from './versionControlPushWorkFolder';
 
 export declare namespace VersionControlRequest {
 	type UpdatePreferences = AuthenticatedRequest<{}, {}, Partial<VersionControlPreferences>, {}>;
@@ -11,4 +12,5 @@ export declare namespace VersionControlRequest {
 	type Commit = AuthenticatedRequest<{}, {}, VersionControlCommit, {}>;
 	type Stage = AuthenticatedRequest<{}, {}, VersionControlStage, {}>;
 	type Push = AuthenticatedRequest<{}, {}, VersionControlPush, {}>;
+	type PushWorkFolder = AuthenticatedRequest<{}, {}, VersionControlPushWorkFolder, {}>;
 }

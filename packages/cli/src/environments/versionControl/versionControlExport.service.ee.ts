@@ -23,12 +23,14 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
-import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import type { Variables } from '@/databases/entities/Variables';
 import type { ImportResult } from './types/importResult';
 import { UM_FIX_INSTRUCTION } from '../../commands/BaseCommand';
 import config from '../../config';
+import { SharedCredentials } from '../../databases/entities/SharedCredentials';
+import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 // import { WorkflowEntity } from '../../databases/entities/WorkflowEntity';
 
 @Service()
@@ -199,7 +201,7 @@ export class VersionControlExportService {
 						id: e.credentials.id,
 						name: e.credentials.name,
 						type: e.credentials.type,
-						nodesAccess: e.credentials.nodesAccess,
+						// nodesAccess: e.credentials.nodesAccess,
 					};
 					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
 				}),
@@ -234,28 +236,32 @@ export class VersionControlExportService {
 				const existingCredential = existingCredentials.find(
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
-				const newCredential = Db.collections.Credentials.create({
-					id: credential.id,
-					name: credential.name,
-					type: credential.type,
-					data: existingCredential?.data ?? '',
-					nodesAccess: credential.nodesAccess,
+
+				const newCredential = new CredentialsEntity();
+				newCredential.id = credential.id;
+				newCredential.name = credential.name;
+				newCredential.type = credential.type;
+				newCredential.data = existingCredential?.data ?? '';
+
+				const newSharedCredential = new SharedCredentials();
+				newSharedCredential.credentialsId = newCredential.id;
+				newSharedCredential.userId = userId;
+				newSharedCredential.roleId = ownerCredentialRole.id;
+
+				await Db.transaction(async (transactionManager) => {
+					await transactionManager.upsert(CredentialsEntity, { ...newCredential }, ['id']);
+					await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
+						'credentialsId',
+						'userId',
+					]);
+					// TODO: once IDs are unique, remove this
+					if (config.getEnv('database.type') === 'postgresdb') {
+						await transactionManager.query(
+							"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
+						);
+					}
 				});
-				await Db.collections.Credentials.upsert({ ...newCredential }, ['id']);
-				await Db.collections.SharedCredentials.upsert(
-					{
-						credentialsId: newCredential.id,
-						userId,
-						roleId: ownerCredentialRole.id,
-					},
-					['credentialsId', 'userId'],
-				);
-				// TODO: once IDs are unique, remove this
-				if (config.getEnv('database.type') === 'postgresdb') {
-					await Db.getConnection().query(
-						"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
-					);
-				}
+
 				return newCredential;
 			}),
 		);
@@ -305,28 +311,32 @@ export class VersionControlExportService {
 
 		const importWorkflowsResult = await Promise.all(
 			workflowFiles.map(async (file) => {
-				const newWorkflow = jsonParse<IWorkflowToImport>(
+				const importedWorkflow = jsonParse<IWorkflowToImport>(
 					await fsReadFile(file, { encoding: 'utf8' }),
 				);
-				const existingWorkflow = existingWorkflows.find((e) => e.id === newWorkflow.id);
-				newWorkflow.active = existingWorkflow?.active ?? false;
-				await Db.collections.Workflow.upsert({ ...newWorkflow }, ['id']);
-				await Db.collections.SharedWorkflow.upsert(
-					{
-						workflowId: newWorkflow.id,
-						userId,
-						roleId: ownerWorkflowRole.id,
-					},
-					['workflowId', 'userId'],
-				);
-				// TODO: once IDs are unique, remove this
-				if (config.getEnv('database.type') === 'postgresdb') {
-					await Db.getConnection().query(
-						"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+				const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
+				importedWorkflow.active = existingWorkflow?.active ?? false;
+
+				await Db.transaction(async (transactionManager) => {
+					await transactionManager.upsert(WorkflowEntity, { ...importedWorkflow }, ['id']);
+					await transactionManager.upsert(
+						SharedWorkflow,
+						{
+							workflowId: importedWorkflow.id,
+							userId,
+							roleId: ownerWorkflowRole.id,
+						},
+						['workflowId', 'userId'],
 					);
-				}
+					// TODO: once IDs are unique, remove this
+					if (config.getEnv('database.type') === 'postgresdb') {
+						await transactionManager.query(
+							"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+						);
+					}
+				});
 				return {
-					id: newWorkflow.id ?? 'unknown',
+					id: importedWorkflow.id ?? 'unknown',
 					name: file,
 				};
 			}),

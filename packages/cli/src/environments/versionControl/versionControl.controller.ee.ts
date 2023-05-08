@@ -108,9 +108,9 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/push-workfolder')
-	async pushWorkfolder(req: VersionControlRequest.Push): Promise<PushResult> {
+	async pushWorkfolder(req: VersionControlRequest.PushWorkFolder): Promise<PushResult> {
 		try {
-			return await this.versionControlService.pushWorkfolder(req.body.force);
+			return await this.versionControlService.pushWorkfolder(req.body);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
