@@ -195,6 +195,8 @@ export class ActiveWorkflowRunner {
 	): Promise<IResponseCallbackData> {
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 
+		path = path.split(/[?#]/)[0];
+
 		// Reset request parameters
 		req.params = {};
 
@@ -225,7 +227,7 @@ export class ActiveWorkflowRunner {
 				for (const webhook of webhooks) {
 					// using this approach means that all webhooks in all workflows must have a unique path to avoid matching a request to the wrong webhook
 					// which in this case the first one that matches is selected
-					if (new UrlPattern(webhook.webhookPath.split(/[?#]/)[0]).match(path.split(/[?#]/)[0])) {
+					if (new UrlPattern(webhook.webhookPath.split(/[?#]/)[0]).match(path)) {
 						webhookId = webhook.webhookId;
 						break;
 					}
@@ -438,10 +440,18 @@ export class ActiveWorkflowRunner {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
 
-			path = webhookData.path;
+			path = webhookData.path.split(/[?#]/)[0];
+
+			/*
+				Remove trailing slash
+			*/
+			if (path.endsWith('/')) {
+				path = path.slice(0, -1);
+			}
 
 			const webhook: WebhookEntity = {
 				workflowId: webhookData.workflowId,
+				// remove querystring and hashtag
 				webhookPath: path,
 				node: node.name,
 				method: webhookData.httpMethod,
