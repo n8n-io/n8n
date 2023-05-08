@@ -32,7 +32,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="!signInWithLdap">
+		<div v-if="!signInWithLdap && !signInWithSaml">
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
@@ -59,11 +59,11 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
-import { IFormInputs, IUser } from '@/Interface';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import type { IFormInputs, IUser } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { createEventBus } from '@/event-bus';
@@ -114,7 +114,7 @@ export default mixins(showMessage).extend({
 					validationRules: [{ name: 'VALID_EMAIL' }],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					disabled: (this.isLDAPFeatureEnabled && this.signInWithLdap) || this.signInWithSaml,
 				},
 			},
 		];
@@ -129,6 +129,11 @@ export default mixins(showMessage).extend({
 		},
 		isLDAPFeatureEnabled(): boolean {
 			return this.settingsStore.settings.enterprise.ldap === true;
+		},
+		signInWithSaml(): boolean {
+			return (
+				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
+			);
 		},
 	},
 	methods: {

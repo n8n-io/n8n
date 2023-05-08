@@ -55,6 +55,8 @@ export abstract class AbstractServer {
 
 	protected endpointWebhookWaiting: string;
 
+	protected instanceId = '';
+
 	abstract configure(): Promise<void>;
 
 	constructor() {

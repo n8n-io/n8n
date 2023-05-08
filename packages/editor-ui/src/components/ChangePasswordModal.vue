@@ -33,10 +33,10 @@ import mixins from 'vue-typed-mixins';
 
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs } from '@/Interface';
+import type { IFormInputs } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(showMessage).extend({

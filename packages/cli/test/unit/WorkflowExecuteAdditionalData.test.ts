@@ -6,7 +6,7 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			ExecutionMetadata: {
-				save: jest.fn(async () => Promise.resolve([])),
+				save: jest.fn(async () => []),
 			},
 		},
 	};

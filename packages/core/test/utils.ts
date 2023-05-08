@@ -1,4 +1,5 @@
-import { ILogger, LoggerProxy } from 'n8n-workflow';
+import type { ILogger } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 const fakeLogger = {
 	log: () => {},

@@ -55,6 +55,19 @@ export abstract class BaseCommand extends Command {
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
 
+		const dbType = config.getEnv('database.type');
+
+		if (['mysqldb', 'mariadb'].includes(dbType)) {
+			LoggerProxy.warn(
+				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
+			);
+		}
+		if (process.env.EXECUTIONS_PROCESS === 'own') {
+			LoggerProxy.warn(
+				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
+			);
+		}
+
 		this.instanceId = this.userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(this.instanceId);
 		await Container.get(InternalHooks).init(this.instanceId);

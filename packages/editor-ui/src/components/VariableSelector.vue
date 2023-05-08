@@ -26,7 +26,7 @@
 /* eslint-disable prefer-spread */
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE } from '@/constants';
 
-import {
+import type {
 	GenericValue,
 	IContextObject,
 	IDataObject,
@@ -36,24 +36,19 @@ import {
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	WorkflowDataProxy,
 } from 'n8n-workflow';
+import { WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
-import {
-	IExecutionResponse,
-	INodeUi,
-	IVariableItemSelected,
-	IVariableSelectorOption,
-} from '@/Interface';
+import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];

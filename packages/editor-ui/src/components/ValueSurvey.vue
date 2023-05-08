@@ -57,15 +57,15 @@
 
 <script lang="ts">
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
-import { IN8nPromptResponse } from '@/Interface';
+import type { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from './ModalDrawer.vue';
 
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
