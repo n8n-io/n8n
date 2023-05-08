@@ -22,8 +22,8 @@
 <script setup lang="ts">
 import { watch, reactive, toRefs, computed } from 'vue';
 
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import { useViewStacks } from './composables/useViewStacks';

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Notification } from 'element-ui';
-import { useSSOStore } from '@/stores/sso';
+import { useSSOStore } from '@/stores/sso.store';
 
 const ssoStore = useSSOStore();
 

@@ -1,13 +1,7 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateExecutionMetadataTable1679416281778 implements MigrationInterface {
-	name = 'CreateExecutionMetadataTable1679416281778';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class CreateExecutionMetadataTable1679416281778 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}execution_metadata (
 				"id" serial4 NOT NULL PRIMARY KEY,
@@ -32,13 +26,9 @@ export class CreateExecutionMetadataTable1679416281778 implements MigrationInter
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}8b6f3f9ae234f137d707b98f3bf43584" ON "${tablePrefix}execution_entity" ("status", "workflowId");`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		// Re-add removed indices
 		await queryRunner.query(
 			`CREATE INDEX IF NOT EXISTS "IDX_${tablePrefix}33228da131bb1112247cf52a42" ON ${tablePrefix}execution_entity ("stoppedAt") `,

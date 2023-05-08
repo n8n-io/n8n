@@ -16,9 +16,9 @@ import {
 	AUTO_INSERT_ACTION_EXPERIMENT,
 } from '@/constants';
 
-import { usePostHog } from '@/stores/posthog';
-import { useUsersStore } from '@/stores/users';
-import { useWebhooksStore } from '@/stores/webhooks';
+import { usePostHog } from '@/stores/posthog.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
 
 import { useActions } from '../composables/useActions';

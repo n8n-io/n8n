@@ -40,8 +40,8 @@ import { VALID_EMAIL_REGEX } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(workflowHelpers).extend({

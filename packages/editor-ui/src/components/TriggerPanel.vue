@@ -114,10 +114,10 @@ import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from '@/mixins/copyPaste';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { N8nInfoAccordion } from 'n8n-design-system';
 
 type HelpRef = InstanceType<typeof N8nInfoAccordion>;

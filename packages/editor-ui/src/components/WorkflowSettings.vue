@@ -349,11 +349,11 @@ import mixins from 'vue-typed-mixins';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(externalHooks, genericHelpers, showMessage).extend({
