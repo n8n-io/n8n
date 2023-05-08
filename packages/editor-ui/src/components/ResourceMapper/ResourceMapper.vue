@@ -385,5 +385,15 @@ defineExpose({
 			@addField="addField"
 			@refreshFieldList="initFetching(true)"
 		/>
+		<n8n-notice v-if="state.paramValue.mappingMode === 'autoMapInputData'">
+			{{
+				locale.baseText('resourceMapper.autoMappingNotice', {
+					interpolate: {
+						fieldWord: pluralFieldWord,
+						serviceName: nodeType?.displayName || locale.baseText('generic.service'),
+					},
+				})
+			}}
+		</n8n-notice>
 	</div>
 </template>
