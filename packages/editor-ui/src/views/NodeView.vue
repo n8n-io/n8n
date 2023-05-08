@@ -307,6 +307,7 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
+import { getHelloWorld } from '@/api/hello';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3760,6 +3761,8 @@ export default mixins(
 		},
 	},
 	async mounted() {
+		console.log(await getHelloWorld());
+
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
 		this.titleReset();

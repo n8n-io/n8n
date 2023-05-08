@@ -46,6 +46,7 @@
     "@jsplumb/connector-bezier": "^5.13.2",
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
+    "@trpc/client": "^10.25.0",
     "axios": "^0.21.1",
     "canvas-confetti": "^1.6.0",
     "codemirror-lang-html-n8n": "^1.0.0",

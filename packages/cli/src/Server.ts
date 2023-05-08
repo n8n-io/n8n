@@ -167,6 +167,9 @@ import {
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
+import * as trpcExpress from '@trpc/server/adapters/express';
+import { helloTrpcRouter } from './controllers/hello.controller.trpc';
+import { createContext } from './trpc';
 
 const exec = promisify(callbackExec);
 
@@ -443,6 +446,14 @@ class Server extends AbstractServer {
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));
+
+		app.use(
+			'/trpc',
+			trpcExpress.createExpressMiddleware({
+				router: helloTrpcRouter,
+				createContext,
+			}),
+		);
 	}
 
 	async configure(): Promise<void> {
@@ -470,6 +481,7 @@ class Server extends AbstractServer {
 			'healthz',
 			'metrics',
 			'e2e',
+			'trpc', // @TEMP
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
