@@ -452,8 +452,11 @@ const config = (module.exports = {
 		},
 		{
 			files: ['test/**/*.ts'],
-			// TODO: Remove these
 			rules: {
+				'n8n-local-rules/no-skipped-tests':
+					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+
+				// TODO: Remove these
 				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
 				'@typescript-eslint/naming-convention': 'off',
