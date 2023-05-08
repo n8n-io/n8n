@@ -3,11 +3,11 @@
 </template>
 
 <script lang="ts">
+import mixins from 'vue-typed-mixins';
 import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, history, redo } from '@codemirror/commands';
-import { foldGutter, indentOnInput } from '@codemirror/language';
+import { foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
@@ -20,8 +20,11 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import { MSSQL, MySQL, PostgreSQL, sql, StandardSQL } from '@codemirror/lang-sql';
+import { MSSQL, MySQL, PostgreSQL, StandardSQL, keywordCompletion } from '@codemirror/lang-sql';
 import type { SQLDialect } from 'n8n-workflow';
+import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { expressionManager } from '@/mixins/expressionManager';
 
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
@@ -32,7 +35,7 @@ const SQL_DIALECTS = {
 	postgres: PostgreSQL,
 } as const;
 
-export default defineComponent({
+export default mixins(expressionManager).extend({
 	name: 'sql-editor',
 	props: {
 		query: {
@@ -60,21 +63,27 @@ export default defineComponent({
 	},
 
 	mounted() {
+		const { isReadOnly } = this;
 		const dialect = SQL_DIALECTS[this.dialect as SQLDialect] ?? SQL_DIALECTS.standard;
+		const sqlLanguageSupport = new LanguageSupport(dialect.language, [
+			keywordCompletion(dialect, true),
+			...n8nCompletionSources().map((source) => dialect.language.data.of(source)),
+		]);
+
 		const extensions: Extension[] = [
-			sql({ dialect, upperCaseKeywords: true }),
-			codeNodeEditorTheme({ maxHeight: false }),
+			sqlLanguageSupport,
 			lineNumbers(),
 			EditorView.lineWrapping,
 			lintGutter(),
-			EditorState.readOnly.of(this.isReadOnly),
+			EditorState.readOnly.of(isReadOnly),
+			EditorView.editable.of(!isReadOnly),
+			codeNodeEditorTheme({ isReadOnly }),
 		];
 
-		if (this.isReadOnly) {
-			extensions.push(EditorView.editable.of(this.isReadOnly));
-		} else {
+		if (!isReadOnly) {
 			extensions.push(
 				history(),
+				expressionInputHandler(),
 				keymap.of([indentWithTab, { key: 'Mod-Shift-z', run: redo }]),
 				autocompletion(),
 				indentOnInput(),
