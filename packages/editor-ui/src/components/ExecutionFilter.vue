@@ -179,7 +179,12 @@ onBeforeMount(() => {
 						data-test-id="executions-filter-workflows-select"
 					>
 						<div class="ph-no-capture">
-							<n8n-option v-for="item in workflows" :label="item.name" :value="item.id" />
+							<n8n-option
+								v-for="item in workflows"
+								:key="item.id + item.name"
+								:label="item.name"
+								:value="item.id"
+							/>
 						</div>
 					</n8n-select>
 				</div>
@@ -208,7 +213,12 @@ onBeforeMount(() => {
 						filterable
 						data-test-id="executions-filter-status-select"
 					>
-						<n8n-option v-for="item in statuses" :label="item.name" :value="item.id" />
+						<n8n-option
+							v-for="item in statuses"
+							:key="item.name + item.id"
+							:label="item.name"
+							:value="item.id"
+						/>
 					</n8n-select>
 				</div>
 				<div :class="$style.group">
