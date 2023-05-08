@@ -229,7 +229,7 @@ export const schema = {
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
 		process: {
-			doc: 'In what process workflows should be executed',
+			doc: 'In what process workflows should be executed. Note: Own mode has been deprecated and will be removed in a future version as well as this setting.',
 			format: ['main', 'own'] as const,
 			default: IS_V1_RELEASE ? 'main' : 'own',
 			env: 'EXECUTIONS_PROCESS',
