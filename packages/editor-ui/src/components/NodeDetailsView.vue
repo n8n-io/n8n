@@ -149,7 +149,8 @@ import TriggerPanel from './TriggerPanel.vue';
 import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
-	EXECUTABLE_TRIGGER_NODE_TYPES, MODAL_CONFIRM,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
+	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
