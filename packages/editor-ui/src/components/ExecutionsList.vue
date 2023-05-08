@@ -221,7 +221,7 @@
 			</table>
 
 			<div
-				v-if="!combinedExecutions.length && !isMounting"
+				v-if="!combinedExecutions.length && !isMounting && !isDataLoading"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
@@ -242,7 +242,11 @@
 					data-test-id="load-more-button"
 				/>
 			</div>
-			<div v-else-if="!isMounting" :class="$style.loadedAll" data-test-id="execution-all-loaded">
+			<div
+				v-else-if="!isMounting && !isDataLoading"
+				:class="$style.loadedAll"
+				data-test-id="execution-all-loaded"
+			>
 				{{ $locale.baseText('executionsList.loadedAll') }}
 			</div>
 		</div>
@@ -338,8 +342,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 	},
 	async created() {
 		await this.loadWorkflows();
-		//await this.refreshData();
 		this.handleAutoRefreshToggle();
+		await this.$nextTick();
+		this.isMounting = false;
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', {
@@ -623,7 +628,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 
 			this.adjustSelectionAfterMoreItemsLoaded();
-			this.isMounting = false;
 		},
 		async loadFinishedExecutions(): Promise<void> {
 			if (this.filter.status === 'running') {
