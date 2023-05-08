@@ -81,6 +81,11 @@ export class RabbitMQTrigger implements INodeType {
 								value: 'immediately',
 								description: 'As soon as the message got received',
 							},
+							{
+								name: 'Specified Later in Workflow',
+								value: 'laterMessageNode',
+								description: 'Using a RabbitMQ node to remove the item from the queue',
+							},
 						],
 						default: 'immediately',
 						description: 'When to acknowledge the message',
@@ -138,6 +143,18 @@ export class RabbitMQTrigger implements INodeType {
 					}
 					return 0;
 				}) as INodeProperties[],
+			},
+			{
+				displayName:
+					"To delete an item from the queue, insert a RabbitMQ node later in the workflow and use the 'Delete from queue' operation",
+				name: 'laterMessageNode',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						acknowledge: ['laterMessageNode'],
+					},
+				},
+				default: '',
 			},
 		],
 	};
