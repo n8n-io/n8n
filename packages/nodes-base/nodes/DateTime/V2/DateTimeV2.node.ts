@@ -95,6 +95,7 @@ export class DateTimeV2 implements INodeType {
 				const { timezone } = this.getNodeParameter('additionalFields', i) as {
 					timezone: string;
 				};
+
 				const newLocal = timezone ? timezone : workflowTimezone;
 				if (DateTime.now().setZone(newLocal).invalidReason === 'unsupported zone') {
 					throw new NodeOperationError(
@@ -114,6 +115,7 @@ export class DateTimeV2 implements INodeType {
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
 				const duration = this.getNodeParameter('duration', i) as number;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+
 				const dateToAdd = parseDate.call(this, addToDate, workflowTimezone);
 				const returnedDate = dateToAdd.plus({ [timeUnit]: duration });
 				responseData.push({ [outputFieldName]: returnedDate.toString() });
@@ -122,6 +124,7 @@ export class DateTimeV2 implements INodeType {
 				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
 				const duration = this.getNodeParameter('duration', i) as number;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+
 				const dateToAdd = parseDate.call(this, subtractFromDate, workflowTimezone);
 				const returnedDate = dateToAdd.minus({ [timeUnit]: duration });
 				responseData.push({ [outputFieldName]: returnedDate.toString() });
@@ -130,6 +133,7 @@ export class DateTimeV2 implements INodeType {
 				const format = this.getNodeParameter('format', i) as string;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const { timezone } = this.getNodeParameter('additionalFields', i) as { timezone: boolean };
+
 				const dateLuxon = timezone
 					? parseDate.call(this, date, workflowTimezone)
 					: parseDate.call(this, date);
@@ -147,7 +151,9 @@ export class DateTimeV2 implements INodeType {
 				const date = this.getNodeParameter('date', i) as string;
 				const mode = this.getNodeParameter('mode', i) as string;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+
 				const dateLuxon = parseDate.call(this, date, workflowTimezone);
+
 				if (mode === 'roundDown') {
 					const toNearest = this.getNodeParameter('toNearest', i) as string;
 					responseData.push({
@@ -167,18 +173,30 @@ export class DateTimeV2 implements INodeType {
 				const endDate = this.getNodeParameter('endDate', i) as string;
 				const unit = this.getNodeParameter('units', i) as DurationUnit[];
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
+				const { isoString } = this.getNodeParameter('additionalFields', i) as {
+					isoString: boolean;
+				};
+
 				const luxonStartDate = parseDate.call(this, startDate, workflowTimezone);
 				const luxonEndDate = parseDate.call(this, endDate, workflowTimezone);
 				const duration = luxonEndDate.diff(luxonStartDate, unit);
-				responseData.push({ [outputFieldName]: duration.toObject() });
+				isoString
+					? responseData.push({
+							[outputFieldName]: duration.toString(),
+					  })
+					: responseData.push({
+							[outputFieldName]: duration.toObject(),
+					  });
 			} else if (operation === 'extractDate') {
 				const date = this.getNodeParameter('date', i) as string | DateTime;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const part = this.getNodeParameter('part', i) as keyof DateTime | 'week';
+
 				const parsedDate = parseDate.call(this, date, workflowTimezone);
 				const selectedPart = part === 'week' ? parsedDate.weekNumber : parsedDate.get(part);
 				responseData.push({ [outputFieldName]: selectedPart });
 			}
+
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{

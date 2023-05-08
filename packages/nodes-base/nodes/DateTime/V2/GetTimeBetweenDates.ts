@@ -81,4 +81,25 @@ export const GetTimeBetweenDatesDescription: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Options',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				operation: ['getTimeBetweenDates'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Output as ISO String',
+				name: 'isoString',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to output the date as ISO string or not',
+			},
+		],
+	},
 ];
