@@ -92,7 +92,7 @@ export class DateTimeV2 implements INodeType {
 			if (operation === 'getCurrentDate') {
 				const includeTime = this.getNodeParameter('includeTime', i) as boolean;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				const { timezone } = this.getNodeParameter('additionalFields', i) as {
+				const { timezone } = this.getNodeParameter('options', i) as {
 					timezone: string;
 				};
 
@@ -132,7 +132,7 @@ export class DateTimeV2 implements INodeType {
 				const date = this.getNodeParameter('date', i) as string;
 				const format = this.getNodeParameter('format', i) as string;
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				const { timezone } = this.getNodeParameter('additionalFields', i) as { timezone: boolean };
+				const { timezone } = this.getNodeParameter('options', i) as { timezone: boolean };
 
 				const dateLuxon = timezone
 					? parseDate.call(this, date, workflowTimezone)
@@ -173,7 +173,7 @@ export class DateTimeV2 implements INodeType {
 				const endDate = this.getNodeParameter('endDate', i) as string;
 				const unit = this.getNodeParameter('units', i) as DurationUnit[];
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-				const { isoString } = this.getNodeParameter('additionalFields', i) as {
+				const { isoString } = this.getNodeParameter('options', i) as {
 					isoString: boolean;
 				};
 

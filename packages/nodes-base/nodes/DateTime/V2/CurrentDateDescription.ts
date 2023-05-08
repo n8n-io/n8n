@@ -39,7 +39,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'additionalFields',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		displayOptions: {
