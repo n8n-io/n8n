@@ -135,6 +135,19 @@ export async function nodeFetchedData(
 	node: INode,
 ): Promise<void> {
 	if (!workflowId) return;
+
+	const hasLoadedDataPreviously = await Db.collections.WorkflowStatistics.findOne({
+		select: ['count'],
+		where: {
+			workflowId,
+			name: StatisticsNames.dataLoaded,
+		},
+	});
+
+	if (hasLoadedDataPreviously) {
+		return;
+	}
+
 	// Try to insert the data loaded statistic
 	try {
 		await Db.collections.WorkflowStatistics.createQueryBuilder('workflowStatistics')
@@ -148,12 +161,7 @@ export async function nodeFetchedData(
 			.orIgnore()
 			.execute();
 	} catch (error) {
-		// if it's a duplicate key error then that's fine, otherwise throw the error
-		if (!(error instanceof QueryFailedError)) {
-			throw error;
-		}
-		// If it is a query failed error, we return
-		return;
+		LoggerProxy.warn('Failed saving loaded data statistics');
 	}
 
 	// Compile the metrics since this was a new data loaded event
