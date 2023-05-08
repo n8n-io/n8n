@@ -178,7 +178,6 @@ import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
 import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
 import type {
 	IDataObject,
@@ -211,7 +210,6 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import { Checkbox } from 'element-ui';
 import type { EventBus } from '@/event-bus';
 import { createEventBus } from '@/event-bus';
 
@@ -231,11 +229,9 @@ export default defineComponent({
 	components: {
 		Modal,
 		ParameterInputList,
-		NodeCredentials,
 		InlineNameEdit,
 		SaveButton,
 		EventSelection,
-		Checkbox,
 	},
 	setup() {
 		return {
