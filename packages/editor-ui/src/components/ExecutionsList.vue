@@ -15,7 +15,7 @@
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
 					<execution-filter
-						v-if="!isMounting"
+						v-show="!isMounting"
 						:workflows="workflows"
 						@filterChanged="onFilterChanged"
 					/>
@@ -343,8 +343,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 	async created() {
 		await this.loadWorkflows();
 		this.handleAutoRefreshToggle();
-		await this.$nextTick();
-		this.isMounting = false;
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', {
@@ -497,10 +495,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			this.allExistingSelected = false;
 			Vue.set(this, 'selectedItems', {});
 		},
-		onFilterChanged(filter: ExecutionFilterType) {
+		async onFilterChanged(filter: ExecutionFilterType) {
 			this.filter = filter;
-			this.refreshData();
+			await this.refreshData();
 			this.handleClearSelection();
+			this.isMounting = false;
 		},
 		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 			if (['currentlySaved', 'original'].includes(commandData.command)) {
