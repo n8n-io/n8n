@@ -36,6 +36,13 @@
 			<div :class="$style.sectionHeader">
 				<n8n-heading size="large">{{ $locale.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
+			<div>
+				<n8n-input-label :label="$locale.baseText('auth.password')">
+					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
+						$locale.baseText('auth.changePassword')
+					}}</n8n-link>
+				</n8n-input-label>
+			</div>
 			<div v-if="isMfaFeatureEnabled">
 				<div :class="$style.mfaSection">
 					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')">
