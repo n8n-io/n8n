@@ -118,7 +118,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
 		WorkflowPage.getters.workflowMenuItemSettings().click();
 		// Change all settings
-		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 2);
+		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 7);
 		WorkflowPage.getters
 			.workflowSettingsErrorWorkflowSelect()
 			.find('li')
