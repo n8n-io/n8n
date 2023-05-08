@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';

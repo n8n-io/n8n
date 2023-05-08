@@ -1,6 +1,6 @@
 import type { IPermissions } from '@/Interface';
 import { isAuthorized } from '@/utils';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import { defineComponent } from 'vue';
 import type { Route } from 'vue-router';
 

@@ -3,12 +3,12 @@ import type { IFakeDoor, INodeUi, IRootState, NestedRecord } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRootStore';
-import { useNDVStore } from './ndv';
-import { useSettingsStore } from './settings';
-import { useUIStore } from './ui';
-import { useUsersStore } from './users';
-import { useWorkflowsStore } from './workflows';
+import { useRootStore } from './n8nRoot.store';
+import { useNDVStore } from './ndv.store';
+import { useSettingsStore } from './settings.store';
+import { useUIStore } from './ui.store';
+import { useUsersStore } from './users.store';
+import { useWorkflowsStore } from './workflows.store';
 
 export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 	getters: {

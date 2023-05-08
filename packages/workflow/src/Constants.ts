@@ -2,6 +2,9 @@
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
+export const CODE_LANGUAGES = ['javaScript', 'json', 'python'] as const;
+export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
+
 /**
  * Nodes whose parameter values may refer to other nodes without expressions.
  * Their content may need to be updated when the referenced node is renamed.

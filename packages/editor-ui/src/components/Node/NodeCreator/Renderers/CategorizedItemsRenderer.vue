@@ -2,7 +2,7 @@
 import { computed, watch, ref, getCurrentInstance } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
@@ -30,6 +30,7 @@ const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
 
 const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
+const actionCount = computed(() => props.elements.filter(({ type }) => type === 'action').length);
 const expanded = ref(props.expanded ?? false);
 
 function toggleExpanded() {
@@ -94,7 +95,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 			:name="category"
 			:disabled="disabled"
 			:active="activeItemId === category"
-			:count="elements.length"
+			:count="actionCount"
 			:expanded="expanded"
 			:isTrigger="isTriggerCategory"
 			data-keyboard-nav-type="category"
@@ -110,7 +111,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 				</n8n-tooltip>
 			</span>
 		</CategoryItem>
-		<div :class="$style.contentSlot" v-if="expanded && elements.length > 0 && $slots.default">
+		<div :class="$style.contentSlot" v-if="expanded && actionCount > 0 && $slots.default">
 			<slot />
 		</div>
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->

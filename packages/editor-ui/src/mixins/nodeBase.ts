@@ -6,14 +6,14 @@ import { NO_OP_NODE_TYPE } from '@/constants';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { useHistoryStore } from '@/stores/history';
-import { useCanvasStore } from '@/stores/canvas';
+import { useHistoryStore } from '@/stores/history.store';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 export const nodeBase = mixins(deviceSupportHelpers).extend({
 	mounted() {
