@@ -53,7 +53,9 @@ export default defineComponent({
 
 <style lang="scss" module>
 .singleline {
-	white-space: nowrap;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
