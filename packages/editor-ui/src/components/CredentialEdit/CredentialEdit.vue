@@ -147,12 +147,12 @@ import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import {
 	isValidCredentialResponse,
 	getNodeAuthOptions,
@@ -256,7 +256,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		setTimeout(() => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner === true) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
 					this.showValidationWarning = true;
 				} else {
 					this.retestCredential();
@@ -347,6 +349,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 		},
 		isCredentialTestable(): boolean {
+			// Sharees can always test since they can't see the data.
+			if (this.credentialPermissions.isOwner === false) {
+				return true;
+			}
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
 			}

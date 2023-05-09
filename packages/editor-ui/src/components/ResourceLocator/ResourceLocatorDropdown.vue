@@ -5,6 +5,7 @@
 		:popper-class="$style.popover"
 		:value="show"
 		trigger="manual"
+		data-test-id="resource-locator-dropdown"
 		v-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">

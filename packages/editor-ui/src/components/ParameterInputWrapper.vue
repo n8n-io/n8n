@@ -59,7 +59,7 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
@@ -181,8 +181,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 					return null;
 				}
 
-				if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
-					computedValue = this.$locale.baseText('parameterInput.emptyString');
+				if (typeof computedValue === 'string' && computedValue.length === 0) {
+					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;

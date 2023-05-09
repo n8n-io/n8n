@@ -50,7 +50,7 @@
 import mixins from 'vue-typed-mixins';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
-import { useLogStreamingStore } from '../../stores/logStreamingStore';
+import { useLogStreamingStore } from '../../stores/logStreaming.store';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
