@@ -1,4 +1,4 @@
-import { SuperAgentTest } from 'supertest';
+import type { SuperAgentTest } from 'supertest';
 import type { IPinData } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';

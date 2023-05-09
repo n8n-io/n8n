@@ -157,22 +157,20 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import Vue from 'vue';
+import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
-	NodeHelpers,
 	NodeParameterValue,
-	deepCopy,
 } from 'n8n-workflow';
-import {
-	ICredentialsResponse,
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	IUsedCredential,
-	IUser,
 } from '@/Interface';
 
 import {
@@ -197,14 +195,15 @@ import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useHistoryStore } from '@/stores/history';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useCredentialsStore } from '@/stores/credentials';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { EventBus } from '@/event-bus';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -322,7 +321,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 	},
 	props: {
-		eventBus: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
 		dragging: {
 			type: Boolean,
 		},
@@ -892,17 +893,19 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		onStopExecution() {
 			this.$emit('stopExecution');
 		},
+		openSettings() {
+			this.openPanel = 'settings';
+		},
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
-		if (this.eventBus) {
-			(this.eventBus as Vue).$on('openSettings', () => {
-				this.openPanel = 'settings';
-			});
-		}
+		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+	},
+	destroyed() {
+		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
 </script>

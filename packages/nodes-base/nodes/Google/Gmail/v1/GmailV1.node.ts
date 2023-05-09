@@ -30,6 +30,8 @@ import { draftFields, draftOperations } from './DraftDescription';
 
 import isEmpty from 'lodash.isempty';
 
+import { oldVersionNotice } from '../../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
 	name: 'gmail',
@@ -64,6 +66,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
@@ -142,7 +145,7 @@ export class GmailV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

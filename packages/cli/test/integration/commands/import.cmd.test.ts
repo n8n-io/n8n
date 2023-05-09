@@ -25,7 +25,7 @@ test('import:workflow should import active workflow and deactivate it', async ()
 		['--separate', '--input=./test/integration/commands/importWorkflows/separate'],
 		config,
 	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation((number) => {
+	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');
 	});
 
@@ -52,7 +52,7 @@ test('import:workflow should import active workflow from combined file and deact
 		['--input=./test/integration/commands/importWorkflows/combined/combined.json'],
 		config,
 	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation((number) => {
+	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
 		throw new Error('process.exit');
 	});
 

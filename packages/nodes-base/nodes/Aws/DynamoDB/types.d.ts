@@ -51,7 +51,7 @@ export type PartitionKey = {
 	};
 };
 
-export enum EAttributeValueType {
+export const enum EAttributeValueType {
 	S = 'S',
 	SS = 'SS',
 	M = 'M',
