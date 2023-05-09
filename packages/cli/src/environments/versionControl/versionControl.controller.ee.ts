@@ -7,6 +7,7 @@ import { BadRequestError } from '@/ResponseHelper';
 import type { DiffResult, PullResult, PushResult, StatusResult } from 'simple-git';
 import { AuthenticatedRequest } from '../../requests';
 import express from 'express';
+import type { ImportResult } from './types/importResult';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -131,10 +132,10 @@ export class VersionControlController {
 	async pullWorkfolder(
 		req: VersionControlRequest.PullWorkFolder,
 		res: express.Response,
-	): Promise<DiffResult | PullResult> {
+	): Promise<DiffResult | ImportResult | undefined> {
 		try {
-			const result = await this.versionControlService.pullWorkfolder(req.body);
-			if ((result as PullResult).summary) {
+			const result = await this.versionControlService.pullWorkfolder(req.body, req.user.id);
+			if ((result as ImportResult).workflows) {
 				res.statusCode = 200;
 			} else {
 				res.statusCode = 409;
@@ -157,9 +158,9 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder')
-	async resetWorkfolder(): Promise<void> {
+	async resetWorkfolder(req: AuthenticatedRequest): Promise<ImportResult | undefined> {
 		try {
-			return await this.versionControlService.resetWorkfolder();
+			return await this.versionControlService.resetWorkfolder(req.user.id);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

@@ -132,7 +132,7 @@ export class VersionControlService {
 		try {
 			await this.setPreferences({ connected: true });
 			await this.init();
-			const fetchResult = await this.fetch();
+			const fetchResult = await this.gitService.fetch();
 			return fetchResult;
 		} catch (error) {
 			throw Error(`Failed to connect to version control: ${(error as Error).message}`);
@@ -271,30 +271,36 @@ export class VersionControlService {
 		return this.gitService.setBranch(branch);
 	}
 
+	// TODO: temp
 	async fetch(): Promise<FetchResult> {
 		return this.gitService.fetch();
 	}
 
+	// TODO: temp
 	async diff(): Promise<DiffResult> {
 		return this.gitService.diff();
 	}
 
+	// TODO: temp
 	async pull(): Promise<PullResult> {
 		return this.gitService.pull();
 	}
 
+	// TODO: temp
 	async push(force = false): Promise<PushResult> {
 		return this.gitService.push({ force });
 	}
 
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
-	async resetWorkfolder(): Promise<void> {
+	async resetWorkfolder(userId: string): Promise<ImportResult | undefined> {
 		const currentBranch = await this.gitService.getCurrentBranch();
 		await this.gitService.resetBranch({
 			hard: true,
 			target: currentBranch.remote,
 		});
+		await this.gitService.pull();
+		return this.import(userId);
 	}
 
 	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult | DiffResult> {
@@ -304,28 +310,31 @@ export class VersionControlService {
 			return diffResult;
 		}
 		await this.stage(options.files);
-		await this.commit(options.message);
-		return this.push(options.force);
+		await this.gitService.commit(options.message ?? 'Updated Workfolder');
+		return this.gitService.push({ force: options.force ?? false });
 	}
 
-	async pullWorkfolder(options: VersionControlPullWorkFolder): Promise<PullResult | DiffResult> {
+	async pullWorkfolder(
+		options: VersionControlPullWorkFolder,
+		userId: string,
+	): Promise<ImportResult | DiffResult | undefined> {
 		const diffResult = await this.updateLocalAndDiff();
 		if (diffResult.files.length > 0) {
 			await this.unstage();
 			if (options.force === true) {
-				await this.resetWorkfolder();
+				return this.resetWorkfolder(userId);
 			} else {
 				return diffResult;
 			}
 		}
-		return this.gitService.pull();
-		// TODO: import
+		await this.gitService.pull();
+		return this.import(userId);
 	}
 
 	private async updateLocalAndDiff(): Promise<DiffResult> {
 		await this.export(); // refresh workfolder
-		await this.fetch();
-		return this.diff();
+		await this.gitService.fetch();
+		return this.gitService.diff();
 	}
 
 	async stage(files?: Set<string>): Promise<StatusResult | string> {
