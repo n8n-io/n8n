@@ -38,7 +38,9 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.data = data;
 	};
 
-	const userIsTrialing = computed(() => state.data?.metadata.slug.includes('trial'));
+	const userIsTrialing = computed(
+		() => state.data?.metadata.group === 'opt-out' && state.data?.expirationDate,
+	);
 
 	const currentPlanData = computed(() => state.data);
 
