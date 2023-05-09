@@ -1,13 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
 
-import {
-	ICredentialTypes,
-	INodesAndCredentials,
-	LoggerProxy,
-	NodeOperationError,
-	Workflow,
-} from 'n8n-workflow';
+import type { ICredentialTypes, INodesAndCredentials } from 'n8n-workflow';
+import { LoggerProxy, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -22,7 +17,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { mock } from 'jest-mock-extended';
-import { ExternalHooks } from '@/ExternalHooks';
+import type { ExternalHooks } from '@/ExternalHooks';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';
@@ -99,12 +94,11 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Workflow: {
-				find: jest.fn(async () => Promise.resolve(generateWorkflows(databaseActiveWorkflowsCount))),
+				find: jest.fn(async () => generateWorkflows(databaseActiveWorkflowsCount)),
 				findOne: jest.fn(async (searchParams) => {
-					const foundWorkflow = databaseActiveWorkflowsList.find(
+					return databaseActiveWorkflowsList.find(
 						(workflow) => workflow.id.toString() === searchParams.where.id.toString(),
 					);
-					return Promise.resolve(foundWorkflow);
 				}),
 				update: jest.fn(),
 				createQueryBuilder: jest.fn(() => {
@@ -112,7 +106,7 @@ jest.mock('@/Db', () => {
 						update: () => fakeQueryBuilder,
 						set: () => fakeQueryBuilder,
 						where: () => fakeQueryBuilder,
-						execute: () => Promise.resolve(),
+						execute: async () => {},
 					};
 					return fakeQueryBuilder;
 				}),
@@ -246,7 +240,7 @@ describe('ActiveWorkflowRunner', () => {
 		const workflow = generateWorkflows(1);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase('fake-user-id');
 
-		workflowRunnerRun.mockImplementationOnce(() => Promise.resolve('invalid-execution-id'));
+		workflowRunnerRun.mockResolvedValueOnce('invalid-execution-id');
 
 		await activeWorkflowRunner.runWorkflow(
 			workflow[0],

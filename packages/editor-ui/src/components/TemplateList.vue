@@ -76,12 +76,12 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		onScroll() {
-			const el = this.$refs.loader;
-			if (!el || this.loading) {
+			const loaderRef = this.$refs.loader as HTMLElement | undefined;
+			if (!loaderRef || this.loading) {
 				return;
 			}
 
-			const rect = (el as Element).getBoundingClientRect();
+			const rect = loaderRef.getBoundingClientRect();
 			const inView =
 				rect.top >= 0 &&
 				rect.left >= 0 &&

@@ -19,13 +19,15 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
-import { IBinaryData, jsonParse } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores';
+import Vue from 'vue';
 
-export default mixins(restApi).extend({
+export default Vue.extend({
 	name: 'BinaryDataDisplayEmbed',
 	components: {
 		VueJsonPretty,
@@ -44,6 +46,9 @@ export default mixins(restApi).extend({
 			jsonData: '',
 		};
 	},
+	computed: {
+		...mapStores(useWorkflowsStore),
+	},
 	async mounted() {
 		const { id, data, fileName, fileType, mimeType } = (this.binaryData || {}) as IBinaryData;
 		const isJSONData = fileType === 'json';
@@ -56,7 +61,7 @@ export default mixins(restApi).extend({
 			}
 		} else {
 			try {
-				const binaryUrl = this.restApi().getBinaryUrl(id, 'view', fileName, mimeType);
+				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
 				if (isJSONData) {
 					this.jsonData = await (await fetch(binaryUrl)).json();
 				} else {

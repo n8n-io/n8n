@@ -80,7 +80,7 @@ type HttpNodeHeaders = Pick<HttpNodeParameters, 'sendHeaders' | 'headerParameter
 
 type HttpNodeQueries = Pick<HttpNodeParameters, 'sendQuery' | 'queryParameters'>;
 
-enum ContentTypes {
+const enum ContentTypes {
 	applicationJson = 'application/json',
 	applicationFormUrlEncoded = 'application/x-www-form-urlencoded',
 	applicationMultipart = 'multipart/form-data',

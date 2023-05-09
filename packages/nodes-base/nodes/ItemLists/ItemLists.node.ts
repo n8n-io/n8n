@@ -14,12 +14,13 @@ export class ItemLists extends VersionedNodeType {
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Helper for working with lists of items and transforming arrays',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new ItemListsV1(baseDescription),
 			2: new ItemListsV2(baseDescription),
+			2.1: new ItemListsV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
