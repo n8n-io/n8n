@@ -1459,7 +1459,7 @@ export declare namespace Cloud {
 
 	export interface PlanMetadata {
 		version: 'v1';
-		group: 'opt-out' | 'opt-in';
+		group: 'opt-out' | 'opt-in' | 'trial';
 		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
 		trial?: Trial;
 	}

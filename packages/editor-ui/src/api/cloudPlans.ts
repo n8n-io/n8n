@@ -14,7 +14,7 @@ export function getCurrentPlan(
 		expirationDate: '2023-05-10T01:47:47Z',
 		metadata: {
 			version: 'v1',
-			group: 'opt-in',
+			group: 'trial',
 			slug: 'trial-1',
 			trial: {
 				length: 7,
