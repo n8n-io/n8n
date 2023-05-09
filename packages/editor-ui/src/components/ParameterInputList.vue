@@ -135,6 +135,7 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
+import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { get, set } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
@@ -152,7 +153,7 @@ export default mixins(workflowHelpers).extend({
 		ParameterInputFull,
 		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
-		ResourceMapper: () => import('./ResourceMapper/ResourceMapper.vue') as Promise<Component>,
+		ResourceMapper,
 		ImportParameter,
 	},
 	props: {

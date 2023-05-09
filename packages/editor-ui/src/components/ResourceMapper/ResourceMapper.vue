@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
 import { resolveParameter } from '@/mixins/workflowHelpers';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
 	INodeParameters,
@@ -17,7 +17,7 @@ import MappingFields from './MappingFields.vue';
 import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
 import Vue from 'vue';
-import { useNDVStore } from '@/stores';
+import { useNDVStore } from '@/stores/ndv.store';
 
 interface Props {
 	parameter: INodeProperties;

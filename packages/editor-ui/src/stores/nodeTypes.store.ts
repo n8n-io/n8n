@@ -22,12 +22,12 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	ResourceMapperFields,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
-import { useCredentialsStore } from './credentials';
-import { useRootStore } from './n8nRootStore';
-import type { ResourceMapperFields } from 'n8n-workflow/src/Interfaces';
+import { useCredentialsStore } from './credentials.store';
+import { useRootStore } from './n8nRoot.store';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
