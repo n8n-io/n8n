@@ -49,8 +49,6 @@ import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import { DateTime } from 'luxon';
-import { useCloudPlanHelper } from './composables/useCloudPlanHelper';
 
 export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
