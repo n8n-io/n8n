@@ -551,4 +551,8 @@ export const ALLOWED_HTML_TAGS = [
 
 export const CHANGE_PLAN_PAGE = 'https://app.n8n.cloud/account/change-plan';
 
+export const CLOUD_BASE_URL_STAGING = 'https://stage-app.n8n.cloud';
+
+export const CLOUD_BASE_URL_PRODUCTION = 'https://app.n8n.cloud';
+
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;

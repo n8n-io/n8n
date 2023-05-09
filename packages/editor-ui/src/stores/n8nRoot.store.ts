@@ -1,4 +1,9 @@
-import { STORES } from '@/constants';
+import {
+	CLOUD_BASE_URL_PRODUCTION,
+	CLOUD_BASE_URL_STAGING,
+	CLOUD_BASE_URL_STAGING,
+	STORES,
+} from '@/constants';
 import type { IRestApiContext, RootState } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -46,6 +51,15 @@ export const useRootStore = defineStore(STORES.ROOT, {
 
 		getRestUrl(): string {
 			return `${this.baseUrl}${this.restEndpoint}`;
+		},
+
+		getRestCloudApiContext(): IRestApiContext {
+			return {
+				baseUrl: this.baseUrl.includes('stage-')
+					? CLOUD_BASE_URL_STAGING
+					: CLOUD_BASE_URL_PRODUCTION,
+				sessionId: '',
+			};
 		},
 
 		getRestApiContext(): IRestApiContext {

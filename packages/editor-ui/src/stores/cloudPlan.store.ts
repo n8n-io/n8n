@@ -51,7 +51,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
 		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
-		return getCurrentPlan(rootStore.getRestApiContext, cloudUserId as string);
+		return getCurrentPlan(rootStore.getRestCloudApiContext, cloudUserId as string);
 	};
 
 	return {
