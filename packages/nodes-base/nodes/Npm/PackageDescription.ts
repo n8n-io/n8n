@@ -1,6 +1,12 @@
 import { valid as isValidSemver } from 'semver';
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+interface PackageJson {
+	name: string;
+	version: string;
+	description: string;
+}
+
 export const packageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -38,7 +44,7 @@ export const packageOperations: INodeProperties[] = [
 					},
 					output: {
 						postReceive: [
-							async function (this, items) {
+							async function (items) {
 								const allVersions: INodeExecutionData[] = [];
 								for (const { json } of items) {
 									const itemVersions = json.time as Record<string, string>;
@@ -59,6 +65,36 @@ export const packageOperations: INodeProperties[] = [
 										new Date(a.json.published_at as string).getTime(),
 								);
 								return allVersions;
+							},
+						],
+					},
+				},
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search for packages',
+				description: 'Search for packages',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/-/v1/search',
+						qs: {
+							text: '={{$parameter.query}}',
+							size: '={{$parameter.limit}}',
+							from: '={{$parameter.offset}}',
+							popularity: 0.99,
+						},
+					},
+					output: {
+						postReceive: [
+							async function (items) {
+								return items.flatMap(({ json }) =>
+									(json.objects as Array<{ package: PackageJson }>).map(
+										({ package: { name, version, description } }) =>
+											({ json: { name, version, description } } as INodeExecutionData),
+									),
+								);
 							},
 						],
 					},
@@ -94,5 +130,52 @@ export const packageFields: INodeProperties[] = [
 				operation: ['getMetadata'],
 			},
 		},
+	},
+	{
+		displayName: 'Query',
+		name: 'query',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['package'],
+				operation: ['search'],
+			},
+		},
+		default: '',
+		description: 'The query text used to search for packages',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 10,
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: ['package'],
+				operation: ['search'],
+			},
+		},
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Offset',
+		name: 'offset',
+		type: 'number',
+		default: 0,
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['package'],
+				operation: ['search'],
+			},
+		},
+		description: 'Offset to return results from',
 	},
 ];
