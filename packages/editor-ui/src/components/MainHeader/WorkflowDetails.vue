@@ -150,15 +150,15 @@ import { saveAs } from 'file-saver';
 import { useTitleChange } from '@/composables/useTitleChange';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useTagsStore } from '@/stores/tags';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTagsStore } from '@/stores/tags.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users';
-import { useUsageStore } from '@/stores/usage';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { createEventBus } from '@/event-bus';
 
 const hasChanged = (prev: string[], curr: string[]) => {

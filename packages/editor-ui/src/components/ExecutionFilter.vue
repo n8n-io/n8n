@@ -11,9 +11,9 @@ import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { getObjectKeys, isEmpty } from '@/utils';
 import { EnterpriseEditionFeature } from '@/constants';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsageStore } from '@/stores/usage';
-import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables';
 
 export type ExecutionFilterProps = {

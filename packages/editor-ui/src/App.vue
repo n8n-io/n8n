@@ -38,16 +38,16 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { mapStores } from 'pinia';
-import { useUIStore } from './stores/ui';
-import { useSettingsStore } from './stores/settings';
-import { useUsersStore } from './stores/users';
-import { useRootStore } from './stores/n8nRootStore';
-import { useTemplatesStore } from './stores/templates';
-import { useNodeTypesStore } from './stores/nodeTypes';
+import { useUIStore } from './stores/ui.store';
+import { useSettingsStore } from './stores/settings.store';
+import { useUsersStore } from './stores/users.store';
+import { useRootStore } from './stores/n8nRoot.store';
+import { useTemplatesStore } from './stores/templates.store';
+import { useNodeTypesStore } from './stores/nodeTypes.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
-import { useVersionControlStore } from '@/stores/versionControl';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',

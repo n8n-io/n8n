@@ -20,7 +20,6 @@ module.exports = {
 				},
 			},
 		},
-		'storybook-addon-designs',
 		'storybook-addon-themes',
 	],
 	webpackFinal: async (config) => {

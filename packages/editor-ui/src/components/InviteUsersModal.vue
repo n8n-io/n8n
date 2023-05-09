@@ -73,8 +73,8 @@ import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { createEventBus } from '@/event-bus';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;

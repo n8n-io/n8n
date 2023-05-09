@@ -286,8 +286,8 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty, setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
