@@ -45,8 +45,8 @@ export default defineComponent({
 		simplyText(): string {
 			if (this.hint) {
 				return String(this.hint)
-					.replace(/&/g, '&amp;')
-					.replace(/</g, '&lt;')
+					.replace(/&/g, '&amp;') // allows us to keep spaces at the beginning of an expression
+					.replace(/</g, '&lt;') // prevent XSS exploits since we are rendering HTML
 					.replace(/>/g, '&gt;')
 					.replace(/"/g, '&quot;')
 					.replace(/ /g, '&nbsp;');
