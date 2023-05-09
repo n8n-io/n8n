@@ -9,10 +9,6 @@ declare module 'vue/types/vue' {
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
-		posthog: {
-			isFeatureEnabled(flagName: string): boolean;
-			getFeatureFlag(flagName: string): boolean | string;
-		};
 	}
 }
 
@@ -44,44 +40,19 @@ interface RudderStack extends Array<unknown> {
 	 * Native methods
 	 */
 
-	load(
-		writeKey: string,
-		dataPlaneUrl: string,
-		options?: object,
-	): void;
+	load(writeKey: string, dataPlaneUrl: string, options?: object): void;
 
 	ready(): void;
 
-	page(
-		category?: string,
-		name?: string,
-		properties?: object,
-		options?: object,
-	): void;
+	page(category?: string, name?: string, properties?: object, options?: object): void;
 
-	track(
-		event: string,
-		properties?: object,
-		options?: object,
-	): void;
+	track(event: string, properties?: object, options?: object): void;
 
-	identify(
-		id?: string,
-		traits?: object,
-		options?: object,
-	): void;
+	identify(id?: string, traits?: object, options?: object): void;
 
-	alias(
-		to: string,
-		from?: string,
-		options?: object,
-	): void;
+	alias(to: string, from?: string, options?: object): void;
 
-	group(
-		group: string,
-		traits?: object,
-		options?: object,
-	): void;
+	group(group: string, traits?: object, options?: object): void;
 
 	getAnonymousId(): void;
 

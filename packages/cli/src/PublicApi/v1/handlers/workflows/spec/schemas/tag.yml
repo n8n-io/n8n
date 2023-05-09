@@ -1,7 +1,7 @@
 type: object
 properties:
   id:
-    type: string
+    type: number
     example: 12
   name:
     type: string

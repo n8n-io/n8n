@@ -1,24 +1,23 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
 
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS Trigger',
-		subtitle: `={{$parameter["topic"].split(':')[5]}}`,
+		subtitle: '={{$parameter["topic"].split(\':\')[5]}}',
 		name: 'awsSnsTrigger',
 		icon: 'file:sns.svg',
 		group: ['trigger'],
@@ -154,7 +153,6 @@ export class AwsSnsTrigger implements INodeType {
 		},
 	};
 
-	//@ts-expect-error because of webhook
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

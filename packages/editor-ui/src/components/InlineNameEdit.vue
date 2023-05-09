@@ -1,9 +1,6 @@
 <template>
-	<div class='ph-no-capture' :class="$style.container">
-		<span
-			v-if="readonly"
-			:class="$style.headline"
-		>
+	<div class="ph-no-capture" :class="$style.container">
+		<span v-if="readonly" :class="$style.headline">
 			{{ name }}
 		</span>
 		<div
@@ -68,9 +65,9 @@ export default mixins(showMessage).extend({
 			this.isNameEdit = true;
 
 			setTimeout(() => {
-				const input = this.$refs.nameInput as HTMLInputElement;
-				if (input) {
-					input.focus();
+				const inputRef = this.$refs.nameInput as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}, 0);
 		},
@@ -90,7 +87,6 @@ export default mixins(showMessage).extend({
 	},
 });
 </script>
-
 
 <style module lang="scss">
 .container {
@@ -146,5 +142,4 @@ export default mixins(showMessage).extend({
 	margin-left: 4px;
 	font-weight: 400;
 }
-
 </style>

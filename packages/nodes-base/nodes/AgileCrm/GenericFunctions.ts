@@ -1,17 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IContactUpdate } from './ContactInterface';
 
-import { IContactUpdate } from './ContactInterface';
-
-import { IFilterRules, ISearchConditions } from './FilterInterface';
+import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -48,9 +49,9 @@ export async function agileCrmApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -78,7 +79,7 @@ export async function agileCrmApiRequestAllItems(
 			sendAsForm,
 		);
 		if (responseData.length !== 0) {
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (sendAsForm) {
 				body.cursor = responseData[responseData.length - 1].cursor;
 			} else {
@@ -126,7 +127,7 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.properties) {
 			options.body.properties = payload.properties;
 			options.uri = baseUri + 'api/contacts/edit-properties';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
 			payload.properties?.map((property: any) => {
@@ -138,7 +139,7 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.lead_score) {
 			options.body.lead_score = payload.lead_score;
 			options.uri = baseUri + 'api/contacts/edit/lead-score';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('lead_score');
 
@@ -147,7 +148,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.tags) {
 			options.body.tags = payload.tags;
 			options.uri = baseUri + 'api/contacts/edit/tags';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			payload.tags?.map((tag: string) => {
 				successfulUpdates.push(`(Tag) ${tag}`);
@@ -158,7 +159,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.star_value) {
 			options.body.star_value = payload.star_value;
 			options.uri = baseUri + 'api/contacts/edit/add-star';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('star_value');
 
@@ -168,9 +169,9 @@ export async function agileCrmApiRequestUpdate(
 		return lastSuccesfulUpdateReturn;
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		} else {
-			throw new NodeApiError(this.getNode(), error, {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
 				message: `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')}`,
 				description: error.message,
 				httpCode: error.statusCode,

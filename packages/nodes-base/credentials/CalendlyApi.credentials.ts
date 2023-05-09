@@ -1,10 +1,16 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+
+const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
+	// The access token is a JWT, so it will always include dots to separate
+	// header, payoload and signature.
+	return data.includes('.') ? 'accessToken' : 'apiKey';
+};
 
 export class CalendlyApi implements ICredentialType {
 	name = 'calendlyApi';
@@ -49,9 +55,3 @@ export class CalendlyApi implements ICredentialType {
 		},
 	};
 }
-
-const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
-	// The access token is a JWT, so it will always include dots to separate
-	// header, payoload and signature.
-	return data.includes('.') ? 'accessToken' : 'apiKey';
-};

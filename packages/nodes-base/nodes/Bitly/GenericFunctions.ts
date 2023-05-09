@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function bitlyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -29,7 +30,7 @@ export async function bitlyApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -38,14 +39,14 @@ export async function bitlyApiRequest(
 			const credentials = await this.getCredentials('bitlyApi');
 			options.headers = { Authorization: `Bearer ${credentials.accessToken}` };
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'bitlyOAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -70,7 +71,7 @@ export async function bitlyApiRequestAllItems(
 
 	do {
 		responseData = await bitlyApiRequest.call(this, method, resource, body, query, uri);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		if (responseData.pagination?.next) {
 			uri = responseData.pagination.next;
 		}

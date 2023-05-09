@@ -1,8 +1,14 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -55,10 +61,10 @@ export async function apiRequest(
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.requestWithAuthentication.call(this, 'typeformApi', options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -94,7 +100,7 @@ export async function apiRequestAllItems(
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 
-		returnData.items.push.apply(returnData.items, responseData.items);
+		returnData.items.push.apply(returnData.items, responseData.items as IDataObject[]);
 	} while (responseData.page_count !== undefined && responseData.page_count > query.page);
 
 	return returnData;

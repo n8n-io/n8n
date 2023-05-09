@@ -1,8 +1,13 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to HackerNews
@@ -22,9 +27,9 @@ export async function hackerNewsApiRequest(
 	};
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -49,7 +54,7 @@ export async function hackerNewsApiRequestAllItems(
 
 	do {
 		responseData = await hackerNewsApiRequest.call(this, method, endpoint, qs);
-		returnData.push.apply(returnData, responseData.hits);
+		returnData.push.apply(returnData, responseData.hits as IDataObject[]);
 
 		if (returnData !== undefined) {
 			itemsReceived += returnData.length;

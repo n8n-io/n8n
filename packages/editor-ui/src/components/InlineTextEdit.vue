@@ -1,5 +1,5 @@
 <template>
-	<span @keydown.stop class="inline-edit" >
+	<span @keydown.stop class="inline-edit">
 		<span v-if="isEditEnabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
@@ -14,21 +14,20 @@
 			/>
 		</span>
 
-		<span @click="onClick" class="preview"  v-else>
-			<ExpandableInputPreview
-				:value="previewValue || value"
-			/>
+		<span @click="onClick" class="preview" v-else>
+			<ExpandableInputPreview :value="previewValue || value" />
 		</span>
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputEdit from "@/components/ExpandableInput/ExpandableInputEdit.vue";
-import ExpandableInputPreview from "@/components/ExpandableInput/ExpandableInputPreview.vue";
+import { defineComponent } from 'vue';
+import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
+import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
+import { createEventBus } from '@/event-bus';
 
-export default Vue.extend({
-	name: "InlineTextEdit",
+export default defineComponent({
+	name: 'InlineTextEdit',
 	components: { ExpandableInputEdit, ExpandableInputPreview },
 	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
 	data() {
@@ -36,7 +35,7 @@ export default Vue.extend({
 			newValue: '',
 			escPressed: false,
 			disabled: false,
-			inputBus: new Vue(),
+			inputBus: createEventBus(),
 		};
 	},
 	methods: {
@@ -52,7 +51,7 @@ export default Vue.extend({
 				return;
 			}
 
-			this.$data.newValue = this.$props.value;
+			this.$data.newValue = this.value;
 			this.$emit('toggle');
 		},
 		onBlur() {
@@ -74,7 +73,7 @@ export default Vue.extend({
 				this.$data.disabled = false;
 
 				if (!updated) {
-					this.$data.inputBus.$emit('focus');
+					this.$data.inputBus.emit('focus');
 				}
 			};
 

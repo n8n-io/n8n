@@ -1,12 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { Readable } from 'stream';
 
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { addAdditionalFields, apiRequest, getPropertyName } from './GenericFunctions';
 
@@ -1577,6 +1578,7 @@ export class Telegram implements INodeType {
 									'sendMessage',
 									'sendPhoto',
 									'sendVideo',
+									'sendDocument',
 								],
 							},
 						},
@@ -1960,9 +1962,8 @@ export class Telegram implements INodeType {
 				let responseData;
 
 				if (binaryData) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 					const itemBinaryData = items[i].binary![binaryPropertyName];
-					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
 
@@ -1979,10 +1980,17 @@ export class Telegram implements INodeType {
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
+					let uploadData: Buffer | Readable;
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+					}
+
 					const formData = {
 						...body,
 						[propertyName]: {
-							value: dataBuffer,
+							value: uploadData,
 							options: {
 								filename,
 								contentType: itemBinaryData.mimeType,
@@ -2011,27 +2019,27 @@ export class Telegram implements INodeType {
 								encoding: null,
 								uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
+								useStream: true,
 							},
 						);
 
 						const fileName = filePath.split('/').pop();
+
 						const data = await this.helpers.prepareBinaryData(
-							Buffer.from(file.body as string),
-							fileName,
+							file.body as Buffer,
+							fileName as string,
 						);
 
 						returnData.push({
 							json: responseData,
-							binary: {
-								data,
-							},
+							binary: { data },
 							pairedItem: { item: i },
 						});
 						continue;
 					}
 				} else if (resource === 'chat' && operation === 'administrators') {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData.result),
+						this.helpers.returnJsonArray(responseData.result as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -2039,7 +2047,7 @@ export class Telegram implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

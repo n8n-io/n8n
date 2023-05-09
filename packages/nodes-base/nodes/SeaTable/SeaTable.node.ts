@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getTableColumns,
@@ -24,9 +23,9 @@ import {
 
 import { rowFields, rowOperations } from './RowDescription';
 
-import { TColumnsUiValues, TColumnValue } from './types';
+import type { TColumnsUiValues, TColumnValue } from './types';
 
-import { ICtx, IRow, IRowObject } from './Interfaces';
+import type { ICtx, IRow, IRowObject } from './Interfaces';
 
 export class SeaTable implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,7 +76,7 @@ export class SeaTable implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -95,7 +94,7 @@ export class SeaTable implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -187,7 +186,7 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'POST',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							body,
 						);
 
@@ -200,7 +199,7 @@ export class SeaTable implements INodeType {
 							);
 						}
 
-						const newRowInsertData = rowMapKeyToName(responseData, tableColumns);
+						const newRowInsertData = rowMapKeyToName(responseData as IRow, tableColumns);
 
 						qs.table_name = tableName;
 						qs.convert = true;
@@ -208,7 +207,9 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'GET',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(insertId)}/`,
+							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/${encodeURIComponent(
+								insertId as string,
+							)}/`,
 							body,
 							qs,
 						);
@@ -222,7 +223,7 @@ export class SeaTable implements INodeType {
 						}
 
 						const row = rowFormatColumns(
-							{ ...newRowInsertData, ...newRow },
+							{ ...newRowInsertData, ...(newRow as IRow) },
 							tableColumns.map(({ name }) => name).concat(['_id', '_ctime', '_mtime']),
 						);
 
@@ -286,7 +287,7 @@ export class SeaTable implements INodeType {
 
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
+						const endpoint = '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/';
 						qs.table_name = tableName;
 						const filters = this.getNodeParameter('filters', i);
 						const options = this.getNodeParameter('options', i);
@@ -322,7 +323,7 @@ export class SeaTable implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(rows),
+							this.helpers.returnJsonArray(rows as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -351,7 +352,7 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'DELETE',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							requestBody,
 							qs,
 						)) as IDataObject;
@@ -419,12 +420,12 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'PUT',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							body,
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ _id: rowId, ...responseData }),
+							this.helpers.returnJsonArray({ _id: rowId, ...(responseData as IDataObject) }),
 							{ itemData: { item: i } },
 						);
 

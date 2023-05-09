@@ -1,20 +1,17 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/frontend'],
 
-	parserOptions: {
-		project: ['./tsconfig.json'],
-		tsconfigRootDir: __dirname,
-		extraFileExtensions: ['.vue'],
-	},
+	...sharedOptions(__dirname, 'frontend'),
 
 	rules: {
 		// TODO: Remove these
 		'import/no-default-export': 'off',
 		'import/order': 'off',
-		'@typescript-eslint/no-explicit-any': 'warn',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/no-unsafe-return': 'warn',
 		'@typescript-eslint/no-unsafe-member-access': 'warn',

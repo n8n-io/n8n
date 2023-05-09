@@ -1,4 +1,4 @@
-import { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
+import type { AllEntities, Entity, PropertiesOf } from 'n8n-workflow';
 
 export const ROW_NUMBER = 'row_number';
 
@@ -64,11 +64,11 @@ export type SheetProperties = PropertiesOf<GoogleSheetsSheet>;
 
 export type ResourceLocator = 'id' | 'url' | 'list';
 
-export enum ResourceLocatorUiNames {
-	id = 'By ID',
-	url = 'By URL',
-	list = 'From List',
-}
+export const ResourceLocatorUiNames = {
+	id: 'By ID',
+	url: 'By URL',
+	list: 'From List',
+};
 
 export type SheetCellDecoded = {
 	cell?: string;

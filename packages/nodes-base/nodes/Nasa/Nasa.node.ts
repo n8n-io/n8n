@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
 
@@ -922,7 +921,7 @@ export class Nasa implements INodeType {
 
 						propertyName = 'near_earth_objects';
 
-						endpoint = `/neo/rest/v1/neo/browse`;
+						endpoint = '/neo/rest/v1/neo/browse';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1045,12 +1044,12 @@ export class Nasa implements INodeType {
 				}
 
 				if (resource === 'asteroidNeoFeed') {
-					const date = Object.keys(responseData)[0];
+					const date = Object.keys(responseData as IDataObject)[0];
 					responseData = responseData[date];
 				}
 
 				if (resource === 'earthImagery') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
 
@@ -1065,14 +1064,14 @@ export class Nasa implements INodeType {
 
 					items[i] = newItem;
 
-					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
 				}
 
 				if (resource === 'astronomyPictureOfTheDay') {
 					download = this.getNodeParameter('download', 0);
 
 					if (download) {
-						const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = await nasaApiRequest.call(
 							this,
@@ -1080,7 +1079,7 @@ export class Nasa implements INodeType {
 							endpoint,
 							qs,
 							{ encoding: null },
-							responseData.hdurl,
+							responseData.hdurl as string,
 						);
 
 						const filename = (responseData.hdurl as string).split('/');
@@ -1099,14 +1098,14 @@ export class Nasa implements INodeType {
 						items[i] = newItem;
 
 						items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-							data,
+							data as Buffer,
 							filename[filename.length - 1],
 						);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 

@@ -3,37 +3,49 @@
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
-		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
+		:initialize="initialize"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
-		<template #default="{ data }">
-			<workflow-card :data="data" @click:tag="onClickTag" />
+		<template #default="{ data, updateItemSize }">
+			<workflow-card
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				@expand:tags="updateItemSize(data)"
+				@click:tag="onClickTag"
+			/>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
 				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
-					{{ $locale.baseText(currentUser.firstName ? 'workflows.empty.heading' : 'workflows.empty.heading.userNotSetup', { interpolate: { name: currentUser.firstName } }) }}
+					{{
+						$locale.baseText(
+							currentUser.firstName
+								? 'workflows.empty.heading'
+								: 'workflows.empty.heading.userNotSetup',
+							{ interpolate: { name: currentUser.firstName } },
+						)
+					}}
 				</n8n-heading>
 				<n8n-text size="large" color="text-base">
 					{{ $locale.baseText('workflows.empty.description') }}
 				</n8n-text>
 			</div>
-			<div class="text-center mt-2xl">
-				<n8n-card :class="[$style.emptyStateCard, 'mr-s']" hoverable @click="addWorkflow" data-test-id="new-workflow-card">
+			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+				<n8n-card
+					:class="$style.emptyStateCard"
+					hoverable
+					@click="addWorkflow"
+					data-test-id="new-workflow-card"
+				>
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
-					</n8n-text>
-				</n8n-card>
-				<n8n-card :class="$style.emptyStateCard" hoverable @click="goToTemplates" data-test-id="new-workflow-template-card">
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.browseTemplates') }}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -67,7 +79,8 @@
 						v-for="option in statusFilterOptions"
 						:key="option.label"
 						:label="option.label"
-						:value="option.value">
+						:value="option.value"
+					>
 					</n8n-option>
 				</n8n-select>
 			</div>
@@ -76,25 +89,26 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
-import ResourcesListLayout from "@/components/layouts/ResourcesListLayout.vue";
-import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
-import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import WorkflowCard from "@/components/WorkflowCard.vue";
-import TemplateCard from "@/components/TemplateCard.vue";
-import {EnterpriseEditionFeature, VIEWS} from '@/constants';
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
+import WorkflowCard from '@/components/WorkflowCard.vue';
+import TemplateCard from '@/components/TemplateCard.vue';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from "vue";
-import {ITag, IUser, IWorkflowDb} from "@/Interface";
-import TagsDropdown from "@/components/TagsDropdown.vue";
+import type Vue from 'vue';
+import type { ITag, IUser, IWorkflowDb } from '@/Interface';
+import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -104,10 +118,7 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(
-	showMessage,
-	debounceHelper,
-).extend({
+const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
@@ -135,17 +146,21 @@ export default mixins(
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
+			useCredentialsStore,
 		),
 		currentUser(): IUser {
-			return this.usersStore.currentUser || {} as IUser;
+			return this.usersStore.currentUser || ({} as IUser);
 		},
 		allWorkflows(): IWorkflowDb[] {
 			return this.workflowsStore.allWorkflows;
 		},
 		isShareable(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
-		statusFilterOptions(): Array<{ label: string, value: string | boolean }> {
+		hasActiveWorkflows(): boolean {
+			return !!this.workflowsStore.activeWorkflows.length;
+		},
+		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
 				{
 					label: this.$locale.baseText('workflows.filters.status.all'),
@@ -171,27 +186,35 @@ export default mixins(
 				source: 'Workflows list',
 			});
 		},
-		goToTemplates() {
-			this.$router.push({ name: VIEWS.TEMPLATES });
-		},
 		async initialize() {
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
-
-			return await Promise.all([
+			await Promise.all([
+				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+
+			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
 				this.filters.tags.push(tagId);
 			}
 		},
-		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; status: string | boolean }, matches: boolean): boolean {
+		onFilter(
+			resource: IWorkflowDb,
+			filters: { tags: string[]; search: string; status: string | boolean },
+			matches: boolean,
+		): boolean {
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
-				matches = matches && filters.tags.every(
-					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`),
-				);
+				matches =
+					matches &&
+					filters.tags.every((tag) =>
+						(resource.tags as ITag[])?.find((resourceTag) =>
+							typeof resourceTag === 'object'
+								? `${resourceTag.id}` === `${tag}`
+								: `${resourceTag}` === `${tag}`,
+						),
+					);
 			}
 
 			if (filters.status !== '') {
@@ -213,14 +236,25 @@ export default mixins(
 		this.usersStore.showPersonalizationSurvey();
 	},
 });
+
+export default WorkflowsView;
 </script>
 
 <style lang="scss" module>
+.actionsContainer {
+	display: flex;
+	justify-content: center;
+}
+
 .emptyStateCard {
 	width: 192px;
 	text-align: center;
 	display: inline-flex;
 	height: 230px;
+
+	& + & {
+		margin-left: var(--spacing-s);
+	}
 
 	&:hover {
 		svg {
@@ -233,10 +267,9 @@ export default mixins(
 	font-size: 48px;
 
 	svg {
-		width: 48px!important;
+		width: 48px !important;
 		color: var(--color-foreground-dark);
-		transition: color 0.3s ease;}
+		transition: color 0.3s ease;
+	}
 }
 </style>
-
-

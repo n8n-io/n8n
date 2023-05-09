@@ -1,4 +1,5 @@
-import { INode, LoggerProxy } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { getNodesWithInaccessibleCreds, validateWorkflowCredentialUsage } from '@/WorkflowHelpers';
@@ -148,7 +149,7 @@ describe('WorkflowHelpers', () => {
 
 function generateCredentialEntity(credentialId: string) {
 	const credentialEntity = new CredentialsEntity();
-	credentialEntity.id = parseInt(credentialId, 10);
+	credentialEntity.id = credentialId;
 	return credentialEntity;
 }
 

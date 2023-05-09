@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
 
@@ -22,6 +20,6 @@ export async function getAll(
 	} else {
 		const limit = this.getNodeParameter('limit', index);
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-		return this.helpers.returnJsonArray(responseData.contacts.splice(0, limit));
+		return this.helpers.returnJsonArray(responseData.contacts.splice(0, limit) as IDataObject[]);
 	}
 }

@@ -18,6 +18,7 @@ Currently, n8n does _not_ allow for internalization of:
 - options that rely on `loadOptionsMethod`.
 
 Pending functionality:
+
 - Search in nodes panel by translated node name
 - UI responsiveness to differently sized strings
 - Locale-aware number formatting
@@ -101,6 +102,7 @@ credentials
 			├── githubApi.json
 			└── githubOAuth2Api.json
 ```
+
 Every credential must have its own credential translation file.
 
 The name of the credential translation file must be sourced from the credential's `description.name` property:
@@ -186,7 +188,7 @@ The object for each node credential parameter allows for the keys `displayName`,
 	"server.displayName": "🇩🇪 Github Server",
 	"server.description": "🇩🇪 The server to connect to. Only has to be set if Github Enterprise is used.",
 	"user.placeholder": "🇩🇪 Hans",
-	"accessToken.placeholder": "🇩🇪 123",
+	"accessToken.placeholder": "🇩🇪 123"
 }
 ```
 
@@ -218,7 +220,7 @@ export class Github implements INodeType {
 ```json
 {
 	"header.displayName": "🇩🇪 GitHub",
-	"header.description": "🇩🇪 Consume GitHub API",
+	"header.description": "🇩🇪 Consume GitHub API"
 }
 ```
 
@@ -255,7 +257,7 @@ export class Github implements INodeType {
 
 ```json
 {
-	"nodeView.resource.displayName": "🇩🇪 Resource",
+	"nodeView.resource.displayName": "🇩🇪 Resource"
 }
 ```
 
@@ -280,7 +282,7 @@ Allowed keys: `displayName`, `description`, `placeholder`
 {
 	"nodeView.owner.displayName": "🇩🇪 Repository Owner",
 	"nodeView.owner.placeholder": "🇩🇪 n8n-io",
-	"nodeView.owner.description": "🇩🇪 Owner of the repository",
+	"nodeView.owner.description": "🇩🇪 Owner of the repository"
 }
 ```
 
@@ -319,7 +321,7 @@ Allowed subkeys: `options.{optionName}.displayName` and `options.{optionName}.de
 	"nodeView.resource.displayName": "🇩🇪 Resource",
 	"nodeView.resource.description": "🇩🇪 Resource to operate on",
 	"nodeView.resource.options.file.name": "🇩🇪 File",
-	"nodeView.resource.options.issue.name": "🇩🇪 Issue",
+	"nodeView.resource.options.issue.name": "🇩🇪 Issue"
 }
 ```
 
@@ -333,7 +335,7 @@ For nodes whose credentials may be used in the HTTP Request node, an additional 
 {
 	"nodeView.resource.options.file.name": "🇩🇪 File",
 	"nodeView.resource.options.issue.name": "🇩🇪 Issue",
-	"nodeView.resource.options.__CUSTOM_API_CALL__.name": "🇩🇪 Custom API Call",
+	"nodeView.resource.options.__CUSTOM_API_CALL__.name": "🇩🇪 Custom API Call"
 }
 ```
 
@@ -444,7 +446,7 @@ Example of `fixedCollection` parameter:
 	"nodeView.additionalParameters.options.author.values.name.placeholder": "🇩🇪 Jan",
 	"nodeView.additionalParameters.options.author.values.email.displayName": "🇩🇪 Email",
 	"nodeView.additionalParameters.options.author.values.email.description": "🇩🇪 Email of the author of the commit",
-	"nodeView.additionalParameters.options.author.values.email.placeholder": "🇩🇪 jan@n8n.io",
+	"nodeView.additionalParameters.options.author.values.email.placeholder": "🇩🇪 jan@n8n.io"
 }
 ```
 

@@ -1,7 +1,10 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/vue';
 import Vue from 'vue';
 import '../plugins';
 import { I18nPlugin } from '@/plugins/i18n';
+
+configure({ testIdAttribute: 'data-test-id' });
 
 Vue.config.productionTip = false;
 Vue.config.devtools = false;
@@ -12,3 +15,10 @@ Vue.config.devtools = false;
 Vue.component('vue-json-pretty', require('vue-json-pretty').default);
 Vue.use((vue) => I18nPlugin(vue));
 
+window.ResizeObserver =
+	window.ResizeObserver ||
+	vi.fn().mockImplementation(() => ({
+		disconnect: vi.fn(),
+		observe: vi.fn(),
+		unobserve: vi.fn(),
+	}));

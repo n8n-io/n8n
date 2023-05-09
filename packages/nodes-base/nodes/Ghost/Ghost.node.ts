@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -88,11 +87,11 @@ export class Ghost implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the authors to display them to user so that he can
+			// Get all the authors to display them to user so that they can
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', `/admin/users`);
+				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', '/admin/users');
 				for (const user of users) {
 					returnData.push({
 						name: user.name,
@@ -101,11 +100,11 @@ export class Ghost implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', `/admin/tags`);
+				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', '/admin/tags');
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
@@ -341,7 +340,7 @@ export class Ghost implements INodeType {
 					}
 				}
 
-				responseData = this.helpers.returnJsonArray(responseData);
+				responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },

@@ -5,7 +5,11 @@
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+			<tr
+				v-for="(row, index1) in tableData.data"
+				:key="index1"
+				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+			>
 				<td
 					:data-row="index1"
 					:data-col="0"
@@ -21,14 +25,10 @@
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip
-							placement="bottom-start"
-							:disabled="!mappingEnabled"
-							:open-delay="1000"
-						>
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :open-delay="1000">
 							<template #content>
 								<div>
-									<img src='/static/data-mapping-gif.gif'/>
+									<img src="/static/data-mapping-gif.gif" />
 									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
@@ -40,22 +40,15 @@
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
-									<div
-										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
-									>
-										{{
-											$locale.baseText('dataMapping.mapKeyToField', {
-												interpolate: { name: shorten(column, 16, 2) },
-											})
-										}}
-									</div>
+									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
 								</template>
 								<template #default="{ isDragging }">
 									<div
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.activeHeader]:
+												(i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -75,13 +68,18 @@
 									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
-										  <a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+											<a @click="switchToJsonView">{{
+												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+											}}</a>
 										</template>
 									</i18n>
 								</div>
 							</template>
 							<span>
-								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								<font-awesome-icon
+									:class="$style['warningTooltip']"
+									icon="exclamation-triangle"
+								></font-awesome-icon>
 								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</n8n-tooltip>
@@ -99,21 +97,18 @@
 				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
-					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-						{{
-							$locale.baseText(
-								tableData.data.length > 1
-									? 'dataMapping.mapAllKeysToField'
-									: 'dataMapping.mapKeyToField',
-								{
-									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
-								},
-							)
-						}}
-					</div>
+					<MappingPill
+						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
+						:can-drop="canDrop"
+					/>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+					<tr
+						v-for="(row, index1) in tableData.data"
+						:key="index1"
+						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+					>
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
@@ -123,7 +118,12 @@
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
+							<span
+								v-if="isSimple(data)"
+								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+								class="ph-no-capture"
+								>{{ getValueToRender(data) }}</span
+							>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template #label="{ label, path }">
 									<span
@@ -143,9 +143,11 @@
 									>
 								</template>
 								<template #value="{ value }">
-									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
-										getValueToRender(value)
-									}}</span>
+									<span
+										:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+										class="ph-no-capture"
+										>{{ getValueToRender(value) }}</span
+									>
 								</template>
 							</n8n-tree>
 						</td>
@@ -160,23 +162,27 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-import { INodeUi, ITableData, NDVState } from '@/Interface';
+import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/utils';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import MappingPill from './MappingPill.vue';
+import { getMappedExpression } from '@/utils/mappingUtils';
 
 const MAX_COLUMNS_LIMIT = 40;
 
+type DraggableRef = InstanceType<typeof Draggable>;
+
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
-	components: { Draggable },
+	components: { Draggable, MappingPill },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -221,7 +227,7 @@ export default mixins(externalHooks).extend({
 	},
 	mounted() {
 		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
-			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
+			const tbody = (this.$refs.draggable as DraggableRef).$refs.wrapper;
 			if (tbody) {
 				this.$emit('mounted', {
 					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
@@ -230,14 +236,11 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItem(): NDVState['hoveringItem'] {
 			return this.ndvStore.hoveringItem;
 		},
-		pairedItemMappings(): {[itemId: string]: Set<string>} {
+		pairedItemMappings(): { [itemId: string]: Set<string> } {
 			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
@@ -255,15 +258,30 @@ export default mixins(externalHooks).extend({
 			}
 
 			const itemIndex = this.pageOffset + row;
-			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
+			if (
+				itemIndex === 0 &&
+				!this.hoveringItem &&
+				this.hasDefaultHoverState &&
+				this.distanceFromActive === 1
+			) {
 				return true;
 			}
-			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
+			const itemNodeId = getPairedItemId(
+				this.node.name,
+				this.runIndex || 0,
+				this.outputIndex || 0,
+				itemIndex,
+			);
 			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
 				return false;
 			}
 
-			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			const hoveringItemId = getPairedItemId(
+				this.hoveringItem.nodeName,
+				this.hoveringItem.runIndex,
+				this.hoveringItem.outputIndex,
+				this.hoveringItem.itemIndex,
+			);
 			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
 		},
 		onMouseEnterCell(e: MouseEvent) {
@@ -304,11 +322,11 @@ export default mixins(externalHooks).extend({
 				return '';
 			}
 
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"] }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column],
+			});
 		},
 		getPathNameFromTarget(el: HTMLElement) {
 			if (!el) {
@@ -332,28 +350,20 @@ export default mixins(externalHooks).extend({
 			if (!this.node) {
 				return '';
 			}
-
-			const expr = path.reduce((accu: string, key: string | number) => {
-				if (typeof key === 'number') {
-					return `${accu}[${key}]`;
-				}
-
-				return `${accu}["${key}"]`;
-			}, '');
 			const column = this.tableData.columns[colIndex];
-
-			if (this.distanceFromActive === 1) {
-				return `{{ $json["${column}"]${expr} }}`;
-			}
-
-			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
+			return getMappedExpression({
+				nodeName: this.node.name,
+				distanceFromActive: this.distanceFromActive,
+				path: [column, ...path],
+			});
 		},
 		isEmpty(value: unknown): boolean {
 			return (
 				value === '' ||
 				(Array.isArray(value) && value.length === 0) ||
 				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
-				(value === null || value === undefined)
+				value === null ||
+				value === undefined
 			);
 		},
 		getValueToRender(value: unknown) {
@@ -363,19 +373,15 @@ export default mixins(externalHooks).extend({
 			if (typeof value === 'string') {
 				return value.replaceAll('\n', '\\n');
 			}
-
 			if (Array.isArray(value) && value.length === 0) {
 				return this.$locale.baseText('runData.emptyArray');
 			}
-
 			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
 				return this.$locale.baseText('runData.emptyObject');
 			}
-
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
-
 			return value;
 		},
 		onDragStart() {
@@ -423,9 +429,12 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
-			return (typeof data !== 'object' || data === null) ||
+			return (
+				typeof data !== 'object' ||
+				data === null ||
 				(Array.isArray(data) && data.length === 0) ||
-				(typeof data === 'object' && Object.keys(data).length === 0);
+				(typeof data === 'object' && Object.keys(data).length === 0)
+			);
 		},
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
@@ -447,7 +456,7 @@ export default mixins(externalHooks).extend({
 				entryRows = [];
 				const entryColumns = Object.keys(entry || {});
 
-				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
+				if (entryColumns.length > MAX_COLUMNS_LIMIT) {
 					this.columnLimitExceeded = true;
 					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
 				} else {
@@ -467,8 +476,8 @@ export default mixins(externalHooks).extend({
 							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
 							false;
 					} else {
-						// Entry does not have key so add null
-						entryRows.push(null);
+						// Entry does not have key so add undefined
+						entryRows.push(undefined);
 					}
 				});
 
@@ -502,7 +511,7 @@ export default mixins(externalHooks).extend({
 				data: tableData,
 			};
 		},
-		switchToJsonView(){
+		switchToJsonView() {
 			this.$emit('displayModeChange', 'json');
 		},
 	},
@@ -559,11 +568,13 @@ export default mixins(externalHooks).extend({
 		white-space: pre-wrap;
 	}
 
-	td:first-child, td:nth-last-child(2) {
+	td:first-child,
+	td:nth-last-child(2) {
 		position: relative;
 		z-index: 0;
 
-		&:after { // add border without shifting content
+		&:after {
+			// add border without shifting content
 			content: '';
 			position: absolute;
 			height: 100%;
@@ -633,28 +644,6 @@ export default mixins(externalHooks).extend({
 	margin-left: var(--spacing-2xs);
 }
 
-.dragPill {
-	display: flex;
-	height: 24px;
-	align-items: center;
-	padding: 0 var(--spacing-4xs);
-	color: var(--color-text-xlight);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	border-radius: var(--border-radius-base);
-	white-space: nowrap;
-}
-
-.droppablePill {
-	background-color: var(--color-success);
-}
-
-.defaultPill {
-	background-color: var(--color-primary);
-	transform: translate(-50%, -100%);
-	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
-}
-
 .dataKey {
 	color: var(--color-text-dark);
 	line-height: 1.7;
@@ -707,7 +696,8 @@ export default mixins(externalHooks).extend({
 }
 
 .hoveringRow {
-	td:first-child:after, td:nth-last-child(2):after {
+	td:first-child:after,
+	td:nth-last-child(2):after {
 		background-color: var(--color-secondary);
 	}
 }
@@ -715,5 +705,4 @@ export default mixins(externalHooks).extend({
 .warningTooltip {
 	color: var(--color-warning);
 }
-
 </style>

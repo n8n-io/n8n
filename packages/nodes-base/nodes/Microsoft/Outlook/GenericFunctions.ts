@@ -1,13 +1,14 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	BINARY_ENCODING,
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
+	INodeExecutionData,
+	JsonObject,
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -44,14 +45,13 @@ export async function microsoftApiRequest(
 			options.headers = Object.assign({}, options.headers, headers);
 		}
 
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -82,7 +82,7 @@ export async function microsoftApiRequestAllItems(
 			headers,
 		);
 		uri = responseData['@odata.nextLink'];
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
@@ -115,7 +115,7 @@ export async function microsoftApiRequestAllItemsSkip(
 			headers,
 		);
 		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
 
 	return returnData;
@@ -211,8 +211,8 @@ export async function downloadAttachments(
 				const data = Buffer.from(response.body as string, 'utf8');
 				element.binary![`${prefix}${index}`] = await this.helpers.prepareBinaryData(
 					data as unknown as Buffer,
-					attachment.name,
-					attachment.contentType,
+					attachment.name as string,
+					attachment.contentType as string,
 				);
 			}
 		}
@@ -232,24 +232,8 @@ export async function binaryToAttachments(
 ) {
 	return Promise.all(
 		attachments.map(async (attachment) => {
-			const { binary } = items[i];
-
-			if (binary === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-					itemIndex: i,
-				});
-			}
-
 			const binaryPropertyName = attachment.binaryPropertyName as string;
-			if (binary[binaryPropertyName] === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
-					{ itemIndex: i },
-				);
-			}
-
-			const binaryData = binary[binaryPropertyName];
+			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',

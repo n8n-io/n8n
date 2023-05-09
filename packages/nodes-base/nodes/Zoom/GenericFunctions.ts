@@ -1,8 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function zoomApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -37,12 +42,19 @@ export async function zoomApiRequest(
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.requestWithAuthentication.call(this, 'zoomApi', options);
 		} else {
-			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'zoomOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+async function wait() {
+	return new Promise((resolve, _reject) => {
+		setTimeout(() => {
+			resolve(true);
+		}, 1000);
+	});
 }
 
 export async function zoomApiRequestAllItems(
@@ -59,18 +71,11 @@ export async function zoomApiRequestAllItems(
 	do {
 		responseData = await zoomApiRequest.call(this, method, endpoint, body, query);
 		query.page_number++;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		// zoom free plan rate limit is 1 request/second
 		// TODO just wait when the plan is free
 		await wait();
 	} while (responseData.page_count !== responseData.page_number);
 
 	return returnData;
-}
-async function wait() {
-	return new Promise((resolve, _reject) => {
-		setTimeout(() => {
-			resolve(true);
-		}, 1000);
-	});
 }

@@ -12,6 +12,8 @@ export type IN8nButton = {
 		active?: boolean;
 		float?: 'left' | 'right';
 		square?: boolean;
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		'data-test-id'?: string;
 	};
 	listeners?: Record<string, (event: Event) => void>;
 };

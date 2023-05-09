@@ -1,5 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import {
 	addConfigFields,
@@ -11,7 +15,8 @@ import {
 	tagFields,
 } from './descriptions';
 
-import simpleGit, { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
+import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
+import simpleGit from 'simple-git';
 
 import { access, mkdir } from 'fs/promises';
 

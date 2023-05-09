@@ -1,4 +1,4 @@
-import { BasePage } from "./base";
+import { BasePage } from './base';
 
 // todo rename to setup
 export class SignupPage extends BasePage {
@@ -11,5 +11,5 @@ export class SignupPage extends BasePage {
 		password: () => cy.getByTestId('password'),
 		submit: () => cy.get('button'),
 		skip: () => cy.get('a'),
-	}
+	};
 }

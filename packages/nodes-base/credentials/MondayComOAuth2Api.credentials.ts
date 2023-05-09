@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = ['boards:write', 'boards:read'];
 
@@ -9,7 +9,7 @@ export class MondayComOAuth2Api implements ICredentialType {
 
 	displayName = 'Monday.com OAuth2 API';
 
-	documentationUrl = 'monday';
+	documentationUrl = 'mondaycom';
 
 	properties: INodeProperties[] = [
 		{

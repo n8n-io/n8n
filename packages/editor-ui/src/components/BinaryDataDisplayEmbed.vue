@@ -1,14 +1,10 @@
 <template>
 	<span>
-		<div v-if="isLoading">
-			Loading binary data...
-		</div>
-		<div v-else-if="error">
-			Error loading binary data
-		</div>
+		<div v-if="isLoading">Loading binary data...</div>
+		<div v-else-if="error">Error loading binary data</div>
 		<span v-else>
 			<video v-if="binaryData.fileType === 'video'" controls autoplay>
-				<source :src="embedSource" :type="binaryData.mimeType">
+				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
 			<vue-json-pretty
@@ -17,88 +13,88 @@
 				:deep="3"
 				:showLength="true"
 			/>
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()"/>
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
 		</span>
 	</span>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
-import { IBinaryData, jsonParse } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores';
+import Vue from 'vue';
 
-export default mixins(
-	restApi,
-)
-	.extend({
-		name: 'BinaryDataDisplayEmbed',
-		components: {
-			VueJsonPretty,
+export default Vue.extend({
+	name: 'BinaryDataDisplayEmbed',
+	components: {
+		VueJsonPretty,
+	},
+	props: {
+		binaryData: {
+			type: Object as PropType<IBinaryData>,
+			required: true,
 		},
-		props: {
-			binaryData: {
-				type: Object as PropType<IBinaryData>,
-				required: true,
-			},
-		},
-		data() {
-			return {
-				isLoading: true,
-				embedSource: '',
-				error: false,
-				jsonData: '',
-			};
-		},
-		async mounted() {
-			const id = this.binaryData?.id;
-			const isJSONData = this.binaryData.fileType === 'json';
+	},
+	data() {
+		return {
+			isLoading: true,
+			embedSource: '',
+			error: false,
+			jsonData: '',
+		};
+	},
+	computed: {
+		...mapStores(useWorkflowsStore),
+	},
+	async mounted() {
+		const { id, data, fileName, fileType, mimeType } = (this.binaryData || {}) as IBinaryData;
+		const isJSONData = fileType === 'json';
 
-			if(!id) {
-				if (isJSONData) {
-					this.jsonData = jsonParse(atob(this.binaryData.data));
-				} else {
-					this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
-				}
+		if (!id) {
+			if (isJSONData) {
+				this.jsonData = jsonParse(atob(data));
 			} else {
-				try {
-					const binaryUrl = this.restApi().getBinaryUrl(id);
-					if (isJSONData) {
-						this.jsonData = await (await fetch(binaryUrl)).json();
-					} else {
-						this.embedSource = binaryUrl;
-					}
-				} catch (e) {
-					this.error = true;
-				}
+				this.embedSource = 'data:' + mimeType + ';base64,' + data;
 			}
+		} else {
+			try {
+				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
+				if (isJSONData) {
+					this.jsonData = await (await fetch(binaryUrl)).json();
+				} else {
+					this.embedSource = binaryUrl;
+				}
+			} catch (e) {
+				this.error = true;
+			}
+		}
 
-			this.isLoading = false;
+		this.isLoading = false;
+	},
+	methods: {
+		embedClass(): string[] {
+			const { fileType } = (this.binaryData || {}) as IBinaryData;
+			return [fileType ?? 'other'];
 		},
-		methods: {
-			embedClass(): string[] {
-				const { fileType } = (this.binaryData || {}) as IBinaryData;
-				return [fileType ?? 'other'];
-			},
-		},
-	});
+	},
+});
 </script>
 
 <style lang="scss">
-
 .binary-data {
-    background-color: var(--color-foreground-xlight);
+	background-color: var(--color-foreground-xlight);
 
-    &.image {
-        max-height: calc(100% - 1em);
-        max-width: calc(100% - 1em);
-    }
+	&.image {
+		max-height: calc(100% - 1em);
+		max-width: calc(100% - 1em);
+	}
 
-    &.other {
-        height: calc(100% - 1em);
-        width: calc(100% - 1em);
-    }
+	&.other {
+		height: calc(100% - 1em);
+		width: calc(100% - 1em);
+	}
 }
-
 </style>

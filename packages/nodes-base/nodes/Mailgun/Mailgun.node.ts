@@ -1,11 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -85,6 +86,7 @@ export class Mailgun implements INodeType {
 				type: 'string',
 				typeOptions: {
 					rows: 5,
+					editor: 'htmlEditor',
 				},
 				default: '',
 				description: 'HTML text message of email',
@@ -146,9 +148,7 @@ export class Mailgun implements INodeType {
 						});
 
 					for (const propertyName of attachmentProperties) {
-						if (!item.binary.hasOwnProperty(propertyName)) {
-							continue;
-						}
+						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 							itemIndex,
 							propertyName,
@@ -156,7 +156,7 @@ export class Mailgun implements INodeType {
 						attachments.push({
 							value: binaryDataBuffer,
 							options: {
-								filename: item.binary[propertyName].fileName || 'unknown',
+								filename: binaryData.fileName || 'unknown',
 							},
 						});
 					}
@@ -183,11 +183,11 @@ export class Mailgun implements INodeType {
 						options,
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: itemIndex } },
 				);
 

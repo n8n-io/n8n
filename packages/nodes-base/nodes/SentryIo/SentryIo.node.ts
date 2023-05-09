@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,7 +22,7 @@ import { teamFields, teamOperations } from './TeamDescription';
 
 import { sentryApiRequestAllItems, sentryIoApiRequest } from './GenericFunctions';
 
-import { ICommit, IPatchSet, IRef } from './Interface';
+import type { ICommit, IPatchSet, IRef } from './Interface';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -194,7 +193,7 @@ export class SentryIo implements INodeType {
 				const organizations = await sentryApiRequestAllItems.call(
 					this,
 					'GET',
-					`/api/0/organizations/`,
+					'/api/0/organizations/',
 					{},
 				);
 
@@ -220,7 +219,7 @@ export class SentryIo implements INodeType {
 			// Get all projects so can be displayed easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const projects = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/projects/`, {});
+				const projects = await sentryApiRequestAllItems.call(this, 'GET', '/api/0/projects/', {});
 
 				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
 
@@ -408,7 +407,7 @@ export class SentryIo implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const endpoint = `/api/0/organizations/`;
+						const endpoint = '/api/0/organizations/';
 
 						if (additionalFields.member) {
 							qs.member = additionalFields.member as boolean;
@@ -437,7 +436,7 @@ export class SentryIo implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const agreeTerms = this.getNodeParameter('agreeTerms', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const endpoint = `/api/0/organizations/`;
+						const endpoint = '/api/0/organizations/';
 
 						qs.name = name;
 						qs.agreeTerms = agreeTerms;
@@ -481,7 +480,7 @@ export class SentryIo implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const endpoint = `/api/0/projects/`;
+						const endpoint = '/api/0/projects/';
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
@@ -727,7 +726,7 @@ export class SentryIo implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

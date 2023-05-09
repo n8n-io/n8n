@@ -1,9 +1,9 @@
-import { MAIN_HEADER_TABS, VIEWS } from "@/constants";
-import { IZoomConfig } from "@/Interface";
-import { useWorkflowsStore } from "@/stores/workflows";
-import { OnConnectionBindInfo } from "jsplumb";
-import { IConnection } from "n8n-workflow";
-import { Route } from "vue-router";
+import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
+import type { IZoomConfig } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ConnectionDetachedParams } from '@jsplumb/core';
+import type { IConnection } from 'n8n-workflow';
+import type { Route } from 'vue-router';
 
 /*
 	Constants and utility functions mainly used by canvas store
@@ -13,7 +13,7 @@ import { Route } from "vue-router";
 	'@/utils'.
 */
 
-export const scaleSmaller = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): IZoomConfig => {
+export const scaleSmaller = ({ scale, offset: [xOffset, yOffset] }: IZoomConfig): IZoomConfig => {
 	scale /= 1.25;
 	xOffset /= 1.25;
 	yOffset /= 1.25;
@@ -26,7 +26,7 @@ export const scaleSmaller = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): 
 	};
 };
 
-export const scaleBigger = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): IZoomConfig => {
+export const scaleBigger = ({ scale, offset: [xOffset, yOffset] }: IZoomConfig): IZoomConfig => {
 	scale *= 1.25;
 	xOffset -= window.innerWidth / 10;
 	yOffset -= window.innerHeight / 10;
@@ -40,12 +40,12 @@ export const scaleBigger = ({scale, offset: [xOffset, yOffset]}: IZoomConfig): I
 };
 
 export const scaleReset = (config: IZoomConfig): IZoomConfig => {
-	if (config.scale > 1) { // zoomed in
+	if (config.scale > 1) {
+		// zoomed in
 		while (config.scale > 1) {
 			config = scaleSmaller(config);
 		}
-	}
-	else {
+	} else {
 		while (config.scale < 1) {
 			config = scaleBigger(config);
 		}
@@ -56,7 +56,6 @@ export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return config;
 };
 
-
 export const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
 	const quotient = Math.ceil(inputNumber / divisibleBy);
 
@@ -64,43 +63,41 @@ export const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: numbe
 	const inputNumber1 = divisibleBy * quotient;
 
 	// 2nd possible closest number
-	const inputNumber2 = (inputNumber * divisibleBy) > 0
-		? (divisibleBy * (quotient + 1))
-		: (divisibleBy * (quotient - 1));
+	const inputNumber2 =
+		inputNumber * divisibleBy > 0 ? divisibleBy * (quotient + 1) : divisibleBy * (quotient - 1);
 
 	// if true, then inputNumber1 is the required closest number
-	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) return inputNumber1;
+	if (Math.abs(inputNumber - inputNumber1) < Math.abs(inputNumber - inputNumber2)) {
+		return inputNumber1;
+	}
 
 	// else inputNumber2 is the required closest number
 	return inputNumber2;
 };
 
-export const getNodeViewTab = (route: Route): string|null => {
-	const routeMeta = route.meta;
-	if (routeMeta && routeMeta.nodeView === true) {
+export const getNodeViewTab = (route: Route): string | null => {
+	if (route.meta?.nodeView) {
 		return MAIN_HEADER_TABS.WORKFLOW;
-	} else {
-		const executionTabRoutes = [
-			VIEWS.EXECUTION.toString(),
-			VIEWS.EXECUTION_PREVIEW.toString(),
-			VIEWS.EXECUTION_HOME.toString(),
-		];
-
-		if (executionTabRoutes.includes(route.name || '')) {
-			return MAIN_HEADER_TABS.EXECUTIONS;
-		}
+	} else if (
+		[VIEWS.WORKFLOW_EXECUTIONS, VIEWS.EXECUTION_PREVIEW, VIEWS.EXECUTION_HOME]
+			.map(String)
+			.includes(String(route.name))
+	) {
+		return MAIN_HEADER_TABS.EXECUTIONS;
 	}
 	return null;
 };
 
-export const getConnectionInfo = (connection: OnConnectionBindInfo): [IConnection, IConnection] | null => {
-	const sourceInfo = connection.sourceEndpoint.getParameters();
-	const targetInfo = connection.targetEndpoint.getParameters();
+export const getConnectionInfo = (
+	connection: ConnectionDetachedParams,
+): [IConnection, IConnection] | null => {
+	const sourceInfo = connection.sourceEndpoint.parameters;
+	const targetInfo = connection.targetEndpoint.parameters;
 	const sourceNode = useWorkflowsStore().getNodeById(sourceInfo.nodeId);
 	const targetNode = useWorkflowsStore().getNodeById(targetInfo.nodeId);
 
 	if (sourceNode && targetNode) {
-		return[
+		return [
 			{
 				node: sourceNode.name,
 				type: sourceInfo.type,

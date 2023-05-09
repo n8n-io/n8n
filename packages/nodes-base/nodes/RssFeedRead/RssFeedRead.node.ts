@@ -1,14 +1,25 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import Parser from 'rss-parser';
 import { URL } from 'url';
+
+// Utility function
+
+function validateURL(url: string) {
+	try {
+		const _parseUrl = new URL(url);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
 
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,7 +72,7 @@ export class RssFeedRead implements INodeType {
 					);
 				}
 
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
 			const returnData: IDataObject[] = [];
@@ -69,7 +80,6 @@ export class RssFeedRead implements INodeType {
 			// For now we just take the items and ignore everything else
 			if (feed.items) {
 				feed.items.forEach((item) => {
-					// @ts-ignore
 					returnData.push(item);
 				});
 			}
@@ -81,16 +91,5 @@ export class RssFeedRead implements INodeType {
 			}
 			throw error;
 		}
-	}
-}
-
-// Utility function
-
-function validateURL(url: string) {
-	try {
-		const _parseUrl = new URL(url);
-		return true;
-	} catch (err) {
-		return false;
 	}
 }

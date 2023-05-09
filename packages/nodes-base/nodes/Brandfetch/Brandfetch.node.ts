@@ -1,12 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { brandfetchApiRequest } from './GenericFunctions';
 
 export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brandfetch',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'Brandfetch',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:brandfetch.png',
@@ -157,7 +162,7 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/logo', body);
 
 					if (download) {
 						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
@@ -192,7 +197,7 @@ export class Brandfetch implements INodeType {
 
 									newItem.binary![`${imageType}_${imageFormat}`] =
 										await this.helpers.prepareBinaryData(
-											data,
+											data as Buffer,
 											`${imageType}_${domain}.${imageFormat}`,
 										);
 
@@ -206,7 +211,7 @@ export class Brandfetch implements INodeType {
 						}
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(response.response),
+							this.helpers.returnJsonArray(response.response as IDataObject),
 							{ itemData: { item: i } },
 						);
 						responseData.push(...executionData);
@@ -219,9 +224,9 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/color`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/color', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
@@ -233,9 +238,9 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/font`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/font', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
@@ -247,9 +252,9 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/company`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/company', body);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);
@@ -261,10 +266,10 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/industry', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push(...executionData);

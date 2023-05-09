@@ -1,13 +1,15 @@
-import { BasePage } from "../base";
+import { BasePage } from '../base';
 
 export class MainSidebar extends BasePage {
 	getters = {
-		menuItem: (menuLabel: string) => cy.getByTestId('menu-item').filter(`:contains("${menuLabel}")`),
+		menuItem: (menuLabel: string) =>
+			cy.getByTestId('menu-item').filter(`:contains("${menuLabel}")`),
 		settings: () => this.getters.menuItem('Settings'),
 		templates: () => this.getters.menuItem('Templates'),
 		workflows: () => this.getters.menuItem('Workflows'),
 		credentials: () => this.getters.menuItem('Credentials'),
 		executions: () => this.getters.menuItem('Executions'),
+		userMenu: () => cy.getByTestId('main-sidebar-user-menu'),
 	};
 	actions = {
 		goToSettings: () => {
@@ -19,7 +21,14 @@ export class MainSidebar extends BasePage {
 		goToCredentials: () => {
 			this.getters.credentials().should('be.visible');
 			cy.get('[data-old-overflow]').should('not.exist');
-			this.getters.credentials().click()
+			this.getters.credentials().click();
+		},
+		openUserMenu: () => {
+			this.getters.userMenu().find('[role="button"]').last().click();
+		},
+		signout: () => {
+			this.actions.openUserMenu();
+			cy.getByTestId('workflow-menu-item-logout').click();
 		},
 	};
 }

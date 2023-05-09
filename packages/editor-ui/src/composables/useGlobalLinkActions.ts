@@ -20,7 +20,7 @@ export default () => {
 		if (!(clickedElement instanceof Element) || clickedElement.tagName !== 'A') return;
 
 		const actionAttribute = clickedElement.getAttribute('data-action');
-		if(actionAttribute && typeof availableActions.value[actionAttribute] === 'function') {
+		if (actionAttribute && typeof availableActions.value[actionAttribute] === 'function') {
 			e.preventDefault();
 			availableActions.value[actionAttribute]();
 		}
@@ -34,7 +34,7 @@ export default () => {
 		}
 	}
 
-	const availableActions = computed<{[key: string]: Function}>(() => ({
+	const availableActions = computed<{ [key: string]: Function }>(() => ({
 		reload,
 		...state.customActions,
 	}));
@@ -56,4 +56,3 @@ export default () => {
 		unregisterCustomAction,
 	};
 };
-

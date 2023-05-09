@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -10,7 +10,7 @@ export class SendInBlueApi implements ICredentialType {
 
 	displayName = 'SendInBlue';
 
-	documentationUrl = 'sendInBlueApi';
+	documentationUrl = 'sendinblue';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -189,7 +188,7 @@ export class Storyblok implements INodeType {
 								responseData = await storyblokApiRequest.call(
 									this,
 									'GET',
-									`/v1/cdn/stories`,
+									'/v1/cdn/stories',
 									{},
 									qs,
 								);
@@ -343,7 +342,7 @@ export class Storyblok implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

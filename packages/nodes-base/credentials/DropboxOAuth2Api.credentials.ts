@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = ['files.content.write', 'files.content.read', 'sharing.read', 'account_info.read'];
 
