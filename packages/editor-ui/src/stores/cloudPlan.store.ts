@@ -5,7 +5,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan } from '@/api/cloudPlans';
-import { useCloudPlanHelper } from '@/composables/useCloudPlanHelper';
+import { DateTime } from 'luxon';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: {
@@ -18,7 +18,7 @@ const DEFAULT_STATE: CloudPlanState = {
 		expirationDate: '',
 		metadata: {
 			version: 'v1',
-			group: 'opt-in',
+			group: 'trial',
 			slug: 'trial-1',
 		},
 		usage: {
@@ -32,7 +32,6 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	const { userIsTrialing: _userIsTrialing } = useCloudPlanHelper();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 
@@ -40,9 +39,17 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.data = data;
 	};
 
-	const userIsTrialing = computed(() => _userIsTrialing(state.data?.metadata));
+	const userIsTrialing = computed(() => state.data.metadata.group === 'trial');
 
 	const currentPlanData = computed(() => state.data);
+
+	const trialExpired = computed(
+		() => DateTime.now().toMillis() >= DateTime.fromISO(state.data.expirationDate).toMillis(),
+	);
+
+	const allExecutionsUsed = computed(
+		() => state.data.usage.executions === state.data.monthlyExecutionsLimit,
+	);
 
 	const getOwnerCurrentPLan = async () => {
 		// TODO: uncomment before releasing
@@ -59,5 +66,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		getOwnerCurrentPLan,
 		userIsTrialing,
 		currentPlanData,
+		trialExpired,
+		allExecutionsUsed,
 	};
 });

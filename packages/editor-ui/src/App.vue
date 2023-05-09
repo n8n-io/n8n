@@ -186,11 +186,10 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			}
 		},
 		async monitorExecutionUsageOnCloudPlan() {
-			const { userIsTrialing } = useCloudPlanHelper();
 			try {
 				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
-				if (!userIsTrialing(plan.metadata)) return;
 				this.cloudPlanStore.setData(plan);
+				if (!this.cloudPlanStore.userIsTrialing) return;
 				this.startPollingPlanData();
 			} catch {}
 		},
@@ -200,18 +199,14 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			const interval = setInterval(async () => {
 				try {
 					const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
-					const trialExpired =
-						DateTime.now().toMillis() >= DateTime.fromISO(plan.expirationDate).toMillis();
-					const allExecutionsUsed = plan.usage.executions === plan.monthlyExecutionsLimit;
-
-					if (trialExpired || allExecutionsUsed) {
+					this.cloudPlanStore.setData(plan);
+					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
 						clearTimeout(interval);
 						return;
 					}
 					// TODO: remove before releasing
 					plan.usage.executions += acc;
 					acc += 20;
-					this.cloudPlanStore.setData(plan);
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
