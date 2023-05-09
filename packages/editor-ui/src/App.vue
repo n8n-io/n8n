@@ -50,6 +50,7 @@ import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { DateTime } from 'luxon';
+import { useCloudPlanHelper } from './composables/useCloudPlanHelper';
 
 export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
@@ -185,9 +186,10 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			}
 		},
 		async monitorExecutionUsageOnCloudPlan() {
+			const { userIsTrialing } = useCloudPlanHelper();
 			try {
 				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
-				if (!plan.metadata.slug.includes('trial')) return;
+				if (!userIsTrialing(plan.metadata)) return;
 				this.cloudPlanStore.setData(plan);
 				this.startPollingPlanData();
 			} catch {}

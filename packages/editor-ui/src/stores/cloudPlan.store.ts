@@ -5,6 +5,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan } from '@/api/cloudPlans';
+import { useCloudPlanHelper } from '@/composables/useCloudPlanHelper';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: {
@@ -31,6 +32,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+	const { userIsTrialing: _userIsTrialing } = useCloudPlanHelper();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 
@@ -38,9 +40,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.data = data;
 	};
 
-	const userIsTrialing = computed(
-		() => state.data?.metadata.group === 'opt-out' && state.data?.expirationDate,
-	);
+	const userIsTrialing = computed(() => _userIsTrialing(state.data?.metadata));
 
 	const currentPlanData = computed(() => state.data);
 
