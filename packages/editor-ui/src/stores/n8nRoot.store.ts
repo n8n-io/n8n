@@ -50,7 +50,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 
 		getRestCloudApiContext(): IRestApiContext {
 			return {
-				baseUrl: this.baseUrl.includes('stage-')
+				baseUrl: this.baseUrl.includes('stage-app.n8n.cloud')
 					? CLOUD_BASE_URL_STAGING
 					: CLOUD_BASE_URL_PRODUCTION,
 				sessionId: '',
