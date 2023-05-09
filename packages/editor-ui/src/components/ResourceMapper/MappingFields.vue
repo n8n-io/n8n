@@ -54,6 +54,7 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				default: field.type === 'boolean' ? false : '',
 				required: field.required,
 				description: getFieldDescription(field),
+				options: field.options,
 			};
 		});
 });
@@ -376,8 +377,7 @@ defineExpose({
 	&.hasIssues {
 		.parameterIssues {
 			float: none;
-			align-self: flex-end;
-			padding-bottom: var(--spacing-2xs);
+			padding-top: var(--spacing-xl);
 		}
 		input,
 		input:focus {

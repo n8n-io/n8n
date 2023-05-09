@@ -1,4 +1,4 @@
-import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INode, INodeExecutionData, INodePropertyOptions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -12,6 +12,8 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+
+const ENUM_VALUES_REGEX = /\{(.+?)\}/gm;
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
@@ -342,7 +344,7 @@ export async function isColumnUnique(
 			FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
 					inner join INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cu
 							on cu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
-			where
+			WHERE
 					tc.CONSTRAINT_TYPE = 'UNIQUE'
 					or tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
 					and tc.TABLE_NAME = $1
@@ -351,6 +353,38 @@ export async function isColumnUnique(
 		[table, column],
 	);
 	return unique.some((u) => u.column_name === column);
+}
+
+export async function getEnumValues(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	columnName: string,
+): Promise<INodePropertyOptions[]> {
+	const options: INodePropertyOptions[] = [];
+	// First get the type name based on the column name
+	const enumName = await db.one(
+		'SELECT udt_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = $3',
+		[schema, table, columnName],
+	);
+	if (enumName) {
+		// Then get the values based on the type name
+		const fetchedValues = await db.one('SELECT enum_range(null::$1:name)', [enumName.udt_name]);
+		if (fetchedValues.enum_range) {
+			// Column values are returned as a string like {value1,value2,value3}
+			ENUM_VALUES_REGEX.lastIndex = 0;
+			const extractedValues = ENUM_VALUES_REGEX.exec(fetchedValues.enum_range as string);
+			if (extractedValues) {
+				extractedValues[1].split(',').forEach((value) => {
+					options.push({
+						name: value,
+						value,
+					});
+				});
+			}
+		}
+	}
+	return options;
 }
 
 export async function doesRowExist(

@@ -38,6 +38,7 @@ import type {
 	NodeParameterValue,
 	WebhookHttpMethod,
 	FieldType,
+	INodePropertyOptions,
 } from './Interfaces';
 import {
 	isBoolean,
@@ -1106,7 +1107,11 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
-export const validateFieldType = (value: unknown, type: FieldType): boolean => {
+export const validateFieldType = (
+	value: unknown,
+	type: FieldType,
+	options?: INodePropertyOptions[],
+): boolean => {
 	if (value === null || value === undefined) return true;
 	switch (type.toLocaleLowerCase()) {
 		case 'number': {
@@ -1126,6 +1131,9 @@ export const validateFieldType = (value: unknown, type: FieldType): boolean => {
 		}
 		case 'array': {
 			return Array.isArray(value);
+		}
+		case 'options': {
+			return options?.some((option) => option.value === value) || false;
 		}
 		default: {
 			return true;
@@ -1281,18 +1289,17 @@ export function getParameterIssues(
 					nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
 				fieldWordSingular = fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1);
 				value.schema.forEach((field) => {
-					const fieldValue = value.value ? value.value[field.id] : undefined;
+					const fieldValue = value.value ? value.value[field.id] : null;
 					const key = `${nodeProperties.name}.${field.id}`;
 					const fieldErrors: string[] = [];
 					if (field.required) {
-						if (value.value === null || (value.value && value.value[field.id] === null)) {
+						if (value.value === null || fieldValue === null || fieldValue === undefined) {
 							const error = `${fieldWordSingular} "${field.id}" is required`;
 							fieldErrors.push(error);
 						}
 					}
-					if (field.type && !validateFieldType(fieldValue, field.type)) {
-						console.log(field.id, fieldValue, field.type);
-						const error = `${fieldWordSingular} "${field.id}" is not a valid ${field.type}`;
+					if (field.type && !validateFieldType(fieldValue, field.type, field.options)) {
+						const error = `${fieldWordSingular} value for '${field.id}'' is not valid for type '${field.type}'`;
 						fieldErrors.push(error);
 					}
 					if (fieldErrors.length > 0) {

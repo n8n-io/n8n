@@ -1962,9 +1962,18 @@ export interface ResourceMapperField {
 	display: boolean;
 	type?: FieldType;
 	removed?: boolean;
+	options?: INodePropertyOptions[];
 }
 
-export type FieldType = 'string' | 'number' | 'dateTime' | 'boolean' | 'time' | 'array' | 'object';
+export type FieldType =
+	| 'string'
+	| 'number'
+	| 'dateTime'
+	| 'boolean'
+	| 'time'
+	| 'array'
+	| 'object'
+	| 'options';
 
 export type ResourceMapperValue = {
 	mappingMode: string;
