@@ -107,9 +107,16 @@ export class VersionControlExportService {
 	}
 
 	private async writeExportableWorkflowsToExportFolder(workflowsToBeExported: SharedWorkflow[]) {
+		const workflowVersionIdMap = await this.getWorkflowAndVersionIdsInWorkFolder();
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
 				// TODO: using workflowname for now, until IDs are unique
+				if (workflowVersionIdMap.get(e.workflowId) === e.workflow.versionId) {
+					LoggerProxy.debug(
+						`Skipping workflow ${e.workflowId} export as its versionId is already up to date`,
+					);
+					return;
+				}
 				const fileName = this.getWorkflowPath(e.workflow.name);
 				const sanitizedWorkflow: ExportableWorkflow = {
 					active: e.workflow.active,
@@ -120,10 +127,32 @@ export class VersionControlExportService {
 					settings: e.workflow.settings,
 					triggerCount: e.workflow.triggerCount,
 					owner: e.user.email,
+					versionId: e.workflow.versionId,
 				};
+				LoggerProxy.debug(`Writing workflow ${e.workflowId} to ${fileName}`);
 				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
 			}),
 		);
+	}
+
+	private async getWorkflowAndVersionIdsInWorkFolder(): Promise<Map<string, string>> {
+		const workflowFiles = await glob('*.json', {
+			cwd: this.workflowExportFolder,
+			absolute: true,
+		});
+
+		const workflowVersionIdMap = new Map<string, string>();
+		await Promise.all(
+			workflowFiles.map(async (file) => {
+				const importedWorkflow = jsonParse<IWorkflowToImport>(
+					await fsReadFile(file, { encoding: 'utf8' }),
+				);
+				if (importedWorkflow.id && importedWorkflow.versionId) {
+					workflowVersionIdMap.set(importedWorkflow.id, importedWorkflow.versionId);
+				}
+			}),
+		);
+		return workflowVersionIdMap;
 	}
 
 	async exportWorkflowsToWorkFolder(): Promise<ExportResult> {
@@ -418,8 +447,19 @@ export class VersionControlExportService {
 						await fsReadFile(file, { encoding: 'utf8' }),
 					);
 					const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-					importedWorkflow.active = existingWorkflow?.active ?? false;
+					if (existingWorkflow?.versionId === importedWorkflow.versionId) {
+						LoggerProxy.debug(
+							`Skipping import of workflow ${
+								importedWorkflow.id ?? 'n/a'
+							} export as its versionId is already up to date`,
+						);
+						return {
+							id: importedWorkflow.id ?? 'n/a',
+							name: 'skipped',
+						};
+					}
 
+					importedWorkflow.active = existingWorkflow?.active ?? false;
 					LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
 					await transactionManager.upsert(WorkflowEntity, { ...importedWorkflow }, ['id']);
 					await transactionManager.upsert(

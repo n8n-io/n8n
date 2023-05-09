@@ -9,6 +9,5 @@ export interface ExportableWorkflow {
 	settings?: IWorkflowSettings;
 	triggerCount: number;
 	owner: string;
-	// TODO: should we store this?
-	// versionId: string;
+	versionId: string;
 }
