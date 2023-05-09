@@ -39,6 +39,7 @@ import type {
 	WebhookHttpMethod,
 	FieldType,
 	INodePropertyOptions,
+	ResourceMapperValue,
 } from './Interfaces';
 import {
 	isBoolean,
@@ -52,7 +53,6 @@ import {
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
-import { ResourceMapperValue } from './Interfaces';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{

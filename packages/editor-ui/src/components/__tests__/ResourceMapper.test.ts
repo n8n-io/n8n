@@ -6,7 +6,7 @@ import {
 	MAPPING_COLUMNS_RESPONSE,
 	NODE_PARAMETER_VALUES,
 } from './utils/ResourceMapper.utils';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { waitAllPromises } from '@/__tests__/utils';
 import * as workflowHelpers from '@/mixins/workflowHelpers';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
