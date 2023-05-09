@@ -63,9 +63,9 @@ import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { createEventBus } from '@/event-bus';
 
 export default mixins(externalHooks).extend({

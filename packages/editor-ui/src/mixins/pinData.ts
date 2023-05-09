@@ -4,7 +4,7 @@ import type { INodeTypeDescription, IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
 import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export interface IPinDataContext {
 	node: INodeUi;

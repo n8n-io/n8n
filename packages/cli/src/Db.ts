@@ -7,7 +7,7 @@ import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
-import type { DatabaseType, IDatabaseCollections } from '@/Interfaces';
+import type { IDatabaseCollections } from '@/Interfaces';
 
 import config from '@/config';
 
@@ -19,6 +19,8 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
+import { wrapMigration } from '@db/utils/migrationHelpers';
+import type { DatabaseType, Migration } from '@db/types';
 import {
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
@@ -119,7 +121,7 @@ export async function init(
 		synchronize: false,
 		logging: loggingOption,
 		maxQueryExecutionTime,
-		migrationsTransactionMode: 'each',
+		migrationsRun: false,
 	});
 
 	connection = new Connection(connectionOptions);
@@ -136,15 +138,17 @@ export async function init(
 		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
 	}
 
+	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
+
 	if (!testConnectionOptions && dbType === 'sqlite') {
 		// This specific migration changes database metadata.
 		// A field is now nullable. We need to reconnect so that
 		// n8n knows it has changed. Happens only on sqlite.
 		let migrations = [];
 		try {
-			const entityPrefix = config.getEnv('database.tablePrefix');
+			const tablePrefix = config.getEnv('database.tablePrefix');
 			migrations = await connection.query(
-				`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
+				`SELECT id FROM ${tablePrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
 			);
 		} catch (error) {
 			// Migration table does not exist yet - it will be created after migrations run for the first time.

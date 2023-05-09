@@ -63,10 +63,10 @@ import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { useUIStore } from '@/stores/ui';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 

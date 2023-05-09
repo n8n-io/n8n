@@ -133,7 +133,7 @@ import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 import { Dropdown as ElDropdown } from 'element-ui';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };

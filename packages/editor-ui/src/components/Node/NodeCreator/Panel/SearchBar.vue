@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
-import { useWebhooksStore } from '@/stores/webhooks';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
 
 export interface Props {
