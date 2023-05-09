@@ -336,7 +336,7 @@ export default mixins(
 		userIsTrialing(): boolean {
 			return this.cloudPlanStore.userIsTrialing;
 		},
-		currentPlanData(): Cloud.PlanData {
+		currentPlanData(): Cloud.PlanData | null {
 			return this.cloudPlanStore.currentPlanData;
 		},
 	},

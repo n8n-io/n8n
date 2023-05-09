@@ -1476,5 +1476,5 @@ export declare namespace Cloud {
 }
 
 export interface CloudPlanState {
-	data: Cloud.PlanData;
+	data: Cloud.PlanData | null;
 }

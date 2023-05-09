@@ -8,24 +8,7 @@ import { getCurrentPlan } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 
 const DEFAULT_STATE: CloudPlanState = {
-	data: {
-		planId: 0,
-		monthlyExecutionsLimit: 0,
-		activeWorkflowsLimit: 0,
-		credentialsLimit: 0,
-		isActive: false,
-		displayName: '',
-		expirationDate: '',
-		metadata: {
-			version: 'v1',
-			group: 'trial',
-			slug: 'trial-1',
-		},
-		usage: {
-			executions: 0,
-			activeWorkflows: 0,
-		},
-	},
+	data: null,
 };
 
 export const useCloudPlanStore = defineStore('cloudPlan', () => {
@@ -39,16 +22,18 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.data = data;
 	};
 
-	const userIsTrialing = computed(() => state.data.metadata.group === 'trial');
+	const userIsTrialing = computed(() => state.data?.metadata.group === 'trial');
 
 	const currentPlanData = computed(() => state.data);
 
 	const trialExpired = computed(
-		() => DateTime.now().toMillis() >= DateTime.fromISO(state.data.expirationDate).toMillis(),
+		() =>
+			state.data?.metadata?.group === 'trial' &&
+			DateTime.now().toMillis() >= DateTime.fromISO(state.data?.expirationDate).toMillis(),
 	);
 
 	const allExecutionsUsed = computed(
-		() => state.data.usage.executions === state.data.monthlyExecutionsLimit,
+		() => state.data?.usage?.executions === state.data?.monthlyExecutionsLimit,
 	);
 
 	const getOwnerCurrentPLan = async () => {
