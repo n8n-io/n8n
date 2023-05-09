@@ -52,6 +52,7 @@ import {
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
+import { ResourceMapperValue } from './Interfaces';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1172,6 +1173,43 @@ export const validateResourceLocatorParameter = (
 	return validationErrors;
 };
 
+/*
+ * Validates resource mapper values based on service schema
+ *
+ */
+export const validateResourceMapperParameter = (
+	nodeProperties: INodeProperties,
+	value: ResourceMapperValue,
+): Record<string, string[]> => {
+	const issues: Record<string, string[]> = {};
+	let fieldWordSingular =
+		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
+	fieldWordSingular = fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1);
+	value.schema.forEach((field) => {
+		const fieldValue = value.value ? value.value[field.id] : null;
+		const key = `${nodeProperties.name}.${field.id}`;
+		const fieldErrors: string[] = [];
+		if (field.required) {
+			if (value.value === null || fieldValue === null || fieldValue === undefined) {
+				const error = `${fieldWordSingular} "${field.id}" is required`;
+				fieldErrors.push(error);
+			}
+		}
+		if (
+			!fieldValue?.toString().startsWith('=') &&
+			field.type &&
+			!validateFieldType(fieldValue, field.type, field.options)
+		) {
+			const error = `${fieldWordSingular} value for '${field.id}'' is not valid for type '${field.type}'`;
+			fieldErrors.push(error);
+		}
+		if (fieldErrors.length > 0) {
+			issues[key] = fieldErrors;
+		}
+	});
+	return issues;
+};
+
 /**
  * Adds an issue if the parameter is not defined
  *
@@ -1285,33 +1323,16 @@ export function getParameterIssues(
 		if (nodeProperties.typeOptions?.resourceMapper?.mode === 'add') {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 			if (isResourceMapperValue(value)) {
-				let fieldWordSingular =
-					nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
-				fieldWordSingular = fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1);
-				value.schema.forEach((field) => {
-					const fieldValue = value.value ? value.value[field.id] : null;
-					const key = `${nodeProperties.name}.${field.id}`;
-					const fieldErrors: string[] = [];
-					if (field.required) {
-						if (value.value === null || fieldValue === null || fieldValue === undefined) {
-							const error = `${fieldWordSingular} "${field.id}" is required`;
-							fieldErrors.push(error);
-						}
+				const issues = validateResourceMapperParameter(nodeProperties, value);
+				if (Object.keys(issues).length > 0) {
+					if (foundIssues.parameters === undefined) {
+						foundIssues.parameters = {};
 					}
-					if (field.type && !validateFieldType(fieldValue, field.type, field.options)) {
-						const error = `${fieldWordSingular} value for '${field.id}'' is not valid for type '${field.type}'`;
-						fieldErrors.push(error);
+					if (foundIssues.parameters[nodeProperties.name] === undefined) {
+						foundIssues.parameters[nodeProperties.name] = [];
 					}
-					if (fieldErrors.length > 0) {
-						if (foundIssues.parameters === undefined) {
-							foundIssues.parameters = {};
-						}
-						if (foundIssues.parameters[key] === undefined) {
-							foundIssues.parameters[key] = [];
-						}
-						foundIssues.parameters[key].push(...fieldErrors);
-					}
-				});
+					foundIssues.parameters = { ...foundIssues.parameters, ...issues };
+				}
 			}
 		}
 	}
