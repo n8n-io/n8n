@@ -63,18 +63,24 @@ export const connectionState: ConnectionState = {
 };
 
 // Ping DB connection every 2 seconds
-setInterval(async () => {
-	if (connection?.isInitialized) {
-		try {
-			await connection.query('SELECT 1');
-			connectionState.connected = true;
-			return;
-		} catch (error) {
-			ErrorReporter.error(error);
+let pingTimer: NodeJS.Timer | undefined;
+if (!inTest) {
+	const pingDBFn = async () => {
+		if (connection?.isInitialized) {
+			try {
+				await connection.query('SELECT 1');
+				connectionState.connected = true;
+				return;
+			} catch (error) {
+				ErrorReporter.error(error);
+			} finally {
+				pingTimer = setTimeout(pingDBFn, 2000);
+			}
 		}
-	}
-	connectionState.connected = false;
-}, 2000);
+		connectionState.connected = false;
+	};
+	pingTimer = setTimeout(pingDBFn, 2000);
+}
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
@@ -120,6 +126,12 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	}
 }
 
+const openConnection = async (options: ConnectionOptions) => {
+	connection = new Connection(options);
+	await connection.initialize();
+	Container.set(Connection, connection);
+};
+
 export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
 	if (connectionState.connected) return;
 
@@ -148,9 +160,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 		migrationsRun: false,
 	});
 
-	connection = new Connection(connectionOptions);
-	await connection.initialize();
-	Container.set(Connection, connection);
+	await openConnection(connectionOptions);
 
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
@@ -189,9 +199,7 @@ export async function migrate() {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
 			await connection.destroy();
-			connection = new Connection(connection.options);
-			await connection.initialize();
-			Container.set(Connection, connection);
+			await openConnection(connection.options);
 		}
 	} else {
 		await connection.runMigrations({ transaction: 'each' });
@@ -219,3 +227,12 @@ export async function migrate() {
 
 	connectionState.migrated = true;
 }
+
+export const close = async () => {
+	if (pingTimer) {
+		clearTimeout(pingTimer);
+		pingTimer = undefined;
+	}
+
+	if (connection.isInitialized) await connection.destroy();
+};

@@ -123,7 +123,7 @@ export abstract class BaseCommand extends Command {
 		if (inTest || this.id === 'start') return;
 		if (Db.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.getConnection().destroy();
+			await Db.close();
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

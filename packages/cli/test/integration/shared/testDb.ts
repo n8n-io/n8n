@@ -107,8 +107,7 @@ export async function init() {
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
-	const connection = Db.getConnection();
-	if (connection.isInitialized) await connection.destroy();
+	await Db.close();
 }
 
 /**
