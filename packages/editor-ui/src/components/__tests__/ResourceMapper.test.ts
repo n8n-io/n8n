@@ -113,17 +113,13 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
 		// Id should be the first field in the list
-		expect(container.querySelector('.parameter-item:first-child')).toContainHTML(
-			'id (using to match)',
-		);
-		// Select Last Name as matching column
+		expect(container.querySelector('.parameter-item')).toContainHTML('id (using to match)');
+		// // Select Last Name as matching column
 		await userEvent.click(getByTestId('matching-column-select'));
 		const matchingColumnDropdown = getByTestId('matching-column-select');
 		await userEvent.click(within(matchingColumnDropdown).getByText('Last Name'));
-		// Now, last name should be the first field in the list
-		expect(container.querySelector('.parameter-item:first-child')).toContainHTML(
-			'Last Name (using to match)',
-		);
+		// // Now, last name should be the first field in the list
+		expect(container.querySelector('.parameter-item')).toContainHTML('Last Name (using to match)');
 	});
 
 	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
@@ -176,9 +172,9 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 		expect(getByText('Set the value for each foo')).toBeInTheDocument();
 		expect(
-			getByText('Look for incoming data that matches the foos to the input data in the service'),
+			getByText('Look for incoming data that matches the foos in the service'),
 		).toBeInTheDocument();
-		expect(getByText('Foos to match on')).toBeInTheDocument();
+		expect(getByText('Foos to Match On')).toBeInTheDocument();
 		expect(getByText('The foos that identify the row(s) to modify')).toBeInTheDocument();
 	});
 });
