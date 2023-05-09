@@ -67,7 +67,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { Cloud } from '@/Interface';
 import { useSettingsStore } from '@/stores';
-import { CHANGE_PLAN_PAGE_PRODUCTION, CHANGE_PLAN_PAGE_STAGING } from '@/constants';
+import { CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
 
 type CloudPlanData = Cloud.PlanData & { metadata: Cloud.PlanMetadata; usage: Cloud.PlanUsage };
@@ -99,10 +99,7 @@ const currentExecutions = computed(() => props.cloudPlanData.usage.executions);
 const maxExecutions = computed(() => props.cloudPlanData.monthlyExecutionsLimit);
 
 const onUpgradeClicked = () => {
-	location.href =
-		settingsStore.settings.license.environment === 'production'
-			? CHANGE_PLAN_PAGE_PRODUCTION
-			: CHANGE_PLAN_PAGE_STAGING;
+	location.href = CHANGE_PLAN_PAGE;
 };
 </script>
 

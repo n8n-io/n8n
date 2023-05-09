@@ -549,8 +549,6 @@ export const ALLOWED_HTML_TAGS = [
 	'summary',
 ];
 
-export const CHANGE_PLAN_PAGE_PRODUCTION = 'https://app.n8n.cloud/account/change-plan';
-
-export const CHANGE_PLAN_PAGE_STAGING = 'https://stage-app.n8n.cloud/account/change-plan';
+export const CHANGE_PLAN_PAGE = 'https://app.n8n.cloud/account/change-plan';
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
