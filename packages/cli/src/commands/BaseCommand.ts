@@ -121,7 +121,7 @@ export abstract class BaseCommand extends Command {
 
 	async finally(error: Error | undefined) {
 		if (inTest || this.id === 'start') return;
-		if (Db.connectionState === 'ready') {
+		if (Db.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
 			await Db.getConnection().destroy();
 		}

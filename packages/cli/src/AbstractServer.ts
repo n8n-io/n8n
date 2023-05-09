@@ -159,33 +159,17 @@ export abstract class AbstractServer {
 	protected setupPushServer() {}
 
 	private async setupHealthCheck() {
-		this.app.use((req, res, next) => {
-			if (Db.connectionState === 'ready') next();
-			else if (Db.connectionState === 'connected') res.send('n8n is starting');
-			else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
+		// health check should not care about DB connections
+		this.app.get('/healthz', async (req, res) => {
+			res.send({ status: 'ok' });
 		});
 
-		// Does very basic health check
-		this.app.get('/healthz', async (req, res) => {
-			Logger.debug('Health check started!');
-
-			const connection = Db.getConnection();
-
-			try {
-				if (!connection.isInitialized) {
-					// Connection is not active
-					throw new ServiceUnavailableError('No active database connection!');
-				}
-				// DB ping
-				await connection.query('SELECT 1');
-			} catch (error) {
-				ErrorReporter.error(error);
-				Logger.error('No Database connection!');
-				return sendErrorResponse(res, new ServiceUnavailableError('No Database connection!'));
-			}
-
-			Logger.debug('Health check completed successfully!');
-			sendSuccessResponse(res, { status: 'ok' }, true, 200);
+		const { connectionState } = Db;
+		this.app.use((req, res, next) => {
+			if (connectionState.connected) {
+				if (connectionState.migrated) next();
+				else res.send('n8n is starting up. Please wait');
+			} else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
 		});
 
 		if (config.getEnv('executions.mode') === 'queue') {

@@ -7,6 +7,8 @@ import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
 import type { IDatabaseCollections } from '@/Interfaces';
 
 import config from '@/config';
@@ -19,7 +21,7 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
-import { inTest } from './constants';
+import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { DatabaseType, Migration } from '@db/types';
 import {
@@ -44,14 +46,35 @@ import {
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 
-type ConnectionState = undefined | 'connected' | 'ready';
-export let connectionState: ConnectionState;
-
 export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
 
 export const getConnection = () => connection!;
+
+type ConnectionState = {
+	connected: boolean;
+	migrated: boolean;
+};
+
+export const connectionState: ConnectionState = {
+	connected: false,
+	migrated: false,
+};
+
+// Ping DB connection every 2 seconds
+setInterval(async () => {
+	if (connection?.isInitialized) {
+		try {
+			await connection.query('SELECT 1');
+			connectionState.connected = true;
+			return;
+		} catch (error) {
+			ErrorReporter.error(error);
+		}
+	}
+	connectionState.connected = false;
+}, 2000);
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
@@ -98,7 +121,7 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 }
 
 export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
-	if (connectionState) return;
+	if (connectionState.connected) return;
 
 	const dbType = config.getEnv('database.type');
 	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
@@ -139,7 +162,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
 	}
 
-	connectionState = 'connected';
+	connectionState.connected = true;
 }
 
 export async function migrate() {
@@ -174,8 +197,6 @@ export async function migrate() {
 		await connection.runMigrations({ transaction: 'each' });
 	}
 
-	connectionState = 'ready';
-
 	collections.AuthIdentity = Container.get(AuthIdentityRepository);
 	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
 	collections.Credentials = Container.get(CredentialsRepository);
@@ -195,4 +216,6 @@ export async function migrate() {
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+
+	connectionState.migrated = true;
 }
