@@ -549,3 +549,5 @@ export const ALLOWED_HTML_TAGS = [
 	'details',
 	'summary',
 ];
+
+export const GITHUB_STARS_BANNER_SHOW_UNTIL_DATE = new Date('2023-06-01');

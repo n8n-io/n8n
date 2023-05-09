@@ -62,7 +62,7 @@
 				<template #header>
 					<div class="mb-xs">
 						<n8n-callout
-							v-if="resourceKey === 'workflows'"
+							v-if="starsBannerShouldRender"
 							theme="secondary"
 							icon="star"
 							:class="$style['github-stars-banner']"
@@ -201,7 +201,11 @@ import mixins from 'vue-typed-mixins';
 
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
-import { EnterpriseEditionFeature, MAIN_REPOSITORY_URL } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	GITHUB_STARS_BANNER_SHOW_UNTIL_DATE,
+	MAIN_REPOSITORY_URL,
+} from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -318,6 +322,9 @@ export default mixins(showMessage, debounceHelper).extend({
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUsersStore),
+		starsBannerShouldRender() {
+			return this.resourceKey === 'workflows' && new Date() < GITHUB_STARS_BANNER_SHOW_UNTIL_DATE;
+		},
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
