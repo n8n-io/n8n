@@ -66,7 +66,6 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { Cloud } from '@/Interface';
-import { useSettingsStore } from '@/stores';
 import { CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
 
@@ -75,8 +74,6 @@ type CloudPlanData = Cloud.PlanData & { metadata: Cloud.PlanMetadata; usage: Clo
 const props = defineProps<{ cloudPlanData: CloudPlanData }>();
 
 const now = DateTime.utc();
-
-const settingsStore = useSettingsStore();
 
 const daysLeftOnTrial = computed(() => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
