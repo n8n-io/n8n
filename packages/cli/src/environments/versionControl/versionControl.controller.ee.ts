@@ -4,8 +4,9 @@ import { VersionControlService } from './versionControl.service.ee';
 import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { BadRequestError } from '@/ResponseHelper';
-import type { PullResult, PushResult, StatusResult } from 'simple-git';
+import type { DiffResult, PullResult, PushResult, StatusResult } from 'simple-git';
 import { AuthenticatedRequest } from '../../requests';
+import express from 'express';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -108,9 +109,37 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/push-workfolder')
-	async pushWorkfolder(req: VersionControlRequest.PushWorkFolder): Promise<PushResult> {
+	async pushWorkfolder(
+		req: VersionControlRequest.PushWorkFolder,
+		res: express.Response,
+	): Promise<PushResult | DiffResult> {
 		try {
-			return await this.versionControlService.pushWorkfolder(req.body);
+			const result = await this.versionControlService.pushWorkfolder(req.body);
+			if ((result as PushResult).pushed) {
+				res.statusCode = 200;
+			} else {
+				res.statusCode = 409;
+			}
+			return result;
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Post('/pull-workfolder')
+	async pullWorkfolder(
+		req: VersionControlRequest.PullWorkFolder,
+		res: express.Response,
+	): Promise<DiffResult | PullResult> {
+		try {
+			const result = await this.versionControlService.pullWorkfolder(req.body);
+			if ((result as PullResult).summary) {
+				res.statusCode = 200;
+			} else {
+				res.statusCode = 409;
+			}
+			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -128,7 +157,7 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder')
-	async resetWorkfolder(): Promise<PullResult> {
+	async resetWorkfolder(): Promise<void> {
 		try {
 			return await this.versionControlService.resetWorkfolder();
 		} catch (error) {

@@ -1,6 +1,7 @@
 import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
 
 export interface ExportableWorkflow {
+	active: boolean;
 	id: string;
 	name: string;
 	nodes: INode[];
@@ -9,8 +10,5 @@ export interface ExportableWorkflow {
 	triggerCount: number;
 	owner: string;
 	// TODO: should we store this?
-	// tags?: TagEntity[];
-	// tagMappings: WorkflowTagMapping[];
-
 	// versionId: string;
 }

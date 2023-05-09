@@ -199,13 +199,14 @@ export class VersionControlGitService {
 		};
 	}
 
-	async diff(options?: { target?: string }): Promise<DiffResult> {
+	async diff(options?: { target?: string; dots?: '..' | '...' }): Promise<DiffResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
 		const currentBranch = await this.getCurrentBranch();
 		const target = options?.target ?? currentBranch.remote;
-		return this.git.diffSummary([target]);
+		const dots = options?.dots ?? '...';
+		return this.git.diffSummary([dots + target]);
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {

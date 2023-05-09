@@ -1,6 +1,6 @@
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
-export class VersionControlPushWorkFolder {
+export class VersionControlPullWorkFolder {
 	@IsBoolean()
 	@IsOptional()
 	force?: boolean;
@@ -8,8 +8,4 @@ export class VersionControlPushWorkFolder {
 	@IsString({ each: true })
 	@IsOptional()
 	files?: Set<string>;
-
-	@IsString()
-	@IsOptional()
-	message?: string;
 }

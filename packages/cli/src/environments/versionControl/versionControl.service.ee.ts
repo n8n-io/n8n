@@ -31,6 +31,7 @@ import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
+import type { VersionControlPullWorkFolder } from './types/versionControlPullWorkFolder';
 
 @Service()
 export class VersionControlService {
@@ -141,6 +142,7 @@ export class VersionControlService {
 	async disconnect() {
 		try {
 			await this.setPreferences({ connected: false });
+			// TODO: clean git folder
 			// TODO: remove key pair from disk?
 			this.gitService.resetService();
 		} catch (error) {
@@ -227,23 +229,22 @@ export class VersionControlService {
 		return;
 	}
 
-	async export(): Promise<{
-		credentials: ExportResult | undefined;
-		variables: ExportResult | undefined;
-		workflows: ExportResult | undefined;
-	}> {
+	async export() {
 		const result: {
+			tags: ExportResult | undefined;
 			credentials: ExportResult | undefined;
 			variables: ExportResult | undefined;
 			workflows: ExportResult | undefined;
 		} = {
 			credentials: undefined,
+			tags: undefined,
 			variables: undefined,
 			workflows: undefined,
 		};
 		try {
-			result.workflows = await this.versionControlExportService.exportWorkflowsToWorkFolder();
+			result.tags = await this.versionControlExportService.exportTagsToWorkFolder();
 			result.variables = await this.versionControlExportService.exportVariablesToWorkFolder();
+			result.workflows = await this.versionControlExportService.exportWorkflowsToWorkFolder();
 			result.credentials = await this.versionControlExportService.exportCredentialsToWorkFolder();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -282,27 +283,49 @@ export class VersionControlService {
 		return this.gitService.pull();
 	}
 
+	async push(force = false): Promise<PushResult> {
+		return this.gitService.push({ force });
+	}
+
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
-	async resetWorkfolder(): Promise<PullResult> {
+	async resetWorkfolder(): Promise<void> {
 		const currentBranch = await this.gitService.getCurrentBranch();
 		await this.gitService.resetBranch({
 			hard: true,
 			target: currentBranch.remote,
 		});
+	}
+
+	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult | DiffResult> {
+		const diffResult = await this.updateLocalAndDiff();
+		if (diffResult.files.length > 0 && options.force !== true) {
+			await this.unstage();
+			return diffResult;
+		}
+		await this.stage(options.files);
+		await this.commit(options.message);
+		return this.push(options.force);
+	}
+
+	async pullWorkfolder(options: VersionControlPullWorkFolder): Promise<PullResult | DiffResult> {
+		const diffResult = await this.updateLocalAndDiff();
+		if (diffResult.files.length > 0) {
+			await this.unstage();
+			if (options.force === true) {
+				await this.resetWorkfolder();
+			} else {
+				return diffResult;
+			}
+		}
 		return this.gitService.pull();
 		// TODO: import
 	}
 
-	async push(force = false): Promise<PushResult> {
-		return this.gitService.push({ force });
-	}
-
-	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult> {
+	private async updateLocalAndDiff(): Promise<DiffResult> {
 		await this.export(); // refresh workfolder
-		await this.stage(options.files); // stage all files
-		await this.commit(options.message); // commit
-		return this.push(options.force);
+		await this.fetch();
+		return this.diff();
 	}
 
 	async stage(files?: Set<string>): Promise<StatusResult | string> {
@@ -330,8 +353,8 @@ export class VersionControlService {
 		return stageResult;
 	}
 
-	async commit(message: string): Promise<CommitResult> {
-		return this.gitService.commit(message);
+	async commit(message?: string): Promise<CommitResult> {
+		return this.gitService.commit(message ?? 'Updated Workfolder');
 	}
 
 	async status(): Promise<StatusResult> {
