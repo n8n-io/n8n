@@ -319,6 +319,7 @@ defineExpose({
 							},
 						})
 					"
+					data-test-id="remove-field-button"
 					@click="removeField(field.name)"
 				/>
 			</div>
@@ -341,7 +342,7 @@ defineExpose({
 				:class="[$style.parameterIssues, 'ml-5xs']"
 			/>
 		</div>
-		<div class="add-option">
+		<div class="add-option" data-test-id="add-fields-select">
 			<n8n-select
 				:placeholder="
 					locale.baseText('resourceMapper.addFieldToSend', {

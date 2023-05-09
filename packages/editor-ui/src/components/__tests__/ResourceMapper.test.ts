@@ -5,6 +5,7 @@ import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,
 	NODE_PARAMETER_VALUES,
+	UPDATED_SCHEMA,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { waitAllPromises } from '@/__tests__/utils';
@@ -123,7 +124,7 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
-		const { container, getByTestId, getByText, queryByText } = renderComponent({
+		const { getByTestId, getByText, queryByText } = renderComponent({
 			props: {
 				parameter: {
 					typeOptions: {
@@ -176,5 +177,56 @@ describe('ResourceMapper.vue', () => {
 		).toBeInTheDocument();
 		expect(getByText('Foos to Match On')).toBeInTheDocument();
 		expect(getByText('The foos that identify the row(s) to modify')).toBeInTheDocument();
+	});
+
+	it('should render correct fields based on saved schema', async () => {
+		const { getByTestId, queryAllByTestId } = renderComponent({
+			props: {
+				node: {
+					parameters: {
+						columns: {
+							schema: UPDATED_SCHEMA,
+						},
+					},
+				},
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		// There should be 5 fields rendered and only 2 of them should have remove button
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
+		).toBe(5);
+		expect(queryAllByTestId('remove-field-button').length).toBe(2);
+	});
+
+	it('should render correct options based on saved schema', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				node: {
+					parameters: {
+						columns: {
+							schema: UPDATED_SCHEMA,
+						},
+					},
+				},
+				parameter: {
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+						},
+					},
+				},
+			},
+		});
+		await waitAllPromises();
+		// Should have one option in the bottom dropdown for one removed field
+		expect(getByTestId('add-fields-select').querySelectorAll('li').length).toBe(1);
 	});
 });

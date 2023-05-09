@@ -33,7 +33,11 @@
 				v-if="$slots.options && label"
 				:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
 			/>
-			<div v-if="$slots.options" :class="{ [$style.options]: true, [$style.visible]: showOptions }">
+			<div
+				v-if="$slots.options"
+				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+				data-test-id="parameter-input-options-container"
+			>
 				<slot name="options" />
 			</div>
 		</label>
