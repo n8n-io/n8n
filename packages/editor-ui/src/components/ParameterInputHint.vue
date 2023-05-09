@@ -39,7 +39,6 @@ export default defineComponent({
 			return {
 				[this.$style.singleline]: this.singleLine,
 				[this.$style.highlight]: this.highlight,
-				[this.$style['preserve-whitespace']]: true,
 			};
 		},
 		simplyText(): string {
@@ -65,16 +64,11 @@ export default defineComponent({
 
 <style lang="scss" module>
 .singleline {
-	display: -webkit-box;
-	-webkit-line-clamp: 1;
-	-webkit-box-orient: vertical;
+	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 .highlight {
 	color: var(--color-secondary);
-}
-.preserve-whitespace {
-	white-space: pre;
 }
 </style>
