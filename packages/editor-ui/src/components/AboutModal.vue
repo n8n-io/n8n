@@ -58,8 +58,8 @@ import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
 
 export default defineComponent({

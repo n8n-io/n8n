@@ -8,7 +8,7 @@ import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils
 import { i18n } from '@/plugins/i18n';
 import SettingsPersonalView from '@/views/SettingsPersonalView.vue';
 import { useSettingsStore } from '@/stores';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;

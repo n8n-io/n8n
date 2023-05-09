@@ -62,8 +62,8 @@ import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useTagsStore } from '@/stores/tags';
+import { useUIStore } from '@/stores/ui.store';
+import { useTagsStore } from '@/stores/tags.store';
 import type { EventBus } from '@/event-bus';
 import type { PropType } from 'vue';
 import type { N8nOption, N8nSelect } from 'n8n-design-system';

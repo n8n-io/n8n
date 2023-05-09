@@ -1,16 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import type { UserSettings } from '@/Interfaces';
 
-export class AddUserActivatedProperty1681134145996 implements MigrationInterface {
-	name = 'AddUserActivatedProperty1681134145996';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = getTablePrefix();
-
-		const activatedUsers: UserSettings[] = await queryRunner.query(
+export class AddUserActivatedProperty1681134145996 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const activatedUsers = (await queryRunner.query(
 			`SELECT DISTINCT sw."userId" AS id,
 				JSONB_SET(COALESCE(u.settings::jsonb, '{}'), '{userActivated}', 'true', true) as settings
 			FROM  ${tablePrefix}workflow_statistics ws
@@ -23,9 +16,9 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 			WHERE ws.name = 'production_success'
 						AND r.name = 'owner'
 						AND r.scope = 'workflow'`,
-		);
+		)) as UserSettings[];
 
-		const updatedUsers = activatedUsers.map((user) =>
+		const updatedUsers = activatedUsers.map(async (user) =>
 			queryRunner.query(
 				`UPDATE "${tablePrefix}user" SET settings = '${JSON.stringify(
 					user.settings,
@@ -46,12 +39,9 @@ export class AddUserActivatedProperty1681134145996 implements MigrationInterface
 				`UPDATE "${tablePrefix}user" SET settings = JSONB_SET(COALESCE(settings::jsonb, '{}'), '{userActivated}', 'false', true) WHERE id NOT IN (${activatedUserIds})`,
 			);
 		}
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`UPDATE "${tablePrefix}user" SET settings = settings::jsonb - 'userActivated'`,
 		);
