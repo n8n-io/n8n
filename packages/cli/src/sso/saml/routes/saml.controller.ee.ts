@@ -21,8 +21,6 @@ import {
 	getServiceProviderEntityId,
 	getServiceProviderReturnUrl,
 } from '../serviceProvider.ee';
-import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
-import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
 import Container from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
@@ -117,45 +115,61 @@ export class SamlController {
 		binding: SamlLoginBinding,
 	) {
 		try {
-			const loginResult = await this.samlService.handleSamlLogin(req, binding);
+			const { authenticatedUser, attributes, onboardingRequired } =
+				await this.samlService.handleSamlLogin(req, binding);
+
 			// if RelayState is set to the test connection Url, this is a test connection
 			if (isConnectionTestRequest(req)) {
-				if (loginResult.authenticatedUser) {
-					return res.send(getSamlConnectionTestSuccessView(loginResult.attributes));
+				if (authenticatedUser) {
+					return res.render('saml/connection-test-success.handlebars', {
+						attributes,
+						layout: 'saml',
+					});
 				} else {
-					return res.send(getSamlConnectionTestFailedView('', loginResult.attributes));
+					return res.render('saml/connection-test-failed.handlebars', {
+						attributes,
+						layout: 'saml',
+					});
 				}
 			}
-			if (loginResult.authenticatedUser) {
+
+			if (authenticatedUser) {
 				void Container.get(InternalHooks).onUserLoginSuccess({
-					user: loginResult.authenticatedUser,
+					user: authenticatedUser,
 					authenticationMethod: 'saml',
 				});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
-					await issueCookie(res, loginResult.authenticatedUser);
-					if (loginResult.onboardingRequired) {
+					await issueCookie(res, authenticatedUser);
+					if (onboardingRequired) {
 						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
 						return res.redirect(getInstanceBaseUrl() + SamlUrls.defaultRedirect);
 					}
 				} else {
-					return res.status(202).send(loginResult.attributes);
+					return res.status(202).send(attributes);
 				}
 			}
+
 			void Container.get(InternalHooks).onUserLoginFailed({
-				user: loginResult.attributes.email ?? 'unknown',
+				user: attributes.email ?? 'unknown',
 				authenticationMethod: 'saml',
 			});
+
 			throw new AuthError('SAML Authentication failed');
 		} catch (error) {
 			if (isConnectionTestRequest(req)) {
-				return res.send(getSamlConnectionTestFailedView((error as Error).message));
+				return res.render('saml/connection-test-failed.handlebars', {
+					message: (error as Error).message,
+					layout: 'saml',
+				});
 			}
+
 			void Container.get(InternalHooks).onUserLoginFailed({
 				user: 'unknown',
 				authenticationMethod: 'saml',
 			});
+
 			throw new AuthError('SAML Authentication failed: ' + (error as Error).message);
 		}
 	}
