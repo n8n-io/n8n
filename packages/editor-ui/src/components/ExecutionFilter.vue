@@ -178,8 +178,8 @@ onBeforeMount(() => {
 					>
 						<div class="ph-no-capture">
 							<n8n-option
-								v-for="item in workflows"
-								:key="item.id + item.name"
+								v-for="(item, idx) in props.workflows"
+								:key="idx"
 								:label="item.name"
 								:value="item.id"
 							/>
@@ -210,8 +210,8 @@ onBeforeMount(() => {
 						data-test-id="executions-filter-status-select"
 					>
 						<n8n-option
-							v-for="item in statuses"
-							:key="item.name + item.id"
+							v-for="(item, idx) in statuses"
+							:key="idx"
 							:label="item.name"
 							:value="item.id"
 						/>
