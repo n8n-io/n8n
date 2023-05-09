@@ -1,6 +1,6 @@
 <template>
 	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
-		<div v-if="!renderHTML" :class="classes">{{ hint }}</div>
+		<div v-if="!renderHTML" :class="classes"><span v-html="simplyText"></span></div>
 		<div
 			v-else
 			ref="hint"
@@ -41,6 +41,18 @@ export default defineComponent({
 				[this.$style.highlight]: this.highlight,
 				[this.$style['preserve-whitespace']]: true,
 			};
+		},
+		simplyText(): string {
+			if (this.hint) {
+				return String(this.hint)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/ /g, '&nbsp;');
+			}
+
+			return '';
 		},
 	},
 	mounted() {
