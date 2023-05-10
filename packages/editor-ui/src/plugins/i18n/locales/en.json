@@ -593,6 +593,8 @@
 	"genericHelpers.secShort": "s",
 	"genericHelpers.showMessage.message": "Executions are read-only. Make changes from the <b>Workflow</b> tab.",
 	"genericHelpers.showMessage.title": "Cannot edit execution",
+	"githubStars.banner.title": "<b>Celebrating 30,000 stars on GitHub!</b> A big thank you to our community for your amazing support and contributions",
+	"githubStars.banner.link": "Star us on GitHub",
 	"mainSidebar.aboutN8n": "About n8n",
 	"mainSidebar.confirmMessage.workflowDelete.cancelButtonText": "",
 	"mainSidebar.confirmMessage.workflowDelete.confirmButtonText": "Yes, delete",
