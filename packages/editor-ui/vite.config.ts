@@ -14,10 +14,8 @@ const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
 	'vue2-boring-avatars',
 	'vue-template-compiler',
-	'jquery',
 	'@fontsource/open-sans',
 	'normalize-wheel',
-	'stream-browserify',
 ];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
@@ -45,7 +43,6 @@ const { NODE_ENV } = process.env;
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
-	{ find: 'stream', replacement: 'stream-browserify' },
 	{
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
