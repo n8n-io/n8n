@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
-/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable no-restricted-syntax */
+/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -254,6 +254,7 @@ export class ActiveWorkflowRunner {
 			}
 
 			// @ts-ignore
+			// eslint-disable-next-line no-param-reassign
 			path = webhook.webhookPath;
 			// extracting params from path
 			// @ts-ignore
@@ -308,7 +309,8 @@ export class ActiveWorkflowRunner {
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
+			// @ts-ignore
+			WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData,
@@ -638,7 +640,6 @@ export class ActiveWorkflowRunner {
 				);
 
 				if (donePromise) {
-					// eslint-disable-next-line @typescript-eslint/no-floating-promises
 					executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
@@ -696,7 +697,6 @@ export class ActiveWorkflowRunner {
 				);
 
 				if (donePromise) {
-					// eslint-disable-next-line @typescript-eslint/no-floating-promises
 					executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
