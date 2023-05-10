@@ -10,7 +10,7 @@ import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
 import type { WebhookHttpMethod } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
