@@ -4,9 +4,11 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
 <div>
   <span
     class="n8n-color-picker component"
+    data-v-dab78bb8=""
   >
     <div
       class="el-color-picker el-color-picker--medium"
+      data-v-dab78bb8=""
     >
       <!---->
       <div
@@ -121,7 +123,8 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
       </transition-stub>
     </div>
     <div
-      class="el-input el-input--medium n8n-input"
+      class="el-input el-input--medium n8n-input input"
+      data-v-dab78bb8=""
     >
       <!---->
       <input
@@ -142,9 +145,11 @@ exports[`components > N8nColorPicker > should render without input 1`] = `
 <div>
   <span
     class="n8n-color-picker component"
+    data-v-dab78bb8=""
   >
     <div
       class="el-color-picker el-color-picker--medium"
+      data-v-dab78bb8=""
     >
       <!---->
       <div
