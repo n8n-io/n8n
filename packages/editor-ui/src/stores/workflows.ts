@@ -1227,7 +1227,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/eventbus/execution/' + id);
 		},
 		// Binary data
-		async getBinaryUrl(dataPath, mode, fileName, mimeType): string {
+		getBinaryUrl(
+			dataPath: string,
+			mode: 'view' | 'download',
+			fileName: string,
+			mimeType: string,
+		): string {
 			const rootStore = useRootStore();
 			let restUrl = rootStore.getRestUrl;
 			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
