@@ -2,6 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems } from '../../transport';
+import { removeIgnored } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -199,44 +200,36 @@ export async function execute(
 		tableData = response.records as UpdateRecord[];
 	}
 
-	const records: UpdateRecord[] = [];
 	for (let i = 0; i < items.length; i++) {
 		try {
+			const records: UpdateRecord[] = [];
 			const options = this.getNodeParameter('options', i, {});
 
 			if (dataMode === 'autoMapInputData') {
-				let id: string;
-				let fields: IDataObject;
-
 				if (columnToMatchOn === 'id') {
-					id = items[i].json.id as string;
-					fields = items[i].json;
+					const { id, ...fields } = items[i].json;
+
+					records.push({
+						id: id as string,
+						fields: removeIgnored(fields, options.ignoreFields as string),
+					});
 				} else {
 					const columnToMatchOnValue = items[i].json[columnToMatchOn] as string;
 
-					const match = tableData.find((record) => {
+					const matches = tableData.filter((record) => {
 						return record.fields[columnToMatchOn] === columnToMatchOnValue;
 					});
 
-					if (match === undefined) {
+					if (!matches?.length) {
 						throw new Error(`No record found with ${columnToMatchOn} = ${columnToMatchOnValue}`);
 					}
 
-					id = match.id as string;
-					fields = items[i].json;
-				}
-
-				if (options.ignoreFields) {
-					const ignoreFields = (options.ignoreFields as string)
-						.split(',')
-						.map((field) => field.trim());
-
-					for (const field of ignoreFields) {
-						delete fields[field];
+					for (const match of matches) {
+						const id = match.id as string;
+						const fields = items[i].json;
+						records.push({ id, fields: removeIgnored(fields, options.ignoreFields as string) });
 					}
 				}
-
-				records.push({ id, fields });
 			}
 
 			if (dataMode === 'defineBelow') {
@@ -253,19 +246,21 @@ export async function execute(
 
 				if (columnToMatchOn === 'id') {
 					id = valueToMatchOn;
+					records.push({ id, fields });
 				} else {
-					const match = tableData.find((record) => {
+					const matches = tableData.filter((record) => {
 						return record.fields[columnToMatchOn] === valueToMatchOn;
 					});
 
-					if (match === undefined) {
+					if (!matches?.length) {
 						throw new Error(`No record found with ${columnToMatchOn} = ${valueToMatchOn}`);
 					}
 
-					id = match.id as string;
+					for (const match of matches) {
+						id = match.id as string;
+						records.push({ id, fields });
+					}
 				}
-
-				records.push({ id, fields });
 			}
 
 			const body: UpdateBody = { records, typecast: options.typecast ? true : false };
