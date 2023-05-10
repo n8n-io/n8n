@@ -458,7 +458,7 @@ export const pushConnection = mixins(
 							execution.data.resultData &&
 							execution.data.resultData.runData &&
 							execution.data.resultData.runData[execution.executedNode];
-						if (node && nodeType && !nodeOutput) {
+						if (nodeType && nodeType.polling && !nodeOutput) {
 							this.$showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
