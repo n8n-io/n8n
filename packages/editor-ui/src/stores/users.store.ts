@@ -196,7 +196,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			inviterId: string;
 		}): Promise<{ inviter: { firstName: string; lastName: string } }> {
 			const rootStore = useRootStore();
-			return await validateSignupToken(rootStore.getRestApiContext, params);
+			return validateSignupToken(rootStore.getRestApiContext, params);
 		},
 		async signup(params: {
 			inviteeId: string;
@@ -286,7 +286,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
-			return await getInviteLink(rootStore.getRestApiContext, params);
+			return getInviteLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();

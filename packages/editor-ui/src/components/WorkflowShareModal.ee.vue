@@ -413,7 +413,7 @@ export default mixins(showMessage).extend({
 				);
 
 				if (shouldSave) {
-					return await this.onSave();
+					return this.onSave();
 				}
 			}
 
@@ -457,7 +457,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.initialize();
+		void this.initialize();
 	},
 	watch: {
 		workflow(workflow) {

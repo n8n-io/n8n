@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {
 	return makeRestApiRequest(context, 'GET', '/me/api-key');

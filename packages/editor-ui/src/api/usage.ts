@@ -1,4 +1,4 @@
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type { IRestApiContext, UsageState } from '@/Interface';
 
 export const getLicense = async (context: IRestApiContext): Promise<UsageState['data']> => {

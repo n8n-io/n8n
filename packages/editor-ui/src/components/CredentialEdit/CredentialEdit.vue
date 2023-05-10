@@ -254,14 +254,14 @@ export default mixins(showMessage, nodeHelpers).extend({
 			activeNode: this.ndvStore.activeNode,
 		});
 
-		setTimeout(() => {
+		setTimeout(async () => {
 			if (this.credentialId) {
 				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner === true) {
 					// sharees can't see properties, so this check would always fail for them
 					// if the credential contains required fields.
 					this.showValidationWarning = true;
 				} else {
-					this.retestCredential();
+					await this.retestCredential();
 				}
 			}
 		}, 0);

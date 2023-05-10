@@ -141,7 +141,7 @@ export async function getInviteLink(
 	context: IRestApiContext,
 	{ id }: { id: string },
 ): Promise<{ link: string }> {
-	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
+	return makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
 }
 
 export async function submitPersonalizationSurvey(

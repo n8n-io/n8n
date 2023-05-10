@@ -113,9 +113,9 @@ export function useHistoryHelper(activeRoute: Route) {
 			event.preventDefault();
 			if (!isNDVOpen.value) {
 				if (event.shiftKey) {
-					redo();
+					void redo();
 				} else {
-					undo();
+					void undo();
 				}
 			} else if (!event.shiftKey) {
 				trackUndoAttempt(event);

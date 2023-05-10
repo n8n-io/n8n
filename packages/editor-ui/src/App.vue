@@ -158,7 +158,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					this.$router.replace(redirect);
+					void this.$router.replace(redirect);
 					return;
 				}
 			}
@@ -203,7 +203,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.versionControlStore.isEnterpriseVersionControlEnabled &&
 			this.usersStore.isInstanceOwner
 		) {
-			this.versionControlStore.getPreferences();
+			void this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {

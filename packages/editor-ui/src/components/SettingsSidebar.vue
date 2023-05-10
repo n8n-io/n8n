@@ -186,12 +186,12 @@ export default mixins(userHelpers).extend({
 					break;
 				case 'settings-ldap':
 					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
-						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
+						void this.$router.push({ name: VIEWS.LDAP_SETTINGS });
 					}
 					break;
 				case 'settings-log-streaming':
 					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
-						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
+						void this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
@@ -206,17 +206,17 @@ export default mixins(userHelpers).extend({
 					break;
 				case 'settings-usage-and-plan':
 					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
-						this.$router.push({ name: VIEWS.USAGE });
+						void this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				case 'settings-sso':
 					if (this.$router.currentRoute.name !== VIEWS.SSO_SETTINGS) {
-						this.$router.push({ name: VIEWS.SSO_SETTINGS });
+						void this.$router.push({ name: VIEWS.SSO_SETTINGS });
 					}
 					break;
 				case 'settings-version-control':
 					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
-						this.$router.push({ name: VIEWS.VERSION_CONTROL });
+						void this.$router.push({ name: VIEWS.VERSION_CONTROL });
 					}
 					break;
 				default:

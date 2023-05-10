@@ -191,9 +191,8 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
+				this.credentialsStore.fetchAllCredentials(),
 			]);
-
-			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {

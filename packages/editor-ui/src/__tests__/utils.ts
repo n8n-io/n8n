@@ -43,8 +43,10 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 			ldap: false,
 			saml: false,
 			logStreaming: false,
+			variables: false,
+			versionControl: false,
 		},
-		executionMode: '',
+		executionMode: 'regular',
 		executionTimeout: 0,
 		hideUsagePage: false,
 		hiringBannerEnabled: false,
@@ -66,8 +68,8 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		},
 		publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 		pushBackend: 'sse',
-		saveDataErrorExecution: '',
-		saveDataSuccessExecution: '',
+		saveDataErrorExecution: 'all',
+		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		sso: {
 			ldap: { loginEnabled: false, loginLabel: '' },
@@ -93,6 +95,9 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		workflowTagsDisabled: false,
 		deployment: {
 			type: 'default',
+		},
+		variables: {
+			limit: 100,
 		},
 	},
 	promptsData: {

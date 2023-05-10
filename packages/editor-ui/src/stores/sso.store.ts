@@ -36,7 +36,7 @@ export const useSSOStore = defineStore('sso', () => {
 					},
 				},
 			});
-			toggleLoginEnabled(value);
+			void toggleLoginEnabled(value);
 		},
 	});
 	const isEnterpriseSamlEnabled = computed(() =>

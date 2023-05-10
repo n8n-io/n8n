@@ -89,7 +89,7 @@ export default mixins(showMessage).extend({
 					const redirect = decodeURIComponent(this.$route.query.redirect);
 					if (redirect.startsWith('/')) {
 						// protect against phishing
-						this.$router.push(redirect);
+						void this.$router.push(redirect);
 
 						return;
 					}
