@@ -16,6 +16,8 @@ const ignoreChunks = [
 	'vue-template-compiler',
 	'@fontsource/open-sans',
 	'normalize-wheel',
+	// TODO: remove this. It's currently required by xml2js in NodeErrors
+	'stream-browserify',
 ];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
@@ -43,6 +45,7 @@ const { NODE_ENV } = process.env;
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
+	{ find: 'stream', replacement: 'stream-browserify' },
 	{
 		find: /^n8n-design-system\//,
 		replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',

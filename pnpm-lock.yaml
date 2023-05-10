@@ -941,6 +941,9 @@ importers:
       prettier:
         specifier: ^2.8.3
         version: 2.8.3
+      stream-browserify:
+        specifier: ^3.0.0
+        version: 3.0.0
       timeago.js:
         specifier: ^4.0.2
         version: 4.0.2
@@ -20869,6 +20872,13 @@ packages:
       - supports-color
       - utf-8-validate
     dev: true
+
+  /stream-browserify@3.0.0:
+    resolution: {integrity: sha512-H73RAHsVBapbim0tU2JwwOiXUj+fikfiaoYAKHF3VJfA0pe2BCzkhAHBlLG6REzE+2WNZcxOXjK7lkso+9euLA==}
+    dependencies:
+      inherits: 2.0.4
+      readable-stream: 3.6.0
+    dev: false
 
   /stream-combiner@0.0.4:
     resolution: {integrity: sha512-rT00SPnTVyRsaSz5zgSPma/aHSOic5U1prhYdRy5HS2kTZviFpmDgzilbtsJsxiroqACmayynDN/9VzIbX5DOw==}
