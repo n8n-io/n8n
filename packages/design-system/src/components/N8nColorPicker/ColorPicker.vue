@@ -68,6 +68,7 @@ const onActiveChange = (value: string) => {
 		/>
 		<n8n-input
 			v-if="showInput"
+			:class="$style.input"
 			:disabled="props.disabled"
 			:size="props.size"
 			:value="color"
@@ -80,5 +81,18 @@ const onActiveChange = (value: string) => {
 .component {
 	display: inline-flex;
 	align-items: center;
+}
+
+.input {
+	margin-left: var(--spacing-3xs);
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-color-picker) {
+	.el-color-picker__empty,
+	.el-color-picker__icon {
+		display: none;
+	}
 }
 </style>
