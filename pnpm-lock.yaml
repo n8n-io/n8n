@@ -1417,6 +1417,9 @@ importers:
       rss-parser:
         specifier: ^3.7.0
         version: 3.12.0
+      semver:
+        specifier: ^7.3.8
+        version: 7.3.8
       showdown:
         specifier: ^2.0.3
         version: 2.1.0
