@@ -17,7 +17,7 @@ import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
-import { writeFile as fsWriteFile } from 'fs/promises';
+import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
 import type {
@@ -51,10 +51,6 @@ export class VersionControlService {
 
 	private gitFolder: string;
 
-	private workflowExportFolder: string;
-
-	private credentialExportFolder: string;
-
 	constructor(
 		private gitService: VersionControlGitService,
 		private versionControlExportService: VersionControlExportService,
@@ -62,11 +58,6 @@ export class VersionControlService {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.sshFolder = path.join(userFolder, VERSION_CONTROL_SSH_FOLDER);
 		this.gitFolder = path.join(userFolder, VERSION_CONTROL_GIT_FOLDER);
-		this.workflowExportFolder = path.join(this.gitFolder, VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER);
-		this.credentialExportFolder = path.join(
-			this.gitFolder,
-			VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
-		);
 		this.sshKeyName = path.join(this.sshFolder, VERSION_CONTROL_SSH_KEY_NAME);
 	}
 
@@ -150,8 +141,12 @@ export class VersionControlService {
 	async disconnect() {
 		try {
 			await this.setPreferences({ connected: false });
-			// TODO: clean git folder
-			// TODO: remove key pair from disk?
+			await this.versionControlExportService.cleanWorkFolder();
+			try {
+				await fsRm(path.join(this.gitFolder, '.git'), { recursive: true, force: true });
+			} catch (error) {
+				LoggerProxy.error(`Failed to remove .git folder: ${(error as Error).message}`);
+			}
 			this.gitService.resetService();
 			return this.versionControlPreferences;
 		} catch (error) {
