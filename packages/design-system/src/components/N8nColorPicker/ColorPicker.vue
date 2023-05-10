@@ -10,7 +10,7 @@ export type Props = {
 	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
 	predefine?: string[];
-	modelValue?: string;
+	value?: string;
 	showInput?: boolean;
 };
 
@@ -21,12 +21,13 @@ const props = withDefaults(defineProps<Props>(), {
 	colorFormat: 'hex',
 	popperClass: '',
 	showInput: true,
+	value: null,
 });
 
-const color = ref(props.modelValue);
+const color = ref(props.value);
 
 const colorPickerProps = computed(() => {
-	const { modelValue, showInput, ...rest } = props;
+	const { value, showInput, ...rest } = props;
 	return rest;
 });
 
@@ -38,7 +39,7 @@ const emit = defineEmits<{
 
 const model = computed({
 	get() {
-		return props.modelValue;
+		return color.value;
 	},
 	set(value: string) {
 		color.value = value;

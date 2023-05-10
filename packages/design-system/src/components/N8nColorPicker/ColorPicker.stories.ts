@@ -41,7 +41,7 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nColorPicker,
 	},
 	data: () => ({
-		color: '',
+		color: null,
 	}),
 	template:
 		'<n8n-color-picker v-model="color" v-bind="$props" @input="onInput" @change="onChange" @active-change="onActiveChange" />',
