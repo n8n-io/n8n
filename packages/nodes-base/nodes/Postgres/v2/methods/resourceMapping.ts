@@ -1,4 +1,4 @@
-import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType, INode, INodePropertyOptions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
 import { getEnumValues, getTableSchema, isColumnUnique } from '../helpers/utils';
 import { Connections } from '../transport';
 import type { ConnectionsData } from '../helpers/interfaces';
@@ -46,7 +46,6 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
-	const fieldsToMatch = (this.getNodeParameter('columns.matchingColumns', 0) as string[]) || [];
 
 	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
 
@@ -69,7 +68,6 @@ export async function getMappingColumns(
 				return {
 					id: col.column_name,
 					displayName: col.column_name,
-					match: fieldsToMatch.includes(col.column_name),
 					required: col.is_nullable !== 'YES',
 					defaultMatch: col.column_name === 'id',
 					display: true,

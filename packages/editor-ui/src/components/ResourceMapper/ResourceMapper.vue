@@ -68,7 +68,7 @@ onMounted(async () => {
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
 	if (parameterName in params) {
-		state.paramValue = params[parameterName] as unknown as ResourceMapperValue;
+		const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
 		if (!state.paramValue.schema) {
 			Vue.set(state.paramValue, 'schema', []);
 		}
@@ -77,6 +77,9 @@ onMounted(async () => {
 				Vue.set(state.paramValue.value, key, null);
 			}
 		});
+		if (nodeValues.matchingColumns) {
+			Vue.set(state.paramValue, 'matchingColumns', nodeValues.matchingColumns);
+		}
 	}
 	await initFetching();
 	// Set default values if this is the first time the parameter is being set
@@ -155,7 +158,9 @@ async function initFetching(inlineLading = false): Promise<void> {
 	}
 	try {
 		await loadFieldsToMap();
-		onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
+		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
+			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
+		}
 	} catch (error) {
 		state.loadingError = true;
 	} finally {

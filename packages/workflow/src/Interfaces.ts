@@ -1957,7 +1957,6 @@ export interface ResourceMapperFields {
 export interface ResourceMapperField {
 	id: string;
 	displayName: string;
-	match: boolean;
 	defaultMatch: boolean;
 	canBeUsedToMatch?: boolean;
 	required: boolean;
