@@ -600,7 +600,7 @@ export default mixins(
 		},
 
 		onClick(event: MouseEvent) {
-			this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {

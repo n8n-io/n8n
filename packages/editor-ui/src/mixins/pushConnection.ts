@@ -565,20 +565,20 @@ export const pushConnection = mixins(
 
 				this.processWaitingPushMessages();
 			} else if (receivedData.type === 'reloadNodeType') {
-				this.nodeTypesStore.getNodeTypes();
-				this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
+				await this.nodeTypesStore.getNodeTypes();
+				await this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
 			} else if (receivedData.type === 'removeNodeType') {
 				const pushData = receivedData.data;
 
 				const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 				// Force reload of all credential types
-				this.credentialsStore.fetchCredentialTypes(false).then(() => {
+				await this.credentialsStore.fetchCredentialTypes(false).then(() => {
 					this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 				});
 			} else if (receivedData.type === 'nodeDescriptionUpdated') {
-				this.nodeTypesStore.getNodeTypes();
-				this.credentialsStore.fetchCredentialTypes(true);
+				await this.nodeTypesStore.getNodeTypes();
+				await this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
 		},

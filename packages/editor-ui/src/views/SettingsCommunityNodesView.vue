@@ -216,7 +216,11 @@ export default mixins(showMessage, pushConnection).extend({
 				is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0,
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
-			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
+
+			void this.$externalHooks().run(
+				'settingsCommunityNodesView.openInstallModal',
+				telemetryPayload,
+			);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},
