@@ -98,7 +98,7 @@ export default mixins(workflowHelpers).extend({
 				wf_template_repo_session_id: this.templatesStore.currentSessionId,
 			};
 
-			this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
 			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			if (e.metaKey || e.ctrlKey) {
@@ -106,7 +106,7 @@ export default mixins(workflowHelpers).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+				void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 			}
 		},
 		onHidePreview() {

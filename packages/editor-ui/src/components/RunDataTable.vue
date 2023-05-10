@@ -423,7 +423,7 @@ export default mixins(externalHooks).extend({
 					...mappingTelemetry,
 				};
 
-				this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

@@ -515,10 +515,10 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-const RunDataTable = () => import('@/components/RunDataTable.vue');
-const RunDataJson = () => import('@/components/RunDataJson.vue');
-const RunDataSchema = () => import('@/components/RunDataSchema.vue');
-const RunDataHtml = () => import('@/components/RunDataHtml.vue');
+const RunDataTable = async () => import('@/components/RunDataTable.vue');
+const RunDataJson = async () => import('@/components/RunDataJson.vue');
+const RunDataSchema = async () => import('@/components/RunDataSchema.vue');
+const RunDataHtml = async () => import('@/components/RunDataHtml.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -1259,7 +1259,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return;
 			} else {
 				const bufferString = 'data:' + mimeType + ';base64,' + data;
-				const blob = await fetch(bufferString).then((d) => d.blob());
+				const blob = await fetch(bufferString).then(async (d) => d.blob());
 				saveAs(blob, fileName);
 			}
 		},

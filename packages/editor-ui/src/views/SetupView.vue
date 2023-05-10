@@ -126,7 +126,7 @@ export default mixins(showMessage).extend({
 							interpolate: { workflows, credentials },
 					  })
 					: workflows || credentials;
-			return await this.confirmMessage(
+			return this.confirmMessage(
 				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
 					interpolate: {
 						entities,
@@ -180,8 +180,8 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onSkip() {
-			this.usersStore.skipOwnerSetup();
-			this.$router.push({
+			void this.usersStore.skipOwnerSetup();
+			void this.$router.push({
 				name: VIEWS.NEW_WORKFLOW,
 			});
 		},
