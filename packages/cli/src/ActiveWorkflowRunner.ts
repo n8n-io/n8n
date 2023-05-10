@@ -225,9 +225,12 @@ export class ActiveWorkflowRunner {
 				});
 
 				for (const webhook of webhooks) {
-					// using this approach means that all webhooks in all workflows must have a unique path to avoid matching a request to the wrong webhook
+					// using this approach means that all webhooks in all workflows must have a unique httpMetod and path combined to avoid matching a request to the wrong webhook
 					// which in this case the first one that matches is selected
-					if (new UrlPattern(webhook.webhookPath.split(/[?#]/)[0]).match(path)) {
+					if (
+						webhook.method.toLowerCase() === httpMethod.toLowerCase() &&
+						new UrlPattern(webhook.webhookPath.split(/[?#]/)[0]).match(path)
+					) {
 						webhookId = webhook.webhookId;
 						break;
 					}

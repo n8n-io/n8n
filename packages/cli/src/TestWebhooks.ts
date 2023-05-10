@@ -93,9 +93,12 @@ export class TestWebhooks {
 						webhookPath = webhookPath.slice(0, -1);
 					}
 
-					// using this approach means that all webhooks in all workflows must have a unique path to avoid matching a request to the wrong webhook
+					// using this approach means that all webhooks in all workflows must have a unique httpMetod and path combined to avoid matching a request to the wrong webhook
 					// which in this case the first one that matches is selected
-					if (new UrlPattern(webhookPath).match(path)) {
+					if (
+						webhook.httpMethod.toLowerCase() === httpMethod.toLowerCase() &&
+						new UrlPattern(webhookPath).match(path)
+					) {
 						webhookId = webhook.webhookId;
 						break;
 					}

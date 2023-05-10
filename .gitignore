@@ -20,3 +20,6 @@ packages/**/.turbo
 cypress/videos/*
 cypress/screenshots/*
 *.swp
+
+# Logs
+packages/cli/bin/logs
