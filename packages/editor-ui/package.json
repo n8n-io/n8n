@@ -75,7 +75,6 @@
     "vue-infinite-loading": "^2.4.5",
     "vue-json-pretty": "1.9.3",
     "vue-router": "^3.6.5",
-    "vue-template-compiler": "^2.7.14",
     "vue-typed-mixins": "^0.2.0",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
@@ -96,13 +95,6 @@
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "^8.3.2",
-    "@vitejs/plugin-legacy": "^3.0.1",
-    "@vitejs/plugin-vue2": "^2.2.0",
-    "@vitest/coverage-c8": "^0.28.5",
-    "c8": "^7.12.0",
-    "miragejs": "^0.1.47",
-    "vite": "4.0.4",
-    "vitest": "^0.28.5",
-    "vue-tsc": "^1.0.24"
+    "miragejs": "^0.1.47"
   }
 }
