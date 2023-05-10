@@ -80,7 +80,7 @@ export const useUsageStore = defineStore('usage', () => {
 			const data = await renewLicense(rootStore.getRestApiContext);
 			setData(data);
 		} catch (error) {
-			getLicenseInfo();
+			await getLicenseInfo();
 		}
 	};
 

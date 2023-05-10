@@ -81,11 +81,11 @@ export default defineComponent({
 		filterTemplateNodes,
 		redirectToCategory(id: string) {
 			this.templatesStore.resetSessionId();
-			this.$router.push(`/templates?categories=${id}`);
+			void this.$router.push(`/templates?categories=${id}`);
 		},
 		redirectToSearchPage(node: ITemplatesNode) {
 			this.templatesStore.resetSessionId();
-			this.$router.push(`/templates?search=${node.displayName}`);
+			void this.$router.push(`/templates?search=${node.displayName}`);
 		},
 	},
 });

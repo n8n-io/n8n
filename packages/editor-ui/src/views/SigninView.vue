@@ -89,13 +89,13 @@ export default mixins(showMessage).extend({
 					const redirect = decodeURIComponent(this.$route.query.redirect);
 					if (redirect.startsWith('/')) {
 						// protect against phishing
-						this.$router.push(redirect);
+						void this.$router.push(redirect);
 
 						return;
 					}
 				}
 
-				this.$router.push({ name: VIEWS.HOMEPAGE });
+				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;

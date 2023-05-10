@@ -36,7 +36,7 @@ import { showMessage } from '@/mixins/showMessage';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
-import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
+import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
 import { createEventBus } from '@/event-bus';
@@ -44,7 +44,7 @@ import { createEventBus } from '@/event-bus';
 export default mixins(showMessage).extend({
 	name: 'TagsManager',
 	created() {
-		this.tagsStore.fetchAll({ force: true, withUsageCount: true });
+		void this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},
 	data() {
 		const tagIds = useTagsStore().allTags.map((tag) => tag.id);

@@ -58,7 +58,7 @@ export async function init() {
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
-		return Db.init(getSqliteOptions({ name: testDbName }));
+		await Db.init(getSqliteOptions({ name: testDbName }));
 	}
 
 	if (dbType === 'postgresdb') {
@@ -89,7 +89,7 @@ export async function init() {
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
 
-		return Db.init(getDBOptions('postgres', testDbName));
+		await Db.init(getDBOptions('postgres', testDbName));
 	}
 
 	if (dbType === 'mysqldb') {
@@ -97,18 +97,17 @@ export async function init() {
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapMysql.destroy();
 
-		return Db.init(getDBOptions('mysql', testDbName));
+		await Db.init(getDBOptions('mysql', testDbName));
 	}
 
-	throw new Error(`Unrecognized DB type: ${dbType}`);
+	await Db.migrate();
 }
 
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
-	const connection = Db.getConnection();
-	if (connection.isInitialized) await connection.destroy();
+	await Db.close();
 }
 
 /**

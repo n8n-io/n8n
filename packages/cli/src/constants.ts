@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
+import { major } from 'semver';
 import type { n8n } from 'n8n-core';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -29,6 +30,7 @@ export function getN8nPackageJson() {
 export const START_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
 
 export const N8N_VERSION = getN8nPackageJson().version;
+export const IS_V1_RELEASE = major(N8N_VERSION) > 0;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
