@@ -218,50 +218,50 @@ describe('Data mapping', () => {
 		ndv.actions.validateExpressionPreview('value', '1 [object Object]');
 	});
 
-	// it('maps keys to path', () => {
-	// 	workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-	// 	workflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-	// 	workflowPage.actions.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
-	// 	ndv.actions.setPinnedData([
-	// 		{
-	// 			input: [
-	// 				{
-	// 					'hello.world': {
-	// 						'my count': 0,
-	// 					},
-	// 				},
-	// 			],
-	// 		},
-	// 		{
-	// 			input: [
-	// 				{
-	// 					'hello.world': {
-	// 						'my count': 1,
-	// 					},
-	// 				},
-	// 			],
-	// 		},
-	// 	]);
+	it('maps keys to path', () => {
+		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		workflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		workflowPage.actions.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
+		ndv.actions.setPinnedData([
+			{
+				input: [
+					{
+						'hello.world': {
+							'my count': 0,
+						},
+					},
+				],
+			},
+			{
+				input: [
+					{
+						'hello.world': {
+							'my count': 1,
+						},
+					},
+				],
+			},
+		]);
 
-	// 	ndv.actions.close();
+		ndv.actions.close();
 
-	// 	workflowPage.actions.addNodeToCanvas('Item Lists');
-	// 	workflowPage.actions.openNode('Item Lists');
+		workflowPage.actions.addNodeToCanvas('Item Lists');
+		workflowPage.actions.openNode('Item Lists');
 
-	// 	ndv.getters.parameterInput('operation').click().find('li').contains('Sort').click();
+		ndv.getters.parameterInput('operation').click().find('li').contains('Sort').click();
 
-	// 	ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
+		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
 
-	// 	ndv.getters.inputDataContainer().find('span').contains('my count').realMouseDown();
+		ndv.getters.inputDataContainer().find('span').contains('my count').realMouseDown();
 
-	// 	ndv.actions.mapToParameter('fieldName');
+		ndv.actions.mapToParameter('fieldName');
 
-	// 	ndv.getters.inlineExpressionEditorInput().should('have.length', 0);
-	// 	ndv.getters
-	// 		.parameterInput('fieldName')
-	// 		.find('input')
-	// 		.should('have.value', "input[0]['hello.world']['my count']");
-	// });
+		ndv.getters.inlineExpressionEditorInput().should('have.length', 0);
+		ndv.getters
+			.parameterInput('fieldName')
+			.find('input')
+			.should('have.value', "input[0]['hello.world']['my count']");
+	});
 
 	it('maps expressions to updated fields correctly', () => {
 		cy.fixture('Test_workflow_3.json').then((data) => {
