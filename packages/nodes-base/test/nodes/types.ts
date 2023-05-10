@@ -6,6 +6,12 @@ export interface WorkflowTestData {
 		workflowData: {
 			nodes: INode[];
 			connections: IConnections;
+			settings?: {
+				saveManualExecutions: boolean;
+				callerPolicy: string;
+				timezone: string;
+				saveExecutionProgress: string;
+			};
 		};
 	};
 	output: {
