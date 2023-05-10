@@ -1,12 +1,12 @@
-import { IRun, Workflow, WorkflowExecuteMode } from 'n8n-workflow';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
-import { QueryFailedError } from 'typeorm';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
-import { StatisticsNames, WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
+import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import type { WorkflowStatisticsRepository } from '@db/repositories';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
