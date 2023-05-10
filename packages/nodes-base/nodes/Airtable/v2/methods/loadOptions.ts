@@ -16,7 +16,6 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
 
 	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
-		console.log(table, table.id, table.id === table);
 		return table.id === tableId;
 	});
 

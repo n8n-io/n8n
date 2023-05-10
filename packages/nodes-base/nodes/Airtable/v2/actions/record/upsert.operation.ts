@@ -52,20 +52,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
+	base: string,
+	table: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-
-	const base = this.getNodeParameter('base', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
-	const table = encodeURI(
-		this.getNodeParameter('table', 0, undefined, {
-			extractValue: true,
-		}) as string,
-	);
-
-	const qs: IDataObject = {};
 
 	const endpoint = `${base}/${table}`;
 
@@ -128,7 +118,7 @@ export async function execute(
 
 				const data = { records: rows, typecast: options.typecast ? true : false };
 
-				const responseData = await apiRequest.call(this, 'PATCH', endpoint, data, qs);
+				const responseData = await apiRequest.call(this, 'PATCH', endpoint, data);
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					wrapData(responseData.records as IDataObject[]),

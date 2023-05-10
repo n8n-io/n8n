@@ -148,18 +148,13 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	base: string,
+	table: string,
+): Promise<INodeExecutionData[]> {
 	let returnData: INodeExecutionData[] = [];
-
-	const base = this.getNodeParameter('base', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
-	const table = encodeURI(
-		this.getNodeParameter('table', 0, undefined, {
-			extractValue: true,
-		}) as string,
-	);
 
 	const body: IDataObject = {};
 	const qs: IDataObject = {};

@@ -75,7 +75,7 @@ export async function tableSearch(
 				results.push({
 					name: table.name as string,
 					value: table.id as string,
-					url: `https://airtable.com/${base}/${table.id}}`,
+					// url: `https://airtable.com/${base}/${table.id}}`,
 				});
 			}
 		}
@@ -89,7 +89,7 @@ export async function tableSearch(
 			results: (response.tables || []).map((table: IDataObject) => ({
 				name: table.name as string,
 				value: table.id as string,
-				url: `https://airtable.com/${base}/${table.id}}`,
+				// url: `https://airtable.com/${base}/${table.id}}`,
 			})),
 			paginationToken: response.offset,
 		};

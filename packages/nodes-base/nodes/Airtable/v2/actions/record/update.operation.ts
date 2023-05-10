@@ -1,7 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { apiRequest } from '../../transport';
+import { apiRequest, apiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -51,6 +51,19 @@ const properties: INodeProperties[] = [
 		},
 		default: '',
 		hint: 'The column that identifies the row(s) to modify',
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id
+		displayName:
+			'If posible id for update, as updating by other fields require table data prefetching and can be slow.',
+		name: 'noticeNoIdUpdate',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			hide: {
+				columnToMatchOn: ['id'],
+			},
+		},
 	},
 	{
 		displayName: 'Value of Column to Match On',
@@ -108,6 +121,36 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Typecast',
+				name: 'typecast',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the Airtable API should attempt mapping of string values for linked records & select options',
+			},
+			{
+				displayName: 'Ignore Fields',
+				name: 'ignoreFields',
+				type: 'string',
+				requiresDataPath: 'multiple',
+				displayOptions: {
+					show: {
+						'/dataMode': ['autoMapInputData'],
+					},
+				},
+				default: '',
+				description: 'Comma-separated list of fields to ignore when updating',
+			},
+		],
+	},
 ];
 
 const displayOptions = {
@@ -119,97 +162,132 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+type UpdateRecord = {
+	fields: IDataObject;
+	id?: string;
+};
+type UpdateBody = {
+	records: UpdateRecord[];
+	performUpsert?: {
+		fieldsToMergeOn: string[];
+	};
+	typecast?: boolean;
+};
+
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
+	base: string,
+	table: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const base = this.getNodeParameter('base', 0, undefined, {
-		extractValue: true,
-	}) as string;
-
-	const table = encodeURI(
-		this.getNodeParameter('table', 0, undefined, {
-			extractValue: true,
-		}) as string,
-	);
-
-	const qs: IDataObject = {};
-
 	const endpoint = `${base}/${table}`;
 
-	let updateAllFields: boolean;
-	let fields: string[];
-	let options: IDataObject;
+	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
 
-	const rows: IDataObject[] = [];
-	let bulkSize = 10;
+	let tableData: UpdateRecord[] = [];
+	if (columnToMatchOn !== 'id') {
+		const response = await apiRequestAllItems.call(
+			this,
+			'GET',
+			endpoint,
+			{},
+			{ fields: [columnToMatchOn] },
+		);
+		tableData = response.records as UpdateRecord[];
+	}
 
+	const records: UpdateRecord[] = [];
 	for (let i = 0; i < items.length; i++) {
 		try {
-			updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
-			options = this.getNodeParameter('options', i, {});
-			bulkSize = (options.bulkSize as number) || bulkSize;
+			const options = this.getNodeParameter('options', i, {});
 
-			const row: IDataObject = {};
-			row.fields = {} as IDataObject;
+			if (dataMode === 'autoMapInputData') {
+				let id: string;
+				let fields: IDataObject;
 
-			if (updateAllFields) {
-				// Update all the fields the item has
-				row.fields = { ...items[i].json };
-				// remove id field
-				delete (row.fields as any).id;
+				if (columnToMatchOn === 'id') {
+					id = items[i].json.id as string;
+					fields = items[i].json;
+				} else {
+					const columnToMatchOnValue = items[i].json[columnToMatchOn] as string;
 
-				if (options.ignoreFields && options.ignoreFields !== '') {
+					const match = tableData.find((record) => {
+						return record.fields[columnToMatchOn] === columnToMatchOnValue;
+					});
+
+					if (match === undefined) {
+						throw new Error(`No record found with ${columnToMatchOn} = ${columnToMatchOnValue}`);
+					}
+
+					id = match.id as string;
+					fields = items[i].json;
+				}
+
+				if (options.ignoreFields) {
 					const ignoreFields = (options.ignoreFields as string)
 						.split(',')
-						.map((field) => field.trim())
-						.filter((field) => !!field);
-					if (ignoreFields.length) {
-						// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
-						row.fields = Object.entries(items[i].json)
-							.filter(([key]) => !ignoreFields.includes(key))
-							.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+						.map((field) => field.trim());
+
+					for (const field of ignoreFields) {
+						delete fields[field];
 					}
 				}
-			} else {
-				fields = this.getNodeParameter('fields', i, []) as string[];
 
-				const rowFields: IDataObject = {};
-				for (const fieldName of fields) {
-					rowFields[fieldName] = items[i].json[fieldName];
+				records.push({ id, fields });
+			}
+
+			if (dataMode === 'defineBelow') {
+				const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+					.values as IDataObject[];
+
+				const fields = valuesToSend.reduce((acc, { column, value }) => {
+					acc[column as string] = value;
+					return acc;
+				}, {} as IDataObject);
+
+				let id: string;
+
+				if (columnToMatchOn === 'id') {
+					id = valueToMatchOn;
+				} else {
+					const match = tableData.find((record) => {
+						return record.fields[columnToMatchOn] === valueToMatchOn;
+					});
+
+					if (match === undefined) {
+						throw new Error(`No record found with ${columnToMatchOn} = ${valueToMatchOn}`);
+					}
+
+					id = match.id as string;
 				}
 
-				row.fields = rowFields;
+				records.push({ id, fields });
 			}
 
-			row.id = this.getNodeParameter('id', i) as string;
+			const body: UpdateBody = { records, typecast: options.typecast ? true : false };
 
-			rows.push(row);
+			const responseData = await apiRequest.call(this, 'PATCH', endpoint, body);
 
-			if (rows.length === bulkSize || i === items.length - 1) {
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
+			const executionData = this.helpers.constructExecutionMetaData(
+				wrapData(responseData.records as IDataObject[]),
+				{ itemData: { item: i } },
+			);
 
-				const data = { records: rows, typecast: options.typecast ? true : false };
+			returnData.push(...executionData);
 
-				const responseData = await apiRequest.call(this, 'PATCH', endpoint, data, qs);
+			//TODO use batch for update?
+			// if (records.length === 10 || i === items.length - 1) {
+			// 	const body: UpdateBody = { records, typecast: options.typecast ? true : false };
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					wrapData(responseData.records as IDataObject[]),
-					{ itemData: { item: i } },
-				);
+			// 	const responseData = await apiRequest.call(this, 'PATCH', endpoint, body);
 
-				returnData.push(...executionData);
-
-				// empty rows
-				rows.length = 0;
-			}
+			// 	returnData.push(...wrapData(responseData.records as IDataObject[]));
+			// 	records = [];
+			// }
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error } });

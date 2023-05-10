@@ -77,7 +77,7 @@ export const description: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				operation: ['create', 'deleteRecord', 'update'],
+				operation: ['create', 'deleteRecord'],
 			},
 		},
 		default: {},

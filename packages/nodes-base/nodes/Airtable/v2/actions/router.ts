@@ -19,7 +19,21 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	try {
 		switch (airtableNodeData.resource) {
 			case 'record':
-				returnData = await record[airtableNodeData.operation].execute.call(this, items);
+				const base = this.getNodeParameter('base', 0, undefined, {
+					extractValue: true,
+				}) as string;
+
+				const table = encodeURI(
+					this.getNodeParameter('table', 0, undefined, {
+						extractValue: true,
+					}) as string,
+				);
+				returnData = await record[airtableNodeData.operation].execute.call(
+					this,
+					items,
+					base,
+					table,
+				);
 				break;
 			default:
 				throw new NodeOperationError(
