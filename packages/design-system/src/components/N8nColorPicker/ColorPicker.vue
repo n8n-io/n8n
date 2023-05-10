@@ -1,34 +1,84 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { ColorPicker } from 'element-ui';
+import N8nInput from '../N8nInput';
 
-export type ColorFormat = 'hex' | 'rgb' | 'hsl' | 'hsv';
-
-export type IN8nColorPicker = {
+export type Props = {
 	disabled?: boolean;
 	size?: 'small' | 'medium' | 'mini';
 	showAlpha?: boolean;
-	colorFormat?: ColorFormat;
+	colorFormat?: 'hex' | 'rgb' | 'hsl' | 'hsv';
 	popperClass?: string;
-	predefine?: ColorFormat[];
+	predefine?: string[];
 	modelValue?: string;
+	showInput?: boolean;
 };
 
-const colorPickerProps = defineProps<IN8nColorPicker>();
+const props = withDefaults(defineProps<Props>(), {
+	disabled: false,
+	size: 'medium',
+	showAlpha: false,
+	colorFormat: 'hex',
+	popperClass: '',
+	showInput: true,
+});
+
+const color = ref(props.modelValue);
+
+const colorPickerProps = computed(() => {
+	const { modelValue, showInput, ...rest } = props;
+	return rest;
+});
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: unknown): void;
+	(event: 'input', value: string): void;
+	(event: 'change', value: string): void;
+	(event: 'active-change', value: string): void;
 }>();
 
-const value = computed({
-	get: () => colorPickerProps.modelValue,
-	set: (newValue: IN8nColorPicker['value']) => {
-		emit('update:modelValue', newValue);
+const model = computed({
+	get() {
+		return props.modelValue;
+	},
+	set(value: string) {
+		color.value = value;
+		emit('input', value);
 	},
 });
+
+const onChange = (value: string) => {
+	emit('change', value);
+};
+
+const onInput = (value: string) => {
+	color.value = value;
+};
+
+const onActiveChange = (value: string) => {
+	emit('active-change', value);
+};
 </script>
 <template>
-	<span>
-		<color-picker v-model="value" v-bind="colorPickerProps" />
+	<span :class="['n8n-color-picker', $style.component]">
+		<color-picker
+			v-model="model"
+			v-bind="colorPickerProps"
+			@change="onChange"
+			@active-change="onActiveChange"
+		/>
+		<n8n-input
+			v-if="showInput"
+			:disabled="props.disabled"
+			:size="props.size"
+			:value="color"
+			@input="onInput"
+			type="text"
+		/>
 	</span>
 </template>
+<style lang="scss" module>
+.component {
+	display: inline-flex;
+	align-items: center;
+}
+</style>
