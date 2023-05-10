@@ -126,12 +126,6 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	}
 }
 
-const openConnection = async (options: ConnectionOptions) => {
-	connection = new Connection(options);
-	await connection.initialize();
-	Container.set(Connection, connection);
-};
-
 export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
 	if (connectionState.connected) return;
 
@@ -160,7 +154,9 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 		migrationsRun: false,
 	});
 
-	await openConnection(connectionOptions);
+	connection = new Connection(connectionOptions);
+	Container.set(Connection, connection);
+	await connection.initialize();
 
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
@@ -173,37 +169,6 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	}
 
 	connectionState.connected = true;
-}
-
-export async function migrate() {
-	(connection.options.migrations as Migration[]).forEach(wrapMigration);
-
-	if (!inTest && connection.options.type === 'sqlite') {
-		// This specific migration changes database metadata.
-		// A field is now nullable. We need to reconnect so that
-		// n8n knows it has changed. Happens only on sqlite.
-		let migrations = [];
-		try {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			migrations = await connection.query(
-				`SELECT id FROM ${tablePrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
-			);
-		} catch (error) {
-			// Migration table does not exist yet - it will be created after migrations run for the first time.
-		}
-
-		// If you remove this call, remember to turn back on the
-		// setting to run migrations automatically above.
-		await connection.runMigrations({ transaction: 'each' });
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (migrations.length === 0) {
-			await connection.destroy();
-			await openConnection(connection.options);
-		}
-	} else {
-		await connection.runMigrations({ transaction: 'each' });
-	}
 
 	collections.AuthIdentity = Container.get(AuthIdentityRepository);
 	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
@@ -224,7 +189,11 @@ export async function migrate() {
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+}
 
+export async function migrate() {
+	(connection.options.migrations as Migration[]).forEach(wrapMigration);
+	await connection.runMigrations({ transaction: 'each' });
 	connectionState.migrated = true;
 }
 
