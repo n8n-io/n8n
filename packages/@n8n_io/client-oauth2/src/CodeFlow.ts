@@ -2,7 +2,7 @@ import * as qs from 'querystring';
 import type { ClientOAuth2, ClientOAuth2Options } from './ClientOAuth2';
 import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS, DEFAULT_URL_BASE } from './constants';
-import { auth, expects, getAuthError, requestOptions, sanitizeScope } from './utils';
+import { auth, expects, getAuthError, getRequestOptions, sanitizeScope } from './utils';
 
 interface CodeFlowBody {
 	code: string | string[];
@@ -99,18 +99,17 @@ export class CodeFlow {
 			body.client_id = options.clientId;
 		}
 
-		const responseData = await this.client.request<ClientOAuth2TokenData>(
-			requestOptions(
-				{
-					url: options.accessTokenUri,
-					method: 'POST',
-					headers,
-					body,
-				},
-				options,
-			),
+		const requestOptions = getRequestOptions(
+			{
+				url: options.accessTokenUri,
+				method: 'POST',
+				headers,
+				body,
+			},
+			options,
 		);
 
+		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
 		return this.client.createToken(responseData);
 	}
 }

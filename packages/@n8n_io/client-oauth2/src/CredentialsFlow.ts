@@ -1,7 +1,7 @@
 import type { ClientOAuth2, ClientOAuth2Options } from './ClientOAuth2';
 import type { ClientOAuth2Token, ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { DEFAULT_HEADERS } from './constants';
-import { auth, expects, requestOptions, sanitizeScope } from './utils';
+import { auth, expects, getRequestOptions, sanitizeScope } from './utils';
 
 interface CredentialsFlowBody {
 	grant_type: 'client_credentials';
@@ -32,21 +32,21 @@ export class CredentialsFlow {
 			body.scope = sanitizeScope(options.scopes);
 		}
 
-		const responseData = await this.client.request<ClientOAuth2TokenData>(
-			requestOptions(
-				{
-					url: options.accessTokenUri,
-					method: 'POST',
-					headers: {
-						...DEFAULT_HEADERS,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						Authorization: auth(options.clientId, options.clientSecret),
-					},
-					body,
+		const requestOptions = getRequestOptions(
+			{
+				url: options.accessTokenUri,
+				method: 'POST',
+				headers: {
+					...DEFAULT_HEADERS,
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					Authorization: auth(options.clientId, options.clientSecret),
 				},
-				options,
-			),
+				body,
+			},
+			options,
 		);
+
+		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
 		return this.client.createToken(responseData);
 	}
 }

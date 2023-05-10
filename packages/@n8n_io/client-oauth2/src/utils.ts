@@ -64,7 +64,7 @@ export function auth(username: string, password: string): string {
 /**
  * Merge request options from an options object.
  */
-export function requestOptions(
+export function getRequestOptions(
 	{ url, method, body, query, headers }: ClientOAuth2RequestObject,
 	options: any,
 ): ClientOAuth2RequestObject {

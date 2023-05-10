@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
-import { auth, requestOptions } from './utils';
+import { auth, getRequestOptions } from './utils';
 import { DEFAULT_HEADERS } from './constants';
 
 export interface ClientOAuth2TokenData extends Record<string, string | undefined> {
@@ -25,7 +25,7 @@ export class ClientOAuth2Token {
 	private expires: Date;
 
 	constructor(readonly client: ClientOAuth2, readonly data: ClientOAuth2TokenData) {
-		this.tokenType = data.token_type?.toLowerCase();
+		this.tokenType = data.token_type?.toLowerCase() ?? 'bearer';
 		this.accessToken = data.access_token;
 		this.refreshToken = data.refresh_token;
 
@@ -71,7 +71,7 @@ export class ClientOAuth2Token {
 
 		if (!this.refreshToken) throw new Error('No refresh token');
 
-		const config = requestOptions(
+		const requestOptions = getRequestOptions(
 			{
 				url: accessTokenUri,
 				method: 'POST',
@@ -87,7 +87,7 @@ export class ClientOAuth2Token {
 			{},
 		);
 
-		const responseData = await this.client.request<ClientOAuth2TokenData>(config);
+		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
 		return this.client.createToken({ ...this.data, ...responseData });
 	}
 
