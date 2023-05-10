@@ -9,6 +9,10 @@ describe('Schedule Trigger node', async () => {
 		cy.skipSetup();
 	});
 
+	beforeEach(() => {
+		workflowPage.actions.visit();
+	});
+
 	it('should execute and return the execution timestamp', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.openNode('Schedule Trigger');

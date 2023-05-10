@@ -10,6 +10,10 @@ describe('Execution', () => {
 		cy.skipSetup();
 	});
 
+	beforeEach(() => {
+		workflowPage.actions.visit();
+	});
+
 	it('should test manual workflow', () => {
 		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
 
@@ -262,7 +266,6 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
-
 
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters
