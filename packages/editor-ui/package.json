@@ -79,7 +79,7 @@
     "vue-typed-mixins": "^0.2.0",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
-    "xss": "^1.0.10"
+    "xss": "^1.0.14"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",

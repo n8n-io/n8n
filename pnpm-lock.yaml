@@ -794,9 +794,6 @@ importers:
       jsdom:
         specifier: 21.1.0
         version: 21.1.0
-      node-notifier:
-        specifier: ^10.0.1
-        version: 10.0.1
       sass:
         specifier: ^1.58.0
         version: 1.58.0
@@ -809,24 +806,12 @@ importers:
       storybook-addon-themes:
         specifier: ^6.1.0
         version: 6.1.0(react-dom@18.2.0)(react@17.0.2)(vue@2.7.14)
-      trim:
-        specifier: ^1.0.1
-        version: 1.0.1
       vite:
         specifier: ^4.0.4
         version: 4.0.4(sass@1.58.0)
       vitest:
         specifier: ^0.28.5
         version: 0.28.5(jsdom@21.1.0)(sass@1.58.0)
-      vue-class-component:
-        specifier: ^7.2.6
-        version: 7.2.6(vue@2.7.14)
-      vue-loader:
-        specifier: ^15.10.1
-        version: 15.10.1(css-loader@6.7.3)(react-dom@18.2.0)(react@17.0.2)(vue-template-compiler@2.7.14)(webpack@5.75.0)
-      vue-property-decorator:
-        specifier: ^9.1.2
-        version: 9.1.2(vue-class-component@7.2.6)(vue@2.7.14)
       vue-template-compiler:
         specifier: ^2.7.14
         version: 2.7.14
@@ -996,7 +981,7 @@ importers:
         specifier: ^3.2.1
         version: 3.2.2
       xss:
-        specifier: ^1.0.10
+        specifier: ^1.0.14
         version: 1.0.14
     devDependencies:
       '@faker-js/faker':
@@ -14049,10 +14034,6 @@ packages:
     resolution: {integrity: sha512-bzh50DW9kTPM00T8y4o8vQg89Di9oLJVLW/KaOGIXJWP/iqCN6WKYkbNOF04vFLJhwcpYUh9ydh/+5vpOqV4YQ==}
     dev: true
 
-  /growly@1.3.0:
-    resolution: {integrity: sha512-+xGQY0YyAWCnqy7Cd++hc2JqMYzlm0dG30Jd0beaA64sROr8C4nt8Yc9V5Ro3avlSUDTN0ulqP/VBKi1/lLygw==}
-    dev: true
-
   /gulp-cli@2.3.0:
     resolution: {integrity: sha512-zzGBl5fHo0EKSXsHzjspp3y5CONegCm8ErO5Qh0UzFzk2y4tMvzLWhoDokADbarfZRL2pGpRp7yt6gfJX4ph7A==}
     engines: {node: '>= 0.10'}
@@ -17682,17 +17663,6 @@ packages:
     resolution: {integrity: sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ==}
     dev: false
 
-  /node-notifier@10.0.1:
-    resolution: {integrity: sha512-YX7TSyDukOZ0g+gmzjB6abKu+hTGvO8+8+gIFDsRCU2t8fLV/P2unmt+LGFaIa4y64aX98Qksa97rgz4vMNeLQ==}
-    dependencies:
-      growly: 1.3.0
-      is-wsl: 2.2.0
-      semver: 7.3.8
-      shellwords: 0.1.1
-      uuid: 8.3.2
-      which: 2.0.2
-    dev: true
-
   /node-releases@2.0.8:
     resolution: {integrity: sha512-dFSmB8fFHEH/s81Xi+Y/15DQY6VHW81nXRj86EMSL3lmuTmK1e+aT4wrFCkTbm+gSwkw4KpX+rT/pMM2c1mF+A==}
     dev: true
@@ -20407,10 +20377,6 @@ packages:
       interpret: 1.4.0
       rechoir: 0.6.2
 
-  /shellwords@0.1.1:
-    resolution: {integrity: sha512-vFwSUfQvqybiICwZY5+DAWIPLKsWO31Q91JSKl3UYv+K5c2QRPzn0qzec6QPu1Qc9eHYItiP3NdJqNVqetYAww==}
-    dev: true
-
   /showdown@2.1.0:
     resolution: {integrity: sha512-/6NVYu4U819R2pUIk79n67SYgJHWCce0a5xTP979WbNp0FL9MN1I1QK662IDU1b6JzKTvmhgI7T7JYIxBi3kMQ==}
     hasBin: true
@@ -21687,10 +21653,6 @@ packages:
     hasBin: true
     dev: true
 
-  /trim@1.0.1:
-    resolution: {integrity: sha512-3JVP2YVqITUisXblCDq/Bi4P9457G/sdEamInkyvCsjbTcXLXIiG7XCb4kGMFWh6JGXesS3TKxOPtrncN/xe8w==}
-    dev: true
-
   /triple-beam@1.3.0:
     resolution: {integrity: sha512-XrHUvV5HpdLmIj4uVMxHggLbFSZYIn7HEWsqePZcI50pco+MPqJ50wMGY794X7AOOhxOBAjbkqfAbEe/QMp2Lw==}
     dev: false
@@ -22832,14 +22794,6 @@ packages:
       lodash.throttle: 4.1.1
     dev: false
 
-  /vue-class-component@7.2.6(vue@2.7.14):
-    resolution: {integrity: sha512-+eaQXVrAm/LldalI272PpDe3+i4mPis0ORiMYxF6Ae4hyuCh15W8Idet7wPUEs4N4YptgFHGys4UrgNQOMyO6w==}
-    peerDependencies:
-      vue: ^2.0.0
-    dependencies:
-      vue: 2.7.14
-    dev: true
-
   /vue-color@2.8.1:
     resolution: {integrity: sha512-BoLCEHisXi2QgwlhZBg9UepvzZZmi4176vbr+31Shen5WWZwSLVgdScEPcB+yrAtuHAz42309C0A4+WiL9lNBw==}
     dependencies:
@@ -23036,16 +22990,6 @@ packages:
       - velocityjs
       - walrus
       - whiskers
-    dev: true
-
-  /vue-property-decorator@9.1.2(vue-class-component@7.2.6)(vue@2.7.14):
-    resolution: {integrity: sha512-xYA8MkZynPBGd/w5QFJ2d/NM0z/YeegMqYTphy7NJQXbZcuU6FC6AOdUAcy4SXP+YnkerC6AfH+ldg7PDk9ESQ==}
-    peerDependencies:
-      vue: '*'
-      vue-class-component: '*'
-    dependencies:
-      vue: 2.7.14
-      vue-class-component: 7.2.6(vue@2.7.14)
     dev: true
 
   /vue-router@3.6.5(vue@2.7.14):
