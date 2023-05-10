@@ -5,6 +5,7 @@ import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
+import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -36,6 +37,8 @@ export abstract class BaseCommand extends Command {
 
 	protected instanceId: string;
 
+	protected server?: AbstractServer;
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 
@@ -55,11 +58,27 @@ export abstract class BaseCommand extends Command {
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
 
+		await this.server?.init();
+
+		await Db.migrate().catch(async (error: Error) =>
+			this.exitWithCrash('There was an error running database migrations', error),
+		);
+
+		if (process.env.WEBHOOK_TUNNEL_URL) {
+			LoggerProxy.warn(
+				'You are still using the WEBHOOK_TUNNEL_URL environment variable. It has been deprecated and will be removed in a future version of n8n. Please switch to using WEBHOOK_URL instead.',
+			);
+		}
 		const dbType = config.getEnv('database.type');
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			LoggerProxy.warn(
 				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
+			);
+		}
+		if (process.env.EXECUTIONS_PROCESS === 'own') {
+			LoggerProxy.warn(
+				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
 
@@ -102,9 +121,9 @@ export abstract class BaseCommand extends Command {
 
 	async finally(error: Error | undefined) {
 		if (inTest || this.id === 'start') return;
-		if (Db.isInitialized) {
+		if (Db.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
-			await Db.getConnection().destroy();
+			await Db.close();
 		}
 		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);

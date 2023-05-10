@@ -7,6 +7,8 @@ import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
 import type { IDatabaseCollections } from '@/Interfaces';
 
 import config from '@/config';
@@ -19,6 +21,7 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
+import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { DatabaseType, Migration } from '@db/types';
 import {
@@ -43,12 +46,41 @@ import {
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
 
-export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
 
 export const getConnection = () => connection!;
+
+type ConnectionState = {
+	connected: boolean;
+	migrated: boolean;
+};
+
+export const connectionState: ConnectionState = {
+	connected: false,
+	migrated: false,
+};
+
+// Ping DB connection every 2 seconds
+let pingTimer: NodeJS.Timer | undefined;
+if (!inTest) {
+	const pingDBFn = async () => {
+		if (connection?.isInitialized) {
+			try {
+				await connection.query('SELECT 1');
+				connectionState.connected = true;
+				return;
+			} catch (error) {
+				ErrorReporter.error(error);
+			} finally {
+				pingTimer = setTimeout(pingDBFn, 2000);
+			}
+		}
+		connectionState.connected = false;
+	};
+	pingTimer = setTimeout(pingDBFn, 2000);
+}
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
@@ -94,10 +126,14 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	}
 }
 
-export async function init(
-	testConnectionOptions?: ConnectionOptions,
-): Promise<IDatabaseCollections> {
-	if (isInitialized) return collections;
+const openConnection = async (options: ConnectionOptions) => {
+	connection = new Connection(options);
+	await connection.initialize();
+	Container.set(Connection, connection);
+};
+
+export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
+	if (connectionState.connected) return;
 
 	const dbType = config.getEnv('database.type');
 	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
@@ -124,9 +160,7 @@ export async function init(
 		migrationsRun: false,
 	});
 
-	connection = new Connection(connectionOptions);
-	Container.set(Connection, connection);
-	await connection.initialize();
+	await openConnection(connectionOptions);
 
 	if (dbType === 'postgresdb') {
 		const schema = config.getEnv('database.postgresdb.schema');
@@ -138,9 +172,13 @@ export async function init(
 		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
 	}
 
-	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
+	connectionState.connected = true;
+}
 
-	if (!testConnectionOptions && dbType === 'sqlite') {
+export async function migrate() {
+	(connection.options.migrations as Migration[]).forEach(wrapMigration);
+
+	if (!inTest && connection.options.type === 'sqlite') {
 		// This specific migration changes database metadata.
 		// A field is now nullable. We need to reconnect so that
 		// n8n knows it has changed. Happens only on sqlite.
@@ -161,9 +199,7 @@ export async function init(
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
 			await connection.destroy();
-			connection = new Connection(connectionOptions);
-			Container.set(Connection, connection);
-			await connection.initialize();
+			await openConnection(connection.options);
 		}
 	} else {
 		await connection.runMigrations({ transaction: 'each' });
@@ -189,7 +225,14 @@ export async function init(
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
 
-	isInitialized = true;
-
-	return collections;
+	connectionState.migrated = true;
 }
+
+export const close = async () => {
+	if (pingTimer) {
+		clearTimeout(pingTimer);
+		pingTimer = undefined;
+	}
+
+	if (connection.isInitialized) await connection.destroy();
+};
