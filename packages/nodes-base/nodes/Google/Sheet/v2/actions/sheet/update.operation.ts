@@ -243,9 +243,15 @@ export async function execute(
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
-		nodeVersion === 3
+		nodeVersion < 4
 			? [this.getNodeParameter('columnToMatchOn', 0) as string]
 			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
@@ -259,12 +265,9 @@ export async function execute(
 
 	const updateData: ISheetUpdateData[] = [];
 
-	for (let i = 0; i < items.length; i++) {
-		const dataMode =
-			nodeVersion === 3
-				? (this.getNodeParameter('dataMode', 0) as string)
-				: (this.getNodeParameter('columns.mappingMode', 0) as string);
+	const mappedValues: IDataObject[] = [];
 
+	for (let i = 0; i < items.length; i++) {
 		if (dataMode === 'nothing') continue;
 
 		const data: IDataObject[] = [];
@@ -295,11 +298,11 @@ export async function execute(
 			}
 		} else {
 			const valueToMatchOn =
-				nodeVersion === 3
+				nodeVersion < 4
 					? (this.getNodeParameter('valueToMatchOn', i) as string)
 					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
 
-			if (nodeVersion === 3) {
+			if (nodeVersion < 4) {
 				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
 				if (!valuesToSend?.length) {
 					throw new NodeOperationError(
@@ -334,6 +337,7 @@ export async function execute(
 					);
 				}
 				data.push(mappingValues);
+				mappedValues.push(mappingValues);
 			}
 		}
 
@@ -365,5 +369,9 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 
-	return items;
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items;
+	} else {
+		return this.helpers.returnJsonArray(mappedValues);
+	}
 }
