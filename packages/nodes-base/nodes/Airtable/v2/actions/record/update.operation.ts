@@ -2,7 +2,8 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems } from '../../transport';
-import { removeIgnored } from '../../helpers/utils';
+import { findMatches, removeIgnored } from '../../helpers/utils';
+import type { UpdateBody, UpdateRecord } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -150,6 +151,14 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'Comma-separated list of fields to ignore when updating',
 			},
+			{
+				displayName: 'Update All Matches',
+				name: 'updateAllMatches',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to update all rows that match the "Column to Match On" or just the first one',
+			},
 		],
 	},
 ];
@@ -162,18 +171,6 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
-
-type UpdateRecord = {
-	fields: IDataObject;
-	id?: string;
-};
-type UpdateBody = {
-	records: UpdateRecord[];
-	performUpsert?: {
-		fieldsToMergeOn: string[];
-	};
-	typecast?: boolean;
-};
 
 export async function execute(
 	this: IExecuteFunctions,
@@ -216,13 +213,12 @@ export async function execute(
 				} else {
 					const columnToMatchOnValue = items[i].json[columnToMatchOn] as string;
 
-					const matches = tableData.filter((record) => {
-						return record.fields[columnToMatchOn] === columnToMatchOnValue;
-					});
-
-					if (!matches?.length) {
-						throw new Error(`No record found with ${columnToMatchOn} = ${columnToMatchOnValue}`);
-					}
+					const matches = findMatches(
+						tableData,
+						columnToMatchOn,
+						columnToMatchOnValue,
+						options.updateAllMatches as boolean,
+					);
 
 					for (const match of matches) {
 						const id = match.id as string;
@@ -248,13 +244,12 @@ export async function execute(
 					id = valueToMatchOn;
 					records.push({ id, fields });
 				} else {
-					const matches = tableData.filter((record) => {
-						return record.fields[columnToMatchOn] === valueToMatchOn;
-					});
-
-					if (!matches?.length) {
-						throw new Error(`No record found with ${columnToMatchOn} = ${valueToMatchOn}`);
-					}
+					const matches = findMatches(
+						tableData,
+						columnToMatchOn,
+						valueToMatchOn,
+						options.updateAllMatches as boolean,
+					);
 
 					for (const match of matches) {
 						id = match.id as string;
@@ -273,16 +268,6 @@ export async function execute(
 			);
 
 			returnData.push(...executionData);
-
-			//TODO use batch for update?
-			// if (records.length === 10 || i === items.length - 1) {
-			// 	const body: UpdateBody = { records, typecast: options.typecast ? true : false };
-
-			// 	const responseData = await apiRequest.call(this, 'PATCH', endpoint, body);
-
-			// 	returnData.push(...wrapData(responseData.records as IDataObject[]));
-			// 	records = [];
-			// }
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error } });

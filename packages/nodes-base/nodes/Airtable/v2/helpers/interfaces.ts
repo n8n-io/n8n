@@ -1,3 +1,5 @@
+import type { IDataObject } from 'n8n-workflow';
+
 export interface IAttachment {
 	url: string;
 	filename: string;
@@ -9,3 +11,15 @@ export interface IRecord {
 		[key: string]: string | IAttachment[];
 	};
 }
+
+export type UpdateRecord = {
+	fields: IDataObject;
+	id?: string;
+};
+export type UpdateBody = {
+	records: UpdateRecord[];
+	performUpsert?: {
+		fieldsToMergeOn: string[];
+	};
+	typecast?: boolean;
+};
