@@ -7,7 +7,15 @@ export class VersionControlPushWorkFolder {
 
 	@IsString({ each: true })
 	@IsOptional()
-	files?: Set<string>;
+	fileNames?: Set<string>;
+
+	@IsString({ each: true })
+	@IsOptional()
+	workflowIds?: Set<string>;
+
+	@IsString({ each: true })
+	@IsOptional()
+	credentialIds?: Set<string>;
 
 	@IsString()
 	@IsOptional()

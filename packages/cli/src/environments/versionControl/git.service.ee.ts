@@ -209,6 +209,30 @@ export class VersionControlGitService {
 		return this.git.diffSummary([dots + target]);
 	}
 
+	async diffRemote(): Promise<DiffResult | undefined> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		const currentBranch = await this.getCurrentBranch();
+		if (currentBranch.remote) {
+			const target = currentBranch.remote;
+			return this.git.diffSummary(['...' + target]);
+		}
+		return;
+	}
+
+	async diffLocal(): Promise<DiffResult | undefined> {
+		if (!this.git) {
+			throw new Error('Git is not initialized');
+		}
+		const currentBranch = await this.getCurrentBranch();
+		if (currentBranch.remote) {
+			const target = currentBranch.current;
+			return this.git.diffSummary([target]);
+		}
+		return;
+	}
+
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');

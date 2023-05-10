@@ -58,6 +58,46 @@ export class VersionControlExportService {
 		return path.join(this.workflowExportFolder, `${workflowId}.json`);
 	}
 
+	getCredentialsPath(credentialsId: string): string {
+		return path.join(this.credentialExportFolder, `${credentialsId}.json`);
+	}
+
+	getTagsPath(): string {
+		return path.join(this.gitFolder, VERSION_CONTROL_TAGS_EXPORT_FILE);
+	}
+
+	getVariablesPath(): string {
+		return path.join(this.gitFolder, VERSION_CONTROL_VARIABLES_EXPORT_FILE);
+	}
+
+	async getWorkflowFromFile(
+		filePath: string,
+		root = this.gitFolder,
+	): Promise<IWorkflowToImport | undefined> {
+		try {
+			const importedWorkflow = jsonParse<IWorkflowToImport>(
+				await fsReadFile(path.join(root, filePath), { encoding: 'utf8' }),
+			);
+			return importedWorkflow;
+		} catch (error) {
+			return undefined;
+		}
+	}
+
+	async getCredentialFromFile(
+		filePath: string,
+		root = this.gitFolder,
+	): Promise<ExportableCredential | undefined> {
+		try {
+			const credential = jsonParse<ExportableCredential>(
+				await fsReadFile(path.join(root, filePath), { encoding: 'utf8' }),
+			);
+			return credential;
+		} catch (error) {
+			return undefined;
+		}
+	}
+
 	private async getOwnerCredentialRole() {
 		const ownerCredentiallRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'global' },
@@ -80,6 +120,33 @@ export class VersionControlExportService {
 		}
 
 		return ownerWorkflowRole;
+	}
+
+	async cleanWorkFolder() {
+		try {
+			const workflowFiles = await glob('*.json', {
+				cwd: this.workflowExportFolder,
+				absolute: true,
+			});
+			const credentialFiles = await glob('*.json', {
+				cwd: this.credentialExportFolder,
+				absolute: true,
+			});
+			const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
+				cwd: this.gitFolder,
+				absolute: true,
+			});
+			const tagsFile = await glob(VERSION_CONTROL_TAGS_EXPORT_FILE, {
+				cwd: this.gitFolder,
+				absolute: true,
+			});
+			await Promise.all(tagsFile.map(async (e) => fsRm(e)));
+			await Promise.all(variablesFile.map(async (e) => fsRm(e)));
+			await Promise.all(workflowFiles.map(async (e) => fsRm(e)));
+			await Promise.all(credentialFiles.map(async (e) => fsRm(e)));
+		} catch (error) {
+			LoggerProxy.error(`Failed to clean work folder: ${(error as Error).message}`);
+		}
 	}
 
 	private async rmDeletedWorkflowsFromExportFolder(
@@ -182,7 +249,8 @@ export class VersionControlExportService {
 				folder: this.workflowExportFolder,
 				files: sharedWorkflows.map((e) => ({
 					id: e.workflow.id,
-					name: path.join(this.workflowExportFolder, `${e.workflow.name}.json`),
+					// name: path.join(this.workflowExportFolder, `${e.workflow.name}.json`),
+					name: this.getWorkflowPath(e.workflow.name),
 				})),
 				removedFiles: [...removedFiles],
 			};
@@ -199,7 +267,7 @@ export class VersionControlExportService {
 				await fsMkdir(this.gitFolder);
 			}
 			const variables = await Db.collections.Variables.find();
-			const fileName = path.join(this.gitFolder, VERSION_CONTROL_VARIABLES_EXPORT_FILE);
+			const fileName = this.getVariablesPath();
 			await fsWriteFile(fileName, JSON.stringify(variables, null, 2));
 			return {
 				count: variables.length,
@@ -225,7 +293,7 @@ export class VersionControlExportService {
 			}
 			const tags = await Db.collections.Tag.find();
 			const mappings = await Db.collections.WorkflowTagMapping.find();
-			const fileName = path.join(this.gitFolder, VERSION_CONTROL_TAGS_EXPORT_FILE);
+			const fileName = this.getTagsPath();
 			await fsWriteFile(
 				fileName,
 				JSON.stringify(

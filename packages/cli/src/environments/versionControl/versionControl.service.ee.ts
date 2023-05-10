@@ -8,6 +8,8 @@ import {
 	VERSION_CONTROL_PREFERENCES_DB_KEY,
 	VERSION_CONTROL_SSH_FOLDER,
 	VERSION_CONTROL_SSH_KEY_NAME,
+	VERSION_CONTROL_TAGS_EXPORT_FILE,
+	VERSION_CONTROL_VARIABLES_EXPORT_FILE,
 	VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import * as Db from '@/Db';
@@ -32,6 +34,12 @@ import { BadRequestError } from '../../ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 import type { VersionControlPullWorkFolder } from './types/versionControlPullWorkFolder';
+import type {
+	VersionControlledFileLocation,
+	VersionControlledFile,
+	VersionControlledFileStatus,
+	VersionControlledFileType,
+} from './types/versionControlledFile';
 
 @Service()
 export class VersionControlService {
@@ -145,6 +153,7 @@ export class VersionControlService {
 			// TODO: clean git folder
 			// TODO: remove key pair from disk?
 			this.gitService.resetService();
+			return this.versionControlPreferences;
 		} catch (error) {
 			throw Error(`Failed to disconnect from version control: ${(error as Error).message}`);
 		}
@@ -242,6 +251,7 @@ export class VersionControlService {
 			workflows: undefined,
 		};
 		try {
+			await this.versionControlExportService.cleanWorkFolder();
 			result.tags = await this.versionControlExportService.exportTagsToWorkFolder();
 			result.variables = await this.versionControlExportService.exportVariablesToWorkFolder();
 			result.workflows = await this.versionControlExportService.exportWorkflowsToWorkFolder();
@@ -309,7 +319,7 @@ export class VersionControlService {
 			await this.unstage();
 			return diffResult;
 		}
-		await this.stage(options.files);
+		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
 		return this.gitService.push({ force: options.force ?? false });
 	}
@@ -337,19 +347,32 @@ export class VersionControlService {
 		return this.gitService.diff();
 	}
 
-	async stage(files?: Set<string>): Promise<StatusResult | string> {
+	async stage(
+		options: Pick<VersionControlPushWorkFolder, 'fileNames' | 'credentialIds' | 'workflowIds'>,
+	): Promise<{ staged: string[] } | string> {
+		const { fileNames, credentialIds, workflowIds } = options;
 		const status = await this.gitService.status();
-		if (!files || files.size === 0) {
-			files = new Set<string>([
+		await this.unstage();
+		let mergedFileNames = new Set<string>();
+		fileNames?.forEach((e) => mergedFileNames.add(e));
+		credentialIds?.forEach((e) =>
+			mergedFileNames.add(this.versionControlExportService.getCredentialsPath(e)),
+		);
+		workflowIds?.forEach((e) =>
+			mergedFileNames.add(this.versionControlExportService.getWorkflowPath(e)),
+		);
+		if (mergedFileNames.size === 0) {
+			mergedFileNames = new Set<string>([
 				...status.not_added,
 				...status.created,
 				...status.deleted,
 				...status.modified,
 			]);
 		}
-		const stageResult = await this.gitService.stage(files);
+		const stageResult = await this.gitService.stage(mergedFileNames);
 		if (!stageResult) {
-			return this.gitService.status();
+			const statusResult = await this.gitService.status();
+			return { staged: statusResult.staged };
 		}
 		return stageResult;
 	}
@@ -368,5 +391,112 @@ export class VersionControlService {
 
 	async status(): Promise<StatusResult> {
 		return this.gitService.status();
+	}
+
+	// async getStatus(): Promise<StatusResult> {
+
+	private async fileNameToVersionControlledFile(
+		fileName: string,
+		location: VersionControlledFileLocation,
+		statusResult: StatusResult,
+	): Promise<VersionControlledFile | undefined> {
+		let id: string | undefined = undefined;
+		let name = '';
+		let status: VersionControlledFileStatus | undefined = undefined;
+		let type: VersionControlledFileType = 'file';
+		if (fileName.startsWith(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
+			const workflow = await this.versionControlExportService.getWorkflowFromFile(fileName);
+			if (!workflow?.id) {
+				if (location === 'local') {
+					return;
+				}
+				id = fileName
+					.replace(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER + '/', '')
+					.replace('.json', '');
+				status = 'created';
+			} else {
+				id = workflow.id;
+				name = workflow.name;
+			}
+			type = 'workflow';
+		}
+		if (fileName.startsWith(VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
+			const credential = await this.versionControlExportService.getCredentialFromFile(fileName);
+			if (!credential?.id) {
+				if (location === 'local') {
+					return;
+				}
+				id = fileName
+					.replace(VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER + '/', '')
+					.replace('.json', '');
+				status = 'created';
+			} else {
+				id = credential.id;
+				name = credential.name;
+			}
+			type = 'credential';
+		}
+
+		if (fileName.startsWith(VERSION_CONTROL_VARIABLES_EXPORT_FILE)) {
+			id = 'variables';
+			name = 'variables';
+			type = 'variables';
+		}
+
+		if (fileName.startsWith(VERSION_CONTROL_TAGS_EXPORT_FILE)) {
+			id = 'tags';
+			name = 'tags';
+			type = 'tags';
+		}
+
+		if (!id) return;
+
+		if (!status) {
+			if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
+			else if (statusResult.conflicted.find((e) => e === fileName)) status = 'conflicted';
+			else if (statusResult.created.find((e) => e === fileName)) status = 'created';
+			else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
+			else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
+			else {
+				status = 'unknown';
+			}
+		}
+
+		return {
+			file: fileName,
+			id,
+			name,
+			type,
+			status,
+			location,
+		};
+
+		return;
+	}
+
+	async getStatus(): Promise<VersionControlledFile[]> {
+		await this.versionControlExportService.cleanWorkFolder();
+		await this.export();
+		await this.stage({});
+		await this.gitService.fetch();
+		const versionControlledFiles: VersionControlledFile[] = [];
+		const diffRemote = await this.gitService.diffRemote();
+		const diffLocal = await this.gitService.diffLocal();
+		const status = await this.gitService.status();
+		await Promise.all([
+			...(diffRemote?.files.map(async (e) => {
+				const resolvedFile = await this.fileNameToVersionControlledFile(e.file, 'remote', status);
+				if (resolvedFile) {
+					versionControlledFiles.push(resolvedFile);
+				}
+			}) ?? []),
+			...(diffLocal?.files.map(async (e) => {
+				const resolvedFile = await this.fileNameToVersionControlledFile(e.file, 'local', status);
+				if (resolvedFile) {
+					versionControlledFiles.push(resolvedFile);
+				}
+			}) ?? []),
+		]);
+		return versionControlledFiles;
 	}
 }

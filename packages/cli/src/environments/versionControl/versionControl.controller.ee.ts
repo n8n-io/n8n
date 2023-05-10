@@ -8,6 +8,7 @@ import type { DiffResult, PullResult, PushResult, StatusResult } from 'simple-gi
 import { AuthenticatedRequest } from '../../requests';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
+import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -168,11 +169,11 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/stage')
-	async stage(req: VersionControlRequest.Stage): Promise<StatusResult | string> {
+	async stage(req: VersionControlRequest.Stage): Promise<{ staged: string[] } | string> {
 		try {
-			const files =
-				req.body.files && req.body.files.length > 0 ? new Set<string>(req.body.files) : undefined;
-			return await this.versionControlService.stage(files);
+			// const files =
+			// 	req.body.files && req.body.files.length > 0 ? new Set<string>(req.body.files) : undefined;
+			return await this.versionControlService.stage(req.body as VersionControlPushWorkFolder);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -193,6 +194,16 @@ export class VersionControlController {
 	async commit(req: VersionControlRequest.Commit) {
 		try {
 			return await this.versionControlService.commit(req.body.message);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized('any')
+	@Get('/get-status')
+	async getStatus() {
+		try {
+			return await this.versionControlService.getStatus();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
