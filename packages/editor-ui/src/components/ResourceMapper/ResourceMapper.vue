@@ -69,6 +69,8 @@ onMounted(async () => {
 	const parameterName = props.parameter.name;
 	if (parameterName in params) {
 		const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
+		Vue.set(state, 'paramValue', nodeValues);
+
 		if (!state.paramValue.schema) {
 			Vue.set(state.paramValue, 'schema', []);
 		}
@@ -195,7 +197,7 @@ async function loadFieldsToMap(): Promise<void> {
 			}
 			return field;
 		});
-		state.paramValue.schema = newSchema;
+		Vue.set(state.paramValue, 'schema', newSchema);
 		emitValueChanged();
 	}
 }
