@@ -110,14 +110,14 @@ export default mixins(pushConnection, workflowHelpers).extend({
 				case MAIN_HEADER_TABS.WORKFLOW:
 					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
 						if (this.$route.name !== VIEWS.WORKFLOW) {
-							this.$router.push({
+							void this.$router.push({
 								name: VIEWS.WORKFLOW,
 								params: { name: this.workflowToReturnTo },
 							});
 						}
 					} else {
 						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 							this.uiStore.stateIsDirty = this.dirtyState;
 						}
 					}
@@ -136,7 +136,10 @@ export default mixins(pushConnection, workflowHelpers).extend({
 							})
 							.catch(() => {});
 					} else {
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
+						void this.$router.push({
+							name: VIEWS.EXECUTION_HOME,
+							params: { name: routeWorkflowId },
+						});
 					}
 					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;

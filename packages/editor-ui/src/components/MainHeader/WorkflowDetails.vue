@@ -372,7 +372,7 @@ export default mixins(workflowHelpers).extend({
 			if (this.$data.isNameEditEnabled) {
 				if (this.$data.isTagsEditEnabled) {
 					// @ts-ignore
-					this.onTagsBlur();
+					void this.onTagsBlur();
 				}
 
 				this.$data.isTagsEditEnabled = false;
@@ -522,7 +522,7 @@ export default mixins(workflowHelpers).extend({
 						type: 'success',
 					});
 
-					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					break;
 				}
 				default:

@@ -122,7 +122,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				this.updateDisplayValue();
 				this.$emit('valueChanged', this.latestValue);
 			} else {
-				this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 
@@ -238,7 +238,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
+				void this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},

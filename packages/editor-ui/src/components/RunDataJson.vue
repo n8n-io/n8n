@@ -85,7 +85,7 @@ import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
 
-const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
+const runDataJsonActions = async () => import('@/components/RunDataJsonActions.vue');
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-json',
@@ -179,7 +179,7 @@ export default mixins(externalHooks).extend({
 					...mappingTelemetry,
 				};
 
-				this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
+				void this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

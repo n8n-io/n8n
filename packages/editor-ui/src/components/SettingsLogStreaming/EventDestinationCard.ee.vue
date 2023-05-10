@@ -50,12 +50,12 @@
 import mixins from 'vue-typed-mixins';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
-import { useLogStreamingStore } from '../../stores/logStreaming.store';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
-import type { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import type { EventBus } from '@/event-bus';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
@@ -139,7 +139,7 @@ export default mixins(showMessage).extend({
 		},
 		onEnabledSwitched(state: boolean, destinationId: string) {
 			this.nodeParameters.enabled = state;
-			this.saveDestination();
+			void this.saveDestination();
 		},
 		async saveDestination() {
 			await this.logStreamingStore.saveDestination(this.nodeParameters);

@@ -180,7 +180,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 	methods: {
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
@@ -191,9 +191,8 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
+				this.credentialsStore.fetchAllCredentials(),
 			]);
-
-			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -233,7 +232,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.usersStore.showPersonalizationSurvey();
+		void this.usersStore.showPersonalizationSurvey();
 	},
 });
 

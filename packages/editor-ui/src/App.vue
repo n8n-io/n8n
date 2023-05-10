@@ -135,7 +135,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 					return;
 				}
 
-				this.$router.replace({ name: VIEWS.SETUP });
+				void this.$router.replace({ name: VIEWS.SETUP });
 				return;
 			}
 
@@ -149,7 +149,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
+				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 				return;
 			}
 
@@ -158,13 +158,13 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					this.$router.replace(redirect);
+					void this.$router.replace(redirect);
 					return;
 				}
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
+			void this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
 			const redirect =
@@ -172,7 +172,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
 			if (redirect) {
-				this.$router.replace(redirect);
+				void this.$router.replace(redirect);
 			}
 		},
 		setTheme() {
@@ -203,7 +203,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.versionControlStore.isEnterpriseVersionControlEnabled &&
 			this.usersStore.isInstanceOwner
 		) {
-			this.versionControlStore.getPreferences();
+			void this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {
@@ -214,7 +214,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.trackPage();
 		},
 		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
+			void loadLanguage(newLocale);
 		},
 	},
 });
