@@ -303,23 +303,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return await getLdapConfig(rootStore.getRestApiContext);
+			return getLdapConfig(rootStore.getRestApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return getLdapSynchronizations(rootStore.getRestApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return await testLdapConnection(rootStore.getRestApiContext);
+			return testLdapConnection(rootStore.getRestApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return await runLdapSync(rootStore.getRestApiContext, data);
+			return runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			Vue.set(this, 'saveDataErrorExecution', newValue);
