@@ -26,13 +26,13 @@ export class VersionControlPreferences {
 	@IsHexColor()
 	branchColor: string;
 
-	// @IsOptional()
-	// @IsString()
-	// readonly privateKey?: string;
-
 	@IsOptional()
 	@IsString()
 	readonly publicKey?: string;
+
+	@IsOptional()
+	@IsBoolean()
+	readonly initRepo?: boolean;
 
 	static fromJSON(json: Partial<VersionControlPreferences>): VersionControlPreferences {
 		return new VersionControlPreferences(json);

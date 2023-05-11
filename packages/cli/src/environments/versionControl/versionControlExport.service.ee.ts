@@ -149,6 +149,14 @@ export class VersionControlExportService {
 		}
 	}
 
+	async deleteRepositoryFolder() {
+		try {
+			await fsRm(this.gitFolder, { recursive: true });
+		} catch (error) {
+			LoggerProxy.error(`Failed to delete work folder: ${(error as Error).message}`);
+		}
+	}
+
 	private async rmDeletedWorkflowsFromExportFolder(
 		workflowsToBeExported: SharedWorkflow[],
 	): Promise<Set<string>> {

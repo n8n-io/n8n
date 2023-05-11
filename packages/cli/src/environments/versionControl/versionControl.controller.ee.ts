@@ -40,7 +40,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Get('/connect')
+	@Post('/connect')
 	async connect() {
 		try {
 			return await this.versionControlService.connect();
@@ -50,7 +50,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Get('/disconnect')
+	@Post('/disconnect')
 	async disconnect() {
 		try {
 			return await this.versionControlService.disconnect();
@@ -71,39 +71,9 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/set-branch')
-	async changeBranch(req: VersionControlRequest.SetBranch) {
+	async setBranch(req: VersionControlRequest.SetBranch) {
 		try {
 			return await this.versionControlService.setBranch(req.body.branch);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized('any')
-	@Get('/fetch')
-	async fetch() {
-		try {
-			return await this.versionControlService.fetch();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized('any')
-	@Get('/diff')
-	async diff() {
-		try {
-			return await this.versionControlService.diff();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/push')
-	async push(req: VersionControlRequest.Push): Promise<PushResult> {
-		try {
-			return await this.versionControlService.push(req.body.force);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -148,52 +118,10 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Get('/pull')
-	async pull(): Promise<PullResult> {
-		try {
-			return await this.versionControlService.pull();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder')
 	async resetWorkfolder(req: AuthenticatedRequest): Promise<ImportResult | undefined> {
 		try {
 			return await this.versionControlService.resetWorkfolder(req.user.id);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/stage')
-	async stage(req: VersionControlRequest.Stage): Promise<{ staged: string[] } | string> {
-		try {
-			// const files =
-			// 	req.body.files && req.body.files.length > 0 ? new Set<string>(req.body.files) : undefined;
-			return await this.versionControlService.stage(req.body as VersionControlPushWorkFolder);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/unstage')
-	async unstage(): Promise<StatusResult | string> {
-		try {
-			return await this.versionControlService.unstage();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/commit')
-	async commit(req: VersionControlRequest.Commit) {
-		try {
-			return await this.versionControlService.commit(req.body.message);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -219,9 +147,10 @@ export class VersionControlController {
 		}
 	}
 
+	//TODO: SEPARATE FUNCTIONS FOR DEVELOPMENT ONLY
 	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
 	@Authorized(['global', 'owner'])
-	@Get('/generateKeyPair', { middlewares: [versionControlLicensedMiddleware] })
+	@Post('/generate-key-pair', { middlewares: [versionControlLicensedMiddleware] })
 	async generateKeyPair() {
 		try {
 			return await this.versionControlService.generateAndSaveKeyPair();
@@ -245,6 +174,76 @@ export class VersionControlController {
 	async import(req: AuthenticatedRequest) {
 		try {
 			return await this.versionControlService.import(req.user.id);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized('any')
+	@Get('/fetch')
+	async fetch() {
+		try {
+			return await this.versionControlService.fetch();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized('any')
+	@Get('/diff')
+	async diff() {
+		try {
+			return await this.versionControlService.diff();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Post('/push')
+	async push(req: VersionControlRequest.Push): Promise<PushResult> {
+		try {
+			return await this.versionControlService.push(req.body.force);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Post('/commit')
+	async commit(req: VersionControlRequest.Commit) {
+		try {
+			return await this.versionControlService.commit(req.body.message);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Post('/stage')
+	async stage(req: VersionControlRequest.Stage): Promise<{ staged: string[] } | string> {
+		try {
+			return await this.versionControlService.stage(req.body as VersionControlPushWorkFolder);
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Post('/unstage')
+	async unstage(): Promise<StatusResult | string> {
+		try {
+			return await this.versionControlService.unstage();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Authorized(['global', 'owner'])
+	@Get('/pull')
+	async pull(): Promise<PullResult> {
+		try {
+			return await this.versionControlService.pull();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

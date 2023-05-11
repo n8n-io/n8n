@@ -17,7 +17,7 @@ import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
-import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
+import { writeFile as fsWriteFile } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
 import type {
@@ -64,7 +64,7 @@ export class VersionControlService {
 	async init(): Promise<void> {
 		this.gitService.resetService();
 		await this.loadFromDbAndApplyVersionControlPreferences();
-		await this.gitService.init({
+		await this.gitService.initService({
 			versionControlPreferences: this.versionControlPreferences,
 			gitFolder: this.gitFolder,
 			sshKeyName: this.sshKeyName,
@@ -114,6 +114,7 @@ export class VersionControlService {
 	 */
 	async generateAndSaveKeyPair() {
 		const keyPair = generateSshKeyPair('ed25519');
+		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
 				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
@@ -141,12 +142,7 @@ export class VersionControlService {
 	async disconnect() {
 		try {
 			await this.setPreferences({ connected: false });
-			await this.versionControlExportService.cleanWorkFolder();
-			try {
-				await fsRm(path.join(this.gitFolder, '.git'), { recursive: true, force: true });
-			} catch (error) {
-				LoggerProxy.error(`Failed to remove .git folder: ${(error as Error).message}`);
-			}
+			await this.versionControlExportService.deleteRepositoryFolder();
 			this.gitService.resetService();
 			return this.versionControlPreferences;
 		} catch (error) {
@@ -173,7 +169,10 @@ export class VersionControlService {
 		if (validationResult.length > 0) {
 			throw new Error(`Invalid version control preferences: ${JSON.stringify(validationResult)}`);
 		}
-		if (preferencesObject.branchName !== this._versionControlPreferences.branchName) {
+		if (
+			preferencesObject.branchName !== this._versionControlPreferences.branchName &&
+			!preferencesObject.initRepo
+		) {
 			const branches = await this.getBranches();
 			if (!branches.branches.includes(preferencesObject.branchName)) {
 				throw new Error(
@@ -206,6 +205,14 @@ export class VersionControlService {
 			} catch (error) {
 				throw new Error(`Failed to save version control preferences: ${(error as Error).message}`);
 			}
+		}
+		if (preferences.initRepo === true) {
+			LoggerProxy.debug('Initializing repository...');
+			await this.gitService.initRepository(preferences as VersionControlPreferences);
+			await this.pushWorkfolder({
+				message: 'Initial commit',
+				skipDiff: true,
+			});
 		}
 		return this.versionControlPreferences;
 	}
@@ -293,7 +300,7 @@ export class VersionControlService {
 
 	// TODO: temp
 	async push(force = false): Promise<PushResult> {
-		return this.gitService.push({ force });
+		return this.gitService.push({ branch: this.versionControlPreferences.branchName, force });
 	}
 
 	// will reset the branch to the remote branch and pull
@@ -309,14 +316,20 @@ export class VersionControlService {
 	}
 
 	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult | DiffResult> {
-		const diffResult = await this.updateLocalAndDiff();
-		if (diffResult.files.length > 0 && options.force !== true) {
-			await this.unstage();
-			return diffResult;
+		if (!options.skipDiff) {
+			const diffResult = await this.updateLocalAndDiff();
+			if (diffResult.files.length > 0 && options.force !== true) {
+				await this.unstage();
+				return diffResult;
+			}
 		}
+		// await this.unstage();
 		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
-		return this.gitService.push({ force: options.force ?? false });
+		return this.gitService.push({
+			branch: this.versionControlPreferences.branchName,
+			force: options.force ?? false,
+		});
 	}
 
 	async pullWorkfolder(
@@ -347,7 +360,6 @@ export class VersionControlService {
 	): Promise<{ staged: string[] } | string> {
 		const { fileNames, credentialIds, workflowIds } = options;
 		const status = await this.gitService.status();
-		await this.unstage();
 		let mergedFileNames = new Set<string>();
 		fileNames?.forEach((e) => mergedFileNames.add(e));
 		credentialIds?.forEach((e) =>
@@ -387,8 +399,6 @@ export class VersionControlService {
 	async status(): Promise<StatusResult> {
 		return this.gitService.status();
 	}
-
-	// async getStatus(): Promise<StatusResult> {
 
 	private async fileNameToVersionControlledFile(
 		fileName: string,

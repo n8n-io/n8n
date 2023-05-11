@@ -16,6 +16,7 @@ import type {
 } from 'simple-git';
 import { simpleGit } from 'simple-git';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
+import { VERSION_CONTROL_DEFAULT_BRANCH, VERSION_CONTROL_ORIGIN } from './constants';
 
 @Service()
 export class VersionControlGitService {
@@ -48,7 +49,17 @@ export class VersionControlGitService {
 		return true;
 	}
 
-	async init(options: {
+	async foldersExistCheck(gitFolder: string, sshFolder: string) {
+		[gitFolder, sshFolder].forEach(async (folder) => {
+			try {
+				await fsAccess(folder, fsConstants.F_OK);
+			} catch (error) {
+				await fsMkdir(folder);
+			}
+		});
+	}
+
+	async initService(options: {
 		versionControlPreferences: VersionControlPreferences;
 		gitFolder: string;
 		sshFolder: string;
@@ -63,14 +74,7 @@ export class VersionControlGitService {
 		this.preInitCheck();
 		LoggerProxy.debug('Git pre-check passed');
 
-		// Make sure the folders exists
-		[gitFolder, sshFolder].forEach(async (folder) => {
-			try {
-				await fsAccess(folder, fsConstants.F_OK);
-			} catch (error) {
-				await fsMkdir(folder);
-			}
-		});
+		await this.foldersExistCheck(gitFolder, sshFolder);
 
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
 		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${sshKeyName}`;
@@ -129,7 +133,9 @@ export class VersionControlGitService {
 		}
 		try {
 			const remotes = await this.git.getRemotes(true);
-			const foundRemote = remotes.find((e) => e.name === 'origin' && e.refs.push === remote);
+			const foundRemote = remotes.find(
+				(e) => e.name === VERSION_CONTROL_ORIGIN && e.refs.push === remote,
+			);
 			if (foundRemote) {
 				LoggerProxy.debug(`Git remote found: ${foundRemote.name}: ${foundRemote.refs.push}`);
 				return true;
@@ -141,11 +147,32 @@ export class VersionControlGitService {
 		return false;
 	}
 
-	async initRepository(versionControlPreferences: VersionControlPreferences): Promise<void> {
+	async initRepository(
+		versionControlPreferences: Pick<
+			VersionControlPreferences,
+			'repositoryUrl' | 'authorEmail' | 'authorName' | 'branchName' | 'initRepo'
+		>,
+	): Promise<void> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		await this.git.addRemote('origin', versionControlPreferences.repositoryUrl);
+		if (versionControlPreferences.initRepo) {
+			try {
+				await this.git.init();
+				await this.git.checkoutLocalBranch(versionControlPreferences.branchName);
+			} catch (error) {
+				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
+			}
+		}
+		try {
+			await this.git.addRemote(VERSION_CONTROL_ORIGIN, versionControlPreferences.repositoryUrl);
+		} catch (error) {
+			if ((error as Error).message.includes('remote origin already exists')) {
+				LoggerProxy.debug(`Git remote already exists: ${(error as Error).message}`);
+			} else {
+				throw error;
+			}
+		}
 		await this.git.addConfig('user.email', versionControlPreferences.authorEmail);
 		await this.git.addConfig('user.name', versionControlPreferences.authorName);
 	}
@@ -244,14 +271,20 @@ export class VersionControlGitService {
 		return this.git.pull();
 	}
 
-	async push(options: { force: boolean } = { force: false }): Promise<PushResult> {
+	async push(
+		options: { force: boolean; branch: string } = {
+			force: false,
+			branch: VERSION_CONTROL_DEFAULT_BRANCH,
+		},
+	): Promise<PushResult> {
+		const { force, branch } = options;
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		if (options.force) {
-			return this.git.push(['-f']);
+		if (force) {
+			return this.git.push(VERSION_CONTROL_ORIGIN, branch, ['-f']);
 		}
-		return this.git.push();
+		return this.git.push(VERSION_CONTROL_ORIGIN, branch);
 	}
 
 	async stage(files: Set<string>): Promise<string> {

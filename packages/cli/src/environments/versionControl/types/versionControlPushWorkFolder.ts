@@ -20,4 +20,8 @@ export class VersionControlPushWorkFolder {
 	@IsString()
 	@IsOptional()
 	message?: string;
+
+	@IsBoolean()
+	@IsOptional()
+	skipDiff?: boolean;
 }
