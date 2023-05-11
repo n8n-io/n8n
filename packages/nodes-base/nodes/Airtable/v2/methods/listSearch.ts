@@ -18,7 +18,7 @@ export async function baseSearch(
 		};
 	}
 
-	const response = await apiRequest.call(this, 'GET', 'meta/bases', qs);
+	const response = await apiRequest.call(this, 'GET', 'meta/bases', undefined, qs);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -65,7 +65,7 @@ export async function tableSearch(
 		};
 	}
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`, qs);
+	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`, undefined, qs);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -75,7 +75,6 @@ export async function tableSearch(
 				results.push({
 					name: table.name as string,
 					value: table.id as string,
-					// url: `https://airtable.com/${base}/${table.id}}`,
 				});
 			}
 		}
@@ -89,7 +88,6 @@ export async function tableSearch(
 			results: (response.tables || []).map((table: IDataObject) => ({
 				name: table.name as string,
 				value: table.id as string,
-				// url: `https://airtable.com/${base}/${table.id}}`,
 			})),
 			paginationToken: response.offset,
 		};

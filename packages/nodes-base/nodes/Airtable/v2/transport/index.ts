@@ -56,7 +56,7 @@ export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject,
+	body?: IDataObject,
 	query?: IDataObject,
 ) {
 	if (query === undefined) {

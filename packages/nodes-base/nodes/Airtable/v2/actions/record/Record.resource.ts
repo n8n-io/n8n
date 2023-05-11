@@ -62,8 +62,22 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
-	baseRLC,
-	tableRLC,
+	{
+		...baseRLC,
+		displayOptions: {
+			show: {
+				resource: ['record'],
+			},
+		},
+	},
+	{
+		...tableRLC,
+		displayOptions: {
+			show: {
+				resource: ['record'],
+			},
+		},
+	},
 	...create.description,
 	...deleteRecord.description,
 	...get.description,

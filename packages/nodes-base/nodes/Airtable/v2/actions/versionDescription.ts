@@ -2,6 +2,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import * as record from './record/Record.resource';
+import * as base from './base/Base.resource';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Airtable',
@@ -37,13 +38,14 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Record',
 					value: 'record',
 				},
-				{
-					name: 'Table',
-					value: 'table',
-				},
+				// {
+				// 	name: 'Table',
+				// 	value: 'table',
+				// },
 			],
 			default: 'record',
 		},
 		...record.description,
+		...base.description,
 	],
 };
