@@ -255,7 +255,9 @@ export class RabbitMQTrigger implements INodeType {
 										return;
 									}
 								}
-
+								if (acknowledgeMode === 'laterMessageNode') {
+									return;
+								}
 								channel.ack(message);
 								messageTracker.answered(message);
 							});

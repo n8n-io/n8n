@@ -84,6 +84,11 @@ export class RabbitMQ implements INodeType {
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
+				displayOptions: {
+					hide: {
+						operation: ['delete_message'],
+					},
+				},
 				options: [
 					{
 						name: 'Queue',
@@ -370,10 +375,9 @@ export class RabbitMQ implements INodeType {
 		let channel, options: IDataObject;
 		try {
 			const items = this.getInputData();
-			const mode = this.getNodeParameter('mode', 0) as string;
-
+			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
+			const operation = this.getNodeParameter('operation', 0);
 			const returnItems: INodeExecutionData[] = [];
-
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
@@ -384,7 +388,6 @@ export class RabbitMQ implements INodeType {
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 				let message: string;
-
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
 					if (sendInputData) {
@@ -407,7 +410,11 @@ export class RabbitMQ implements INodeType {
 						);
 						headers = additionalHeaders;
 					}
-
+					if (operation === 'delete_message') {
+						console.log(items[0].json.message as unknown as amqplib.Message);
+						channel.ack(items[0].json.message as unknown as amqplib.Message);
+						continue;
+					}
 					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
 				}
 
