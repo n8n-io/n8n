@@ -45,7 +45,6 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'queue-name',
 				description: 'The name of the queue to read from',
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -151,7 +150,7 @@ export class RabbitMQTrigger implements INodeType {
 				type: 'notice',
 				displayOptions: {
 					show: {
-						acknowledge: ['laterMessageNode'],
+						'/options.acknowledge': ['laterMessageNode'],
 					},
 				},
 				default: '',

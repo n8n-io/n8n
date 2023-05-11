@@ -23,7 +23,7 @@ export class RabbitMQ implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['transform'],
-		version: 1,
+		version: 1.1,
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
@@ -44,10 +44,39 @@ export class RabbitMQ implements INodeType {
 				type: 'hidden',
 				noDataExpression: true,
 				default: 'send_message',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 				options: [
 					{
 						name: 'Send a Message to RabbitMQ',
 						value: 'send_message',
+					},
+				],
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'send_message',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Send a Message to RabbitMQ',
+						value: 'send_message',
+						action: 'Send a Message to RabbitMQ',
+					},
+					{
+						name: 'Delete From Queue',
+						value: 'delete_message',
+						action: 'Delete From Queue',
 					},
 				],
 			},
