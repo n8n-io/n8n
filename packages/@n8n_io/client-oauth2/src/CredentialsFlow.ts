@@ -19,7 +19,7 @@ export class CredentialsFlow {
 	/**
 	 * Request an access token using the client credentials.
 	 */
-	async getToken(opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
+	async getToken(opts?: Partial<ClientOAuth2Options>): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
 		expects(options, 'clientId', 'clientSecret', 'accessTokenUri');

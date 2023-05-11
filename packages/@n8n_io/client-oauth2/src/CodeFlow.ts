@@ -46,7 +46,10 @@ export class CodeFlow {
 	 * Get the code token from the redirected uri and make another request for
 	 * the user access token.
 	 */
-	async getToken(uri?: string | URL, opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
+	async getToken(
+		uri?: string | URL,
+		opts?: Partial<ClientOAuth2Options>,
+	): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
 		expects(options, 'clientId', 'accessTokenUri');
