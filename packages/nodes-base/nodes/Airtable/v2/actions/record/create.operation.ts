@@ -2,34 +2,87 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
+import { insertUpdateOptions } from '../common.descriptions';
+import { removeIgnored } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Add All Fields',
-		name: 'addAllFields',
-		type: 'boolean',
-		default: true,
-		description: 'Whether all fields should be sent to Airtable or only specific ones',
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties names exactly match the table column names',
+			},
+			{
+				name: 'Map Each Column Manually',
+				value: 'defineBelow',
+				description: 'Set the value for each destination column manually',
+			},
+		],
+		default: 'autoMapInputData',
+		description:
+			'Whether to map node input properties and the table data automatically or manually',
 	},
 	{
-		displayName: 'Fields',
-		name: 'fields',
-		type: 'string',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Field',
-		},
-		requiresDataPath: 'single',
+		displayName: `
+		In this mode, make sure incoming data fields are named the same as the columns in your table. If needed, use a 'Set' node before this node to change the field names.
+		`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
 		displayOptions: {
 			show: {
-				addAllFields: [false],
+				dataMode: ['autoMapInputData'],
 			},
 		},
-		default: [],
-		placeholder: 'Name',
-		required: true,
-		description: 'The name of fields for which data should be sent to Airtable',
 	},
+	{
+		displayName: 'Values to Send',
+		name: 'valuesToSend',
+		placeholder: 'Add Value',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Value',
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				dataMode: ['defineBelow'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getColumns',
+							loadOptionsDependsOn: ['base.value', 'table.value'],
+						},
+						default: [],
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	...insertUpdateOptions,
 ];
 
 const displayOptions = {
@@ -49,64 +102,45 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const body: IDataObject = {};
-	const qs: IDataObject = {};
-
 	const endpoint = `${base}/${table}`;
 
-	let addAllFields: boolean;
-	let fields: string[];
-	let options: IDataObject;
-
-	const rows: IDataObject[] = [];
-	let bulkSize = 10;
+	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
-			options = this.getNodeParameter('options', i, {});
-			bulkSize = (options.bulkSize as number) || bulkSize;
+			const options = this.getNodeParameter('options', i, {});
 
-			const row: IDataObject = {};
+			const body: IDataObject = {
+				typecast: options.typecast ? true : false,
+			};
 
-			if (addAllFields) {
-				// Add all the fields the item has
-				row.fields = { ...items[i].json };
-				delete (row.fields as any).id;
-			} else {
-				// Add only the specified fields
-				const rowFields: IDataObject = {};
-
-				fields = this.getNodeParameter('fields', i, []) as string[];
-
-				for (const fieldName of fields) {
-					rowFields[fieldName] = items[i].json[fieldName];
-				}
-
-				row.fields = rowFields;
+			if (dataMode === 'autoMapInputData') {
+				body.fields = removeIgnored(items[i].json, options.ignoreFields as string);
 			}
 
-			rows.push(row);
+			if (dataMode === 'defineBelow') {
+				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
+					.values as IDataObject[];
 
-			if (rows.length === bulkSize || i === items.length - 1) {
-				if (options.typecast === true) {
-					body.typecast = true;
-				}
+				const fields = valuesToSend.reduce((acc, { column, value }) => {
+					acc[column as string] = value;
+					return acc;
+				}, {} as IDataObject);
 
-				body.records = rows;
-
-				const responseData = await apiRequest.call(this, 'POST', endpoint, body, qs);
-				const executionData = this.helpers.constructExecutionMetaData(
-					wrapData(responseData.records as IDataObject[]),
-					{ itemData: { item: i } },
-				);
-				returnData.push(...executionData);
-				// empty rows
-				rows.length = 0;
+				body.fields = fields;
 			}
+
+			const responseData = await apiRequest.call(this, 'POST', endpoint, body);
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				wrapData(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
+				returnData.push({ json: { message: error.message, error } });
 				continue;
 			}
 			throw error;

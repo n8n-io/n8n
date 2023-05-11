@@ -4,6 +4,7 @@ import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems } from '../../transport';
 import { findMatches, removeIgnored } from '../../helpers/utils';
 import type { UpdateBody, UpdateRecord } from '../../helpers/interfaces';
+import { insertUpdateOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -109,7 +110,7 @@ const properties: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
-							loadOptionsDependsOn: ['schema.value', 'table.value'],
+							loadOptionsDependsOn: ['base.value', 'table.value'],
 						},
 						default: [],
 					},
@@ -123,44 +124,7 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [
-			{
-				displayName: 'Typecast',
-				name: 'typecast',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether the Airtable API should attempt mapping of string values for linked records & select options',
-			},
-			{
-				displayName: 'Ignore Fields From Input',
-				name: 'ignoreFields',
-				type: 'string',
-				requiresDataPath: 'multiple',
-				displayOptions: {
-					show: {
-						'/dataMode': ['autoMapInputData'],
-					},
-				},
-				default: '',
-				description: 'Comma-separated list of fields in input to ignore when updating',
-			},
-			{
-				displayName: 'Update All Matches',
-				name: 'updateAllMatches',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to update all rows that match the "Column to Match On" or just the first one',
-			},
-		],
-	},
+	...insertUpdateOptions,
 ];
 
 const displayOptions = {

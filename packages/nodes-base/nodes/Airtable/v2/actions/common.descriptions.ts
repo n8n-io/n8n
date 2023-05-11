@@ -107,3 +107,49 @@ export const tableRLC: INodeProperties = {
 		},
 	],
 };
+
+export const insertUpdateOptions: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Typecast',
+				name: 'typecast',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether the Airtable API should attempt mapping of string values for linked records & select options',
+			},
+			{
+				displayName: 'Ignore Fields From Input',
+				name: 'ignoreFields',
+				type: 'string',
+				requiresDataPath: 'multiple',
+				displayOptions: {
+					show: {
+						'/dataMode': ['autoMapInputData'],
+					},
+				},
+				default: '',
+				description: 'Comma-separated list of fields in input to ignore when updating',
+			},
+			{
+				displayName: 'Update All Matches',
+				name: 'updateAllMatches',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to update all rows that match the "Column to Match On" or just the first one',
+				displayOptions: {
+					show: {
+						'/operation': ['update', 'upsert'],
+					},
+				},
+			},
+		],
+	},
+];
