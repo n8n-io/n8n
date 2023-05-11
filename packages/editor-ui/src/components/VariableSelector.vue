@@ -290,7 +290,7 @@ export default mixins(workflowHelpers).extend({
 		 * @param {number} [runIndex=0] The index of the run
 		 * @param {string} [inputName='main'] The name of the input
 		 * @param {number} [outputIndex=0] The index of the output
-		 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
 		getNodeRunDataOutput(
 			nodeName: string,
@@ -351,7 +351,7 @@ export default mixins(workflowHelpers).extend({
 		 * @param {string} nodeName The name of the node to get the data of
 		 * @param {IPinData[string]} pinData The node's pin data
 		 * @param {string} filterText Filter text for parameters
-		 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
 		getNodePinDataOutput(
 			nodeName: string,
