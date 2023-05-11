@@ -38,8 +38,11 @@ export class CodeFlow {
 			query.scope = sanitizeScope(options.scopes);
 		}
 
-		const sep = options.authorizationUri!.includes('?') ? '&' : '?';
-		return options.authorizationUri! + sep + qs.stringify({ ...query, ...options.query });
+		if (options.authorizationUri) {
+			const sep = options.authorizationUri.includes('?') ? '&' : '?';
+			return options.authorizationUri + sep + qs.stringify({ ...query, ...options.query });
+		}
+		throw new TypeError('Missing authorization uri, unable to get redirect uri');
 	}
 
 	/**
@@ -47,14 +50,14 @@ export class CodeFlow {
 	 * the user access token.
 	 */
 	async getToken(
-		uri?: string | URL,
+		uri: string | URL,
 		opts?: Partial<ClientOAuth2Options>,
 	): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options, ...opts };
 
 		expects(options, 'clientId', 'accessTokenUri');
 
-		const url = uri instanceof URL ? uri : new URL(uri!, DEFAULT_URL_BASE);
+		const url = uri instanceof URL ? uri : new URL(uri, DEFAULT_URL_BASE);
 		if (
 			typeof options.redirectUri === 'string' &&
 			typeof url.pathname === 'string' &&
@@ -65,7 +68,7 @@ export class CodeFlow {
 
 		if (!url.search?.substring(1)) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			throw new TypeError(`Unable to process uri: ${uri!.toString()}`);
+			throw new TypeError(`Unable to process uri: ${uri.toString()}`);
 		}
 
 		const data =

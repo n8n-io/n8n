@@ -281,7 +281,7 @@ oauth2CredentialController.get(
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
 			const oauthToken = await oAuthObj.code.getToken(
-				`${oAuth2Parameters.redirectUri}?${queryParameters}`,
+				`${oAuth2Parameters.redirectUri as string}?${queryParameters}`,
 				// @ts-ignore
 				options,
 			);
