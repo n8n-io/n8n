@@ -139,7 +139,6 @@ export default mergeConfig(
 			coverage: {
 				provider: 'c8',
 				reporter: coverageReporters,
-				include: ['src/**/*.ts'],
 				all: true,
 			},
 			css: {
