@@ -410,21 +410,21 @@ export const useUIStore = defineStore(STORES.UI, {
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			return fetchNextOnboardingPrompt(instanceId, currentUser);
 		},
 		async applyForOnboardingCall(email: string): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return await applyForOnboardingCall(instanceId, currentUser, email);
+			return applyForOnboardingCall(instanceId, currentUser, email);
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			return submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -477,7 +477,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		goToUpgrade(source: string, utm_campaign: string): void {
 			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');

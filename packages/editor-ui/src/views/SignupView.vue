@@ -97,7 +97,7 @@ export default mixins(showMessage).extend({
 			this.inviter = invite.inviter as { firstName: string; lastName: string };
 		} catch (e) {
 			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
-			this.$router.replace({ name: VIEWS.SIGNIN });
+			void this.$router.replace({ name: VIEWS.SIGNIN });
 		}
 	},
 	computed: {
