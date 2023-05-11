@@ -199,10 +199,14 @@ export class WorkflowExecute {
 						if (node && pinData && pinData[node.name]) {
 							incomingData.push(pinData[node.name]);
 						} else {
-							incomingData.push(
-								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-								runData[connection.node][runIndex].data![connection.type][connection.index]!,
-							);
+							if (
+								runData[connection.node][runIndex] &&
+								runData[connection.node][runIndex].data![connection.type][connection.index]
+							) {
+								incomingData.push(
+									runData[connection.node][runIndex].data![connection.type][connection.index]!,
+								);
+							}
 						}
 
 						incomingSourceData.main.push({
