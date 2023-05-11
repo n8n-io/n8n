@@ -5,12 +5,15 @@ import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'ID',
+		displayName: 'Record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. recf7EaZp707CEc8g',
 		required: true,
-		description: 'ID of the record to delete',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+		description:
+			'ID of the record to delete. <a href="https://support.airtable.com/docs/record-id" target="_blank">More info</a>.',
 	},
 ];
 
@@ -31,41 +34,18 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const body: IDataObject = {};
-	const qs: IDataObject = {};
-
-	const endpoint = `${base}/${table}`;
-
-	const rows: string[] = [];
-	const options = this.getNodeParameter('options', 0, {});
-	const bulkSize = (options.bulkSize as number) || 10;
-
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const id = this.getNodeParameter('id', i) as string;
 
-			rows.push(id);
+			const responseData = await apiRequest.call(this, 'DELETE', `${base}/${table}/${id}`);
 
-			if (rows.length === bulkSize || i === items.length - 1) {
-				// Make one request after another. This is slower but makes
-				// sure that we do not run into the rate limit they have in
-				// place and so block for 30 seconds. Later some global
-				// functionality in core should make it easy to make requests
-				// according to specific rules like not more than 5 requests
-				// per seconds.
-				qs.records = rows;
+			const executionData = this.helpers.constructExecutionMetaData(
+				wrapData(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
 
-				const responseData = await apiRequest.call(this, 'DELETE', endpoint, body, qs);
-
-				const executionData = this.helpers.constructExecutionMetaData(
-					wrapData(responseData.records as IDataObject[]),
-					{ itemData: { item: i } },
-				);
-
-				returnData.push(...executionData);
-				// empty rows
-				rows.length = 0;
-			}
+			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message } });

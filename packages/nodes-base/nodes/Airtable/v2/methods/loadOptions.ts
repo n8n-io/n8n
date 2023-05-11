@@ -58,3 +58,76 @@ export async function getColumnsWithoutColumnToMatchOn(
 	const returnData = await getColumns.call(this);
 	return returnData.filter((column) => column.value !== columnToMatchOn);
 }
+
+export async function getAttachmentColumns(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const base = this.getNodeParameter('base', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const tableId = encodeURI(
+		this.getNodeParameter('table', undefined, {
+			extractValue: true,
+		}) as string,
+	);
+
+	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
+
+	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
+		return table.id === tableId;
+	});
+
+	if (!tableData) {
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+	}
+
+	const result: INodePropertyOptions[] = [];
+
+	for (const field of tableData.fields as IDataObject[]) {
+		if (!(field.type as string)?.toLowerCase()?.includes('attachment')) {
+			continue;
+		}
+		result.push({
+			name: field.name as string,
+			value: field.name as string,
+			description: `Type: ${field.type}`,
+		});
+	}
+
+	return result;
+}
+
+export async function getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const base = this.getNodeParameter('base', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const tableId = encodeURI(
+		this.getNodeParameter('table', undefined, {
+			extractValue: true,
+		}) as string,
+	);
+
+	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
+
+	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
+		return table.id === tableId;
+	});
+
+	if (!tableData) {
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+	}
+
+	const result: INodePropertyOptions[] = [];
+
+	for (const view of tableData.views as IDataObject[]) {
+		result.push({
+			name: view.name as string,
+			value: view.id as string,
+			description: `Type: ${view.type}`,
+		});
+	}
+
+	return result;
+}

@@ -5,12 +5,15 @@ import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'ID',
+		displayName: 'Record ID',
 		name: 'id',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. recf7EaZp707CEc8g',
 		required: true,
-		description: 'ID of the record to return',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
+		description:
+			'ID of the record to get. <a href="https://support.airtable.com/docs/record-id" target="_blank">More info</a>.',
 	},
 ];
 
@@ -31,23 +34,11 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const body: IDataObject = {};
-	const qs: IDataObject = {};
-
-	let id: string;
 	for (let i = 0; i < items.length; i++) {
-		id = this.getNodeParameter('id', i) as string;
-
-		const endpoint = `${base}/${table}/${id}`;
-
-		// Make one request after another. This is slower but makes
-		// sure that we do not run into the rate limit they have in
-		// place and so block for 30 seconds. Later some global
-		// functionality in core should make it easy to make requests
-		// according to specific rules like not more than 5 requests
-		// per seconds.
 		try {
-			const responseData = await apiRequest.call(this, 'GET', endpoint, body, qs);
+			const id = this.getNodeParameter('id', i) as string;
+
+			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				wrapData(responseData as IDataObject[]),

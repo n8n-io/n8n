@@ -6,6 +6,16 @@ import type { IRecord } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
+		displayName: 'Filter By Formula',
+		name: 'filterByFormula',
+		type: 'string',
+		default: '',
+		placeholder: "e.g. NOT({Name} = '')",
+		hint: 'Leave empty to not filter records',
+		description:
+			'The formula will be evaluated for each record, and if the result is not falsy, empty or error that record will be included in the response. <a href="https://support.airtable.com/docs/formula-field-reference" target="_blank">More info</a>.',
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -29,28 +39,6 @@ const properties: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Download Attachments',
-		name: 'downloadAttachments',
-		type: 'boolean',
-		default: false,
-		description: "Whether the attachment fields define in 'Download Fields' will be downloaded",
-	},
-	{
-		displayName: 'Download Fields',
-		name: 'downloadFieldNames',
-		type: 'string',
-		required: true,
-		requiresDataPath: 'multiple',
-		displayOptions: {
-			show: {
-				downloadAttachments: [true],
-			},
-		},
-		default: '',
-		description:
-			"Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive and cannot include spaces after a comma.",
-	},
-	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -59,27 +47,41 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
-				displayName: 'Fields',
-				name: 'fields',
-				type: 'string',
-				requiresDataPath: 'single',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Field',
-				},
-				default: [],
-				placeholder: 'Name',
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
 				description:
-					'Only data for fields whose names are in this list will be included in the records',
+					"Whether to download the attachments of the fields defined in 'Download Fields'",
 			},
 			{
-				displayName: 'Filter By Formula',
-				name: 'filterByFormula',
-				type: 'string',
-				default: '',
-				placeholder: "NOT({Name} = '')",
+				displayName: 'Download Field Names or IDs',
+				name: 'downloadFieldNames',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getAttachmentColumns',
+					loadOptionsDependsOn: ['base.value', 'table.value'],
+				},
+				displayOptions: {
+					show: {
+						downloadAttachments: [true],
+					},
+				},
+				default: [],
 				description:
-					'A formula used to filter records. The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response.',
+					'The fields of type \'attachment\' that should be downloaded. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Output Field Names or IDs',
+				name: 'fields',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getColumns',
+					loadOptionsDependsOn: ['base.value', 'table.value'],
+				},
+				default: [],
+				description:
+					'The fields you want to include in the output. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sort',
@@ -97,11 +99,17 @@ const properties: INodeProperties[] = [
 						displayName: 'Property',
 						values: [
 							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 								displayName: 'Field',
 								name: 'field',
-								type: 'string',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getColumns',
+									loadOptionsDependsOn: ['base.value', 'table.value'],
+								},
 								default: '',
-								description: 'Name of the field to sort on',
+								description:
+									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Direction',
@@ -127,13 +135,16 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'View',
+				displayName: 'View Name or ID',
 				name: 'view',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getViews',
+					loadOptionsDependsOn: ['base.value', 'table.value'],
+				},
 				default: '',
-				placeholder: 'All Stories',
 				description:
-					'The name or ID of a view in the Stories table. If set, only the records in that view will be returned. The records will be sorted according to the order of the view.',
+					'If set, only the records in that view will be returned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -163,18 +174,31 @@ export async function execute(
 
 	try {
 		const returnAll = this.getNodeParameter('returnAll', 0);
-		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0);
 		const options = this.getNodeParameter('options', 0, {});
+		const filterByFormula = this.getNodeParameter('filterByFormula', 0) as string;
 
-		for (const key of Object.keys(options)) {
-			if (key === 'sort' && (options.sort as IDataObject).property !== undefined) {
-				qs[key] = (options[key] as IDataObject).property;
+		if (filterByFormula) {
+			qs.filterByFormula = filterByFormula;
+		}
+
+		if (options.fields) {
+			if (typeof options.fields === 'string') {
+				qs.fields = options.fields.split(',').map((field) => field.trim());
 			} else {
-				qs[key] = options[key];
+				qs.fields = options.fields as string[];
 			}
 		}
 
+		if (options.sort) {
+			qs.sort = (options.sort as IDataObject).property;
+		}
+
+		if (options.view) {
+			qs.view = options.view as string;
+		}
+
 		let responseData;
+
 		if (returnAll) {
 			responseData = await apiRequestAllItems.call(this, 'GET', endpoint, body, qs);
 		} else {
@@ -184,10 +208,16 @@ export async function execute(
 
 		returnData = responseData.records as INodeExecutionData[];
 
-		if (downloadAttachments === true) {
-			const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
-				',',
-			);
+		if (options.downloadAttachments === true) {
+			if (!options.downloadFieldNames) {
+				throw new Error(
+					"When 'Download Attachments' set to true you must specify at least one field to download under options 'Download Field Names or IDs'",
+				);
+			}
+			let downloadFieldNames: string | string[] = options.downloadFieldNames as string;
+			if (typeof downloadFieldNames === 'string') {
+				downloadFieldNames = downloadFieldNames.split(',').map((item) => item.trim());
+			}
 			const data = await downloadRecordAttachments.call(
 				this,
 				responseData.records as IRecord[],
