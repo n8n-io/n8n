@@ -30,7 +30,7 @@ export abstract class BaseCommand extends Command {
 
 	protected loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	protected nodeTypes: INodeTypes;
+	protected nodeTypes: NodeTypes;
 
 	protected userSettings: IUserSettings;
 
@@ -48,6 +48,7 @@ export abstract class BaseCommand extends Command {
 		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await this.loadNodesAndCredentials.init();
 		this.nodeTypes = Container.get(NodeTypes);
+		this.nodeTypes.init();
 		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
