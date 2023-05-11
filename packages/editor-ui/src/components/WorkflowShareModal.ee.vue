@@ -261,7 +261,7 @@ export default defineComponent({
 
 			this.loading = true;
 
-			const saveWorkflowPromise = () => {
+			const saveWorkflowPromise = async () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.emit('saveWorkflow', () => {
@@ -408,7 +408,7 @@ export default defineComponent({
 		},
 		onRoleAction(user: IUser, action: string) {
 			if (action === 'remove') {
-				this.onRemoveSharee(user.id);
+				void this.onRemoveSharee(user.id);
 			}
 		},
 		async onCloseModal() {
@@ -428,7 +428,7 @@ export default defineComponent({
 				);
 
 				if (shouldSave === MODAL_CONFIRM) {
-					return await this.onSave();
+					return this.onSave();
 				}
 			}
 
@@ -472,7 +472,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.initialize();
+		void this.initialize();
 	},
 	watch: {
 		workflow(workflow) {

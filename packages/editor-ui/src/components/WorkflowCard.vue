@@ -188,7 +188,7 @@ export default defineComponent({
 				}
 			}
 
-			this.$router.push({
+			await this.$router.push({
 				name: VIEWS.WORKFLOW,
 				params: { name: this.data.id },
 			});

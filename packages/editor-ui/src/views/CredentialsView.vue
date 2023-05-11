@@ -108,7 +108,7 @@ export default defineComponent({
 
 			await Promise.all(loadPromises);
 
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(
 			resource: ICredentialsResponse,

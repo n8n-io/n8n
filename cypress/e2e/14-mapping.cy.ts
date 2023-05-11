@@ -156,7 +156,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('maps expressions from schema view', () => {
@@ -172,7 +172,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 
@@ -180,7 +180,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('maps expressions from previous nodes', () => {
@@ -205,17 +205,17 @@ describe('Data mapping', () => {
 				'have.text',
 				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
 			);
-		ndv.getters.parameterExpressionPreview('value').should('have.text', ' ');
+		ndv.actions.validateExpressionPreview('value', ' ');
 
 		ndv.actions.selectInputNode('Set');
 
 		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 
 		ndv.getters.inputTbodyCell(2, 0).realHover();
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '1 [object Object]');
 	});
 
 	it('maps keys to path', () => {
@@ -282,7 +282,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 
@@ -290,7 +290,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('shows you can drop to inputs, including booleans', () => {

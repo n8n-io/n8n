@@ -28,7 +28,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
+import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -83,7 +83,7 @@ export interface ICredentialsOverwrite {
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
-export interface IDatabaseCollections {
+export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	AuthIdentity: AuthIdentityRepository;
 	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
 	Credentials: CredentialsRepository;

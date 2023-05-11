@@ -515,7 +515,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 		dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			void this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -1109,7 +1109,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 
 					resourceLocatorRef?.$emit('refreshList');
 				}
-				this.loadRemoteParameterOptions();
+				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
 				htmlEditorEventBus.emit('format-html');
 			}
@@ -1168,7 +1168,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 			this.$watch(
 				() => this.node!.credentials,
 				() => {
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				},
 				{ deep: true, immediate: true },
 			);

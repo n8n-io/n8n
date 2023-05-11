@@ -15,7 +15,7 @@ const branches = ref<string[]>([]);
 const selectElement = ref<HTMLSelectElement | null>(null);
 
 const onContinue = () => {
-	versionControlStore.initSsh({
+	void versionControlStore.initSsh({
 		name: versionControlStore.state.authorName,
 		email: versionControlStore.state.authorEmail,
 		remoteRepository: versionControlStore.state.repositoryUrl,
@@ -23,7 +23,7 @@ const onContinue = () => {
 };
 
 const onConnect = () => {
-	versionControlStore.initRepository();
+	void versionControlStore.initRepository();
 };
 
 const onSelect = async (b: string) => {

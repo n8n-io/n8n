@@ -131,7 +131,7 @@ export default defineComponent({
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				this.onClick();
+				await this.onClick();
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText(
@@ -151,7 +151,7 @@ export default defineComponent({
 				);
 
 				if (deleteConfirmed === MODAL_CONFIRM) {
-					this.credentialsStore.deleteCredential({ id: this.data.id });
+					await this.credentialsStore.deleteCredential({ id: this.data.id });
 				}
 			}
 		},

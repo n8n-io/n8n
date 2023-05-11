@@ -113,7 +113,7 @@ export default mixins(externalHooks).extend({
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);
-			this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
+			void this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
 		},
 	},
 });

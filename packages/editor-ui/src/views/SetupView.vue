@@ -190,8 +190,8 @@ export default defineComponent({
 			}
 		},
 		onSkip() {
-			this.usersStore.skipOwnerSetup();
-			this.$router.push({
+			void this.usersStore.skipOwnerSetup();
+			void this.$router.push({
 				name: VIEWS.NEW_WORKFLOW,
 			});
 		},

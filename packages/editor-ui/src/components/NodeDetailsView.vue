@@ -532,7 +532,7 @@ export default mixins(
 		onWorkflowActivate() {
 			this.ndvStore.activeNodeName = null;
 			setTimeout(() => {
-				this.activateCurrentWorkflow('ndv');
+				void this.activateCurrentWorkflow('ndv');
 			}, 1000);
 		},
 		onFeatureRequestClick() {
@@ -647,7 +647,7 @@ export default mixins(
 				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,

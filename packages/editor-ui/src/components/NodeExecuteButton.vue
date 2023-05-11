@@ -187,7 +187,7 @@ export default mixins(workflowRun, pinData).extend({
 
 		async onClick() {
 			if (this.isListeningForEvents) {
-				this.stopWaitingForWebhook();
+				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
 				this.$emit('stopExecution');
 			} else {
@@ -216,9 +216,9 @@ export default mixins(workflowRun, pinData).extend({
 						source: this.telemetrySource,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 					this.$emit('execute');
 				}
 			}

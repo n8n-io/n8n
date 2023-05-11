@@ -887,7 +887,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 				}
 
 				if (redirect) {
-					this.$router.replace({
+					void this.$router.replace({
 						name: VIEWS.WORKFLOW,
 						params: { name: workflowData.id as string, action: 'workflowSave' },
 					});

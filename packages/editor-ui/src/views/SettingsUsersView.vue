@@ -114,7 +114,7 @@ export default mixins(copyPaste).extend({
 	},
 	methods: {
 		redirectToSetup() {
-			this.$router.push({ name: VIEWS.SETUP });
+			void this.$router.push({ name: VIEWS.SETUP });
 		},
 		onInvite() {
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);

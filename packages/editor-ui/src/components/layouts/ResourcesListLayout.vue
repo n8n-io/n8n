@@ -61,6 +61,20 @@
 			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
+						<n8n-callout
+							v-if="starsBannerShouldRender"
+							theme="secondary"
+							icon="star"
+							:class="$style['github-stars-banner']"
+						>
+							<span v-html="$locale.baseText('githubStars.banner.title')"></span>
+							<template #trailingContent>
+								<n8n-link :to="repoUrl" size="small" theme="secondary" bold underline>
+									{{ $locale.baseText('githubStars.banner.link') }}
+								</n8n-link>
+							</template>
+						</n8n-callout>
+
 						<div :class="$style['filters-row']">
 							<n8n-input
 								:class="[$style['search'], 'mr-2xs']"
@@ -186,7 +200,11 @@ import mixins from 'vue-typed-mixins';
 
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
-import { EnterpriseEditionFeature } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	GITHUB_STARS_BANNER_SHOW_UNTIL_DATE,
+	MAIN_REPOSITORY_URL,
+} from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -296,10 +314,14 @@ export default mixins(debounceHelper).extend({
 			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
+			repoUrl: MAIN_REPOSITORY_URL,
 		};
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUsersStore),
+		starsBannerShouldRender() {
+			return this.resourceKey === 'workflows' && new Date() < GITHUB_STARS_BANNER_SHOW_UNTIL_DATE;
+		},
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
@@ -461,7 +483,7 @@ export default mixins(debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.onMounted();
+		void this.onMounted();
 	},
 	watch: {
 		isOwnerSubview() {
@@ -529,5 +551,9 @@ export default mixins(debounceHelper).extend({
 
 .datatable {
 	padding-bottom: var(--spacing-s);
+}
+
+.github-stars-banner {
+	margin-bottom: var(--spacing-m);
 }
 </style>

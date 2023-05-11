@@ -120,7 +120,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
 				) {
 					this.uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 				} else {
-					this.settingsStore.fetchPromptsData();
+					await this.settingsStore.fetchPromptsData();
 				}
 			}
 		},

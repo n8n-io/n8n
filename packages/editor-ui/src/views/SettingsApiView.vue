@@ -107,7 +107,7 @@ export default defineComponent({
 		};
 	},
 	mounted() {
-		this.getApiKey();
+		void this.getApiKey();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
@@ -133,7 +133,7 @@ export default defineComponent({
 				},
 			);
 			if (confirmed === MODAL_CONFIRM) {
-				this.deleteApiKey();
+				await this.deleteApiKey();
 			}
 		},
 		async getApiKey() {

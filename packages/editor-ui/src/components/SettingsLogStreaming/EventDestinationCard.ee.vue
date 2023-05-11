@@ -144,7 +144,7 @@ export default defineComponent({
 		},
 		onEnabledSwitched(state: boolean, destinationId: string) {
 			this.nodeParameters.enabled = state;
-			this.saveDestination();
+			void this.saveDestination();
 		},
 		async saveDestination() {
 			await this.logStreamingStore.saveDestination(this.nodeParameters);

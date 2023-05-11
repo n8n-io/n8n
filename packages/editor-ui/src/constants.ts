@@ -80,6 +80,7 @@ export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integr
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
+export const MAIN_REPOSITORY_URL = 'https://github.com/n8n-io/n8n';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -548,3 +549,5 @@ export const ALLOWED_HTML_TAGS = [
 	'details',
 	'summary',
 ];
+
+export const GITHUB_STARS_BANNER_SHOW_UNTIL_DATE = new Date('2023-06-01');

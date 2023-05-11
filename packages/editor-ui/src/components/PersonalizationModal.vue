@@ -615,7 +615,7 @@ export default mixins(workflowHelpers).extend({
 			// In case the redirect to canvas for new users didn't happen
 			// we try again after closing the modal
 			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 			}
 		},
 		onSave() {
@@ -632,7 +632,7 @@ export default mixins(workflowHelpers).extend({
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				this.$externalHooks().run('personalizationModal.onSubmit', survey);
+				await this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 

@@ -128,7 +128,7 @@ export default defineComponent({
 
 		this.eventBus?.on('focus', this.onBusFocus);
 
-		this.tagsStore.fetchAll();
+		void this.tagsStore.fetchAll();
 	},
 	destroyed() {
 		this.eventBus?.off('focus', this.onBusFocus);
@@ -181,7 +181,7 @@ export default defineComponent({
 				this.$data.filter = '';
 				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
-				this.onCreate();
+				void this.onCreate();
 			} else {
 				setTimeout(() => {
 					if (!this.$data.preventUpdate) {

@@ -363,14 +363,14 @@ export default mixins(
 					this.onLogout();
 					break;
 				case 'settings':
-					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					void this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					break;
 				default:
 					break;
 			}
 		},
 		onLogout() {
-			this.$router.push({ name: VIEWS.SIGNOUT });
+			void this.$router.push({ name: VIEWS.SIGNOUT });
 		},
 		toggleCollapse() {
 			this.uiStore.toggleSidebarMenuCollapse();
@@ -506,7 +506,7 @@ export default mixins(
 			)) as MessageBoxInputData;
 
 			if (prompt.value) {
-				this.versionControlStore.sync({ commitMessage: prompt.value });
+				await this.versionControlStore.sync({ commitMessage: prompt.value });
 			}
 		},
 	},
