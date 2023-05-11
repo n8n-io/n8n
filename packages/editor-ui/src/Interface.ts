@@ -1454,7 +1454,6 @@ export declare namespace Cloud {
 		displayName: string;
 		expirationDate: string;
 		metadata: PlanMetadata;
-		usage: PlanUsage;
 	}
 
 	export interface PlanMetadata {
@@ -1464,17 +1463,21 @@ export declare namespace Cloud {
 		trial?: Trial;
 	}
 
-	export interface PlanUsage {
-		executions: number;
-		activeWorkflows: number;
-	}
-
 	interface Trial {
 		length: number;
 		gracePeriod: number;
 	}
 }
 
+// type ClouPlanAndUsage = Cloud.PlanData & { usage?: InstanceUsage };
+
 export interface CloudPlanState {
 	data: Cloud.PlanData | null;
+	usage: InstanceUsage | null;
+}
+
+export interface InstanceUsage {
+	timeframe?: string;
+	executions: number;
+	activeWorkflows: number;
 }

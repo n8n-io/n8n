@@ -4,11 +4,12 @@ import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getCurrentPlan } from '@/api/cloudPlans';
+import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
+	usage: null,
 };
 
 export const useCloudPlanStore = defineStore('cloudPlan', () => {
@@ -22,6 +23,10 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.data = data;
 	};
 
+	const setUsage = (data: CloudPlanState['usage']) => {
+		state.usage = data;
+	};
+
 	const userIsTrialing = computed(() => state.data?.metadata.group === 'trial');
 
 	const currentPlanData = computed(() => state.data);
@@ -33,7 +38,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 	);
 
 	const allExecutionsUsed = computed(
-		() => state.data?.usage?.executions === state.data?.monthlyExecutionsLimit,
+		() => state.usage?.executions === state.data?.monthlyExecutionsLimit,
 	);
 
 	const getOwnerCurrentPLan = async () => {
@@ -46,9 +51,15 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		return getCurrentPlan(rootStore.getRestCloudApiContext, cloudUserId as string);
 	};
 
+	const getInstanceCurrentUsage = async () => {
+		return getCurrentUsage(rootStore.getRestApiContext);
+	};
+
 	return {
 		setData,
+		setUsage,
 		getOwnerCurrentPLan,
+		getInstanceCurrentUsage,
 		userIsTrialing,
 		currentPlanData,
 		trialExpired,

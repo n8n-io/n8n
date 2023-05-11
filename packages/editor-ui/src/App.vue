@@ -49,6 +49,7 @@ import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useUsageStore } from '@/stores/usage.store';
 
 export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
@@ -73,6 +74,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			useUsersStore,
 			useVersionControlStore,
 			useCloudPlanStore,
+			useUsageStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -183,27 +185,29 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		async monitorExecutionUsageOnCloudPlan() {
+		async checkForCloudPlanData() {
 			try {
 				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
 				this.cloudPlanStore.setData(plan);
 				if (!this.cloudPlanStore.userIsTrialing) return;
-				this.startPollingPlanData();
+				const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
+				this.cloudPlanStore.setUsage(usage);
+				this.startPollingInstanceUsageData();
 			} catch {}
 		},
-		startPollingPlanData() {
+		startPollingInstanceUsageData() {
 			// TODO: remove before releasing
 			let acc = 0;
 			const interval = setInterval(async () => {
 				try {
-					const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
-					this.cloudPlanStore.setData(plan);
+					const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
+					this.cloudPlanStore.setUsage(usage);
 					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
 						clearTimeout(interval);
 						return;
 					}
 					// TODO: remove before releasing
-					plan.usage.executions += acc;
+					usage.executions += acc;
 					acc += 20;
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
@@ -216,7 +220,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		this.authenticate();
 		this.redirectIfNecessary();
 		this.checkForNewVersions();
-		this.monitorExecutionUsageOnCloudPlan();
+		this.checkForCloudPlanData();
 
 		this.loading = false;
 
