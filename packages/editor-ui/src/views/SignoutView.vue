@@ -14,14 +14,14 @@ export default mixins(showMessage).extend({
 		async logout() {
 			try {
 				await this.usersStore.logout();
-				this.$router.replace({ name: VIEWS.SIGNIN });
+				void this.$router.replace({ name: VIEWS.SIGNIN });
 			} catch (e) {
 				this.$showError(e, this.$locale.baseText('auth.signout.error'));
 			}
 		},
 	},
 	mounted() {
-		this.logout();
+		void this.logout();
 	},
 });
 </script>

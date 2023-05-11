@@ -215,7 +215,7 @@ export default mixins(workflowHelpers).extend({
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
 			});
-			if (saved) this.settingsStore.fetchPromptsData();
+			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 	},
 });

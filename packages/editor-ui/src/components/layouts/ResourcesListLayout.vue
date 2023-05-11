@@ -486,7 +486,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.onMounted();
+		void this.onMounted();
 	},
 	watch: {
 		isOwnerSubview() {
