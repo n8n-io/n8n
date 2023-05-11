@@ -16,7 +16,7 @@ import { LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 import type { ClientOptions } from 'ldapts';
 import { Attribute, Change, Client } from 'ldapts';
 import { ldapFields } from './LdapDescription';
-import { BINARY_AD_ATTRIBUTES, resolveBinaryAttributes } from './Helpers';
+import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
@@ -106,7 +106,8 @@ export class Ldap implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+					const client = await createLdapClient(credentials);
+					/*const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
 					const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
 
 					const ldapOptions: ClientOptions = { url };
@@ -125,7 +126,7 @@ export class Ldap implements INodeType {
 					const client = new Client(ldapOptions);
 					if (credentials.connectionSecurity === 'startTls') {
 						await client.startTLS(tlsOptions);
-					}
+					}*/
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					return {
@@ -142,7 +143,7 @@ export class Ldap implements INodeType {
 		loadOptions: {
 			async getAttributes(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
-				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+				/*const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
 				const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
 
 				const ldapOptions: ClientOptions = { url };
@@ -157,12 +158,13 @@ export class Ldap implements INodeType {
 						ldapOptions.tlsOptions = tlsOptions;
 					}
 				}
-				const client = new Client(ldapOptions);
+				const client = new Client(ldapOptions);*/
+				const client = await createLdapClient(credentials);
 
 				try {
-					if (credentials.connectionSecurity === 'startTls') {
-						await client.startTLS(tlsOptions);
-					}
+					//if (credentials.connectionSecurity === 'startTls') {
+					//	await client.startTLS(tlsOptions);
+					//}
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					console.log(error);
@@ -180,7 +182,7 @@ export class Ldap implements INodeType {
 
 			async getObjectClasses(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
-				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+				/*const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
 				const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
 
 				const ldapOptions: ClientOptions = { url };
@@ -195,12 +197,13 @@ export class Ldap implements INodeType {
 						ldapOptions.tlsOptions = tlsOptions;
 					}
 				}
-				const client = new Client(ldapOptions);
+				const client = new Client(ldapOptions);*/
+				const client = await createLdapClient(credentials);
 
 				try {
-					if (credentials.connectionSecurity === 'startTls') {
-						await client.startTLS(tlsOptions);
-					}
+					//if (credentials.connectionSecurity === 'startTls') {
+					//	await client.startTLS(tlsOptions);
+					//}
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					console.log(error);
@@ -230,7 +233,7 @@ export class Ldap implements INodeType {
 
 			async getAttributesForDn(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
-				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+				/*const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
 				const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
 
 				const ldapOptions: ClientOptions = { url };
@@ -245,12 +248,13 @@ export class Ldap implements INodeType {
 						ldapOptions.tlsOptions = tlsOptions;
 					}
 				}
-				const client = new Client(ldapOptions);
+				const client = new Client(ldapOptions);*/
+				const client = await createLdapClient(credentials);
 
 				try {
-					if (credentials.connectionSecurity === 'startTls') {
-						await client.startTLS(tlsOptions);
-					}
+					//if (credentials.connectionSecurity === 'startTls') {
+					//	await client.startTLS(tlsOptions);
+					//}
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					console.log(error);
@@ -288,8 +292,11 @@ export class Ldap implements INodeType {
 
 		const ldapOptions: ClientOptions = { url };
 		const tlsOptions: IDataObject = {};
+		if (credentials.connectionSecurity !== 'startTls') {
+			ldapOptions.tlsOptions = tlsOptions;
+		}
 
-		if (credentials.connectionSecurity !== 'none') {
+		/*if (credentials.connectionSecurity !== 'none') {
 			tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
 			if (credentials.caCertificate) {
 				tlsOptions.ca = [credentials.caCertificate as string];
@@ -299,7 +306,8 @@ export class Ldap implements INodeType {
 			}
 		}
 
-		const client = new Client(ldapOptions);
+		const client = new Client(ldapOptions);*/
+		const client = await createLdapClient(credentials);
 
 		if (nodeDebug) {
 			Logger.info(

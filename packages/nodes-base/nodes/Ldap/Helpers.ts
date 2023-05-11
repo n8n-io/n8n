@@ -1,4 +1,6 @@
-import type { Entry } from 'ldapts';
+import { Client } from 'ldapts';
+import type { ClientOptions, Entry } from 'ldapts';
+import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
@@ -13,3 +15,29 @@ const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
 export const resolveBinaryAttributes = (entries: Entry[]): void => {
 	entries.forEach((entry) => resolveEntryBinaryAttributes(entry));
 };
+
+export async function createLdapClient(
+	credentials: ICredentialDataDecryptedObject,
+): Promise<Client> {
+	const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+	const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
+
+	const ldapOptions: ClientOptions = { url };
+	const tlsOptions: IDataObject = {};
+
+	if (credentials.connectionSecurity !== 'none') {
+		tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
+		if (credentials.caCertificate) {
+			tlsOptions.ca = [credentials.caCertificate as string];
+		}
+		if (credentials.connectionSecurity !== 'startTls') {
+			ldapOptions.tlsOptions = tlsOptions;
+		}
+	}
+
+	const client = new Client(ldapOptions);
+	if (credentials.connectionSecurity === 'startTls') {
+		await client.startTLS(tlsOptions);
+	}
+	return client;
+}
