@@ -84,7 +84,7 @@ export class ClientOAuth2Token {
 					grant_type: 'refresh_token',
 				},
 			},
-			{},
+			opts,
 		);
 
 		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
