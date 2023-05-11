@@ -200,12 +200,12 @@ export async function execute(
 
 		const nodeVersion = this.getNode().typeVersion;
 		const columnsToMatchOn: string[] =
-			nodeVersion === 2
+			nodeVersion < 3
 				? [this.getNodeParameter('columnToMatchOn', i) as string]
 				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
-			nodeVersion === 2
+			nodeVersion < 3
 				? (this.getNodeParameter('dataMode', i) as string)
 				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
@@ -217,12 +217,12 @@ export async function execute(
 
 		if (dataMode === 'defineBelow') {
 			const valuesToSend =
-				nodeVersion === 2
+				nodeVersion < 3
 					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			if (nodeVersion === 2) {
+			if (nodeVersion < 3) {
 				item = prepareItem(valuesToSend);
 				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
 			} else {

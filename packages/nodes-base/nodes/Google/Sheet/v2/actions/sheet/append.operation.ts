@@ -126,7 +126,7 @@ export const description: SheetProperties = [
 				addAllFields: false,
 				noFieldsError: 'No columns found in sheet.',
 				multiKeyMatch: false,
-				supportAutoMap: false,
+				// supportAutoMap: false,
 			},
 		},
 		displayOptions: {
@@ -197,7 +197,7 @@ export async function execute(
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
 	const dataMode =
-		nodeVersion === 3
+		nodeVersion < 4
 			? (this.getNodeParameter('dataMode', 0) as string)
 			: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
@@ -233,5 +233,9 @@ export async function execute(
 		false,
 	);
 
-	return items;
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items;
+	} else {
+		return this.helpers.returnJsonArray(setData);
+	}
 }

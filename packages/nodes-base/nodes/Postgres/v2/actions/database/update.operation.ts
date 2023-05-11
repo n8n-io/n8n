@@ -202,36 +202,36 @@ export async function execute(
 
 		const nodeVersion = this.getNode().typeVersion;
 		const columnsToMatchOn: string[] =
-			nodeVersion === 2
+			nodeVersion < 3
 				? [this.getNodeParameter('columnToMatchOn', i) as string]
 				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
-			nodeVersion === 2
+			nodeVersion < 3
 				? (this.getNodeParameter('dataMode', i) as string)
 				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 		let valueToMatchOn: string | IDataObject = '';
-		if (nodeVersion === 2) {
+		if (nodeVersion < 3) {
 			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 		}
 
 		if (dataMode === 'autoMapInputData') {
 			item = items[i].json;
-			if (nodeVersion === 2) {
+			if (nodeVersion < 3) {
 				valueToMatchOn = item[columnsToMatchOn[0]] as string;
 			}
 		}
 
 		if (dataMode === 'defineBelow') {
 			const valuesToSend =
-				nodeVersion === 2
+				nodeVersion < 3
 					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			if (nodeVersion === 2) {
+			if (nodeVersion < 3) {
 				item = prepareItem(valuesToSend);
 				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
 			} else {
@@ -240,7 +240,7 @@ export async function execute(
 		}
 
 		const matchValues: string[] = [];
-		if (nodeVersion === 2) {
+		if (nodeVersion < 3) {
 			matchValues.push(columnsToMatchOn[0]);
 			matchValues.push(valueToMatchOn);
 		} else {
@@ -278,7 +278,7 @@ export async function execute(
 		let valuesLength = values.length + 1;
 
 		let condition = '';
-		if (nodeVersion === 2) {
+		if (nodeVersion < 3) {
 			condition = `$${valuesLength}:name = $${valuesLength + 1}`;
 			valuesLength = valuesLength + 2;
 			values.push(columnsToMatchOn[0], valueToMatchOn);

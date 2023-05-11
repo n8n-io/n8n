@@ -196,7 +196,7 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 
 	for (let i = 0; i < inputSize; i++) {
 		const nodeVersion = this.getNode().typeVersion;
-		if (nodeVersion === 3) {
+		if (nodeVersion < 4) {
 			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
 			let dataToSend: IDataObject = {};
 			for (const field of fields) {

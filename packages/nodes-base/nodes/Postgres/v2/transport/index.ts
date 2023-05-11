@@ -40,7 +40,7 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-export async function configurePostgres(
+async function configurePostgres(
 	credentials: IDataObject,
 	options: IDataObject = {},
 	createdSshClient?: Client,
