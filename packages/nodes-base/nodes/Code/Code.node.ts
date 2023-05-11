@@ -76,18 +76,11 @@ export class Code implements INodeType {
 				displayName: 'Language',
 				name: 'language',
 				type: 'hidden',
-				noDataExpression: true,
 				displayOptions: {
 					show: {
 						'@version': [1],
 					},
 				},
-				options: [
-					{
-						name: 'JavaScript',
-						value: 'javaScript',
-					},
-				],
 				default: 'javaScript',
 			},
 
