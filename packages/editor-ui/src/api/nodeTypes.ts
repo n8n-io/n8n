@@ -1,4 +1,4 @@
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	INodeTranslationHeaders,
 	IResourceLocatorReqParams,

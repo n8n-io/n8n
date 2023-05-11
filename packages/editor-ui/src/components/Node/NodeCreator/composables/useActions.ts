@@ -203,7 +203,7 @@ export const useActions = () => {
 			source_mode: rootView.toLowerCase(),
 			resource: (action.value as INodeParameters).resource || '',
 		};
-		runExternalHook('nodeCreateList.addAction', useWebhooksStore(), payload);
+		void runExternalHook('nodeCreateList.addAction', useWebhooksStore(), payload);
 		telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
 	}
 

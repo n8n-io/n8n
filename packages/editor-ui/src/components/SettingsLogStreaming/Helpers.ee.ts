@@ -3,7 +3,7 @@ import type {
 	INodeParameters,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
-import type { INodeUi } from '../../Interface';
+import type { INodeUi } from '@/Interface';
 
 export function destinationToFakeINodeUi(
 	destination: MessageEventBusDestinationOptions,

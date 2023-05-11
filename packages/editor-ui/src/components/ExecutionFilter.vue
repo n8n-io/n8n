@@ -162,26 +162,24 @@ onBeforeMount(() => {
 						data-test-id="execution-filter-badge"
 						>{{ countSelectedFilterProps }}</n8n-badge
 					>
-					{{ $locale.baseText('executionsList.filters') }}
+					{{ locale.baseText('executionsList.filters') }}
 				</n8n-button>
 			</template>
 			<div data-test-id="execution-filter-form">
 				<div v-if="workflows?.length" :class="$style.group">
-					<label for="execution-filter-workflows">{{
-						$locale.baseText('workflows.heading')
-					}}</label>
+					<label for="execution-filter-workflows">{{ locale.baseText('workflows.heading') }}</label>
 					<n8n-select
 						id="execution-filter-workflows"
 						v-model="vModel.workflowId"
-						:placeholder="$locale.baseText('executionsFilter.selectWorkflow')"
+						:placeholder="locale.baseText('executionsFilter.selectWorkflow')"
 						size="medium"
 						filterable
 						data-test-id="executions-filter-workflows-select"
 					>
 						<div class="ph-no-capture">
 							<n8n-option
-								v-for="item in workflows"
-								:key="item.id"
+								v-for="(item, idx) in props.workflows"
+								:key="idx"
 								:label="item.name"
 								:value="item.id"
 							/>
@@ -189,12 +187,10 @@ onBeforeMount(() => {
 					</n8n-select>
 				</div>
 				<div v-if="showTags" :class="$style.group">
-					<label for="execution-filter-tags">{{
-						$locale.baseText('workflows.filters.tags')
-					}}</label>
+					<label for="execution-filter-tags">{{ locale.baseText('workflows.filters.tags') }}</label>
 					<TagsDropdown
 						id="execution-filter-tags"
-						:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
+						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
 						:currentTagIds="filter.tags"
 						:createEnabled="false"
 						@update="onTagsChange"
@@ -203,19 +199,19 @@ onBeforeMount(() => {
 				</div>
 				<div :class="$style.group">
 					<label for="execution-filter-status">{{
-						$locale.baseText('executionsList.status')
+						locale.baseText('executionsList.status')
 					}}</label>
 					<n8n-select
 						id="execution-filter-status"
 						v-model="vModel.status"
-						:placeholder="$locale.baseText('executionsFilter.selectStatus')"
+						:placeholder="locale.baseText('executionsFilter.selectStatus')"
 						size="medium"
 						filterable
 						data-test-id="executions-filter-status-select"
 					>
 						<n8n-option
-							v-for="item in statuses"
-							:key="item.id"
+							v-for="(item, idx) in statuses"
+							:key="idx"
 							:label="item.name"
 							:value="item.id"
 						/>
@@ -223,7 +219,7 @@ onBeforeMount(() => {
 				</div>
 				<div :class="$style.group">
 					<label for="execution-filter-start-date">{{
-						$locale.baseText('executionsFilter.start')
+						locale.baseText('executionsFilter.start')
 					}}</label>
 					<div :class="$style.dates">
 						<el-date-picker
@@ -231,7 +227,7 @@ onBeforeMount(() => {
 							type="datetime"
 							v-model="vModel.startDate"
 							:format="DATE_TIME_MASK"
-							:placeholder="$locale.baseText('executionsFilter.startDate')"
+							:placeholder="locale.baseText('executionsFilter.startDate')"
 							data-test-id="executions-filter-start-date-picker"
 						/>
 						<span :class="$style.divider">to</span>
@@ -240,7 +236,7 @@ onBeforeMount(() => {
 							type="datetime"
 							v-model="vModel.endDate"
 							:format="DATE_TIME_MASK"
-							:placeholder="$locale.baseText('executionsFilter.endDate')"
+							:placeholder="locale.baseText('executionsFilter.endDate')"
 							data-test-id="executions-filter-end-date-picker"
 						/>
 					</div>
@@ -254,19 +250,19 @@ onBeforeMount(() => {
 										target="_blank"
 										href="https://docs.n8n.io/workflows/executions/custom-executions-data/"
 									>
-										{{ $locale.baseText('executionsFilter.customData.docsTooltip.link') }}
+										{{ locale.baseText('executionsFilter.customData.docsTooltip.link') }}
 									</a>
 								</template>
 							</i18n>
 						</template>
 						<span :class="$style.label">
-							{{ $locale.baseText('executionsFilter.savedData') }}
+							{{ locale.baseText('executionsFilter.savedData') }}
 							<n8n-icon :class="$style.tooltipIcon" icon="question-circle" size="small" />
 						</span>
 					</n8n-tooltip>
 					<div :class="$style.subGroup">
 						<label for="execution-filter-saved-data-key">{{
-							$locale.baseText('executionsFilter.savedDataKey')
+							locale.baseText('executionsFilter.savedDataKey')
 						}}</label>
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
@@ -276,7 +272,7 @@ onBeforeMount(() => {
 											href="#"
 											@click.prevent="goToUpgrade"
 											data-test-id="executions-filter-view-plans-link"
-											>{{ $locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
+											>{{ locale.baseText('executionsFilter.customData.inputTooltip.link') }}</a
 										>
 									</template>
 								</i18n>
@@ -287,21 +283,21 @@ onBeforeMount(() => {
 								type="text"
 								size="medium"
 								:disabled="!isAdvancedExecutionFilterEnabled"
-								:placeholder="$locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
+								:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 								:value="filter.metadata[0]?.key"
 								@input="onFilterMetaChange(0, 'key', $event)"
 								data-test-id="execution-filter-saved-data-key-input"
 							/>
 						</n8n-tooltip>
 						<label for="execution-filter-saved-data-value">{{
-							$locale.baseText('executionsFilter.savedDataValue')
+							locale.baseText('executionsFilter.savedDataValue')
 						}}</label>
 						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
 										<a href="#" @click.prevent="goToUpgrade">{{
-											$locale.baseText('executionsFilter.customData.inputTooltip.link')
+											locale.baseText('executionsFilter.customData.inputTooltip.link')
 										}}</a>
 									</template>
 								</i18n>
@@ -312,7 +308,7 @@ onBeforeMount(() => {
 								type="text"
 								size="medium"
 								:disabled="!isAdvancedExecutionFilterEnabled"
-								:placeholder="$locale.baseText('executionsFilter.savedDataValuePlaceholder')"
+								:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 								:value="filter.metadata[0]?.value"
 								@input="onFilterMetaChange(0, 'value', $event)"
 								data-test-id="execution-filter-saved-data-value-input"
@@ -328,7 +324,7 @@ onBeforeMount(() => {
 					text
 					data-test-id="executions-filter-reset-button"
 				>
-					{{ $locale.baseText('executionsFilter.reset') }}
+					{{ locale.baseText('executionsFilter.reset') }}
 				</n8n-button>
 			</div>
 		</n8n-popover>

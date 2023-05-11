@@ -120,7 +120,7 @@ export function useToast() {
 			false,
 		);
 
-		externalHooks.run('showMessage.showError', {
+		void externalHooks.run('showMessage.showError', {
 			title,
 			message,
 			errorMessage: error.message,

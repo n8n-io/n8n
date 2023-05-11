@@ -1,7 +1,7 @@
-import { MAIN_AUTH_FIELD_NAME } from './../constants';
+import type { INodeCredentialDescription } from 'n8n-workflow';
+import { MAIN_AUTH_FIELD_NAME } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '../stores/nodeTypes.store';
-import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	CORE_NODES_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,

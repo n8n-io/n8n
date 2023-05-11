@@ -176,7 +176,7 @@ export default mixins(showMessage).extend({
 			await this.usersStore.fetchUsers();
 		},
 		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			void this.$router.push({ name: VIEWS.USERS_SETTINGS });
 			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
@@ -184,7 +184,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.loadUsers();
+		void this.loadUsers();
 	},
 });
 </script>

@@ -259,7 +259,7 @@ export default mixins(showMessage).extend({
 
 			this.loading = true;
 
-			const saveWorkflowPromise = () => {
+			const saveWorkflowPromise = async () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.emit('saveWorkflow', () => {
@@ -399,7 +399,7 @@ export default mixins(showMessage).extend({
 		},
 		onRoleAction(user: IUser, action: string) {
 			if (action === 'remove') {
-				this.onRemoveSharee(user.id);
+				void this.onRemoveSharee(user.id);
 			}
 		},
 		async onCloseModal() {
@@ -413,7 +413,7 @@ export default mixins(showMessage).extend({
 				);
 
 				if (shouldSave) {
-					return await this.onSave();
+					return this.onSave();
 				}
 			}
 
@@ -457,7 +457,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.initialize();
+		void this.initialize();
 	},
 	watch: {
 		workflow(workflow) {

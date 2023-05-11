@@ -101,7 +101,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		this.getApiKey();
+		void this.getApiKey();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
@@ -126,7 +126,7 @@ export default mixins(showMessage).extend({
 				this.$locale.baseText('generic.cancel'),
 			);
 			if (confirmed) {
-				this.deleteApiKey();
+				await this.deleteApiKey();
 			}
 		},
 		async getApiKey() {
