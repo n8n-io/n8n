@@ -17,7 +17,7 @@ export function expects(obj: any, ...args: any[]) {
 	}
 }
 
-class AuthError extends Error {
+export class AuthError extends Error {
 	constructor(message: string, readonly body: any, readonly code = 'EAUTH') {
 		super(message);
 	}

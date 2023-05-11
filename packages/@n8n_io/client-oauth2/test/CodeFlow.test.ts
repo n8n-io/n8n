@@ -1,6 +1,7 @@
 import nock from 'nock';
 import { ClientOAuth2, ClientOAuth2Token } from '../src';
 import * as config from './config';
+import { AuthError } from '@/utils';
 
 describe('CodeFlow', () => {
 	beforeAll(async () => {
@@ -27,7 +28,7 @@ describe('CodeFlow', () => {
 		it('should return a valid uri', () => {
 			expect(githubAuth.code.getUri()).toEqual(
 				`${config.authorizationUri}?client_id=abc&` +
-					'redirect_uri=http%3A%2F%2Fexample.com%2Fauth%2Fcallback&' +
+					`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
 					'response_type=code&state=&scope=notifications',
 			);
 		});
@@ -44,7 +45,7 @@ describe('CodeFlow', () => {
 				});
 				expect(authWithoutScopes.code.getUri()).toEqual(
 					`${config.authorizationUri}?client_id=abc&` +
-						'redirect_uri=http%3A%2F%2Fexample.com%2Fauth%2Fcallback&' +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
 						'response_type=code&state=',
 				);
 			});
@@ -62,7 +63,7 @@ describe('CodeFlow', () => {
 			});
 			expect(authWithEmptyScopes.code.getUri()).toEqual(
 				`${config.authorizationUri}?client_id=abc&` +
-					'redirect_uri=http%3A%2F%2Fexample.com%2Fauth%2Fcallback&' +
+					`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
 					'response_type=code&state=&scope=',
 			);
 		});
@@ -79,7 +80,7 @@ describe('CodeFlow', () => {
 			});
 			expect(authWithEmptyScopes.code.getUri()).toEqual(
 				`${config.authorizationUri}?client_id=abc&` +
-					'redirect_uri=http%3A%2F%2Fexample.com%2Fauth%2Fcallback&' +
+					`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
 					'response_type=code&state=&scope=',
 			);
 		});
@@ -97,7 +98,7 @@ describe('CodeFlow', () => {
 				});
 				expect(authWithParams.code.getUri()).toEqual(
 					`${config.authorizationUri}?bar=qux&client_id=abc&` +
-						'redirect_uri=http%3A%2F%2Fexample.com%2Fauth%2Fcallback&' +
+						`redirect_uri=${encodeURIComponent(config.redirectUri)}&` +
 						'response_type=code&state=&scope=notifications',
 				);
 			});
@@ -136,9 +137,11 @@ describe('CodeFlow', () => {
 				await githubAuth.code.getToken(`${config.redirectUri}?error=invalid_request`);
 			} catch (err) {
 				errored = true;
-
-				expect(err.code).toEqual('EAUTH');
-				expect(err.body.error).toEqual('invalid_request');
+				expect(err).toBeInstanceOf(AuthError);
+				if (err instanceof AuthError) {
+					expect(err.code).toEqual('EAUTH');
+					expect(err.body.error).toEqual('invalid_request');
+				}
 			}
 			expect(errored).toEqual(true);
 		});
