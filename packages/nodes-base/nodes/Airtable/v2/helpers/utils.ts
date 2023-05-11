@@ -37,7 +37,7 @@ export function findMatches(
 		return matches;
 	} else {
 		const match = data.find((record) => {
-			return record.id === value;
+			return record.fields[key] === value;
 		});
 
 		if (!match) {

@@ -23,14 +23,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
 	}
 
-	const result: INodePropertyOptions[] = [
-		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
-			name: 'id',
-			value: 'id' as string,
-			description: 'Type: primaryFieldId',
-		},
-	];
+	const result: INodePropertyOptions[] = [];
 
 	for (const field of tableData.fields as IDataObject[]) {
 		result.push({
@@ -41,6 +34,21 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 	}
 
 	return result;
+}
+
+export async function getColumnsWithRecordId(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData = await getColumns.call(this);
+	return [
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id, n8n-nodes-base/node-param-display-name-miscased
+			name: 'id',
+			value: 'id' as string,
+			description: 'Type: primaryFieldId',
+		},
+		...returnData,
+	];
 }
 
 export async function getColumnsWithoutColumnToMatchOn(

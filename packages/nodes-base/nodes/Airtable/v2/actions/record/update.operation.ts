@@ -48,7 +48,7 @@ const properties: INodeProperties[] = [
 		description:
 			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
-			loadOptionsMethod: 'getColumns',
+			loadOptionsMethod: 'getColumnsWithRecordId',
 			loadOptionsDependsOn: ['base.value', 'table.value'],
 		},
 		default: '',
@@ -139,7 +139,7 @@ const properties: INodeProperties[] = [
 					'Whether the Airtable API should attempt mapping of string values for linked records & select options',
 			},
 			{
-				displayName: 'Ignore Fields',
+				displayName: 'Ignore Fields From Input',
 				name: 'ignoreFields',
 				type: 'string',
 				requiresDataPath: 'multiple',
@@ -149,7 +149,7 @@ const properties: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Comma-separated list of fields to ignore when updating',
+				description: 'Comma-separated list of fields in input to ignore when updating',
 			},
 			{
 				displayName: 'Update All Matches',
