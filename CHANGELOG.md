@@ -1,3 +1,12 @@
+## [0.228.1](https://github.com/n8n-io/n8n/compare/n8n@0.228.0...n8n@0.228.1) (2023-05-11)
+
+
+### Bug Fixes
+
+* **core**: Fix published nodes-base package's dependencies (#6226) ([#6226](https://github.com/n8n-io/n8n/issues/6226)) ([5c673be](https://github.com/n8n-io/n8n/commit/5c673beaa34ffc2662b9700d8dbc6f9ae16a9823))
+
+
+
 # [0.228.0](https://github.com/n8n-io/n8n/compare/n8n@0.227.0...n8n@0.228.0) (2023-05-11)
 
 
