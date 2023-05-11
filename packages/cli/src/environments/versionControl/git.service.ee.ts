@@ -204,7 +204,7 @@ export class VersionControlGitService {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
 		}
-		await this.git.checkoutBranch(branch, 'origin/' + branch);
+		await this.git.checkout(branch);
 		return this.getBranches();
 	}
 

@@ -17,7 +17,7 @@ import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
 import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
-import { writeFile as fsWriteFile } from 'fs/promises';
+import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { VersionControlGitService } from './git.service.ee';
 import { UserSettings } from 'n8n-core';
 import type {
@@ -63,6 +63,7 @@ export class VersionControlService {
 
 	async init(): Promise<void> {
 		this.gitService.resetService();
+		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
 		await this.loadFromDbAndApplyVersionControlPreferences();
 		await this.gitService.initService({
 			versionControlPreferences: this.versionControlPreferences,
@@ -108,13 +109,21 @@ export class VersionControlService {
 		return fsExistsSync(this.sshKeyName) && fsExistsSync(this.sshKeyName + '.pub');
 	}
 
+	async deleteKeyPairFiles(): Promise<void> {
+		try {
+			await fsRm(this.sshFolder, { recursive: true });
+		} catch (error) {
+			LoggerProxy.error(`Failed to delete ssh folder: ${(error as Error).message}`);
+		}
+	}
+
 	/**
 	 * Will generate an ed25519 key pair and save it to the database and the file system
 	 * Note: this will overwrite any existing key pair
 	 */
 	async generateAndSaveKeyPair() {
-		const keyPair = generateSshKeyPair('ed25519');
 		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
+		const keyPair = generateSshKeyPair('ed25519');
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
 				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
@@ -133,16 +142,20 @@ export class VersionControlService {
 			await this.setPreferences({ connected: true });
 			await this.init();
 			const fetchResult = await this.gitService.fetch();
+			await this.gitService.setBranch(this._versionControlPreferences.branchName);
 			return fetchResult;
 		} catch (error) {
 			throw Error(`Failed to connect to version control: ${(error as Error).message}`);
 		}
 	}
 
-	async disconnect() {
+	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
 			await this.setPreferences({ connected: false });
 			await this.versionControlExportService.deleteRepositoryFolder();
+			if (!options.keepKeyPair) {
+				await this.deleteKeyPairFiles();
+			}
 			this.gitService.resetService();
 			return this.versionControlPreferences;
 		} catch (error) {
@@ -170,6 +183,7 @@ export class VersionControlService {
 			throw new Error(`Invalid version control preferences: ${JSON.stringify(validationResult)}`);
 		}
 		if (
+			this.isVersionControlConnected() &&
 			preferencesObject.branchName !== this._versionControlPreferences.branchName &&
 			!preferencesObject.initRepo
 		) {
@@ -189,6 +203,7 @@ export class VersionControlService {
 		preferences: Partial<VersionControlPreferences>,
 		saveToDb = true,
 	): Promise<VersionControlPreferences> {
+		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
 		if (!this.hasKeyPairFiles()) {
 			LoggerProxy.debug('No key pair files found, generating new pair');
 			await this.generateAndSaveKeyPair();
@@ -207,14 +222,27 @@ export class VersionControlService {
 			}
 		}
 		if (preferences.initRepo === true) {
-			LoggerProxy.debug('Initializing repository...');
-			await this.gitService.initRepository(preferences as VersionControlPreferences);
+			await this.initializeRepository(this.versionControlPreferences);
+		}
+		return this.versionControlPreferences;
+	}
+
+	private async initializeRepository(preferences: VersionControlPreferences) {
+		if (!this.gitService.git) {
+			await this.init();
+		}
+		LoggerProxy.debug('Initializing repository...');
+		await this.gitService.initRepository(preferences);
+		const branches = await this.getBranches();
+		console.log(branches);
+		if (branches.branches.includes(preferences.branchName)) {
+			await this.gitService.setBranch(preferences.branchName);
+		} else {
 			await this.pushWorkfolder({
 				message: 'Initial commit',
 				skipDiff: true,
 			});
 		}
-		return this.versionControlPreferences;
 	}
 
 	async loadFromDbAndApplyVersionControlPreferences(): Promise<

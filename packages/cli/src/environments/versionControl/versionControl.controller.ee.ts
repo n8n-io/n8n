@@ -24,6 +24,11 @@ export class VersionControlController {
 	@Authorized(['global', 'owner'])
 	@Post('/preferences', { middlewares: [versionControlLicensedMiddleware] })
 	async setPreferences(req: VersionControlRequest.UpdatePreferences) {
+		if (this.versionControlService.isVersionControlConnected()) {
+			throw new BadRequestError(
+				'Cannot change preferences while connected to a version control provider. Please disconnect first.',
+			);
+		}
 		try {
 			const sanitizedPreferences: Partial<VersionControlPreferences> = {
 				...req.body,
@@ -51,9 +56,9 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/disconnect')
-	async disconnect() {
+	async disconnect(req: VersionControlRequest.Disconnect) {
 		try {
-			return await this.versionControlService.disconnect();
+			return await this.versionControlService.disconnect(req.body);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
