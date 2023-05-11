@@ -67,24 +67,24 @@ export class ClientOAuth2Token {
 	 * Refresh a user access token with the supplied token.
 	 */
 	async refresh(opts?: ClientOAuth2Options): Promise<ClientOAuth2Token> {
-		const { clientId, clientSecret, accessTokenUri } = { ...this.client.options, ...opts };
+		const options = { ...this.client.options, ...opts };
 
 		if (!this.refreshToken) throw new Error('No refresh token');
 
 		const requestOptions = getRequestOptions(
 			{
-				url: accessTokenUri,
+				url: options.accessTokenUri,
 				method: 'POST',
 				headers: {
 					...DEFAULT_HEADERS,
-					Authorization: auth(clientId, clientSecret),
+					Authorization: auth(options.clientId, options.clientSecret),
 				},
 				body: {
 					refresh_token: this.refreshToken,
 					grant_type: 'refresh_token',
 				},
 			},
-			opts,
+			options,
 		);
 
 		const responseData = await this.client.request<ClientOAuth2TokenData>(requestOptions);
