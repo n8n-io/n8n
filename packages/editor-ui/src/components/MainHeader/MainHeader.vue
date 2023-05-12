@@ -31,6 +31,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { defineComponent } from 'vue';
+import {useTitleChange, useToast} from "@/composables";
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -39,6 +40,12 @@ export default defineComponent({
 		TabBar,
 	},
 	mixins: [pushConnection, workflowHelpers],
+	setup() {
+		return {
+			...useTitleChange(),
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
