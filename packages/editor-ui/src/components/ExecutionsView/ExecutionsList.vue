@@ -116,7 +116,7 @@ export default mixins(showMessage, executionHelpers, debounceHelper, workflowHel
 	watch: {
 		$route(to: Route, from: Route) {
 			const workflowChanged = from.params.name !== to.params.name;
-			this.initView(workflowChanged);
+			void this.initView(workflowChanged);
 
 			if (to.params.executionId) {
 				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
@@ -303,7 +303,7 @@ export default mixins(showMessage, executionHelpers, debounceHelper, workflowHel
 					type: 'success',
 				});
 
-				this.loadAutoRefresh();
+				await this.loadAutoRefresh();
 			} catch (error) {
 				this.$showError(
 					error,
@@ -311,9 +311,9 @@ export default mixins(showMessage, executionHelpers, debounceHelper, workflowHel
 				);
 			}
 		},
-		onFilterUpdated(filter: ExecutionFilterType): void {
+		async onFilterUpdated(filter: ExecutionFilterType): void {
 			this.filter = filter;
-			this.setExecutions();
+			await this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
 			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
@@ -648,7 +648,7 @@ export default mixins(showMessage, executionHelpers, debounceHelper, workflowHel
 				duration: 2000,
 			});
 			await this.retryExecution(payload.execution, loadWorkflow);
-			this.loadAutoRefresh();
+			await this.loadAutoRefresh();
 
 			this.$telemetry.track('User clicked retry execution button', {
 				workflow_id: this.workflowsStore.workflowId,

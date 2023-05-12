@@ -313,9 +313,9 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
-const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue');
-const NodeCreation = () => import('@/components/Node/NodeCreation.vue');
-const CanvasControls = () => import('@/components/CanvasControls.vue');
+const NodeCreator = async () => import('@/components/Node/NodeCreator/NodeCreator.vue');
+const NodeCreation = async () => import('@/components/Node/NodeCreation.vue');
+const CanvasControls = async () => import('@/components/CanvasControls.vue');
 
 export default mixins(
 	copyPaste,
@@ -373,8 +373,8 @@ export default mixins(
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
-					this.loadCredentials();
-					this.initView().then(() => {
+					void this.loadCredentials();
+					void this.initView().then(() => {
 						this.stopLoading();
 						if (this.blankRedirect) {
 							this.blankRedirect = false;
@@ -440,7 +440,7 @@ export default mixins(
 						() => {
 							// We can't use next() here since vue-router
 							// would prevent the navigation with an error
-							this.$router.push(to as RawLocation);
+							void this.$router.push(to as RawLocation);
 						},
 					);
 				} else {
@@ -820,14 +820,14 @@ export default mixins(
 				}
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
 
 			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
 
 			this.blankRedirect = true;
-			this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+			void this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
@@ -1027,7 +1027,7 @@ export default mixins(
 				if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 					this.$root.$emit('newWorkflow');
 				} else {
-					this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				}
 
 				this.$showMessage({
@@ -1287,7 +1287,7 @@ export default mixins(
 		},
 
 		copySelectedNodes(isCut: boolean) {
-			this.getSelectedNodesToSave().then((data) => {
+			void this.getSelectedNodesToSave().then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
 						instanceId: this.rootStore.instanceId,
@@ -2465,7 +2465,7 @@ export default mixins(
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
-			this.tryToAddWelcomeSticky();
+			await this.tryToAddWelcomeSticky();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
@@ -2517,7 +2517,7 @@ export default mixins(
 					} catch (error) {
 						this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
 
-						this.$router.push({
+						void this.$router.push({
 							name: VIEWS.NEW_WORKFLOW,
 						});
 					}
@@ -2994,7 +2994,7 @@ export default mixins(
 			if (parameterData.name === 'name' && parameterData.oldValue) {
 				// The name changed so we have to take care that
 				// the connections get changed.
-				this.renameNode(parameterData.oldValue as string, parameterData.value as string);
+				void this.renameNode(parameterData.oldValue as string, parameterData.value as string);
 			}
 		},
 		async renameNodePrompt(currentName: string) {
@@ -3025,7 +3025,7 @@ export default mixins(
 
 				const promptResponse = (await promptResponsePromise) as MessageBoxInputData;
 
-				this.renameNode(currentName, promptResponse.value, true);
+				await this.renameNode(currentName, promptResponse.value, true);
 			} catch (e) {}
 		},
 		async renameNode(currentName: string, newName: string, trackHistory = false) {
@@ -3675,7 +3675,7 @@ export default mixins(
 			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
 				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
 				const openNDV = !isManualTrigger && (nodeTypes.length === 1 || index > 0);
-				this.addNode(
+				void this.addNode(
 					nodeTypeName,
 					{ position, dragAndDrop },
 					openNDV,
@@ -3770,8 +3770,8 @@ export default mixins(
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
+			this.loadVariables(),
 		];
-		this.loadVariables();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -3809,7 +3809,7 @@ export default mixins(
 			this.stopLoading();
 
 			setTimeout(() => {
-				this.usersStore.showPersonalizationSurvey();
+				void this.usersStore.showPersonalizationSurvey();
 				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
 			}, 0);
 		});

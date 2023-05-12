@@ -100,7 +100,7 @@ export default mixins(showMessage, workflowActivate).extend({
 	},
 	methods: {
 		async activeChanged(newActiveState: boolean) {
-			return await this.updateWorkflowActivation(this.workflowId, newActiveState);
+			return this.updateWorkflowActivation(this.workflowId, newActiveState);
 		},
 		async displayActivationError() {
 			let errorMessage: string;
