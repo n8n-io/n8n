@@ -102,7 +102,7 @@ defineExpose({
 		<n8n-input-label
 			:label="$locale.baseText('resourceMapper.mappingMode.label')"
 			:bold="false"
-			:required="true"
+			:required="false"
 			:size="labelSize"
 			color="text-dark"
 		>

@@ -96,7 +96,7 @@ defineExpose({
 		<n8n-input-label
 			:label="fieldLabel"
 			:bold="false"
-			:required="true"
+			:required="false"
 			:size="labelSize"
 			color="text-dark"
 		>
