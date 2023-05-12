@@ -2,6 +2,7 @@
 import type {
 	IDataObject,
 	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	INodeExecutionData,
 	INodeProperties,
 	INodeType,
@@ -208,7 +209,7 @@ export class RabbitMQTrigger implements INodeType {
 			const consumerInfo = await channel.consume(queue, async (message) => {
 				if (message !== null) {
 					try {
-						if (acknowledgeMode !== 'immediately') {
+						if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
 							messageTracker.received(message);
 						}
 
@@ -217,7 +218,6 @@ export class RabbitMQTrigger implements INodeType {
 						const item: INodeExecutionData = {
 							json: {},
 						};
-
 						if (options.contentIsBinary === true) {
 							item.binary = {
 								data: await this.helpers.prepareBinaryData(message.content),
@@ -238,13 +238,20 @@ export class RabbitMQTrigger implements INodeType {
 						}
 
 						let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
-						if (acknowledgeMode !== 'immediately') {
+						let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined =
+							undefined;
+						if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
 							responsePromise = await this.helpers.createDeferredPromise();
+						} else if (acknowledgeMode === 'laterMessageNode') {
+							responsePromiseHook =
+								await this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
 						}
-
-						this.emit([[item]], undefined, responsePromise);
-
-						if (responsePromise) {
+						if (responsePromiseHook) {
+							this.emit([[item]], responsePromiseHook, undefined);
+						} else {
+							this.emit([[item]], undefined, responsePromise);
+						}
+						if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 							// Acknowledge message after the execution finished
 							await responsePromise.promise().then(async (data: IRun) => {
 								if (data.data.resultData.error) {
@@ -255,9 +262,11 @@ export class RabbitMQTrigger implements INodeType {
 										return;
 									}
 								}
-								if (acknowledgeMode === 'laterMessageNode') {
-									return;
-								}
+								channel.ack(message);
+								messageTracker.answered(message);
+							});
+						} else if (responsePromiseHook && acknowledgeMode === 'laterMessageNode') {
+							await responsePromiseHook.promise().then(() => {
 								channel.ack(message);
 								messageTracker.answered(message);
 							});
@@ -284,7 +293,6 @@ export class RabbitMQTrigger implements INodeType {
 			});
 			consumerTag = consumerInfo.consumerTag;
 		};
-
 		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever

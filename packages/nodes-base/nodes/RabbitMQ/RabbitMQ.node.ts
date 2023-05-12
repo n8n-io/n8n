@@ -116,6 +116,9 @@ export class RabbitMQ implements INodeType {
 					show: {
 						mode: ['queue'],
 					},
+					hide: {
+						operation: ['delete_message'],
+					},
 				},
 				default: '',
 				placeholder: 'queue-name',
@@ -195,6 +198,11 @@ export class RabbitMQ implements INodeType {
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['send_message'],
+					},
+				},
 				default: true,
 				description: 'Whether to send the the data the node receives as JSON',
 			},
@@ -373,23 +381,33 @@ export class RabbitMQ implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let channel, options: IDataObject;
+		let mode = 'queue';
+		try {
+			mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
+		} catch (error) {}
 		try {
 			const items = this.getInputData();
-			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const operation = this.getNodeParameter('operation', 0);
 			const returnItems: INodeExecutionData[] = [];
 			if (mode === 'queue') {
-				const queue = this.getNodeParameter('queue', 0) as string;
-
+				const queue = this.getNodeParameter('queue', 0, '') as string;
+				const sendInputData = this.getNodeParameter('sendInputData', 0, {}) as boolean;
 				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
-				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
-
 				let message: string;
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
+					if (operation === 'delete_message') {
+						this.sendResponse(items[0].json);
+						returnItems.push({
+							json: {
+								success: true,
+							},
+						});
+						return await this.prepareOutputData(returnItems);
+					}
 					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
@@ -409,11 +427,6 @@ export class RabbitMQ implements INodeType {
 							},
 						);
 						headers = additionalHeaders;
-					}
-					if (operation === 'delete_message') {
-						console.log(items[0].json.message as unknown as amqplib.Message);
-						channel.ack(items[0].json.message as unknown as amqplib.Message);
-						continue;
 					}
 					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
 				}
