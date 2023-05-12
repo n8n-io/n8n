@@ -22,6 +22,10 @@ export type ColumnInfo = {
 	is_nullable: string;
 	udt_name: string;
 };
+export type EnumInfo = {
+	typname: string;
+	enumlabel: string;
+};
 
 export type PgpClient = pgPromise.IMain<{}, pg.IClient>;
 export type PgpDatabase = pgPromise.IDatabase<{}, pg.IClient>;

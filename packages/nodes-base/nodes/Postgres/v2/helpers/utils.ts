@@ -4,6 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ColumnInfo,
 	ConstructExecutionMetaData,
+	EnumInfo,
 	PgpClient,
 	PgpDatabase,
 	QueryMode,
@@ -372,36 +373,20 @@ export async function uniqueColumns(db: PgpDatabase, table: string) {
 	return unique as IDataObject[];
 }
 
-export async function getEnumValues(
-	db: PgpDatabase,
-	schema: string,
-	table: string,
-	enumName: string,
-): Promise<INodePropertyOptions[]> {
-	const options: INodePropertyOptions[] = [];
-	// First get the type name based on the column name
-	// const enumName = await db.one(
-	// 	'SELECT udt_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = $3',
-	// 	[schema, table, columnName],
-	// );
-	if (enumName) {
-		// Then get the values based on the type name
-		const fetchedValues = await db.one('SELECT enum_range(null::$1:name)', [enumName]);
-		if (fetchedValues.enum_range) {
-			// Column values are returned as a string like {value1,value2,value3}
-			ENUM_VALUES_REGEX.lastIndex = 0;
-			const extractedValues = ENUM_VALUES_REGEX.exec(fetchedValues.enum_range as string);
-			if (extractedValues) {
-				extractedValues[1].split(',').forEach((value) => {
-					options.push({
-						name: value,
-						value,
-					});
-				});
-			}
+export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
+	const enumsData = await db.any(
+		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
+	);
+	return enumsData as EnumInfo[];
+}
+
+export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
+	return enumInfo.reduce((acc, current) => {
+		if (current.typname === enumName) {
+			acc.push({ name: current.enumlabel, value: current.enumlabel });
 		}
-	}
-	return options;
+		return acc;
+	}, [] as INodePropertyOptions[]);
 }
 
 export async function doesRowExist(
