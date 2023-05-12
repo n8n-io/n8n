@@ -18,7 +18,7 @@
 </template>
 
 <script lang="ts">
-import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
+import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
@@ -29,7 +29,6 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useToast, useMessage } from '@/composables';
 
 export default mixins(workflowRun, pinData).extend({
 	props: {
@@ -56,12 +55,6 @@ export default mixins(workflowRun, pinData).extend({
 		telemetrySource: {
 			type: String,
 		},
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -180,7 +173,7 @@ export default mixins(workflowRun, pinData).extend({
 			try {
 				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
+				this.$showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;
 			}
 		},
@@ -193,15 +186,13 @@ export default mixins(workflowRun, pinData).extend({
 			} else {
 				let shouldUnpinAndExecute = false;
 				if (this.hasPinData) {
-					const confirmResult = await this.confirm(
+					shouldUnpinAndExecute = await this.confirmMessage(
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.description'),
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.title'),
-						{
-							confirmButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
-							cancelButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
-						},
+						null,
+						this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
+						this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
 					);
-					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
 					if (shouldUnpinAndExecute) {
 						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });

@@ -51,23 +51,18 @@
 import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants';
 import Modal from './Modal.vue';
 
-import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@/event-bus';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	components: {
 		Modal,
 	},
 	name: 'OnboardingCallSignupModal',
 	props: ['modalName'],
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
 	data() {
 		return {
 			email: '',
@@ -96,7 +91,7 @@ export default defineComponent({
 
 			try {
 				await this.uiStore.applyForOnboardingCall(this.email);
-				this.showMessage({
+				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
 					message: this.$locale.baseText('onboardingCallSignupSucess.message'),
@@ -104,7 +99,7 @@ export default defineComponent({
 				this.okToClose = true;
 				this.modalBus.emit('close');
 			} catch (e) {
-				this.showError(
+				this.$showError(
 					e,
 					this.$locale.baseText('onboardingCallSignupFailed.title'),
 					this.$locale.baseText('onboardingCallSignupFailed.message'),

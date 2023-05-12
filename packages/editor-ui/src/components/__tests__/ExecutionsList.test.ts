@@ -10,6 +10,7 @@ import ExecutionsList from '@/components/ExecutionsList.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionsSummary } from 'n8n-workflow';
@@ -72,7 +73,7 @@ const renderOptions = {
 	}),
 	i18n: i18nInstance,
 	stubs: ['font-awesome-icon'],
-	mixins: [externalHooks, genericHelpers, executionHelpers],
+	mixins: [externalHooks, genericHelpers, executionHelpers, showMessage],
 };
 
 function TelemetryPlugin(vue: typeof Vue): void {
