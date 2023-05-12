@@ -33,7 +33,7 @@ const mappingModeOptions = [
 		description: locale.baseText('resourceMapper.mappingMode.autoMapInputData.description', {
 			interpolate: {
 				fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
-				serviceName: props.serviceName || locale.baseText('generic.service'),
+				serviceName: props.serviceName,
 			},
 		}),
 	},
@@ -71,7 +71,7 @@ const errorMessage = computed<string>(() => {
 				locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
 					interpolate: {
 						fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
-						serviceName: props.serviceName || locale.baseText('generic.service'),
+						serviceName: props.serviceName,
 					},
 				})
 			);

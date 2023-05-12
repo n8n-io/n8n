@@ -14,6 +14,7 @@ interface Props {
 	labelSize: string;
 	inputSize: string;
 	loading: boolean;
+	serviceName: string;
 }
 
 const props = defineProps<Props>();
@@ -128,6 +129,7 @@ defineExpose({
 <template>
 	<div class="mt-2xs" data-test-id="matching-column-select">
 		<n8n-input-label
+			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
 			:tooltipText="fieldTooltip"
 			:bold="false"
@@ -150,5 +152,12 @@ defineExpose({
 				{{ fieldDescription }}
 			</n8n-text>
 		</n8n-input-label>
+		<n8n-notice v-else>
+			{{
+				locale.baseText('resourceMapper.columnsToMatchOn.noFieldsFound', {
+					interpolate: { fieldWord: singularFieldWord, serviceName: props.serviceName },
+				})
+			}}
+		</n8n-notice>
 	</div>
 </template>

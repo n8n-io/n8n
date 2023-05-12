@@ -137,7 +137,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 	return state.paramValue.schema.length === 1
 		? [state.paramValue.schema[0].id]
 		: state.paramValue.schema.reduce((acc, field) => {
-				if (field.defaultMatch) {
+				if (field.defaultMatch && field.canBeUsedToMatch === true) {
 					acc.push(field.id);
 				}
 				return acc;
@@ -370,6 +370,7 @@ defineExpose({
 			:inputSize="inputSize"
 			:loading="state.loading"
 			:initialValue="matchingColumns"
+			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
