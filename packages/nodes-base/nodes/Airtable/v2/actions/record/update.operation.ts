@@ -1,8 +1,8 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems } from '../../transport';
-import { findMatches, removeIgnored } from '../../helpers/utils';
+import { findMatches, processAirtableError, removeIgnored } from '../../helpers/utils';
 import type { UpdateBody, UpdateRecord } from '../../helpers/interfaces';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id
 		displayName:
-			'If posible id for update, as updating by other fields require table data prefetching and can be slow.',
+			'If posible use id for update, as updating by other fields require table data prefetching and can be slow.',
 		name: 'noticeNoIdUpdate',
 		type: 'notice',
 		default: '',
@@ -162,6 +162,7 @@ export async function execute(
 	}
 
 	for (let i = 0; i < items.length; i++) {
+		let recordId = '';
 		try {
 			const records: UpdateRecord[] = [];
 			const options = this.getNodeParameter('options', i, {});
@@ -169,9 +170,10 @@ export async function execute(
 			if (dataMode === 'autoMapInputData') {
 				if (columnToMatchOn === 'id') {
 					const { id, ...fields } = items[i].json;
+					recordId = id as string;
 
 					records.push({
-						id: id as string,
+						id: recordId,
 						fields: removeIgnored(fields, options.ignoreFields as string),
 					});
 				} else {
@@ -194,19 +196,18 @@ export async function execute(
 
 			if (dataMode === 'defineBelow') {
 				const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
-				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-					.values as IDataObject[];
+				const valuesToSend =
+					((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[]) ||
+					[];
 
 				const fields = valuesToSend.reduce((acc, { column, value }) => {
 					acc[column as string] = value;
 					return acc;
 				}, {} as IDataObject);
 
-				let id: string;
-
 				if (columnToMatchOn === 'id') {
-					id = valueToMatchOn;
-					records.push({ id, fields });
+					recordId = valueToMatchOn;
+					records.push({ id: recordId, fields });
 				} else {
 					const matches = findMatches(
 						tableData,
@@ -216,7 +217,7 @@ export async function execute(
 					);
 
 					for (const match of matches) {
-						id = match.id as string;
+						const id = match.id as string;
 						records.push({ id, fields });
 					}
 				}
@@ -233,6 +234,7 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
+			error = processAirtableError(error as NodeApiError, recordId);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { message: error.message, error } });
 				continue;

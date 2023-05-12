@@ -1,7 +1,8 @@
 import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
+import { processAirtableError } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -35,8 +36,9 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
+		let id;
 		try {
-			const id = this.getNodeParameter('id', i) as string;
+			id = this.getNodeParameter('id', i) as string;
 
 			const responseData = await apiRequest.call(this, 'DELETE', `${base}/${table}/${id}`);
 
@@ -47,6 +49,7 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
+			error = processAirtableError(error as NodeApiError, id);
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message } });
 				continue;

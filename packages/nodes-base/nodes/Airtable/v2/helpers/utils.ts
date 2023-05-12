@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, NodeApiError } from 'n8n-workflow';
 import type { UpdateRecord } from './interfaces';
 
 export function removeIgnored(data: IDataObject, ignore: string) {
@@ -31,7 +31,7 @@ export function findMatches(
 		});
 
 		if (!matches?.length) {
-			throw new Error(`No record found with ${key} = ${value}`);
+			throw new Error(`No record found where: ${key} = ${value}`);
 		}
 
 		return matches;
@@ -41,9 +41,19 @@ export function findMatches(
 		});
 
 		if (!match) {
-			throw new Error(`No record found with id = ${value}`);
+			throw new Error(`No record found where: ${key} = ${value}`);
 		}
 
 		return [match];
 	}
+}
+
+export function processAirtableError(error: NodeApiError, id?: string) {
+	if (error.description === 'NOT_FOUND' && id) {
+		error.description = `${id} is not a valid Record ID`;
+	}
+	if (error.description?.includes('You must provide an array of up to 10 record objects') && id) {
+		error.description = `${id} is not a valid Record ID`;
+	}
+	return error;
 }

@@ -28,7 +28,7 @@ export async function baseSearch(
 				results.push({
 					name: base.name as string,
 					value: base.id as string,
-					url: `https://airtable.com/${base.id}}`,
+					url: `https://airtable.com/${base.id}`,
 				});
 			}
 		}
@@ -42,7 +42,7 @@ export async function baseSearch(
 			results: (response.bases || []).map((base: IDataObject) => ({
 				name: base.name as string,
 				value: base.id as string,
-				url: `https://airtable.com/${base.id}}`,
+				url: `https://airtable.com/${base.id}`,
 			})),
 			paginationToken: response.offset,
 		};
@@ -54,7 +54,7 @@ export async function tableSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const base = this.getNodeParameter('base', undefined, {
+	const baseId = this.getNodeParameter('base', undefined, {
 		extractValue: true,
 	}) as string;
 
@@ -65,7 +65,7 @@ export async function tableSearch(
 		};
 	}
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`, undefined, qs);
+	const response = await apiRequest.call(this, 'GET', `meta/bases/${baseId}/tables`, undefined, qs);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -75,6 +75,7 @@ export async function tableSearch(
 				results.push({
 					name: table.name as string,
 					value: table.id as string,
+					url: `https://airtable.com/${baseId}/${table.id}`,
 				});
 			}
 		}
@@ -88,6 +89,7 @@ export async function tableSearch(
 			results: (response.tables || []).map((table: IDataObject) => ({
 				name: table.name as string,
 				value: table.id as string,
+				url: `https://airtable.com/${baseId}/${table.id}`,
 			})),
 			paginationToken: response.offset,
 		};

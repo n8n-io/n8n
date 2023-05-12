@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased-id
 		displayName:
-			'If posible id for update, as updating by other fields require table data prefetching and can be slow.',
+			'If posible use id for update, as updating by other fields require table data prefetching and can be slow.',
 		name: 'noticeNoIdUpdate',
 		type: 'notice',
 		default: '',
@@ -169,8 +169,9 @@ export async function execute(
 
 			if (dataMode === 'defineBelow') {
 				const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
-				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-					.values as IDataObject[];
+				const valuesToSend =
+					((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[]) ||
+					[];
 
 				const fields = valuesToSend.reduce((acc, { column, value }) => {
 					acc[column as string] = value;

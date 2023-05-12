@@ -119,8 +119,9 @@ export async function execute(
 			}
 
 			if (dataMode === 'defineBelow') {
-				const valuesToSend = (this.getNodeParameter('valuesToSend', i, []) as IDataObject)
-					.values as IDataObject[];
+				const valuesToSend =
+					((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[]) ||
+					[];
 
 				const fields = valuesToSend.reduce((acc, { column, value }) => {
 					acc[column as string] = value;
