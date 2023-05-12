@@ -23,7 +23,7 @@ export class RabbitMQ implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['transform'],
-		version: 1.1,
+		version: [1, 1.1],
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
