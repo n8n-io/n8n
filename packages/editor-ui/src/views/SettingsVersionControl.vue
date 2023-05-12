@@ -30,17 +30,6 @@ const onSelect = async (b: string) => {
 		return;
 	}
 	versionControlStore.preferences.currentBranch = b;
-	/*const switchBranch = await message
-		.confirm(
-			locale.baseText('settings.versionControl.switchBranch.description', {
-				interpolate: { versionControlStore.preferences.currentBranch: b },
-			}),
-			locale.baseText('settings.versionControl.switchBranch.title', { interpolate: { versionControlStore.preferences.currentBranch: b } }),
-		)
-		.catch(() => {});
-	if (switchBranch === 'confirm') {
-		versionControlStore.state.currentBranch = b;
-	}*/
 };
 
 const goToUpgrade = () => {
@@ -169,9 +158,15 @@ const goToUpgrade = () => {
 					</div>
 				</div>
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button @click="onSave" size="large">{{
-						locale.baseText('settings.versionControl.button.save')
-					}}</n8n-button>
+					<n8n-button
+						v-if="
+							versionControlStore.preferences.publicKey &&
+							versionControlStore.preferences.currentBranch
+						"
+						@click="onSave"
+						size="large"
+						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
+					>
 				</div>
 			</div>
 		</div>
@@ -198,12 +193,6 @@ const goToUpgrade = () => {
 		display: inline-block;
 		padding: 0 0 var(--spacing-2xs);
 		font-size: var(--font-size-s);
-
-		&.readOnly {
-			span {
-				font-size: var(--font-size-s) !important;
-			}
-		}
 	}
 
 	small {
@@ -211,6 +200,12 @@ const goToUpgrade = () => {
 		padding: var(--spacing-2xs) 0 0;
 		font-size: var(--font-size-2xs);
 		color: var(--color-text-light);
+	}
+}
+
+.readOnly {
+	span {
+		font-size: var(--font-size-s) !important;
 	}
 }
 
