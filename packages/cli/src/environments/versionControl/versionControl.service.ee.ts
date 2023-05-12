@@ -1,24 +1,18 @@
 import { Service } from 'typedi';
 import path from 'path';
-import { generateSshKeyPair, isVersionControlLicensed } from './versionControlHelper';
-import { VersionControlPreferences } from './types/versionControlPreferences';
+import { versionControlFoldersExistCheck } from './versionControlHelper';
+import type { VersionControlPreferences } from './types/versionControlPreferences';
 import {
 	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	VERSION_CONTROL_GIT_FOLDER,
-	VERSION_CONTROL_PREFERENCES_DB_KEY,
 	VERSION_CONTROL_SSH_FOLDER,
 	VERSION_CONTROL_SSH_KEY_NAME,
 	VERSION_CONTROL_TAGS_EXPORT_FILE,
 	VERSION_CONTROL_VARIABLES_EXPORT_FILE,
 	VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import * as Db from '@/Db';
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import type { ValidationError } from 'class-validator';
-import { validate } from 'class-validator';
-import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
-import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
-import { VersionControlGitService } from './git.service.ee';
+import { LoggerProxy } from 'n8n-workflow';
+import { VersionControlGitService } from './versionControlGit.service.ee';
 import { UserSettings } from 'n8n-core';
 import type {
 	CommitResult,
@@ -40,11 +34,10 @@ import type {
 	VersionControlledFileStatus,
 	VersionControlledFileType,
 } from './types/versionControlledFile';
+import { VersionControlPreferencesService } from './versionControlPreferences.service';
 
 @Service()
 export class VersionControlService {
-	private _versionControlPreferences: VersionControlPreferences = new VersionControlPreferences();
-
 	private sshKeyName: string;
 
 	private sshFolder: string;
@@ -53,6 +46,7 @@ export class VersionControlService {
 
 	constructor(
 		private gitService: VersionControlGitService,
+		private versionControlPreferencesService: VersionControlPreferencesService,
 		private versionControlExportService: VersionControlExportService,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
@@ -63,86 +57,24 @@ export class VersionControlService {
 
 	async init(): Promise<void> {
 		this.gitService.resetService();
-		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
-		await this.loadFromDbAndApplyVersionControlPreferences();
+		await versionControlFoldersExistCheck(this.gitFolder, this.sshFolder);
+		await this.versionControlPreferencesService.loadFromDbAndApplyVersionControlPreferences();
+		const versionControlPreferences =
+			this.versionControlPreferencesService.versionControlPreferences;
 		await this.gitService.initService({
-			versionControlPreferences: this.versionControlPreferences,
+			versionControlPreferences,
 			gitFolder: this.gitFolder,
 			sshKeyName: this.sshKeyName,
 			sshFolder: this.sshFolder,
 		});
 	}
 
-	public get versionControlPreferences(): VersionControlPreferences {
-		return {
-			...this._versionControlPreferences,
-			connected: this._versionControlPreferences.connected ?? false,
-			publicKey: this.getPublicKey(),
-		};
-	}
-
-	public set versionControlPreferences(preferences: Partial<VersionControlPreferences>) {
-		this._versionControlPreferences = VersionControlPreferences.merge(
-			preferences,
-			this._versionControlPreferences,
-		);
-	}
-
-	isVersionControlConnected(): boolean {
-		return this.versionControlPreferences.connected;
-	}
-
-	isVersionControlLicensedAndEnabled(): boolean {
-		return this.isVersionControlConnected() && isVersionControlLicensed();
-	}
-
-	getPublicKey(): string {
-		try {
-			return fsReadFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });
-		} catch (error) {
-			LoggerProxy.error(`Failed to read public key: ${(error as Error).message}`);
-		}
-		return '';
-	}
-
-	hasKeyPairFiles(): boolean {
-		return fsExistsSync(this.sshKeyName) && fsExistsSync(this.sshKeyName + '.pub');
-	}
-
-	async deleteKeyPairFiles(): Promise<void> {
-		try {
-			await fsRm(this.sshFolder, { recursive: true });
-		} catch (error) {
-			LoggerProxy.error(`Failed to delete ssh folder: ${(error as Error).message}`);
-		}
-	}
-
-	/**
-	 * Will generate an ed25519 key pair and save it to the database and the file system
-	 * Note: this will overwrite any existing key pair
-	 */
-	async generateAndSaveKeyPair() {
-		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
-		const keyPair = generateSshKeyPair('ed25519');
-		if (keyPair.publicKey && keyPair.privateKey) {
-			try {
-				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
-					encoding: 'utf8',
-					mode: 0o666,
-				});
-				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
-			} catch (error) {
-				throw Error(`Failed to save key pair: ${(error as Error).message}`);
-			}
-		}
-	}
-
 	async connect() {
 		try {
-			await this.setPreferences({ connected: true });
+			await this.versionControlPreferencesService.setPreferences({ connected: true });
 			await this.init();
 			const fetchResult = await this.gitService.fetch();
-			await this.gitService.setBranch(this._versionControlPreferences.branchName);
+			await this.gitService.setBranch(this.versionControlPreferencesService.getBranchName());
 			return fetchResult;
 		} catch (error) {
 			throw Error(`Failed to connect to version control: ${(error as Error).message}`);
@@ -151,90 +83,25 @@ export class VersionControlService {
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
-			await this.setPreferences({ connected: false });
+			await this.versionControlPreferencesService.setPreferences({ connected: false });
 			await this.versionControlExportService.deleteRepositoryFolder();
 			if (!options.keepKeyPair) {
-				await this.deleteKeyPairFiles();
+				await this.versionControlPreferencesService.deleteKeyPairFiles();
 			}
 			this.gitService.resetService();
-			return this.versionControlPreferences;
+			return this.versionControlPreferencesService.versionControlPreferences;
 		} catch (error) {
 			throw Error(`Failed to disconnect from version control: ${(error as Error).message}`);
 		}
 	}
 
-	async validateVersionControlPreferences(
-		preferences: Partial<VersionControlPreferences>,
-		allowMissingProperties = true,
-	): Promise<ValidationError[]> {
-		if (this.isVersionControlConnected()) {
-			if (preferences.repositoryUrl !== this._versionControlPreferences.repositoryUrl) {
-				throw new Error('Cannot change repository while connected');
-			}
-		}
-		const preferencesObject = new VersionControlPreferences(preferences);
-		const validationResult = await validate(preferencesObject, {
-			forbidUnknownValues: false,
-			skipMissingProperties: allowMissingProperties,
-			stopAtFirstError: false,
-			validationError: { target: false },
-		});
-		if (validationResult.length > 0) {
-			throw new Error(`Invalid version control preferences: ${JSON.stringify(validationResult)}`);
-		}
-		if (
-			this.isVersionControlConnected() &&
-			preferencesObject.branchName !== this._versionControlPreferences.branchName &&
-			!preferencesObject.initRepo
-		) {
-			const branches = await this.getBranches();
-			if (!branches.branches.includes(preferencesObject.branchName)) {
-				throw new Error(
-					`Selected branch ${preferencesObject.branchName} does not exist in repo: ${JSON.stringify(
-						branches.branches,
-					)}`,
-				);
-			}
-		}
-		return validationResult;
-	}
-
-	async setPreferences(
-		preferences: Partial<VersionControlPreferences>,
-		saveToDb = true,
-	): Promise<VersionControlPreferences> {
-		await this.gitService.foldersExistCheck(this.gitFolder, this.sshFolder);
-		if (!this.hasKeyPairFiles()) {
-			LoggerProxy.debug('No key pair files found, generating new pair');
-			await this.generateAndSaveKeyPair();
-		}
-		this.versionControlPreferences = preferences;
-		if (saveToDb) {
-			const settingsValue = JSON.stringify(this._versionControlPreferences);
-			try {
-				await Db.collections.Settings.save({
-					key: VERSION_CONTROL_PREFERENCES_DB_KEY,
-					value: settingsValue,
-					loadOnStartup: true,
-				});
-			} catch (error) {
-				throw new Error(`Failed to save version control preferences: ${(error as Error).message}`);
-			}
-		}
-		if (preferences.initRepo === true) {
-			await this.initializeRepository(this.versionControlPreferences);
-		}
-		return this.versionControlPreferences;
-	}
-
-	private async initializeRepository(preferences: VersionControlPreferences) {
+	async initializeRepository(preferences: VersionControlPreferences) {
 		if (!this.gitService.git) {
 			await this.init();
 		}
 		LoggerProxy.debug('Initializing repository...');
 		await this.gitService.initRepository(preferences);
 		const branches = await this.getBranches();
-		console.log(branches);
 		if (branches.branches.includes(preferences.branchName)) {
 			await this.gitService.setBranch(preferences.branchName);
 		} else {
@@ -243,29 +110,6 @@ export class VersionControlService {
 				skipDiff: true,
 			});
 		}
-	}
-
-	async loadFromDbAndApplyVersionControlPreferences(): Promise<
-		VersionControlPreferences | undefined
-	> {
-		const loadedPreferences = await Db.collections.Settings.findOne({
-			where: { key: VERSION_CONTROL_PREFERENCES_DB_KEY },
-		});
-		if (loadedPreferences) {
-			try {
-				const preferences = jsonParse<VersionControlPreferences>(loadedPreferences.value);
-				if (preferences) {
-					// set local preferences but don't write back to db
-					await this.setPreferences(preferences, false);
-					return preferences;
-				}
-			} catch (error) {
-				LoggerProxy.warn(
-					`Could not parse Version Control settings from database: ${(error as Error).message}`,
-				);
-			}
-		}
-		return;
 	}
 
 	async export() {
@@ -307,7 +151,7 @@ export class VersionControlService {
 	}
 
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
-		await this.setPreferences({ branchName: branch });
+		await this.versionControlPreferencesService.setPreferences({ branchName: branch });
 		return this.gitService.setBranch(branch);
 	}
 
@@ -335,7 +179,7 @@ export class VersionControlService {
 		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
 		return this.gitService.push({
-			branch: this.versionControlPreferences.branchName,
+			branch: this.versionControlPreferencesService.getBranchName(),
 			force: options.force ?? false,
 		});
 	}
@@ -479,8 +323,6 @@ export class VersionControlService {
 			status,
 			location,
 		};
-
-		return;
 	}
 
 	async getStatus(): Promise<VersionControlledFile[]> {
@@ -530,7 +372,10 @@ export class VersionControlService {
 	}
 
 	async push(force = false): Promise<PushResult> {
-		return this.gitService.push({ branch: this.versionControlPreferences.branchName, force });
+		return this.gitService.push({
+			branch: this.versionControlPreferencesService.getBranchName(),
+			force,
+		});
 	}
 	// #endregion
 }

@@ -18,7 +18,7 @@ import {
 	mkdir as fsMkdir,
 	rm as fsRm,
 } from 'fs/promises';
-import { VersionControlGitService } from './git.service.ee';
+import { VersionControlGitService } from './versionControlGit.service.ee';
 import { UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';

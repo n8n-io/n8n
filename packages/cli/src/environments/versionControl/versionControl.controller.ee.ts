@@ -9,22 +9,26 @@ import { AuthenticatedRequest } from '../../requests';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
+import { VersionControlPreferencesService } from './versionControlPreferences.service';
 
 @RestController('/version-control')
 export class VersionControlController {
-	constructor(private versionControlService: VersionControlService) {}
+	constructor(
+		private versionControlService: VersionControlService,
+		private versionControlPreferencesService: VersionControlPreferencesService,
+	) {}
 
 	@Authorized('any')
 	@Get('/preferences', { middlewares: [versionControlLicensedMiddleware] })
 	async getPreferences(): Promise<VersionControlPreferences> {
 		// returns the settings with the privateKey property redacted
-		return this.versionControlService.versionControlPreferences;
+		return this.versionControlPreferencesService.versionControlPreferences;
 	}
 
 	@Authorized(['global', 'owner'])
 	@Post('/preferences', { middlewares: [versionControlLicensedMiddleware] })
 	async setPreferences(req: VersionControlRequest.UpdatePreferences) {
-		if (this.versionControlService.isVersionControlConnected()) {
+		if (this.versionControlPreferencesService.isVersionControlConnected()) {
 			throw new BadRequestError(
 				'Cannot change preferences while connected to a version control provider. Please disconnect first.',
 			);
@@ -35,8 +39,15 @@ export class VersionControlController {
 				connected: undefined,
 				publicKey: undefined,
 			};
-			await this.versionControlService.validateVersionControlPreferences(sanitizedPreferences);
-			const newPreferences = await this.versionControlService.setPreferences(sanitizedPreferences);
+			await this.versionControlPreferencesService.validateVersionControlPreferences(
+				sanitizedPreferences,
+			);
+			const newPreferences = await this.versionControlPreferencesService.setPreferences(
+				sanitizedPreferences,
+			);
+			if (sanitizedPreferences.initRepo === true) {
+				await this.versionControlService.initializeRepository(newPreferences);
+			}
 			await this.versionControlService.init();
 			return newPreferences;
 		} catch (error) {
@@ -160,7 +171,7 @@ export class VersionControlController {
 	@Post('/generate-key-pair', { middlewares: [versionControlLicensedMiddleware] })
 	async generateKeyPair() {
 		try {
-			return await this.versionControlService.generateAndSaveKeyPair();
+			return await this.versionControlPreferencesService.generateAndSaveKeyPair();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

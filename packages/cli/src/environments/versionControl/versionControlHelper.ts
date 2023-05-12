@@ -3,6 +3,18 @@ import { License } from '../../License';
 import { generateKeyPairSync } from 'crypto';
 import sshpk from 'sshpk';
 import type { KeyPair } from './types/keyPair';
+import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
+import { constants as fsConstants } from 'fs';
+
+export async function versionControlFoldersExistCheck(gitFolder: string, sshFolder: string) {
+	[gitFolder, sshFolder].forEach(async (folder) => {
+		try {
+			await fsAccess(folder, fsConstants.F_OK);
+		} catch (error) {
+			await fsMkdir(folder);
+		}
+	});
+}
 
 export function isVersionControlLicensed() {
 	const license = Container.get(License);
