@@ -281,6 +281,11 @@ defineExpose({
 				/>
 			</template>
 		</n8n-input-label>
+		<div v-if="orderedFields.length === 0" class="mt-3xs mb-xs">
+			<n8n-text size="small">{{
+				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
+			}}</n8n-text>
+		</div>
 		<div
 			v-for="field in orderedFields"
 			:key="field.name"
