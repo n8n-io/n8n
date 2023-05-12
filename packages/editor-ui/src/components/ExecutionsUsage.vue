@@ -85,6 +85,7 @@ const daysLeftOnTrial = computed(() => {
 });
 
 const isTrialExpired = computed(() => {
+	if (!props.cloudPlanData?.expirationDate) return false;
 	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
 });
