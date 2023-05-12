@@ -181,21 +181,22 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 					trackProperties.variable_type = 'Raw value';
 				}
 
-				if (splitVar[0].startsWith('$node')) {
-					const sourceNodeName = splitVar[0].split('"')[1];
-					trackProperties.node_type_source =
-						this.workflowsStore.getNodeByName(sourceNodeName)?.type;
-					const nodeConnections: Array<Array<{ node: string }>> =
-						this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input =
-						nodeConnections &&
-						nodeConnections[0] &&
-						!!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')
-							? true
-							: false;
+				if (splitVar[0].startsWith("$('")) {
+					const match = /\$\('(.*?)'\)/.exec(splitVar[0]);
+					if (match && match.length > 1) {
+						const sourceNodeName = match[1];
+						trackProperties.node_type_source =
+							this.workflowsStore.getNodeByName(sourceNodeName)?.type;
+						const nodeConnections: Array<Array<{ node: string }>> =
+							this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
+						trackProperties.is_immediate_input =
+							nodeConnections &&
+							nodeConnections[0] &&
+							nodeConnections[0].some(({ node }) => node === this.ndvStore.activeNode?.name || '');
 
-					if (splitVar[1].startsWith('parameter')) {
-						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
+						if (splitVar[1].startsWith('parameter')) {
+							trackProperties.parameter_name_source = splitVar[1].split('"')[1];
+						}
 					}
 				} else {
 					trackProperties.is_immediate_input = true;
