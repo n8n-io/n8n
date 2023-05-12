@@ -58,7 +58,7 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import {useTitleChange, useToast} from '@/composables';
+import { useTitleChange, useToast } from '@/composables';
 import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
