@@ -66,7 +66,7 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
-import { CHANGE_PLAN_PAGE } from '@/constants';
+import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 import type { PropType } from 'vue';
 import { computed } from 'vue';
 
@@ -106,7 +106,7 @@ const currentExecutions = computed(() => {
 const maxExecutions = computed(() => props.cloudPlanData.monthlyExecutionsLimit);
 
 const onUpgradeClicked = () => {
-	location.href = CHANGE_PLAN_PAGE;
+	location.href = CLOUD_CHANGE_PLAN_PAGE;
 };
 </script>
 

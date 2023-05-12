@@ -552,7 +552,9 @@ export const ALLOWED_HTML_TAGS = [
 
 export const GITHUB_STARS_BANNER_SHOW_UNTIL_DATE = new Date('2023-06-01');
 
-export const CHANGE_PLAN_PAGE = 'https://app.n8n.cloud/account/change-plan';
+export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
+	? 'https://stage-app.n8n.cloud/account/change-plan'
+	: 'https://app.n8n.cloud/account/change-plan';
 
 export const CLOUD_BASE_URL_STAGING = 'https://stage-app.n8n.cloud';
 

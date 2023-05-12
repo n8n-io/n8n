@@ -69,7 +69,7 @@
 			@click="onUpgrade"
 		/>
 		<n8n-action-box
-			v-else-if="mounted"
+			v-else-if="mounted && !isLoadingCloudPlans"
 			:buttonText="
 				$locale.baseText(
 					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
@@ -92,6 +92,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+import { useCloudPlanStore } from '@/stores';
+import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 
 export default defineComponent({
 	name: 'SettingsApiView',
@@ -124,20 +126,20 @@ export default defineComponent({
 			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUsersStore),
+		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
 		isTrialing(): boolean {
-			return this.usersStore.userIsTrialing;
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		isLoadingCloudPlans(): boolean {
+			return this.cloudPlanStore.state.loadingPlan;
 		},
 	},
 	methods: {
 		onUpgrade() {
-			location.href =
-				this.settingsStore.settings.license.environment === 'production'
-					? CHANGE_PLAN_PAGE_PRODUCTION
-					: CHANGE_PLAN_PAGE_STAGING;
+			location.href = CLOUD_CHANGE_PLAN_PAGE;
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(
@@ -158,7 +160,6 @@ export default defineComponent({
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
-				// @todo need to wait on plans results first
 				this.mounted = true;
 			}
 		},
