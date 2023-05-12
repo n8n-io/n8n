@@ -43,7 +43,7 @@ export class RabbitMQ implements INodeType {
 				name: 'operation',
 				type: 'hidden',
 				noDataExpression: true,
-				default: 'send_message',
+				default: 'sendMessage',
 				displayOptions: {
 					show: {
 						'@version': [1],
@@ -52,7 +52,7 @@ export class RabbitMQ implements INodeType {
 				options: [
 					{
 						name: 'Send a Message to RabbitMQ',
-						value: 'send_message',
+						value: 'sendMessage',
 					},
 				],
 			},
@@ -61,7 +61,7 @@ export class RabbitMQ implements INodeType {
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				default: 'send_message',
+				default: 'sendMessage',
 				displayOptions: {
 					show: {
 						'@version': [1.1],
@@ -70,12 +70,12 @@ export class RabbitMQ implements INodeType {
 				options: [
 					{
 						name: 'Send a Message to RabbitMQ',
-						value: 'send_message',
+						value: 'sendMessage',
 						action: 'Send a Message to RabbitMQ',
 					},
 					{
 						name: 'Delete From Queue',
-						value: 'delete_message',
+						value: 'deleteMessage',
 						action: 'Delete From Queue',
 					},
 				],
@@ -86,7 +86,7 @@ export class RabbitMQ implements INodeType {
 				type: 'options',
 				displayOptions: {
 					hide: {
-						operation: ['delete_message'],
+						operation: ['deleteMessage'],
 					},
 				},
 				options: [
@@ -117,7 +117,7 @@ export class RabbitMQ implements INodeType {
 						mode: ['queue'],
 					},
 					hide: {
-						operation: ['delete_message'],
+						operation: ['deleteMessage'],
 					},
 				},
 				default: '',
@@ -200,7 +200,7 @@ export class RabbitMQ implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: ['send_message'],
+						operation: ['sendMessage'],
 					},
 				},
 				default: true,
@@ -225,7 +225,7 @@ export class RabbitMQ implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: ['send_message'],
+						operation: ['sendMessage'],
 					},
 				},
 				placeholder: 'Add Option',
@@ -404,7 +404,7 @@ export class RabbitMQ implements INodeType {
 				let message: string;
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (operation === 'delete_message') {
+					if (operation === 'deleteMessage') {
 						this.sendResponse(items[0].json);
 					}
 					if (sendInputData) {
