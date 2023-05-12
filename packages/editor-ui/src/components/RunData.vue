@@ -508,12 +508,12 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
-import { isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useToast } from '@/composables';
 
 const RunDataTable = async () => import('@/components/RunDataTable.vue');
 const RunDataJson = async () => import('@/components/RunDataJson.vue');
@@ -584,6 +584,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -1072,7 +1077,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
 
 			if (this.maxRunIndex > 0) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
 						interpolate: {
 							index: `${this.runIndex}`,

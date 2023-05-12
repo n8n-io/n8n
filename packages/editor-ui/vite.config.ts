@@ -14,9 +14,9 @@ const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
 	'vue2-boring-avatars',
 	'vue-template-compiler',
-	'jquery',
 	'@fontsource/open-sans',
 	'normalize-wheel',
+	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',
 ];
 

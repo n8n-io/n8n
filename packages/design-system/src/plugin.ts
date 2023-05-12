@@ -51,6 +51,7 @@ import {
 	N8nResizeWrapper,
 	N8nRecycleScroller,
 	N8nCheckbox,
+	N8nColorPicker,
 } from './components';
 
 export const N8nPlugin: PluginObject<{}> = {
@@ -105,5 +106,6 @@ export const N8nPlugin: PluginObject<{}> = {
 		app.component('n8n-resize-wrapper', N8nResizeWrapper);
 		app.component('n8n-recycle-scroller', N8nRecycleScroller);
 		app.component('n8n-checkbox', N8nCheckbox);
+		app.component('n8n-color-picker', N8nColorPicker);
 	},
 };

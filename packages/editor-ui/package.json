@@ -57,7 +57,6 @@
     "file-saver": "^2.0.2",
     "flatted": "^3.2.4",
     "humanize-duration": "^3.27.2",
-    "jquery": "^3.4.1",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.21",
     "luxon": "^3.3.0",
@@ -77,12 +76,10 @@
     "vue-infinite-loading": "^2.4.5",
     "vue-json-pretty": "1.9.3",
     "vue-router": "^3.6.5",
-    "vue-template-compiler": "^2.7.14",
     "vue-typed-mixins": "^0.2.0",
-    "vue2-boring-avatars": "0.3.4",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
-    "xss": "^1.0.10"
+    "xss": "^1.0.14"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
@@ -93,28 +90,12 @@
     "@testing-library/vue": "^5.8.3",
     "@types/canvas-confetti": "^1.6.0",
     "@types/dateformat": "^3.0.0",
-    "@types/express": "^4.17.6",
     "@types/file-saver": "^2.0.1",
     "@types/humanize-duration": "^3.27.1",
     "@types/jsonpath": "^0.2.0",
     "@types/lodash-es": "^4.17.6",
-    "@types/lodash.camelcase": "^4.3.6",
-    "@types/lodash.get": "^4.4.6",
-    "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "^8.3.2",
-    "@vitejs/plugin-legacy": "^3.0.1",
-    "@vitejs/plugin-vue2": "^2.2.0",
-    "@vitest/coverage-c8": "^0.28.5",
-    "@volar-plugins/eslint": "^0.0.4",
-    "c8": "^7.12.0",
-    "jshint": "^2.9.7",
-    "miragejs": "^0.1.47",
-    "sass": "^1.55.0",
-    "sass-loader": "^10.1.1",
-    "string-template-parser": "^1.2.6",
-    "vite": "4.0.4",
-    "vitest": "^0.28.5",
-    "vue-tsc": "^1.0.24"
+    "miragejs": "^0.1.47"
   }
 }

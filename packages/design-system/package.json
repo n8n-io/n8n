@@ -36,7 +36,7 @@
     "markdown-it-task-lists": "^2.1.1",
     "vue": "^2.7.14",
     "vue-typed-mixins": "^0.2.0",
-    "xss": "^1.0.10"
+    "xss": "^1.0.14"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
@@ -55,25 +55,13 @@
     "@types/markdown-it-emoji": "^2.0.2",
     "@types/markdown-it-link-attributes": "^3.0.1",
     "@types/sanitize-html": "^2.8.0",
-    "@vitest/coverage-c8": "^0.28.5",
-    "@vitejs/plugin-vue2": "^2.2.0",
     "autoprefixer": "^10.4.13",
-    "c8": "7.12.0",
     "core-js": "^3.27.2",
     "jsdom": "21.1.0",
-    "node-notifier": "^10.0.1",
     "sass": "^1.58.0",
     "sass-loader": "^13.2.0",
     "storybook": "^7.0.7",
-    "storybook-addon-themes": "^6.1.0",
-    "trim": "^1.0.1",
-    "vite": "^4.0.4",
-    "vitest": "^0.28.5",
-    "vue-class-component": "^7.2.6",
-    "vue-loader": "^15.10.1",
-    "vue-property-decorator": "^9.1.2",
-    "vue-template-compiler": "^2.7.14",
-    "vue-tsc": "^1.0.24"
+    "storybook-addon-themes": "^6.1.0"
   },
   "dependencies": {
     "element-ui": "~2.15.12",
