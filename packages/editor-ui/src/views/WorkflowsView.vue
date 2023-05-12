@@ -5,6 +5,7 @@
 		:resources="allWorkflows"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 80 }"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
@@ -141,7 +142,13 @@ const WorkflowsView = defineComponent({
 			return this.usersStore.currentUser || ({} as IUser);
 		},
 		allWorkflows(): IWorkflowDb[] {
-			return this.workflowsStore.allWorkflows;
+			return [
+				...this.workflowsStore.allWorkflows,
+				...this.workflowsStore.allWorkflows,
+				...this.workflowsStore.allWorkflows,
+				...this.workflowsStore.allWorkflows,
+				...this.workflowsStore.allWorkflows,
+			].map((wf, index) => ({ ...wf, id: `${index}` }));
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
