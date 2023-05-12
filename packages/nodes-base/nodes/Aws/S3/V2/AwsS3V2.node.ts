@@ -767,68 +767,70 @@ export class AwsS3V2 implements INodeType {
 						let path = '/';
 						let body;
 
+						const multipartHeaders: IDataObject = {};
+						const neededHeaders: IDataObject = {};
+
 						if (additionalFields.requesterPays) {
-							headers['x-amz-request-payer'] = 'requester';
+							neededHeaders['x-amz-request-payer'] = 'requester';
 						}
 						if (additionalFields.parentFolderKey) {
 							path = `/${additionalFields.parentFolderKey}/`;
 						}
 						if (additionalFields.storageClass) {
-							headers['x-amz-storage-class'] = snakeCase(
+							multipartHeaders['x-amz-storage-class'] = snakeCase(
 								additionalFields.storageClass as string,
 							).toUpperCase();
 						}
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							multipartHeaders['x-amz-acl'] = paramCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
-							headers['x-amz-grant-full-control'] = '';
+							multipartHeaders['x-amz-grant-full-control'] = '';
 						}
 						if (additionalFields.grantRead) {
-							headers['x-amz-grant-read'] = '';
+							multipartHeaders['x-amz-grant-read'] = '';
 						}
 						if (additionalFields.grantReadAcp) {
-							headers['x-amz-grant-read-acp'] = '';
+							multipartHeaders['x-amz-grant-read-acp'] = '';
 						}
 						if (additionalFields.grantWriteAcp) {
-							headers['x-amz-grant-write-acp'] = '';
+							multipartHeaders['x-amz-grant-write-acp'] = '';
 						}
 						if (additionalFields.lockLegalHold) {
-							headers['x-amz-object-lock-legal-hold'] = (additionalFields.lockLegalHold as boolean)
-								? 'ON'
-								: 'OFF';
+							multipartHeaders['x-amz-object-lock-legal-hold'] =
+								(additionalFields.lockLegalHold as boolean) ? 'ON' : 'OFF';
 						}
 						if (additionalFields.lockMode) {
-							headers['x-amz-object-lock-mode'] = (
+							multipartHeaders['x-amz-object-lock-mode'] = (
 								additionalFields.lockMode as string
 							).toUpperCase();
 						}
 						if (additionalFields.lockRetainUntilDate) {
-							headers['x-amz-object-lock-retain-until-date'] =
+							multipartHeaders['x-amz-object-lock-retain-until-date'] =
 								additionalFields.lockRetainUntilDate as string;
 						}
 						if (additionalFields.serverSideEncryption) {
-							headers['x-amz-server-side-encryption'] =
+							neededHeaders['x-amz-server-side-encryption'] =
 								additionalFields.serverSideEncryption as string;
 						}
 						if (additionalFields.encryptionAwsKmsKeyId) {
-							headers['x-amz-server-side-encryption-aws-kms-key-id'] =
+							neededHeaders['x-amz-server-side-encryption-aws-kms-key-id'] =
 								additionalFields.encryptionAwsKmsKeyId as string;
 						}
 						if (additionalFields.serverSideEncryptionContext) {
-							headers['x-amz-server-side-encryption-context'] =
+							neededHeaders['x-amz-server-side-encryption-context'] =
 								additionalFields.serverSideEncryptionContext as string;
 						}
 						if (additionalFields.serversideEncryptionCustomerAlgorithm) {
-							headers['x-amz-server-side-encryption-customer-algorithm'] =
+							neededHeaders['x-amz-server-side-encryption-customer-algorithm'] =
 								additionalFields.serversideEncryptionCustomerAlgorithm as string;
 						}
 						if (additionalFields.serversideEncryptionCustomerKey) {
-							headers['x-amz-server-side-encryption-customer-key'] =
+							neededHeaders['x-amz-server-side-encryption-customer-key'] =
 								additionalFields.serversideEncryptionCustomerKey as string;
 						}
 						if (additionalFields.serversideEncryptionCustomerKeyMD5) {
-							headers['x-amz-server-side-encryption-customer-key-MD5'] =
+							neededHeaders['x-amz-server-side-encryption-customer-key-MD5'] =
 								additionalFields.serversideEncryptionCustomerKeyMD5 as string;
 						}
 						if (tagsValues) {
@@ -836,7 +838,7 @@ export class AwsS3V2 implements INodeType {
 							tagsValues.forEach((o: IDataObject) => {
 								tags.push(`${o.key}=${o.value}`);
 							});
-							headers['x-amz-tagging'] = tags.join('&');
+							multipartHeaders['x-amz-tagging'] = tags.join('&');
 						}
 						// Get the region of the bucket
 						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
@@ -855,7 +857,7 @@ export class AwsS3V2 implements INodeType {
 							} else {
 								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
 							}
-							const newHeaders = headers;
+							console.log({ ...multipartHeaders, ...neededHeaders });
 							const createMultiPartUpload = await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
@@ -863,17 +865,20 @@ export class AwsS3V2 implements INodeType {
 								`/${bucketName}-${this.getNode().id}?uploads`,
 								body,
 								qs,
-								newHeaders,
+								{ ...neededHeaders, ...multipartHeaders },
 								{},
 								region as string,
 							);
-							headers = {};
 							const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
 							let part = 1;
 							for await (const chunk of uploadData) {
 								const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
-								headers['Content-Length'] = chunk.length;
-								headers['Content-MD5'] = createHash('MD5').update(chunkBuffer).digest('base64');
+								const listHeaders: IDataObject = {
+									'Content-Length': chunk.length,
+									'Content-MD5': createHash('MD5').update(chunkBuffer).digest('base64'),
+									...neededHeaders,
+								};
+								console.log(listHeaders);
 								try {
 									await awsApiRequestREST.call(
 										this,
@@ -882,12 +887,11 @@ export class AwsS3V2 implements INodeType {
 										`/${bucketName}-${this.getNode().id}?partNumber=${part}&uploadId=${uploadId}`,
 										chunk,
 										qs,
-										headers,
+										listHeaders,
 										{},
 										region as string,
 									);
 									part++;
-									headers = {};
 								} catch (error) {
 									try {
 										const abortUpload = await awsApiRequestREST.call(
@@ -904,7 +908,6 @@ export class AwsS3V2 implements INodeType {
 								}
 							}
 
-							headers = {};
 							const listParts = (await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
@@ -914,7 +917,7 @@ export class AwsS3V2 implements INodeType {
 								}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
 								'',
 								qs,
-								headers,
+								{ ...neededHeaders },
 								{},
 								region as string,
 							)) as {
@@ -941,10 +944,6 @@ export class AwsS3V2 implements INodeType {
 							};
 							const builder = new Builder();
 							const data = builder.buildObject(body);
-							headers = {};
-							headers['Content-MD5'] = createHash('md5').update(data).digest('base64');
-
-							headers['Content-Type'] = 'application/xml';
 							const completeUpload = (await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
@@ -952,7 +951,11 @@ export class AwsS3V2 implements INodeType {
 								`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
 								data,
 								qs,
-								headers,
+								{
+									...neededHeaders,
+									'Content-MD5': createHash('md5').update(data).digest('base64'),
+									'Content-Type': 'application/xml',
+								},
 								{},
 								region as string,
 							)) as {
