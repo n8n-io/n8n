@@ -45,7 +45,6 @@ import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
 import { mapStores } from 'pinia';
@@ -62,6 +61,7 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import type { ICredentialsResponse } from '@/Interface';
 import { useEnvironmentsStore } from '@/stores';
+import { defineComponent } from 'vue';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -321,7 +321,8 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers],
 	setup() {
 		return {
 			...useToast(),

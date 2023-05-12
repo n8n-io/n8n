@@ -22,7 +22,6 @@ import type {
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -34,14 +33,16 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
+import { defineComponent } from 'vue';
 
-export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
+export const pushConnection = defineComponent({
 	setup() {
 		return {
 			...useTitleChange(),
 			...useToast(),
 		};
 	},
+	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
