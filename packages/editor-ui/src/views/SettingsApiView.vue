@@ -75,27 +75,21 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { showMessage } from '@/mixins/showMessage';
 import type { IUser } from '@/Interface';
-import { useToast, useMessage } from '@/composables';
+import mixins from 'vue-typed-mixins';
 
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
-import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+import { DOCS_DOMAIN } from '@/constants';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'SettingsApiView',
 	components: {
 		CopyInput,
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
 	},
 	data() {
 		return {
@@ -124,15 +118,14 @@ export default defineComponent({
 	},
 	methods: {
 		async showDeleteModal() {
-			const confirmed = await this.confirm(
+			const confirmed = await this.confirmMessage(
 				this.$locale.baseText('settings.api.delete.description'),
 				this.$locale.baseText('settings.api.delete.title'),
-				{
-					confirmButtonText: this.$locale.baseText('settings.api.delete.button'),
-					cancelButtonText: this.$locale.baseText('generic.cancel'),
-				},
+				null,
+				this.$locale.baseText('settings.api.delete.button'),
+				this.$locale.baseText('generic.cancel'),
 			);
-			if (confirmed === MODAL_CONFIRM) {
+			if (confirmed) {
 				await this.deleteApiKey();
 			}
 		},
@@ -140,7 +133,7 @@ export default defineComponent({
 			try {
 				this.apiKey = (await this.settingsStore.getApiKey()) || '';
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.api.view.error'));
+				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
 				this.mounted = true;
 			}
@@ -151,7 +144,7 @@ export default defineComponent({
 			try {
 				this.apiKey = (await this.settingsStore.createApiKey()) || '';
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.api.create.error'));
+				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
 				this.loading = false;
 				this.$telemetry.track('User clicked create API key button');
@@ -160,13 +153,13 @@ export default defineComponent({
 		async deleteApiKey() {
 			try {
 				await this.settingsStore.deleteApiKey();
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('settings.api.delete.toast'),
 					type: 'success',
 				});
 				this.apiKey = '';
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.api.delete.error'));
+				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));
 			} finally {
 				this.$telemetry.track('User clicked delete API key button');
 			}

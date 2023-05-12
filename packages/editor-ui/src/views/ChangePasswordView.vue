@@ -9,24 +9,19 @@
 </template>
 
 <script lang="ts">
-import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import AuthView from './AuthView.vue';
+import { showMessage } from '@/mixins/showMessage';
 
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'ChangePasswordView',
 	components: {
 		AuthView,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
 	},
 	data() {
 		return {
@@ -93,7 +88,7 @@ export default defineComponent({
 
 			await this.usersStore.validatePasswordToken({ token, userId });
 		} catch (e) {
-			this.showMessage({
+			this.$showMessage({
 				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
 				type: 'error',
 			});
@@ -133,7 +128,7 @@ export default defineComponent({
 				if (token && userId) {
 					await this.usersStore.changePassword({ token, userId, password: this.password });
 
-					this.showMessage({
+					this.$showMessage({
 						type: 'success',
 						title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
 						message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
@@ -141,13 +136,13 @@ export default defineComponent({
 
 					await this.$router.push({ name: VIEWS.SIGNIN });
 				} else {
-					this.showError(
+					this.$showError(
 						new Error(this.$locale.baseText('auth.validation.missingParameters')),
 						this.$locale.baseText('auth.changePassword.error'),
 					);
 				}
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('auth.changePassword.error'));
+				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},

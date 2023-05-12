@@ -1821,7 +1821,5 @@
 	"userActivationSurveyModal.sharedFeedback.success": "Thanks for your feedback",
 	"userActivationSurveyModal.sharedFeedback.error": "Problem sharing feedback, try again",
 	"sso.login.divider": "or",
-	"sso.login.button": "Continue with SSO",
-	"pushConnection.executionError": "There was a problem executing the workflow{error}",
-	"pushConnection.executionError.details": "<br /><strong>{details}</strong>"
+	"sso.login.button": "Continue with SSO"
 }

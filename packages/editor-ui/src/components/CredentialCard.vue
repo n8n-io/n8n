@@ -31,11 +31,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 import type { ICredentialsResponse, IUser } from '@/Interface';
 import type { ICredentialType } from 'n8n-workflow';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import { EnterpriseEditionFeature } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
@@ -50,15 +50,10 @@ export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
-		};
-	},
-	setup() {
-		return {
-			...useMessage(),
 		};
 	},
 	components: {
@@ -133,7 +128,7 @@ export default defineComponent({
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
 				await this.onClick();
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirm(
+				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.message',
 						{
@@ -143,14 +138,13 @@ export default defineComponent({
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline',
 					),
-					{
-						confirmButtonText: this.$locale.baseText(
-							'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-						),
-					},
+					null,
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
+					),
 				);
 
-				if (deleteConfirmed === MODAL_CONFIRM) {
+				if (deleteConfirmed) {
 					await this.credentialsStore.deleteCredential({ id: this.data.id });
 				}
 			}
