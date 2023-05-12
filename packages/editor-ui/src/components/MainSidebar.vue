@@ -9,13 +9,12 @@
 	>
 		<div
 			id="collapse-change-button"
-			:class="{
-				['clickable']: true,
-				[$style.sideMenuCollapseButton]: true,
-				[$style.expandedButton]: !isCollapsed,
-			}"
+			:class="['clickable', $style.sideMenuCollapseButton]"
 			@click="toggleCollapse"
-		></div>
+		>
+			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
@@ -111,13 +110,13 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
-
+import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useMessage } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -127,18 +126,17 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useVersionsStore } from '@/stores/versions';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
-import { useVersionControlStore } from '@/stores/versionControl';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 export default mixins(
 	genericHelpers,
-	showMessage,
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
@@ -148,6 +146,11 @@ export default mixins(
 	components: {
 		GiftNotificationIcon,
 		WorkflowSettings,
+	},
+	setup() {
+		return {
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -360,14 +363,14 @@ export default mixins(
 					this.onLogout();
 					break;
 				case 'settings':
-					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					void this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					break;
 				default:
 					break;
 			}
 		},
 		onLogout() {
-			this.$router.push({ name: VIEWS.SIGNOUT });
+			void this.$router.push({ name: VIEWS.SIGNOUT });
 		},
 		toggleCollapse() {
 			this.uiStore.toggleSidebarMenuCollapse();
@@ -484,7 +487,7 @@ export default mixins(
 			}
 		},
 		async sync() {
-			const prompt = await this.$prompt(
+			const prompt = (await this.prompt(
 				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
 					interpolate: { branch: this.versionControlStore.state.currentBranch },
 				}),
@@ -500,10 +503,10 @@ export default mixins(
 					inputPattern: /^.+$/,
 					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
 				},
-			);
+			)) as MessageBoxInputData;
 
 			if (prompt.value) {
-				this.versionControlStore.sync({ commitMessage: prompt.value });
+				await this.versionControlStore.sync({ commitMessage: prompt.value });
 			}
 		},
 	},
@@ -546,39 +549,16 @@ export default mixins(
 	z-index: 999;
 	display: flex;
 	justify-content: center;
-	align-items: flex-end;
+	align-items: center;
 	color: var(--color-text-base);
 	background-color: var(--color-foreground-xlight);
 	width: 20px;
 	height: 20px;
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	text-align: center;
 	border-radius: 50%;
 
-	&::before {
-		display: block;
-		position: relative;
-		left: px;
-		top: -2.5px;
-		transform: rotate(270deg);
-		content: '\e6df';
-		font-family: element-icons;
-		font-size: var(--font-size-2xs);
-		font-weight: bold;
-		color: var(--color-text-base);
-	}
-
-	&.expandedButton {
-		&::before {
-			transform: rotate(90deg);
-			left: 0px;
-		}
-	}
-
 	&:hover {
-		&::before {
-			color: var(--color-primary-shade-1);
-		}
+		color: var(--color-primary-shade-1);
 	}
 }
 

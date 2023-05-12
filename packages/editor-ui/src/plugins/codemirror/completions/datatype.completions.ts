@@ -1,4 +1,4 @@
-import type { IDataObject, DocMetadata } from 'n8n-workflow';
+import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
 import { ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
@@ -17,7 +17,6 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import { sanitizeHtml } from '@/utils';
-import type { NativeDoc } from 'n8n-workflow/src/Extensions/Extensions';
 import { isFunctionOption } from './typeGuards';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
@@ -440,11 +439,12 @@ export const objectGlobalOptions = () => {
 };
 
 const regexes = {
-	generalRef: /\$[^$]+\.([^{\s])*/, // $input. or $json. or similar ones
+	generalRef: /\$[^$'"]+\.([^{\s])*/, // $input. or $json. or similar ones
 	selectorRef: /\$\(['"][\S\s]+['"]\)\.([^{\s])*/, // $('nodeName').
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.([^{\s])*/, // (123). or (123.4).
-	stringLiteral: /(".+"|('.+'))\.([^{\s])*/, // 'abc'. or "abc".
+	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
+	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/, // new Date(). or (new Date()).
 	arrayLiteral: /(\[.+\])\.([^{\s])*/, // [1, 2, 3].
 	objectLiteral: /\(\{.*\}\)\.([^{\s])*/, // ({}).

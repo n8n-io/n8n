@@ -7,7 +7,9 @@ import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
+import type { PathLike } from 'fs';
 
+import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
@@ -15,7 +17,6 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
-import type { PathLike } from 'fs';
 import type { ExecutionStatus } from './ExecutionStatus';
 import type { AuthenticationMethod } from './Authentication';
 
@@ -1020,7 +1021,8 @@ export type NodePropertyTypes =
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
 export type EditorType = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'sqlEditor' | 'json';
-export type CodeNodeEditorLanguage = 'javaScript' | 'json'; //| 'python' | 'sql';
+export type CodeNodeEditorLanguage = (typeof CODE_LANGUAGES)[number];
+export type CodeExecutionMode = (typeof CODE_EXECUTION_MODES)[number];
 export type SQLDialect = 'mssql' | 'mysql' | 'postgres';
 
 export interface ILoadOptions {

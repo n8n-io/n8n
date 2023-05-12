@@ -47,7 +47,7 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -314,7 +314,7 @@ export default mixins(debounceHelper).extend({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
+				void this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {

@@ -18,6 +18,7 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
+				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
 				:expressionComputedValue="expressionEvaluated"
@@ -378,7 +379,6 @@ import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
@@ -387,21 +387,16 @@ import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { htmlEditorEventBus } from '@/event-bus';
+import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-	debounceHelper,
-).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelper).extend({
 	name: 'parameter-input',
 	components: {
 		CodeNodeEditor,
@@ -520,7 +515,7 @@ export default mixins(
 		dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			void this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -742,7 +737,7 @@ export default mixins(
 		},
 		editorLanguage(): CodeNodeEditorLanguage {
 			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
-			return 'javaScript';
+			return (this.getArgument('editorLanguage') as CodeNodeEditorLanguage) ?? 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -970,8 +965,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			// Set focus on field
-			setTimeout(() => {
+			Vue.nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
@@ -1115,7 +1109,7 @@ export default mixins(
 
 					resourceLocatorRef?.$emit('refreshList');
 				}
-				this.loadRemoteParameterOptions();
+				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
 				htmlEditorEventBus.emit('format-html');
 			}
@@ -1174,7 +1168,7 @@ export default mixins(
 			this.$watch(
 				() => this.node!.credentials,
 				() => {
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				},
 				{ deep: true, immediate: true },
 			);

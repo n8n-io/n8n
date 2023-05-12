@@ -89,26 +89,19 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-
-import SettingsView from './SettingsView.vue';
+import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -118,14 +111,10 @@ const StatusFilter = {
 	ALL: '',
 };
 
-const WorkflowsView = mixins(showMessage, debounceHelper).extend({
+const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		WorkflowCard,
 		TagsDropdown,
 	},
@@ -157,9 +146,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
-		hasActiveWorkflows(): boolean {
-			return !!this.workflowsStore.activeWorkflows.length;
-		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
 				{
@@ -180,7 +166,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 	methods: {
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
@@ -191,9 +177,8 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
+				this.credentialsStore.fetchAllCredentials(),
 			]);
-
-			this.credentialsStore.fetchAllCredentials();
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -233,7 +218,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.usersStore.showPersonalizationSurvey();
+		void this.usersStore.showPersonalizationSurvey();
 	},
 });
 

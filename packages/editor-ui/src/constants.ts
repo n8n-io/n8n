@@ -80,6 +80,7 @@ export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integr
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
+export const MAIN_REPOSITORY_URL = 'https://github.com/n8n-io/n8n';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -303,7 +304,7 @@ export const ROLE_OTHER = 'other';
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CLOSE = 'close';
-export const MODAL_CONFIRMED = 'confirmed';
+export const MODAL_CONFIRM = 'confirm';
 
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -532,3 +533,21 @@ export const TEMPLATE_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
+
+export const ALLOWED_HTML_ATTRIBUTES = ['href', 'name', 'target', 'title', 'class', 'id', 'style'];
+
+export const ALLOWED_HTML_TAGS = [
+	'p',
+	'strong',
+	'b',
+	'code',
+	'a',
+	'br',
+	'i',
+	'em',
+	'small',
+	'details',
+	'summary',
+];
+
+export const GITHUB_STARS_BANNER_SHOW_UNTIL_DATE = new Date('2023-06-01');

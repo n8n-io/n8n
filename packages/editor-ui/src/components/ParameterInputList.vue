@@ -128,10 +128,10 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import { get, set } from 'lodash-es';
 
 import mixins from 'vue-typed-mixins';
-import type { Component, PropType } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
@@ -140,8 +140,8 @@ export default mixins(workflowHelpers).extend({
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
-		FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
-		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
+		FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue'),
+		CollectionParameter: async () => import('./CollectionParameter.vue'),
 		ImportParameter,
 	},
 	props: {

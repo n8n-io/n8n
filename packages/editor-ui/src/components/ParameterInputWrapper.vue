@@ -45,9 +45,8 @@
 import type { PropType } from 'vue';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import InputHint from './ParameterInputHint.vue';
+import InputHint from '@/components/ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
 import type {
 	INodeProperties,
 	INodePropertyMode,
@@ -59,11 +58,11 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default mixins(workflowHelpers).extend({
 	name: 'parameter-input-wrapper',
 	components: {
 		ParameterInput,
@@ -181,8 +180,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 					return null;
 				}
 
-				if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
-					computedValue = this.$locale.baseText('parameterInput.emptyString');
+				if (typeof computedValue === 'string' && computedValue.length === 0) {
+					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;

@@ -25,10 +25,8 @@
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
 		>
-			<div v-if="loading" class="mr-m">
-				<n8n-loading variant="p" :rows="1" />
-				<n8n-loading variant="p" :rows="1" />
-				<n8n-loading variant="p" :rows="1" />
+			<div v-if="loading" class="mr-l">
+				<n8n-loading variant="rect" />
 			</div>
 			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
@@ -73,8 +71,8 @@ import type { Route } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
 type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
@@ -289,5 +287,12 @@ export default defineComponent({
 	width: 100%;
 	margin-top: var(--spacing-2xl);
 	text-align: center;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-skeleton__item) {
+	height: 60px;
+	border-radius: 0;
 }
 </style>

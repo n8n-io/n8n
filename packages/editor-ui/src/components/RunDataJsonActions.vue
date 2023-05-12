@@ -1,6 +1,14 @@
 <template>
 	<div :class="$style.actionsGroup">
-		<el-dropdown trigger="click" @command="handleCopyClick">
+		<n8n-icon-button
+			v-if="noSelection"
+			:title="$locale.baseText('runData.copyToClipboard')"
+			icon="copy"
+			type="tertiary"
+			:circle="false"
+			@click="handleCopyClick({ command: 'value' })"
+		/>
+		<el-dropdown v-else trigger="click" @command="handleCopyClick">
 			<span class="el-dropdown-link">
 				<n8n-icon-button
 					:title="$locale.baseText('runData.copyToClipboard')"
@@ -38,8 +46,9 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useToast } from '@/composables';
 
 type JsonPathData = {
 	path: string;
@@ -47,7 +56,7 @@ type JsonPathData = {
 };
 
 // A path that does not exist so that nothing is selected by default
-const nonExistingJsonPath = '_!^&*';
+export const nonExistingJsonPath = '_!^&*';
 
 export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 	name: 'run-data-json-actions',
@@ -82,20 +91,27 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			required: true,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+		noSelection() {
+			return this.selectedJsonPath === nonExistingJsonPath;
+		},
 		normalisedJsonPath(): string {
-			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
-			return isNotSelected ? '[""]' : this.selectedJsonPath;
+			return this.noSelection ? '[""]' : this.selectedJsonPath;
 		},
 	},
 	methods: {
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
-			if (this.selectedJsonPath === nonExistingJsonPath) {
+			if (this.noSelection) {
 				if (this.hasPinData) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
@@ -142,7 +158,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			if (commandData.command === 'value') {
 				value = this.getJsonValue();
 
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('runData.copyValue.toast'),
 					message: '',
 					type: 'success',
@@ -156,7 +172,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 					startPath = jsonItemPath.startPath;
 					path = jsonItemPath.path;
 
-					this.$showToast({
+					this.showToast({
 						title: this.$locale.baseText('runData.copyItemPath.toast'),
 						message: '',
 						type: 'success',
@@ -167,7 +183,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 					startPath = jsonParameterPath.startPath;
 					path = jsonParameterPath.path;
 
-					this.$showToast({
+					this.showToast({
 						title: this.$locale.baseText('runData.copyParameterPath.toast'),
 						message: '',
 						type: 'success',

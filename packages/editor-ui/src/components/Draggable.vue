@@ -17,7 +17,7 @@
 
 <script lang="ts">
 import type { XYPosition } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 

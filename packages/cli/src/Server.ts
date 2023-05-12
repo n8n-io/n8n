@@ -159,14 +159,18 @@ import { SamlService } from './sso/saml/saml.service.ee';
 import { variablesController } from './environments/variables/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
 import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
-import { getCurrentAuthenticationMethod } from './sso/ssoHelpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from './sso/ssoHelpers';
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 
 const exec = promisify(callbackExec);
 
-class Server extends AbstractServer {
+export class Server extends AbstractServer {
 	endpointPresetCredentials: string;
 
 	waitTracker: WaitTracker;
@@ -193,23 +197,6 @@ class Server extends AbstractServer {
 		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
-
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		this.credentialTypes = Container.get(CredentialTypes);
-		this.nodeTypes = Container.get(NodeTypes);
-
-		this.activeExecutionsInstance = Container.get(ActiveExecutions);
-		this.waitTracker = Container.get(WaitTracker);
-		this.postHog = Container.get(PostHogClient);
-
-		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
-
-		this.push = Container.get(Push);
-
-		if (process.env.E2E_TESTS === 'true') {
-			this.app.use('/e2e', require('./api/e2e.api').e2eController);
-		}
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -333,6 +320,88 @@ class Server extends AbstractServer {
 				limit: 0,
 			},
 		};
+	}
+
+	async start() {
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		this.credentialTypes = Container.get(CredentialTypes);
+		this.nodeTypes = Container.get(NodeTypes);
+
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
+		this.waitTracker = Container.get(WaitTracker);
+		this.postHog = Container.get(PostHogClient);
+
+		this.presetCredentialsLoaded = false;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		this.push = Container.get(Push);
+
+		if (process.env.E2E_TESTS === 'true') {
+			this.app.use('/e2e', require('./api/e2e.api').e2eController);
+		}
+
+		await super.start();
+
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		const diagnosticInfo: IDiagnosticInfo = {
+			basicAuthActive: config.getEnv('security.basicAuth.active'),
+			databaseType: config.getEnv('database.type'),
+			disableProductionWebhooksOnMainProcess: config.getEnv(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
+			versionCli: N8N_VERSION,
+			systemInfo: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			executionVariables: {
+				executions_process: config.getEnv('executions.process'),
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
+			},
+			deploymentType: config.getEnv('deployment.type'),
+			binaryDataMode: binaryDataConfig.mode,
+			n8n_multi_user_allowed: isUserManagementEnabled(),
+			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			ldap_allowed: isLdapCurrentAuthenticationMethod(),
+			saml_enabled: isSamlCurrentAuthenticationMethod(),
+		};
+
+		// Set up event handling
+		initEvents();
+
+		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+		}
+
+		void Db.collections.Workflow.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		}).then(async (workflow) =>
+			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+		);
 	}
 
 	/**
@@ -1374,67 +1443,4 @@ class Server extends AbstractServer {
 		const { restEndpoint, server, app } = this;
 		setupPushServer(restEndpoint, server, app);
 	}
-}
-
-export async function start(): Promise<void> {
-	const app = new Server();
-	await app.start();
-
-	const cpus = os.cpus();
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	const diagnosticInfo: IDiagnosticInfo = {
-		basicAuthActive: config.getEnv('security.basicAuth.active'),
-		databaseType: config.getEnv('database.type'),
-		disableProductionWebhooksOnMainProcess: config.getEnv(
-			'endpoints.disableProductionWebhooksOnMainProcess',
-		),
-		notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-		versionCli: N8N_VERSION,
-		systemInfo: {
-			os: {
-				type: os.type(),
-				version: os.version(),
-			},
-			memory: os.totalmem() / 1024,
-			cpus: {
-				count: cpus.length,
-				model: cpus[0].model,
-				speed: cpus[0].speed,
-			},
-		},
-		executionVariables: {
-			executions_process: config.getEnv('executions.process'),
-			executions_mode: config.getEnv('executions.mode'),
-			executions_timeout: config.getEnv('executions.timeout'),
-			executions_timeout_max: config.getEnv('executions.maxTimeout'),
-			executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-			executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-			executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-			executions_data_save_manual_executions: config.getEnv('executions.saveDataManualExecutions'),
-			executions_data_prune: config.getEnv('executions.pruneData'),
-			executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
-		},
-		deploymentType: config.getEnv('deployment.type'),
-		binaryDataMode: binaryDataConfig.mode,
-		n8n_multi_user_allowed: isUserManagementEnabled(),
-		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-		ldap_allowed: isLdapEnabled(),
-	};
-
-	// Set up event handling
-	initEvents();
-
-	if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
-		const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
-		await reloadNodesAndCredentials(app.loadNodesAndCredentials, app.nodeTypes, app.push);
-	}
-
-	void Db.collections.Workflow.findOne({
-		select: ['createdAt'],
-		order: { createdAt: 'ASC' },
-		where: {},
-	}).then(async (workflow) =>
-		Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
-	);
 }
