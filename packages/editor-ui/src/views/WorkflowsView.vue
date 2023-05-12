@@ -142,13 +142,7 @@ const WorkflowsView = defineComponent({
 			return this.usersStore.currentUser || ({} as IUser);
 		},
 		allWorkflows(): IWorkflowDb[] {
-			return [
-				...this.workflowsStore.allWorkflows,
-				...this.workflowsStore.allWorkflows,
-				...this.workflowsStore.allWorkflows,
-				...this.workflowsStore.allWorkflows,
-				...this.workflowsStore.allWorkflows,
-			].map((wf, index) => ({ ...wf, id: `${index}` }));
+			return this.workflowsStore.allWorkflows;
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
