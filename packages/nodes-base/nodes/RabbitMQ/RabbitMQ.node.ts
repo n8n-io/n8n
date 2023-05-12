@@ -49,10 +49,17 @@ export class RabbitMQ implements INodeType {
 						'@version': [1],
 					},
 				},
+				// To remove when action view is fixed
 				options: [
 					{
 						name: 'Send a Message to RabbitMQ',
 						value: 'sendMessage',
+						action: 'Send a Message to RabbitMQ',
+					},
+					{
+						name: 'Delete From Queue',
+						value: 'deleteMessage',
+						action: 'Delete From Queue',
 					},
 				],
 			},
