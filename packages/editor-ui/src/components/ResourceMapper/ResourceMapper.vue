@@ -121,7 +121,8 @@ const showMappingFields = computed<boolean>(() => {
 		state.paramValue.mappingMode === 'defineBelow' &&
 		!state.loading &&
 		!state.loadingError &&
-		state.paramValue.schema.length > 0
+		state.paramValue.schema.length > 0 &&
+		hasAvailableMatchingColumns.value
 	);
 });
 
@@ -133,6 +134,18 @@ const matchingColumns = computed<string[]>(() => {
 		return state.paramValue.matchingColumns;
 	}
 	return defaultSelectedMatchingColumns.value;
+});
+
+const hasAvailableMatchingColumns = computed<boolean>(() => {
+	if (resourceMapperMode.value !== 'add') {
+		return (
+			state.paramValue.schema.filter(
+				(field) =>
+					field.canBeUsedToMatch !== false && field.display !== false && field.removed !== true,
+			).length > 0
+		);
+	}
+	return true;
 });
 
 const defaultSelectedMatchingColumns = computed<string[]>(() => {
@@ -402,7 +415,9 @@ defineExpose({
 			@addField="addField"
 			@refreshFieldList="initFetching(true)"
 		/>
-		<n8n-notice v-if="state.paramValue.mappingMode === 'autoMapInputData'">
+		<n8n-notice
+			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"
+		>
 			{{
 				locale.baseText('resourceMapper.autoMappingNotice', {
 					interpolate: {
