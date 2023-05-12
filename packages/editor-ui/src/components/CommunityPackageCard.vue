@@ -65,10 +65,11 @@
 import { useUIStore } from '@/stores/ui.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+import mixins from 'vue-typed-mixins';
+import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
+import { showMessage } from '@/mixins/showMessage';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {

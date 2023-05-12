@@ -40,29 +40,24 @@
 </template>
 
 <script lang="ts">
-import Modal from '@/components/Modal.vue';
+import Modal from './Modal.vue';
 import {
 	IMPORT_CURL_MODAL_KEY,
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
-} from '@/constants';
-import { useToast } from '@/composables';
-import { defineComponent } from 'vue';
+} from '../constants';
+import { showMessage } from '@/mixins/showMessage';
+import mixins from 'vue-typed-mixins';
 import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createEventBus } from '@/event-bus';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'ImportCurlModal',
 	components: {
 		Modal,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
 	},
 	data() {
 		return {
@@ -127,7 +122,7 @@ export default defineComponent({
 			}
 		},
 		showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
-			this.showToast({
+			this.$showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidProtocol1.title', {
 					interpolate: {
 						node,
@@ -143,7 +138,7 @@ export default defineComponent({
 			});
 		},
 		showProtocolError(protocol: string): void {
-			this.showToast({
+			this.$showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidProtocol2.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
 					interpolate: {
@@ -155,7 +150,7 @@ export default defineComponent({
 			});
 		},
 		showInvalidcURLCommandError(): void {
-			this.showToast({
+			this.$showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidCurlCommand.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidCurlCommand.message'),
 				type: 'error',
