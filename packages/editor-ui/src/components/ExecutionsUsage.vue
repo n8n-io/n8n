@@ -1,6 +1,11 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
+		<div v-if="isTrialExpired" :class="$style.usageText">
+			<n8n-text size="xsmall" color="danger">
+				{{ locale.baseText('executionUsage.expired.text') }}
+			</n8n-text>
+		</div>
+		<div v-else-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
 			<i18n path="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="xsmall" color="text-dark">
@@ -18,12 +23,7 @@
 				</template>
 			</i18n>
 		</div>
-		<div v-if="isTrialExpired" :class="$style.usageText">
-			<n8n-text size="xsmall" color="danger">
-				{{ locale.baseText('executionUsage.expired.text') }}
-			</n8n-text>
-		</div>
-		<div v-if="!trialHasExecutionsLeft" :class="$style.usageText">
+		<div v-else-if="!trialHasExecutionsLeft" :class="$style.usageText">
 			<n8n-text size="xsmall">
 				{{ locale.baseText('executionUsage.ranOutOfExecutions.text') }}
 			</n8n-text>
@@ -65,13 +65,17 @@
 <script setup lang="ts">
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
-import type { Cloud } from '@/Interface';
+import type { CloudPlanAndUsageData } from '@/Interface';
 import { CHANGE_PLAN_PAGE } from '@/constants';
+import type { PropType } from 'vue';
 import { computed } from 'vue';
 
-type CloudPlanData = Cloud.PlanData & { metadata: Cloud.PlanMetadata; usage: Cloud.PlanUsage };
-
-const props = defineProps<{ cloudPlanData: CloudPlanData }>();
+const props = defineProps({
+	cloudPlanData: {
+		type: Object as PropType<CloudPlanAndUsageData>,
+		required: true,
+	},
+});
 
 const now = DateTime.utc();
 
@@ -87,11 +91,17 @@ const isTrialExpired = computed(() => {
 
 const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.expirationDate);
 
-const trialHasExecutionsLeft = computed(
-	() => props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit,
-);
+const trialHasExecutionsLeft = computed(() => {
+	if (!props.cloudPlanData?.usage) return 0;
+	return props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit;
+});
 
-const currentExecutions = computed(() => props.cloudPlanData.usage.executions);
+const currentExecutions = computed(() => {
+	if (!props.cloudPlanData?.usage) return 0;
+	const usedExecutions = props.cloudPlanData.usage.executions;
+	const executionsQuota = props.cloudPlanData.monthlyExecutionsLimit;
+	return usedExecutions > executionsQuota ? executionsQuota : usedExecutions;
+});
 
 const maxExecutions = computed(() => props.cloudPlanData.monthlyExecutionsLimit);
 

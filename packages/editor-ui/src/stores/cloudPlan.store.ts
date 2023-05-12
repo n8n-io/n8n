@@ -31,6 +31,8 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 
 	const currentPlanData = computed(() => state.data);
 
+	const currentUsageData = computed(() => state.usage);
+
 	const trialExpired = computed(
 		() =>
 			state.data?.metadata?.group === 'trial' &&
@@ -42,9 +44,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 	);
 
 	const getOwnerCurrentPLan = async () => {
-		// TODO: uncomment before releasing
-		// const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		const cloudUserId = '123';
+		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
 		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
@@ -52,7 +52,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 	};
 
 	const getInstanceCurrentUsage = async () => {
-		return getCurrentUsage(rootStore.getRestApiContext);
+		return getCurrentUsage({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
 	};
 
 	return {
@@ -62,6 +62,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		getInstanceCurrentUsage,
 		userIsTrialing,
 		currentPlanData,
+		currentUsageData,
 		trialExpired,
 		allExecutionsUsed,
 	};

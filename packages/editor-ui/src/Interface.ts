@@ -1469,8 +1469,6 @@ export declare namespace Cloud {
 	}
 }
 
-// type ClouPlanAndUsage = Cloud.PlanData & { usage?: InstanceUsage };
-
 export interface CloudPlanState {
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
@@ -1481,3 +1479,5 @@ export interface InstanceUsage {
 	executions: number;
 	activeWorkflows: number;
 }
+
+export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };

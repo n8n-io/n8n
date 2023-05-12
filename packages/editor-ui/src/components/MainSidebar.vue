@@ -27,7 +27,9 @@
 			</template>
 
 			<template #beforeLowerMenu>
-				<ExecutionsUsage :cloud-plan-data="currentPlanData" v-if="!isCollapsed && userIsTrialing"
+				<ExecutionsUsage
+					:cloud-plan-data="currentPlanAndUsageData"
+					v-if="!isCollapsed && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
@@ -114,7 +116,7 @@
 </template>
 
 <script lang="ts">
-import type { Cloud, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
+import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
@@ -336,8 +338,14 @@ export default mixins(
 		userIsTrialing(): boolean {
 			return this.cloudPlanStore.userIsTrialing;
 		},
-		currentPlanData(): Cloud.PlanData | null {
-			return this.cloudPlanStore.currentPlanData;
+		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
+			const planData = this.cloudPlanStore.currentPlanData;
+			const usage = this.cloudPlanStore.currentUsageData;
+			if (!planData || !usage) return null;
+			return {
+				...planData,
+				usage,
+			};
 		},
 	},
 	async mounted() {
