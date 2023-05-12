@@ -1068,6 +1068,7 @@
 	"resourceMapper.columnsToMatchOn.label": "{fieldWord} to Match On",
 	"resourceMapper.columnsToMatchOn.multi.description": "The {fieldWord} that identify the row(s) to modify",
 	"resourceMapper.columnsToMatchOn.single.description": "The {fieldWord} that identifies the row(s) to modify",
+	"resourceMapper.columnsToMatchOn.tooltip": "The {fieldWord} to compare when finding the rows to update",
 	"resourceMapper.valuesToSend.label": "Values to Send",
 	"resourceMapper.valuesToUpdate.label": "Values to Update",
 	"resourceMapper.usingToMatch": "(using to match)",

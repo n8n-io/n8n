@@ -167,6 +167,11 @@ export const description: SheetProperties = [
 				addAllFields: true,
 				noFieldsError: 'No columns found in sheet.',
 				multiKeyMatch: false,
+				matchingFieldsLabels: {
+					title: 'Custom matching columns title',
+					description: 'Custom matching columns description',
+					hint: 'Custom matching columns hint',
+				},
 			},
 		},
 		displayOptions: {
