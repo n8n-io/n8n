@@ -76,7 +76,7 @@ const orderedFields = computed<INodeProperties[]>(() => {
 });
 
 const removedFields = computed<ResourceMapperField[]>(() => {
-	return props.fieldsToMap.filter((field) => field.removed === true);
+	return props.fieldsToMap.filter((field) => field.removed === true && field.display !== false);
 });
 
 const singularFieldWord = computed<string>(() => {
