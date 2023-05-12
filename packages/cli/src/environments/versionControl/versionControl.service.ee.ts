@@ -202,6 +202,7 @@ export class VersionControlService {
 	}
 
 	private async updateLocalAndDiff(): Promise<DiffResult> {
+		await this.versionControlExportService.cleanWorkFolder();
 		await this.export(); // refresh workfolder
 		await this.gitService.fetch();
 		return this.gitService.diff();
