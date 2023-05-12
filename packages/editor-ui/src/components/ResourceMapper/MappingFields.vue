@@ -179,7 +179,7 @@ function getFieldDescription(field: ResourceMapperField): string {
 		return (
 			locale.baseText('resourceMapper.usingToMatch.description', {
 				interpolate: {
-					fieldWord: singularFieldWordCapitalized.value,
+					fieldWord: singularFieldWord.value,
 				},
 			}) || ''
 		);
@@ -298,7 +298,7 @@ defineExpose({
 					<template #content>
 						<span>{{
 							locale.baseText('resourceMapper.mandatoryField.title', {
-								interpolate: { fieldWord: singularFieldWordCapitalized },
+								interpolate: { fieldWord: singularFieldWord },
 							})
 						}}</span>
 					</template>
