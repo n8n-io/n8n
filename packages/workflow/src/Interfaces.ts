@@ -1066,6 +1066,11 @@ export interface ResourceMapperTypeOptions {
 	noFieldsError?: string;
 	multiKeyMatch?: boolean;
 	supportAutoMap?: boolean;
+	matchingFieldsLabels?: {
+		title?: string;
+		description?: string;
+		hint?: string;
+	};
 }
 
 export interface IDisplayOptions {

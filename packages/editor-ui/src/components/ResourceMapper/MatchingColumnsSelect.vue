@@ -41,14 +41,15 @@ const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	});
 });
 
-// Field label and description: Labels here use field words defined in parameter type options
+// Field label, description and tooltip: Labels here use content and field words defined in parameter type options
 const fieldLabel = computed<string>(() => {
-	const pluralFieldWord =
-		props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
-	const singularFieldWord =
-		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
-	let fieldWord = props.typeOptions?.multiKeyMatch === true ? pluralFieldWord : singularFieldWord;
-	fieldWord = fieldWord.charAt(0).toUpperCase() + fieldWord.slice(1);
+	if (props.typeOptions?.matchingFieldsLabels?.title) {
+		return props.typeOptions.matchingFieldsLabels.title;
+	}
+	const fieldWord =
+		props.typeOptions?.multiKeyMatch === true
+			? pluralFieldWordCapitalized.value
+			: singularFieldWordCapitalized.value;
 	return locale.baseText('resourceMapper.columnsToMatchOn.label', {
 		interpolate: {
 			fieldWord,
@@ -57,10 +58,9 @@ const fieldLabel = computed<string>(() => {
 });
 
 const fieldDescription = computed<string>(() => {
-	const pluralFieldWord =
-		props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
-	const singularFieldWord =
-		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
+	if (props.typeOptions?.matchingFieldsLabels?.hint) {
+		return props.typeOptions.matchingFieldsLabels.hint;
+	}
 	const labeli18nKey =
 		props.typeOptions?.multiKeyMatch === true
 			? 'resourceMapper.columnsToMatchOn.multi.description'
@@ -68,9 +68,43 @@ const fieldDescription = computed<string>(() => {
 	return locale.baseText(labeli18nKey, {
 		interpolate: {
 			fieldWord:
-				props.typeOptions?.multiKeyMatch === true ? `${pluralFieldWord}` : `${singularFieldWord}`,
+				props.typeOptions?.multiKeyMatch === true
+					? `${pluralFieldWord.value}`
+					: `${singularFieldWord.value}`,
 		},
 	});
+});
+
+const fieldTooltip = computed<string>(() => {
+	if (props.typeOptions?.matchingFieldsLabels?.description) {
+		return props.typeOptions.matchingFieldsLabels.description;
+	}
+	return locale.baseText('resourceMapper.columnsToMatchOn.tooltip', {
+		interpolate: {
+			fieldWord:
+				props.typeOptions?.multiKeyMatch === true
+					? `${pluralFieldWord.value}`
+					: `${singularFieldWord.value}`,
+		},
+	});
+});
+
+const singularFieldWord = computed<string>(() => {
+	const singularFieldWord =
+		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
+	return singularFieldWord;
+});
+
+const singularFieldWordCapitalized = computed<string>(() => {
+	return singularFieldWord.value.charAt(0).toUpperCase() + singularFieldWord.value.slice(1);
+});
+
+const pluralFieldWord = computed<string>(() => {
+	return props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
+});
+
+const pluralFieldWordCapitalized = computed<string>(() => {
+	return pluralFieldWord.value.charAt(0).toUpperCase() + pluralFieldWord.value.slice(1);
 });
 
 function onSelectionChange(value: string | string[]) {
@@ -95,6 +129,7 @@ defineExpose({
 	<div class="mt-2xs" data-test-id="matching-column-select">
 		<n8n-input-label
 			:label="fieldLabel"
+			:tooltipText="fieldTooltip"
 			:bold="false"
 			:required="false"
 			:size="labelSize"
