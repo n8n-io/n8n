@@ -209,7 +209,7 @@ export class RabbitMQTrigger implements INodeType {
 			const consumerInfo = await channel.consume(queue, async (message) => {
 				if (message !== null) {
 					try {
-						if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
+						if (acknowledgeMode !== 'immediately') {
 							messageTracker.received(message);
 						}
 
