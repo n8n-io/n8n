@@ -16,7 +16,7 @@
 					<n8n-text size="xsmall" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
-								interpolate: { days: daysLeftOnTrial().toString() },
+								interpolate: { days: daysLeftOnTrial.toString() },
 							})
 						}}
 					</n8n-text>
@@ -28,22 +28,22 @@
 				{{ locale.baseText('executionUsage.ranOutOfExecutions.text') }}
 			</n8n-text>
 		</div>
-		<div v-if="!isTrialExpired()" :class="$style.usageCounter">
+		<div v-if="!isTrialExpired" :class="$style.usageCounter">
 			<div>
 				<progress
 					:class="[
-						trialHasExecutionsLeft() ? $style.progressBarSuccess : $style.progressBarDanger,
+						trialHasExecutionsLeft ? $style.progressBarSuccess : $style.progressBarDanger,
 						$style.progressBar,
 					]"
-					:value="currentExecutions()"
-					:max="maxExecutions()"
+					:value="currentExecutions"
+					:max="maxExecutions"
 				></progress>
 			</div>
 			<div :class="$style.executionsCountSection">
-				<n8n-text size="xsmall" :color="trialHasExecutionsLeft() ? 'text-dark' : 'danger'">
-					{{ currentExecutions() }}/{{ maxExecutions() }}
+				<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">
+					{{ currentExecutions }}/{{ maxExecutions }}
 				</n8n-text>
-				<n8n-text size="xsmall" :color="trialHasExecutionsLeft() ? 'text-dark' : 'danger'">{{
+				<n8n-text size="xsmall" :color="trialHasExecutionsLeft ? 'text-dark' : 'danger'">{{
 					locale.baseText('executionUsage.label.executions')
 				}}</n8n-text>
 			</div>
@@ -77,19 +77,17 @@ const props = defineProps({
 	},
 });
 
-const emit = defineEmits(['onUpgradePlanClicked']);
-
 const now = DateTime.utc();
 
-const daysLeftOnTrial = () => {
+const daysLeftOnTrial = computed(() => {
 	const { days = 0 } = getPlanExpirationDate().diff(now, ['days']).toObject();
 	return Math.ceil(days);
-};
+});
 
 const isTrialExpired = computed(() => {
 	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
-};
+});
 
 const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.expirationDate);
 

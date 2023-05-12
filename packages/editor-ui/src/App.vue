@@ -204,10 +204,6 @@ export default mixins(newVersions, userHelpers).extend({
 						clearTimeout(interval);
 						return;
 					}
-					// TODO: remove before releasing
-					plan.usage.executions += acc;
-					acc += 20;
-					this.usersStore.setCloudPLan(plan);
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
