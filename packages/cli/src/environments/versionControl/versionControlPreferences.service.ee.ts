@@ -8,7 +8,7 @@ import {
 	generateSshKeyPair,
 	isVersionControlLicensed,
 	versionControlFoldersExistCheck,
-} from './versionControlHelper';
+} from './versionControlHelper.ee';
 import { UserSettings } from 'n8n-core';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import * as Db from '@/Db';

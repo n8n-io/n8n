@@ -15,7 +15,7 @@ import type {
 import { simpleGit } from 'simple-git';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { VERSION_CONTROL_DEFAULT_BRANCH, VERSION_CONTROL_ORIGIN } from './constants';
-import { versionControlFoldersExistCheck } from './versionControlHelper';
+import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 
 @Service()
 export class VersionControlGitService {

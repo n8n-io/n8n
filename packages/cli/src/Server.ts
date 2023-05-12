@@ -164,10 +164,10 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper.ee';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
-import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service';
+import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
 
 const exec = promisify(callbackExec);
 

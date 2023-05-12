@@ -1,5 +1,5 @@
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import { versionControlLicensedMiddleware } from './middleware/versionControlEnabledMiddleware';
+import { versionControlLicensedMiddleware } from './middleware/versionControlEnabledMiddleware.ee';
 import { VersionControlService } from './versionControl.service.ee';
 import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
@@ -9,7 +9,7 @@ import { AuthenticatedRequest } from '../../requests';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
-import { VersionControlPreferencesService } from './versionControlPreferences.service';
+import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 
 @RestController('/version-control')
 export class VersionControlController {

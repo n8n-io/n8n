@@ -1,4 +1,4 @@
-import { generateSshKeyPair } from '../../src/environments/versionControl/versionControlHelper';
+import { generateSshKeyPair } from '../../src/environments/versionControl/versionControlHelper.ee';
 
 describe('Version Control', () => {
 	it('should generate an SSH key pair', () => {

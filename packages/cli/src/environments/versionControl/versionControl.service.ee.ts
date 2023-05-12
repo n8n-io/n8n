@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import path from 'path';
-import { versionControlFoldersExistCheck } from './versionControlHelper';
+import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import {
 	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -34,7 +34,7 @@ import type {
 	VersionControlledFileStatus,
 	VersionControlledFileType,
 } from './types/versionControlledFile';
-import { VersionControlPreferencesService } from './versionControlPreferences.service';
+import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 
 @Service()
 export class VersionControlService {
