@@ -16,12 +16,13 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	);
 
 	const preferences = reactive<VersionControlPreferences>({
-		branchName: '',
+		currentBranch: '',
+		branches: [],
 		authorName: '',
 		authorEmail: '',
 		repositoryUrl: '',
 		branchReadOnly: false,
-		branchColor: '#000000',
+		branchColor: '#F4A6DC',
 		connected: false,
 		publicKey: '',
 	});
@@ -77,6 +78,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
+		preferences,
 		initSsh,
 		initRepository,
 		sync,
