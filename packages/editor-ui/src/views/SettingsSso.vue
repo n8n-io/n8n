@@ -136,14 +136,21 @@ onMounted(async () => {
 		<n8n-heading size="2xlarge">{{ locale.baseText('settings.sso.title') }}</n8n-heading>
 		<div :class="$style.top">
 			<n8n-heading size="xlarge">{{ locale.baseText('settings.sso.subtitle') }}</n8n-heading>
-			<n8n-tooltip v-if="ssoStore.isEnterpriseSamlEnabled" :disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved">
+			<n8n-tooltip
+				v-if="ssoStore.isEnterpriseSamlEnabled"
+				:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
+			>
 				<template #content>
 					<span>
 						{{ locale.baseText('settings.sso.activation.tooltip') }}
 					</span>
 				</template>
-				<el-switch v-model="ssoStore.isSamlLoginEnabled" :disabled="!ssoSettingsSaved" :class="$style.switch"
-					:inactive-text="ssoActivatedLabel" />
+				<el-switch
+					v-model="ssoStore.isSamlLoginEnabled"
+					:disabled="!ssoSettingsSaved"
+					:class="$style.switch"
+					:inactive-text="ssoActivatedLabel"
+				/>
 			</n8n-tooltip>
 		</div>
 		<n8n-info-tip>
@@ -155,14 +162,20 @@ onMounted(async () => {
 		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-				<CopyInput :value="redirectUrl" :copy-button-text="locale.baseText('generic.clickToCopy')"
-					:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')" />
+				<CopyInput
+					:value="redirectUrl"
+					:copy-button-text="locale.baseText('generic.clickToCopy')"
+					:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')"
+				/>
 				<small>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 			</div>
 			<div :class="$style.group">
 				<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
-				<CopyInput :value="entityId" :copy-button-text="locale.baseText('generic.clickToCopy')"
-					:toast-title="locale.baseText('settings.sso.settings.entityId.copied')" />
+				<CopyInput
+					:value="entityId"
+					:copy-button-text="locale.baseText('generic.clickToCopy')"
+					:toast-title="locale.baseText('settings.sso.settings.entityId.copied')"
+				/>
 				<small>{{ locale.baseText('settings.sso.settings.entityId.help') }}</small>
 			</div>
 			<div :class="$style.group">
@@ -171,8 +184,13 @@ onMounted(async () => {
 					<n8n-radio-buttons :options="ipsOptions" v-model="ipsType" />
 				</div>
 				<div v-show="ipsType === IdentityProviderSettingsType.URL">
-					<n8n-input v-model="metadataUrl" type="text" name="metadataUrl" size="large"
-						:placeholder="locale.baseText('settings.sso.settings.ips.url.placeholder')" />
+					<n8n-input
+						v-model="metadataUrl"
+						type="text"
+						name="metadataUrl"
+						size="large"
+						:placeholder="locale.baseText('settings.sso.settings.ips.url.placeholder')"
+					/>
 					<small>{{ locale.baseText('settings.sso.settings.ips.url.help') }}</small>
 				</div>
 				<div v-show="ipsType === IdentityProviderSettingsType.XML">
@@ -184,7 +202,12 @@ onMounted(async () => {
 				<n8n-button :disabled="!isSaveEnabled" @click="onSave" data-test-id="sso-save">
 					{{ locale.baseText('settings.sso.settings.save') }}
 				</n8n-button>
-				<n8n-button :disabled="!isTestEnabled" type="tertiary" @click="onTest" data-test-id="sso-test">
+				<n8n-button
+					:disabled="!isTestEnabled"
+					type="tertiary"
+					@click="onTest"
+					data-test-id="sso-test"
+				>
 					{{ locale.baseText('settings.sso.settings.test') }}
 				</n8n-button>
 			</div>
@@ -192,9 +215,14 @@ onMounted(async () => {
 				{{ locale.baseText('settings.sso.settings.footer.hint') }}
 			</footer>
 		</div>
-		<n8n-action-box v-else data-test-id="sso-content-unlicensed" :class="$style.actionBox"
+		<n8n-action-box
+			v-else
+			data-test-id="sso-content-unlicensed"
+			:class="$style.actionBox"
 			:description="locale.baseText('settings.sso.actionBox.description')"
-			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')" @click="goToUpgrade">
+			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"
+			@click="goToUpgrade"
+		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.sso.actionBox.title') }}</span>
 			</template>
@@ -231,7 +259,7 @@ onMounted(async () => {
 .group {
 	padding: var(--spacing-xl) 0 0;
 
-	>label {
+	> label {
 		display: inline-block;
 		font-size: var(--font-size-s);
 		font-weight: var(--font-weight-bold);
