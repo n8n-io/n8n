@@ -127,21 +127,21 @@ import type {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import CredentialIcon from '@/components/CredentialIcon.vue';
+import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast, useMessage } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 
-import CredentialConfig from '@/components/CredentialEdit/CredentialConfig.vue';
-import CredentialInfo from '@/components/CredentialEdit/CredentialInfo.vue';
-import CredentialSharing from '@/components/CredentialEdit/CredentialSharing.ee.vue';
-import SaveButton from '@/components/SaveButton.vue';
-import Modal from '@/components/Modal.vue';
-import InlineNameEdit from '@/components/InlineNameEdit.vue';
-import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import CredentialConfig from './CredentialConfig.vue';
+import CredentialInfo from './CredentialInfo.vue';
+import CredentialSharing from './CredentialSharing.ee.vue';
+import SaveButton from '../SaveButton.vue';
+import Modal from '../Modal.vue';
+import InlineNameEdit from '../InlineNameEdit.vue';
+import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import type { IDataObject } from 'n8n-workflow';
-import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
+import FeatureComingSoon from '../FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
@@ -165,7 +165,7 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(nodeHelpers).extend({
+export default mixins(showMessage, nodeHelpers).extend({
 	name: 'CredentialEdit',
 	components: {
 		CredentialSharing,
@@ -189,12 +189,6 @@ export default mixins(nodeHelpers).extend({
 		mode: {
 			type: String,
 		},
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
 	},
 	data() {
 		return {
@@ -492,7 +486,7 @@ export default mixins(nodeHelpers).extend({
 
 			if (this.hasUnsavedChanges) {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
-				const confirmAction = await this.confirm(
+				keepEditing = await this.confirmMessage(
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.message',
 						{ interpolate: { credentialDisplayName: displayName } },
@@ -500,34 +494,30 @@ export default mixins(nodeHelpers).extend({
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline',
 					),
-					{
-						cancelButtonText: this.$locale.baseText(
-							'credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText',
-						),
-						confirmButtonText: this.$locale.baseText(
-							'credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText',
-						),
-					},
+					null,
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText',
+					),
 				);
-				keepEditing = confirmAction === MODAL_CONFIRM;
 			} else if (this.credentialPermissions.isOwner && this.isOAuthType && !this.isOAuthConnected) {
-				const confirmAction = await this.confirm(
+				keepEditing = await this.confirmMessage(
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.message',
 					),
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline',
 					),
-					{
-						cancelButtonText: this.$locale.baseText(
-							'credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText',
-						),
-						confirmButtonText: this.$locale.baseText(
-							'credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText',
-						),
-					},
+					null,
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText',
+					),
 				);
-				keepEditing = confirmAction === MODAL_CONFIRM;
 			}
 
 			if (!keepEditing) {
@@ -606,7 +596,7 @@ export default mixins(nodeHelpers).extend({
 					this.nodeAccess[access.nodeType] = access;
 				});
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
 				);
@@ -850,7 +840,7 @@ export default mixins(nodeHelpers).extend({
 				credential = await this.credentialsStore.createNewCredential(credentialDetails);
 				this.hasUnsavedChanges = false;
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
 				);
@@ -884,7 +874,7 @@ export default mixins(nodeHelpers).extend({
 				});
 				this.hasUnsavedChanges = false;
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
 				);
@@ -912,7 +902,7 @@ export default mixins(nodeHelpers).extend({
 
 			const savedCredentialName = this.currentCredential.name;
 
-			const deleteConfirmed = await this.confirm(
+			const deleteConfirmed = await this.confirmMessage(
 				this.$locale.baseText(
 					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.message',
 					{ interpolate: { savedCredentialName } },
@@ -920,14 +910,13 @@ export default mixins(nodeHelpers).extend({
 				this.$locale.baseText(
 					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline',
 				),
-				{
-					confirmButtonText: this.$locale.baseText(
-						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-					),
-				},
+				null,
+				this.$locale.baseText(
+					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
+				),
 			);
 
-			if (deleteConfirmed !== MODAL_CONFIRM) {
+			if (deleteConfirmed === false) {
 				return;
 			}
 
@@ -936,7 +925,7 @@ export default mixins(nodeHelpers).extend({
 				await this.credentialsStore.deleteCredential({ id: this.credentialId });
 				this.hasUnsavedChanges = false;
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('credentialEdit.credentialEdit.showError.deleteCredential.title'),
 				);
@@ -950,7 +939,7 @@ export default mixins(nodeHelpers).extend({
 			this.updateNodesCredentialsIssues();
 			this.credentialData = {};
 
-			this.showMessage({
+			this.$showMessage({
 				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
 				type: 'success',
 			});
@@ -979,7 +968,7 @@ export default mixins(nodeHelpers).extend({
 					}
 				}
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title',

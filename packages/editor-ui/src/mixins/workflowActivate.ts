@@ -1,6 +1,6 @@
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import {
@@ -13,12 +13,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
-export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
+export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessage).extend({
 	data() {
 		return {
 			updatingWorkflowActivation: false,
@@ -65,7 +60,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
 
 			try {
 				if (isWorkflowActive && newActiveState) {
-					this.showMessage({
+					this.$showMessage({
 						title: this.$locale.baseText('workflowActivator.workflowIsActive'),
 						type: 'success',
 					});
@@ -75,7 +70,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
 				}
 
 				if (isCurrentWorkflow && nodesIssuesExist && newActiveState === true) {
-					this.showMessage({
+					this.$showMessage({
 						title: this.$locale.baseText(
 							'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
 						),
@@ -92,7 +87,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
 				await this.updateWorkflow({ workflowId: currWorkflowId, active: newActiveState });
 			} catch (error) {
 				const newStateName = newActiveState === true ? 'activated' : 'deactivated';
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('workflowActivator.showError.title', {
 						interpolate: { newStateName },

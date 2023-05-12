@@ -125,8 +125,8 @@ import {
 	VIEWS,
 } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
-import Modal from '@/components/Modal.vue';
+import { showMessage } from '@/mixins/showMessage';
+import Modal from './Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils';
 import type { GenericValue } from 'n8n-workflow';
@@ -137,7 +137,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(workflowHelpers).extend({
+export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
 	name: 'PersonalizationModal',
 	data() {
@@ -149,11 +149,6 @@ export default mixins(workflowHelpers).extend({
 			showAllIndustryQuestions: true,
 			modalBus: createEventBus(),
 			formBus: createEventBus(),
-		};
-	},
-	setup() {
-		return {
-			...useToast(),
 		};
 	},
 	computed: {
@@ -642,7 +637,7 @@ export default mixins(workflowHelpers).extend({
 
 				await this.fetchOnboardingPrompt();
 			} catch (e) {
-				this.showError(e, 'Error while submitting results');
+				this.$showError(e, 'Error while submitting results');
 			}
 
 			this.$data.isSaving = false;
@@ -659,7 +654,7 @@ export default mixins(workflowHelpers).extend({
 
 				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {
-						this.showToast({
+						this.$showToast({
 							type: 'info',
 							title: onboardingResponse.title,
 							message: onboardingResponse.description,

@@ -27,7 +27,7 @@ import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue
 import {
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
-	MODAL_CONFIRM,
+	MODAL_CONFIRMED,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
@@ -49,7 +49,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
-import { useToast, useMessage } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -70,7 +70,7 @@ const MAX_LOADING_ATTEMPTS = 5;
 // Number of executions fetched on each page
 const LOAD_MORE_PAGE_SIZE = 100;
 
-export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend({
+export default mixins(showMessage, executionHelpers, debounceHelper, workflowHelpers).extend({
 	name: 'executions-list',
 	components: {
 		ExecutionsSidebar,
@@ -81,12 +81,6 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
 			temporaryExecution: null as IExecutionsSummary | null,
-		};
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
 		};
 	},
 	computed: {
@@ -138,22 +132,16 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 			return;
 		}
 		if (this.uiStore.stateIsDirty) {
-			const confirmModal = await this.confirm(
+			const confirmModal = await this.confirmModal(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.cancelButtonText',
-					),
-					showClose: true,
-				},
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				true,
 			);
 
-			if (confirmModal === MODAL_CONFIRM) {
+			if (confirmModal === MODAL_CONFIRMED) {
 				const saved = await this.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
@@ -233,7 +221,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 				data = await this.workflowsStore.getPastExecutions(this.requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
-				this.showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
+				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
 				return;
 			}
 
@@ -288,7 +276,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 				await this.setExecutions();
 			} catch (error) {
 				this.loading = false;
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
@@ -296,7 +284,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 			}
 			this.loading = false;
 
-			this.showMessage({
+			this.$showMessage({
 				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
 				type: 'success',
 			});
@@ -307,7 +295,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 			try {
 				await this.workflowsStore.stopCurrentExecution(activeExecutionId);
 
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
 					message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
 						interpolate: { activeExecutionId },
@@ -317,7 +305,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 
 				await this.loadAutoRefresh();
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
 				);
@@ -411,7 +399,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
 			} catch (error) {
 				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
-					this.showMessage(
+					this.$showMessage(
 						{
 							title: this.$locale.baseText('executionsList.showError.refreshData.title'),
 							message: error.message,
@@ -421,7 +409,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 						false,
 					);
 				} else {
-					this.showError(
+					this.$showError(
 						error,
 						this.$locale.baseText('executionsList.showError.refreshData.title'),
 					);
@@ -461,7 +449,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 				const existingExecution = await this.workflowsStore.fetchExecutionDataById(executionId);
 				if (!existingExecution) {
 					this.workflowsStore.activeWorkflowExecution = null;
-					this.showError(
+					this.$showError(
 						new Error(
 							this.$locale.baseText('executionView.notFound.message', {
 								interpolate: { executionId },
@@ -505,7 +493,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 			try {
 				data = await this.workflowsStore.fetchWorkflow(workflowId);
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.showError.openWorkflow.title'));
+				this.$showError(error, this.$locale.baseText('nodeView.showError.openWorkflow.title'));
 				return;
 			}
 			if (data === undefined) {
@@ -654,7 +642,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
 
-			this.showMessage({
+			this.$showMessage({
 				title: this.$locale.baseText('executionDetails.runningMessage'),
 				type: 'info',
 				duration: 2000,
@@ -676,18 +664,18 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 				);
 
 				if (retrySuccessful === true) {
-					this.showMessage({
+					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
 						type: 'success',
 					});
 				} else {
-					this.showMessage({
+					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
 						type: 'error',
 					});
 				}
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.retryExecution.title'),
 				);
