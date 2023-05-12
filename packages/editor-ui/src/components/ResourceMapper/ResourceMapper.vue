@@ -370,7 +370,7 @@ defineExpose({
 			:labelSize="labelSize"
 			:initialValue="state.paramValue.mappingMode || 'defineBelow'"
 			:typeOptions="props.parameter.typeOptions?.resourceMapper"
-			:serviceName="nodeType?.displayName || ''"
+			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
 			:loading="state.loading"
 			:loadingError="state.loadingError"
 			:fieldsToMap="state.paramValue.schema"

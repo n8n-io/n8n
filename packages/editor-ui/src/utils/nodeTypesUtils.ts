@@ -430,7 +430,7 @@ export const isMatchingField = (
 ): boolean => {
 	const fieldName = parseResourceMapperFieldName(field);
 	if (fieldName) {
-		return showMatchingColumnsSelector && matchingFields.includes(fieldName);
+		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
 	}
 	return false;
 };
