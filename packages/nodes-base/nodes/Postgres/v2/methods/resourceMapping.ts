@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
-import { getEnumValues, getTableSchema, isColumnUnique } from '../helpers/utils';
+import { getEnumValues, getTableSchema } from '../helpers/utils';
 import { Connections } from '../transport';
 import type { ConnectionsData } from '../helpers/interfaces';
 
@@ -61,10 +61,12 @@ export async function getMappingColumns(
 		const columns = await getTableSchema(db, schema, table);
 		const fields = await Promise.all(
 			columns.map(async (col) => {
-				const canBeUsedToMatch = await isColumnUnique(db, table, col.column_name);
+				//this icauses issue
+				// const canBeUsedToMatch = await isColumnUnique(db, table, col.column_name);
+				const canBeUsedToMatch = true;
 				const type = mapPostgresType(col.data_type);
 				const options =
-					type === 'options' ? await getEnumValues(db, schema, table, col.column_name) : undefined;
+					type === 'options' ? await getEnumValues(db, schema, table, col.udt_name) : undefined;
 				return {
 					id: col.column_name,
 					displayName: col.column_name,

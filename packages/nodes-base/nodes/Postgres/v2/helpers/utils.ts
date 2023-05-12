@@ -326,7 +326,7 @@ export async function getTableSchema(
 	table: string,
 ): Promise<ColumnInfo[]> {
 	const columns = await db.any(
-		'SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+		'SELECT column_name, data_type, is_nullable, udt_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
 		[schema, table],
 	);
 
@@ -359,17 +359,17 @@ export async function getEnumValues(
 	db: PgpDatabase,
 	schema: string,
 	table: string,
-	columnName: string,
+	enumName: string,
 ): Promise<INodePropertyOptions[]> {
 	const options: INodePropertyOptions[] = [];
 	// First get the type name based on the column name
-	const enumName = await db.one(
-		'SELECT udt_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = $3',
-		[schema, table, columnName],
-	);
+	// const enumName = await db.one(
+	// 	'SELECT udt_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = $3',
+	// 	[schema, table, columnName],
+	// );
 	if (enumName) {
 		// Then get the values based on the type name
-		const fetchedValues = await db.one('SELECT enum_range(null::$1:name)', [enumName.udt_name]);
+		const fetchedValues = await db.one('SELECT enum_range(null::$1:name)', [enumName]);
 		if (fetchedValues.enum_range) {
 			// Column values are returned as a string like {value1,value2,value3}
 			ENUM_VALUES_REGEX.lastIndex = 0;
