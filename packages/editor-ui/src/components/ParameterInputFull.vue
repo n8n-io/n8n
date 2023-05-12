@@ -76,7 +76,7 @@ import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } fro
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -95,18 +95,23 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
-import { getMappedResult } from '../utils/mappingUtils';
+import { getMappedResult } from '@/utils/mappingUtils';
 
 type ParamterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
-export default mixins(showMessage, externalHooks).extend({
+export default mixins(externalHooks).extend({
 	name: 'parameter-input-full',
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -292,7 +297,7 @@ export default mixins(showMessage, externalHooks).extend({
 					this.$emit('valueChanged', parameterData);
 
 					if (!this.ndvStore.isMappingOnboarded) {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',

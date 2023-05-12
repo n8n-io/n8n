@@ -89,17 +89,10 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-
-import SettingsView from './SettingsView.vue';
+import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
@@ -118,14 +111,10 @@ const StatusFilter = {
 	ALL: '',
 };
 
-const WorkflowsView = mixins(showMessage, debounceHelper).extend({
+const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		WorkflowCard,
 		TagsDropdown,
 	},
@@ -156,9 +145,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
-		},
-		hasActiveWorkflows(): boolean {
-			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
