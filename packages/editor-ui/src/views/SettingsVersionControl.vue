@@ -21,6 +21,10 @@ const onConnect = () => {
 	void versionControlStore.initRepository();
 };
 
+const onSave = () => {
+	void versionControlStore.savePreferences(versionControlStore.preferences);
+};
+
 const onSelect = async (b: string) => {
 	if (b === versionControlStore.preferences.currentBranch) {
 		return;
@@ -160,7 +164,14 @@ const goToUpgrade = () => {
 				</div>
 				<div :class="$style.group">
 					<label>{{ locale.baseText('settings.versionControl.color') }}</label>
-
+					<div>
+						<n8n-color-picker size="small" v-model="versionControlStore.preferences.branchColor" />
+					</div>
+				</div>
+				<div :class="[$style.group, 'pt-s']">
+					<n8n-button @click="onSave" size="large">{{
+						locale.baseText('settings.versionControl.button.save')
+					}}</n8n-button>
 				</div>
 			</div>
 		</div>

@@ -1303,6 +1303,7 @@
 	"settings.versionControl.sshKeyDescriptionLink": "More info.",
 	"settings.versionControl.button.continue": "Continue",
 	"settings.versionControl.button.connect": "Connect",
+	"settings.versionControl.button.save": "Save settings",
 	"settings.versionControl.instanceSettings": "Instance settings",
 	"settings.versionControl.branches": "Branch connected to this n8n instance",
 	"settings.versionControl.readonly": "{bold}: prevent editing workflows (recommended for production environments). {link}",
