@@ -223,6 +223,11 @@ export class RabbitMQ implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
+				displayOptions: {
+					show: {
+						operation: ['send_message'],
+					},
+				},
 				placeholder: 'Add Option',
 				options: [
 					{
