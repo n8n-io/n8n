@@ -67,12 +67,14 @@ onMounted(async () => {
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
+	let hasSchema = false;
 	if (parameterName in params) {
 		const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
 		Vue.set(state, 'paramValue', nodeValues);
-
 		if (!state.paramValue.schema) {
 			Vue.set(state.paramValue, 'schema', []);
+		} else {
+			hasSchema = true;
 		}
 		Object.keys(state.paramValue.value || {}).forEach((key) => {
 			if (state.paramValue.value && state.paramValue.value[key] === '') {
@@ -83,7 +85,7 @@ onMounted(async () => {
 			Vue.set(state.paramValue, 'matchingColumns', nodeValues.matchingColumns);
 		}
 	}
-	await initFetching();
+	await initFetching(hasSchema);
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
 		setDefaultFieldValues();
