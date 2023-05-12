@@ -412,7 +412,25 @@ export const parseResourceMapperFieldName = (fullName: string) => {
 
 export const fieldCannotBeDeleted = (
 	field: INodeProperties | ResourceMapperField,
+	showMatchingColumnsSelector: boolean,
 	resourceMapperMode = '',
+	matchingFields: string[] = [],
 ): boolean => {
-	return resourceMapperMode === 'add' && field.required === true;
+	const fieldIdentifier = 'id' in field ? field.id : field.name;
+	return (
+		field.required === true ||
+		isMatchingField(fieldIdentifier, matchingFields, showMatchingColumnsSelector)
+	);
+};
+
+export const isMatchingField = (
+	field: string,
+	matchingFields: string[],
+	showMatchingColumnsSelector: boolean,
+): boolean => {
+	const fieldName = parseResourceMapperFieldName(field);
+	if (fieldName) {
+		return showMatchingColumnsSelector && matchingFields.includes(fieldName);
+	}
+	return false;
 };

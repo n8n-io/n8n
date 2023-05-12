@@ -15,7 +15,7 @@ import ParameterOptions from '../ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores';
-import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils';
+import { fieldCannotBeDeleted, isMatchingField, parseResourceMapperFieldName } from '@/utils';
 
 interface Props {
 	parameter: INodeProperties;
@@ -142,7 +142,15 @@ const isRemoveAllAvailable = computed<boolean>(() => {
 	return (
 		removedFields.value.length !== props.fieldsToMap.length &&
 		props.fieldsToMap.some((field) => {
-			return field.removed !== true && !fieldCannotBeDeleted(field, resourceMapperMode.value);
+			return (
+				field.removed !== true &&
+				!fieldCannotBeDeleted(
+					field,
+					props.showMatchingColumnsSelector,
+					resourceMapperMode.value,
+					props.paramValue.matchingColumns,
+				)
+			);
 		})
 	);
 });
@@ -167,7 +175,9 @@ const fetchingFieldsLabel = computed<string>(() => {
 });
 
 function getFieldLabel(field: ResourceMapperField): string {
-	if (isMatchingField(field.id)) {
+	if (
+		isMatchingField(field.id, props.paramValue.matchingColumns, props.showMatchingColumnsSelector)
+	) {
 		const suffix = locale.baseText('resourceMapper.usingToMatch') || '';
 		return `${field.displayName} ${suffix}`;
 	}
@@ -175,7 +185,9 @@ function getFieldLabel(field: ResourceMapperField): string {
 }
 
 function getFieldDescription(field: ResourceMapperField): string {
-	if (isMatchingField(field.id)) {
+	if (
+		isMatchingField(field.id, props.paramValue.matchingColumns, props.showMatchingColumnsSelector)
+	) {
 		return (
 			locale.baseText('resourceMapper.usingToMatch.description', {
 				interpolate: {
@@ -185,17 +197,6 @@ function getFieldDescription(field: ResourceMapperField): string {
 		);
 	}
 	return '';
-}
-
-function isMatchingField(field: string): boolean {
-	const fieldName = parseResourceMapperFieldName(field);
-	if (fieldName) {
-		return (
-			props.showMatchingColumnsSelector &&
-			(props.paramValue.matchingColumns || []).includes(fieldName)
-		);
-	}
-	return false;
 }
 
 function getParameterValue(parameterName: string) {
@@ -296,7 +297,14 @@ defineExpose({
 			}"
 		>
 			<div
-				v-if="fieldCannotBeDeleted(field, resourceMapperMode)"
+				v-if="
+					fieldCannotBeDeleted(
+						field,
+						props.showMatchingColumnsSelector,
+						resourceMapperMode,
+						props.paramValue.matchingColumns,
+					)
+				"
 				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
 			>
 				<n8n-tooltip placement="top">
@@ -311,7 +319,13 @@ defineExpose({
 				</n8n-tooltip>
 			</div>
 			<div
-				v-else-if="!isMatchingField(field.name)"
+				v-else-if="
+					!isMatchingField(
+						field.name,
+						props.paramValue.matchingColumns,
+						props.showMatchingColumnsSelector,
+					)
+				"
 				:class="['delete-option', 'clickable', 'mt-5xs']"
 			>
 				<font-awesome-icon

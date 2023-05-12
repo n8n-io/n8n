@@ -320,7 +320,14 @@ function addAllFields(): void {
 
 function removeAllFields(): void {
 	state.paramValue.schema.forEach((field) => {
-		if (!fieldCannotBeDeleted(field, resourceMapperMode.value)) {
+		if (
+			!fieldCannotBeDeleted(
+				field,
+				showMatchingColumnsSelector.value,
+				resourceMapperMode.value,
+				matchingColumns.value,
+			)
+		) {
 			Vue.set(field, 'removed', true);
 		}
 	});
