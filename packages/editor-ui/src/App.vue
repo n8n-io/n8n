@@ -185,7 +185,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		async checkForCloudPlanData() {
+		async checkForCloudPlanData(): Promise<void> {
 			try {
 				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
 				this.cloudPlanStore.setData(plan);
@@ -196,8 +196,6 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			} catch {}
 		},
 		startPollingInstanceUsageData() {
-			// TODO: remove before releasing
-			let acc = 0;
 			const interval = setInterval(async () => {
 				try {
 					const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
@@ -206,9 +204,6 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 						clearTimeout(interval);
 						return;
 					}
-					// TODO: remove before releasing
-					usage.executions += acc;
-					acc += 20;
 				} catch {}
 			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
@@ -220,7 +215,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		this.authenticate();
 		this.redirectIfNecessary();
 		this.checkForNewVersions();
-		this.checkForCloudPlanData();
+		void this.checkForCloudPlanData();
 
 		this.loading = false;
 
