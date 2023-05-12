@@ -21,7 +21,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { engine as expressHandlebars } from 'express-handlebars';
 import type { ServeStaticOptions } from 'serve-static';
-import type { FindManyOptions } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -171,6 +171,8 @@ import { isVersionControlLicensed } from '@/environments/versionControl/versionC
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
+import { ExecutionRepository } from './databases/repositories';
+import { ExecutionEntity } from './databases/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 
@@ -1153,7 +1155,9 @@ export class Server extends AbstractServer {
 
 						if (!currentlyRunningExecutionIds.length) return [];
 
-						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
+						const findOptions: FindManyOptions<ExecutionEntity> & {
+							where: FindOptionsWhere<ExecutionEntity>;
+						} = {
 							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 							order: { id: 'DESC' },
 							where: {
@@ -1169,19 +1173,21 @@ export class Server extends AbstractServer {
 						if (req.query.filter) {
 							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
-								Object.assign(findOptions.where!, { workflowId });
+								Object.assign(findOptions.where, { workflowId });
 							}
 							if (status) {
-								Object.assign(findOptions.where!, { status: In(status) });
+								Object.assign(findOptions.where, { status: In(status) });
 							}
 							if (finished) {
-								Object.assign(findOptions.where!, { finished });
+								Object.assign(findOptions.where, { finished });
 							}
 						} else {
-							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
+							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Db.collections.Execution.find(findOptions);
+						const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+							findOptions,
+						);
 
 						if (!executions.length) return [];
 
@@ -1291,10 +1297,13 @@ export class Server extends AbstractServer {
 						await queue.stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution.findOneBy({
-						id: req.params.id,
-					})) as IExecutionFlattedDb;
-					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
+					const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+						req.params.id,
+					);
+
+					if (!fullExecutionData) {
+						throw new Error("Could not stop execution since it's data could not be found.");
+					}
 
 					const returnData: IExecutionsStopData = {
 						mode: fullExecutionData.mode,

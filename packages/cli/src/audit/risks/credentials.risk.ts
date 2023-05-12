@@ -6,6 +6,9 @@ import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
+import Container from 'typedi';
+import { ExecutionRepository } from '@/databases/repositories';
+import type { IExecutionFlattedDb } from '@/Interfaces';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	const credsInAnyUse = new Set<string>();
@@ -44,12 +47,16 @@ async function getExecutionsInPastDays(days: number) {
 
 	const utcDate = DateUtils.mixedDateToUtcDatetimeString(date) as string;
 
-	return Db.collections.Execution.find({
-		select: ['workflowData'],
-		where: {
-			startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
+	const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+		{
+			where: {
+				startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
+			},
 		},
-	});
+		{ includeWorkflowData: true },
+	);
+
+	return executions;
 }
 
 /**

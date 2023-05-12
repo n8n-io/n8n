@@ -251,6 +251,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  *
  * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
  */
+// TODO: Remove this function and centralise execution fetching to be done by execution service
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
 		id: fullExecutionData.id,

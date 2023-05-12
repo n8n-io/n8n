@@ -1,24 +1,12 @@
-import { parse } from 'flatted';
-import type { FindOptionsWhere } from 'typeorm';
+import type { DeleteResult, FindOptionsWhere } from 'typeorm';
 import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
 
 import * as Db from '@/Db';
-import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';
+import type { IExecutionFlattedDb, IExecutionResponse } from '@/Interfaces';
 import type { ExecutionStatus } from 'n8n-workflow';
-
-function prepareExecutionData(
-	execution: IExecutionFlattedDb | null,
-): IExecutionResponseApi | undefined {
-	if (!execution) return undefined;
-
-	// @ts-ignore
-	if (!execution.data) return execution;
-
-	return {
-		...execution,
-		data: parse(execution.data) as object,
-	};
-}
+import Container from 'typedi';
+import { ExecutionRepository } from '@/databases/repositories';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 function getStatusCondition(status: ExecutionStatus) {
 	const condition: Pick<
@@ -38,8 +26,8 @@ function getStatusCondition(status: ExecutionStatus) {
 	return condition;
 }
 
-function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IExecutionFlattedDb> {
-	const selectFields: Array<keyof IExecutionFlattedDb> = [
+function getExecutionSelectableProperties(): Array<keyof ExecutionEntity> {
+	return [
 		'id',
 		'mode',
 		'retryOf',
@@ -50,10 +38,6 @@ function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IE
 		'waitTill',
 		'finished',
 	];
-
-	if (includeData) selectFields.push('data');
-
-	return selectFields;
 }
 
 export async function getExecutions(params: {
@@ -63,7 +47,7 @@ export async function getExecutions(params: {
 	workflowIds?: string[];
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: string[];
-}): Promise<IExecutionResponseApi[]> {
+}): Promise<IExecutionResponse[]> {
 	let where: FindOptionsWhere<IExecutionFlattedDb> = {};
 
 	if (params.lastId && params.excludedExecutionsIds?.length) {
@@ -85,14 +69,21 @@ export async function getExecutions(params: {
 		where = { ...where, workflowId: In(params.workflowIds) };
 	}
 
-	const executions = await Db.collections.Execution.find({
-		select: getExecutionSelectableProperties(params.includeData),
-		where,
-		order: { id: 'DESC' },
-		take: params.limit,
-	});
+	const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+		{
+			select: getExecutionSelectableProperties(),
+			where,
+			order: { id: 'DESC' },
+			take: params.limit,
+			relations: ['executionData'],
+		},
+		{
+			includeData: params.includeData,
+			unflattenData: true,
+		},
+	);
 
-	return executions.map(prepareExecutionData) as IExecutionResponseApi[];
+	return executions;
 }
 
 export async function getExecutionsCount(data: {
@@ -119,21 +110,16 @@ export async function getExecutionInWorkflows(
 	id: string,
 	workflowIds: string[],
 	includeData?: boolean,
-): Promise<IExecutionResponseApi | undefined> {
-	const execution = await Db.collections.Execution.findOne({
-		select: getExecutionSelectableProperties(includeData),
+): Promise<IExecutionResponse | undefined> {
+	return Container.get(ExecutionRepository).findSingleExecution(id, {
 		where: {
-			id,
 			workflowId: In(workflowIds),
 		},
+		includeData,
+		unflattenData: true,
 	});
-
-	return prepareExecutionData(execution);
 }
 
-export async function deleteExecution(
-	execution: IExecutionResponseApi | undefined,
-): Promise<IExecutionFlattedDb> {
-	// @ts-ignore
-	return Db.collections.Execution.remove(execution);
+export async function deleteExecution(execution: IExecutionResponse): Promise<DeleteResult> {
+	return Container.get(ExecutionRepository).deleteExecution(execution.id);
 }

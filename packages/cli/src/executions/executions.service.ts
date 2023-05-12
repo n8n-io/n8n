@@ -13,13 +13,15 @@ import type {
 	IExecutionsSummary,
 } from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
-import type { FindOperator, FindOptionsWhere } from 'typeorm';
+import type { FindManyOptions, FindOneOptions, FindOperator, FindOptionsWhere } from 'typeorm';
 import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Not, Raw } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionData } from '@db/entities/ExecutionData';
 import type {
+	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -33,7 +35,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import { parse } from 'flatted';
+import { parse, stringify } from 'flatted';
 import { Container } from 'typedi';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
@@ -41,6 +43,7 @@ import {
 } from './executionHelpers';
 import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import { ExecutionRepository } from '@/databases/repositories';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -198,6 +201,7 @@ export class ExecutionsService {
 		}
 	}
 
+	// TODO: Refactor this whole method, it's a mess
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
@@ -304,6 +308,7 @@ export class ExecutionsService {
 			});
 		}
 
+		// TODO: Remove query from here and move to repository
 		// Omit `data` from the Execution since it is the largest and not necessary for the list.
 		let query = Db.collections.Execution.createQueryBuilder('execution')
 			.select([
@@ -315,10 +320,11 @@ export class ExecutionsService {
 				'execution.waitTill',
 				'execution.startedAt',
 				'execution.stoppedAt',
-				'execution.workflowData',
 				'execution.status',
+				'ed.workflowData',
 			])
 			.orderBy('execution.id', 'DESC')
+			.innerJoin(ExecutionData, 'ed', 'ed.executionId = execution.id')
 			.take(limit)
 			.where(findWhere);
 
@@ -377,10 +383,14 @@ export class ExecutionsService {
 			let executionError;
 			// fill execution status for old executions that will return null
 			if (!execution.status) {
-				execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+				execution.status = getStatusUsingPreviousExecutionStatusMethod({
+					...execution,
+					data: parse(execution.executionData.data),
+					workflowData: execution.executionData.workflowData,
+				});
 			}
 			try {
-				const data = parse(execution.data) as IRunExecutionData;
+				const data = parse(execution.executionData.data) as IRunExecutionData;
 				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
 				executionError = data?.resultData?.error;
 				if (data?.resultData?.runData) {
@@ -419,8 +429,8 @@ export class ExecutionsService {
 				waitTill: execution.waitTill as Date | undefined,
 				startedAt: execution.startedAt,
 				stoppedAt: execution.stoppedAt,
-				workflowId: execution.workflowData?.id ?? '',
-				workflowName: execution.workflowData?.name,
+				workflowId: execution.executionData.workflowData?.id ?? '',
+				workflowName: execution.executionData.workflowData?.name,
 				status: execution.status,
 				lastNodeExecuted,
 				executionError,
@@ -441,7 +451,7 @@ export class ExecutionsService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await Db.collections.Execution.findOne({
+		const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
 			where: {
 				id: executionId,
 				workflowId: In(sharedWorkflowIds),
@@ -460,11 +470,6 @@ export class ExecutionsService {
 			execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
 		}
 
-		if (req.query.unflattedResponse === 'true') {
-			return ResponseHelper.unflattenExecutionData(execution);
-		}
-
-		// @ts-ignore
 		return execution;
 	}
 
@@ -473,11 +478,12 @@ export class ExecutionsService {
 		if (!sharedWorkflowIds.length) return false;
 
 		const { id: executionId } = req.params;
-		const execution = await Db.collections.Execution.findOne({
+		const execution = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
 			where: {
-				id: executionId,
 				workflowId: In(sharedWorkflowIds),
 			},
+			includeData: true,
+			unflattenData: true,
 		});
 
 		if (!execution) {
@@ -493,22 +499,20 @@ export class ExecutionsService {
 			);
 		}
 
-		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-
-		if (fullExecutionData.finished) {
+		if (execution.finished) {
 			throw new Error('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';
 
-		fullExecutionData.workflowData.active = false;
+		execution.workflowData.active = false;
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
-			executionData: fullExecutionData.data,
+			executionData: execution.data,
 			retryOf: req.params.id,
-			workflowData: fullExecutionData.workflowData,
+			workflowData: execution.workflowData,
 			userId: req.user.id,
 		};
 
@@ -532,7 +536,7 @@ export class ExecutionsService {
 		if (req.body.loadWorkflow) {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
-			const workflowId = fullExecutionData.workflowData.id as string;
+			const workflowId = execution.workflowData.id as string;
 			const workflowData = (await Db.collections.Workflow.findOneBy({
 				id: workflowId,
 			})) as IWorkflowBase;

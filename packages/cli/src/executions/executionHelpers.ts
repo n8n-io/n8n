@@ -1,10 +1,10 @@
 import { Container } from 'typedi';
-import type { IExecutionFlattedDb } from '@/Interfaces';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { License } from '@/License';
+import type { IExecutionResponse } from '@/Interfaces';
 
 export function getStatusUsingPreviousExecutionStatusMethod(
-	execution: IExecutionFlattedDb,
+	execution: IExecutionResponse,
 ): ExecutionStatus {
 	if (execution.waitTill) {
 		return 'waiting';

@@ -72,6 +72,7 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionRepository } from './databases/repositories';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -435,15 +436,20 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
-					const execution = await Db.collections.Execution.findOneBy({ id: this.executionId });
+					const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+						this.executionId,
+						{
+							includeData: true,
+							includeWorkflowData: true,
+							unflattenData: true,
+						},
+					);
 
-					if (execution === null) {
+					if (!fullExecutionData) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
 						return;
 					}
-					const fullExecutionData: IExecutionResponse =
-						ResponseHelper.unflattenExecutionData(execution);
 
 					if (fullExecutionData.finished) {
 						// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
@@ -482,10 +488,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 					fullExecutionData.status = 'running';
 
-					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-					await Db.collections.Execution.update(
+					await Container.get(ExecutionRepository).updateExistingExecution(
 						this.executionId,
-						flattenedExecutionData as IExecutionFlattedDb,
+						fullExecutionData,
 					);
 				} catch (err) {
 					ErrorReporter.error(err);
