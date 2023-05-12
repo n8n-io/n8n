@@ -2,8 +2,6 @@ import { Service } from 'typedi';
 import { execSync } from 'child_process';
 import { LoggerProxy } from 'n8n-workflow';
 import path from 'path';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-import { constants as fsConstants } from 'fs';
 import type {
 	CommitResult,
 	DiffResult,
@@ -17,6 +15,7 @@ import type {
 import { simpleGit } from 'simple-git';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { VERSION_CONTROL_DEFAULT_BRANCH, VERSION_CONTROL_ORIGIN } from './constants';
+import { versionControlFoldersExistCheck } from './versionControlHelper';
 
 @Service()
 export class VersionControlGitService {
@@ -49,16 +48,6 @@ export class VersionControlGitService {
 		return true;
 	}
 
-	async foldersExistCheck(gitFolder: string, sshFolder: string) {
-		[gitFolder, sshFolder].forEach(async (folder) => {
-			try {
-				await fsAccess(folder, fsConstants.F_OK);
-			} catch (error) {
-				await fsMkdir(folder);
-			}
-		});
-	}
-
 	async initService(options: {
 		versionControlPreferences: VersionControlPreferences;
 		gitFolder: string;
@@ -74,7 +63,7 @@ export class VersionControlGitService {
 		this.preInitCheck();
 		LoggerProxy.debug('Git pre-check passed');
 
-		await this.foldersExistCheck(gitFolder, sshFolder);
+		await versionControlFoldersExistCheck(gitFolder, sshFolder);
 
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
 		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${sshKeyName}`;

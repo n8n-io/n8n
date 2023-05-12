@@ -167,6 +167,7 @@ import {
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
+import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service';
 
 const exec = promisify(callbackExec);
 
@@ -465,6 +466,7 @@ export class Server extends AbstractServer {
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
 		const versionControlService = Container.get(VersionControlService);
+		const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -493,7 +495,7 @@ export class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
-			new VersionControlController(versionControlService),
+			new VersionControlController(versionControlService, versionControlPreferencesService),
 		];
 
 		if (isLdapEnabled()) {

@@ -1,11 +1,11 @@
 import type { RequestHandler } from 'express';
 import { isVersionControlLicensed } from '../versionControlHelper';
-import { VersionControlService } from '../versionControl.service.ee';
 import Container from 'typedi';
+import { VersionControlPreferencesService } from '../versionControlPreferences.service';
 
 export const versionControlLicensedAndEnabledMiddleware: RequestHandler = (req, res, next) => {
-	const versionControlService = Container.get(VersionControlService);
-	if (versionControlService.isVersionControlLicensedAndEnabled()) {
+	const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+	if (versionControlPreferencesService.isVersionControlLicensedAndEnabled()) {
 		next();
 	} else {
 		res.status(401).json({ status: 'error', message: 'Unauthorized' });
