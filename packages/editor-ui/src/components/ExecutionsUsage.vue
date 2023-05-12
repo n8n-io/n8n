@@ -67,15 +67,9 @@ import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { CHANGE_PLAN_PAGE } from '@/constants';
-import type { PropType } from 'vue';
 import { computed } from 'vue';
 
-const props = defineProps({
-	cloudPlanData: {
-		type: Object as PropType<CloudPlanAndUsageData>,
-		required: true,
-	},
-});
+const props = defineProps<{ cloudPlanData: CloudPlanAndUsageData | null }>();
 
 const now = DateTime.utc();
 
@@ -90,7 +84,7 @@ const isTrialExpired = computed(() => {
 	return now.toMillis() > trialEndsAt.toMillis();
 });
 
-const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.expirationDate);
+const getPlanExpirationDate = () => DateTime.fromISO(props?.cloudPlanData?.expirationDate ?? '');
 
 const trialHasExecutionsLeft = computed(() => {
 	if (!props.cloudPlanData?.usage) return 0;
@@ -104,7 +98,10 @@ const currentExecutions = computed(() => {
 	return usedExecutions > executionsQuota ? executionsQuota : usedExecutions;
 });
 
-const maxExecutions = computed(() => props.cloudPlanData.monthlyExecutionsLimit);
+const maxExecutions = computed(() => {
+	if (!props.cloudPlanData?.monthlyExecutionsLimit) return 0;
+	return props.cloudPlanData.monthlyExecutionsLimit;
+});
 
 const onUpgradeClicked = () => {
 	location.href = CHANGE_PLAN_PAGE;
