@@ -1,8 +1,8 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 describe('useUniqueNodeName', () => {
 	beforeAll(() => {

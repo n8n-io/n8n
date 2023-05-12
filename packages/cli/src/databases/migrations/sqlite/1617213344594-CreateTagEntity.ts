@@ -1,15 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateTagEntity1617213344594 implements MigrationInterface {
-	name = 'CreateTagEntity1617213344594';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class CreateTagEntity1617213344594 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// create tags table + relationship with workflow entity
 
 		await queryRunner.query(
@@ -68,13 +60,9 @@ export class CreateTagEntity1617213344594 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}temporary_workflow_entity" RENAME TO "${tablePrefix}workflow_entity"`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		// `createdAt` and `updatedAt`
 
 		await queryRunner.query(

@@ -27,29 +27,30 @@
 </template>
 
 <script lang="ts">
-import Modals from './components/Modals.vue';
-import LoadingView from './views/LoadingView.vue';
-import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
+import Modals from '@/components/Modals.vue';
+import LoadingView from '@/views/LoadingView.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { loadLanguage } from '@/plugins/i18n';
+import { useGlobalLinkActions, useToast } from '@/composables';
 import { mapStores } from 'pinia';
-import { useUIStore } from './stores/ui';
-import { useSettingsStore } from './stores/settings';
-import { useUsersStore } from './stores/users';
-import { useRootStore } from './stores/n8nRootStore';
-import { useTemplatesStore } from './stores/templates';
-import { useNodeTypesStore } from './stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCloudPlanStore } from './stores/cloudPlan.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
-import { useVersionControlStore } from '@/stores/versionControl';
+import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useUsageStore } from '@/stores/usage.store';
 
-export default mixins(newVersions, showMessage, userHelpers).extend({
+export default mixins(newVersions, userHelpers).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -60,6 +61,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
+			...useToast(),
 		};
 	},
 	computed: {
@@ -71,6 +73,8 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			useUIStore,
 			useUsersStore,
 			useVersionControlStore,
+			useCloudPlanStore,
+			useUsageStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -86,7 +90,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			try {
 				await this.settingsStore.getSettings();
 			} catch (e) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('startupError'),
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
@@ -135,7 +139,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 					return;
 				}
 
-				this.$router.replace({ name: VIEWS.SETUP });
+				void this.$router.replace({ name: VIEWS.SETUP });
 				return;
 			}
 
@@ -149,7 +153,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
+				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 				return;
 			}
 
@@ -158,13 +162,13 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					this.$router.replace(redirect);
+					void this.$router.replace(redirect);
 					return;
 				}
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
+			void this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
 			const redirect =
@@ -172,7 +176,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
 			if (redirect) {
-				this.$router.replace(redirect);
+				void this.$router.replace(redirect);
 			}
 		},
 		setTheme() {
@@ -181,20 +185,31 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
-		checkForExecutionsCount() {
-			let acc = 0;
+		async checkForCloudPlanData(): Promise<void> {
+			try {
+				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
+				this.cloudPlanStore.setData(plan);
+				if (!this.cloudPlanStore.userIsTrialing) return;
+				const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
+				this.cloudPlanStore.setUsage(usage);
+				this.startPollingInstanceUsageData();
+			} catch {}
+		},
+		startPollingInstanceUsageData() {
 			const interval = setInterval(async () => {
 				try {
-					const plan = await this.usersStore.getOwnerCurrentPLan();
-					if (plan.metadata.slug !== 'trial-1') {
+					const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
+					this.cloudPlanStore.setUsage(usage);
+					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
 						clearTimeout(interval);
+						return;
 					}
 					// TODO: remove before releasing
 					plan.usage.executions += acc;
 					acc += 20;
 					this.usersStore.setCloudPLan(plan);
 				} catch {}
-			}, 5000);
+			}, CLOUD_TRIAL_CHECK_INTERVAL);
 		},
 	},
 	async mounted() {
@@ -204,7 +219,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		this.authenticate();
 		this.redirectIfNecessary();
 		this.checkForNewVersions();
-		this.checkForExecutionsCount();
+		void this.checkForCloudPlanData();
 
 		this.loading = false;
 
@@ -219,7 +234,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.versionControlStore.isEnterpriseVersionControlEnabled &&
 			this.usersStore.isInstanceOwner
 		) {
-			this.versionControlStore.getPreferences();
+			void this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {
@@ -230,7 +245,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.trackPage();
 		},
 		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
+			void loadLanguage(newLocale);
 		},
 	},
 });

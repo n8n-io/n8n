@@ -1,6 +1,11 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="!isTrialExpired() && trialHasExecutionsLeft()" :class="$style.usageText">
+		<div v-if="isTrialExpired" :class="$style.usageText">
+			<n8n-text size="xsmall" color="danger">
+				{{ locale.baseText('executionUsage.expired.text') }}
+			</n8n-text>
+		</div>
+		<div v-else-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
 			<i18n path="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="xsmall" color="text-dark">
@@ -18,12 +23,7 @@
 				</template>
 			</i18n>
 		</div>
-		<div v-if="isTrialExpired()" :class="$style.usageText">
-			<n8n-text size="xsmall" color="danger">
-				{{ locale.baseText('executionUsage.expired.text') }}
-			</n8n-text>
-		</div>
-		<div v-if="!trialHasExecutionsLeft()" :class="$style.usageText">
+		<div v-else-if="!trialHasExecutionsLeft" :class="$style.usageText">
 			<n8n-text size="xsmall">
 				{{ locale.baseText('executionUsage.ranOutOfExecutions.text') }}
 			</n8n-text>
@@ -65,35 +65,17 @@
 <script setup lang="ts">
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
+import type { CloudPlanAndUsageData } from '@/Interface';
+import { CHANGE_PLAN_PAGE } from '@/constants';
+import type { PropType } from 'vue';
+import { computed } from 'vue';
 
-export interface CloudPlanData {
-	planId: number;
-	monthlyExecutionsLimit: number;
-	activeWorkflowsLimit: number;
-	credentialsLimit: number;
-	isActive: boolean;
-	displayName: string;
-	expirationDate: string;
-	metadata: PlanMetadata;
-	usage: Usage;
-}
-export interface PlanMetadata {
-	version: 'v1';
-	group: 'opt-out' | 'opt-in';
-	slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-	trial?: Trial;
-}
-export interface Trial {
-	length: number;
-	gracePeriod: number;
-}
-
-export interface Usage {
-	executions: number;
-	activeWorkflows: number;
-}
-
-const props = defineProps<{ cloudPlanData: CloudPlanData }>();
+const props = defineProps({
+	cloudPlanData: {
+		type: Object as PropType<CloudPlanAndUsageData>,
+		required: true,
+	},
+});
 
 const emit = defineEmits(['onUpgradePlanClicked']);
 
@@ -104,22 +86,29 @@ const daysLeftOnTrial = () => {
 	return Math.ceil(days);
 };
 
-const isTrialExpired = () => {
+const isTrialExpired = computed(() => {
 	const trialEndsAt = DateTime.fromISO(props.cloudPlanData.expirationDate);
 	return now.toMillis() > trialEndsAt.toMillis();
 };
 
 const getPlanExpirationDate = () => DateTime.fromISO(props.cloudPlanData.expirationDate);
 
-const trialHasExecutionsLeft = () =>
-	props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit;
+const trialHasExecutionsLeft = computed(() => {
+	if (!props.cloudPlanData?.usage) return 0;
+	return props.cloudPlanData.usage.executions < props.cloudPlanData.monthlyExecutionsLimit;
+});
 
-const currentExecutions = () => props.cloudPlanData.usage.executions;
+const currentExecutions = computed(() => {
+	if (!props.cloudPlanData?.usage) return 0;
+	const usedExecutions = props.cloudPlanData.usage.executions;
+	const executionsQuota = props.cloudPlanData.monthlyExecutionsLimit;
+	return usedExecutions > executionsQuota ? executionsQuota : usedExecutions;
+});
 
-const maxExecutions = () => props.cloudPlanData.monthlyExecutionsLimit;
+const maxExecutions = computed(() => props.cloudPlanData.monthlyExecutionsLimit);
 
 const onUpgradeClicked = () => {
-	emit('onUpgradePlanClicked');
+	location.href = CHANGE_PLAN_PAGE;
 };
 </script>
 

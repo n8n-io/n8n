@@ -1171,7 +1171,6 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
-	cloudPlan: CloudPlanData | null;
 }
 
 export interface IWorkflowsState {
@@ -1439,33 +1438,47 @@ export type VersionControlPreferences = {
 	repositoryUrl: string;
 	authorName: string;
 	authorEmail: string;
-	branchName: string;
+	currentBranch: string;
+	branches: string[];
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
 };
-export interface CloudPlanData {
-	planId: number;
-	monthlyExecutionsLimit: number;
-	activeWorkflowsLimit: number;
-	credentialsLimit: number;
-	isActive: boolean;
-	displayName: string;
-	expirationDate: string;
-	metadata: PlanMetadata;
-	usage: Usage;
+
+export declare namespace Cloud {
+	export interface PlanData {
+		planId: number;
+		monthlyExecutionsLimit: number;
+		activeWorkflowsLimit: number;
+		credentialsLimit: number;
+		isActive: boolean;
+		displayName: string;
+		expirationDate: string;
+		metadata: PlanMetadata;
+	}
+
+	export interface PlanMetadata {
+		version: 'v1';
+		group: 'opt-out' | 'opt-in' | 'trial';
+		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
+		trial?: Trial;
+	}
+
+	interface Trial {
+		length: number;
+		gracePeriod: number;
+	}
 }
-export interface PlanMetadata {
-	version: 'v1';
-	group: 'opt-out' | 'opt-in';
-	slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
-	trial?: Trial;
+
+export interface CloudPlanState {
+	data: Cloud.PlanData | null;
+	usage: InstanceUsage | null;
 }
-export interface Trial {
-	length: number;
-	gracePeriod: number;
-}
-export interface Usage {
+
+export interface InstanceUsage {
+	timeframe?: string;
 	executions: number;
 	activeWorkflows: number;
 }
+
+export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };

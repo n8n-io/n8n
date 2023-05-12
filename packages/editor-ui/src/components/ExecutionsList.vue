@@ -4,7 +4,9 @@
 			<div :class="$style.execListHeader">
 				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 				<div :class="$style.execListHeaderControls">
+					<n8n-loading v-if="isMounting" :class="$style.filterLoader" variant="custom" />
 					<el-checkbox
+						v-else
 						class="mr-xl"
 						v-model="autoRefresh"
 						@change="handleAutoRefreshToggle"
@@ -12,7 +14,11 @@
 					>
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
-					<execution-filter :workflows="workflows" @filterChanged="onFilterChanged" />
+					<execution-filter
+						v-show="!isMounting"
+						:workflows="workflows"
+						@filterChanged="onFilterChanged"
+					/>
 				</div>
 			</div>
 
@@ -30,7 +36,12 @@
 				data-test-id="select-all-executions-checkbox"
 			/>
 
-			<table :class="$style.execTable">
+			<div v-if="isMounting">
+				<n8n-loading :class="$style.tableLoader" variant="custom" />
+				<n8n-loading :class="$style.tableLoader" variant="custom" />
+				<n8n-loading :class="$style.tableLoader" variant="custom" />
+			</div>
+			<table v-else :class="$style.execTable">
 				<thead>
 					<tr>
 						<th>
@@ -210,7 +221,7 @@
 			</table>
 
 			<div
-				v-if="!combinedExecutions.length"
+				v-if="!combinedExecutions.length && !isMounting && !isDataLoading"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
@@ -231,7 +242,11 @@
 					data-test-id="load-more-button"
 				/>
 			</div>
-			<div v-else :class="$style.loadedAll" data-test-id="execution-all-loaded">
+			<div
+				v-else-if="!isMounting && !isDataLoading"
+				:class="$style.loadedAll"
+				data-test-id="execution-all-loaded"
+			>
 				{{ $locale.baseText('executionsList.loadedAll') }}
 			</div>
 		</div>
@@ -270,10 +285,10 @@ import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
+import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast, useMessage } from '@/composables';
 import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -286,20 +301,27 @@ import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty, setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
-export default mixins(externalHooks, genericHelpers, executionHelpers, showMessage).extend({
+export default mixins(externalHooks, genericHelpers, executionHelpers).extend({
 	name: 'ExecutionsList',
 	components: {
 		ExecutionTime,
 		WorkflowActivator,
 		ExecutionFilter,
 	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	data() {
 		return {
+			isMounting: true,
 			finishedExecutions: [] as IExecutionsSummary[],
 			finishedExecutionsCount: 0,
 			finishedExecutionsCountEstimated: false,
@@ -326,7 +348,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 	},
 	async created() {
 		await this.loadWorkflows();
-		//await this.refreshData();
 		this.handleAutoRefreshToggle();
 
 		this.$externalHooks().run('executionsList.openDialog');
@@ -429,17 +450,21 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				Object.keys(this.selectedItems).length === this.finishedExecutionsCount;
 		},
 		async handleDeleteSelected() {
-			const deleteExecutions = await this.confirmMessage(
+			const deleteExecutions = await this.confirm(
 				this.$locale.baseText('executionsList.confirmMessage.message', {
 					interpolate: { numSelected: this.numSelected.toString() },
 				}),
 				this.$locale.baseText('executionsList.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('executionsList.confirmMessage.confirmButtonText'),
-				this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'executionsList.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
+				},
 			);
 
-			if (!deleteExecutions) {
+			if (deleteExecutions !== MODAL_CONFIRM) {
 				return;
 			}
 
@@ -458,7 +483,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				await this.workflowsStore.deleteExecutions(sendData);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
@@ -467,7 +492,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			}
 			this.isDataLoading = false;
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
 				type: 'success',
 			});
@@ -480,10 +505,11 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			this.allExistingSelected = false;
 			Vue.set(this, 'selectedItems', {});
 		},
-		onFilterChanged(filter: ExecutionFilterType) {
+		async onFilterChanged(filter: ExecutionFilterType) {
 			this.filter = filter;
-			this.refreshData();
+			await this.refreshData();
 			this.handleClearSelection();
+			this.isMounting = false;
 		},
 		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 			if (['currentlySaved', 'original'].includes(commandData.command)) {
@@ -657,7 +683,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
+				this.showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
 				return;
 			}
 
@@ -697,7 +723,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 
 				Vue.set(this, 'workflows', workflows);
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('executionsList.showError.loadWorkflows.title'),
 				);
@@ -713,12 +739,12 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				);
 
 				if (retrySuccessful) {
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
 						type: 'success',
 					});
 				} else {
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
 						type: 'error',
 					});
@@ -726,7 +752,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 
 				this.isDataLoading = false;
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('executionsList.showError.retryExecution.title'),
 				);
@@ -740,7 +766,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 			try {
 				await Promise.all([this.loadActiveExecutions(), this.loadFinishedExecutions()]);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+				this.showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
 			}
 
 			this.isDataLoading = false;
@@ -840,7 +866,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 				const index = this.stoppingExecutions.indexOf(activeExecutionId);
 				this.stoppingExecutions.splice(index, 1);
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
 					message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
 						interpolate: { activeExecutionId },
@@ -850,7 +876,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 
 				this.refreshData();
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
 				);
@@ -876,7 +902,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 					this.selectAllVisibleExecutions();
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
 				);
@@ -1133,5 +1159,16 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, showMessa
 	display: inline-block;
 	margin: 0 0 var(--spacing-s) var(--spacing-s);
 	color: var(--color-danger);
+}
+
+.filterLoader {
+	width: 220px;
+	height: 32px;
+}
+
+.tableLoader {
+	width: 100%;
+	height: 48px;
+	margin-bottom: var(--spacing-2xs);
 }
 </style>

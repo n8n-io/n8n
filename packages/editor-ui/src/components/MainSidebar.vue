@@ -28,9 +28,8 @@
 
 			<template #beforeLowerMenu>
 				<ExecutionsUsage
-					:cloud-plan-data="currentPlanData"
+					:cloud-plan-data="currentPlanAndUsageData"
 					v-if="!isCollapsed && userIsTrialing"
-					@onUpgradePlanClicked="onUpgradePlanClicked"
 			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
@@ -117,41 +116,35 @@
 </template>
 
 <script lang="ts">
-import type { CloudPlanData, IExecutionResponse, IMenuItem, IVersion } from '../Interface';
-
+import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useMessage } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import {
-	ABOUT_MODAL_KEY,
-	CHANGE_PLAN_PAGE_PRODUCTION,
-	CHANGE_PLAN_PAGE_STAGING,
-	VERSIONS_MODAL_KEY,
-	VIEWS,
-} from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useVersionsStore } from '@/stores/versions';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
-import { useVersionControlStore } from '@/stores/versionControl';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 export default mixins(
 	genericHelpers,
-	showMessage,
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
@@ -162,6 +155,11 @@ export default mixins(
 		GiftNotificationIcon,
 		WorkflowSettings,
 		ExecutionsUsage,
+	},
+	setup() {
+		return {
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -178,6 +176,7 @@ export default mixins(
 			useVersionsStore,
 			useWorkflowsStore,
 			useVersionControlStore,
+			useCloudPlanStore,
 		),
 		currentBranch(): string {
 			return this.versionControlStore.state.currentBranch;
@@ -341,10 +340,16 @@ export default mixins(
 			return [...items, ...regularItems];
 		},
 		userIsTrialing(): boolean {
-			return this.usersStore.userIsTrialing;
+			return this.cloudPlanStore.userIsTrialing;
 		},
-		currentPlanData(): CloudPlanData {
-			return this.usersStore.currentPlanData;
+		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
+			const planData = this.cloudPlanStore.currentPlanData;
+			const usage = this.cloudPlanStore.currentUsageData;
+			if (!planData || !usage) return null;
+			return {
+				...planData,
+				usage,
+			};
 		},
 	},
 	async mounted() {
@@ -379,14 +384,14 @@ export default mixins(
 					this.onLogout();
 					break;
 				case 'settings':
-					this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					void this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					break;
 				default:
 					break;
 			}
 		},
 		onLogout() {
-			this.$router.push({ name: VIEWS.SIGNOUT });
+			void this.$router.push({ name: VIEWS.SIGNOUT });
 		},
 		toggleCollapse() {
 			this.uiStore.toggleSidebarMenuCollapse();
@@ -503,7 +508,7 @@ export default mixins(
 			}
 		},
 		async sync() {
-			const prompt = await this.$prompt(
+			const prompt = (await this.prompt(
 				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
 					interpolate: { branch: this.versionControlStore.state.currentBranch },
 				}),
@@ -519,17 +524,11 @@ export default mixins(
 					inputPattern: /^.+$/,
 					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
 				},
-			);
+			)) as MessageBoxInputData;
 
 			if (prompt.value) {
-				this.versionControlStore.sync({ commitMessage: prompt.value });
+				await this.versionControlStore.sync({ commitMessage: prompt.value });
 			}
-		},
-		onUpgradePlanClicked() {
-			location.href =
-				this.settingsStore.settings.license.environment === 'production'
-					? CHANGE_PLAN_PAGE_PRODUCTION
-					: CHANGE_PLAN_PAGE_STAGING;
 		},
 	},
 });

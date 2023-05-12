@@ -47,3 +47,5 @@ export { default as N8nUserSelect } from './N8nUserSelect';
 export { default as N8nUsersList } from './N8nUsersList';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
+export { default as N8nCheckbox } from './N8nCheckbox';
+export { default as N8nColorPicker } from './N8nColorPicker';

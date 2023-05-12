@@ -44,7 +44,7 @@ export {
 export { ExpressionExtensions } from './Extensions';
 export { NativeMethods } from './NativeMethods';
 
-export type { DocMetadata } from './Extensions';
+export type { DocMetadata, NativeDoc } from './Extensions';
 
 declare module 'http' {
 	export interface IncomingMessage {
