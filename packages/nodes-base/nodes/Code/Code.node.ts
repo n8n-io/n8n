@@ -72,6 +72,17 @@ export class Code implements INodeType {
 				],
 				default: 'javaScript',
 			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'hidden',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				default: 'javaScript',
+			},
 
 			...javascriptCodeDescription,
 			...pythonCodeDescription,
