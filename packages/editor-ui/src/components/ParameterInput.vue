@@ -379,7 +379,6 @@ import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
@@ -397,13 +396,7 @@ import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-	debounceHelper,
-).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelper).extend({
 	name: 'parameter-input',
 	components: {
 		CodeNodeEditor,
@@ -522,7 +515,7 @@ export default mixins(
 		dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			void this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -1116,7 +1109,7 @@ export default mixins(
 
 					resourceLocatorRef?.$emit('refreshList');
 				}
-				this.loadRemoteParameterOptions();
+				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
 				htmlEditorEventBus.emit('format-html');
 			}
@@ -1175,7 +1168,7 @@ export default mixins(
 			this.$watch(
 				() => this.node!.credentials,
 				() => {
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				},
 				{ deep: true, immediate: true },
 			);

@@ -150,6 +150,7 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
+	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -163,6 +164,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import useDeviceSupport from '@/composables/useDeviceSupport';
+import { useMessage } from '@/composables';
 
 export default mixins(
 	externalHooks,
@@ -194,6 +196,7 @@ export default mixins(
 	setup() {
 		return {
 			...useDeviceSupport(),
+			...useMessage(),
 		};
 	},
 	data() {
@@ -529,7 +532,7 @@ export default mixins(
 		onWorkflowActivate() {
 			this.ndvStore.activeNodeName = null;
 			setTimeout(() => {
-				this.activateCurrentWorkflow('ndv');
+				void this.activateCurrentWorkflow('ndv');
 			}, 1000);
 		},
 		onFeatureRequestClick() {
@@ -608,15 +611,16 @@ export default mixins(
 			}
 
 			if (this.outputPanelEditMode.enabled) {
-				const shouldPinDataBeforeClosing = await this.confirmMessage(
+				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
-					null,
-					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
-					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+					{
+						confirmButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+						cancelButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+					},
 				);
 
-				if (shouldPinDataBeforeClosing) {
+				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
@@ -643,7 +647,7 @@ export default mixins(
 				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
-			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+			await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
