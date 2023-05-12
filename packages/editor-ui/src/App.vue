@@ -47,6 +47,7 @@ import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useExternalHooks } from '@/composables';
 
 export default mixins(newVersions, userHelpers).extend({
 	name: 'App',
@@ -60,6 +61,7 @@ export default mixins(newVersions, userHelpers).extend({
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
+			externalHooks: useExternalHooks(),
 		};
 	},
 	computed: {
@@ -193,7 +195,7 @@ export default mixins(newVersions, userHelpers).extend({
 		this.loading = false;
 
 		this.trackPage();
-		this.$externalHooks().run('app.mount');
+		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
