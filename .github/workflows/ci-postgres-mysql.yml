@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     env:
       DB_MYSQLDB_PASSWORD: password
@@ -33,7 +33,7 @@ jobs:
         with:
           compose-file: ./.github/docker-compose.yml
 
-      - name: Build Core & Workflow
+      - name: Build Core, Workflow, and CLI
         run: pnpm --filter n8n-workflow --filter=n8n-core --filter=n8n build
 
       - name: Test MySQL

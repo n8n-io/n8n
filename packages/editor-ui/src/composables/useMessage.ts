@@ -14,9 +14,9 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.alert(message, configOrTitle, resolvedConfig);
+			return MessageBox.alert(message, configOrTitle, resolvedConfig);
 		}
-		return await MessageBox.alert(message, resolvedConfig);
+		return MessageBox.alert(message, resolvedConfig);
 	}
 
 	async function confirm(
@@ -34,9 +34,9 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.confirm(message, configOrTitle, resolvedConfig);
+			return MessageBox.confirm(message, configOrTitle, resolvedConfig);
 		}
-		return await MessageBox.confirm(message, resolvedConfig);
+		return MessageBox.confirm(message, resolvedConfig);
 	}
 
 	async function prompt(
@@ -51,9 +51,9 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.prompt(message, configOrTitle, resolvedConfig);
+			return MessageBox.prompt(message, configOrTitle, resolvedConfig);
 		}
-		return await MessageBox.prompt(message, resolvedConfig);
+		return MessageBox.prompt(message, resolvedConfig);
 	}
 
 	return {

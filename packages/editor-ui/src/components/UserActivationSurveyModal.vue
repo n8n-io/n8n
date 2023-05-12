@@ -153,7 +153,7 @@ const showSharedFeedbackError = () => {
 };
 
 const showConfetti = () => {
-	confetti({
+	void confetti({
 		particleCount: 200,
 		spread: 100,
 		origin: { y: 0.6 },
