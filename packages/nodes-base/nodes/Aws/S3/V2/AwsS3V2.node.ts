@@ -98,7 +98,7 @@ export class AwsS3V2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
-			let headers: IDataObject = {};
+			const headers: IDataObject = {};
 			try {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
@@ -251,7 +251,6 @@ export class AwsS3V2 implements INodeType {
 						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
-						console.log(responseData);
 
 						const region = responseData.LocationConstraint._ as string;
 
@@ -857,7 +856,6 @@ export class AwsS3V2 implements INodeType {
 							} else {
 								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
 							}
-							console.log({ ...multipartHeaders, ...neededHeaders });
 							const createMultiPartUpload = await awsApiRequestREST.call(
 								this,
 								`${bucketName}.s3`,
@@ -878,7 +876,6 @@ export class AwsS3V2 implements INodeType {
 									'Content-MD5': createHash('MD5').update(chunkBuffer).digest('base64'),
 									...neededHeaders,
 								};
-								console.log(listHeaders);
 								try {
 									await awsApiRequestREST.call(
 										this,
@@ -894,15 +891,14 @@ export class AwsS3V2 implements INodeType {
 									part++;
 								} catch (error) {
 									try {
-										const abortUpload = await awsApiRequestREST.call(
+										await awsApiRequestREST.call(
 											this,
 											`${bucketName}.s3`,
 											'DELETE',
 											`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
 										);
-										console.log('Abort Upload', abortUpload);
 									} catch (err) {
-										console.log('Error while aborting ', err);
+										throw new NodeOperationError(this.getNode(), err as Error);
 									}
 									if (error.response?.status !== 308) throw error;
 								}
