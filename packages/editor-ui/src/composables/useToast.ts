@@ -147,7 +147,7 @@ export function useToast() {
 	}
 
 	function clearAllStickyNotifications() {
-		stickyNotificationQueue.map((notification: ElNotificationComponent) => {
+		stickyNotificationQueue.forEach((notification) => {
 			if (notification) {
 				notification.close();
 			}

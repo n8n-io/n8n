@@ -586,7 +586,9 @@ export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers
 			if (data.resultData.lastNodeExecuted && error) {
 				errorMessage = error.message || error.description;
 			} else {
-				errorMessage = 'There was a problem executing the workflow!';
+				errorMessage = this.$locale.baseText('pushConnection.executionError', {
+					interpolate: { error: '!' },
+				});
 
 				if (error && error.message) {
 					let nodeName: string | undefined;
@@ -595,7 +597,15 @@ export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers
 					}
 
 					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
-					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
+					errorMessage = this.$locale.baseText('pushConnection.executionError', {
+						interpolate: {
+							error: `.${this.$locale.baseText('pushConnection.executionError.details', {
+								interpolate: {
+									details: receivedError,
+								},
+							})}`,
+						},
+					});
 				}
 			}
 
