@@ -161,11 +161,6 @@ export default mixins(
 			...useMessage(),
 		};
 	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
 	data() {
 		return {
 			basePath: '',
