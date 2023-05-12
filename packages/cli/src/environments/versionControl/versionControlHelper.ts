@@ -9,15 +9,6 @@ export function isVersionControlLicensed() {
 	return license.isVersionControlLicensed();
 }
 
-export function isVersionControlEnabled() {
-	// TODO: VERSION CONTROL check if enabled
-	return true;
-}
-
-export function isVersionControlLicensedAndEnabled() {
-	return isVersionControlLicensed() && isVersionControlEnabled();
-}
-
 export function generateSshKeyPair(keyType: 'ed25519' | 'rsa' = 'ed25519') {
 	const keyPair: KeyPair = {
 		publicKey: '',

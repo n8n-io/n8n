@@ -433,6 +433,9 @@ importers:
       shelljs:
         specifier: ^0.8.5
         version: 0.8.5
+      simple-git:
+        specifier: ^3.17.0
+        version: 3.17.0
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21

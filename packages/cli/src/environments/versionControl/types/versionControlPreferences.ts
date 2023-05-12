@@ -18,7 +18,7 @@ export class VersionControlPreferences {
 	authorEmail: string;
 
 	@IsString()
-	branchName: string;
+	branchName = 'main';
 
 	@IsBoolean()
 	branchReadOnly: boolean;
@@ -28,9 +28,28 @@ export class VersionControlPreferences {
 
 	@IsOptional()
 	@IsString()
-	readonly privateKey?: string;
+	readonly publicKey?: string;
 
 	@IsOptional()
-	@IsString()
-	readonly publicKey?: string;
+	@IsBoolean()
+	readonly initRepo?: boolean;
+
+	static fromJSON(json: Partial<VersionControlPreferences>): VersionControlPreferences {
+		return new VersionControlPreferences(json);
+	}
+
+	static merge(
+		preferences: Partial<VersionControlPreferences>,
+		defaultPreferences: Partial<VersionControlPreferences>,
+	): VersionControlPreferences {
+		return new VersionControlPreferences({
+			connected: preferences.connected ?? defaultPreferences.connected,
+			authorEmail: preferences.authorEmail ?? defaultPreferences.authorEmail,
+			authorName: preferences.authorName ?? defaultPreferences.authorName,
+			branchName: preferences.branchName ?? defaultPreferences.branchName,
+			branchColor: preferences.branchColor ?? defaultPreferences.branchColor,
+			branchReadOnly: preferences.branchReadOnly ?? defaultPreferences.branchReadOnly,
+			repositoryUrl: preferences.repositoryUrl ?? defaultPreferences.repositoryUrl,
+		});
+	}
 }
