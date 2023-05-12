@@ -27,29 +27,28 @@
 </template>
 
 <script lang="ts">
-import Modals from './components/Modals.vue';
-import LoadingView from './views/LoadingView.vue';
-import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
+import Modals from '@/components/Modals.vue';
+import LoadingView from '@/views/LoadingView.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { loadLanguage } from '@/plugins/i18n';
+import { useGlobalLinkActions, useToast } from '@/composables';
 import { mapStores } from 'pinia';
-import { useUIStore } from './stores/ui.store';
-import { useSettingsStore } from './stores/settings.store';
-import { useUsersStore } from './stores/users.store';
-import { useRootStore } from './stores/n8nRoot.store';
-import { useTemplatesStore } from './stores/templates.store';
-import { useNodeTypesStore } from './stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 
-export default mixins(newVersions, showMessage, userHelpers).extend({
+export default mixins(newVersions, userHelpers).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -60,6 +59,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
+			...useToast(),
 		};
 	},
 	computed: {
@@ -86,7 +86,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			try {
 				await this.settingsStore.getSettings();
 			} catch (e) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('startupError'),
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
@@ -135,7 +135,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 					return;
 				}
 
-				this.$router.replace({ name: VIEWS.SETUP });
+				void this.$router.replace({ name: VIEWS.SETUP });
 				return;
 			}
 
@@ -149,7 +149,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
+				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 				return;
 			}
 
@@ -158,13 +158,13 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) {
 					// protect against phishing
-					this.$router.replace(redirect);
+					void this.$router.replace(redirect);
 					return;
 				}
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
+			void this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
 			const redirect =
@@ -172,7 +172,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
 			if (redirect) {
-				this.$router.replace(redirect);
+				void this.$router.replace(redirect);
 			}
 		},
 		setTheme() {
@@ -203,7 +203,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.versionControlStore.isEnterpriseVersionControlEnabled &&
 			this.usersStore.isInstanceOwner
 		) {
-			this.versionControlStore.getPreferences();
+			void this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {
@@ -214,7 +214,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			this.trackPage();
 		},
 		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
+			void loadLanguage(newLocale);
 		},
 	},
 });

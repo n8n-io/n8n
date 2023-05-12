@@ -66,7 +66,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
@@ -90,13 +90,18 @@ function getEmail(email: string): string {
 	return parsed;
 }
 
-export default mixins(showMessage, copyPaste).extend({
+export default mixins(copyPaste).extend({
 	components: { Modal },
 	name: 'InviteUsersModal',
 	props: {
 		modalName: {
 			type: String,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -224,7 +229,7 @@ export default mixins(showMessage, copyPaste).extend({
 				);
 
 				if (successfulEmailInvites.length) {
-					this.$showMessage({
+					this.showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
 							successfulEmailInvites.length > 1
@@ -244,7 +249,7 @@ export default mixins(showMessage, copyPaste).extend({
 						this.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
-					this.$showMessage({
+					this.showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
 							successfulUrlInvites.length > 1
@@ -266,7 +271,7 @@ export default mixins(showMessage, copyPaste).extend({
 
 				if (erroredInvites.length) {
 					setTimeout(() => {
-						this.$showMessage({
+						this.showMessage({
 							type: 'error',
 							title: this.$locale.baseText('settings.users.usersEmailedError'),
 							message: this.$locale.baseText('settings.users.emailInvitesSentError', {
@@ -282,12 +287,12 @@ export default mixins(showMessage, copyPaste).extend({
 					this.modalBus.emit('close');
 				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
+				this.showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
 			}
 			this.loading = false;
 		},
 		showCopyInviteLinkToast(successfulUrlInvites: IInviteResponse[]) {
-			this.$showMessage({
+			this.showMessage({
 				type: 'success',
 				title: this.$locale.baseText(
 					successfulUrlInvites.length > 1

@@ -19,7 +19,7 @@ export default defineComponent({
 	methods: {
 		navigateTo() {
 			if (this.routeHasHistory) this.$router.go(-1);
-			else this.$router.push({ name: VIEWS.TEMPLATES });
+			else void this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 	},
 	mounted() {

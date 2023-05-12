@@ -46,8 +46,8 @@ describe('PersonalizationModal.vue', () => {
 		await retry(() => expect(wrapper.find('.modal-content').exists()).toBe(true));
 
 		for (const index of [3, 4, 5, 6]) {
-			wrapper.find('.n8n-select[name="role"]').trigger('click');
-			wrapper
+			await wrapper.find('.n8n-select[name="role"]').trigger('click');
+			await wrapper
 				.find('.n8n-select[name="role"]')
 				.findAll('.el-select-dropdown__item')
 				.at(index)

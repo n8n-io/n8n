@@ -21,7 +21,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import * as Server from '@/Server';
+import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
@@ -61,6 +61,8 @@ export class Start extends BaseCommand {
 	};
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
+
+	protected server = new Server();
 
 	/**
 	 * Opens the UI in browser
@@ -208,6 +210,7 @@ export class Start extends BaseCommand {
 
 	async init() {
 		await this.initCrashJournal();
+
 		await super.init();
 		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
@@ -351,7 +354,7 @@ export class Start extends BaseCommand {
 			);
 		}
 
-		await Server.start();
+		await this.server.start();
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();

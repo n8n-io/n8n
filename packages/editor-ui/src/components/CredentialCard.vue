@@ -31,11 +31,11 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import type { ICredentialsResponse, IUser } from '@/Interface';
 import type { ICredentialType } from 'n8n-workflow';
-import { EnterpriseEditionFeature } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
+import { useMessage } from '@/composables';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
@@ -50,10 +50,15 @@ export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	data() {
 		return {
 			EnterpriseEditionFeature,
+		};
+	},
+	setup() {
+		return {
+			...useMessage(),
 		};
 	},
 	components: {
@@ -126,9 +131,9 @@ export default mixins(showMessage).extend({
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				this.onClick();
+				await this.onClick();
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirmMessage(
+				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.message',
 						{
@@ -138,14 +143,15 @@ export default mixins(showMessage).extend({
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline',
 					),
-					null,
-					this.$locale.baseText(
-						'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-					),
+					{
+						confirmButtonText: this.$locale.baseText(
+							'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
+						),
+					},
 				);
 
-				if (deleteConfirmed) {
-					this.credentialsStore.deleteCredential({ id: this.data.id });
+				if (deleteConfirmed === MODAL_CONFIRM) {
+					await this.credentialsStore.deleteCredential({ id: this.data.id });
 				}
 			}
 		},
