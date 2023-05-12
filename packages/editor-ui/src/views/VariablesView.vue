@@ -326,9 +326,13 @@ onBeforeUnmount(() => {
 :deep(.datatable) {
 	table {
 		table-layout: fixed;
+		font-size: var(--font-size-s);
 	}
 
-	th,
+	th {
+		color: var(--color-text-base);
+	}
+
 	td {
 		width: 25%;
 

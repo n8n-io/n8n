@@ -193,11 +193,11 @@ export default defineComponent({
 			}
 
 			&:nth-of-type(even) {
-				background: var(--color-background-xlight);
+				background: var(--color-background-light);
 			}
 
 			&:nth-of-type(odd) {
-				background: var(--color-background-light);
+				background: var(--color-background-xlight);
 			}
 		}
 	}
