@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { i18n as locale } from '@/plugins/i18n';
-import { useVersionControlStore } from '@/stores/versionControl';
-import { useUIStore } from '@/stores/ui';
+import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
@@ -10,7 +10,7 @@ const uiStore = useUIStore();
 const message = useMessage();
 
 const onContinue = () => {
-	versionControlStore.initSsh({
+	void versionControlStore.initSsh({
 		name: versionControlStore.state.authorName,
 		email: versionControlStore.state.authorEmail,
 		remoteRepository: versionControlStore.state.repositoryUrl,
@@ -18,7 +18,7 @@ const onContinue = () => {
 };
 
 const onConnect = () => {
-	versionControlStore.initRepository();
+	void versionControlStore.initRepository();
 };
 
 const onSelect = async (b: string) => {

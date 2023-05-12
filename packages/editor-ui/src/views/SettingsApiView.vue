@@ -81,9 +81,9 @@ import mixins from 'vue-typed-mixins';
 
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from '@/stores/users.store';
 import { DOCS_DOMAIN } from '@/constants';
 
 export default mixins(showMessage).extend({
@@ -101,7 +101,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		this.getApiKey();
+		void this.getApiKey();
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
@@ -126,7 +126,7 @@ export default mixins(showMessage).extend({
 				this.$locale.baseText('generic.cancel'),
 			);
 			if (confirmed) {
-				this.deleteApiKey();
+				await this.deleteApiKey();
 			}
 		},
 		async getApiKey() {

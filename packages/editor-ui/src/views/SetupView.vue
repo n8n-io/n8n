@@ -16,10 +16,10 @@ import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export default mixins(showMessage).extend({
 	name: 'SetupView',
@@ -126,7 +126,7 @@ export default mixins(showMessage).extend({
 							interpolate: { workflows, credentials },
 					  })
 					: workflows || credentials;
-			return await this.confirmMessage(
+			return this.confirmMessage(
 				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
 					interpolate: {
 						entities,
@@ -180,8 +180,8 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onSkip() {
-			this.usersStore.skipOwnerSetup();
-			this.$router.push({
+			void this.usersStore.skipOwnerSetup();
+			void this.$router.push({
 				name: VIEWS.NEW_WORKFLOW,
 			});
 		},

@@ -84,11 +84,11 @@ import type { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useUsageStore } from '@/stores/usage';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 export default mixins(showMessage).extend({
@@ -176,7 +176,7 @@ export default mixins(showMessage).extend({
 			await this.usersStore.fetchUsers();
 		},
 		goToUsersSettings() {
-			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			void this.$router.push({ name: VIEWS.USERS_SETTINGS });
 			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
@@ -184,7 +184,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.loadUsers();
+		void this.loadUsers();
 	},
 });
 </script>

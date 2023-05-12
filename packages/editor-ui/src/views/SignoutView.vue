@@ -1,7 +1,7 @@
 <script lang="ts">
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 
@@ -14,14 +14,14 @@ export default mixins(showMessage).extend({
 		async logout() {
 			try {
 				await this.usersStore.logout();
-				this.$router.replace({ name: VIEWS.SIGNIN });
+				void this.$router.replace({ name: VIEWS.SIGNIN });
 			} catch (e) {
 				this.$showError(e, this.$locale.baseText('auth.signout.error'));
 			}
 		},
 	},
 	mounted() {
-		this.logout();
+		void this.logout();
 	},
 });
 </script>

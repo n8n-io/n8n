@@ -63,10 +63,10 @@ import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { useUIStore } from '@/stores/ui';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -216,7 +216,11 @@ export default mixins(showMessage, pushConnection).extend({
 				is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0,
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
-			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
+
+			void this.$externalHooks().run(
+				'settingsCommunityNodesView.openInstallModal',
+				telemetryPayload,
+			);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},

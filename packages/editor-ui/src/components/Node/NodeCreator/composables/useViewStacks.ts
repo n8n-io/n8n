@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 import {

@@ -8,7 +8,7 @@ import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
@@ -129,7 +129,7 @@ export const showMessage = mixins(externalHooks).extend({
 				false,
 			);
 
-			this.$externalHooks().run('showMessage.showError', {
+			void this.$externalHooks().run('showMessage.showError', {
 				title,
 				message,
 				errorMessage: error.message,

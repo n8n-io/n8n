@@ -173,11 +173,11 @@ import {
 	getMainAuthField,
 } from '@/utils';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 type ResourceLocatorDropdownRef = InstanceType<typeof ResourceLocatorDropdown>;
 
@@ -617,11 +617,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		async loadInitialResources(): Promise<void> {
 			if (!this.currentResponse || (this.currentResponse && this.currentResponse.error)) {
 				this.searchFilter = '';
-				this.loadResources();
+				await this.loadResources();
 			}
 		},
 		loadResourcesDebounced() {
-			this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
+			void this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
@@ -707,7 +707,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 
-			this.loadInitialResources();
+			void this.loadInitialResources();
 			this.showResourceDropdown = true;
 		},
 		switchFromListMode(): void {

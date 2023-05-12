@@ -88,8 +88,8 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
@@ -122,7 +122,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				this.updateDisplayValue();
 				this.$emit('valueChanged', this.latestValue);
 			} else {
-				this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 
@@ -238,7 +238,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
+				void this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},

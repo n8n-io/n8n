@@ -2,7 +2,7 @@
 import { computed, watch, ref, getCurrentInstance } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';

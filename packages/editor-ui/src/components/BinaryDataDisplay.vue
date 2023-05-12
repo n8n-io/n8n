@@ -27,7 +27,7 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export default mixins(nodeHelpers).extend({
 	name: 'BinaryDataDisplay',

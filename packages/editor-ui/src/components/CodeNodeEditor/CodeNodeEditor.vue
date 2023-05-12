@@ -37,8 +37,8 @@ import { CODE_EXECUTION_MODES, CODE_LANGUAGES } from 'n8n-workflow';
 import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import Modal from '@/components/Modal.vue';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';

@@ -10,9 +10,9 @@ import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).extend({
 	setup() {
@@ -115,7 +115,7 @@ export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).e
 						this.titleSet(workflow.name as string, 'ERROR');
 						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						await this.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
@@ -234,7 +234,7 @@ export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).e
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
+				await this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
 
 				return runWorkflowApiResponse;
 			} catch (error) {

@@ -1,4 +1,4 @@
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n as locale } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';

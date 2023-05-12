@@ -26,9 +26,9 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default mixins(workflowRun, pinData).extend({
 	props: {
@@ -180,7 +180,7 @@ export default mixins(workflowRun, pinData).extend({
 
 		async onClick() {
 			if (this.isListeningForEvents) {
-				this.stopWaitingForWebhook();
+				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
 				this.$emit('stopExecution');
 			} else {
@@ -207,9 +207,9 @@ export default mixins(workflowRun, pinData).extend({
 						source: this.telemetrySource,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 					this.$emit('execute');
 				}
 			}

@@ -62,8 +62,8 @@ import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useTagsStore } from '@/stores/tags';
+import { useUIStore } from '@/stores/ui.store';
+import { useTagsStore } from '@/stores/tags.store';
 import type { EventBus } from '@/event-bus';
 import type { PropType } from 'vue';
 import type { N8nOption, N8nSelect } from 'n8n-design-system';
@@ -123,7 +123,7 @@ export default mixins(showMessage).extend({
 
 		this.eventBus?.on('focus', this.onBusFocus);
 
-		this.tagsStore.fetchAll();
+		void this.tagsStore.fetchAll();
 	},
 	destroyed() {
 		this.eventBus?.off('focus', this.onBusFocus);
@@ -176,7 +176,7 @@ export default mixins(showMessage).extend({
 				this.$data.filter = '';
 				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
-				this.onCreate();
+				void this.onCreate();
 			} else {
 				setTimeout(() => {
 					if (!this.$data.preventUpdate) {

@@ -45,7 +45,7 @@ import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
 import { mapStores } from 'pinia';
-import { useTagsStore } from '@/stores/tags';
+import { useTagsStore } from '@/stores/tags.store';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;

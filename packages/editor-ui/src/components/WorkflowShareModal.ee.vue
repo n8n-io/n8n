@@ -137,13 +137,13 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { createEventBus, nodeViewEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { useUsageStore } from '@/stores/usage';
+import { useUsageStore } from '@/stores/usage.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
@@ -259,7 +259,7 @@ export default mixins(showMessage).extend({
 
 			this.loading = true;
 
-			const saveWorkflowPromise = () => {
+			const saveWorkflowPromise = async () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.emit('saveWorkflow', () => {
@@ -399,7 +399,7 @@ export default mixins(showMessage).extend({
 		},
 		onRoleAction(user: IUser, action: string) {
 			if (action === 'remove') {
-				this.onRemoveSharee(user.id);
+				void this.onRemoveSharee(user.id);
 			}
 		},
 		async onCloseModal() {
@@ -413,7 +413,7 @@ export default mixins(showMessage).extend({
 				);
 
 				if (shouldSave) {
-					return await this.onSave();
+					return this.onSave();
 				}
 			}
 
@@ -457,7 +457,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.initialize();
+		void this.initialize();
 	},
 	watch: {
 		workflow(workflow) {

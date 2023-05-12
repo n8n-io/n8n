@@ -41,9 +41,9 @@ import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -126,7 +126,7 @@ export default mixins(showMessage).extend({
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				this.onClick();
+				await this.onClick();
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText(
@@ -145,7 +145,7 @@ export default mixins(showMessage).extend({
 				);
 
 				if (deleteConfirmed) {
-					this.credentialsStore.deleteCredential({ id: this.data.id });
+					await this.credentialsStore.deleteCredential({ id: this.data.id });
 				}
 			}
 		},
