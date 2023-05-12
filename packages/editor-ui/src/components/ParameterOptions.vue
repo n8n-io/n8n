@@ -6,20 +6,26 @@
 				{{ loadingMessage }}
 			</n8n-text>
 		</div>
-		<div v-else>
-			<n8n-action-toggle
-				v-if="shouldShowOptions"
-				placement="bottom-end"
-				size="small"
-				color="foreground-xdark"
-				iconSize="small"
-				:actions="actions"
-				:iconOrientation="iconOrientation"
-				@action="(action) => $emit('optionSelected', action)"
-				@visible-change="onMenuToggle"
-			/>
+		<div v-else :class="$style.controlsContainer">
+			<div
+				:class="{
+					[$style.noExpressionSelector]: !shouldShowExpressionSelector,
+				}"
+			>
+				<n8n-action-toggle
+					v-if="shouldShowOptions"
+					placement="bottom-end"
+					size="small"
+					color="foreground-xdark"
+					iconSize="small"
+					:actions="actions"
+					:iconOrientation="iconOrientation"
+					@action="(action) => $emit('optionSelected', action)"
+					@visible-change="onMenuToggle"
+				/>
+			</div>
 			<n8n-radio-buttons
-				v-if="parameter.noDataExpression !== true && showExpressionSelector"
+				v-if="shouldShowExpressionSelector"
 				size="small"
 				:value="selectedView"
 				:disabled="isReadOnly"
@@ -88,6 +94,9 @@ export default defineComponent({
 		},
 		isHtmlEditor(): boolean {
 			return this.getArgument('editor') === 'htmlEditor';
+		},
+		shouldShowExpressionSelector(): boolean {
+			return this.parameter.noDataExpression !== true && this.$props.showExpressionSelector;
 		},
 		shouldShowOptions(): boolean {
 			if (this.isReadOnly === true) {
@@ -192,5 +201,17 @@ export default defineComponent({
 }
 .loader > span {
 	line-height: 1em;
+}
+
+.controlsContainer {
+	display: flex;
+}
+
+.noExpressionSelector {
+	margin-bottom: var(--spacing-4xs);
+
+	span {
+		padding-right: 0 !important;
+	}
 }
 </style>

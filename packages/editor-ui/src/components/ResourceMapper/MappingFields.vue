@@ -274,7 +274,6 @@ defineExpose({
 			<template #options>
 				<parameter-options
 					:parameter="parameter"
-					iconOrientation="horizontal"
 					:customActions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loadingMessage="fetchingFieldsLabel"
