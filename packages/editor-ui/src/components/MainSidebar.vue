@@ -110,13 +110,13 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
-
+import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useMessage } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -137,7 +137,6 @@ import { useVersionControlStore } from '@/stores/versionControl.store';
 
 export default mixins(
 	genericHelpers,
-	showMessage,
 	workflowHelpers,
 	workflowRun,
 	userHelpers,
@@ -147,6 +146,11 @@ export default mixins(
 	components: {
 		GiftNotificationIcon,
 		WorkflowSettings,
+	},
+	setup() {
+		return {
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -483,7 +487,7 @@ export default mixins(
 			}
 		},
 		async sync() {
-			const prompt = await this.$prompt(
+			const prompt = (await this.prompt(
 				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
 					interpolate: { branch: this.versionControlStore.state.currentBranch },
 				}),
@@ -499,7 +503,7 @@ export default mixins(
 					inputPattern: /^.+$/,
 					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
 				},
-			);
+			)) as MessageBoxInputData;
 
 			if (prompt.value) {
 				await this.versionControlStore.sync({ commitMessage: prompt.value });
