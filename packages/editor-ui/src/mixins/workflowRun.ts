@@ -5,7 +5,7 @@ import { NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
 import mixins from 'vue-typed-mixins';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -14,10 +14,11 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 
-export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).extend({
+export const workflowRun = mixins(externalHooks, workflowHelpers).extend({
 	setup() {
 		return {
 			...useTitleChange(),
+			...useToast(),
 		};
 	},
 	computed: {
@@ -106,7 +107,7 @@ export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).e
 							trackNodeIssues.push(trackNodeIssue);
 						}
 
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('workflowRun.showMessage.title'),
 							message: errorMessages.join('<br />'),
 							type: 'error',
@@ -239,7 +240,7 @@ export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).e
 				return runWorkflowApiResponse;
 			} catch (error) {
 				this.titleSet(workflow.name as string, 'ERROR');
-				this.$showError(error, this.$locale.baseText('workflowRun.showError.title'));
+				this.showError(error, this.$locale.baseText('workflowRun.showError.title'));
 				return undefined;
 			}
 		},
