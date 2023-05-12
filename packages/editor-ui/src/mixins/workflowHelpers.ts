@@ -4,7 +4,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
 } from '@/constants';
 
 import type {
@@ -41,7 +40,7 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast, useMessage } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 
 import { isEqual } from 'lodash-es';
 
@@ -321,13 +320,7 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
-	},
+export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).extend({
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -748,31 +741,26 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 						params: { name: currentWorkflow },
 					}).href;
 
-					const overwrite = await this.confirm(
+					const overwrite = await this.confirmMessage(
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message', {
 							interpolate: {
 								url,
 							},
 						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
-						{
-							confirmButtonText: this.$locale.baseText(
-								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-							),
-							cancelButtonText: this.$locale.baseText(
-								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-							),
-						},
+						null,
+						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.cancelButtonText'),
 					);
 
-					if (overwrite === MODAL_CONFIRM) {
+					if (overwrite) {
 						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;
 				}
 
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: error.message,
 					type: 'error',
@@ -902,7 +890,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 			} catch (e) {
 				this.uiStore.removeActiveAction('workflowSaving');
 
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: (e as Error).message,
 					type: 'error',

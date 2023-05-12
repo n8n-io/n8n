@@ -38,22 +38,16 @@ import mixins from 'vue-typed-mixins';
 import type { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import Modal from '@/components/Modal.vue';
+import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
-import { useToast } from '@/composables';
 
 export default mixins(workflowHelpers).extend({
 	components: { Modal },
 	name: 'ContactPromptModal',
 	props: ['modalName'],
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
 	data() {
 		return {
 			email: '',
@@ -100,7 +94,7 @@ export default mixins(workflowHelpers).extend({
 						instance_id: this.rootStore.instanceId,
 						email: this.email,
 					});
-					this.showMessage({
+					this.$showMessage({
 						title: 'Thanks!',
 						message: "It's people like you that help make n8n better",
 						type: 'success',

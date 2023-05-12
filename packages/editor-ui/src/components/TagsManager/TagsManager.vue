@@ -28,11 +28,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 
 import type { ITag } from '@/Interface';
 
-import { useToast } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
@@ -41,13 +41,8 @@ import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
 import { createEventBus } from '@/event-bus';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'TagsManager',
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
 	created() {
 		void this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},
@@ -99,7 +94,7 @@ export default defineComponent({
 				cb(newTag);
 			} catch (error) {
 				const escapedName = escape(name);
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onCreate.title'),
 					this.$locale.baseText('tagsManager.showError.onCreate.message', {
@@ -127,13 +122,13 @@ export default defineComponent({
 				const updatedTag = await this.tagsStore.rename({ id, name });
 				cb(!!updatedTag);
 
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onUpdate.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onUpdate.title'),
 					this.$locale.baseText('tagsManager.showError.onUpdate.message', {
@@ -158,13 +153,13 @@ export default defineComponent({
 
 				cb(deleted);
 
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onDelete.title'),
 					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(name);
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onDelete.title'),
 					this.$locale.baseText('tagsManager.showError.onDelete.message', {
