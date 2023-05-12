@@ -653,6 +653,12 @@ export const schema = {
 			env: 'N8N_ENDPOINT_WEBHOOK',
 			doc: 'Path for webhook endpoint',
 		},
+		webhookUrl: {
+			format: String,
+			default: 'webhook',
+			env: 'WEBHOOK_URL',
+			doc: 'Used to manually provide the Webhook URL when running n8n behind a reverse proxy.',
+		},
 		webhookWaiting: {
 			format: String,
 			default: 'webhook-waiting',

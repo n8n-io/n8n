@@ -48,6 +48,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
+import config from '@/config';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
@@ -691,11 +692,15 @@ export async function executeWebhook(
 export function getWebhookBaseUrl() {
 	let urlBaseWebhook = GenericHelpers.getBaseUrl();
 
+	// Change required here
 	// We renamed WEBHOOK_TUNNEL_URL to WEBHOOK_URL. This is here to maintain
 	// backward compatibility. Will be deprecated and removed in the future.
-	if (process.env.WEBHOOK_TUNNEL_URL !== undefined || process.env.WEBHOOK_URL !== undefined) {
+	if (
+		process.env.WEBHOOK_TUNNEL_URL !== undefined ||
+		config.get('endpoints.webhookUrl') !== undefined
+	) {
 		// @ts-ignore
-		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
+		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || config.get('endpoints.webhookUrl');
 	}
 	if (!urlBaseWebhook.endsWith('/')) {
 		urlBaseWebhook += '/';

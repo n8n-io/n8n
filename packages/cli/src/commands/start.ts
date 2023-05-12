@@ -29,6 +29,7 @@ import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { configure } from 'winston';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -347,8 +348,11 @@ export class Start extends BaseCommand {
 			// @ts-ignore
 			const webhookTunnel = await localtunnel(port, tunnelSettings);
 
-			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
-			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
+			// Change required here
+			config.set('endpoints.webhookUrl', webhookTunnel.url);
+			// process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
+
+			this.log(`Tunnel URL: ${config.get('endpoints.webhookUrl')}\n`);
 			this.log(
 				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
 			);
