@@ -58,7 +58,7 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { pushConnection } from '@/mixins/pushConnection';
 import mixins from 'vue-typed-mixins';
 import type { PublicInstalledPackage } from 'n8n-workflow';
@@ -70,10 +70,15 @@ import { useSettingsStore } from '@/stores/settings.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default mixins(showMessage, pushConnection).extend({
+export default mixins(pushConnection).extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
 		CommunityPackageCard,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -113,7 +118,7 @@ export default mixins(showMessage, pushConnection).extend({
 				number_of_updates_available: packagesToUpdate.length,
 			});
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				this.$locale.baseText('settings.communityNodes.fetchError.title'),
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),

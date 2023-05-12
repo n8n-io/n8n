@@ -328,7 +328,7 @@ import Vue from 'vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import type {
 	ITimeoutHMS,
 	IUser,
@@ -337,12 +337,12 @@ import type {
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '../constants';
+} from '@/constants';
 
 import mixins from 'vue-typed-mixins';
 
@@ -356,10 +356,15 @@ import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(externalHooks, genericHelpers, showMessage).extend({
+export default mixins(externalHooks, genericHelpers).extend({
 	name: 'WorkflowSettings',
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -448,7 +453,7 @@ export default mixins(externalHooks, genericHelpers, showMessage).extend({
 		this.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			this.$showMessage({
+			this.showMessage({
 				title: 'No workflow active',
 				message: 'No workflow active to display settings of.',
 				type: 'error',
@@ -477,7 +482,7 @@ export default mixins(externalHooks, genericHelpers, showMessage).extend({
 		try {
 			await Promise.all(promises);
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				'Problem loading settings',
 				'The following error occurred loading the data:',
@@ -754,7 +759,7 @@ export default mixins(externalHooks, genericHelpers, showMessage).extend({
 				data.settings!.executionTimeout !== -1 ? hours * 3600 + minutes * 60 + seconds : -1;
 
 			if (data.settings!.executionTimeout === 0) {
-				this.$showError(
+				this.showError(
 					new Error(this.$locale.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
 					this.$locale.baseText('workflowSettings.showError.saveSettings1.title'),
 					this.$locale.baseText('workflowSettings.showError.saveSettings1.message') + ':',
@@ -767,7 +772,7 @@ export default mixins(externalHooks, genericHelpers, showMessage).extend({
 				const { hours, minutes, seconds } = this.convertToHMS(
 					this.workflowSettings.maxExecutionTimeout as number,
 				);
-				this.$showError(
+				this.showError(
 					new Error(
 						this.$locale.baseText('workflowSettings.showError.saveSettings2.errorMessage', {
 							interpolate: {
@@ -791,7 +796,7 @@ export default mixins(externalHooks, genericHelpers, showMessage).extend({
 				const workflow = await this.workflowsStore.updateWorkflow(this.$route.params.name, data);
 				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowSettings.showError.saveSettings3.title'),
 				);
@@ -813,7 +818,7 @@ export default mixins(externalHooks, genericHelpers, showMessage).extend({
 
 			this.isLoading = false;
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('workflowSettings.showMessage.saveSettings.title'),
 				type: 'success',
 			});

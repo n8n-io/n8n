@@ -186,7 +186,7 @@ import {
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
-	MODAL_CONFIRMED,
+	MODAL_CONFIRM,
 	NODE_OUTPUT_DEFAULT_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
@@ -206,13 +206,15 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
-import { showMessage } from '@/mixins/showMessage';
-import { useTitleChange } from '@/composables/useTitleChange';
+import {
+	useGlobalLinkActions,
+	useCanvasMouseSelect,
+	useMessage,
+	useToast,
+	useTitleChange,
+} from '@/composables';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
-
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
@@ -322,7 +324,6 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	moveNodeWorkflow,
-	showMessage,
 	workflowHelpers,
 	workflowRun,
 	debounceHelper,
@@ -343,6 +344,8 @@ export default mixins(
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
+			...useToast(),
+			...useMessage(),
 			...useUniqueNodeName(),
 			...useI18n(),
 		};
@@ -415,15 +418,21 @@ export default mixins(
 			return;
 		}
 		if (this.uiStore.stateIsDirty) {
-			const confirmModal = await this.confirmModal(
+			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				true,
+				{
+					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'generic.unsavedWork.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: this.$locale.baseText(
+						'generic.unsavedWork.confirmMessage.cancelButtonText',
+					),
+					showClose: true,
+				},
 			);
-			if (confirmModal === MODAL_CONFIRMED) {
+			if (confirmModal === MODAL_CONFIRM) {
 				// Make sure workflow id is empty when leaving the editor
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const saved = await this.saveCurrentWorkflow({}, false);
@@ -660,7 +669,7 @@ export default mixins(
 			this.registerCustomAction('showNodeCreator', () =>
 				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.NO_TRIGGER_EXECUTION_TOOLTIP),
 			);
-			const notice = this.$showMessage({
+			const notice = this.showMessage({
 				type: 'info',
 				title: this.$locale.baseText('nodeView.cantExecuteNoTrigger'),
 				message,
@@ -688,7 +697,7 @@ export default mixins(
 					saved = true;
 				}
 				if (saved) {
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('generic.workflowSaved'),
 						type: 'success',
 					});
@@ -708,7 +717,7 @@ export default mixins(
 			try {
 				data = await this.workflowsStore.getExecution(executionId);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
+				this.showError(error, this.$locale.baseText('nodeView.showError.openExecution.title'));
 				return;
 			}
 			if (data === undefined) {
@@ -766,7 +775,7 @@ export default mixins(
 				}
 			}
 			if ((data as IExecutionsSummary).waitTill) {
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: `<a data-action="reload">${this.$locale.baseText(
 						'nodeView.refresh',
@@ -819,7 +828,7 @@ export default mixins(
 					);
 				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
+				this.showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
 				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
@@ -1030,7 +1039,7 @@ export default mixins(
 					void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
 					type: 'success',
 				});
@@ -1305,7 +1314,7 @@ export default mixins(
 				this.copyToClipboard(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
-						this.$showMessage({
+						this.showMessage({
 							title: 'Copied!',
 							message: '',
 							type: 'success',
@@ -1327,7 +1336,7 @@ export default mixins(
 			try {
 				this.stopExecutionInProgress = true;
 				await this.workflowsStore.stopCurrentExecution(executionId);
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
 					type: 'success',
 				});
@@ -1346,7 +1355,7 @@ export default mixins(
 					this.uiStore.removeActiveAction('workflowRunning');
 
 					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
 						message: this.$locale.baseText(
 							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
@@ -1373,13 +1382,13 @@ export default mixins(
 					this.workflowsStore.executingNode = null;
 					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
 					this.uiStore.removeActiveAction('workflowRunning');
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
 						type: 'success',
 					});
 				} else {
-					this.$showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
+					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
 				}
 			}
 			this.stopExecutionInProgress = false;
@@ -1401,7 +1410,7 @@ export default mixins(
 			try {
 				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.stopWaitingForWebhook.title'),
 				);
@@ -1426,19 +1435,23 @@ export default mixins(
 						return;
 					}
 
-					const importConfirm = await this.confirmMessage(
+					const importConfirm = await this.confirm(
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.message', {
 							interpolate: { plainTextData },
 						}),
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
-						'warning',
-						this.$locale.baseText(
-							'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
-						),
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
+						{
+							type: 'warning',
+							confirmButtonText: this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText',
+							),
+						},
 					);
 
-					if (!importConfirm) {
+					if (importConfirm !== MODAL_CONFIRM) {
 						return;
 					}
 
@@ -1475,7 +1488,7 @@ export default mixins(
 				workflowData = await this.workflowsStore.getWorkflowFromUrl(url);
 			} catch (error) {
 				this.stopLoading();
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.getWorkflowDataFromUrl.title'),
 				);
@@ -1593,10 +1606,7 @@ export default mixins(
 					this.workflowsStore.addWorkflowTagIds(tagIds);
 				}
 			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('nodeView.showError.importWorkflowData.title'),
-				);
+				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
 		onDragOver(event: DragEvent) {
@@ -1660,7 +1670,7 @@ export default mixins(
 		},
 		showMaxNodeTypeError(nodeTypeData: INodeTypeDescription) {
 			const maxNodes = nodeTypeData.maxNodes;
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.title'),
 				message: this.$locale.baseText('nodeView.showMessage.showMaxNodeTypeError.message', {
 					adjustToNumber: maxNodes,
@@ -1770,7 +1780,7 @@ export default mixins(
 				this.nodeTypesStore.getNodeType(nodeTypeName);
 
 			if (nodeTypeData === null) {
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeView.showMessage.addNodeButton.title'),
 					message: this.$locale.baseText('nodeView.showMessage.addNodeButton.message', {
 						interpolate: { nodeTypeName },
@@ -2490,15 +2500,21 @@ export default mixins(
 			} else {
 				const result = this.uiStore.stateIsDirty;
 				if (result) {
-					const confirmModal = await this.confirmModal(
+					const confirmModal = await this.confirm(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-						'warning',
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-						this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-						true,
+						{
+							title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+							type: 'warning',
+							confirmButtonText: this.$locale.baseText(
+								'generic.unsavedWork.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'generic.unsavedWork.confirmMessage.cancelButtonText',
+							),
+							showClose: true,
+						},
 					);
-					if (confirmModal === MODAL_CONFIRMED) {
+					if (confirmModal === MODAL_CONFIRM) {
 						const saved = await this.saveCurrentWorkflow();
 						if (saved) await this.settingsStore.fetchPromptsData();
 					} else if (confirmModal === MODAL_CLOSE) {
@@ -2515,7 +2531,7 @@ export default mixins(
 					try {
 						workflow = await this.workflowsStore.fetchWorkflow(workflowId);
 					} catch (error) {
-						this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+						this.showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
 
 						void this.$router.push({
 							name: VIEWS.NEW_WORKFLOW,
@@ -2999,7 +3015,7 @@ export default mixins(
 		},
 		async renameNodePrompt(currentName: string) {
 			try {
-				const promptResponsePromise = this.$prompt(
+				const promptResponsePromise = this.prompt(
 					this.$locale.baseText('nodeView.prompt.newName') + ':',
 					this.$locale.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
 					{
@@ -3557,7 +3573,7 @@ export default mixins(
 								'*',
 							);
 						}
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('openWorkflow.workflowImportError'),
 							message: (e as Error).message,
 							type: 'error',
@@ -3581,7 +3597,7 @@ export default mixins(
 								'*',
 							);
 						}
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
 							message: (e as Error).message,
 							type: 'error',
@@ -3780,7 +3796,7 @@ export default mixins(
 		try {
 			await Promise.all(loadPromises);
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				this.$locale.baseText('nodeView.showError.mounted1.title'),
 				this.$locale.baseText('nodeView.showError.mounted1.message') + ':',
@@ -3800,7 +3816,7 @@ export default mixins(
 					);
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('nodeView.showError.mounted2.title'),
 					this.$locale.baseText('nodeView.showError.mounted2.message') + ':',
@@ -3831,7 +3847,7 @@ export default mixins(
 
 			if (onboardingResponse.title && onboardingResponse.description) {
 				setTimeout(async () => {
-					this.$showToast({
+					this.showToast({
 						type: 'info',
 						title: onboardingResponse.title,
 						message: onboardingResponse.description,
