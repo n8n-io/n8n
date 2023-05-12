@@ -311,26 +311,6 @@ export class VersionControlService {
 		return this.gitService.setBranch(branch);
 	}
 
-	// TODO: temp
-	async fetch(): Promise<FetchResult> {
-		return this.gitService.fetch();
-	}
-
-	// TODO: temp
-	async diff(): Promise<DiffResult> {
-		return this.gitService.diff();
-	}
-
-	// TODO: temp
-	async pull(): Promise<PullResult> {
-		return this.gitService.pull();
-	}
-
-	// TODO: temp
-	async push(force = false): Promise<PushResult> {
-		return this.gitService.push({ branch: this.versionControlPreferences.branchName, force });
-	}
-
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
 	async resetWorkfolder(userId: string): Promise<ImportResult | undefined> {
@@ -418,10 +398,6 @@ export class VersionControlService {
 			return this.gitService.status();
 		}
 		return stageResult;
-	}
-
-	async commit(message?: string): Promise<CommitResult> {
-		return this.gitService.commit(message ?? 'Updated Workfolder');
 	}
 
 	async status(): Promise<StatusResult> {
@@ -532,4 +508,29 @@ export class VersionControlService {
 		]);
 		return versionControlledFiles;
 	}
+
+	// #region Version Control Test Functions
+	//TODO: SEPARATE FUNCTIONS FOR DEVELOPMENT ONLY
+	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
+
+	async commit(message?: string): Promise<CommitResult> {
+		return this.gitService.commit(message ?? 'Updated Workfolder');
+	}
+
+	async fetch(): Promise<FetchResult> {
+		return this.gitService.fetch();
+	}
+
+	async diff(): Promise<DiffResult> {
+		return this.gitService.diff();
+	}
+
+	async pull(): Promise<PullResult> {
+		return this.gitService.pull();
+	}
+
+	async push(force = false): Promise<PushResult> {
+		return this.gitService.push({ branch: this.versionControlPreferences.branchName, force });
+	}
+	// #endregion
 }
