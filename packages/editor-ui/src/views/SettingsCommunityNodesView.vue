@@ -58,7 +58,7 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { useTitleChange, useToast } from '@/composables';
+import { useToast } from '@/composables';
 import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
@@ -76,10 +76,10 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	setup() {
+	setup(props) {
 		return {
-			...useTitleChange(),
 			...useToast(),
+			...pushConnection.setup?.(props),
 		};
 	},
 	data() {

@@ -162,7 +162,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import type {
@@ -223,7 +223,6 @@ import Node from '@/components/Node.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import type {
 	IConnection,
@@ -319,16 +318,17 @@ const NodeCreator = async () => import('@/components/Node/NodeCreator/NodeCreato
 const NodeCreation = async () => import('@/components/Node/NodeCreation.vue');
 const CanvasControls = async () => import('@/components/CanvasControls.vue');
 
-export default mixins(
-	copyPaste,
-	externalHooks,
-	genericHelpers,
-	moveNodeWorkflow,
-	workflowHelpers,
-	workflowRun,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'NodeView',
+	mixins: [
+		copyPaste,
+		externalHooks,
+		genericHelpers,
+		moveNodeWorkflow,
+		workflowHelpers,
+		workflowRun,
+		debounceHelper,
+	],
 	components: {
 		NodeDetailsView,
 		Node,
@@ -339,7 +339,7 @@ export default mixins(
 		NodeCreation,
 		CanvasControls,
 	},
-	setup() {
+	setup(props) {
 		return {
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -348,6 +348,7 @@ export default mixins(
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useI18n(),
+			...workflowRun.setup?.(props),
 		};
 	},
 	errorCaptured: (err, vm, info) => {

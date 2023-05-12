@@ -120,11 +120,10 @@ import { useMessage } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
-import mixins from 'vue-typed-mixins';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -135,21 +134,17 @@ import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 
-export default mixins(
-	genericHelpers,
-	workflowHelpers,
-	workflowRun,
-	userHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
 		WorkflowSettings,
 	},
-	setup() {
+	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
+	setup(props) {
 		return {
 			...useMessage(),
+			...workflowRun.setup?.(props),
 		};
 	},
 	data() {

@@ -2,7 +2,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -13,7 +13,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
-export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
+export const workflowActivate = defineComponent({
+	mixins: [externalHooks, workflowHelpers],
 	setup() {
 		return {
 			...useToast(),
