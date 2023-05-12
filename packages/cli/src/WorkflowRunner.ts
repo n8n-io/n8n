@@ -37,7 +37,6 @@ import config from '@/config';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
-	IExecutionFlattedDb,
 	IProcessMessageDataHook,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
@@ -45,7 +44,6 @@ import type {
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';

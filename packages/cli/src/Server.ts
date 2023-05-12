@@ -114,7 +114,6 @@ import type {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
-	IExecutionFlattedDb,
 	IExecutionsStopData,
 } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -172,7 +171,7 @@ import { VersionControlService } from '@/environments/versionControl/versionCont
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
 import { ExecutionRepository } from './databases/repositories';
-import { ExecutionEntity } from './databases/entities/ExecutionEntity';
+import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
 
 const exec = promisify(callbackExec);
 

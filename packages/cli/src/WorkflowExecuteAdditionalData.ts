@@ -54,7 +54,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IExecutionDb,
 	IExecutionFlattedDb,
-	IExecutionResponse,
 	IPushDataExecutionFinished,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,

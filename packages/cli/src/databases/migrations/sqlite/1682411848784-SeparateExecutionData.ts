@@ -1,14 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
-export class SeparateExecutionData1682411848784 implements MigrationInterface {
+export class SeparateExecutionData1682411848784 implements ReversibleMigration {
 	name = 'SeparateExecutionData1682411848784';
 
-	transaction = true;
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
+	async up({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {
 		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query('PRAGMA foreign_keys=OFF');
 
@@ -40,9 +37,7 @@ export class SeparateExecutionData1682411848784 implements MigrationInterface {
 		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {
 		await queryRunner.query(`DROP TABLE IF EXISTS "${tablePrefix}temporary_execution_entity"`);
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}temporary_execution_entity" (

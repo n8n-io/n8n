@@ -8,7 +8,6 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 import Container from 'typedi';
 import { ExecutionRepository } from '@/databases/repositories';
-import type { IExecutionFlattedDb } from '@/Interfaces';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	const credsInAnyUse = new Set<string>();

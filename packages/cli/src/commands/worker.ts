@@ -6,13 +6,7 @@ import { Container } from 'typedi';
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
-import type {
-	ExecutionStatus,
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-	IRunExecutionData,
-} from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
 import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -203,11 +197,7 @@ export class Worker extends BaseCommand {
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
 		if (executionDb.data !== undefined) {
-			workflowExecute = new WorkflowExecute(
-				additionalData,
-				executionDb.mode,
-				executionDb.data as IRunExecutionData,
-			);
+			workflowExecute = new WorkflowExecute(additionalData, executionDb.mode, executionDb.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes

@@ -13,15 +13,14 @@ import type {
 	IExecutionsSummary,
 } from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
-import type { FindManyOptions, FindOneOptions, FindOperator, FindOptionsWhere } from 'typeorm';
+import type { FindOperator, FindOptionsWhere } from 'typeorm';
 import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Not, Raw } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { ExecutionData } from '@db/entities/ExecutionData';
 import type {
-	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -35,7 +34,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import { parse, stringify } from 'flatted';
+import { parse } from 'flatted';
 import { Container } from 'typedi';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
