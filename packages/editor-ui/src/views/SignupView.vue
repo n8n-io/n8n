@@ -8,25 +8,20 @@
 </template>
 
 <script lang="ts">
-import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import AuthView from './AuthView.vue';
+import { showMessage } from '@/mixins/showMessage';
 
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'SignupView',
 	components: {
 		AuthView,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -101,7 +96,7 @@ export default defineComponent({
 			const invite = await this.usersStore.validateSignupToken({ inviteeId, inviterId });
 			this.inviter = invite.inviter as { firstName: string; lastName: string };
 		} catch (e) {
-			this.showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
+			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
 			void this.$router.replace({ name: VIEWS.SIGNIN });
 		}
 	},
@@ -120,7 +115,7 @@ export default defineComponent({
 	methods: {
 		async onSubmit(values: { [key: string]: string | boolean }) {
 			if (!this.inviterId || !this.inviteeId) {
-				this.showError(
+				this.$showError(
 					new Error(this.$locale.baseText('auth.changePassword.tokenValidationError')),
 					this.$locale.baseText('auth.signup.setupYourAccountError'),
 				);
@@ -149,7 +144,7 @@ export default defineComponent({
 
 				await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
+				this.$showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
 			}
 			this.loading = false;
 		},
