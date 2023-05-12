@@ -355,6 +355,23 @@ export async function isColumnUnique(
 	return unique.some((u) => u.column_name === column);
 }
 
+export async function uniqueColumns(db: PgpDatabase, table: string) {
+	const unique = await db.any(
+		`
+			SELECT *
+			FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+					inner join INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cu
+							on cu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+			WHERE
+					tc.CONSTRAINT_TYPE = 'UNIQUE'
+					or tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+					and tc.TABLE_NAME = $1
+		`,
+		[table],
+	);
+	return unique as IDataObject[];
+}
+
 export async function getEnumValues(
 	db: PgpDatabase,
 	schema: string,
