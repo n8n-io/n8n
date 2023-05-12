@@ -401,12 +401,6 @@ export class RabbitMQ implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					if (operation === 'delete_message') {
 						this.sendResponse(items[0].json);
-						returnItems.push({
-							json: {
-								success: true,
-							},
-						});
-						return await this.prepareOutputData(returnItems);
 					}
 					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
