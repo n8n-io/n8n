@@ -115,7 +115,7 @@ import type {
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 
 import TitledList from '@/components/TitledList.vue';
 
@@ -141,7 +141,7 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers).extend({
+export default mixins(genericHelpers, nodeHelpers, showMessage).extend({
 	name: 'NodeCredentials',
 	props: {
 		readonly: {
@@ -166,11 +166,6 @@ export default mixins(genericHelpers, nodeHelpers).extend({
 	},
 	components: {
 		TitledList,
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
 	},
 	data() {
 		return {
@@ -457,7 +452,7 @@ export default mixins(genericHelpers, nodeHelpers).extend({
 					type: selectedCredentialsType,
 				});
 				this.updateNodesCredentialsIssues();
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
 					message: this.$locale.baseText('nodeCredentials.showMessage.message', {
 						interpolate: {
