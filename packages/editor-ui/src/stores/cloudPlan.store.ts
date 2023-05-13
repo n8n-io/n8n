@@ -27,7 +27,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		state.usage = data;
 	};
 
-	const userIsTrialing = computed(() => state.data?.metadata.group === 'trial');
+	const userIsTrialing = computed(() => state.data?.metadata?.group === 'trial');
 
 	const currentPlanData = computed(() => state.data);
 
@@ -39,9 +39,10 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 			DateTime.now().toMillis() >= DateTime.fromISO(state.data?.expirationDate).toMillis(),
 	);
 
-	const allExecutionsUsed = computed(
-		() => state.usage?.executions === state.data?.monthlyExecutionsLimit,
-	);
+	const allExecutionsUsed = computed(() => {
+		if (!state.usage?.executions || !state.data?.monthlyExecutionsLimit) return false;
+		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
+	});
 
 	const getOwnerCurrentPLan = async () => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
