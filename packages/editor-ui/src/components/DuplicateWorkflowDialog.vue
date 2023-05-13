@@ -53,9 +53,9 @@ import mixins from 'vue-typed-mixins';
 
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-import Modal from '@/components/Modal.vue';
+import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -66,15 +66,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores';
 
-export default mixins(workflowHelpers).extend({
+export default mixins(showMessage, workflowHelpers).extend({
 	components: { TagsDropdown, Modal },
 	name: 'DuplicateWorkflow',
 	props: ['modalName', 'isActive', 'data'],
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
 	data() {
 		const currentTagIds = this.data.tags;
 
@@ -139,7 +134,7 @@ export default mixins(workflowHelpers).extend({
 		async save(): Promise<void> {
 			const name = this.name.trim();
 			if (!name) {
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.title'),
 					message: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.message'),
 					type: 'error',
@@ -186,12 +181,12 @@ export default mixins(workflowHelpers).extend({
 				if (error.httpStatusCode === 403) {
 					error.message = this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.message');
 
-					this.showError(
+					this.$showError(
 						error,
 						this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.title'),
 					);
 				} else {
-					this.showError(
+					this.$showError(
 						error,
 						this.$locale.baseText('duplicateWorkflowDialog.errors.generic.title'),
 					);

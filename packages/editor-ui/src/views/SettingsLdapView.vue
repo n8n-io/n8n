@@ -143,9 +143,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
 import { convertToDisplayDate } from '@/utils';
-import { useToast, useMessage } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 import type {
 	ILdapConfig,
 	ILdapSyncData,
@@ -154,7 +153,7 @@ import type {
 	IFormInputs,
 	IUser,
 } from '@/Interface';
-import { MODAL_CONFIRM } from '@/constants';
+import mixins from 'vue-typed-mixins';
 
 import humanizeDuration from 'humanize-duration';
 import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
@@ -181,16 +180,10 @@ type rowType = rowCallbackParams & tableRow;
 
 type cellType = cellCallbackParams & { property: keyof tableRow };
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'SettingsLdapView',
 	components: {
 		InfiniteLoading,
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
 	},
 	data() {
 		return {
@@ -308,20 +301,13 @@ export default defineComponent({
 
 			try {
 				if (this.adConfig.loginEnabled === true && newConfiguration.loginEnabled === false) {
-					const confirmAction = await this.confirm(
+					saveForm = await this.confirmMessage(
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.message'),
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.headline'),
-						{
-							cancelButtonText: this.$locale.baseText(
-								'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
-							),
-							confirmButtonText: this.$locale.baseText(
-								'settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText',
-							),
-						},
+						null,
+						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText'),
+						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText'),
 					);
-
-					saveForm = confirmAction === MODAL_CONFIRM;
 				}
 
 				if (!saveForm) {
@@ -329,13 +315,13 @@ export default defineComponent({
 				}
 
 				this.adConfig = await this.settingsStore.updateLdapConfig(newConfiguration);
-				this.showToast({
+				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.updateConfiguration'),
 					message: '',
 					type: 'success',
 				});
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			} finally {
 				if (saveForm) {
 					this.hasAnyChanges = false;
@@ -349,13 +335,13 @@ export default defineComponent({
 			this.loadingTestConnection = true;
 			try {
 				await this.settingsStore.testLdapConnection();
-				this.showToast({
+				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.connectionTest'),
 					message: this.$locale.baseText('settings.ldap.toast.connection.success'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.showToast({
+				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.connectionTestError'),
 					message: error.message,
 					type: 'error',
@@ -368,13 +354,13 @@ export default defineComponent({
 			this.loadingDryRun = true;
 			try {
 				await this.settingsStore.runLdapSync({ type: 'dry' });
-				this.showToast({
+				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: this.$locale.baseText('settings.ldap.toast.sync.success'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingDryRun = false;
 				await this.reloadLdapSynchronizations();
@@ -384,13 +370,13 @@ export default defineComponent({
 			this.loadingLiveRun = true;
 			try {
 				await this.settingsStore.runLdapSync({ type: 'live' });
-				this.showToast({
+				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: this.$locale.baseText('settings.ldap.toast.sync.success'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingLiveRun = false;
 				await this.reloadLdapSynchronizations();
@@ -683,7 +669,7 @@ export default defineComponent({
 					},
 				];
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.ldap.configurationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
 		async getLdapSynchronizations(state: any) {
@@ -702,7 +688,7 @@ export default defineComponent({
 				}
 				this.loadingTable = false;
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
 		async reloadLdapSynchronizations() {
@@ -711,7 +697,7 @@ export default defineComponent({
 				this.tableKey += 1;
 				this.dataTable = [];
 			} catch (error) {
-				this.showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
 	},

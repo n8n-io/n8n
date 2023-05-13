@@ -55,12 +55,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 
 import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
-import { useToast } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useTagsStore } from '@/stores/tags.store';
@@ -75,7 +75,7 @@ type CreateRef = InstanceType<typeof N8nOption>;
 const MANAGE_KEY = '__manage';
 const CREATE_KEY = '__create';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'TagsDropdown',
 	props: {
 		placeholder: {},
@@ -87,11 +87,6 @@ export default defineComponent({
 		eventBus: {
 			type: Object as PropType<EventBus>,
 		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
 	},
 	data() {
 		return {
@@ -168,7 +163,7 @@ export default defineComponent({
 
 				this.$data.filter = '';
 			} catch (error) {
-				this.showError(
+				this.$showError(
 					error,
 					this.$locale.baseText('tagsDropdown.showError.title'),
 					this.$locale.baseText('tagsDropdown.showError.message', { interpolate: { name } }),

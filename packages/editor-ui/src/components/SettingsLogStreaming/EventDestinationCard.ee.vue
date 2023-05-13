@@ -47,9 +47,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import mixins from 'vue-typed-mixins';
+import { EnterpriseEditionFeature } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -63,16 +63,11 @@ export const DESTINATION_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			nodeParameters: {} as MessageEventBusDestinationOptions,
-		};
-	},
-	setup() {
-		return {
-			...useMessage(),
 		};
 	},
 	components: {},
@@ -153,23 +148,17 @@ export default defineComponent({
 			if (action === DESTINATION_LIST_ITEM_ACTIONS.OPEN) {
 				this.$emit('edit', this.destination.id);
 			} else if (action === DESTINATION_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirm(
+				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
 						interpolate: { destinationName: this.destination.label },
 					}),
 					this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: this.$locale.baseText(
-							'settings.log-streaming.destinationDelete.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'settings.log-streaming.destinationDelete.cancelButtonText',
-						),
-					},
+					'warning',
+					this.$locale.baseText('settings.log-streaming.destinationDelete.confirmButtonText'),
+					this.$locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
 				);
 
-				if (deleteConfirmed !== MODAL_CONFIRM) {
+				if (deleteConfirmed === false) {
 					return;
 				}
 

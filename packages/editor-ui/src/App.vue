@@ -33,9 +33,10 @@ import Telemetry from '@/components/Telemetry.vue';
 import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
+import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
-import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast } from '@/composables';
+import { loadLanguage } from './plugins/i18n';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -50,7 +51,7 @@ import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUsageStore } from '@/stores/usage.store';
 
-export default mixins(newVersions, userHelpers).extend({
+export default mixins(newVersions, showMessage, userHelpers).extend({
 	name: 'App',
 	components: {
 		LoadingView,
@@ -61,7 +62,6 @@ export default mixins(newVersions, userHelpers).extend({
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
-			...useToast(),
 		};
 	},
 	computed: {
@@ -90,7 +90,7 @@ export default mixins(newVersions, userHelpers).extend({
 			try {
 				await this.settingsStore.getSettings();
 			} catch (e) {
-				this.showToast({
+				this.$showToast({
 					title: this.$locale.baseText('startupError'),
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
