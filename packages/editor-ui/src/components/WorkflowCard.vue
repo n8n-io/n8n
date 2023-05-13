@@ -62,16 +62,15 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { useToast, useMessage } from '@/composables';
+import { showMessage } from '@/mixins/showMessage';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
@@ -91,16 +90,10 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
-		};
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
 		};
 	},
 	components: {
@@ -225,35 +218,29 @@ export default defineComponent({
 					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirm(
+				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
 						interpolate: { workflowName: this.data.name },
 					}),
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-					{
-						type: 'warning',
-						confirmButtonText: this.$locale.baseText(
-							'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
-						),
-					},
+					'warning',
+					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
+					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
 				);
 
-				if (deleteConfirmed !== MODAL_CONFIRM) {
+				if (deleteConfirmed === false) {
 					return;
 				}
 
 				try {
 					await this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
-					this.showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
+					this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 					return;
 				}
 
 				// Reset tab title since workflow is deleted.
-				this.showMessage({
+				this.$showMessage({
 					title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 					type: 'success',
 				});

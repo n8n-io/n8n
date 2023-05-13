@@ -44,12 +44,20 @@
 </template>
 
 <script lang="ts">
+import { showMessage } from '@/mixins/showMessage';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import { defineComponent } from 'vue';
+import mixins from 'vue-typed-mixins';
 
+import SettingsView from './SettingsView.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
+import TemplateCard from '@/components/TemplateCard.vue';
+import { debounceHelper } from '@/mixins/debounce';
+import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
+import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
 import type Vue from 'vue';
 import { mapStores } from 'pinia';
@@ -60,11 +68,17 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
-export default defineComponent({
+export default mixins(showMessage, debounceHelper).extend({
 	name: 'SettingsPersonalView',
 	components: {
 		ResourcesListLayout,
+		TemplateCard,
+		PageViewLayout,
+		PageViewLayoutList,
+		SettingsView,
 		CredentialCard,
+		ResourceOwnershipSelect,
+		ResourceFiltersDropdown,
 	},
 	data() {
 		return {

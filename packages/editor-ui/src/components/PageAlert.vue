@@ -3,12 +3,13 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { ElNotificationComponent } from 'element-ui/types/notification';
-import { sanitizeHtml } from '@/utils';
-import { useToast } from '@/composables';
+import mixins from 'vue-typed-mixins';
 
-export default defineComponent({
+import { showMessage } from '@/mixins/showMessage';
+import type { ElMessageComponent } from 'element-ui/types/message';
+import { sanitizeHtml } from '@/utils';
+
+export default mixins(showMessage).extend({
 	name: 'PageAlert',
 	props: {
 		message: {
@@ -19,24 +20,19 @@ export default defineComponent({
 			type: String,
 		},
 	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
 	data() {
 		return {
-			alert: null as null | ElNotificationComponent,
+			alert: null as null | ElMessageComponent,
 		};
 	},
 	mounted() {
-		this.alert = this.showAlert({
-			title: '',
+		this.alert = this.$showAlert({
 			message: sanitizeHtml(this.message),
 			type: 'warning',
 			duration: 0,
 			showClose: true,
 			dangerouslyUseHTMLString: true,
+			// @ts-ignore
 			customClass: this.popupClass || '',
 		});
 	},
