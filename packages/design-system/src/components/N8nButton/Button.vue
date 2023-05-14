@@ -38,7 +38,7 @@ export default defineComponent({
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
+				['xmini', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		loading: {
 			type: Boolean,
@@ -277,6 +277,17 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 /**
  * Sizes
  */
+
+.xmini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-3xs);
+	--button-font-size: var(--font-size-3xs);
+
+	&.square {
+		height: 22px;
+		width: 22px;
+	}
+}
 
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);

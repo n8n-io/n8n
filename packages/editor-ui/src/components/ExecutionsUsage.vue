@@ -8,12 +8,12 @@
 		<div v-else-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
 			<i18n path="executionUsage.currentUsage">
 				<template #text>
-					<n8n-text size="xsmall" color="text-dark">
+					<n8n-text size="small" color="text-dark">
 						{{ locale.baseText('executionUsage.currentUsage.text') }}
 					</n8n-text>
 				</template>
 				<template #count>
-					<n8n-text size="xsmall" :bold="true" color="warning">
+					<n8n-text size="small" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
 								interpolate: { days: daysLeftOnTrial.toString() },
@@ -29,13 +29,13 @@
 			</n8n-text>
 		</div>
 		<div v-if="!isTrialExpired" :class="$style.usageCounter">
-			<div>
+			<div :class="$style.progressBarDiv">
 				<progress
 					:class="[
 						trialHasExecutionsLeft ? $style.progressBarSuccess : $style.progressBarDanger,
 						$style.progressBar,
 					]"
-					:value="currentExecutions"
+					:value="currentExecutionsWithThreshold"
 					:max="maxExecutions"
 				></progress>
 			</div>
@@ -52,7 +52,7 @@
 		<div :class="$style.upgradeButtonSection">
 			<n8n-button
 				:label="locale.baseText('executionUsage.button.upgrade')"
-				size="mini"
+				size="xmini"
 				icon="gem"
 				type="success"
 				:block="true"
@@ -68,6 +68,8 @@ import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
+
+const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const props = defineProps<{ cloudPlanData: CloudPlanAndUsageData | null }>();
 
@@ -98,6 +100,14 @@ const currentExecutions = computed(() => {
 	return usedExecutions > executionsQuota ? executionsQuota : usedExecutions;
 });
 
+const currentExecutionsWithThreshold = computed(() => {
+	if (!props.cloudPlanData?.usage) return 0;
+	const usedExecutions = props.cloudPlanData.usage.executions;
+	const executionsQuota = props.cloudPlanData.monthlyExecutionsLimit;
+	const threshold = (PROGRESS_BAR_MINIMUM_THRESHOLD * executionsQuota) / 100;
+	return usedExecutions < threshold ? threshold : usedExecutions;
+});
+
 const maxExecutions = computed(() => {
 	if (!props.cloudPlanData?.monthlyExecutionsLimit) return 0;
 	return props.cloudPlanData.monthlyExecutionsLimit;
@@ -117,16 +127,50 @@ const onUpgradeClicked = () => {
 	border-right: 0;
 }
 
+.progressBarDiv {
+	display: flex;
+	align-items: center;
+}
+
 .progressBar {
 	width: 62.4px;
+	border: 0;
+	height: 5px;
+	border-radius: 20px;
+	background-color: var(--color-foreground-base);
+}
+.progressBar::-webkit-progress-bar {
+	width: 62.4px;
+	border: 0;
+	height: 5px;
+	border-radius: 20px;
+	background-color: var(--color-foreground-base);
+}
+.progressBar::-moz-progress-bar {
+	width: 62.4px;
+	border: 0;
+	height: 5px;
+	border-radius: 20px;
+	background-color: var(--color-foreground-base);
 }
 
-.progressBarSuccess {
-	accent-color: var(--color-foreground-xdark);
+.progressBarSuccess::-moz-progress-bar {
+	background: var(--color-foreground-xdark);
+	border-radius: 20px;
 }
 
-.progressBarDanger {
-	accent-color: var(--color-danger);
+.progressBarSuccess::-webkit-progress-value {
+	background: var(--color-foreground-xdark);
+	border-radius: 20px;
+}
+
+.progressBarDanger::-webkit-progress-value {
+	background: var(--color-danger);
+	border-radius: 20px;
+}
+
+.progressBarDanger::-moz-progress-bar {
+	background: var(--color-danger);
 }
 
 .usageText {
@@ -140,7 +184,7 @@ const onUpgradeClicked = () => {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-left: var(--spacing-s);
+	justify-content: center;
 	margin-top: var(--spacing-2xs);
 	font-size: var(--font-size-3xs);
 }
