@@ -86,9 +86,10 @@ import mixins from 'vue-typed-mixins';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
-export default mixins(executionHelpers).extend({
+export default mixins(executionHelpers, showMessage).extend({
 	name: 'execution-card',
 	components: {
 		ExecutionTime,

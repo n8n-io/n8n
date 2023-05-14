@@ -1,16 +1,11 @@
-import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from './showMessage';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useVersionsStore } from '@/stores/versions.store';
 
-export const newVersions = defineComponent({
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
+export const newVersions = mixins(showMessage).extend({
 	computed: {
 		...mapStores(useUIStore, useVersionsStore),
 	},
@@ -33,7 +28,7 @@ export const newVersions = defineComponent({
 				}
 
 				message = `${message} <a class="primary-color">More info</a>`;
-				this.showToast({
+				this.$showToast({
 					title: 'Critical update available',
 					message,
 					onClick: () => {

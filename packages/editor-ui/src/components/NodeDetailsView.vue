@@ -150,7 +150,6 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
-	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -164,7 +163,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import useDeviceSupport from '@/composables/useDeviceSupport';
-import { useMessage } from '@/composables';
 
 export default mixins(
 	externalHooks,
@@ -196,7 +194,6 @@ export default mixins(
 	setup() {
 		return {
 			...useDeviceSupport(),
-			...useMessage(),
 		};
 	},
 	data() {
@@ -611,16 +608,15 @@ export default mixins(
 			}
 
 			if (this.outputPanelEditMode.enabled) {
-				const shouldPinDataBeforeClosing = await this.confirm(
+				const shouldPinDataBeforeClosing = await this.confirmMessage(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
-					{
-						confirmButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
-						cancelButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
-					},
+					null,
+					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
 				);
 
-				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
+				if (shouldPinDataBeforeClosing) {
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {

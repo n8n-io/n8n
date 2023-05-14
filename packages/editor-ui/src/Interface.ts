@@ -587,6 +587,12 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
+export interface IUserListAction {
+	label: string;
+	value: string;
+	guard?: (user: IUser) => boolean;
+}
+
 export interface IN8nPrompts {
 	message: string;
 	title: string;
