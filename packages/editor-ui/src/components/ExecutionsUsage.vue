@@ -67,7 +67,6 @@ import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
-import type { PropType } from 'vue';
 import { computed } from 'vue';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;

@@ -91,7 +91,7 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
-import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
+import { DOCS_DOMAIN } from '@/constants';
 import { useCloudPlanStore } from '@/stores';
 import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 
