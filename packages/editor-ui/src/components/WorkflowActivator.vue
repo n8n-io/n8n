@@ -52,8 +52,8 @@
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
 import { workflowActivate } from '@/mixins/workflowActivate';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { getActivatableTriggerNodes } from '@/utils';
@@ -100,12 +100,12 @@ export default mixins(showMessage, workflowActivate).extend({
 	},
 	methods: {
 		async activeChanged(newActiveState: boolean) {
-			return await this.updateWorkflowActivation(this.workflowId, newActiveState);
+			return this.updateWorkflowActivation(this.workflowId, newActiveState);
 		},
 		async displayActivationError() {
 			let errorMessage: string;
 			try {
-				const errorData = await this.restApi().getActivationError(this.workflowId);
+				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
 
 				if (errorData === undefined) {
 					errorMessage = this.$locale.baseText(

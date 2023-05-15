@@ -21,11 +21,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
 import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
+import { createEventBus } from '@/event-bus';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'InlineTextEdit',
 	components: { ExpandableInputEdit, ExpandableInputPreview },
 	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
@@ -34,7 +35,7 @@ export default Vue.extend({
 			newValue: '',
 			escPressed: false,
 			disabled: false,
-			inputBus: new Vue(),
+			inputBus: createEventBus(),
 		};
 	},
 	methods: {
@@ -50,7 +51,7 @@ export default Vue.extend({
 				return;
 			}
 
-			this.$data.newValue = this.$props.value;
+			this.$data.newValue = this.value;
 			this.$emit('toggle');
 		},
 		onBlur() {
@@ -72,7 +73,7 @@ export default Vue.extend({
 				this.$data.disabled = false;
 
 				if (!updated) {
-					this.$data.inputBus.$emit('focus');
+					this.$data.inputBus.emit('focus');
 				}
 			};
 

@@ -1,29 +1,32 @@
-import { Container } from 'typedi';
-import express from 'express';
+import type express from 'express';
 import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { Role } from '@db/entities/Role';
-import { User } from '@db/entities/User';
-import {
-	defaultMessageEventBusDestinationSentryOptions,
-	defaultMessageEventBusDestinationSyslogOptions,
-	defaultMessageEventBusDestinationWebhookOptions,
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
+import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import {
+	defaultMessageEventBusDestinationSentryOptions,
+	defaultMessageEventBusDestinationSyslogOptions,
+	defaultMessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
+import { eventBus } from '@/eventbus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
-import { EventNamesTypes } from '@/eventbus/EventMessageClasses';
+import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
+import { License } from '@/License';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -50,7 +53,7 @@ const testWebhookDestination: MessageEventBusDestinationWebhookOptions = {
 	...defaultMessageEventBusDestinationWebhookOptions,
 	id: '88be6560-bfb4-455c-8aa1-06971e9e5522',
 	url: 'http://localhost:3456',
-	method: `POST`,
+	method: 'POST',
 	label: 'Test Webhook',
 	enabled: false,
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
@@ -65,8 +68,6 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
 
-const eventBus = Container.get(MessageEventBus);
-
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
 	expect(sent.length).toBeGreaterThan(0);
@@ -80,6 +81,7 @@ async function confirmIdSent(id: string) {
 }
 
 beforeAll(async () => {
+	Container.get(License).isLogStreamingEnabled = () => true;
 	app = await utils.initTestServer({ endpointGroups: ['eventBus'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
@@ -104,7 +106,6 @@ beforeAll(async () => {
 	utils.initConfigFile();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', 1);
-	config.set('enterprise.features.logStreaming', true);
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -181,7 +182,6 @@ test.skip('should send message to syslog', async () => {
 		eventName: 'n8n.test.message' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -222,7 +222,6 @@ test.skip('should confirm send message if there are no subscribers', async () =>
 		eventName: 'n8n.test.unsub' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -258,7 +257,6 @@ test('should anonymize audit message to syslog ', async () => {
 		},
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -320,7 +318,6 @@ test('should send message to webhook ', async () => {
 		eventName: 'n8n.test.message' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const webhookDestination = eventBus.destinations[
 		testWebhookDestination.id!
@@ -355,7 +352,6 @@ test('should send message to sentry ', async () => {
 		eventName: 'n8n.test.message' as EventNamesTypes,
 		id: uuid(),
 	});
-	config.set('enterprise.features.logStreaming', true);
 
 	const sentryDestination = eventBus.destinations[
 		testSentryDestination.id!

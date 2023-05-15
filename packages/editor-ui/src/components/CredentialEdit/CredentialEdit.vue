@@ -111,9 +111,9 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import type { ICredentialsResponse, IUser, NewCredentialsModal } from '@/Interface';
+import type { ICredentialsResponse, IUser } from '@/Interface';
 
-import {
+import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -125,8 +125,8 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
@@ -140,17 +140,19 @@ import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
-import { getCredentialPermissions, IPermissions } from '@/permissions';
-import { IMenuItem } from 'n8n-design-system';
+import type { IPermissions } from '@/permissions';
+import { getCredentialPermissions } from '@/permissions';
+import type { IMenuItem } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import {
 	isValidCredentialResponse,
 	getNodeAuthOptions,
@@ -195,7 +197,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			nodeAccess: {} as NodeAccessMap,
 			isDeleting: false,
 			isSaving: false,
@@ -246,18 +248,20 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 		}
 
-		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+		await this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
 			activeNode: this.ndvStore.activeNode,
 		});
 
-		setTimeout(() => {
+		setTimeout(async () => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner === true) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
 					this.showValidationWarning = true;
 				} else {
-					this.retestCredential();
+					await this.retestCredential();
 				}
 			}
 		}, 0);
@@ -345,6 +349,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 		},
 		isCredentialTestable(): boolean {
+			// Sharees can always test since they can't see the data.
+			if (this.credentialPermissions.isOwner === false) {
+				return true;
+			}
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
 			}
@@ -645,7 +653,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 		},
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 
 		getParentTypes(name: string): string[] {
@@ -672,18 +680,18 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		scrollToTop() {
 			setTimeout(() => {
-				const content = this.$refs.content as Element;
-				if (content) {
-					content.scrollTop = 0;
+				const contentRef = this.$refs.content as Element | undefined;
+				if (contentRef) {
+					contentRef.scrollTop = 0;
 				}
 			}, 0);
 		},
 
 		scrollToBottom() {
 			setTimeout(() => {
-				const content = this.$refs.content as Element;
-				if (content) {
-					content.scrollTop = content.scrollHeight;
+				const contentRef = this.$refs.content as Element | undefined;
+				if (contentRef) {
+					contentRef.scrollTop = contentRef.scrollHeight;
 				}
 			}, 0);
 		},
@@ -817,7 +825,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 
 				this.$telemetry.track('User saved credentials', trackProperties);
-				this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
+				await this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
 			}
 
 			return credential;
@@ -840,7 +848,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			this.$externalHooks().run('credential.saved', {
+			await this.$externalHooks().run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
 				is_new: true,
@@ -874,7 +882,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			this.$externalHooks().run('credential.saved', {
+			await this.$externalHooks().run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
 				is_new: false,
@@ -914,7 +922,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			try {
 				this.isDeleting = true;
-				this.credentialsStore.deleteCredential({ id: this.credentialId });
+				await this.credentialsStore.deleteCredential({ id: this.credentialId });
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(

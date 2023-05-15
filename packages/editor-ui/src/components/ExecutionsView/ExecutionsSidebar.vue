@@ -25,18 +25,24 @@
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
 		>
-			<div v-if="loading" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			<div v-if="loading" class="mr-l">
+				<n8n-loading variant="rect" />
 			</div>
-			<div v-if="executions.length === 0" :class="$style.noResultsContainer">
+			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
 			</div>
 			<execution-card
-				v-else
+				v-else-if="temporaryExecution"
+				:execution="temporaryExecution"
+				:ref="`execution-${temporaryExecution.id}`"
+				:data-test-id="`execution-details-${temporaryExecution.id}`"
+				:showGap="true"
+				@refresh="onRefresh"
+				@retryExecution="onRetryExecution"
+			/>
+			<execution-card
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
@@ -46,7 +52,7 @@
 				@retryExecution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
@@ -61,15 +67,17 @@ import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoA
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '@/constants';
 import type { IExecutionsSummary } from 'n8n-workflow';
-import { Route } from 'vue-router';
-import Vue from 'vue';
-import { PropType } from 'vue';
+import type { Route } from 'vue-router';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { ExecutionFilterType } from '@/Interface';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ExecutionFilterType } from '@/Interface';
 
-export default Vue.extend({
+type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
+
+export default defineComponent({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
@@ -88,6 +96,10 @@ export default Vue.extend({
 		loadingMore: {
 			type: Boolean,
 			default: false,
+		},
+		temporaryExecution: {
+			type: Object as PropType<IExecutionsSummary>,
+			default: null,
 		},
 	},
 	data() {
@@ -132,10 +144,11 @@ export default Vue.extend({
 	methods: {
 		loadMore(limit = 20): void {
 			if (!this.loading) {
-				const executionsList = this.$refs.executionList as HTMLElement;
-				if (executionsList) {
+				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
+				if (executionsListRef) {
 					const diff =
-						executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
+						executionsListRef.offsetHeight -
+						(executionsListRef.scrollHeight - executionsListRef.scrollTop);
 					if (diff > -10 && diff < 10) {
 						this.$emit('loadMore', limit);
 					}
@@ -166,16 +179,16 @@ export default Vue.extend({
 			}
 		},
 		checkListSize(): void {
-			const sidebarContainer = this.$refs.container as HTMLElement;
-			const currentExecutionCard = this.$refs[
+			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
+			const currentExecutionCardRefs = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as Vue[];
+			] as ExecutionCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
 			// and load more if needed
-			if (sidebarContainer && currentExecutionCard?.length) {
-				const cardElement = currentExecutionCard[0].$el as HTMLElement;
-				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
+			if (sidebarContainerRef && currentExecutionCardRefs?.length) {
+				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
+				const listCapacity = Math.ceil(sidebarContainerRef.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
 					this.$emit('loadMore', listCapacity - this.executions.length);
@@ -183,21 +196,21 @@ export default Vue.extend({
 			}
 		},
 		scrollToActiveCard(): void {
-			const executionsList = this.$refs.executionList as HTMLElement;
-			const currentExecutionCard = this.$refs[
+			const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
+			const currentExecutionCardRefs = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as Vue[];
+			] as ExecutionCardRef[] | undefined;
 
 			if (
-				executionsList &&
-				currentExecutionCard?.length &&
+				executionsListRef &&
+				currentExecutionCardRefs?.length &&
 				this.workflowsStore.activeWorkflowExecution
 			) {
-				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
-				if (cardRect.top > executionsList.offsetHeight) {
-					executionsList.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
+				if (cardRect.top > executionsListRef.offsetHeight) {
+					executionsListRef.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
 				}
 			}
 		},
@@ -274,5 +287,12 @@ export default Vue.extend({
 	width: 100%;
 	margin-top: var(--spacing-2xl);
 	text-align: center;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-skeleton__item) {
+	height: 60px;
+	border-radius: 0;
 }
 </style>

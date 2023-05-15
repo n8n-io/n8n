@@ -4,6 +4,7 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { IS_V1_RELEASE } from '@/constants';
 
 convict.addFormat({
 	name: 'nodes-list',
@@ -129,7 +130,7 @@ export const schema = {
 		},
 		mysqldb: {
 			database: {
-				doc: 'MySQL Database',
+				doc: '[DEPRECATED] MySQL Database',
 				format: String,
 				default: 'n8n',
 				env: 'DB_MYSQLDB_DATABASE',
@@ -228,9 +229,9 @@ export const schema = {
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
 		process: {
-			doc: 'In what process workflows should be executed',
+			doc: 'In what process workflows should be executed. Note: Own mode has been deprecated and will be removed in a future version as well as this setting.',
 			format: ['main', 'own'] as const,
-			default: 'own',
+			default: IS_V1_RELEASE ? 'main' : 'own',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -943,7 +944,7 @@ export const schema = {
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
-			default: 'sse',
+			default: IS_V1_RELEASE ? 'websocket' : 'sse',
 			env: 'N8N_PUSH_BACKEND',
 			doc: 'Backend to use for push notifications',
 		},
@@ -987,31 +988,6 @@ export const schema = {
 			format: String,
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
-		},
-	},
-
-	enterprise: {
-		features: {
-			sharing: {
-				format: Boolean,
-				default: false,
-			},
-			ldap: {
-				format: Boolean,
-				default: false,
-			},
-			saml: {
-				format: Boolean,
-				default: false,
-			},
-			logStreaming: {
-				format: Boolean,
-				default: false,
-			},
-			advancedExecutionFilters: {
-				format: Boolean,
-				default: false,
-			},
 		},
 	},
 
@@ -1064,6 +1040,15 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_PERSONALIZATION_ENABLED',
+		},
+	},
+
+	userActivationSurvey: {
+		enabled: {
+			doc: 'Whether user activation survey is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
 		},
 	},
 
@@ -1146,7 +1131,7 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether autorenew for licenses is enabled.',
+			doc: 'Whether auto renewal for licenses is enabled.',
 		},
 		autoRenewOffset: {
 			format: Number,
@@ -1165,6 +1150,12 @@ export const schema = {
 			default: 1,
 			env: 'N8N_LICENSE_TENANT_ID',
 			doc: 'Tenant id used by the license manager',
+		},
+		cert: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_CERT',
+			doc: 'Ephemeral license certificate',
 		},
 	},
 

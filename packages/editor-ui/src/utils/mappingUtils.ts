@@ -1,4 +1,5 @@
-import { INodeProperties, isResourceLocatorValue, NodeParameterValueType } from 'n8n-workflow';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
 export function generatePath(root: string, path: Array<string | number>): string {
 	return path.reduce((accu: string, part: string | number) => {
@@ -6,8 +7,11 @@ export function generatePath(root: string, path: Array<string | number>): string
 			return `${accu}[${part}]`;
 		}
 
-		if (part.includes('-') || part.includes(' ') || part.includes('.')) {
-			return `${accu}["${part}"]`;
+		const special = ['-', ' ', '.', "'", '"', '`', '[', ']', '{', '}', '(', ')', ':', ',', '?'];
+		const hasSpecial = !!special.find((s) => part.includes(s));
+		if (hasSpecial) {
+			const escaped = part.replaceAll("'", "\\'");
+			return `${accu}['${escaped}']`;
 		}
 
 		return `${accu}.${part}`;
@@ -23,7 +27,8 @@ export function getMappedExpression({
 	distanceFromActive: number;
 	path: Array<string | number> | string;
 }) {
-	const root = distanceFromActive === 1 ? '$json' : generatePath('$node', [nodeName, 'json']);
+	const root =
+		distanceFromActive === 1 ? '$json' : generatePath(`$('${nodeName}')`, ['item', 'json']);
 
 	if (typeof path === 'string') {
 		return `{{ ${root}${path} }}`;

@@ -58,15 +58,15 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { createEventBus } from '@/event-bus';
 
 export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
@@ -80,15 +80,15 @@ export default mixins(externalHooks).extend({
 		this.loading = false;
 
 		setTimeout(() => {
-			const element = this.$refs.select as HTMLSelectElement;
-			if (element) {
-				element.focus();
+			const elementRef = this.$refs.select as HTMLSelectElement | undefined;
+			if (elementRef) {
+				elementRef.focus();
 			}
 		}, 0);
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			selected: '',
 			loading: true,
 			CREDENTIAL_SELECT_MODAL_KEY,
@@ -102,7 +102,7 @@ export default mixins(externalHooks).extend({
 			this.selected = type;
 		},
 		openCredentialType() {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 			this.uiStore.openNewCredential(this.selected);
 
 			const telemetryPayload = {
@@ -113,7 +113,7 @@ export default mixins(externalHooks).extend({
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);
-			this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
+			void this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
 		},
 	},
 });

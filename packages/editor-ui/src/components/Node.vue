@@ -182,7 +182,8 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import { IDataObject, INodeTypeDescription, ITaskData, NodeHelpers } from 'n8n-workflow';
+import type { INodeTypeDescription, ITaskData } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -191,18 +192,13 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash-es';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import {
-	IExecutionsSummary,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	XYPosition,
-} from '@/Interface';
+import type { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -604,7 +600,7 @@ export default mixins(
 		},
 
 		onClick(event: MouseEvent) {
-			this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {

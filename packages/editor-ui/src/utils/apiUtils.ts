@@ -1,6 +1,13 @@
-import axios, { AxiosRequestConfig, Method } from 'axios';
-import { IDataObject } from 'n8n-workflow';
-import type { IRestApiContext } from '@/Interface';
+import type { AxiosRequestConfig, Method } from 'axios';
+import axios from 'axios';
+import type { IDataObject } from 'n8n-workflow';
+import type {
+	IExecutionFlattedResponse,
+	IExecutionResponse,
+	IRestApiContext,
+	IWorkflowDb,
+} from '@/Interface';
+import { parse } from 'flatted';
 
 export const NO_NETWORK_ERROR_CODE = 999;
 
@@ -116,7 +123,7 @@ export async function get(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
@@ -125,5 +132,29 @@ export async function post(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
+}
+
+/**
+ * Unflattens the Execution data.
+ *
+ * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
+ */
+export function unflattenExecutionData(
+	fullExecutionData: IExecutionFlattedResponse,
+): IExecutionResponse {
+	// Unflatten the data
+	const returnData: IExecutionResponse = {
+		...fullExecutionData,
+		workflowData: fullExecutionData.workflowData as IWorkflowDb,
+		data: parse(fullExecutionData.data),
+	};
+
+	returnData.finished = returnData.finished ? returnData.finished : false;
+
+	if (fullExecutionData.id) {
+		returnData.id = fullExecutionData.id;
+	}
+
+	return returnData;
 }

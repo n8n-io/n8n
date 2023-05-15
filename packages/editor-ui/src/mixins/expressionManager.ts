@@ -4,7 +4,7 @@ import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
 import type { PropType } from 'vue';
@@ -170,16 +170,21 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			};
 
 			try {
-				if (!useNDVStore().activeNode) {
+				const ndvStore = useNDVStore();
+				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
 				} else {
-					result.resolved = this.resolveExpression('=' + resolvable, undefined, {
-						targetItem: targetItem ?? undefined,
-						inputNodeName: this.ndvStore.ndvInputNodeName,
-						inputRunIndex: this.ndvStore.ndvInputRunIndex,
-						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-					});
+					let opts;
+					if (ndvStore.isInputParentOfActiveNode) {
+						opts = {
+							targetItem: targetItem ?? undefined,
+							inputNodeName: this.ndvStore.ndvInputNodeName,
+							inputRunIndex: this.ndvStore.ndvInputRunIndex,
+							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						};
+					}
+					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

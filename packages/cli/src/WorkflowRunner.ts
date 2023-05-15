@@ -21,7 +21,6 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
-	WorkflowSettings,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -55,7 +54,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Push } from '@/push';
-import { MessageEventBus } from '@/eventbus';
+import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
@@ -67,12 +66,9 @@ export class WorkflowRunner {
 
 	jobQueue: JobQueue;
 
-	eventBus: MessageEventBus;
-
 	constructor() {
 		this.push = Container.get(Push);
 		this.activeExecutions = Container.get(ActiveExecutions);
-		this.eventBus = Container.get(MessageEventBus);
 	}
 
 	/**
@@ -119,7 +115,7 @@ export class WorkflowRunner {
 		// does contain those messages.
 		try {
 			// Search for messages for this executionId in event logs
-			const eventLogMessages = await this.eventBus.getEventsByExecutionId(executionId);
+			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
 				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
@@ -274,6 +270,7 @@ export class WorkflowRunner {
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		additionalData.restartExecutionId = restartExecutionId;
 
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
@@ -647,6 +644,8 @@ export class WorkflowRunner {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
+		data.restartExecutionId = restartExecutionId;
+
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
@@ -744,8 +743,22 @@ export class WorkflowRunner {
 					childExecutionIds.splice(executionIdIndex, 1);
 				}
 
-				// eslint-disable-next-line @typescript-eslint/await-thenable
-				this.activeExecutions.remove(message.data.executionId, message.data.result);
+				if (message.data.result === undefined) {
+					const noDataError = new WorkflowOperationError('Workflow finished with no result data');
+					const subWorkflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
+						data,
+						message.data.executionId,
+					);
+					await this.processError(
+						noDataError,
+						startedAt,
+						data.executionMode,
+						message.data?.executionId,
+						subWorkflowHooks,
+					);
+				} else {
+					this.activeExecutions.remove(message.data.executionId, message.data.result);
+				}
 			}
 		});
 

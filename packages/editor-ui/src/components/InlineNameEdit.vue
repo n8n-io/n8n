@@ -65,9 +65,9 @@ export default mixins(showMessage).extend({
 			this.isNameEdit = true;
 
 			setTimeout(() => {
-				const input = this.$refs.nameInput as HTMLInputElement;
-				if (input) {
-					input.focus();
+				const inputRef = this.$refs.nameInput as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}, 0);
 		},

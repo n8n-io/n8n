@@ -5,13 +5,14 @@
 </template>
 
 <script lang="ts">
-import { format, LocaleFunc, register } from 'timeago.js';
+import type { LocaleFunc } from 'timeago.js';
+import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/utils';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TimeAgo',
 	props: {
 		date: {

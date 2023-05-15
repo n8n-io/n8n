@@ -112,21 +112,21 @@
 </template>
 
 <script lang="ts">
-import Vue, { Component, PropType } from 'vue';
-import { IUpdateInformation } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { Component, PropType } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
 
-import {
+import type {
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValue,
-	deepCopy,
-	isINodePropertyCollectionList,
 } from 'n8n-workflow';
+import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'FixedCollectionParameter',
 	props: {
 		nodeValues: {
@@ -151,7 +151,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
 	},
 	data() {
 		return {
