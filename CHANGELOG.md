@@ -1,3 +1,29 @@
+## [0.227.1](https://github.com/n8n-io/n8n/compare/n8n@0.227.0...n8n@0.227.1) (2023-05-15)
+
+
+### Bug Fixes
+
+* **AWS Rekognition Node:** Fix all different action type ([#6136](https://github.com/n8n-io/n8n/issues/6136)) ([b8a4512](https://github.com/n8n-io/n8n/commit/b8a4512abccad592054cb5c39e621c63b23c016a))
+* **core:** Make sure that special polling parameters are available on community nodes as well ([#6230](https://github.com/n8n-io/n8n/issues/6230)) ([7cb8725](https://github.com/n8n-io/n8n/commit/7cb87254ca24fd2aa0f7b638b00b7427d08ac5fe))
+* **core:** Move nodeExecute InternalHook calls to hookFunctionsSave ([#6193](https://github.com/n8n-io/n8n/issues/6193)) ([c4a9499](https://github.com/n8n-io/n8n/commit/c4a949903d484e8f3ac2c994722b7130a88c7f2d))
+* Correctly save executions that failed when polling as error instead of new ([#6192](https://github.com/n8n-io/n8n/issues/6192)) ([7de0105](https://github.com/n8n-io/n8n/commit/7de0105b5802848a8b33810a7046f1c40b2e5f01))
+* **editor:** Add loading skeletons to Executions list page ([#6184](https://github.com/n8n-io/n8n/issues/6184)) ([9ba13dd](https://github.com/n8n-io/n8n/commit/9ba13dd0193f64e001a8be53bbc385385dfa88cf))
+* **editor:** Display SSO entry in Settings on Cloud ([#6181](https://github.com/n8n-io/n8n/issues/6181)) ([4f16d74](https://github.com/n8n-io/n8n/commit/4f16d744d7a4780e1778515ab0499b85be675b0a))
+* **editor:** Fix polling trigger check for `runData` ([#6130](https://github.com/n8n-io/n8n/issues/6130)) ([7718c18](https://github.com/n8n-io/n8n/commit/7718c1886a27876466f32247df652e97821427d8))
+* **editor:** Fix viewing and downloading of binary data ([#6218](https://github.com/n8n-io/n8n/issues/6218)) ([110c6e2](https://github.com/n8n-io/n8n/commit/110c6e286fa452a5b92076be5e973858f17d46ce))
+* **editor:** Flag issues only on workflow activation ([#6127](https://github.com/n8n-io/n8n/issues/6127)) ([8b9831a](https://github.com/n8n-io/n8n/commit/8b9831a07718473eebb0a4d2f1e4256f20578657))
+* **editor:** Remove duplicate mapping of `item.json` key in data pinning ([#6135](https://github.com/n8n-io/n8n/issues/6135)) ([a7f3b81](https://github.com/n8n-io/n8n/commit/a7f3b818802a4d254ec33e326ec53aeb322a3ac6))
+* **editor:** Show the correct actions count in the nodes list ([#6183](https://github.com/n8n-io/n8n/issues/6183)) ([1403333](https://github.com/n8n-io/n8n/commit/14033335af646e318286231f06f194e22502a869))
+* **FTP Node:** Use filename instead of remote filepath for downloaded binary data ([#6170](https://github.com/n8n-io/n8n/issues/6170)) ([4993212](https://github.com/n8n-io/n8n/commit/49932125066d61cedb7dd21ba6c7e575ed9b3c3e))
+* **Google Sheets Node:** Upgrade xlsx to address CVE-2023-30533 ([#6172](https://github.com/n8n-io/n8n/issues/6172)) ([c786525](https://github.com/n8n-io/n8n/commit/c786525afc05abc57748a4ecc1b1da6d6caa8cb3))
+* **HTTP Request Node:** Correctly doesn't redirect on non GET method ([#6132](https://github.com/n8n-io/n8n/issues/6132)) ([e281890](https://github.com/n8n-io/n8n/commit/e281890a5a651456f50caa101c24819bd39cca29))
+* **MySQL Node:** Node should return date types as strings ([#6169](https://github.com/n8n-io/n8n/issues/6169)) ([57d3483](https://github.com/n8n-io/n8n/commit/57d3483a2416360a176ce1a625702b50dc73901d))
+* **Postgres Node:** Always return TIMESTAMP and TIMESTAMPZ as ISO string ([#6145](https://github.com/n8n-io/n8n/issues/6145)) ([528d6e7](https://github.com/n8n-io/n8n/commit/528d6e7e6b650d6de62e89a9f85b640b9051fde8))
+* Prevent overflow when rendering expression hints ([#6214](https://github.com/n8n-io/n8n/issues/6214)) ([80b6ec1](https://github.com/n8n-io/n8n/commit/80b6ec19d2d70c098722f1e4e91b9c7bbba13fa6))
+* Prevent unnecessary error messages also for data loaded flag ([#6201](https://github.com/n8n-io/n8n/issues/6201)) ([85b9b3f](https://github.com/n8n-io/n8n/commit/85b9b3f5dd749290297df25ba778852731465fe1))
+
+
+
 # [0.227.0](https://github.com/n8n-io/n8n/compare/n8n@0.226.0...n8n@0.227.0) (2023-05-03)
 
 
