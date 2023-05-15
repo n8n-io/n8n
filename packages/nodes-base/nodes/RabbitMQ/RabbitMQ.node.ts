@@ -88,6 +88,18 @@ export class RabbitMQ implements INodeType {
 				],
 			},
 			{
+				displayName:
+					'Will delete an item from the queue triggered earlier in the workflow by a RabbitMQ Trigger node',
+				name: 'deleteMessage',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['deleteMessage'],
+					},
+				},
+			},
+			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
