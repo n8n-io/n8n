@@ -4,7 +4,7 @@ export const baseRLC: INodeProperties = {
 	displayName: 'Base',
 	name: 'base',
 	type: 'resourceLocator',
-	default: { mode: 'url', value: '' },
+	default: { mode: 'list', value: '' },
 	required: true,
 	description: 'The Airtable Base in which to operate on',
 	modes: [
@@ -59,7 +59,7 @@ export const tableRLC: INodeProperties = {
 	displayName: 'Table',
 	name: 'table',
 	type: 'resourceLocator',
-	default: { mode: 'url', value: '' },
+	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
