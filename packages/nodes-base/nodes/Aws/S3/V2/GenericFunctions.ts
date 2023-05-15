@@ -130,39 +130,3 @@ export async function awsApiRequestRESTAllItems(
 	);
 	return returnData;
 }
-
-export async function awsApiRequestSOAP(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	service: string,
-	method: string,
-	path: string,
-	body?: string | Buffer,
-	query: IDataObject = {},
-	headers?: object,
-	option: IDataObject = {},
-	region?: string,
-): Promise<any> {
-	const response = await awsApiRequest.call(
-		this,
-		service,
-		method,
-		path,
-		body,
-		query,
-		headers,
-		option,
-		region,
-	);
-	try {
-		return await new Promise((resolve, reject) => {
-			parseString(response as string, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
-		});
-	} catch (error) {
-		return error;
-	}
-}

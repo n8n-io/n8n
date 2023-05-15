@@ -21,11 +21,7 @@ import { folderFields, folderOperations } from './FolderDescription';
 
 import { fileFields, fileOperations } from './FileDescription';
 
-import {
-	awsApiRequestREST,
-	awsApiRequestRESTAllItems,
-	awsApiRequestSOAP,
-} from './GenericFunctions';
+import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 import type { Readable } from 'stream';
 
 // Minimum size 5MB for multipart upload in S3
@@ -248,7 +244,7 @@ export class AwsS3V2 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
