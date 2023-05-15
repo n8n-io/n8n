@@ -849,120 +849,142 @@ export class AwsS3V2 implements INodeType {
 							let uploadData: Buffer | Readable;
 							if (binaryPropertyData.id) {
 								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id, UPLOAD_CHUNK_SIZE);
-							} else {
-								uploadData = Buffer.from(binaryPropertyData.data, BINARY_ENCODING);
-							}
-							const createMultiPartUpload = await awsApiRequestREST.call(
-								this,
-								`${bucketName}.s3`,
-								'POST',
-								`/${bucketName}-${this.getNode().id}?uploads`,
-								body,
-								qs,
-								{ ...neededHeaders, ...multipartHeaders },
-								{},
-								region as string,
-							);
-							const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
-							let part = 1;
-							for await (const chunk of uploadData) {
-								const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
-								const listHeaders: IDataObject = {
-									'Content-Length': chunk.length,
-									'Content-MD5': createHash('MD5').update(chunkBuffer).digest('base64'),
-									...neededHeaders,
-								};
-								try {
-									await awsApiRequestREST.call(
-										this,
-										`${bucketName}.s3`,
-										'PUT',
-										`/${bucketName}-${this.getNode().id}?partNumber=${part}&uploadId=${uploadId}`,
-										chunk,
-										qs,
-										listHeaders,
-										{},
-										region as string,
-									);
-									part++;
-								} catch (error) {
+								const createMultiPartUpload = await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'POST',
+									`/${bucketName}-${this.getNode().id}?uploads`,
+									body,
+									qs,
+									{ ...neededHeaders, ...multipartHeaders },
+									{},
+									region as string,
+								);
+								const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
+								let part = 1;
+								for await (const chunk of uploadData) {
+									const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
+									const listHeaders: IDataObject = {
+										'Content-Length': chunk.length,
+										'Content-MD5': createHash('MD5').update(chunkBuffer).digest('base64'),
+										...neededHeaders,
+									};
 									try {
 										await awsApiRequestREST.call(
 											this,
 											`${bucketName}.s3`,
-											'DELETE',
-											`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+											'PUT',
+											`/${bucketName}-${this.getNode().id}?partNumber=${part}&uploadId=${uploadId}`,
+											chunk,
+											qs,
+											listHeaders,
+											{},
+											region as string,
 										);
-									} catch (err) {
-										throw new NodeOperationError(this.getNode(), err as Error);
+										part++;
+									} catch (error) {
+										try {
+											await awsApiRequestREST.call(
+												this,
+												`${bucketName}.s3`,
+												'DELETE',
+												`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+											);
+										} catch (err) {
+											throw new NodeOperationError(this.getNode(), err as Error);
+										}
+										if (error.response?.status !== 308) throw error;
 									}
-									if (error.response?.status !== 308) throw error;
 								}
+
+								const listParts = (await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'GET',
+									`/${bucketName}-${
+										this.getNode().id
+									}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
+									'',
+									qs,
+									{ ...neededHeaders },
+									{},
+									region as string,
+								)) as {
+									ListPartsResult: {
+										Part: Array<{
+											ETag: string;
+											PartNumber: number;
+										}>;
+									};
+								};
+
+								body = {
+									CompleteMultipartUpload: {
+										$: {
+											xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+										},
+										Part: listParts.ListPartsResult.Part.map((Part) => {
+											return {
+												ETag: Part.ETag,
+												PartNumber: Part.PartNumber,
+											};
+										}),
+									},
+								};
+								const builder = new Builder();
+								const data = builder.buildObject(body);
+								const completeUpload = (await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'POST',
+									`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+									data,
+									qs,
+									{
+										...neededHeaders,
+										'Content-MD5': createHash('md5').update(data).digest('base64'),
+										'Content-Type': 'application/xml',
+									},
+									{},
+									region as string,
+								)) as {
+									CompleteMultipartUploadResult: {
+										Location: string;
+										Bucket: string;
+										Key: string;
+										ETag: string;
+									};
+								};
+								responseData = {
+									...completeUpload.CompleteMultipartUploadResult,
+								};
+							} else {
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+									i,
+									binaryPropertyName,
+								);
+
+								body = binaryDataBuffer;
+
+								headers['Content-Type'] = binaryPropertyData.mimeType;
+
+								headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+
+								responseData = await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'PUT',
+									`${path}${fileName || binaryPropertyData.fileName}`,
+									body,
+									qs,
+									headers,
+									{},
+									region as string,
+								);
 							}
 
-							const listParts = (await awsApiRequestREST.call(
-								this,
-								`${bucketName}.s3`,
-								'GET',
-								`/${bucketName}-${
-									this.getNode().id
-								}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
-								'',
-								qs,
-								{ ...neededHeaders },
-								{},
-								region as string,
-							)) as {
-								ListPartsResult: {
-									Part: Array<{
-										ETag: string;
-										PartNumber: number;
-									}>;
-								};
-							};
-
-							body = {
-								CompleteMultipartUpload: {
-									$: {
-										xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
-									},
-									Part: listParts.ListPartsResult.Part.map((Part) => {
-										return {
-											ETag: Part.ETag,
-											PartNumber: Part.PartNumber,
-										};
-									}),
-								},
-							};
-							const builder = new Builder();
-							const data = builder.buildObject(body);
-							const completeUpload = (await awsApiRequestREST.call(
-								this,
-								`${bucketName}.s3`,
-								'POST',
-								`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
-								data,
-								qs,
-								{
-									...neededHeaders,
-									'Content-MD5': createHash('md5').update(data).digest('base64'),
-									'Content-Type': 'application/xml',
-								},
-								{},
-								region as string,
-							)) as {
-								CompleteMultipartUploadResult: {
-									Location: string;
-									Bucket: string;
-									Key: string;
-									ETag: string;
-								};
-							};
-							responseData = {
-								...completeUpload.CompleteMultipartUploadResult,
-							};
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
