@@ -40,6 +40,7 @@ import type {
 	FieldType,
 	INodePropertyOptions,
 	ResourceMapperValue,
+	ValidationResult,
 } from './Interfaces';
 import {
 	isBoolean,
@@ -1109,35 +1110,43 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 }
 
 export const validateFieldType = (
+	fieldName: string,
 	value: unknown,
 	type: FieldType,
 	options?: INodePropertyOptions[],
-): boolean => {
-	if (value === null || value === undefined) return true;
-	switch (type.toLocaleLowerCase()) {
+): ValidationResult => {
+	if (value === null || value === undefined) return { valid: true };
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
+	switch (type.toLowerCase()) {
 		case 'number': {
-			return isNumeric(value);
+			return { valid: isNumeric(value), errorMessage: defaultErrorMessage };
 		}
 		case 'boolean': {
-			return isBoolean(value);
+			return { valid: isBoolean(value), errorMessage: defaultErrorMessage };
 		}
 		case 'datetime': {
-			return isDateTime(value);
+			return { valid: isDateTime(value), errorMessage: defaultErrorMessage };
 		}
 		case 'time': {
-			return isTime(value);
+			return { valid: isTime(value), errorMessage: defaultErrorMessage };
 		}
 		case 'object': {
-			return isObject(value);
+			return { valid: isObject(value), errorMessage: defaultErrorMessage };
 		}
 		case 'array': {
-			return Array.isArray(value);
+			return { valid: Array.isArray(value), errorMessage: defaultErrorMessage };
 		}
 		case 'options': {
-			return options?.some((option) => option.value === value) || false;
+			const validOptions = options?.map((option) => option.value).join(', ') || '';
+			return {
+				valid: options?.some((option) => option.value === value) || false,
+				errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+					value,
+				)}'`,
+			};
 		}
 		default: {
-			return true;
+			return { valid: true };
 		}
 	}
 };
@@ -1195,13 +1204,11 @@ export const validateResourceMapperParameter = (
 				fieldErrors.push(error);
 			}
 		}
-		if (
-			!fieldValue?.toString().startsWith('=') &&
-			field.type &&
-			!validateFieldType(fieldValue, field.type, field.options)
-		) {
-			const error = `${fieldWordSingular} value for '${field.id}'' is not valid for type '${field.type}'`;
-			fieldErrors.push(error);
+		if (!fieldValue?.toString().startsWith('=') && field.type) {
+			const validationResult = validateFieldType(field.id, fieldValue, field.type, field.options);
+			if (!validationResult.valid && validationResult.errorMessage) {
+				fieldErrors.push(validationResult.errorMessage);
+			}
 		}
 		if (fieldErrors.length > 0) {
 			issues[key] = fieldErrors;

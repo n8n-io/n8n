@@ -1981,6 +1981,11 @@ export type FieldType =
 	| 'object'
 	| 'options';
 
+export type ValidationResult = {
+	valid: boolean;
+	errorMessage?: string;
+};
+
 export type ResourceMapperValue = {
 	mappingMode: string;
 	value: { [key: string]: string | number | boolean | null } | null;
