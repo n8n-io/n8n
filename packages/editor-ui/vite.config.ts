@@ -1,5 +1,4 @@
 import vue from '@vitejs/plugin-vue2';
-import legacy from '@vitejs/plugin-legacy';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
@@ -72,12 +71,7 @@ const alias = [
 	},
 ];
 
-const plugins = [
-	vue(),
-	legacy({
-		targets: ['>1%', 'last 3 versions', 'not dead'],
-	}),
-];
+const plugins = [vue()];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {

@@ -529,7 +529,7 @@ export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend(
 
 			this.tagsStore.upsertTags(tags);
 
-			this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+			void this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 			this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {

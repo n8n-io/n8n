@@ -115,7 +115,7 @@ export default mixins(externalHooks).extend({
 	methods: {
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
-				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', {
+				void this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', {
 					nodeType: this.nodeType as INodeTypeDescription,
 					documentationUrl: this.documentationUrl,
 				});
