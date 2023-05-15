@@ -17,6 +17,13 @@ export async function pgTriggerFunction(
 	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
 	const target = `${schema.value as string}."${tableName.value as string}"`;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
+	const functionReplace =
+		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;";
+	const dropIfExist = 'DROP TRIGGER IF EXISTS $1:raw ON $2:raw';
+	const functionExists =
+		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$";
+	const trigger =
+		'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw';
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	const nodeId = this.getNode().id.replace(/-/g, '_');
 	let functionName =
@@ -32,25 +39,12 @@ export async function pgTriggerFunction(
 	const replaceIfExists = additionalFields.replaceIfExists || false;
 	try {
 		if (replaceIfExists || !(additionalFields.triggerName || additionalFields.functionName)) {
-			await db.any(
-				"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
-				[functionName, channelName],
-			);
-			await db.any('DROP TRIGGER IF EXISTS $1:raw ON $2:raw', [triggerName, target]);
-			await db.any(
-				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[target, functionName, firesOn, triggerName],
-			);
+			await db.any(functionReplace, [functionName, channelName]);
+			await db.any(dropIfExist, [triggerName, target]);
 		} else {
-			await db.any(
-				"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;",
-				[functionName, channelName],
-			);
-			await db.any(
-				'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw',
-				[target, functionName, firesOn, triggerName],
-			);
+			await db.any(functionExists, [functionName, channelName]);
 		}
+		await db.any(trigger, [target, functionName, firesOn, triggerName]);
 	} catch (err) {
 		if (err.message.includes('near "-"')) {
 			throw new Error('Names cannot contain hyphens (-)');
