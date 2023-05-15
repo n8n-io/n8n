@@ -1827,7 +1827,7 @@
 	"sso.login.button": "Continue with SSO",
 	"executionUsage.currentUsage": "{text} {count}",
 	"executionUsage.currentUsage.text": "You are in a free trial with limited executions. You have",
-	"executionUsage.currentUsage.count": "{days} days left.",
+	"executionUsage.currentUsage.count": "{n} day left. | {n} days left.",
 	"executionUsage.label.executions": "Executions",
 	"executionUsage.button.upgrade": "Upgrade plan",
 	"executionUsage.expired.text": "You're trial is over. Upgrade now to keep your automation data",

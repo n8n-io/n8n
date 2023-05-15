@@ -16,7 +16,7 @@
 					<n8n-text size="small" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
-								interpolate: { days: daysLeftOnTrial.toString() },
+								adjustToNumber: daysLeftOnTrial,
 							})
 						}}
 					</n8n-text>
