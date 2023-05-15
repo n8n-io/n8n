@@ -41,7 +41,6 @@
     "@ngneat/falso": "^6.1.0",
     "@types/jest": "^29.5.0",
     "@types/supertest": "^2.0.12",
-    "@vitejs/plugin-legacy": "^3.0.1",
     "@vitejs/plugin-vue2": "^2.2.0",
     "@vitest/coverage-c8": "^0.28.5",
     "c8": "^7.12.0",

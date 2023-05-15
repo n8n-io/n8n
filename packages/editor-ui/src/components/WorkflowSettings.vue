@@ -521,7 +521,9 @@ export default mixins(externalHooks, genericHelpers).extend({
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
-		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
+		void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			dialogVisible: true,
+		});
 		this.$telemetry.track('User opened workflow settings', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
@@ -534,7 +536,9 @@ export default mixins(externalHooks, genericHelpers).extend({
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
+			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+				dialogVisible: false,
+			});
 		},
 		setTimeout(key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -825,7 +829,7 @@ export default mixins(externalHooks, genericHelpers).extend({
 
 			this.closeDialog();
 
-			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			void this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});

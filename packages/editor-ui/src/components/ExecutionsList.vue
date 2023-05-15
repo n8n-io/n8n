@@ -350,7 +350,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers).extend({
 		await this.loadWorkflows();
 		this.handleAutoRefreshToggle();
 
-		this.$externalHooks().run('executionsList.openDialog');
+		void this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', {
 			workflow_id: this.workflowsStore.workflowId,
 		});

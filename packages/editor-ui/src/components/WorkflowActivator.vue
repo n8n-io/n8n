@@ -55,15 +55,17 @@ import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils';
 
-export default mixins(workflowActivate).extend({
+export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
-	setup() {
+	mixins: [workflowActivate],
+	setup(props) {
 		return {
 			...useToast(),
+			...workflowActivate.setup?.(props),
 		};
 	},
 	computed: {

@@ -38,9 +38,9 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export const nodeHelpers = Vue.extend({
+export const nodeHelpers = defineComponent({
 	computed: {
 		...mapStores(
 			useCredentialsStore,
