@@ -36,6 +36,7 @@ export class VersionControlController {
 		try {
 			const sanitizedPreferences: Partial<VersionControlPreferences> = {
 				...req.body,
+				initRepo: req.body.initRepo ?? true, // default to true if not specified
 				connected: undefined,
 				publicKey: undefined,
 			};
