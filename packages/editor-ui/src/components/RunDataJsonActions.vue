@@ -48,6 +48,7 @@ import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useToast } from '@/composables';
 
 type JsonPathData = {
 	path: string;
@@ -89,6 +90,11 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			type: Array as PropType<IDataObject[]>,
 			required: true,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
@@ -152,7 +158,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			if (commandData.command === 'value') {
 				value = this.getJsonValue();
 
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('runData.copyValue.toast'),
 					message: '',
 					type: 'success',
@@ -166,7 +172,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 					startPath = jsonItemPath.startPath;
 					path = jsonItemPath.path;
 
-					this.$showToast({
+					this.showToast({
 						title: this.$locale.baseText('runData.copyItemPath.toast'),
 						message: '',
 						type: 'success',
@@ -177,7 +183,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 					startPath = jsonParameterPath.startPath;
 					path = jsonParameterPath.path;
 
-					this.$showToast({
+					this.showToast({
 						title: this.$locale.baseText('runData.copyParameterPath.toast'),
 						message: '',
 						type: 'success',
