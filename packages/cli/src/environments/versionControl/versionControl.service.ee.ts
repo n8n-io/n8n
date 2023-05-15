@@ -27,7 +27,7 @@ import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
 import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
-import type { VersionControlPullWorkFolder } from './types/versionControlPullWorkFolder';
+import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
 import type {
 	VersionControlledFileLocation,
 	VersionControlledFile,
@@ -136,9 +136,9 @@ export class VersionControlService {
 		return result;
 	}
 
-	async import(userId: string): Promise<ImportResult | undefined> {
+	async import(options: VersionControllPullOptions): Promise<ImportResult | undefined> {
 		try {
-			return await this.versionControlExportService.importFromWorkFolder(userId);
+			return await this.versionControlExportService.importFromWorkFolder(options);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -157,14 +157,17 @@ export class VersionControlService {
 
 	// will reset the branch to the remote branch and pull
 	// this will discard all local changes
-	async resetWorkfolder(userId: string): Promise<ImportResult | undefined> {
+	async resetWorkfolder(options: VersionControllPullOptions): Promise<ImportResult | undefined> {
 		const currentBranch = await this.gitService.getCurrentBranch();
 		await this.gitService.resetBranch({
 			hard: true,
 			target: currentBranch.remote,
 		});
 		await this.gitService.pull();
-		return this.import(userId);
+		if (options.importAfterPull) {
+			return this.import(options);
+		}
+		return;
 	}
 
 	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult | DiffResult> {
@@ -185,20 +188,22 @@ export class VersionControlService {
 	}
 
 	async pullWorkfolder(
-		options: VersionControlPullWorkFolder,
-		userId: string,
-	): Promise<ImportResult | DiffResult | undefined> {
+		options: VersionControllPullOptions,
+	): Promise<ImportResult | DiffResult | PullResult | undefined> {
 		const diffResult = await this.updateLocalAndDiff();
 		if (diffResult.files.length > 0) {
 			await this.unstage();
 			if (options.force === true) {
-				return this.resetWorkfolder(userId);
+				return this.resetWorkfolder(options);
 			} else {
 				return diffResult;
 			}
 		}
-		await this.gitService.pull();
-		return this.import(userId);
+		const pullResult = await this.gitService.pull();
+		if (options.importAfterPull) {
+			return this.import(options);
+		}
+		return pullResult;
 	}
 
 	private async updateLocalAndDiff(): Promise<DiffResult> {

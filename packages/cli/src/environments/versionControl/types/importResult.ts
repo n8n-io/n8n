@@ -1,5 +1,3 @@
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import type { Variables } from '@/databases/entities/Variables';
 import type { TagEntity } from '@/databases/entities/TagEntity';
 import type { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
 
@@ -8,8 +6,8 @@ export interface ImportResult {
 		id: string;
 		name: string;
 	}>;
-	credentials: CredentialsEntity[];
-	variables: Variables[];
+	credentials: Array<{ id: string; name: string; type: string }>;
+	variables: { added: string[]; changed: string[] };
 	tags: { tags: TagEntity[]; mappings: WorkflowTagMapping[] };
 	removedFiles?: string[];
 }

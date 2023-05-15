@@ -35,6 +35,8 @@ import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
 import { TagEntity } from '@/databases/entities/TagEntity';
 import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
+import without from 'lodash.without';
+import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
 
 @Service()
 export class VersionControlExportService {
@@ -276,9 +278,10 @@ export class VersionControlExportService {
 			}
 			const variables = await Db.collections.Variables.find();
 			const fileName = this.getVariablesPath();
-			await fsWriteFile(fileName, JSON.stringify(variables, null, 2));
+			const sanitizedVariables = variables.map((e) => ({ ...e, value: '' }));
+			await fsWriteFile(fileName, JSON.stringify(sanitizedVariables, null, 2));
 			return {
-				count: variables.length,
+				count: sanitizedVariables.length,
 				folder: this.gitFolder,
 				files: [
 					{
@@ -364,16 +367,16 @@ export class VersionControlExportService {
 		}
 	}
 
-	private async importCredentialsFromFiles(userId: string): Promise<CredentialsEntity[]> {
+	private async importCredentialsFromFiles(
+		userId: string,
+	): Promise<Array<{ id: string; name: string; type: string }>> {
 		const credentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
 		});
-		const existingCredentials = await Db.collections.Credentials.find({
-			select: ['id', 'name', 'type', 'nodesAccess'],
-		});
+		const existingCredentials = await Db.collections.Credentials.find();
 		const ownerCredentialRole = await this.getOwnerCredentialRole();
-		let importCredentialsResult: CredentialsEntity[] = [];
+		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		await Db.transaction(async (transactionManager) => {
 			importCredentialsResult = await Promise.all(
 				credentialFiles.map(async (file) => {
@@ -409,41 +412,62 @@ export class VersionControlExportService {
 							"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
 						);
 					}
-					return newCredential;
+					return {
+						id: newCredential.id,
+						name: newCredential.name,
+						type: newCredential.type,
+					};
 				}),
 			);
 		});
 		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 
-	private async importVariablesFromFile(): Promise<Variables[]> {
+	private async importVariablesFromFile(valueOverrides?: {
+		[key: string]: string;
+	}): Promise<{ added: string[]; changed: string[] }> {
 		const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
 		});
 		if (variablesFile.length > 0) {
 			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
-			const variables = jsonParse<Variables[]>(
+			const importedVariables = jsonParse<Variables[]>(
 				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: [] },
 			);
+			const existingVariables = await Db.collections.Variables.find();
+			const importedKeys = importedVariables.map((variable) => variable.key);
+			const existingKeys = existingVariables.map((variable) => variable.key);
+			const addedKeys = without(importedKeys, ...existingKeys);
+			const addedVariables = importedVariables.filter((e) => addedKeys.includes(e.key));
+
+			// first round, add missing variable keys to Db without touching values
 			await Db.transaction(async (transactionManager) => {
 				await Promise.all(
-					variables.map(async (variable) => {
-						await transactionManager.upsert(
-							Variables,
-							{ ...variable },
-							{
-								skipUpdateIfNoValuesChanged: true,
-								conflictPaths: { id: true },
-							},
-						);
+					addedVariables.map(async (addedVariable) => {
+						await transactionManager.insert(Variables, {
+							...addedVariable,
+							id: undefined,
+						});
 					}),
 				);
 			});
-			return variables;
+
+			// second round, update values of existing variables if overridden
+			const overriddenKeys = Object.keys(valueOverrides ?? {});
+			if (valueOverrides) {
+				await Db.transaction(async (transactionManager) => {
+					await Promise.all(
+						overriddenKeys.map(async (key) => {
+							await transactionManager.update(Variables, { key }, { value: valueOverrides[key] });
+						}),
+					);
+				});
+			}
+			return { added: addedVariables.map((e) => e.key), changed: overriddenKeys };
 		}
-		return [];
+		return { added: [], changed: [] };
 	}
 
 	private async importTagsFromFile() {
@@ -580,11 +604,11 @@ export class VersionControlExportService {
 		return importWorkflowsResult;
 	}
 
-	async importFromWorkFolder(userId: string): Promise<ImportResult> {
+	async importFromWorkFolder(options: VersionControllPullOptions): Promise<ImportResult> {
 		try {
-			const importedVariables = await this.importVariablesFromFile();
-			const importedCredentials = await this.importCredentialsFromFiles(userId);
-			const importWorkflows = await this.importWorkflowsFromFiles(userId);
+			const importedVariables = await this.importVariablesFromFile(options.variables);
+			const importedCredentials = await this.importCredentialsFromFiles(options.userId);
+			const importWorkflows = await this.importWorkflowsFromFiles(options.userId);
 			const importTags = await this.importTagsFromFile();
 
 			return {

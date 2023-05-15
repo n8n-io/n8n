@@ -119,10 +119,15 @@ export class VersionControlController {
 	async pullWorkfolder(
 		req: VersionControlRequest.PullWorkFolder,
 		res: express.Response,
-	): Promise<DiffResult | ImportResult | undefined> {
+	): Promise<DiffResult | ImportResult | PullResult | undefined> {
 		try {
-			const result = await this.versionControlService.pullWorkfolder(req.body, req.user.id);
-			if ((result as ImportResult).workflows) {
+			const result = await this.versionControlService.pullWorkfolder({
+				force: req.body.force,
+				variables: req.body.variables,
+				userId: req.user.id,
+				importAfterPull: req.body.importAfterPull,
+			});
+			if ((result as ImportResult).workflows || (result as PullResult).summary) {
 				res.statusCode = 200;
 			} else {
 				res.statusCode = 409;
@@ -135,9 +140,16 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Get('/reset-workfolder')
-	async resetWorkfolder(req: AuthenticatedRequest): Promise<ImportResult | undefined> {
+	async resetWorkfolder(
+		req: VersionControlRequest.PullWorkFolder,
+	): Promise<ImportResult | undefined> {
 		try {
-			return await this.versionControlService.resetWorkfolder(req.user.id);
+			return await this.versionControlService.resetWorkfolder({
+				force: req.body.force,
+				variables: req.body.variables,
+				userId: req.user.id,
+				importAfterPull: req.body.importAfterPull,
+			});
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -191,7 +203,9 @@ export class VersionControlController {
 	@Get('/import', { middlewares: [versionControlLicensedMiddleware] })
 	async import(req: AuthenticatedRequest) {
 		try {
-			return await this.versionControlService.import(req.user.id);
+			return await this.versionControlService.import({
+				userId: req.user.id,
+			});
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
