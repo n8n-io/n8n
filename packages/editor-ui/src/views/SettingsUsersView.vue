@@ -61,10 +61,10 @@
 <script lang="ts">
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import PageAlert from '../components/PageAlert.vue';
+import PageAlert from '@/components/PageAlert.vue';
 import type { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
@@ -73,10 +73,15 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 
-export default mixins(showMessage, copyPaste).extend({
+export default mixins(copyPaste).extend({
 	name: 'SettingsUsersView',
 	components: {
 		PageAlert,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	async mounted() {
 		if (!this.usersStore.showUMSetupWarning) {
@@ -126,7 +131,7 @@ export default mixins(showMessage, copyPaste).extend({
 				try {
 					await this.usersStore.reinviteUser({ id: user.id });
 
-					this.$showToast({
+					this.showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
 						message: this.$locale.baseText('settings.users.emailSentTo', {
@@ -134,7 +139,7 @@ export default mixins(showMessage, copyPaste).extend({
 						}),
 					});
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));
+					this.showError(e, this.$locale.baseText('settings.users.userReinviteError'));
 				}
 			}
 		},
@@ -143,7 +148,7 @@ export default mixins(showMessage, copyPaste).extend({
 			if (user?.inviteAcceptUrl) {
 				this.copyToClipboard(user.inviteAcceptUrl);
 
-				this.$showToast({
+				this.showToast({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.inviteUrlCreated'),
 					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
