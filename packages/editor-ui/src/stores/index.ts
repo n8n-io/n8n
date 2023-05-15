@@ -21,3 +21,4 @@ export * from './versions.store';
 export * from './webhooks.store';
 export * from './workflows.ee.store';
 export * from './workflows.store';
+export * from './cloudPlan.store';
