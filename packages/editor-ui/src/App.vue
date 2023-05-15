@@ -27,39 +27,43 @@
 </template>
 
 <script lang="ts">
-import Modals from './components/Modals.vue';
-import LoadingView from './views/LoadingView.vue';
-import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
+import Modals from '@/components/Modals.vue';
+import LoadingView from '@/views/LoadingView.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { loadLanguage } from '@/plugins/i18n';
+import { useGlobalLinkActions, useToast } from '@/composables';
 import { mapStores } from 'pinia';
-import { useUIStore } from './stores/ui.store';
-import { useSettingsStore } from './stores/settings.store';
-import { useUsersStore } from './stores/users.store';
-import { useRootStore } from './stores/n8nRoot.store';
-import { useTemplatesStore } from './stores/templates.store';
-import { useNodeTypesStore } from './stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useExternalHooks } from '@/composables';
+import { defineComponent } from 'vue';
 
-export default mixins(newVersions, showMessage, userHelpers).extend({
+export default defineComponent({
 	name: 'App',
 	components: {
 		LoadingView,
 		Telemetry,
 		Modals,
 	},
-	setup() {
+	mixins: [newVersions, userHelpers],
+	setup(props) {
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
+			...useToast(),
+			externalHooks: useExternalHooks(),
+			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
@@ -86,7 +90,7 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 			try {
 				await this.settingsStore.getSettings();
 			} catch (e) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('startupError'),
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
@@ -188,12 +192,12 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
-		this.checkForNewVersions();
+		void this.checkForNewVersions();
 
 		this.loading = false;
 
 		this.trackPage();
-		this.$externalHooks().run('app.mount');
+		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();

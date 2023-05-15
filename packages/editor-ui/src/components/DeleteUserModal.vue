@@ -70,16 +70,15 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { showMessage } from '@/mixins/showMessage';
-import Modal from './Modal.vue';
-import type { IUser } from '../Interface';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
+import Modal from '@/components/Modal.vue';
+import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	components: {
 		Modal,
 	},
@@ -91,6 +90,11 @@ export default mixins(showMessage).extend({
 		activeId: {
 			type: String,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -169,7 +173,7 @@ export default mixins(showMessage).extend({
 					}
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.userDeleted'),
 					message,
@@ -177,7 +181,7 @@ export default mixins(showMessage).extend({
 
 				this.modalBus.emit('close');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.userDeletedError'));
+				this.showError(error, this.$locale.baseText('settings.users.userDeletedError'));
 			}
 			this.loading = false;
 		},
