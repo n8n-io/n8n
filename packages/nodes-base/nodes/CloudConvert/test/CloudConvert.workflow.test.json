@@ -1,0 +1,354 @@
+{
+	"name": "Test CloudConvert",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0d21e04e-f2cf-4341-9e06-ea1f1eb6249a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [560, 640]
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "optimize",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.txt"
+			},
+			"id": "af43f7a6-79bb-4234-8f6b-4bab4bffb615",
+			"name": "CloudConvertOptimize",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 500],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "metadata",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.txt"
+			},
+			"id": "412f1c9b-7ed8-4392-abb0-f14700f1ccd6",
+			"name": "CloudConvertMetadata",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 340],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "merge",
+				"outputFormat": "pdf",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.pdf"
+			},
+			"id": "0635ead5-5bb5-4dd1-a7f9-232cbd8bc633",
+			"name": "CloudConvertMerge",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 660],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "thumbnail",
+				"outputFormat": "jpg",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.pdf",
+				"width": 200,
+				"height": 200,
+				"fit": "crop"
+			},
+			"id": "8af96d9c-d890-4bd7-bfaf-e40beee3fdf4",
+			"name": "CloudConvertThumbnail",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 820],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "archive",
+				"outputFormat": "zip",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.txt"
+			},
+			"id": "0684803f-881d-4580-b0f2-595ad39eb20b",
+			"name": "CloudConvertArchive",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 1000],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"outputFormat": "pdf",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.txt"
+			},
+			"id": "7b96ea9c-4ca7-4410-9c9e-3739ae3df5a0",
+			"name": "CloudConvertConvert",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 1180],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "capture-website",
+				"outputFormat": "png",
+				"url": "https://cloudconvert.com"
+			},
+			"id": "2392be44-2988-4308-858f-a24a5d5aaadf",
+			"name": "CloudConvertCaptureWebsite",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 1360],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "apiKey",
+				"operation": "watermark",
+				"inputBinaryData": false,
+				"inputFileContent": "input",
+				"inputFilename": "input.pdf",
+				"text": "watermark",
+				"font_color": "#FF0000",
+				"opacity": 80
+			},
+			"id": "f96d2461-cdbd-4026-8f7e-80b7ec7cd51b",
+			"name": "CloudConvertWatermark",
+			"type": "n8n-nodes-base.cloudConvert",
+			"typeVersion": 1,
+			"position": [1120, 1540],
+			"credentials": {
+				"cloudConvertApi": {
+					"id": "2",
+					"name": "CloudConvert account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"CloudConvertMetadata": [
+			{
+				"json": {
+					"some": "metadata"
+				}
+			}
+		],
+		"CloudConvertOptimize": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		],
+		"CloudConvertMerge": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		],
+		"CloudConvertThumbnail": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		],
+		"CloudConvertArchive": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		],
+		"CloudConvertConvert": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		],
+		"CloudConvertCaptureWebsite": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		],
+		"CloudConvertWatermark": [
+			{
+				"json": {},
+				"binary": {
+					"data": {
+						"data": "eyJkYXRhIjoib3V0cHV0In0=",
+						"fileExtension": "txt",
+						"fileName": "output.txt",
+						"fileSize": "17 B",
+						"fileType": "text",
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "CloudConvertMetadata",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertOptimize",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertMerge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertArchive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertThumbnail",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertConvert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertCaptureWebsite",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "CloudConvertWatermark",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"CloudConvertCaptureWebsite": {
+			"main": [[]]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "db79661c-fe41-424e-ac8e-39ce53fe8447",
+	"id": "3",
+	"meta": {
+		"instanceId": "8ce9d29cfd9955ff5664c29ff58b69de6e5fecc73d54581a1b633bc743f5aa63"
+	},
+	"tags": []
+}

@@ -17,6 +17,12 @@ export const FAKE_CREDENTIALS_DATA = {
 		accessToken: 'fake-npm-access-token',
 		registryUrl: 'https://fake.npm.registry',
 	},
+	cloudConvertApi: {
+		apiKey: 'fake-cloudconvert-access-token',
+		apiUrl: 'https://api.cloudconvert.com',
+		syncApiUrl: 'https://sync.api.cloudconvert.com',
+		storageUrl: 'https://storage.cloudconvert.com',
+	},
 	totpApi: {
 		label: 'GitHub:john-doe',
 		secret: 'BVDRSBXQB2ZEL5HE',

@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.CloudConvert",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Productivity",
+		"Data & Storage",
+		"Utility"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://cloudconvert.com/api/v2#authentication"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://cloudconvert.com/api/v2"
+			}
+		]
+	}
+}
