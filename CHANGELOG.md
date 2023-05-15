@@ -1,3 +1,13 @@
+## [0.228.2](https://github.com/n8n-io/n8n/compare/n8n@0.228.1...n8n@0.228.2) (2023-05-15)
+
+
+### Bug Fixes
+
+* **Code Node:** Restore help text ([#6231](https://github.com/n8n-io/n8n/issues/6231)) ([6bf5c51](https://github.com/n8n-io/n8n/commit/6bf5c51137677a1caa46d43533ae5d64077f603c))
+* **core:** Make sure that special polling parameters are available on community nodes as well ([#6230](https://github.com/n8n-io/n8n/issues/6230)) ([49391a2](https://github.com/n8n-io/n8n/commit/49391a2fec006fb485334dd77dd959b5512eac45))
+
+
+
 ## [0.228.1](https://github.com/n8n-io/n8n/compare/n8n@0.228.0...n8n@0.228.1) (2023-05-11)
 
 
