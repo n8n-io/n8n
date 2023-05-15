@@ -10,6 +10,7 @@ import { DateTime } from 'luxon';
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
 	usage: null,
+	loadingPlan: false,
 };
 
 export const useCloudPlanStore = defineStore('cloudPlan', () => {
@@ -49,16 +50,28 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
 		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
-		return getCurrentPlan(rootStore.getRestCloudApiContext, cloudUserId as string);
+		state.loadingPlan = true;
+		let plan;
+		try {
+			plan = await getCurrentPlan(rootStore.getRestCloudApiContext, `${cloudUserId}`);
+			state.data = plan;
+			state.loadingPlan = false;
+		} catch (error) {
+			state.loadingPlan = false;
+			throw new Error(error);
+		}
+
+		return plan;
 	};
 
 	const getInstanceCurrentUsage = async () => {
-		return getCurrentUsage({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
+		const usage = await getCurrentUsage({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
+		state.usage = usage;
+		return usage;
 	};
 
 	return {
-		setData,
-		setUsage,
+		state,
 		getOwnerCurrentPLan,
 		getInstanceCurrentUsage,
 		userIsTrialing,

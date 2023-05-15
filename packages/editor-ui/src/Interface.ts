@@ -1479,6 +1479,7 @@ export declare namespace Cloud {
 export interface CloudPlanState {
 	data: Cloud.PlanData | null;
 	usage: InstanceUsage | null;
+	loadingPlan: boolean;
 }
 
 export interface InstanceUsage {

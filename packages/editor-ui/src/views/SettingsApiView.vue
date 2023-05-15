@@ -62,7 +62,14 @@
 			</div>
 		</div>
 		<n8n-action-box
-			v-else-if="mounted"
+			v-else-if="isTrialing"
+			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
+			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
+			:buttonText="$locale.baseText('settings.api.trial.upgradePlan.cta')"
+			@click="onUpgrade"
+		/>
+		<n8n-action-box
+			v-else-if="mounted && !isLoadingCloudPlans"
 			:buttonText="
 				$locale.baseText(
 					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
@@ -85,6 +92,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { DOCS_DOMAIN } from '@/constants';
+import { useCloudPlanStore } from '@/stores';
+import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsApiView',
@@ -111,12 +120,21 @@ export default mixins(showMessage).extend({
 			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUsersStore),
+		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
+		isTrialing(): boolean {
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		isLoadingCloudPlans(): boolean {
+			return this.cloudPlanStore.state.loadingPlan;
+		},
 	},
 	methods: {
+		onUpgrade() {
+			location.href = CLOUD_CHANGE_PLAN_PAGE;
+		},
 		async showDeleteModal() {
 			const confirmed = await this.confirmMessage(
 				this.$locale.baseText('settings.api.delete.description'),

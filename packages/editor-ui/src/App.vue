@@ -187,19 +187,16 @@ export default mixins(newVersions, showMessage, userHelpers).extend({
 		},
 		async checkForCloudPlanData(): Promise<void> {
 			try {
-				const plan = await this.cloudPlanStore.getOwnerCurrentPLan();
-				this.cloudPlanStore.setData(plan);
+				await this.cloudPlanStore.getOwnerCurrentPLan();
 				if (!this.cloudPlanStore.userIsTrialing) return;
-				const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
-				this.cloudPlanStore.setUsage(usage);
+				await this.cloudPlanStore.getInstanceCurrentUsage();
 				this.startPollingInstanceUsageData();
 			} catch {}
 		},
 		startPollingInstanceUsageData() {
 			const interval = setInterval(async () => {
 				try {
-					const usage = await this.cloudPlanStore.getInstanceCurrentUsage();
-					this.cloudPlanStore.setUsage(usage);
+					await this.cloudPlanStore.getInstanceCurrentUsage();
 					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
 						clearTimeout(interval);
 						return;

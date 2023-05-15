@@ -66,7 +66,7 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
-import { CHANGE_PLAN_PAGE } from '@/constants';
+import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
@@ -114,7 +114,7 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
-	location.href = CHANGE_PLAN_PAGE;
+	location.href = CLOUD_CHANGE_PLAN_PAGE;
 };
 </script>
 
