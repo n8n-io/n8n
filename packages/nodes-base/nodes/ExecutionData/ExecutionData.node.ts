@@ -7,8 +7,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { getSandboxContext } from '../Code/Sandbox';
-
 export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execution Data',
@@ -88,7 +86,7 @@ export class ExecutionData implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const context = getSandboxContext.call(this, 0);
+		const context = this.getWorkflowDataProxy(0);
 
 		const items = this.getInputData();
 		const operations = this.getNodeParameter('operation', 0);
