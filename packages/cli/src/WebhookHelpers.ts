@@ -21,6 +21,7 @@ import { promisify } from 'util';
 import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
 import type {
+	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -422,17 +423,16 @@ export async function executeWebhook(
 						return;
 					}
 
-					const isBuffer = Buffer.isBuffer(response.body);
-					const isStream = response.body instanceof stream.Readable;
-					if (isBuffer || isStream) {
+					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
+					if (binaryData?.id) {
+						const stream = NodeExecuteFunctions.getBinaryStream(binaryData.id);
+						void pipeline(stream, res).then(() =>
+							responseCallback(null, { noWebhookResponse: true }),
+						);
+					} else if (Buffer.isBuffer(response.body)) {
 						res.header(response.headers);
-						if (isBuffer) {
-							res.end(response.body);
-							responseCallback(null, { noWebhookResponse: true });
-						} else
-							void pipeline(response.body as stream.Readable, res).then(() =>
-								responseCallback(null, { noWebhookResponse: true }),
-							);
+						res.end(response.body);
+						responseCallback(null, { noWebhookResponse: true });
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node

@@ -234,11 +234,10 @@ export class RespondToWebhook implements INodeType {
 				}
 				responseBinaryPropertyName = binaryKeys[0];
 			}
+
 			const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
 			if (binaryData.id) {
-				responseBody = this.helpers.getBinaryStream(binaryData.id);
-				const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
-				headers['content-length'] = metadata.fileSize;
+				responseBody = { binaryData };
 			} else {
 				responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
 				headers['content-length'] = (responseBody as Buffer).length;
