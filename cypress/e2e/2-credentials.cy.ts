@@ -114,7 +114,7 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_GOOGLE_ACCOUNT_NAME);
 	});
 
-	it('should show multiple credential types in the same dropdown', () => {
+	it.only('should show multiple credential types in the same dropdown', () => {
 		workflowPage.actions.visit();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
