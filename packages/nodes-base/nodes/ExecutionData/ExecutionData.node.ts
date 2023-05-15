@@ -35,13 +35,13 @@ export class ExecutionData implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
-				default: 'saveData',
+				default: 'save',
 				noDataExpression: true,
 				options: [
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Save execution data for search',
-						value: 'saveData',
+						value: 'save',
 						action: 'Save execution data for search',
 					},
 				],
@@ -57,7 +57,7 @@ export class ExecutionData implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['saveData'],
+						operation: ['save'],
 					},
 				},
 				default: {},
@@ -93,7 +93,7 @@ export class ExecutionData implements INodeType {
 		const items = this.getInputData();
 		const operations = this.getNodeParameter('operation', 0);
 
-		if (operations === 'saveData') {
+		if (operations === 'save') {
 			for (let i = 0; i < items.length; i++) {
 				const dataToSave =
 					((this.getNodeParameter('dataToSave', i, {}) as IDataObject).values as IDataObject[]) ||
@@ -108,6 +108,6 @@ export class ExecutionData implements INodeType {
 			}
 		}
 
-		return [this.getInputData()];
+		return [items];
 	}
 }
