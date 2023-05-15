@@ -20,9 +20,7 @@
 * **MySQL Node:** Node should return date types as strings ([#6169](https://github.com/n8n-io/n8n/issues/6169)) ([57d3483](https://github.com/n8n-io/n8n/commit/57d3483a2416360a176ce1a625702b50dc73901d))
 * **Postgres Node:** Always return TIMESTAMP and TIMESTAMPZ as ISO string ([#6145](https://github.com/n8n-io/n8n/issues/6145)) ([528d6e7](https://github.com/n8n-io/n8n/commit/528d6e7e6b650d6de62e89a9f85b640b9051fde8))
 * Prevent overflow when rendering expression hints ([#6214](https://github.com/n8n-io/n8n/issues/6214)) ([80b6ec1](https://github.com/n8n-io/n8n/commit/80b6ec19d2d70c098722f1e4e91b9c7bbba13fa6))
-* Prevent type error messages for manual executions (no-changelog) ([#6229](https://github.com/n8n-io/n8n/issues/6229)) ([3a36ca1](https://github.com/n8n-io/n8n/commit/3a36ca149ac3d0524ee0152ead42cd182cc9aa87))
 * Prevent unnecessary error messages also for data loaded flag ([#6201](https://github.com/n8n-io/n8n/issues/6201)) ([85b9b3f](https://github.com/n8n-io/n8n/commit/85b9b3f5dd749290297df25ba778852731465fe1))
-* Revert change that hid the SSH private key (no-changelog) ([#6158](https://github.com/n8n-io/n8n/issues/6158)) ([f592dbc](https://github.com/n8n-io/n8n/commit/f592dbc5c8bf06430e246f9aa8d9269d9b2c4db6))
 
 
 
