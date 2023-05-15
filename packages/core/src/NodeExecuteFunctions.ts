@@ -113,7 +113,7 @@ import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { IResponseError, IWorkflowSettings } from './Interfaces';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
@@ -1876,16 +1876,26 @@ const validateResourceMapperValue = (
 	parameterName: string,
 	paramValues: object,
 	node: INode,
-): Partial<ValidationResult> & { fieldName?: string } => {
+	skipRequiredCheck = false,
+): ExtendedValidationResult => {
 	const resourceMapperParamName = parameterName.split('.')[0];
 	const resourceMapperField = node.parameters[resourceMapperParamName];
-	const result: Partial<ValidationResult> & { fieldName?: string } = { valid: true };
+	const result: ExtendedValidationResult = { valid: true };
 	if (resourceMapperField && isResourceMapperValue(resourceMapperField)) {
 		const schema = resourceMapperField.schema;
 		for (let i = 0; i < Object.keys(paramValues).length; i++) {
 			const key = Object.keys(paramValues)[i] as keyof typeof paramValues;
 			const resolvedValue = paramValues[key];
 			const schemaEntry = schema.find((s) => s.id === key);
+
+			if (!skipRequiredCheck && schemaEntry?.required === true && !resolvedValue) {
+				return {
+					valid: false,
+					errorMessage: `The value "${String(key)}" is required but not set`,
+					fieldName: key,
+				};
+			}
+
 			if (schemaEntry?.type) {
 				const validationResult = validateFieldType(
 					key,
@@ -1910,13 +1920,22 @@ const validateValueAgainstSchema = (
 	runIndex: number,
 	itemIndex: number,
 ) => {
-	let validationResult: Partial<ValidationResult> & { fieldName?: string } = { valid: true };
+	let validationResult: ExtendedValidationResult = { valid: true };
 	// Currently only validate resource mapper values
-	const isResourceMapperParameterValue = nodeType.description.properties.some(
-		(prop) => prop.type === 'resourceMapper' && parameterName === `${prop.name}.value`,
+	const resourceMapperField = nodeType.description.properties.find(
+		(prop) =>
+			NodeHelpers.displayParameter(node.parameters, prop, node) &&
+			prop.type === 'resourceMapper' &&
+			parameterName === `${prop.name}.value`,
 	);
-	if (isResourceMapperParameterValue && typeof returnData === 'object') {
-		validationResult = validateResourceMapperValue(parameterName, returnData as object, node);
+
+	if (resourceMapperField && typeof returnData === 'object') {
+		validationResult = validateResourceMapperValue(
+			parameterName,
+			returnData as object,
+			node,
+			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+		);
 	}
 
 	if (!validationResult.valid) {

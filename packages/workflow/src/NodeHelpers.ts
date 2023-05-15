@@ -1128,7 +1128,10 @@ export const validateFieldType = (
 			return { valid: isDateTime(value), errorMessage: defaultErrorMessage };
 		}
 		case 'time': {
-			return { valid: isTime(value), errorMessage: defaultErrorMessage };
+			return {
+				valid: isTime(value),
+				errorMessage: `'${fieldName}' expects time [hh:mm(:ss)] but we got '${String(value)}'`,
+			};
 		}
 		case 'object': {
 			return { valid: isObject(value), errorMessage: defaultErrorMessage };
