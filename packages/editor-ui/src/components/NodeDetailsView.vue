@@ -142,7 +142,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -150,6 +150,7 @@ import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
+	MODAL_CONFIRM,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -163,15 +164,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import useDeviceSupport from '@/composables/useDeviceSupport';
+import { useMessage } from '@/composables';
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	workflowHelpers,
-	workflowActivate,
-	pinData,
-).extend({
+export default defineComponent({
 	name: 'NodeDetailsView',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -191,9 +188,11 @@ export default mixins(
 			default: false,
 		},
 	},
-	setup() {
+	setup(props) {
 		return {
 			...useDeviceSupport(),
+			...useMessage(),
+			...workflowActivate.setup?.(props),
 		};
 	},
 	data() {
@@ -420,7 +419,7 @@ export default mixins(
 				this.avgInputRowHeight = 0;
 
 				setTimeout(this.ndvStore.setNDVSessionId, 0);
-				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
+				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
@@ -608,15 +607,16 @@ export default mixins(
 			}
 
 			if (this.outputPanelEditMode.enabled) {
-				const shouldPinDataBeforeClosing = await this.confirmMessage(
+				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
 					this.$locale.baseText('ndv.pinData.beforeClosing.title'),
-					null,
-					this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
-					this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+					{
+						confirmButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.confirm'),
+						cancelButtonText: this.$locale.baseText('ndv.pinData.beforeClosing.cancel'),
+					},
 				);
 
-				if (shouldPinDataBeforeClosing) {
+				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {

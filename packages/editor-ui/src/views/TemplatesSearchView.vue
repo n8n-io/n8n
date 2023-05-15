@@ -78,7 +78,7 @@
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
-import TemplatesView from './TemplatesView.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type {
@@ -97,6 +97,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables';
 
 interface ISearchEvent {
 	search_string: string;
@@ -113,6 +114,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -287,7 +293,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 					search: this.search,
 				});
 			} catch (e) {
-				this.$showMessage({
+				this.showMessage({
 					title: 'Error',
 					message: 'Could not load more workflows',
 					type: 'error',

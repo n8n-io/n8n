@@ -195,7 +195,6 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
 import type { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
@@ -237,9 +236,7 @@ interface IFilters {
 type IResourceKeyType = 'credentials' | 'workflows';
 type SearchRef = InstanceType<typeof N8nInput>;
 
-const filterKeys = ['ownedBy', 'sharedWith'];
-
-export default mixins(showMessage, debounceHelper).extend({
+export default mixins(debounceHelper).extend({
 	name: 'resources-list-layout',
 	components: {
 		TemplateCard,
