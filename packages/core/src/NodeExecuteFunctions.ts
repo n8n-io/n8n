@@ -1910,23 +1910,26 @@ const validateValueAgainstSchema = (
 	runIndex: number,
 	itemIndex: number,
 ) => {
+	let validationResult: Partial<ValidationResult> & { fieldName?: string } = { valid: true };
+	// Currently only validate resource mapper values
 	const isResourceMapperParameterValue = nodeType.description.properties.some(
 		(prop) => prop.type === 'resourceMapper' && parameterName === `${prop.name}.value`,
 	);
 	if (isResourceMapperParameterValue && typeof returnData === 'object') {
-		const validationResult = validateResourceMapperValue(parameterName, returnData as object, node);
-		if (!validationResult.valid) {
-			throw new ExpressionError(
-				`Invalid input for '${String(validationResult.fieldName) || parameterName}'`,
-				{
-					description: validationResult.errorMessage,
-					failExecution: true,
-					runIndex,
-					itemIndex,
-					nodeCause: node.name,
-				},
-			);
-		}
+		validationResult = validateResourceMapperValue(parameterName, returnData as object, node);
+	}
+
+	if (!validationResult.valid) {
+		throw new ExpressionError(
+			`Invalid input for '${String(validationResult.fieldName) || parameterName}'`,
+			{
+				description: validationResult.errorMessage,
+				failExecution: true,
+				runIndex,
+				itemIndex,
+				nodeCause: node.name,
+			},
+		);
 	}
 };
 
