@@ -13,8 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
-import type { ClientOptions } from 'ldapts';
-import { Attribute, Change, Client } from 'ldapts';
+import { Attribute, Change } from 'ldapts';
 import { ldapFields } from './LdapDescription';
 import { BINARY_AD_ATTRIBUTES, createLdapClient, resolveBinaryAttributes } from './Helpers';
 
@@ -107,26 +106,6 @@ export class Ldap implements INodeType {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
 					const client = await createLdapClient(credentials);
-					/*const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
-					const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
-
-					const ldapOptions: ClientOptions = { url };
-					const tlsOptions: IDataObject = {};
-
-					if (credentials.connectionSecurity !== 'none') {
-						tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
-						if (credentials.caCertificate) {
-							tlsOptions.ca = [credentials.caCertificate as string];
-						}
-						if (credentials.connectionSecurity !== 'startTls') {
-							ldapOptions.tlsOptions = tlsOptions;
-						}
-					}
-
-					const client = new Client(ldapOptions);
-					if (credentials.connectionSecurity === 'startTls') {
-						await client.startTLS(tlsOptions);
-					}*/
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 				} catch (error) {
 					return {
