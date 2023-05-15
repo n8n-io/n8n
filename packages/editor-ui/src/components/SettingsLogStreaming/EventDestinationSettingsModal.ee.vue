@@ -175,12 +175,12 @@
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { useLogStreamingStore } from '../../stores/logStreaming.store';
-import { useNDVStore } from '../../stores/ndv.store';
-import { useWorkflowsStore } from '../../stores/workflows.store';
+import { useLogStreamingStore } from '@/stores/logStreaming.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import type { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
+import type { IMenuItem, INodeUi, ITab, IUpdateInformation } from '@/Interface';
 import type {
 	IDataObject,
 	INodeCredentials,
@@ -197,18 +197,18 @@ import {
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import Vue from 'vue';
-import { LOG_STREAM_MODAL_KEY } from '../../constants';
+import { LOG_STREAM_MODAL_KEY } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { showMessage } from '@/mixins/showMessage';
-import { useUIStore } from '../../stores/ui.store';
-import { useUsersStore } from '../../stores/users.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { destinationToFakeINodeUi } from './Helpers.ee';
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
-import type { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';

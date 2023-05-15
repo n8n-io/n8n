@@ -64,7 +64,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+		void runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
