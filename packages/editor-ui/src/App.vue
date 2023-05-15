@@ -30,7 +30,7 @@
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
@@ -42,10 +42,12 @@ import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCloudPlanStore } from './stores/cloudPlan.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { useExternalHooks } from '@/composables';
 import { defineComponent } from 'vue';
 
@@ -75,6 +77,8 @@ export default defineComponent({
 			useUIStore,
 			useUsersStore,
 			useVersionControlStore,
+			useCloudPlanStore,
+			useUsageStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -185,6 +189,25 @@ export default defineComponent({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
+		async checkForCloudPlanData(): Promise<void> {
+			try {
+				await this.cloudPlanStore.getOwnerCurrentPLan();
+				if (!this.cloudPlanStore.userIsTrialing) return;
+				await this.cloudPlanStore.getInstanceCurrentUsage();
+				this.startPollingInstanceUsageData();
+			} catch {}
+		},
+		startPollingInstanceUsageData() {
+			const interval = setInterval(async () => {
+				try {
+					await this.cloudPlanStore.getInstanceCurrentUsage();
+					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
+						clearTimeout(interval);
+						return;
+					}
+				} catch {}
+			}, CLOUD_TRIAL_CHECK_INTERVAL);
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -193,6 +216,7 @@ export default defineComponent({
 		this.authenticate();
 		this.redirectIfNecessary();
 		void this.checkForNewVersions();
+		void this.checkForCloudPlanData();
 
 		this.loading = false;
 
