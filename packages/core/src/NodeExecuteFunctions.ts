@@ -62,7 +62,6 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
-	ValidationResult,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -1888,7 +1887,12 @@ const validateResourceMapperValue = (
 			const resolvedValue = paramValues[key];
 			const schemaEntry = schema.find((s) => s.id === key);
 
-			if (!skipRequiredCheck && schemaEntry?.required === true && !resolvedValue) {
+			if (
+				!skipRequiredCheck &&
+				schemaEntry?.required === true &&
+				schemaEntry.type !== 'boolean' &&
+				!resolvedValue
+			) {
 				return {
 					valid: false,
 					errorMessage: `The value "${String(key)}" is required but not set`,
