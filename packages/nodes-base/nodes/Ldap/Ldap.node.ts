@@ -189,7 +189,6 @@ export class Ldap implements INodeType {
 						result.push({ name: 'custom', value: 'custom' });
 					} else result.push({ name: value as string, value: `(objectclass=${value})` });
 				}
-				console.log('Yo');
 				return result;
 			},
 
