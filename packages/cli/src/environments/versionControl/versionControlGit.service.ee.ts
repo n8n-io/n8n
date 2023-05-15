@@ -63,7 +63,7 @@ export class VersionControlGitService {
 		this.preInitCheck();
 		LoggerProxy.debug('Git pre-check passed');
 
-		await versionControlFoldersExistCheck(gitFolder, sshFolder);
+		versionControlFoldersExistCheck([gitFolder, sshFolder]);
 
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
 		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${sshKeyName}`;

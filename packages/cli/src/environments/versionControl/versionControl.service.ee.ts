@@ -57,7 +57,7 @@ export class VersionControlService {
 
 	async init(): Promise<void> {
 		this.gitService.resetService();
-		await versionControlFoldersExistCheck(this.gitFolder, this.sshFolder);
+		versionControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.versionControlPreferencesService.loadFromDbAndApplyVersionControlPreferences();
 		const versionControlPreferences =
 			this.versionControlPreferencesService.versionControlPreferences;

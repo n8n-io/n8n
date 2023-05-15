@@ -78,7 +78,7 @@ export class VersionControlPreferencesService {
 	 * Note: this will overwrite any existing key pair
 	 */
 	async generateAndSaveKeyPair() {
-		await versionControlFoldersExistCheck(this.gitFolder, this.sshFolder);
+		versionControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		const keyPair = generateSshKeyPair('ed25519');
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
@@ -135,7 +135,7 @@ export class VersionControlPreferencesService {
 		preferences: Partial<VersionControlPreferences>,
 		saveToDb = true,
 	): Promise<VersionControlPreferences> {
-		await versionControlFoldersExistCheck(this.gitFolder, this.sshFolder);
+		versionControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		if (!this.hasKeyPairFiles()) {
 			LoggerProxy.debug('No key pair files found, generating new pair');
 			await this.generateAndSaveKeyPair();

@@ -10,14 +10,7 @@ import {
 import * as Db from '@/Db';
 import glob from 'fast-glob';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
-import { constants as fsConstants } from 'fs';
-import {
-	writeFile as fsWriteFile,
-	readFile as fsReadFile,
-	access as fsAccess,
-	mkdir as fsMkdir,
-	rm as fsRm,
-} from 'fs/promises';
+import { writeFile as fsWriteFile, readFile as fsReadFile, rm as fsRm } from 'fs/promises';
 import { VersionControlGitService } from './versionControlGit.service.ee';
 import { UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
@@ -37,6 +30,7 @@ import { TagEntity } from '@/databases/entities/TagEntity';
 import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
 import without from 'lodash.without';
 import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
+import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 
 @Service()
 export class VersionControlExportService {
@@ -234,11 +228,7 @@ export class VersionControlExportService {
 
 	async exportWorkflowsToWorkFolder(): Promise<ExportResult> {
 		try {
-			try {
-				await fsAccess(this.workflowExportFolder, fsConstants.F_OK);
-			} catch (error) {
-				await fsMkdir(this.workflowExportFolder);
-			}
+			versionControlFoldersExistCheck([this.workflowExportFolder]);
 			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow', 'role', 'user'],
 				where: {
@@ -271,11 +261,7 @@ export class VersionControlExportService {
 
 	async exportVariablesToWorkFolder(): Promise<ExportResult> {
 		try {
-			try {
-				await fsAccess(this.gitFolder, fsConstants.F_OK);
-			} catch (error) {
-				await fsMkdir(this.gitFolder);
-			}
+			versionControlFoldersExistCheck([this.gitFolder]);
 			const variables = await Db.collections.Variables.find();
 			const fileName = this.getVariablesPath();
 			const sanitizedVariables = variables.map((e) => ({ ...e, value: '' }));
@@ -297,11 +283,7 @@ export class VersionControlExportService {
 
 	async exportTagsToWorkFolder(): Promise<ExportResult> {
 		try {
-			try {
-				await fsAccess(this.gitFolder, fsConstants.F_OK);
-			} catch (error) {
-				await fsMkdir(this.gitFolder);
-			}
+			versionControlFoldersExistCheck([this.gitFolder]);
 			const tags = await Db.collections.Tag.find();
 			const mappings = await Db.collections.WorkflowTagMapping.find();
 			const fileName = this.getTagsPath();
@@ -333,11 +315,7 @@ export class VersionControlExportService {
 
 	async exportCredentialsToWorkFolder(): Promise<ExportResult> {
 		try {
-			try {
-				await fsAccess(this.credentialExportFolder, fsConstants.F_OK);
-			} catch (error) {
-				await fsMkdir(this.credentialExportFolder);
-			}
+			versionControlFoldersExistCheck([this.credentialExportFolder]);
 			const sharedCredentials = await Db.collections.SharedCredentials.find({
 				relations: ['credentials', 'role', 'user'],
 			});

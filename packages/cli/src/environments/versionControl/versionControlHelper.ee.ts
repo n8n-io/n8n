@@ -3,15 +3,20 @@ import { License } from '../../License';
 import { generateKeyPairSync } from 'crypto';
 import sshpk from 'sshpk';
 import type { KeyPair } from './types/keyPair';
-import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-import { constants as fsConstants } from 'fs';
+import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
+import { LoggerProxy } from 'n8n-workflow';
 
-export async function versionControlFoldersExistCheck(gitFolder: string, sshFolder: string) {
-	[gitFolder, sshFolder].forEach(async (folder) => {
+export function versionControlFoldersExistCheck(folders: string[]) {
+	// running these file access function synchronously to avoid race conditions
+	folders.forEach((folder) => {
 		try {
-			await fsAccess(folder, fsConstants.F_OK);
-		} catch (error) {
-			await fsMkdir(folder);
+			accessSync(folder, fsConstants.F_OK);
+		} catch {
+			try {
+				mkdirSync(folder);
+			} catch (error) {
+				LoggerProxy.error((error as Error).message);
+			}
 		}
 	});
 }
