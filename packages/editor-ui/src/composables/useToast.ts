@@ -3,7 +3,7 @@ import type { ElNotificationComponent, ElNotificationOptions } from 'element-ui/
 import type { MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 
@@ -39,6 +39,7 @@ export function useToast() {
 			telemetry.track('Instance FE emitted error', {
 				error_title: messageData.title,
 				error_message: messageData.message,
+				caused_by_credential: causedByCredential(messageData.message),
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -130,13 +131,36 @@ export function useToast() {
 			error_title: title,
 			error_description: message,
 			error_message: error.message,
+			caused_by_credential: causedByCredential(error.message),
 			workflow_id: workflowsStore.workflowId,
 		});
+	}
+
+	function showAlert(config: ElNotificationOptions): ElNotificationComponent {
+		return Notification(config);
+	}
+
+	function causedByCredential(message: string | undefined) {
+		if (!message) return false;
+
+		return message.includes('Credentials for') && message.includes('are not set');
+	}
+
+	function clearAllStickyNotifications() {
+		stickyNotificationQueue.forEach((notification) => {
+			if (notification) {
+				notification.close();
+			}
+		});
+
+		stickyNotificationQueue.length = 0;
 	}
 
 	return {
 		showMessage,
 		showToast,
 		showError,
+		showAlert,
+		clearAllStickyNotifications,
 	};
 }

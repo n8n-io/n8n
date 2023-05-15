@@ -2,11 +2,16 @@
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SignoutView',
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	computed: {
 		...mapStores(useUsersStore),
 	},
@@ -16,7 +21,7 @@ export default mixins(showMessage).extend({
 				await this.usersStore.logout();
 				void this.$router.replace({ name: VIEWS.SIGNIN });
 			} catch (e) {
-				this.$showError(e, this.$locale.baseText('auth.signout.error'));
+				this.showError(e, this.$locale.baseText('auth.signout.error'));
 			}
 		},
 	},
