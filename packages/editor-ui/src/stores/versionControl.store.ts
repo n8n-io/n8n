@@ -1,6 +1,5 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import type { IDataObject } from 'n8n-workflow';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as vcApi from '@/api/versionControl';
@@ -16,7 +15,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	);
 
 	const preferences = reactive<VersionControlPreferences>({
-		currentBranch: '',
+		branchName: '',
 		branches: [],
 		authorName: '',
 		authorEmail: '',
@@ -28,46 +27,27 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	});
 
 	const state = reactive({
-		branches: [] as string[],
-		currentBranch: '',
-		authorName: '',
-		authorEmail: '',
-		repositoryUrl: '',
-		sshKey: '',
 		commitMessage: 'commit message',
 	});
-
-	const initSsh = async (data: IDataObject) => {
-		state.sshKey = await vcApi.initSsh(rootStore.getRestApiContext, data);
-	};
-
-	const initRepository = async () => {
-		const { branches, currentBranch } = await vcApi.initRepository(rootStore.getRestApiContext);
-		state.branches = branches;
-		state.currentBranch = currentBranch;
-	};
 
 	const sync = async (data: { commitMessage: string }) => {
 		state.commitMessage = data.commitMessage;
 		return vcApi.sync(rootStore.getRestApiContext, { message: data.commitMessage });
-	};
-	const getConfig = async () => {
-		const { remoteRepository, name, email, currentBranch } = await vcApi.getConfig(
-			rootStore.getRestApiContext,
-		);
-		state.repositoryUrl = remoteRepository;
-		state.authorName = name;
-		state.authorEmail = email;
-		state.currentBranch = currentBranch;
 	};
 
 	const setPreferences = (data: Partial<VersionControlPreferences>) => {
 		Object.assign(preferences, data);
 	};
 
+	const getBranches = async () => {
+		const data = await vcApi.getBranches(rootStore.getRestApiContext);
+		setPreferences(data);
+	};
+
 	const getPreferences = async () => {
 		const data = await vcApi.getPreferences(rootStore.getRestApiContext);
 		setPreferences(data);
+		if (data.connected) await vcApi.getBranches(rootStore.getRestApiContext);
 	};
 
 	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
@@ -75,16 +55,21 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setPreferences(data);
 	};
 
+	const setBranch = async (branch: string) => {
+		const data = await vcApi.setBranch(rootStore.getRestApiContext, branch);
+		await vcApi.connect(rootStore.getRestApiContext);
+		setPreferences(data);
+	};
+
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
 		preferences,
-		initSsh,
-		initRepository,
 		sync,
-		getConfig,
 		getPreferences,
 		setPreferences,
+		getBranches,
 		savePreferences,
+		setBranch,
 	};
 });

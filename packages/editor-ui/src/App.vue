@@ -1,14 +1,10 @@
 <template>
 	<div :class="[$style.app, 'root-container']">
 		<LoadingView v-if="loading" />
-		<div
-			v-else
-			id="app"
-			:class="{
+		<div v-else id="app" :class="{
 				[$style.container]: true,
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-			}"
-		>
+			}">
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
@@ -190,6 +186,14 @@ export default mixins(newVersions, userHelpers).extend({
 		this.redirectIfNecessary();
 		this.checkForNewVersions();
 
+
+		if (
+			this.versionControlStore.isEnterpriseVersionControlEnabled &&
+			this.usersStore.isInstanceOwner
+		) {
+			void this.versionControlStore.getPreferences();
+		}
+
 		this.loading = false;
 
 		this.trackPage();
@@ -197,13 +201,6 @@ export default mixins(newVersions, userHelpers).extend({
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
-		}
-
-		if (
-			this.versionControlStore.isEnterpriseVersionControlEnabled &&
-			this.usersStore.isInstanceOwner
-		) {
-			void this.versionControlStore.getPreferences();
 		}
 	},
 	watch: {

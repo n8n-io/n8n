@@ -10,26 +10,27 @@ const uiStore = useUIStore();
 const message = useMessage();
 
 const onContinue = () => {
-	void versionControlStore.initSsh({
-		name: versionControlStore.state.authorName,
-		email: versionControlStore.state.authorEmail,
-		remoteRepository: versionControlStore.state.repositoryUrl,
+	void versionControlStore.savePreferences({
+		authorName: versionControlStore.preferences.authorName,
+		authorEmail: versionControlStore.preferences.authorEmail,
+		repositoryUrl: versionControlStore.preferences.repositoryUrl,
 	});
 };
 
 const onConnect = () => {
-	void versionControlStore.initRepository();
+	void versionControlStore.getPreferences();
+	void versionControlStore.getBranches();
 };
 
 const onSave = () => {
-	void versionControlStore.savePreferences(versionControlStore.preferences);
+	void versionControlStore.setBranch(versionControlStore.preferences.branchName);
 };
 
 const onSelect = async (b: string) => {
-	if (b === versionControlStore.preferences.currentBranch) {
+	if (b === versionControlStore.preferences.branchName) {
 		return;
 	}
-	versionControlStore.preferences.currentBranch = b;
+	versionControlStore.preferences.branchName = b;
 };
 
 const goToUpgrade = () => {
@@ -114,7 +115,7 @@ const goToUpgrade = () => {
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
-			<div v-if="versionControlStore.preferences.branches.length">
+			<div v-if="versionControlStore.preferences.connected">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
@@ -122,7 +123,7 @@ const goToUpgrade = () => {
 					}}</n8n-heading>
 					<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
 					<n8n-select
-						:value="versionControlStore.preferences.currentBranch"
+						:value="versionControlStore.preferences.branchName"
 						class="mb-s"
 						size="medium"
 						filterable

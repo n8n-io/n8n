@@ -4,24 +4,21 @@ import type { IDataObject } from 'n8n-workflow';
 
 const versionControlApiRoot = '/version-control';
 
-export const initSsh = async (context: IRestApiContext, data: IDataObject): Promise<string> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/init-ssh`, data);
+export const sync = async (context: IRestApiContext, data: IDataObject): Promise<void> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/push-workfolder`, data);
 };
 
-export const initRepository = async (
+export const getBranches = async (
 	context: IRestApiContext,
 ): Promise<{ branches: string[]; currentBranch: string }> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/init-repository`);
+	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/get-branches`);
 };
 
-export const sync = async (context: IRestApiContext, data: IDataObject): Promise<void> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/push`, data);
-};
-
-export const getConfig = async (
+export const setBranch = async (
 	context: IRestApiContext,
-): Promise<{ remoteRepository: string; name: string; email: string; currentBranch: string }> => {
-	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/config`);
+	branch: string,
+): Promise<{ branches: string[]; currentBranch: string }> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/set-branch`, { branch });
 };
 
 export const setPreferences = async (
@@ -35,4 +32,8 @@ export const getPreferences = async (
 	context: IRestApiContext,
 ): Promise<VersionControlPreferences> => {
 	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/preferences`);
+};
+
+export const connect = async (context: IRestApiContext): Promise<string> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/connect`);
 };

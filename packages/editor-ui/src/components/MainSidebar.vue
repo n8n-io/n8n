@@ -26,7 +26,7 @@
 				</div>
 			</template>
 			<template #menuSuffix>
-				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
+				<div v-if="hasVersionUpdates || versionControlStore.preferences.connected">
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
@@ -40,7 +40,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<div :class="$style.sync" v-if="versionControlStore.state.currentBranch">
+					<div :class="$style.sync" v-if="versionControlStore.preferences.connected">
 						<span>
 							<n8n-icon icon="code-branch" class="mr-xs" />
 							{{ currentBranch }}
@@ -170,7 +170,7 @@ export default mixins(
 			useVersionControlStore,
 		),
 		currentBranch(): string {
-			return this.versionControlStore.state.currentBranch;
+			return this.versionControlStore.preferences.branchName;
 		},
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;

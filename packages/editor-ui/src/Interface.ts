@@ -1438,7 +1438,7 @@ export type VersionControlPreferences = {
 	repositoryUrl: string;
 	authorName: string;
 	authorEmail: string;
-	currentBranch: string;
+	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
 	branchColor: string;
