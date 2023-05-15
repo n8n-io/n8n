@@ -113,7 +113,6 @@
 import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
-import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { useMessage } from '@/composables';
@@ -138,7 +137,6 @@ export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
-		WorkflowSettings,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
 	setup(props) {
@@ -329,7 +327,7 @@ export default defineComponent({
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 		}
 		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
 			this.uiStore.sidebarMenuCollapsed = true;
@@ -467,7 +465,7 @@ export default defineComponent({
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
 		},
 		onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;

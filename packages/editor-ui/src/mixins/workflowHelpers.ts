@@ -732,7 +732,7 @@ export const workflowHelpers = defineComponent({
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -896,7 +896,7 @@ export const workflowHelpers = defineComponent({
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;

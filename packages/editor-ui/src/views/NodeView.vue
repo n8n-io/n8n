@@ -220,7 +220,6 @@ import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
-import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import { v4 as uuid } from 'uuid';
@@ -314,7 +313,6 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
-const NodeCreator = async () => import('@/components/Node/NodeCreator/NodeCreator.vue');
 const NodeCreation = async () => import('@/components/Node/NodeCreation.vue');
 const CanvasControls = async () => import('@/components/CanvasControls.vue');
 
@@ -332,8 +330,6 @@ export default defineComponent({
 	components: {
 		NodeDetailsView,
 		Node,
-		NodeCreator,
-		NodeSettings,
 		Sticky,
 		CanvasAddButton,
 		NodeCreation,
@@ -641,11 +637,11 @@ export default defineComponent({
 				source: 'canvas',
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
-			this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
-			this.runWorkflow(nodeName, source);
+			void this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
+			void this.runWorkflow(nodeName, source);
 		},
 		async onRunWorkflow() {
-			this.getWorkflowDataToSave().then((workflowData) => {
+			void this.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
@@ -654,7 +650,7 @@ export default defineComponent({
 					),
 				};
 				this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
-				this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
+				void this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 			});
 
 			await this.runWorkflow();
@@ -742,7 +738,7 @@ export default defineComponent({
 				this.canvasStore.zoomToFit();
 				this.uiStore.stateIsDirty = false;
 			});
-			this.$externalHooks().run('execution.open', {
+			void this.$externalHooks().run('execution.open', {
 				workflowId: data.workflowData.id,
 				workflowName: data.workflowData.name,
 				executionId,
@@ -818,7 +814,7 @@ export default defineComponent({
 
 			let data: IWorkflowTemplate | undefined;
 			try {
-				this.$externalHooks().run('template.requested', { templateId });
+				void this.$externalHooks().run('template.requested', { templateId });
 				data = await this.templatesStore.getWorkflowTemplate(templateId);
 
 				if (!data) {
@@ -846,7 +842,7 @@ export default defineComponent({
 				this.uiStore.stateIsDirty = true;
 			});
 
-			this.$externalHooks().run('template.open', {
+			void this.$externalHooks().run('template.open', {
 				templateId,
 				templateName: data.name,
 				workflow: data.workflow,
@@ -897,7 +893,7 @@ export default defineComponent({
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
-			this.$externalHooks().run('workflow.open', {
+			void this.$externalHooks().run('workflow.open', {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 			});
@@ -951,7 +947,7 @@ export default defineComponent({
 					return;
 				}
 
-				this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
+				void this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 }, e);
 
 				return;
 			}
@@ -979,7 +975,7 @@ export default defineComponent({
 			if (e.key === 'Escape') {
 				this.createNodeActive = false;
 				if (this.activeNode) {
-					this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+					void this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 					this.ndvStore.activeNodeName = null;
 				}
 
@@ -992,12 +988,12 @@ export default defineComponent({
 			}
 
 			if (e.key === 'd') {
-				this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
+				void this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 			} else if (e.key === 'Delete' || e.key === 'Backspace') {
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
+				void this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 			} else if (e.key === 'Tab') {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
@@ -1010,22 +1006,26 @@ export default defineComponent({
 			} else if (e.key === 'F2' && !this.isReadOnly) {
 				const lastSelectedNode = this.lastSelectedNode;
 				if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
-					this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
+					void this.callDebounced(
+						'renameNodePrompt',
+						{ debounceTime: 1500 },
+						lastSelectedNode.name,
+					);
 				}
 			} else if (e.key === 'a' && this.isCtrlKeyPressed(e) === true) {
 				// Select all nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('selectAllNodes', { debounceTime: 1000 });
+				void this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 			} else if (e.key === 'c' && this.isCtrlKeyPressed(e)) {
-				this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
+				void this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 			} else if (e.key === 'x' && this.isCtrlKeyPressed(e)) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
+				void this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
 			} else if (e.key === 'n' && this.isCtrlKeyPressed(e) && e.altKey) {
 				// Create a new workflow
 				e.stopPropagation();
@@ -1059,7 +1059,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
 			} else if (e.key === 'ArrowRight') {
 				// Set child node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1075,7 +1075,7 @@ export default defineComponent({
 					return;
 				}
 
-				this.callDebounced(
+				void this.callDebounced(
 					'nodeSelectedByName',
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
@@ -1087,7 +1087,7 @@ export default defineComponent({
 				e.stopPropagation();
 				e.preventDefault();
 
-				this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
+				void this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
 			} else if (e.key === 'ArrowLeft') {
 				// Set parent node active
 				const lastSelectedNode = this.lastSelectedNode;
@@ -1107,7 +1107,7 @@ export default defineComponent({
 					return;
 				}
 
-				this.callDebounced(
+				void this.callDebounced(
 					'nodeSelectedByName',
 					{ debounceTime: 100 },
 					connections.main[0][0].node,
@@ -1179,7 +1179,7 @@ export default defineComponent({
 				}
 
 				if (nextSelectNode !== null) {
-					this.callDebounced(
+					void this.callDebounced(
 						'nodeSelectedByName',
 						{ debounceTime: 100 },
 						nextSelectNode,
@@ -1394,7 +1394,7 @@ export default defineComponent({
 			}
 			this.stopExecutionInProgress = false;
 
-			this.getWorkflowDataToSave().then((workflowData) => {
+			void this.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
@@ -1892,7 +1892,7 @@ export default defineComponent({
 					workflow_id: this.workflowsStore.workflowId,
 				});
 			} else {
-				this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+				void this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
 				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
@@ -2938,7 +2938,7 @@ export default defineComponent({
 					is_welcome_note: node.name === QUICKSTART_NOTE_NAME,
 				});
 			} else {
-				this.$externalHooks().run('node.deleteNode', { node });
+				void this.$externalHooks().run('node.deleteNode', { node });
 				this.$telemetry.track('User deleted node', {
 					node_type: node.type,
 					workflow_id: this.workflowsStore.workflowId,
@@ -3673,7 +3673,7 @@ export default defineComponent({
 				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_VIEW ? 'trigger' : 'regular';
 
 			if (createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
-			this.$externalHooks().run('nodeView.createNodeActiveChanged', {
+			void this.$externalHooks().run('nodeView.createNodeActiveChanged', {
 				source,
 				mode,
 				createNodeActive,
@@ -3832,7 +3832,7 @@ export default defineComponent({
 		});
 
 		// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
-		this.$externalHooks()
+		void this.$externalHooks()
 			.run('nodeView.mount')
 			.catch((e) => {});
 

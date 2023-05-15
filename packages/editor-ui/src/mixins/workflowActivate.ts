@@ -62,7 +62,7 @@ export const workflowActivate = defineComponent({
 				ndv_input: telemetrySource === 'ndv',
 			};
 			this.$telemetry.track('User set workflow active status', telemetryPayload);
-			this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+			void this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 			try {
 				if (isWorkflowActive && newActiveState) {
@@ -106,7 +106,7 @@ export const workflowActivate = defineComponent({
 			const activationEventName = isCurrentWorkflow
 				? 'workflow.activeChangeCurrent'
 				: 'workflow.activeChange';
-			this.$externalHooks().run(activationEventName, {
+			void this.$externalHooks().run(activationEventName, {
 				workflowId: currWorkflowId,
 				active: newActiveState,
 			});

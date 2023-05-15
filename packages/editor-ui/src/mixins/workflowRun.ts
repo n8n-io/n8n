@@ -115,7 +115,7 @@ export const workflowRun = defineComponent({
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
+						void this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
 
 						await this.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {

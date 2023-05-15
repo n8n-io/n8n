@@ -380,7 +380,7 @@ export const pushConnection = defineComponent({
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						void this.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -511,7 +511,7 @@ export const pushConnection = defineComponent({
 							.length;
 				}
 
-				this.$externalHooks().run('pushConnection.executionFinished', {
+				void this.$externalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,
