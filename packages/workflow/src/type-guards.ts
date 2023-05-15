@@ -63,15 +63,16 @@ export const isBoolean = (value: unknown): value is boolean => {
 	if (typeof value === 'boolean') {
 		return true;
 	}
-	if (typeof value === 'string') {
-		const num = Number(value);
-		if (num === 0) {
-			return false;
-		} else if (num === 1) {
-			return true;
-		} else {
-			return ['true', 'false'].includes(value.toLowerCase());
-		}
+
+	if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
+		return true;
+	}
+
+	const num = Number(value);
+	if (num === 0) {
+		return false;
+	} else if (num === 1) {
+		return true;
 	}
 	return false;
 };
@@ -98,9 +99,7 @@ export const isObject = (value: unknown): value is object => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const o = JSON.parse(String(value));
 
-		if (o && typeof o === 'object' && !isArray(o)) {
-			return true;
-		}
+		return !isArray(o);
 	} catch (e) {}
 	return false;
 };
