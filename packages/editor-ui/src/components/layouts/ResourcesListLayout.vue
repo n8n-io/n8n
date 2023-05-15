@@ -195,9 +195,11 @@
 </template>
 
 <script lang="ts">
-import type { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
+import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import {
@@ -206,11 +208,9 @@ import {
 	MAIN_REPOSITORY_URL,
 } from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
-import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput } from 'n8n-design-system';
@@ -236,8 +236,9 @@ interface IFilters {
 type IResourceKeyType = 'credentials' | 'workflows';
 type SearchRef = InstanceType<typeof N8nInput>;
 
-export default mixins(debounceHelper).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [debounceHelper],
 	components: {
 		TemplateCard,
 		PageViewLayout,

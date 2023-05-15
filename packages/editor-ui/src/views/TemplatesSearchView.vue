@@ -75,6 +75,8 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
@@ -87,12 +89,10 @@ import type {
 	ITemplatesQuery,
 	ITemplatesCategory,
 } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -107,8 +107,9 @@ interface ISearchEvent {
 	wf_template_repo_session_id: string;
 }
 
-export default mixins(genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'TemplatesSearchView',
+	mixins: [genericHelpers, debounceHelper],
 	components: {
 		CollectionsCarousel,
 		TemplateFilters,

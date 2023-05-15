@@ -102,17 +102,17 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
 import CopyInput from '@/components/CopyInput.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { copyPaste } from '@/mixins/copyPaste';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -121,8 +121,9 @@ import type { N8nInfoAccordion } from 'n8n-design-system';
 
 type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 
-export default mixins(workflowHelpers, copyPaste).extend({
+export default defineComponent({
 	name: 'TriggerPanel',
+	mixins: [workflowHelpers, copyPaste],
 	components: {
 		NodeExecuteButton,
 		CopyInput,

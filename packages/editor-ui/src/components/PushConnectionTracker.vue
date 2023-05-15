@@ -16,9 +16,9 @@
 </template>
 
 <script lang="ts">
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default defineComponent({
 	name: 'PushConnectionTracker',

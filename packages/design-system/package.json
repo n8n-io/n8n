@@ -35,7 +35,6 @@
     "markdown-it-link-attributes": "^4.0.0",
     "markdown-it-task-lists": "^2.1.1",
     "vue": "^2.7.14",
-    "vue-typed-mixins": "^0.2.0",
     "xss": "^1.0.14"
   },
   "devDependencies": {
@@ -71,7 +70,6 @@
     "markdown-it-task-lists": "^2.1.1",
     "sanitize-html": "2.10.0",
     "vue": "^2.7.14",
-    "vue-typed-mixins": "^0.2.0",
     "vue2-boring-avatars": "^0.3.8",
     "xss": "^1.0.14"
   }

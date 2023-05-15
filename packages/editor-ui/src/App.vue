@@ -27,6 +27,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -35,7 +38,6 @@ import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS }
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
 import { useGlobalLinkActions, useToast } from '@/composables';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -49,7 +51,6 @@ import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useExternalHooks } from '@/composables';
-import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'App',

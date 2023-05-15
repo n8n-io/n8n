@@ -118,20 +118,21 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
-import mixins from 'vue-typed-mixins';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(copyPaste).extend({
+export default defineComponent({
 	name: 'NodeErrorView',
+	mixins: [copyPaste],
 	props: ['error'],
 	components: {
 		VueJsonPretty,

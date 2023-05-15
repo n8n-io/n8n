@@ -1,11 +1,12 @@
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+
 import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE } from '@/constants';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -15,7 +16,8 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 
-export const nodeBase = mixins(deviceSupportHelpers).extend({
+export const nodeBase = defineComponent({
+	mixins: [deviceSupportHelpers],
 	mounted() {
 		// Initialize the node
 		if (this.data !== null) {

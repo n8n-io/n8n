@@ -36,15 +36,15 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 interface IWorkflowSaveSettings {
@@ -53,8 +53,9 @@ interface IWorkflowSaveSettings {
 	saveTestExecutions: boolean;
 }
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'executions-info-accordion',
+	mixins: [workflowHelpers],
 	props: {
 		initiallyExpanded: {
 			type: Boolean,
