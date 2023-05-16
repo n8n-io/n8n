@@ -124,7 +124,7 @@ const beforeClosingModal = async () => {
 	if (currentUser) {
 		try {
 			await userStore.updateUserSettings({ showUserActivationSurvey: false });
-		} catch(e) {
+		} catch (e) {
 			showSharedFeedbackError(e.message);
 			return true;
 		}
