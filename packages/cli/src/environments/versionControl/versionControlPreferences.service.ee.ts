@@ -176,6 +176,7 @@ export class VersionControlPreferencesService {
 				);
 			}
 		}
-		return;
+		await this.setPreferences(new VersionControlPreferences(), true);
+		return this.versionControlPreferences;
 	}
 }

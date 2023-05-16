@@ -9,3 +9,6 @@ export const VERSION_CONTROL_SSH_FOLDER = 'ssh';
 export const VERSION_CONTROL_SSH_KEY_NAME = 'key';
 export const VERSION_CONTROL_DEFAULT_BRANCH = 'main';
 export const VERSION_CONTROL_ORIGIN = 'origin';
+export const VERSION_CONTROL_README = `
+# n8n Version Control
+`;

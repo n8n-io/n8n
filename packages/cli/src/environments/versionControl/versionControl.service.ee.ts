@@ -5,6 +5,7 @@ import type { VersionControlPreferences } from './types/versionControlPreference
 import {
 	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	VERSION_CONTROL_GIT_FOLDER,
+	VERSION_CONTROL_README,
 	VERSION_CONTROL_SSH_FOLDER,
 	VERSION_CONTROL_SSH_KEY_NAME,
 	VERSION_CONTROL_TAGS_EXPORT_FILE,
@@ -35,7 +36,7 @@ import type {
 	VersionControlledFileType,
 } from './types/versionControlledFile';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
-
+import { writeFileSync } from 'fs';
 @Service()
 export class VersionControlService {
 	private sshKeyName: string;
@@ -59,10 +60,8 @@ export class VersionControlService {
 		this.gitService.resetService();
 		versionControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.versionControlPreferencesService.loadFromDbAndApplyVersionControlPreferences();
-		const versionControlPreferences =
-			this.versionControlPreferencesService.versionControlPreferences;
 		await this.gitService.initService({
-			versionControlPreferences,
+			versionControlPreferences: this.versionControlPreferencesService.getPreferences(),
 			gitFolder: this.gitFolder,
 			sshKeyName: this.sshKeyName,
 			sshFolder: this.sshFolder,
@@ -71,11 +70,9 @@ export class VersionControlService {
 
 	async connect() {
 		try {
-			await this.versionControlPreferencesService.setPreferences({ connected: true });
 			await this.init();
-			const fetchResult = await this.gitService.fetch();
-			await this.gitService.setBranch(this.versionControlPreferencesService.getBranchName());
-			return fetchResult;
+			await this.versionControlPreferencesService.setPreferences({ connected: true });
+			return this.versionControlPreferencesService.versionControlPreferences;
 		} catch (error) {
 			throw Error(`Failed to connect to version control: ${(error as Error).message}`);
 		}
@@ -101,16 +98,34 @@ export class VersionControlService {
 		}
 		LoggerProxy.debug('Initializing repository...');
 		await this.gitService.initRepository(preferences);
-		// TODO: commented out for now until flow for initial setup is finalized
-		// const branches = await this.getBranches();
-		// if (branches.branches.includes(preferences.branchName)) {
-		// 	await this.gitService.setBranch(preferences.branchName);
-		// } else {
-		// 	await this.pushWorkfolder({
-		// 		message: 'Initial commit',
-		// 		skipDiff: true,
-		// 	});
-		// }
+		let getBranchesResult;
+		try {
+			getBranchesResult = await this.getBranches();
+		} catch (error) {
+			if ((error as Error).message.includes('Warning: Permanently added')) {
+				LoggerProxy.debug('Added repository host to the list of known hosts. Retrying...');
+				getBranchesResult = await this.getBranches();
+			} else {
+				throw error;
+			}
+		}
+		if (getBranchesResult.branches.includes(preferences.branchName)) {
+			await this.gitService.setBranch(preferences.branchName);
+		} else {
+			try {
+				writeFileSync(path.join(this.gitFolder, '/README.md'), VERSION_CONTROL_README);
+				await this.stage({ fileNames: new Set<string>(['README.md']) });
+				await this.gitService.commit('Initial commit');
+				await this.gitService.push({
+					branch: preferences.branchName,
+					force: true,
+				});
+				getBranchesResult = await this.getBranches();
+			} catch (fileError) {
+				LoggerProxy.error(`Failed to create initial commit: ${(fileError as Error).message}`);
+			}
+		}
+		return getBranchesResult;
 	}
 
 	async export() {
