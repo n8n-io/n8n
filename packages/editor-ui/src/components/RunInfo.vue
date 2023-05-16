@@ -14,8 +14,8 @@
 </template>
 
 <script lang="ts">
-import type { ITaskData } from 'n8n-workflow';
 import { defineComponent } from 'vue';
+import type { ITaskData } from 'n8n-workflow';
 
 export default defineComponent({
 	props: {

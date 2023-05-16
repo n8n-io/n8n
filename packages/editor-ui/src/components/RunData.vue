@@ -464,8 +464,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
 import type {
 	IBinaryData,
@@ -508,12 +509,11 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
-import { isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useToast } from '@/composables';
 
 const RunDataTable = async () => import('@/components/RunDataTable.vue');
 const RunDataJson = async () => import('@/components/RunDataJson.vue');
@@ -524,8 +524,9 @@ export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
 };
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).extend({
+export default defineComponent({
 	name: 'RunData',
+	mixins: [externalHooks, genericHelpers, nodeHelpers, pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
@@ -584,6 +585,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -1017,7 +1023,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				view: this.displayMode,
 				run_index: this.runIndex,
 			};
-			this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
 			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 		},
 		onDataPinningError({
@@ -1050,7 +1056,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 					view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
 				};
 
-				this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+				void this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
 				this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 			}
 
@@ -1072,7 +1078,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
 
 			if (this.maxRunIndex > 0) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
 						interpolate: {
 							index: `${this.runIndex}`,
@@ -1159,7 +1165,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			}
 
 			this.closeBinaryDataDisplay();
-			this.$externalHooks().run('runData.displayModeChanged', {
+			void this.$externalHooks().run('runData.displayModeChanged', {
 				newValue: displayMode,
 				oldValue: previous,
 			});

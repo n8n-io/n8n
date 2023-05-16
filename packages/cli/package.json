@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.227.0",
+  "version": "0.228.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -116,7 +116,7 @@
     "tsconfig-paths": "^4.1.2"
   },
   "dependencies": {
-    "@n8n_io/license-sdk": "~2.3.0",
+    "@n8n_io/license-sdk": "~2.4.0",
     "@n8n_io/client-oauth2": "workspace:*",
     "@oclif/command": "^1.8.16",
     "@oclif/core": "^1.16.4",

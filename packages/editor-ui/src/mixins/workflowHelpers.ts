@@ -1,9 +1,12 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 } from '@/constants';
 
 import type {
@@ -40,14 +43,12 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -320,7 +321,14 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers],
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -724,7 +732,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -741,26 +749,31 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 						params: { name: currentWorkflow },
 					}).href;
 
-					const overwrite = await this.confirmMessage(
+					const overwrite = await this.confirm(
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message', {
 							interpolate: {
 								url,
 							},
 						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
-						null,
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.cancelButtonText'),
+						{
+							confirmButtonText: this.$locale.baseText(
+								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+							),
+						},
 					);
 
-					if (overwrite) {
+					if (overwrite === MODAL_CONFIRM) {
 						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: error.message,
 					type: 'error',
@@ -883,14 +896,14 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;
 			} catch (e) {
 				this.uiStore.removeActiveAction('workflowSaving');
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: (e as Error).message,
 					type: 'error',

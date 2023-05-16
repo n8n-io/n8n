@@ -9,6 +9,8 @@
 import { parseString } from 'xml2js';
 import type { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
 
+type Severity = 'warning' | 'error';
+
 /**
  * Top-level properties where an error message can be found in an API response.
  */
@@ -103,8 +105,10 @@ export abstract class ExecutionBaseError extends Error {
  * Base class for specific NodeError-types, with functionality for finding
  * a value recursively inside an error object.
  */
-abstract class NodeError extends ExecutionBaseError {
+export abstract class NodeError extends ExecutionBaseError {
 	node: INode;
+
+	severity: Severity = 'error';
 
 	constructor(node: INode, error: Error | JsonObject) {
 		const message = error instanceof Error ? error.message : '';
@@ -234,6 +238,7 @@ interface NodeOperationErrorOptions {
 	description?: string;
 	runIndex?: number;
 	itemIndex?: number;
+	severity?: Severity;
 }
 
 /**
@@ -248,9 +253,8 @@ export class NodeOperationError extends NodeError {
 		}
 		super(node, error);
 
-		if (options.message) {
-			this.message = options.message;
-		}
+		if (options.message) this.message = options.message;
+		if (options.severity) this.severity = options.severity;
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;
@@ -296,9 +300,20 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: JsonObject,
-		{ message, description, httpCode, parseXml, runIndex, itemIndex }: NodeApiErrorOptions = {},
+		{
+			message,
+			description,
+			httpCode,
+			parseXml,
+			runIndex,
+			itemIndex,
+			severity,
+		}: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
+
+		if (severity) this.severity = severity;
+		else if (httpCode?.charAt(0) !== '5') this.severity = 'warning';
 
 		if (error.error) {
 			// only for request library error

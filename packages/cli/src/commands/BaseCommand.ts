@@ -1,7 +1,6 @@
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
-import type { INodeTypes } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
@@ -31,7 +30,7 @@ export abstract class BaseCommand extends Command {
 
 	protected loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	protected nodeTypes: INodeTypes;
+	protected nodeTypes: NodeTypes;
 
 	protected userSettings: IUserSettings;
 
@@ -51,6 +50,7 @@ export abstract class BaseCommand extends Command {
 		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await this.loadNodesAndCredentials.init();
 		this.nodeTypes = Container.get(NodeTypes);
+		this.nodeTypes.init();
 		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 

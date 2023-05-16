@@ -50,22 +50,26 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils';
 
-export default mixins(showMessage, workflowActivate).extend({
+export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
+	mixins: [workflowActivate],
+	setup(props) {
+		return {
+			...useToast(),
+			...workflowActivate.setup?.(props),
+		};
+	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		getStateIsDirty(): boolean {
-			return this.uiStore.stateIsDirty;
-		},
 		nodesIssuesExist(): boolean {
 			return this.workflowsStore.nodesIssuesExist;
 		},
@@ -123,7 +127,7 @@ export default mixins(showMessage, workflowActivate).extend({
 				);
 			}
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('workflowActivator.showMessage.displayActivationError.title'),
 				message: errorMessage,
 				type: 'warning',
