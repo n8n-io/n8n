@@ -47,7 +47,11 @@ export class VersionControlController {
 				sanitizedPreferences,
 			);
 			if (sanitizedPreferences.initRepo === true) {
-				await this.versionControlService.initializeRepository(newPreferences);
+				await this.versionControlService.initializeRepository({
+					...newPreferences,
+					initRepo: true,
+				});
+				await this.versionControlPreferencesService.setPreferences({ connected: true });
 			}
 			await this.versionControlService.init();
 			return newPreferences;
