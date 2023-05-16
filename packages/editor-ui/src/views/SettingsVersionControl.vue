@@ -3,12 +3,13 @@ import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables';
+import { useToast, useMessage } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
+const message = useMessage();
 
 const isConnected = computed(
 	() =>
@@ -34,12 +35,20 @@ const onConnect = async () => {
 	}
 };
 
-const onDisconnect = () => {
-	void versionControlStore.disconnect();
+const onDisconnect = async () => {
+	void versionControlStore.disconnect(true);
 };
 
-const onSave = () => {
-	void versionControlStore.setBranch(versionControlStore.preferences.branchName);
+const onSave = async () => {
+	try {
+		await versionControlStore.setBranch(versionControlStore.preferences.branchName);
+	} catch (error) {
+		toast.showMessage({
+			title: 'Success',
+			message: 'Settings saved successfully',
+			type: 'success',
+		});
+	}
 };
 
 const onSelect = async (b: string) => {
@@ -89,7 +98,7 @@ const goToUpgrade = () => {
 						type="tertiary"
 						v-if="isConnected"
 						@click="onDisconnect"
-						size="medium"
+						size="small"
 						icon="trash"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
@@ -126,7 +135,7 @@ const goToUpgrade = () => {
 					</i18n>
 				</n8n-notice>
 			</div>
-			<n8n-button v-if="!isConnected" @click="onConnect" size="large" :class="$style.connect">{{
+			<n8n-button v-if="!isConnected" @click="onConnect" size="small" :class="$style.connect">{{
 				locale.baseText('settings.versionControl.button.connect')
 			}}</n8n-button>
 			<div v-if="isConnected">
@@ -173,7 +182,7 @@ const goToUpgrade = () => {
 					</div>
 				</div> -->
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button :disabled="!shouldSave" @click="onSave" size="large">{{
+					<n8n-button :disabled="!shouldSave" @click="onSave" size="small">{{
 						locale.baseText('settings.versionControl.button.save')
 					}}</n8n-button>
 				</div>

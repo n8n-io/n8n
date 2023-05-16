@@ -70,8 +70,8 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setPreferences({ ...data, connected: true });
 	};
 
-	const disconnect = async () => {
-		await vcApi.disconnect(rootStore.getRestApiContext, true);
+	const disconnect = async (keepKeyPair: boolean) => {
+		await vcApi.disconnect(rootStore.getRestApiContext, keepKeyPair);
 		setPreferences({ connected: false, branches: [] });
 	};
 
