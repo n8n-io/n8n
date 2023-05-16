@@ -42,7 +42,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	const getBranches = async () => {
 		const data = await vcApi.getBranches(rootStore.getRestApiContext);
 		setPreferences(data);
-		console.log(preferences)
 	};
 
 	const getPreferences = async () => {
