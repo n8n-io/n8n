@@ -74,8 +74,7 @@ const goToUpgrade = () => {
 					<n8n-button
 						v-if="versionControlStore.preferences.branches.length > 0"
 						@click="onDisconnect"
-						size="large"
-						:class="$style.connect"
+						type="tertiary"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
 				</div>
@@ -114,7 +113,6 @@ const goToUpgrade = () => {
 			<n8n-button
 				v-if="versionControlStore.preferences.branches.length === 0"
 				@click="onConnect"
-				size="large"
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
@@ -168,7 +166,6 @@ const goToUpgrade = () => {
 							versionControlStore.preferences.branchName
 						"
 						@click="onSave"
-						size="large"
 						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
 					>
 				</div>
