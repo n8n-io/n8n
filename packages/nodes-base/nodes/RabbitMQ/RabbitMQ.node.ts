@@ -405,28 +405,27 @@ export class RabbitMQ implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let channel, options: IDataObject;
-		let mode = 'queue';
-		try {
-			mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
-		} catch (error) {}
 		try {
 			const items = this.getInputData();
 			const operation = this.getNodeParameter('operation', 0);
+			if (operation === 'deleteMessage') {
+				this.sendResponse(items[0].json);
+				return await this.prepareOutputData(items);
+			}
+			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const returnItems: INodeExecutionData[] = [];
 			if (mode === 'queue') {
-				const queue = this.getNodeParameter('queue', 0, '') as string;
-				const sendInputData = this.getNodeParameter('sendInputData', 0, {}) as boolean;
+				const queue = this.getNodeParameter('queue', 0) as string;
+
 				options = this.getNodeParameter('options', 0, {});
 
 				channel = await rabbitmqConnectQueue.call(this, queue, options);
 
+				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
+
 				let message: string;
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (operation === 'deleteMessage') {
-						this.sendResponse(items[0].json);
-						continue;
-					}
 					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
