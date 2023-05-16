@@ -19,7 +19,9 @@ const isConnected = computed(
 
 const shouldSave = computed(
 	() =>
-		versionControlStore.preferences.branchName !== versionControlStore.preferences.currentBranch,
+		versionControlStore.preferences.branchName !== versionControlStore.preferences.currentBranch ||
+		(versionControlStore.preferences.branchName !== '' &&
+			!versionControlStore.preferences.connected),
 );
 
 const onConnect = async () => {
@@ -30,6 +32,11 @@ const onConnect = async () => {
 			repositoryUrl: versionControlStore.preferences.repositoryUrl,
 		});
 		await versionControlStore.getBranches();
+		toast.showMessage({
+			title: 'Success',
+			message: 'Repository set successfully',
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(error, 'Error connecting to Git');
 	}
@@ -42,12 +49,13 @@ const onDisconnect = async () => {
 const onSave = async () => {
 	try {
 		await versionControlStore.setBranch(versionControlStore.preferences.branchName);
-	} catch (error) {
 		toast.showMessage({
 			title: 'Success',
 			message: 'Settings saved successfully',
 			type: 'success',
 		});
+	} catch (error) {
+		toast.showError(error, 'Error setting branch');
 	}
 };
 
