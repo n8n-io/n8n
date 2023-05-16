@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -20,8 +20,6 @@ const shouldSave = computed(
 	() =>
 		versionControlStore.preferences.branchName !== versionControlStore.preferences.currentBranch,
 );
-
-const branchChanged = ref(false);
 
 const onConnect = async () => {
 	try {
