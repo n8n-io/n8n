@@ -327,11 +327,17 @@ function addField(name: string): void {
 }
 
 function addAllFields(): void {
+	const newValues: { [name: string]: null } = {};
 	state.paramValue.schema.forEach((field) => {
-		if (field.display) {
+		if (field.display && field.removed) {
+			newValues[field.id] = null;
 			Vue.set(field, 'removed', false);
 		}
 	});
+	state.paramValue.value = {
+		...state.paramValue.value,
+		...newValues,
+	};
 	emitValueChanged();
 }
 
