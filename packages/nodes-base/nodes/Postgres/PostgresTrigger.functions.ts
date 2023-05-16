@@ -1,6 +1,5 @@
 import type {
 	ITriggerFunctions,
-	INodeParameterResourceLocator,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -13,9 +12,11 @@ export async function pgTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 ): Promise<void> {
-	const tableName = this.getNodeParameter('tableName', 0) as INodeParameterResourceLocator;
-	const schema = this.getNodeParameter('schema', 0) as INodeParameterResourceLocator;
-	const target = `${schema.value as string}."${tableName.value as string}"`;
+	const schema = this.getNodeParameter('schema', 'public', { extractValue: true }) as string;
+	const tableName = this.getNodeParameter('tableName', undefined, {
+		extractValue: true,
+	}) as string;
+	const target = `${schema}.${tableName}`;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const functionReplace =
 		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$;";
@@ -57,7 +58,6 @@ export async function pgTriggerFunction(
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('postgres');
 	const pgp = pgPromise();
-
 	const config: IDataObject = {
 		host: credentials.host as string,
 		port: credentials.port as number,
@@ -127,9 +127,11 @@ export async function dropTriggerFunction(
 	this: ITriggerFunctions,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 ): Promise<void> {
-	const schema = this.getNodeParameter('schema', 0, { extractValue: true }) as IDataObject;
-	const tableName = this.getNodeParameter('tableName', 0, { extractValue: true }) as IDataObject;
-	const target = `${schema.value as string}."${tableName.value as string}"`;
+	const schema = this.getNodeParameter('schema', undefined, { extractValue: true }) as string;
+	const tableName = this.getNodeParameter('tableName', undefined, {
+		extractValue: true,
+	}) as string;
+	const target = `${schema}.${tableName}`;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	const nodeId = this.getNode().id.replace(/-/g, '_');
 	let functionName =
