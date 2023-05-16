@@ -2,13 +2,12 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useMessage } from '@/composables';
+import { useToast } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
-import { Notification } from 'element-ui';
 
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
-const message = useMessage();
+const toast = useToast();
 
 const onConnect = async () => {
 	try {
@@ -19,11 +18,7 @@ const onConnect = async () => {
 		});
 		await versionControlStore.getBranches();
 	} catch (error) {
-		Notification.error({
-			title: 'Error connecting to Git',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'Error connecting to Git');
 	}
 };
 
