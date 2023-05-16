@@ -57,8 +57,8 @@ interface TagEl extends ITag {
 }
 
 export default defineComponent({
-	components: { IntersectionObserver, IntersectionObserved },
 	name: 'TagsContainer',
+	components: { IntersectionObserver, IntersectionObserved },
 	props: ['tagIds', 'limit', 'clickable', 'responsive', 'hoverable'],
 	data() {
 		return {

@@ -40,8 +40,8 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
 export default defineComponent({
-	components: { Modal },
 	name: 'ChangePasswordModal',
+	components: { Modal },
 	props: {
 		modalName: {
 			type: String,

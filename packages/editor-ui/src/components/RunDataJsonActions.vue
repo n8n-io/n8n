@@ -35,8 +35,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
 import jp from 'jsonpath';
 import type { INodeUi } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
@@ -45,7 +46,6 @@ import { pinData } from '@/mixins/pinData';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables';
@@ -58,8 +58,10 @@ type JsonPathData = {
 // A path that does not exist so that nothing is selected by default
 export const nonExistingJsonPath = '_!^&*';
 
-export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
+export default defineComponent({
 	name: 'run-data-json-actions',
+	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
+
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,

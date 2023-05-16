@@ -1,14 +1,15 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables';
 
-import { defineComponent } from 'vue';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
