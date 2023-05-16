@@ -110,6 +110,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import type { ICredentialsResponse, IUser } from '@/Interface';
 
@@ -129,7 +131,6 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 
-import mixins from 'vue-typed-mixins';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { useToast, useMessage } from '@/composables';
 
@@ -146,7 +147,6 @@ import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -166,8 +166,9 @@ interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(nodeHelpers, externalHooks).extend({
+export default defineComponent({
 	name: 'CredentialEdit',
+	mixins: [nodeHelpers, externalHooks],
 	components: {
 		CredentialSharing,
 		CredentialConfig,

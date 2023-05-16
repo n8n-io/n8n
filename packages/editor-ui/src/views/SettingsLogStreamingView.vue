@@ -79,9 +79,9 @@
 </template>
 
 <script lang="ts">
-import { v4 as uuid } from 'uuid';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import { useUsersStore } from '../stores/users.store';
 import { useCredentialsStore } from '../stores/credentials.store';
@@ -95,7 +95,7 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 import { createEventBus } from '@/event-bus';
 
-export default mixins().extend({
+export default defineComponent({
 	name: 'SettingsLogStreamingView',
 	props: {},
 	components: {

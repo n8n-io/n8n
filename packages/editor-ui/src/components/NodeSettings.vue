@@ -158,7 +158,8 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type {
 	INodeTypeDescription,
 	INodeParameters,
@@ -191,10 +192,8 @@ import { get, set, unset } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -205,8 +204,9 @@ import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from '@/event-bus';
 
-export default mixins(externalHooks, nodeHelpers).extend({
+export default defineComponent({
 	name: 'NodeSettings',
+	mixins: [externalHooks, nodeHelpers],
 	components: {
 		NodeTitle,
 		NodeCredentials,

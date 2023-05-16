@@ -347,6 +347,8 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import { get } from 'lodash-es';
 
@@ -382,11 +384,9 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
-import mixins from 'vue-typed-mixins';
 import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -396,8 +396,9 @@ import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
-export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'parameter-input',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, debounceHelper],
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
