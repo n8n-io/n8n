@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { computed, ref } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -8,6 +9,19 @@ import CopyInput from '@/components/CopyInput.vue';
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
+
+const isConnected = computed(
+	() =>
+		versionControlStore.preferences.branches.length > 0 ||
+		versionControlStore.preferences.connected,
+);
+
+const shouldSave = computed(
+	() =>
+		versionControlStore.preferences.branchName !== versionControlStore.preferences.currentBranch,
+);
+
+const branchChanged = ref(false);
 
 const onConnect = async () => {
 	try {
@@ -67,15 +81,18 @@ const goToUpgrade = () => {
 				<label for="repoUrl">{{ locale.baseText('settings.versionControl.repoUrl') }}</label>
 				<div :class="$style.groupFlex">
 					<n8n-input
+						:disabled="isConnected"
 						id="repoUrl"
 						:placeholder="locale.baseText('settings.versionControl.repoUrlPlaceholder')"
 						v-model="versionControlStore.preferences.repositoryUrl"
 					/>
 					<n8n-button
-						v-if="versionControlStore.preferences.branches.length > 0"
+						class="mt-3xs ml-2xs"
+						type="tertiary"
+						v-if="isConnected"
 						@click="onDisconnect"
-						size="large"
-						:class="$style.connect"
+						size="medium"
+						icon="trash"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
 				</div>
@@ -111,14 +128,10 @@ const goToUpgrade = () => {
 					</i18n>
 				</n8n-notice>
 			</div>
-			<n8n-button
-				v-if="versionControlStore.preferences.branches.length === 0"
-				@click="onConnect"
-				size="large"
-				:class="$style.connect"
-				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
-			>
-			<div v-if="versionControlStore.preferences.branches.length > 0">
+			<n8n-button v-if="!isConnected" @click="onConnect" size="large" :class="$style.connect">{{
+				locale.baseText('settings.versionControl.button.connect')
+			}}</n8n-button>
+			<div v-if="isConnected">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
@@ -162,15 +175,9 @@ const goToUpgrade = () => {
 					</div>
 				</div> -->
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button
-						v-if="
-							versionControlStore.preferences.publicKey &&
-							versionControlStore.preferences.branchName
-						"
-						@click="onSave"
-						size="large"
-						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
-					>
+					<n8n-button :disabled="!shouldSave" @click="onSave" size="large">{{
+						locale.baseText('settings.versionControl.button.save')
+					}}</n8n-button>
 				</div>
 			</div>
 		</div>
@@ -215,6 +222,7 @@ const goToUpgrade = () => {
 
 .groupFlex {
 	display: flex;
+	align-items: center;
 
 	> div {
 		flex: 1;

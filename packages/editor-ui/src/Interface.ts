@@ -1449,6 +1449,7 @@ export type VersionControlPreferences = {
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	currentBranch?: string;
 };
 
 export declare namespace Cloud {

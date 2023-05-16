@@ -42,6 +42,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	const getBranches = async () => {
 		const data = await vcApi.getBranches(rootStore.getRestApiContext);
 		setPreferences(data);
+		console.log(preferences)
 	};
 
 	const getPreferences = async () => {
@@ -53,7 +54,10 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 			} catch (error) {
 				await savePreferences({});
 			}
-		if (data.connected) await getBranches();
+
+		if (data.connected) {
+			await getBranches();
+		}
 	};
 
 	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
