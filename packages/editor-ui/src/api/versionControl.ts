@@ -4,8 +4,18 @@ import type { IDataObject } from 'n8n-workflow';
 
 const versionControlApiRoot = '/version-control';
 
-export const sync = async (context: IRestApiContext, data: IDataObject): Promise<void> => {
+export const pushWorkfolder = async (
+	context: IRestApiContext,
+	data: IDataObject,
+): Promise<void> => {
 	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/push-workfolder`, data);
+};
+
+export const pullWorkfolder = async (
+	context: IRestApiContext,
+	data: IDataObject,
+): Promise<void> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/pull-workfolder`, data);
 };
 
 export const getBranches = async (

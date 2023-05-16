@@ -30,9 +30,13 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		commitMessage: 'commit message',
 	});
 
-	const sync = async (data: { commitMessage: string }) => {
+	const pushWorkfolder = async (data: { commitMessage: string }) => {
 		state.commitMessage = data.commitMessage;
-		return vcApi.sync(rootStore.getRestApiContext, { message: data.commitMessage });
+		return vcApi.pushWorkfolder(rootStore.getRestApiContext, { message: data.commitMessage });
+	};
+
+	const pullWorkfolder = async () => {
+		return vcApi.pullWorkfolder(rootStore.getRestApiContext, { force: true });
 	};
 
 	const setPreferences = (data: Partial<VersionControlPreferences>) => {
@@ -79,7 +83,8 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		isEnterpriseVersionControlEnabled,
 		state,
 		preferences,
-		sync,
+		pushWorkfolder,
+		pullWorkfolder,
 		getPreferences,
 		setPreferences,
 		getBranches,
