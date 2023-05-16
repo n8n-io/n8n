@@ -101,15 +101,16 @@ export class VersionControlService {
 		}
 		LoggerProxy.debug('Initializing repository...');
 		await this.gitService.initRepository(preferences);
-		const branches = await this.getBranches();
-		if (branches.branches.includes(preferences.branchName)) {
-			await this.gitService.setBranch(preferences.branchName);
-		} else {
-			await this.pushWorkfolder({
-				message: 'Initial commit',
-				skipDiff: true,
-			});
-		}
+		// TODO: commented out for now until flow for initial setup is finalized
+		// const branches = await this.getBranches();
+		// if (branches.branches.includes(preferences.branchName)) {
+		// 	await this.gitService.setBranch(preferences.branchName);
+		// } else {
+		// 	await this.pushWorkfolder({
+		// 		message: 'Initial commit',
+		// 		skipDiff: true,
+		// 	});
+		// }
 	}
 
 	async export() {
