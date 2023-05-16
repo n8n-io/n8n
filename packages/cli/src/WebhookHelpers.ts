@@ -425,6 +425,7 @@ export async function executeWebhook(
 
 					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 					if (binaryData?.id) {
+						res.header(response.headers);
 						const stream = NodeExecuteFunctions.getBinaryStream(binaryData.id);
 						void pipeline(stream, res).then(() =>
 							responseCallback(null, { noWebhookResponse: true }),
