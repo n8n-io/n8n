@@ -210,8 +210,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import type { EventBus } from '@/event-bus';
-import { createEventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'event-destination-settings-modal',
