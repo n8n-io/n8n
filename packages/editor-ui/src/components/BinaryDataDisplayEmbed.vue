@@ -19,15 +19,15 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores';
-import Vue from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'BinaryDataDisplayEmbed',
 	components: {
 		VueJsonPretty,

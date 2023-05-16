@@ -19,9 +19,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
 
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension } from '@codemirror/state';
@@ -47,8 +47,9 @@ import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { codeNodeEditorTheme } from './theme';
 
-export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
+export default defineComponent({
 	name: 'code-node-editor',
+	mixins: [linterExtension, completerExtension, workflowHelpers],
 	components: { Modal },
 	props: {
 		mode: {

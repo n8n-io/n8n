@@ -1,3 +1,5 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
 import type { IRunData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
@@ -7,9 +9,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables';
 
-import { defineComponent } from 'vue';
 import { useTitleChange } from '@/composables/useTitleChange';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
