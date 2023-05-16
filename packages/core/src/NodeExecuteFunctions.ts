@@ -1954,7 +1954,9 @@ const validateValueAgainstSchema = (
 
 	if (!validationResult.valid) {
 		throw new ExpressionError(
-			`Invalid input for '${String(validationResult.fieldName) || parameterName}'`,
+			`Invalid input for '${
+				String(validationResult.fieldName) || parameterName
+			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
 				failExecution: true,
