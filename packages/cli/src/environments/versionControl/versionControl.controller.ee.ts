@@ -4,12 +4,13 @@ import { VersionControlService } from './versionControl.service.ee';
 import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { BadRequestError } from '@/ResponseHelper';
-import type { DiffResult, PullResult, PushResult, StatusResult } from 'simple-git';
+import type { PullResult, PushResult, StatusResult } from 'simple-git';
 import { AuthenticatedRequest } from '../../requests';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
+import type { VersionControlledFile } from './types/versionControlledFile';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -105,7 +106,7 @@ export class VersionControlController {
 	async pushWorkfolder(
 		req: VersionControlRequest.PushWorkFolder,
 		res: express.Response,
-	): Promise<PushResult | DiffResult> {
+	): Promise<PushResult | VersionControlledFile[]> {
 		try {
 			const result = await this.versionControlService.pushWorkfolder(req.body);
 			if ((result as PushResult).pushed) {
@@ -124,7 +125,7 @@ export class VersionControlController {
 	async pullWorkfolder(
 		req: VersionControlRequest.PullWorkFolder,
 		res: express.Response,
-	): Promise<DiffResult | ImportResult | PullResult | undefined> {
+	): Promise<VersionControlledFile[] | ImportResult | PullResult | undefined> {
 		try {
 			const result = await this.versionControlService.pullWorkfolder({
 				force: req.body.force,
