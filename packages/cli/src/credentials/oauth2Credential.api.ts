@@ -1,5 +1,5 @@
-import type { ClientOAuth2Options } from '@n8n_io/client-oauth2';
-import { ClientOAuth2 } from '@n8n_io/client-oauth2';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
 import get from 'lodash.get';

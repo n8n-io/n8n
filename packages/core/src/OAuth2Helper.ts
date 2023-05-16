@@ -1,5 +1,5 @@
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2Token } from '@n8n_io/client-oauth2';
+import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2Token } from '@n8n/client-oauth2';
 
 export const getClientCredentialsToken = async (
 	oAuth2Client: ClientOAuth2,

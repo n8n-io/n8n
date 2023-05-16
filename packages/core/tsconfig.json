@@ -16,6 +16,6 @@
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"references": [
 		{ "path": "../workflow/tsconfig.build.json" },
-		{ "path": "../@n8n_io/client-oauth2/tsconfig.build.json" }
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
 	]
 }

@@ -137,7 +137,7 @@ importers:
         specifier: ^1.0.24
         version: 1.0.24(typescript@5.0.3)
 
-  packages/@n8n_io/client-oauth2:
+  packages/@n8n/client-oauth2:
     dependencies:
       axios:
         specifier: ^0.21.1
@@ -193,9 +193,9 @@ importers:
 
   packages/cli:
     dependencies:
-      '@n8n_io/client-oauth2':
+      '@n8n/client-oauth2':
         specifier: workspace:*
-        version: link:../@n8n_io/client-oauth2
+        version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
         specifier: ~2.4.0
         version: 2.4.0
@@ -632,9 +632,9 @@ importers:
 
   packages/core:
     dependencies:
-      '@n8n_io/client-oauth2':
+      '@n8n/client-oauth2':
         specifier: workspace:*
-        version: link:../@n8n_io/client-oauth2
+        version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
         version: 0.21.4(debug@4.3.2)

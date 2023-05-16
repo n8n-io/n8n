@@ -86,8 +86,8 @@ import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
 	ClientOAuth2TokenData,
-} from '@n8n_io/client-oauth2';
-import { ClientOAuth2 } from '@n8n_io/client-oauth2';
+} from '@n8n/client-oauth2';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
