@@ -171,8 +171,8 @@ import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 
@@ -423,7 +423,7 @@ export default mixins(externalHooks).extend({
 					...mappingTelemetry,
 				};
 
-				this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

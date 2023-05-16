@@ -379,7 +379,6 @@ import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
@@ -388,22 +387,16 @@ import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-	debounceHelper,
-).extend({
+export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelper).extend({
 	name: 'parameter-input',
 	components: {
 		CodeNodeEditor,
@@ -522,7 +515,7 @@ export default mixins(
 		dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			void this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -744,7 +737,7 @@ export default mixins(
 		},
 		editorLanguage(): CodeNodeEditorLanguage {
 			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
-			return 'javaScript';
+			return (this.getArgument('editorLanguage') as CodeNodeEditorLanguage) ?? 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -836,7 +829,7 @@ export default mixins(
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		/**
 		 * Check whether a param value must be skipped when collecting node param issues for validation.
@@ -1116,7 +1109,7 @@ export default mixins(
 
 					resourceLocatorRef?.$emit('refreshList');
 				}
-				this.loadRemoteParameterOptions();
+				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
 				htmlEditorEventBus.emit('format-html');
 			}
@@ -1132,7 +1125,7 @@ export default mixins(
 					had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
 				};
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
-				this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
+				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
 		},
 	},
@@ -1141,7 +1134,7 @@ export default mixins(
 			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 			if (remoteParameterOptions.length > 0) {
-				this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
 			}
 		});
 	},
@@ -1175,13 +1168,13 @@ export default mixins(
 			this.$watch(
 				() => this.node!.credentials,
 				() => {
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				},
 				{ deep: true, immediate: true },
 			);
 		}
 
-		this.$externalHooks().run('parameterInput.mount', {
+		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});

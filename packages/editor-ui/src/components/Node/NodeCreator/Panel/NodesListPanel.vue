@@ -3,7 +3,7 @@ import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue
 import type { INodeCreateElement } from '@/Interface';
 import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';
@@ -36,19 +36,19 @@ const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
-		setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+		void setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
 	}
 }
 
 function onTransitionEnd() {
 	// For actions, set the active focus to the first action, not category
 	const newStackIndex = activeViewStack.value.mode === 'actions' ? 1 : 0;
-	setActiveItemIndex(activeViewStack.value.activeIndex || 0 || newStackIndex);
+	void setActiveItemIndex(activeViewStack.value.activeIndex || 0 || newStackIndex);
 }
 
 onMounted(() => {
 	attachKeydownEvent();
-	setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+	void setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
 });
 
 onUnmounted(() => {

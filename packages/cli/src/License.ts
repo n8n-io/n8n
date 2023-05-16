@@ -132,6 +132,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
 	}
 
+	isAPIDisabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -168,8 +172,7 @@ export class License {
 		}
 
 		return entitlements.find(
-			(entitlement) =>
-				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
+			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
 		);
 	}
 
