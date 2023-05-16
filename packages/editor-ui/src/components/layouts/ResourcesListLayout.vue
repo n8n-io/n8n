@@ -300,7 +300,7 @@ export default mixins(debounceHelper).extend({
 		typeProps: {
 			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
 			default: () => ({
-				itemSize: 0,
+				itemSize: 80,
 			}),
 		},
 	},
