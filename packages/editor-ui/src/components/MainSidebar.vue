@@ -48,21 +48,34 @@
 					</div>
 					<div :class="$style.sync" v-if="versionControlStore.preferences.connected">
 						<span>
-							<n8n-icon icon="code-branch" class="mr-xs" />
+							<n8n-icon icon="code-branch" />
 							{{ currentBranch }}
 						</span>
-						<n8n-button
-							:title="
-								$locale.baseText('settings.versionControl.sync.prompt.title', {
-									interpolate: { branch: currentBranch },
-								})
-							"
-							icon="sync"
-							type="tertiary"
-							:size="isCollapsed ? 'mini' : 'small'"
-							square
-							@click="sync"
-						/>
+						<div :class="{ 'pt-xs': !isCollapsed }">
+							<n8n-button
+								:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }"
+								icon="arrow-down"
+								type="tertiary"
+								size="mini"
+								:square="isCollapsed"
+								@click="pullWorkfolder"
+							>
+								<span v-if="!isCollapsed">{{
+									$locale.baseText('settings.versionControl.button.pull')
+								}}</span>
+							</n8n-button>
+							<n8n-button
+								:square="isCollapsed"
+								icon="arrow-up"
+								type="tertiary"
+								size="mini"
+								@click="pushWorkfolder"
+							>
+								<span v-if="!isCollapsed">{{
+									$locale.baseText('settings.versionControl.button.push')
+								}}</span>
+							</n8n-button>
+						</div>
 					</div>
 				</div>
 			</template>
@@ -500,7 +513,7 @@ export default defineComponent({
 				});
 			}
 		},
-		async sync() {
+		async pushWorkfolder() {
 			const prompt = (await this.prompt(
 				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
 					interpolate: { branch: this.versionControlStore.state.currentBranch },
@@ -520,8 +533,11 @@ export default defineComponent({
 			)) as MessageBoxInputData;
 
 			if (prompt.value) {
-				await this.versionControlStore.sync({ commitMessage: prompt.value });
+				await this.versionControlStore.pushWorkfolder({ commitMessage: prompt.value });
 			}
+		},
+		async pullWorkfolder() {
+			await this.versionControlStore.pullWorkfolder();
 		},
 	},
 });
@@ -640,9 +656,6 @@ export default defineComponent({
 }
 
 .sync {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
 	margin: 0 calc(var(--spacing-l) * -1) calc(var(--spacing-m) * -1);
 	background: var(--color-background-light);
@@ -650,12 +663,17 @@ export default defineComponent({
 	font-size: var(--font-size-2xs);
 
 	span {
-		color: var(--color-text-light);
+		color: var(--color-text-base);
+	}
+
+	button {
+		font-size: var(--font-size-3xs);
 	}
 
 	.sideMenuCollapsed & {
-		justify-content: center;
+		text-align: center;
 		margin-left: calc(var(--spacing-xl) * -1);
+
 		> span {
 			display: none;
 		}

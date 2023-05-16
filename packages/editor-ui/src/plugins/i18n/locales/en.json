@@ -1322,6 +1322,8 @@
 	"settings.versionControl.sync.prompt.description": "All the changes on your n8n instances will be synced with branch {branch} on the remote git repository. The following git sequence will be executed: pull > commit > push.",
 	"settings.versionControl.sync.prompt.placeholder": "Commit message",
 	"settings.versionControl.sync.prompt.error": "Please enter a commit message",
+	"settings.versionControl.button.push": "Push",
+	"settings.versionControl.button.pull": "Pull",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",
