@@ -58,18 +58,23 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import type { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsPersonalView',
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			hasAnyChanges: false,
@@ -154,14 +159,14 @@ export default mixins(showMessage).extend({
 					lastName: form.lastName,
 					email: form.email,
 				});
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
 					message: '',
 					type: 'success',
 				});
 				this.hasAnyChanges = false;
 			} catch (e) {
-				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
+				this.showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
 			}
 		},
 		onSaveClick() {

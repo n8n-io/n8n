@@ -1034,6 +1034,8 @@
 	"pushConnection.pollingNode.dataNotFound.message": "We didn’t find any data in {service} to simulate an event. Please create one in {service} and try again.",
 	"pushConnection.executionFailed": "Execution failed",
 	"pushConnection.executionFailed.message": "There might not be enough memory to finish the execution. Tips for avoiding this <a target=\"_blank\" href=\"https://docs.n8n.io/flow-logic/error-handling/memory-errors/\">here</a>",
+    "pushConnection.executionError": "There was a problem executing the workflow{error}",
+	"pushConnection.executionError.details": "<br /><strong>{details}</strong>",
 	"resourceLocator.id.placeholder": "Enter ID...",
 	"resourceLocator.mode.id": "By ID",
 	"resourceLocator.mode.url": "By URL",
@@ -1245,6 +1247,9 @@
 	"settings.log-streaming.destinationDelete.message": "Are you sure that you want to delete '{destinationName}'?",
 	"settings.log-streaming.addDestination": "Add new destination",
 	"settings.log-streaming.destinations": "Log destinations",
+	"settings.api.trial.upgradePlan.title": "Upgrade to use API",
+	"settings.api.trial.upgradePlan.description": "To prevent abuse, we limit API access to your workspace during your trial. If this is hindering your evaluation of n8n, please contact <a href=\"mailto:support@n8n.io\">support@n8n.io</a>",
+	"settings.api.trial.upgradePlan.cta": "Upgrade plan",
 	"settings.api.create.description": "Control n8n programmatically using the <a href=\"https://docs.n8n.io/api\" target=\"_blank\">n8n API</a>",
 	"settings.api.create.button": "Create an API Key",
 	"settings.api.create.button.loading": "Creating API Key...",
@@ -1821,5 +1826,12 @@
 	"userActivationSurveyModal.sharedFeedback.success": "Thanks for your feedback",
 	"userActivationSurveyModal.sharedFeedback.error": "Problem sharing feedback, try again",
 	"sso.login.divider": "or",
-	"sso.login.button": "Continue with SSO"
+	"sso.login.button": "Continue with SSO",
+	"executionUsage.currentUsage": "{text} {count}",
+	"executionUsage.currentUsage.text": "You are in a free trial with limited executions. You have",
+	"executionUsage.currentUsage.count": "{n} day left. | {n} days left.",
+	"executionUsage.label.executions": "Executions",
+	"executionUsage.button.upgrade": "Upgrade plan",
+	"executionUsage.expired.text": "You're trial is over. Upgrade now to keep your automation data",
+	"executionUsage.ranOutOfExecutions.text": "You’re out of executions. Upgrade your plan to keep automating."
 }

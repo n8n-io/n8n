@@ -19,18 +19,19 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
-export default mixins(nodeHelpers).extend({
+export default defineComponent({
 	name: 'BinaryDataDisplay',
+	mixins: [nodeHelpers],
 	components: {
 		BinaryDataDisplayEmbed,
 	},

@@ -56,17 +56,18 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import type { IN8nPromptResponse } from '@/Interface';
 
-import ModalDrawer from './ModalDrawer.vue';
+import ModalDrawer from '@/components/ModalDrawer.vue';
 
-import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
+import { useToast } from '@/composables';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
 const GREAT_FEEDBACK_TITLE =
@@ -74,11 +75,17 @@ const GREAT_FEEDBACK_TITLE =
 const DEFAULT_FEEDBACK_TITLE =
 	"Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?";
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'ValueSurvey',
+	mixins: [workflowHelpers],
 	props: ['isActive'],
 	components: {
 		ModalDrawer,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	watch: {
 		isActive(isActive) {
@@ -164,7 +171,7 @@ export default mixins(workflowHelpers).extend({
 						instance_id: this.rootStore.instanceId,
 						email: this.form.email,
 					});
-					this.$showMessage({
+					this.showMessage({
 						title: 'Thanks for your feedback',
 						message:
 							'If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.',

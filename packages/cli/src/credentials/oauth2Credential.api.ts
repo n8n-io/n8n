@@ -12,7 +12,7 @@ import type {
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
 } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, jsonStringify } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
 import * as Db from '@/Db';
@@ -173,8 +173,8 @@ oauth2CredentialController.get(
 	}),
 );
 
-const renderCallbackError = (res: express.Response, errorMessage: string) =>
-	res.render('oauth-error-callback', { error: { message: errorMessage } });
+const renderCallbackError = (res: express.Response, message: string, reason?: string) =>
+	res.render('oauth-error-callback', { error: { message, reason } });
 
 /**
  * GET /oauth2-credential/callback
@@ -192,9 +192,8 @@ oauth2CredentialController.get(
 			if (!code || !stateEncoded) {
 				return renderCallbackError(
 					res,
-					`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
-						req.query,
-					)}`,
+					'Insufficient parameters for OAuth2 callback.',
+					`Received following query parameters: ${JSON.stringify(req.query)}`,
 				);
 			}
 
@@ -326,7 +325,12 @@ oauth2CredentialController.get(
 
 			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 		} catch (error) {
-			return renderCallbackError(res, (error as Error).message);
+			return renderCallbackError(
+				res,
+				(error as Error).message,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				'body' in error ? jsonStringify(error.body) : undefined,
+			);
 		}
 	},
 );

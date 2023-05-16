@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
@@ -39,8 +39,9 @@ import { theme } from './theme';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
 
-export default mixins(expressionManager).extend({
+export default defineComponent({
 	name: 'HtmlEditor',
+	mixins: [expressionManager],
 	props: {
 		html: {
 			type: String,

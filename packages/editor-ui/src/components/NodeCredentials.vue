@@ -97,7 +97,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import type {
 	ICredentialsResponse,
 	INodeUi,
@@ -115,12 +117,9 @@ import type {
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
 import TitledList from '@/components/TitledList.vue';
-
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -141,8 +140,9 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers, showMessage).extend({
+export default defineComponent({
 	name: 'NodeCredentials',
+	mixins: [genericHelpers, nodeHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
@@ -166,6 +166,11 @@ export default mixins(genericHelpers, nodeHelpers, showMessage).extend({
 	},
 	components: {
 		TitledList,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -452,7 +457,7 @@ export default mixins(genericHelpers, nodeHelpers, showMessage).extend({
 					type: selectedCredentialsType,
 				});
 				this.updateNodesCredentialsIssues();
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
 					message: this.$locale.baseText('nodeCredentials.showMessage.message', {
 						interpolate: {
