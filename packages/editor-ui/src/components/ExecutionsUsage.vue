@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div v-if="isTrialExpired" :class="$style.usageText">
-			<n8n-text size="xsmall" color="danger">
+			<n8n-text size="small" color="danger">
 				{{ locale.baseText('executionUsage.expired.text') }}
 			</n8n-text>
 		</div>
@@ -24,7 +24,7 @@
 			</i18n>
 		</div>
 		<div v-else-if="!trialHasExecutionsLeft" :class="$style.usageText">
-			<n8n-text size="xsmall">
+			<n8n-text size="small">
 				{{ locale.baseText('executionUsage.ranOutOfExecutions.text') }}
 			</n8n-text>
 		</div>

@@ -1034,7 +1034,7 @@
 	"pushConnection.pollingNode.dataNotFound.message": "We didn’t find any data in {service} to simulate an event. Please create one in {service} and try again.",
 	"pushConnection.executionFailed": "Execution failed",
 	"pushConnection.executionFailed.message": "There might not be enough memory to finish the execution. Tips for avoiding this <a target=\"_blank\" href=\"https://docs.n8n.io/flow-logic/error-handling/memory-errors/\">here</a>",
-    "pushConnection.executionError": "There was a problem executing the workflow{error}",
+	"pushConnection.executionError": "There was a problem executing the workflow{error}",
 	"pushConnection.executionError.details": "<br /><strong>{details}</strong>",
 	"resourceLocator.id.placeholder": "Enter ID...",
 	"resourceLocator.mode.id": "By ID",
@@ -1832,6 +1832,6 @@
 	"executionUsage.currentUsage.count": "{n} day left. | {n} days left.",
 	"executionUsage.label.executions": "Executions",
 	"executionUsage.button.upgrade": "Upgrade plan",
-	"executionUsage.expired.text": "You're trial is over. Upgrade now to keep your automation data",
+	"executionUsage.expired.text": "Your trial is over. Upgrade now to keep your data.",
 	"executionUsage.ranOutOfExecutions.text": "You’re out of executions. Upgrade your plan to keep automating."
 }
