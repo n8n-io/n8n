@@ -53,7 +53,10 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 			} catch (error) {
 				await savePreferences({});
 			}
-		if (data.connected) await getBranches();
+
+		if (data.connected) {
+			await getBranches();
+		}
 	};
 
 	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
