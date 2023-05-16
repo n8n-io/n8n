@@ -76,7 +76,6 @@
     "vue-infinite-loading": "^2.4.5",
     "vue-json-pretty": "1.9.3",
     "vue-router": "^3.6.5",
-    "vue-typed-mixins": "^0.2.0",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
     "xss": "^1.0.14"

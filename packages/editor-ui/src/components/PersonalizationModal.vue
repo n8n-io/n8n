@@ -36,7 +36,8 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 const SURVEY_VERSION = 'v4';
 
@@ -130,16 +131,16 @@ import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
 import { getAccountAge } from '@/utils';
 import type { GenericValue } from 'n8n-workflow';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(workflowHelpers).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'PersonalizationModal',
+	mixins: [workflowHelpers],
+	components: { Modal },
 	data() {
 		return {
 			isSaving: false,

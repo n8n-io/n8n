@@ -280,7 +280,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
@@ -299,15 +300,14 @@ import type {
 } from '@/Interface';
 import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty, setPageTitle } from '@/utils';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 
-export default mixins(externalHooks, genericHelpers, executionHelpers).extend({
+export default defineComponent({
 	name: 'ExecutionsList',
+	mixins: [externalHooks, genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
 		WorkflowActivator,

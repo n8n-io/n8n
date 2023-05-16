@@ -738,9 +738,6 @@ importers:
       vue:
         specifier: ^2.7.14
         version: 2.7.14
-      vue-typed-mixins:
-        specifier: ^0.2.0
-        version: 0.2.0
       vue2-boring-avatars:
         specifier: ^0.3.8
         version: 0.3.8
@@ -970,9 +967,6 @@ importers:
       vue-router:
         specifier: ^3.6.5
         version: 3.6.5(vue@2.7.14)
-      vue-typed-mixins:
-        specifier: ^0.2.0
-        version: 0.2.0
       vue2-teleport:
         specifier: ^1.0.1
         version: 1.0.1
@@ -22819,10 +22813,6 @@ packages:
       '@volar/vue-typescript': 1.0.24
       typescript: 5.0.3
     dev: true
-
-  /vue-typed-mixins@0.2.0:
-    resolution: {integrity: sha512-0OxuinandPWv3nm5k/reYkuKtX3jjPZ40Sy9roJz0ih8PUzmI7zSRiXFEJ62LsyRegw9Tqy+qMkajk7ipKP8Vg==}
-    dev: false
 
   /vue2-boring-avatars@0.3.8:
     resolution: {integrity: sha512-8vNN+zhCIiIMnSQDu0DwhJ11e9r3t4t12dromXmXDtRryBhV58NPn4XgMb4JKrBlfNK92KFrY/cxRy3nzhQfpQ==}

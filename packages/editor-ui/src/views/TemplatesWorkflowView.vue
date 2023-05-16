@@ -55,20 +55,22 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import type { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesWorkflowView',
+	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplatesView,

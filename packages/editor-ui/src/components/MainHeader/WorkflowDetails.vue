@@ -123,7 +123,9 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -150,7 +152,6 @@ import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '
 import { saveAs } from 'file-saver';
 import { useTitleChange, useToast, useMessage } from '@/composables';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -171,8 +172,9 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((accu, val) => accu || !set.has(val), false);
 };
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'WorkflowDetails',
+	mixins: [workflowHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
