@@ -160,12 +160,13 @@ import {
 	updateNodeAuthType,
 	isCredentialModalState,
 } from '@/utils';
+import { externalHooks } from '@/mixins/externalHooks';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
 }
 
-export default mixins(nodeHelpers).extend({
+export default mixins(nodeHelpers, externalHooks).extend({
 	name: 'CredentialEdit',
 	components: {
 		CredentialSharing,
@@ -527,7 +528,7 @@ export default mixins(nodeHelpers).extend({
 						),
 					},
 				);
-				keepEditing = confirmAction === MODAL_CONFIRM;
+				keepEditing = confirmAction !== MODAL_CONFIRM;
 			}
 
 			if (!keepEditing) {

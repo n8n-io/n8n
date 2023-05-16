@@ -45,7 +45,6 @@ import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
 import { mapStores } from 'pinia';
@@ -62,6 +61,7 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import type { ICredentialsResponse } from '@/Interface';
 import { useEnvironmentsStore } from '@/stores';
+import { defineComponent } from 'vue';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -321,7 +321,8 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers],
 	setup() {
 		return {
 			...useToast(),
@@ -731,7 +732,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -895,7 +896,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;

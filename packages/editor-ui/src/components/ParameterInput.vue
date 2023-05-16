@@ -829,7 +829,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		/**
 		 * Check whether a param value must be skipped when collecting node param issues for validation.
@@ -1125,7 +1125,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 					had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
 				};
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
-				this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
+				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
 		},
 	},
@@ -1134,7 +1134,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 			if (remoteParameterOptions.length > 0) {
-				this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
 			}
 		});
 	},
@@ -1174,7 +1174,7 @@ export default mixins(externalHooks, nodeHelpers, workflowHelpers, debounceHelpe
 			);
 		}
 
-		this.$externalHooks().run('parameterInput.mount', {
+		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});

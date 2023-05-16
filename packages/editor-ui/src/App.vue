@@ -26,9 +26,8 @@
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
 import { useGlobalLinkActions, useToast } from '@/composables';
@@ -39,23 +38,30 @@ import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCloudPlanStore } from './stores/cloudPlan.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useExternalHooks } from '@/composables';
+import { defineComponent } from 'vue';
 
-export default mixins(newVersions, userHelpers).extend({
+export default defineComponent({
 	name: 'App',
 	components: {
 		LoadingView,
 		Telemetry,
 		Modals,
 	},
-	setup() {
+	mixins: [newVersions, userHelpers],
+	setup(props) {
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
+			externalHooks: useExternalHooks(),
+			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
@@ -67,6 +73,8 @@ export default mixins(newVersions, userHelpers).extend({
 			useUIStore,
 			useUsersStore,
 			useVersionControlStore,
+			useCloudPlanStore,
+			useUsageStore,
 		),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
@@ -177,6 +185,25 @@ export default mixins(newVersions, userHelpers).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
+		async checkForCloudPlanData(): Promise<void> {
+			try {
+				await this.cloudPlanStore.getOwnerCurrentPLan();
+				if (!this.cloudPlanStore.userIsTrialing) return;
+				await this.cloudPlanStore.getInstanceCurrentUsage();
+				this.startPollingInstanceUsageData();
+			} catch {}
+		},
+		startPollingInstanceUsageData() {
+			const interval = setInterval(async () => {
+				try {
+					await this.cloudPlanStore.getInstanceCurrentUsage();
+					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
+						clearTimeout(interval);
+						return;
+					}
+				} catch {}
+			}, CLOUD_TRIAL_CHECK_INTERVAL);
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -184,7 +211,8 @@ export default mixins(newVersions, userHelpers).extend({
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
-		this.checkForNewVersions();
+		void this.checkForNewVersions();
+		void this.checkForCloudPlanData();
 
 
 		if (
@@ -197,7 +225,7 @@ export default mixins(newVersions, userHelpers).extend({
 		this.loading = false;
 
 		this.trackPage();
-		this.$externalHooks().run('app.mount');
+		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();

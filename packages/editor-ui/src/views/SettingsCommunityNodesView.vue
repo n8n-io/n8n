@@ -60,24 +60,26 @@ import {
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables';
 import { pushConnection } from '@/mixins/pushConnection';
-import mixins from 'vue-typed-mixins';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
+import { defineComponent } from 'vue';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default mixins(pushConnection).extend({
+export default defineComponent({
 	name: 'SettingsCommunityNodesView',
+	mixins: [pushConnection],
 	components: {
 		CommunityPackageCard,
 	},
-	setup() {
+	setup(props) {
 		return {
 			...useToast(),
+			...pushConnection.setup?.(props),
 		};
 	},
 	data() {

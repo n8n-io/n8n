@@ -7,14 +7,15 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 
-export const workflowRun = mixins(externalHooks, workflowHelpers).extend({
+export const workflowRun = defineComponent({
+	mixins: [externalHooks, workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
@@ -114,7 +115,7 @@ export const workflowRun = mixins(externalHooks, workflowHelpers).extend({
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
+						void this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
 
 						await this.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
