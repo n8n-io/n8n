@@ -325,6 +325,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -344,11 +346,8 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
-
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -356,8 +355,9 @@ import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(externalHooks, genericHelpers).extend({
+export default defineComponent({
 	name: 'WorkflowSettings',
+	mixins: [externalHooks, genericHelpers],
 	components: {
 		Modal,
 	},

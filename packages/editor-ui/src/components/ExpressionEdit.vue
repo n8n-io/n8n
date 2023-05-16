@@ -74,6 +74,8 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
@@ -85,17 +87,16 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 
-export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'ExpressionEdit',
+	mixins: [externalHooks, genericHelpers, debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
 		ExpressionEditorModalInput,

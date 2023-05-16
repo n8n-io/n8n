@@ -25,6 +25,12 @@
 					/>
 				</div>
 			</template>
+
+			<template #beforeLowerMenu>
+				<ExecutionsUsage
+					:cloud-plan-data="currentPlanAndUsageData"
+					v-if="!isCollapsed && userIsTrialing"
+			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
@@ -110,7 +116,7 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
@@ -132,11 +138,14 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
+		ExecutionsUsage,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
 	setup(props) {
@@ -147,7 +156,6 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			// @ts-ignore
 			basePath: '',
 			fullyExpanded: false,
 		};
@@ -161,6 +169,7 @@ export default defineComponent({
 			useVersionsStore,
 			useWorkflowsStore,
 			useVersionControlStore,
+			useCloudPlanStore,
 		),
 		currentBranch(): string {
 			return this.versionControlStore.state.currentBranch;
@@ -322,6 +331,18 @@ export default defineComponent({
 				},
 			];
 			return [...items, ...regularItems];
+		},
+		userIsTrialing(): boolean {
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
+			const planData = this.cloudPlanStore.currentPlanData;
+			const usage = this.cloudPlanStore.currentUsageData;
+			if (!planData || !usage) return null;
+			return {
+				...planData,
+				usage,
+			};
 		},
 	},
 	async mounted() {

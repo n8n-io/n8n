@@ -58,6 +58,7 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
@@ -65,10 +66,9 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
-
-export default mixins(copyPaste, workflowHelpers).extend({
+export default defineComponent({
 	name: 'NodeWebhooks',
+	mixins: [copyPaste, workflowHelpers],
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription

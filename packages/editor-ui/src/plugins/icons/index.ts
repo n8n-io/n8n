@@ -129,6 +129,7 @@ import {
 	faTree,
 	faStickyNote as faSolidStickyNote,
 	faUserLock,
+	faGem,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -266,5 +267,6 @@ addIcon(faVariable);
 addIcon(faVideo);
 addIcon(faTree);
 addIcon(faUserLock);
+addIcon(faGem);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

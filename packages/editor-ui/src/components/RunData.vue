@@ -464,8 +464,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
 import type {
 	IBinaryData,
@@ -510,7 +511,6 @@ import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
@@ -524,8 +524,9 @@ export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
 };
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).extend({
+export default defineComponent({
 	name: 'RunData',
+	mixins: [externalHooks, genericHelpers, nodeHelpers, pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
