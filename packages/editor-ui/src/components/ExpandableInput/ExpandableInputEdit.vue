@@ -22,8 +22,8 @@ import type { PropType } from 'vue';
 import type { EventBus } from '@/event-bus';
 
 export default defineComponent({
-	components: { ExpandableInputBase },
 	name: 'ExpandableInputEdit',
+	components: { ExpandableInputBase },
 	props: {
 		value: {},
 		placeholder: {},

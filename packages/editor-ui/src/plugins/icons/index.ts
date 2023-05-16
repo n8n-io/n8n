@@ -104,6 +104,7 @@ import {
 	faSignOutAlt,
 	faSlidersH,
 	faSpinner,
+	faStar,
 	faStop,
 	faSun,
 	faSync,
@@ -127,6 +128,7 @@ import {
 	faTree,
 	faStickyNote as faSolidStickyNote,
 	faUserLock,
+	faGem,
 	faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable } from './custom';
@@ -241,6 +243,7 @@ addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);
 addIcon(faStickyNote as IconDefinition);
+addIcon(faStar);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
@@ -264,5 +267,6 @@ addIcon(faVariable);
 addIcon(faVideo);
 addIcon(faTree);
 addIcon(faUserLock);
+addIcon(faGem);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

@@ -9,20 +9,24 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { useToast } from '@/composables';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
-export default mixins(showMessage, genericHelpers).extend({
+export default defineComponent({
 	name: 'SigninView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -95,7 +99,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					return;
 				}
 
-				this.$router.push({ name: VIEWS.HOMEPAGE });
+				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
 					this.$router.push({
@@ -109,7 +113,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					result: 'credentials_error',
 				});
 
-				this.$showError(error, this.$locale.baseText('auth.signin.error'));
+				this.showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;
 			}
 		},

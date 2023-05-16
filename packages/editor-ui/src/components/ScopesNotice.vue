@@ -3,9 +3,9 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
 export default defineComponent({
 	name: 'ScopesNotice',

@@ -75,10 +75,12 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
-import TemplatesView from './TemplatesView.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type {
@@ -87,16 +89,15 @@ import type {
 	ITemplatesQuery,
 	ITemplatesCategory,
 } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables';
 
 interface ISearchEvent {
 	search_string: string;
@@ -106,13 +107,19 @@ interface ISearchEvent {
 	wf_template_repo_session_id: string;
 }
 
-export default mixins(genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'TemplatesSearchView',
+	mixins: [genericHelpers, debounceHelper],
 	components: {
 		CollectionsCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -186,12 +193,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				void this.$router.push({ name: page, params: { id } });
 			}
 		},
 		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
-			this.loadWorkflowsAndCollections(false);
+			void this.loadWorkflowsAndCollections(false);
 		},
 		updateSearchTracking(search: string, categories: number[]) {
 			if (!search) {
@@ -222,13 +229,13 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 		openNewWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
 
 			if (search.length === 0) {
 				this.trackSearch();
@@ -274,7 +281,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				delete query.search;
 			}
 
-			this.$router.replace({ query });
+			void this.$router.replace({ query });
 		},
 		async onLoadMore() {
 			if (this.workflows.length >= this.totalWorkflows) {
@@ -287,7 +294,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 					search: this.search,
 				});
 			} catch (e) {
-				this.$showMessage({
+				this.showMessage({
 					title: 'Error',
 					message: 'Could not load more workflows',
 					type: 'error',
@@ -372,9 +379,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
-		this.loadCategories();
-		this.loadWorkflowsAndCollections(true);
-		this.usersStore.showPersonalizationSurvey();
+		void this.loadCategories();
+		void this.loadWorkflowsAndCollections(true);
+		void this.usersStore.showPersonalizationSurvey();
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
