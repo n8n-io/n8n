@@ -1,7 +1,7 @@
-import { MAIN_AUTH_FIELD_NAME } from './../constants';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from './../stores/nodeTypes';
-import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
+import type { INodeCredentialDescription } from 'n8n-workflow';
+import { MAIN_AUTH_FIELD_NAME } from '@/constants';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	CORE_NODES_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
@@ -24,7 +24,7 @@ import type {
 	INodePropertyCollection,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { i18n as locale } from '@/plugins/i18n';
 
 /*

@@ -34,15 +34,15 @@ import type { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import type { RouteConfigSingleView } from 'vue-router/types/router';
 import { TEMPLATE_EXPERIMENT, VIEWS } from './constants';
-import { useSettingsStore } from './stores/settings';
-import { useTemplatesStore } from './stores/templates';
-import { useSSOStore } from './stores/sso';
+import { useSettingsStore } from './stores/settings.store';
+import { useTemplatesStore } from './stores/templates.store';
+import { useSSOStore } from './stores/sso.store';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsVersionControl from './views/SettingsVersionControl.vue';
-import { usePostHog } from './stores/posthog';
+import { usePostHog } from './stores/posthog.store';
 
 Vue.use(Router);
 
@@ -626,7 +626,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment;
+								return settingsStore.isDesktopDeployment;
 							},
 						},
 					},

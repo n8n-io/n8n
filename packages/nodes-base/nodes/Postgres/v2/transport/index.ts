@@ -47,6 +47,15 @@ async function configurePostgres(
 ) {
 	const pgp = pgPromise();
 
+	if (typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
+		// Always return dates as ISO strings
+		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
+			pgp.pg.types.setTypeParser(type, (value: string) => {
+				return new Date(value).toISOString();
+			});
+		});
+	}
+
 	if (options.largeNumbersOutput === 'numbers') {
 		pgp.pg.types.setTypeParser(20, (value: string) => {
 			return parseInt(value, 10);

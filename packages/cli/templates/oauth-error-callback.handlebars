@@ -3,17 +3,21 @@
 		<title>n8n - OAuth Callback</title>
 		<style>
 			body { font-family: 'Open Sans', sans-serif; padding: 10px;}
-			pre.error { background: #f7f7f7; border: 1px solid #ddd; border-radius: 3px; padding: 10px; overflow: auto; overflow-wrap: break-word; white-space: pre-wrap; }
+			details.error { margin-bottom: 20px; }
+			pre.reason { background: #f7f7f7; border: 1px solid #ddd; border-radius: 3px; padding: 10px; overflow: auto; overflow-wrap: break-word; white-space: pre-wrap;}
 		</style>
 	</head>
 	<body>
 		{{#if error}}
-			<h4>Error:</h4>
-			<pre class='error'>{{error.message}}</pre>
+			<h4>Error: {{error.message}}</h4>
+			<details class='error'>
+				<summary>More details</summary>
+				{{#if error.reason}}<pre class="reason">{{error.reason}}</pre>{{/if}}
+				</details>
 		{{/if}}
-					Failed to connect. The window can be closed now.
+		Failed to connect. The window can be closed now.
 		<script>
-			(function messageParent() { window.opener.postMessage('error', '*'); })();
+			(function messageParent() { window.opener?.postMessage('error', '*'); })();
 		</script>
 	</body>
 </html>

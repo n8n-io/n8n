@@ -1,11 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import SettingsSso from '@/views/SettingsSso.vue';
-import { useSSOStore } from '@/stores/sso';
+
 import { renderComponent, retry } from '@/__tests__/utils';
 import { setupServer } from '@/__tests__/server';
 import { afterAll, beforeAll } from 'vitest';
 import { useSettingsStore } from '@/stores';
 import userEvent from '@testing-library/user-event';
+import { useSSOStore } from '@/stores/sso.store';
 import { i18nInstance } from '@/plugins/i18n';
 
 let pinia: ReturnType<typeof createPinia>;

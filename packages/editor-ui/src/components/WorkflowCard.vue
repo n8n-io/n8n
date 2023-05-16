@@ -62,24 +62,25 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast, useMessage } from '@/composables';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type ActivatorRef = InstanceType<typeof WorkflowActivator>;
 
@@ -90,10 +91,16 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	data() {
 		return {
 			EnterpriseEditionFeature,
+		};
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
 		};
 	},
 	components: {
@@ -181,7 +188,7 @@ export default mixins(showMessage).extend({
 				}
 			}
 
-			this.$router.push({
+			await this.$router.push({
 				name: VIEWS.WORKFLOW,
 				params: { name: this.data.id },
 			});
@@ -218,29 +225,35 @@ export default mixins(showMessage).extend({
 					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirmMessage(
+				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
 						interpolate: { workflowName: this.data.name },
 					}),
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-					'warning',
-					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
-					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
+					{
+						type: 'warning',
+						confirmButtonText: this.$locale.baseText(
+							'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+						),
+					},
 				);
 
-				if (deleteConfirmed === false) {
+				if (deleteConfirmed !== MODAL_CONFIRM) {
 					return;
 				}
 
 				try {
 					await this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
-					this.$showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
+					this.showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 					return;
 				}
 
 				// Reset tab title since workflow is deleted.
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 					type: 'success',
 				});

@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
-	name = 'AddAPIKeyColumn1652905585850';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' + tablePrefix + 'user` ADD COLUMN `apiKey` VARCHAR(255)',
 		);
@@ -19,8 +14,7 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`DROP INDEX \`UQ_${tablePrefix}ie0zomxves9w3p774drfrkxtj5\` ON \`${tablePrefix}user\``,
 		);
