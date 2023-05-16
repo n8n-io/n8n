@@ -21,6 +21,7 @@
 	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso/saml/saml-schema-metadata-2.0.xsd"],
 	"references": [
 		{ "path": "../workflow/tsconfig.build.json" },
-		{ "path": "../core/tsconfig.build.json" }
+		{ "path": "../core/tsconfig.build.json" },
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
 	]
 }
