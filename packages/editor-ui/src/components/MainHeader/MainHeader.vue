@@ -15,6 +15,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import type { Route } from 'vue-router';
+import { mapStores } from 'pinia';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -26,11 +29,8 @@ import {
 } from '@/constants';
 import type { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import type { Route } from 'vue-router';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'MainHeader',

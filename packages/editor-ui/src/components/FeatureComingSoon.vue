@@ -29,13 +29,13 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { IFakeDoor } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'FeatureComingSoon',

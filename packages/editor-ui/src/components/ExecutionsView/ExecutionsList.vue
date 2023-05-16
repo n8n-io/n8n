@@ -23,6 +23,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import {
 	MAIN_HEADER_TABS,
@@ -48,7 +51,6 @@ import type {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
 import { useToast, useMessage } from '@/composables';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
@@ -57,7 +59,6 @@ import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
 import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -70,8 +71,9 @@ const MAX_LOADING_ATTEMPTS = 5;
 // Number of executions fetched on each page
 const LOAD_MORE_PAGE_SIZE = 100;
 
-export default mixins(executionHelpers, debounceHelper, workflowHelpers).extend({
+export default defineComponent({
 	name: 'executions-list',
+	mixins: [executionHelpers, debounceHelper, workflowHelpers],
 	components: {
 		ExecutionsSidebar,
 	},

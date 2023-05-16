@@ -1,10 +1,12 @@
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/utils/nodeViewUtils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 
-export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
+export const moveNodeWorkflow = defineComponent({
+	mixins: [deviceSupportHelpers],
 	data() {
 		return {
 			moveLastPosition: [0, 0],
