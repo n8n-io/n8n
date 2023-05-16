@@ -4,22 +4,31 @@ import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useMessage } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
+import { Notification } from 'element-ui';
 
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
 const message = useMessage();
 
-const onContinue = () => {
-	void versionControlStore.savePreferences({
-		authorName: versionControlStore.preferences.authorName,
-		authorEmail: versionControlStore.preferences.authorEmail,
-		repositoryUrl: versionControlStore.preferences.repositoryUrl,
-	});
+const onConnect = async () => {
+	try {
+		await versionControlStore.savePreferences({
+			authorName: versionControlStore.preferences.authorName,
+			authorEmail: versionControlStore.preferences.authorEmail,
+			repositoryUrl: versionControlStore.preferences.repositoryUrl,
+		});
+		await versionControlStore.getBranches();
+	} catch (error) {
+		Notification.error({
+			title: 'Error connecting to Git',
+			message: error.message,
+			position: 'bottom-right',
+		});
+	}
 };
 
-const onConnect = () => {
-	void versionControlStore.getPreferences();
-	void versionControlStore.getBranches();
+const onDisconnect = () => {
+	void versionControlStore.disconnect();
 };
 
 const onSave = () => {
@@ -61,11 +70,20 @@ const goToUpgrade = () => {
 			}}</n8n-heading>
 			<div :class="$style.group">
 				<label for="repoUrl">{{ locale.baseText('settings.versionControl.repoUrl') }}</label>
-				<n8n-input
-					id="repoUrl"
-					:placeholder="locale.baseText('settings.versionControl.repoUrlPlaceholder')"
-					v-model="versionControlStore.preferences.repositoryUrl"
-				/>
+				<div :class="$style.groupFlex">
+					<n8n-input
+						id="repoUrl"
+						:placeholder="locale.baseText('settings.versionControl.repoUrlPlaceholder')"
+						v-model="versionControlStore.preferences.repositoryUrl"
+					/>
+					<n8n-button
+						v-if="versionControlStore.preferences.branches.length > 0"
+						@click="onDisconnect"
+						size="large"
+						:class="$style.connect"
+						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
+					>
+				</div>
 				<small>{{ locale.baseText('settings.versionControl.repoUrlDescription') }}</small>
 			</div>
 			<div :class="[$style.group, $style.groupFlex]">
@@ -82,13 +100,6 @@ const goToUpgrade = () => {
 					<n8n-input id="authorEmail" v-model="versionControlStore.preferences.authorEmail" />
 				</div>
 			</div>
-			<n8n-button
-				v-if="!versionControlStore.preferences.publicKey"
-				@click="onContinue"
-				size="large"
-				class="mt-2xs"
-				>{{ locale.baseText('settings.versionControl.button.continue') }}</n8n-button
-			>
 			<div v-if="versionControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.versionControl.sshKey') }}</label>
 				<CopyInput
@@ -106,16 +117,13 @@ const goToUpgrade = () => {
 				</n8n-notice>
 			</div>
 			<n8n-button
-				v-if="
-					versionControlStore.preferences.publicKey &&
-					!versionControlStore.preferences.branches.length
-				"
+				v-if="versionControlStore.preferences.branches.length === 0"
 				@click="onConnect"
 				size="large"
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
-			<div v-if="versionControlStore.preferences.connected">
+			<div v-if="versionControlStore.preferences.branches.length > 0">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
@@ -136,7 +144,7 @@ const goToUpgrade = () => {
 							:label="b"
 						/>
 					</n8n-select>
-					<n8n-checkbox
+					<!-- <n8n-checkbox
 						v-model="versionControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
@@ -150,19 +158,19 @@ const goToUpgrade = () => {
 								</a>
 							</template>
 						</i18n>
-					</n8n-checkbox>
+					</n8n-checkbox> -->
 				</div>
-				<div :class="$style.group">
+				<!-- <div :class="$style.group">
 					<label>{{ locale.baseText('settings.versionControl.color') }}</label>
 					<div>
 						<n8n-color-picker size="small" v-model="versionControlStore.preferences.branchColor" />
 					</div>
-				</div>
+				</div> -->
 				<div :class="[$style.group, 'pt-s']">
 					<n8n-button
 						v-if="
 							versionControlStore.preferences.publicKey &&
-							versionControlStore.preferences.currentBranch
+							versionControlStore.preferences.branchName
 						"
 						@click="onSave"
 						size="large"

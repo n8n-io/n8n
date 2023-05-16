@@ -37,3 +37,12 @@ export const getPreferences = async (
 export const connect = async (context: IRestApiContext): Promise<string> => {
 	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/connect`);
 };
+
+export const disconnect = async (
+	context: IRestApiContext,
+	keepKeyPair: boolean,
+): Promise<string> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/disconnect`, {
+		keepKeyPair,
+	});
+};

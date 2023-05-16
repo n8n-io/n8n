@@ -47,7 +47,13 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	const getPreferences = async () => {
 		const data = await vcApi.getPreferences(rootStore.getRestApiContext);
 		setPreferences(data);
-		if (data.connected) await vcApi.getBranches(rootStore.getRestApiContext);
+		if (!data.publicKey)
+			try {
+				await savePreferences({});
+			} catch (error) {
+				await savePreferences({});
+			}
+		if (data.connected) await getBranches();
 	};
 
 	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
@@ -58,7 +64,12 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	const setBranch = async (branch: string) => {
 		const data = await vcApi.setBranch(rootStore.getRestApiContext, branch);
 		await vcApi.connect(rootStore.getRestApiContext);
-		setPreferences(data);
+		setPreferences({ ...data, connected: true });
+	};
+
+	const disconnect = async () => {
+		await vcApi.disconnect(rootStore.getRestApiContext, true);
+		setPreferences({ connected: false, branches: [] });
 	};
 
 	return {
@@ -71,5 +82,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		getBranches,
 		savePreferences,
 		setBranch,
+		disconnect,
 	};
 });
