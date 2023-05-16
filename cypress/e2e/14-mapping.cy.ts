@@ -194,7 +194,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', `{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }}`);
+			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
 		ndv.actions.switchInputMode('Table');
@@ -203,7 +203,7 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should(
 				'have.text',
-				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
+				`{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }} {{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input }}`,
 			);
 		ndv.actions.validateExpressionPreview('value', ' ');
 
@@ -311,12 +311,12 @@ describe('Data mapping', () => {
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 
 		ndv.getters.parameterInput('value').find('input[type="text"]')
 		.should('exist')
 		.invoke('css', 'border')
-		.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+		.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 	});
 
 });

@@ -174,13 +174,11 @@
 <script lang="ts">
 import { get, set, unset } from 'lodash-es';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ParameterInputList from '@/components/ParameterInputList.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
-import type { IMenuItem, INodeUi, ITab, IUpdateInformation } from '@/Interface';
+import type { IMenuItem, INodeUi, IUpdateInformation } from '@/Interface';
 import type {
 	IDataObject,
 	INodeCredentials,
@@ -196,27 +194,26 @@ import {
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
-import Vue from 'vue';
-import { LOG_STREAM_MODAL_KEY } from '@/constants';
+import Vue, { defineComponent } from 'vue';
+import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
-import { showMessage } from '@/mixins/showMessage';
+import { useMessage } from '@/composables';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { destinationToFakeINodeUi } from './Helpers.ee';
+import { destinationToFakeINodeUi } from '@/components/SettingsLogStreaming/Helpers.ee';
 import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
 } from './descriptions.ee';
 import type { BaseTextKey } from '@/plugins/i18n';
-import InlineNameEdit from '../InlineNameEdit.vue';
-import SaveButton from '../SaveButton.vue';
+import InlineNameEdit from '@/components/InlineNameEdit.vue';
+import SaveButton from '@/components/SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
-import { Checkbox } from 'element-ui';
 import type { EventBus } from '@/event-bus';
 import { createEventBus } from '@/event-bus';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'event-destination-settings-modal',
 	props: {
 		modalName: String,
@@ -232,11 +229,14 @@ export default mixins(showMessage).extend({
 	components: {
 		Modal,
 		ParameterInputList,
-		NodeCredentials,
 		InlineNameEdit,
 		SaveButton,
 		EventSelection,
-		Checkbox,
+	},
+	setup() {
+		return {
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -310,18 +310,6 @@ export default mixins(showMessage).extend({
 				});
 			}
 			return items;
-		},
-		tabItems(): ITab[] {
-			return [
-				{
-					label: this.$locale.baseText('settings.log-streaming.tab.settings'),
-					value: 'settings',
-				},
-				{
-					label: this.$locale.baseText('settings.log-streaming.tab.events'),
-					value: 'events',
-				},
-			];
 		},
 	},
 	mounted() {
@@ -442,17 +430,23 @@ export default mixins(showMessage).extend({
 			this.testMessageSent = true;
 		},
 		async removeThis() {
-			const deleteConfirmed = await this.confirmMessage(
+			const deleteConfirmed = await this.confirm(
 				this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
 					interpolate: { destinationName: this.destination.label },
 				}),
 				this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
-				'warning',
-				this.$locale.baseText('settings.log-streaming.destinationDelete.confirmButtonText'),
-				this.$locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'settings.log-streaming.destinationDelete.confirmButtonText',
+					),
+					cancelButtonText: this.$locale.baseText(
+						'settings.log-streaming.destinationDelete.cancelButtonText',
+					),
+				},
 			);
 
-			if (deleteConfirmed === false) {
+			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			} else {
 				this.eventBus.emit('remove', this.destination.id);

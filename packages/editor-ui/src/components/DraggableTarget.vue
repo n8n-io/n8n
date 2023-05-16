@@ -5,10 +5,10 @@
 </template>
 
 <script lang="ts">
-import { useNDVStore } from '@/stores/ndv.store';
-import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export default defineComponent({
 	props: {

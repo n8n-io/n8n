@@ -7,8 +7,7 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import { useTitleChange } from '@/composables/useTitleChange';
+import { useTitleChange, useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
@@ -19,10 +18,10 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
+	IExecuteContextData,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -34,18 +33,16 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
+import { defineComponent } from 'vue';
 
-export const pushConnection = mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-).extend({
+export const pushConnection = defineComponent({
 	setup() {
 		return {
 			...useTitleChange(),
+			...useToast(),
 		};
 	},
+	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
@@ -324,7 +321,7 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				let runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
 
 				if (pushData.data.status === 'crashed') {
 					runDataExecutedErrorMessage = this.$locale.baseText(
@@ -367,7 +364,7 @@ export const pushConnection = mixins(
 
 					// Workflow did start but had been put to wait
 					this.titleSet(workflow.name as string, 'IDLE');
-					this.$showToast({
+					this.showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 						type: 'success',
@@ -383,7 +380,7 @@ export const pushConnection = mixins(
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						void this.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -422,7 +419,7 @@ export const pushConnection = mixins(
 
 						this.workflowsStore.subWorkflowExecutionError = error;
 
-						this.$showMessage({
+						this.showMessage({
 							title: error.message,
 							message: error.description,
 							type: 'error',
@@ -436,7 +433,7 @@ export const pushConnection = mixins(
 							title = 'Problem executing workflow';
 						}
 
-						this.$showMessage({
+						this.showMessage({
 							title,
 							message: runDataExecutedErrorMessage,
 							type: 'error',
@@ -459,7 +456,7 @@ export const pushConnection = mixins(
 							execution.data.resultData.runData &&
 							execution.data.resultData.runData[execution.executedNode];
 						if (nodeType && nodeType.polling && !nodeOutput) {
-							this.$showMessage({
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
 										service: getTriggerNodeServiceName(nodeType),
@@ -473,13 +470,13 @@ export const pushConnection = mixins(
 								type: 'success',
 							});
 						} else {
-							this.$showMessage({
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
 						}
 					} else {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
 							type: 'success',
 						});
@@ -514,7 +511,7 @@ export const pushConnection = mixins(
 							.length;
 				}
 
-				this.$externalHooks().run('pushConnection.executionFinished', {
+				void this.$externalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,
@@ -581,6 +578,39 @@ export const pushConnection = mixins(
 				await this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
+		},
+		getExecutionError(data: IRunExecutionData | IExecuteContextData) {
+			const error = data.resultData.error;
+
+			let errorMessage: string;
+
+			if (data.resultData.lastNodeExecuted && error) {
+				errorMessage = error.message || error.description;
+			} else {
+				errorMessage = this.$locale.baseText('pushConnection.executionError', {
+					interpolate: { error: '!' },
+				});
+
+				if (error && error.message) {
+					let nodeName: string | undefined;
+					if ('node' in error) {
+						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
+					}
+
+					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+					errorMessage = this.$locale.baseText('pushConnection.executionError', {
+						interpolate: {
+							error: `.${this.$locale.baseText('pushConnection.executionError.details', {
+								interpolate: {
+									details: receivedError,
+								},
+							})}`,
+						},
+					});
+				}
+			}
+
+			return errorMessage;
 		},
 	},
 });
