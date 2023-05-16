@@ -22,13 +22,13 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import type { IWorkflowDb } from '../Interface';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
+import type { IWorkflowDb } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'WorkflowPreview',
 	props: {
 		loading: {
@@ -57,6 +57,11 @@ export default mixins(showMessage).extend({
 			default: 'image',
 			validator: (value: string): boolean => ['image', 'spinner'].includes(value),
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -107,7 +112,7 @@ export default mixins(showMessage).extend({
 					);
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowPreview.showError.previewError.title'),
 					this.$locale.baseText('workflowPreview.showError.previewError.message'),
@@ -131,7 +136,7 @@ export default mixins(showMessage).extend({
 					);
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowPreview.showError.previewError.title'),
 					this.$locale.baseText('workflowPreview.executionMode.showError.previewError.message'),

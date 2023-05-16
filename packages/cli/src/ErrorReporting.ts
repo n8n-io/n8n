@@ -1,5 +1,6 @@
+import { createHash } from 'crypto';
 import config from '@/config';
-import { ErrorReporterProxy } from 'n8n-workflow';
+import { ErrorReporterProxy, NodeError } from 'n8n-workflow';
 
 let initialized = false;
 
@@ -17,7 +18,7 @@ export const initErrorHandling = async () => {
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
 	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
-	const { init, captureException } = await import('@sentry/node');
+	const { init, captureException, addGlobalEventProcessor } = await import('@sentry/node');
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const { RewriteFrames } = await import('@sentry/integrations');
 
@@ -30,6 +31,17 @@ export const initErrorHandling = async () => {
 			integrations.push(new RewriteFrames({ root: process.cwd() }));
 			return integrations;
 		},
+	});
+
+	const seenErrors = new Set<string>();
+	addGlobalEventProcessor((event, { originalException }) => {
+		if (originalException instanceof NodeError && originalException.severity === 'warning')
+			return null;
+		if (!event.exception) return null;
+		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
+		if (seenErrors.has(eventHash)) return null;
+		seenErrors.add(eventHash);
+		return event;
 	});
 
 	process.on('uncaughtException', (error) => {

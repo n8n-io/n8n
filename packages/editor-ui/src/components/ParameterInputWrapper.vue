@@ -42,12 +42,12 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import InputHint from './ParameterInputHint.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import InputHint from '@/components/ParameterInputHint.vue';
 import type {
 	INodeProperties,
 	INodePropertyMode,
@@ -58,13 +58,13 @@ import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default defineComponent({
 	name: 'parameter-input-wrapper',
+	mixins: [workflowHelpers],
 	components: {
 		ParameterInput,
 		InputHint,

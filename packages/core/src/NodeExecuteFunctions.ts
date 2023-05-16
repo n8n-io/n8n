@@ -791,7 +791,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		// if there is a body and it's empty (does not have properties),
 		// make sure not to send anything in it as some services fail when
 		// sending GET request with empty body.
-		if (typeof body === 'object' && !isObjectEmpty(body)) {
+		if (typeof body === 'string' || (typeof body === 'object' && !isObjectEmpty(body))) {
 			axiosRequest.data = body;
 		}
 	}
@@ -1392,6 +1392,7 @@ export async function httpRequestWithAuthentication(
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+				{ severity: 'warning' },
 			);
 		}
 
@@ -1587,6 +1588,7 @@ export async function requestWithAuthentication(
 			throw new NodeOperationError(
 				node,
 				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
+				{ severity: 'warning' },
 			);
 		}
 
@@ -1745,6 +1747,7 @@ export async function getCredentials(
 			throw new NodeOperationError(
 				node,
 				`Node type "${node.type}" does not have any credentials defined!`,
+				{ severity: 'warning' },
 			);
 		}
 
@@ -1755,6 +1758,7 @@ export async function getCredentials(
 			throw new NodeOperationError(
 				node,
 				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
+				{ severity: 'warning' },
 			);
 		}
 
@@ -1778,10 +1782,16 @@ export async function getCredentials(
 		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
-				throw new NodeOperationError(node, 'Node does not have any credentials set!');
+				throw new NodeOperationError(node, 'Node does not have any credentials set!', {
+					severity: 'warning',
+				});
 			}
 			if (!node.credentials[type]) {
-				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"!`);
+				throw new NodeOperationError(
+					node,
+					`Node does not have any credentials set for "${type}"!`,
+					{ severity: 'warning' },
+				);
 			}
 		} else {
 			// Credentials are not required

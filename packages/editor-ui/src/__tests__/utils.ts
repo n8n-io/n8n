@@ -3,7 +3,7 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import { render } from '@testing-library/vue';
 import { PiniaVuePlugin } from 'pinia';
 
-export const retry = (assertion: () => any, { interval = 20, timeout = 200 } = {}) => {
+export const retry = async (assertion: () => any, { interval = 20, timeout = 200 } = {}) => {
 	return new Promise((resolve, reject) => {
 		const startTime = Date.now();
 
@@ -27,7 +27,7 @@ export const renderComponent = (Component: RenderParams[0], renderOptions: Rende
 		vue.use(PiniaVuePlugin);
 	});
 
-export const waitAllPromises = () => new Promise((resolve) => setTimeout(resolve));
+export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
 
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	settings: {
@@ -43,8 +43,10 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 			ldap: false,
 			saml: false,
 			logStreaming: false,
+			variables: false,
+			versionControl: false,
 		},
-		executionMode: '',
+		executionMode: 'regular',
 		executionTimeout: 0,
 		hideUsagePage: false,
 		hiringBannerEnabled: false,
@@ -66,8 +68,8 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		},
 		publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 		pushBackend: 'sse',
-		saveDataErrorExecution: '',
-		saveDataSuccessExecution: '',
+		saveDataErrorExecution: 'all',
+		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		sso: {
 			ldap: { loginEnabled: false, loginLabel: '' },
@@ -93,6 +95,9 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		workflowTagsDisabled: false,
 		deployment: {
 			type: 'default',
+		},
+		variables: {
+			limit: 100,
 		},
 	},
 	promptsData: {

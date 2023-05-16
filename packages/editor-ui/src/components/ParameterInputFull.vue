@@ -69,14 +69,15 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
 import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -91,22 +92,27 @@ import type {
 	IParameterLabel,
 } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
-import { getMappedResult } from '../utils/mappingUtils';
+import { getMappedResult } from '@/utils/mappingUtils';
 
-type ParamterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
+type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
-export default mixins(showMessage, externalHooks).extend({
+export default defineComponent({
 	name: 'parameter-input-full',
+	mixins: [externalHooks],
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -226,14 +232,14 @@ export default mixins(showMessage, externalHooks).extend({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			const paramRef = this.$refs.param as ParamterInputWrapperRef | undefined;
+			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
 			paramRef?.$emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const paramRef = this.$refs.param as ParamterInputWrapperRef | undefined;
+			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
 
 			if (isValueExpression(this.parameter, parameterData.value)) {
 				paramRef?.$emit('optionSelected', 'addExpression');
@@ -292,7 +298,7 @@ export default mixins(showMessage, externalHooks).extend({
 					this.$emit('valueChanged', parameterData);
 
 					if (!this.ndvStore.isMappingOnboarded) {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',

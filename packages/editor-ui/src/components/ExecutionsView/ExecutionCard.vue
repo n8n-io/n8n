@@ -81,16 +81,16 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { IExecutionsSummary } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
-export default mixins(executionHelpers, showMessage).extend({
+export default defineComponent({
 	name: 'execution-card',
+	mixins: [executionHelpers],
 	components: {
 		ExecutionTime,
 	},
