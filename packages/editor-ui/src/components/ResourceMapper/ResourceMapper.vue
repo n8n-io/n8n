@@ -53,11 +53,13 @@ const state = reactive({
 // Reload fields to map when dependent parameters change
 watch(
 	() => props.dependentParametersValues,
-	async () => {
-		state.paramValue.value = null;
-		emitValueChanged();
-		await initFetching();
-		setDefaultFieldValues();
+	async (currentValue, oldValue) => {
+		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
+			state.paramValue.value = null;
+			emitValueChanged();
+			await initFetching();
+			setDefaultFieldValues();
+		}
 	},
 );
 
