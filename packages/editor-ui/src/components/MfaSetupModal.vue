@@ -140,8 +140,7 @@ import {
 	MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED,
 	MFA_SETUP_MODAL_KEY,
 } from '../constants';
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -151,14 +150,14 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { createEventBus } from '@/event-bus';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
-export default mixins(showMessage, copyPaste).extend({
+export default defineComponent({
 	name: 'MfaSetupModal',
+	mixins: [genericHelpers, copyPaste],
 	components: {
 		Modal,
 		QrcodeVue,
-		CopyInput,
-		copyPaste,
 	},
 	data() {
 		return {
@@ -200,7 +199,7 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		onCopySecretToClipboard() {
 			this.copyToClipboard((this.$refs.codeSecret as HTMLInputElement).innerHTML);
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
 				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
 				type: 'success',
@@ -212,7 +211,7 @@ export default mixins(showMessage, copyPaste).extend({
 				this.showRecoveryCodes = true;
 				this.authenticatorCode = form.authenticatorCode;
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.mfa.invalidAuthenticatorCode'));
+				this.showError(error, this.$locale.baseText('settings.mfa.invalidAuthenticatorCode'));
 			}
 		},
 		onSaveClick() {
@@ -236,20 +235,20 @@ export default mixins(showMessage, copyPaste).extend({
 			try {
 				await this.usersStore.enableMfa({ token: this.authenticatorCode });
 				this.closeDialog();
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('mfa.setup.step2.toast.setupFinished.message'),
 				});
 			} catch (e) {
 				if (e.errorCode === MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED) {
-					this.$showMessage({
+					this.showMessage({
 						type: 'error',
 						title: this.$locale.baseText('mfa.setup.step2.toast.tokenExpired.error.message'),
 					});
 					return;
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'error',
 					title: this.$locale.baseText('mfa.setup.step2.toast.setupFinished.error.message'),
 				});
@@ -262,7 +261,7 @@ export default mixins(showMessage, copyPaste).extend({
 				this.secret = secret;
 				this.recoveryCodes = recoveryCodes;
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+				this.showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
 				this.loadingQrCode = false;
 			}

@@ -70,12 +70,8 @@
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
 import { genericHelpers } from '@/mixins/genericHelpers';
-
-import mixins from 'vue-typed-mixins';
 import type { IFormInputs } from '@/Interface';
-
 import Logo from '../components/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
@@ -85,9 +81,12 @@ import {
 import { useUsersStore } from '@/stores/users.store';
 import { mapStores } from 'pinia';
 import { createEventBus } from '@/event-bus';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables/useToast';
 
-export default mixins(showMessage, genericHelpers).extend({
+export default defineComponent({
 	name: 'MfaView',
+	mixins: [genericHelpers],
 	components: {
 		AuthView,
 		Logo,
@@ -109,6 +108,11 @@ export default mixins(showMessage, genericHelpers).extend({
 				},
 			},
 		];
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -196,7 +200,7 @@ export default mixins(showMessage, genericHelpers).extend({
 					const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
 
 					if (mfaEnabled && !hasRecoveryCodesLeft) {
-						this.$showToast({
+						this.showToast({
 							title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
 							message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
 							type: 'info',
