@@ -124,9 +124,9 @@ const beforeClosingModal = async () => {
 	if (currentUser) {
 		try {
 			await userStore.updateUserSettings({ showUserActivationSurvey: false });
-		} catch {
-			showSharedFeedbackError();
-			return false;
+		} catch(e) {
+			showSharedFeedbackError(e.message);
+			return true;
 		}
 	}
 	return true;
@@ -144,10 +144,10 @@ const showSharedFeedbackSuccess = () => {
 	});
 };
 
-const showSharedFeedbackError = () => {
+const showSharedFeedbackError = (message: string) => {
 	Notification.error({
 		title: locale.baseText('userActivationSurveyModal.sharedFeedback.error'),
-		message: '',
+		message,
 		position: 'bottom-right',
 	});
 };
