@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { INode, IPinData, JsonObject } from 'n8n-workflow';
+import type { INode, IPinData, IWorkflowExecuteAdditionalData, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import type { FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
@@ -27,6 +27,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
+import { createPostmanCollectionRequestsForWorkflowWebhooks } from '@/elitesoftwareautomation/utils';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -317,6 +318,23 @@ export class WorkflowsService {
 		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
+			// only run if workflow is just activated
+			if (!shared.workflow.active) {
+				try {
+					await createPostmanCollectionRequestsForWorkflowWebhooks(
+						updatedWorkflow,
+						await WorkflowExecuteAdditionalData.getBase(user.id),
+					);
+				} catch (error) {
+					LoggerProxy.error(
+						`ESA: error when creating postman collection request records for all webhooks in workflow( ${updatedWorkflow.id} )`,
+						error as object,
+					);
+
+					// TODO: create an incident report
+				}
+			}
+
 			// When the workflow is supposed to be active add it again
 			try {
 				await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
