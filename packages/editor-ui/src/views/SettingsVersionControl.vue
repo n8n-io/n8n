@@ -2,13 +2,12 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useMessage } from '@/composables';
+import { useToast } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
-import { Notification } from 'element-ui';
 
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
-const message = useMessage();
+const toast = useToast();
 
 const onConnect = async () => {
 	try {
@@ -19,11 +18,7 @@ const onConnect = async () => {
 		});
 		await versionControlStore.getBranches();
 	} catch (error) {
-		Notification.error({
-			title: 'Error connecting to Git',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'Error connecting to Git');
 	}
 };
 
@@ -79,8 +74,7 @@ const goToUpgrade = () => {
 					<n8n-button
 						v-if="versionControlStore.preferences.branches.length > 0"
 						@click="onDisconnect"
-						size="large"
-						:class="$style.connect"
+						type="tertiary"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
 				</div>
@@ -119,7 +113,6 @@ const goToUpgrade = () => {
 			<n8n-button
 				v-if="versionControlStore.preferences.branches.length === 0"
 				@click="onConnect"
-				size="large"
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
@@ -173,7 +166,6 @@ const goToUpgrade = () => {
 							versionControlStore.preferences.branchName
 						"
 						@click="onSave"
-						size="large"
 						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
 					>
 				</div>
