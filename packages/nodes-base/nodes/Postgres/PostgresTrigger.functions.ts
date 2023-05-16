@@ -18,12 +18,13 @@ export async function pgTriggerFunction(
 	const target = `${schema.value as string}."${tableName.value as string}"`;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const functionReplace =
-		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$;";
+		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$;";
 	const dropIfExist = 'DROP TRIGGER IF EXISTS $1:raw ON $2:raw';
 	const functionExists =
-		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json(new)::text); return null; end; $BODY$";
+		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$";
 	const trigger =
 		'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw';
+	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	const nodeId = this.getNode().id.replace(/-/g, '_');
 	let functionName =
@@ -39,10 +40,10 @@ export async function pgTriggerFunction(
 	const replaceIfExists = additionalFields.replaceIfExists || false;
 	try {
 		if (replaceIfExists || !(additionalFields.triggerName || additionalFields.functionName)) {
-			await db.any(functionReplace, [functionName, channelName]);
-			await db.any(dropIfExist, [triggerName, target]);
+			await db.any(functionReplace, [functionName, channelName, whichData]);
+			await db.any(dropIfExist, [triggerName, target, whichData]);
 		} else {
-			await db.any(functionExists, [functionName, channelName]);
+			await db.any(functionExists, [functionName, channelName, whichData]);
 		}
 		await db.any(trigger, [target, functionName, firesOn, triggerName]);
 	} catch (err) {
