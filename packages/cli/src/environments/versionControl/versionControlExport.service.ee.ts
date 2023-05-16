@@ -181,14 +181,13 @@ export class VersionControlExportService {
 		const workflowVersionIdMap = await this.getWorkflowAndVersionIdsInWorkFolder();
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
-				// TODO: using workflowname for now, until IDs are unique
 				if (workflowVersionIdMap.get(e.workflowId) === e.workflow.versionId) {
 					LoggerProxy.debug(
 						`Skipping workflow ${e.workflowId} export as its versionId is already up to date`,
 					);
 					return;
 				}
-				const fileName = this.getWorkflowPath(e.workflow.name);
+				const fileName = this.getWorkflowPath(e.workflow.id);
 				const sanitizedWorkflow: ExportableWorkflow = {
 					active: e.workflow.active,
 					id: e.workflow.id,
@@ -321,8 +320,7 @@ export class VersionControlExportService {
 			});
 			await Promise.all(
 				sharedCredentials.map(async (e) => {
-					// TODO: using credential name for now, until IDs are unique
-					const fileName = path.join(this.credentialExportFolder, `${e.credentials.name}.json`);
+					const fileName = path.join(this.credentialExportFolder, `${e.credentials.id}.json`);
 					const sanitizedCredential: ExportableCredential = {
 						id: e.credentials.id,
 						name: e.credentials.name,
