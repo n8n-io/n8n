@@ -79,10 +79,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 
 export default defineComponent({
+	name: 'DeleteUserModal',
 	components: {
 		Modal,
 	},
-	name: 'DeleteUserModal',
 	props: {
 		modalName: {
 			type: String,

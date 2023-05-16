@@ -59,22 +59,23 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '@/components/PageAlert.vue';
 import type { IUser, IUserListAction } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 
-export default mixins(copyPaste).extend({
+export default defineComponent({
 	name: 'SettingsUsersView',
+	mixins: [copyPaste],
 	components: {
 		PageAlert,
 	},

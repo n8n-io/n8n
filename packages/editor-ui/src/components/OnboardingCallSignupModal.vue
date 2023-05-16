@@ -58,10 +58,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from '@/event-bus';
 
 export default defineComponent({
+	name: 'OnboardingCallSignupModal',
 	components: {
 		Modal,
 	},
-	name: 'OnboardingCallSignupModal',
 	props: ['modalName'],
 	setup() {
 		return {

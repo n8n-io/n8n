@@ -169,7 +169,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
@@ -188,13 +189,10 @@ import { NodeHelpers } from 'n8n-workflow';
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
-import mixins from 'vue-typed-mixins';
-
 import { get } from 'lodash-es';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
 import type { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -202,15 +200,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default mixins(
-	externalHooks,
-	nodeBase,
-	nodeHelpers,
-	workflowHelpers,
-	pinData,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'Node',
+	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
 		FontAwesomeIcon,
@@ -408,7 +400,7 @@ export default mixins(
 				}
 			}
 
-			return;
+			return undefined;
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
