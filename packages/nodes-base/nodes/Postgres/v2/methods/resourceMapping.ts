@@ -57,16 +57,19 @@ export async function getMappingColumns(
 		extractValue: true,
 	}) as string;
 
+	const operation = this.getNodeParameter('operation', 0, {
+		extractValue: true,
+	}) as string;
+
 	try {
 		const columns = await getTableSchema(db, schema, table);
-		const unique = await uniqueColumns(db, table);
+		const unique = operation === 'upsert' ? await uniqueColumns(db, table) : [];
 		const enumInfo = await getEnums(db);
 		const fields = await Promise.all(
 			columns.map(async (col) => {
-				const canBeUsedToMatch = unique.some((u) => u.column_name === col.column_name);
+				const canBeUsedToMatch = operation === 'upsert' ? unique.some((u) => u.column_name === col.column_name) : true;
 				const type = mapPostgresType(col.data_type);
-				const options =
-					type === 'options' ? await getEnumValues(enumInfo, col.udt_name) : undefined;
+				const options = type === 'options' ? getEnumValues(enumInfo, col.udt_name) : undefined;
 				return {
 					id: col.column_name,
 					displayName: col.column_name,

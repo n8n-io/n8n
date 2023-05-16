@@ -149,7 +149,7 @@ const properties: INodeProperties[] = [
 		},
 		required: true,
 		typeOptions: {
-			loadOptionsDependsOn: ['table.value'],
+			loadOptionsDependsOn: ['table.value', 'operation'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
 				mode: 'upsert',

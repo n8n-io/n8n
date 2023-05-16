@@ -115,7 +115,7 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		required: true,
 		typeOptions: {
-			loadOptionsDependsOn: ['table.value'],
+			loadOptionsDependsOn: ['table.value', 'operation'],
 			resourceMapper: {
 				resourceMapperMethod: 'getMappingColumns',
 				mode: 'add',

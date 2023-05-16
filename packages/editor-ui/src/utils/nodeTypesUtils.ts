@@ -418,7 +418,7 @@ export const fieldCannotBeDeleted = (
 ): boolean => {
 	const fieldIdentifier = 'id' in field ? field.id : field.name;
 	return (
-		field.required === true ||
+		(resourceMapperMode === 'add' && field.required === true) ||
 		isMatchingField(fieldIdentifier, matchingFields, showMatchingColumnsSelector)
 	);
 };
