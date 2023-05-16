@@ -518,7 +518,7 @@ export class VersionControlExportService {
 		await Db.transaction(async (transactionManager) => {
 			importWorkflowsResult = await Promise.all(
 				workflowFiles.map(async (file) => {
-					LoggerProxy.debug(`Importing workflow file ${file}`);
+					LoggerProxy.debug(`Parsing workflow file ${file}`);
 					const importedWorkflow = jsonParse<IWorkflowToImport>(
 						await fsReadFile(file, { encoding: 'utf8' }),
 					);
@@ -527,14 +527,14 @@ export class VersionControlExportService {
 						LoggerProxy.debug(
 							`Skipping import of workflow ${
 								importedWorkflow.id ?? 'n/a'
-							} export as its versionId is already up to date`,
+							} - versionId is up to date`,
 						);
 						return {
 							id: importedWorkflow.id ?? 'n/a',
 							name: 'skipped',
 						};
 					}
-
+					LoggerProxy.debug(`Importing workflow ${importedWorkflow.id ?? 'n/a'}`);
 					importedWorkflow.active = existingWorkflow?.active ?? false;
 					LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
 					await transactionManager.upsert(WorkflowEntity, { ...importedWorkflow }, ['id']);
@@ -547,7 +547,7 @@ export class VersionControlExportService {
 						},
 						['workflowId', 'userId'],
 					);
-					// TODO: once IDs are unique, remove this
+					// TODO: once IDs are unique and we removed autoincrement, remove this
 					if (config.getEnv('database.type') === 'postgresdb') {
 						await transactionManager.query(
 							"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",

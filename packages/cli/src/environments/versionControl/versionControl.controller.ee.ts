@@ -130,7 +130,7 @@ export class VersionControlController {
 				force: req.body.force,
 				variables: req.body.variables,
 				userId: req.user.id,
-				importAfterPull: req.body.importAfterPull,
+				importAfterPull: req.body.importAfterPull ?? true,
 			});
 			if ((result as ImportResult).workflows || (result as PullResult).summary) {
 				res.statusCode = 200;
@@ -153,7 +153,7 @@ export class VersionControlController {
 				force: req.body.force,
 				variables: req.body.variables,
 				userId: req.user.id,
-				importAfterPull: req.body.importAfterPull,
+				importAfterPull: req.body.importAfterPull ?? true,
 			});
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
