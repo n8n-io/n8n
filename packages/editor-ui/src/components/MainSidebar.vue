@@ -540,7 +540,17 @@ export default defineComponent({
 			}
 		},
 		async pullWorkfolder() {
-			await this.versionControlStore.pullWorkfolder();
+			try {
+				await this.versionControlStore.pullWorkfolder(false);
+			} catch (error) {
+				const confirm = await this.confirm('Override local changes', 'XXX', {
+					confirmButtonText: 'Pull and override',
+					cancelButtonText: 'Cancel',
+				});
+				if (confirm) {
+					await this.versionControlStore.pullWorkfolder(true);
+				}
+			}
 		},
 	},
 });

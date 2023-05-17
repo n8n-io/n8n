@@ -38,9 +38,9 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		state.loading = false;
 	};
 
-	const pullWorkfolder = async () => {
+	const pullWorkfolder = async (force: boolean) => {
 		state.loading = true;
-		await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force: true });
+		await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
 		state.loading = false;
 	};
 
