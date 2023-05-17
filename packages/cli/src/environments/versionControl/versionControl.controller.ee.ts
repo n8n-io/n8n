@@ -125,7 +125,7 @@ export class VersionControlController {
 	async pullWorkfolder(
 		req: VersionControlRequest.PullWorkFolder,
 		res: express.Response,
-	): Promise<VersionControlledFile[] | ImportResult | PullResult | undefined> {
+	): Promise<VersionControlledFile[] | ImportResult | PullResult | StatusResult | undefined> {
 		try {
 			const result = await this.versionControlService.pullWorkfolder({
 				force: req.body.force,
@@ -133,7 +133,7 @@ export class VersionControlController {
 				userId: req.user.id,
 				importAfterPull: req.body.importAfterPull ?? true,
 			});
-			if ((result as ImportResult).workflows || (result as PullResult).summary) {
+			if ((result as ImportResult)?.workflows) {
 				res.statusCode = 200;
 			} else {
 				res.statusCode = 409;
