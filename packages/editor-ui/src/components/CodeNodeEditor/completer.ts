@@ -1,7 +1,8 @@
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
+import Vue, { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
 import { localCompletionSource } from '@codemirror/lang-javascript';
+import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import type { Extension } from '@codemirror/state';
 
 import { baseCompletions } from './completions/base.completions';
 import { jsSnippets } from './completions/js.snippets';
@@ -15,23 +16,22 @@ import { itemFieldCompletions } from './completions/itemField.completions';
 import { jsonFieldCompletions } from './completions/jsonField.completions';
 import { variablesCompletions } from './completions/variables.completions';
 
-import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { Extension } from '@codemirror/state';
 import type { CodeNodeEditorMixin } from './types';
 
-export const completerExtension = mixins(
-	Vue as CodeNodeEditorMixin,
-	baseCompletions,
-	requireCompletions,
-	executionCompletions,
-	workflowCompletions,
-	variablesCompletions,
-	prevNodeCompletions,
-	luxonCompletions,
-	itemIndexCompletions,
-	itemFieldCompletions,
-	jsonFieldCompletions,
-).extend({
+export const completerExtension = defineComponent({
+	mixins: [
+		Vue as CodeNodeEditorMixin,
+		baseCompletions,
+		requireCompletions,
+		executionCompletions,
+		workflowCompletions,
+		variablesCompletions,
+		prevNodeCompletions,
+		luxonCompletions,
+		itemIndexCompletions,
+		itemFieldCompletions,
+		jsonFieldCompletions,
+	],
 	methods: {
 		autocompletionExtension(language: 'javaScript' | 'python'): Extension {
 			const completions = [];

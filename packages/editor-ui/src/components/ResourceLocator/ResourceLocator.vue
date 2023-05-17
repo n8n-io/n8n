@@ -142,8 +142,8 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type {
 	ILoadOptions,
 	INode,
@@ -172,7 +172,6 @@ import {
 	hasOnlyListMode,
 	getMainAuthField,
 } from '@/utils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -188,8 +187,9 @@ interface IResourceLocatorQuery {
 	loading: boolean;
 }
 
-export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
+export default defineComponent({
 	name: 'resource-locator',
+	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
