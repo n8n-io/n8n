@@ -1234,11 +1234,20 @@ export const tryToParseTime = (value: unknown): string => {
 
 export const tryToParseArray = (value: unknown): unknown[] => {
 	try {
-		const isValidArray = Array.isArray(JSON.parse(`[${String(value)}]`));
+		let stringValue = String(value);
+		if (!stringValue.startsWith('[') && !stringValue.endsWith(']')) {
+			if (!stringValue.startsWith('[')) {
+				stringValue = `[${stringValue}`;
+			}
+			if (!stringValue.endsWith(']')) {
+				stringValue = `${stringValue}]`;
+			}
+		}
+		const isValidArray = Array.isArray(JSON.parse(stringValue));
 		if (!isValidArray) {
 			throw new Error('Not a valid array');
 		}
-		return JSON.parse(`[${String(value)}]`);
+		return JSON.parse(stringValue);
 	} catch (e) {
 		throw new Error(`The value "${String(value)}" is not a valid array.`);
 	}
