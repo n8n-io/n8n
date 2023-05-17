@@ -92,6 +92,9 @@ export class ClientOAuth2 {
 			data: qs.stringify(options.body),
 			headers: options.headers,
 			transformResponse: (res) => res,
+			// Axios rejects the promise by default for all status codes 4xx.
+			// We override this to reject promises only on 5xxs
+			validateStatus: (status) => status < 500,
 		});
 
 		const body = this.parseResponseBody<T>(response.data);
