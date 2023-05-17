@@ -207,7 +207,7 @@ export class AmqpTrigger implements INodeType {
 			}
 
 			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
-			if (parallelExecution) {
+			if (!parallelExecution) {
 				responsePromise = await this.helpers.createDeferredPromise();
 			}
 			if (responsePromise) {

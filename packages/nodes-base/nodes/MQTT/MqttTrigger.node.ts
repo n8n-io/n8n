@@ -164,7 +164,7 @@ export class MqttTrigger implements INodeType {
 							}
 
 							let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
-							if (options.parallelExecution) {
+							if (options?.parallelExecution === false) {
 								responsePromise = await this.helpers.createDeferredPromise();
 							}
 							if (responsePromise) {
