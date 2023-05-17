@@ -186,15 +186,16 @@ export class VersionControlService {
 		return;
 	}
 
-	async pushWorkfolder(options: VersionControlPushWorkFolder): Promise<PushResult | DiffResult> {
+	async pushWorkfolder(
+		options: VersionControlPushWorkFolder,
+	): Promise<PushResult | VersionControlledFile[]> {
 		if (!options.skipDiff) {
 			const diffResult = await this.updateLocalAndDiff();
-			if (diffResult.files.length > 0 && options.force !== true) {
+			if (diffResult?.length > 0 && options.force !== true) {
 				await this.unstage();
 				return diffResult;
 			}
 		}
-		// await this.unstage();
 		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
 		return this.gitService.push({
@@ -205,9 +206,9 @@ export class VersionControlService {
 
 	async pullWorkfolder(
 		options: VersionControllPullOptions,
-	): Promise<ImportResult | DiffResult | PullResult | undefined> {
+	): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
 		const diffResult = await this.updateLocalAndDiff();
-		if (diffResult.files.length > 0) {
+		if (diffResult?.length > 0) {
 			await this.unstage();
 			if (options.force === true) {
 				return this.resetWorkfolder(options);
@@ -222,11 +223,11 @@ export class VersionControlService {
 		return pullResult;
 	}
 
-	private async updateLocalAndDiff(): Promise<DiffResult> {
+	private async updateLocalAndDiff(): Promise<VersionControlledFile[]> {
 		await this.versionControlExportService.cleanWorkFolder();
 		await this.export(); // refresh workfolder
 		await this.gitService.fetch();
-		return this.gitService.diff();
+		return this.getStatus();
 	}
 
 	async stage(
