@@ -67,7 +67,7 @@ const getSamlConfig = async () => {
 
 	if (config?.metadataUrl) {
 		ipsType.value = IdentityProviderSettingsType.URL;
-	} else {
+	} else if (config?.metadata) {
 		ipsType.value = IdentityProviderSettingsType.XML;
 	}
 
