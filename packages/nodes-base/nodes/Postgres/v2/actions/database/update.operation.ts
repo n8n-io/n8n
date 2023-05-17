@@ -44,7 +44,7 @@ const properties: INodeProperties[] = [
 			'Whether to map node input properties and the table data automatically or manually',
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -78,7 +78,7 @@ const properties: INodeProperties[] = [
 		hint: 'The column that identifies the row(s) to modify',
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -92,7 +92,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -108,7 +108,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 		default: {},
@@ -161,7 +161,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [3],
+				'@version': [2.2],
 			},
 		},
 	},
@@ -202,36 +202,36 @@ export async function execute(
 
 		const nodeVersion = this.getNode().typeVersion;
 		const columnsToMatchOn: string[] =
-			nodeVersion < 3
+			nodeVersion < 2.2
 				? [this.getNodeParameter('columnToMatchOn', i) as string]
 				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
-			nodeVersion < 3
+			nodeVersion < 2.2
 				? (this.getNodeParameter('dataMode', i) as string)
 				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
 		let item: IDataObject = {};
 		let valueToMatchOn: string | IDataObject = '';
-		if (nodeVersion < 3) {
+		if (nodeVersion < 2.2) {
 			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 		}
 
 		if (dataMode === 'autoMapInputData') {
 			item = items[i].json;
-			if (nodeVersion < 3) {
+			if (nodeVersion < 2.2) {
 				valueToMatchOn = item[columnsToMatchOn[0]] as string;
 			}
 		}
 
 		if (dataMode === 'defineBelow') {
 			const valuesToSend =
-				nodeVersion < 3
+				nodeVersion < 2.2
 					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			if (nodeVersion < 3) {
+			if (nodeVersion < 2.2) {
 				item = prepareItem(valuesToSend);
 				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
 			} else {
@@ -240,7 +240,7 @@ export async function execute(
 		}
 
 		const matchValues: string[] = [];
-		if (nodeVersion < 3) {
+		if (nodeVersion < 2.2) {
 			matchValues.push(columnsToMatchOn[0]);
 			matchValues.push(valueToMatchOn);
 		} else {
@@ -278,7 +278,7 @@ export async function execute(
 		let valuesLength = values.length + 1;
 
 		let condition = '';
-		if (nodeVersion < 3) {
+		if (nodeVersion < 2.2) {
 			condition = `$${valuesLength}:name = $${valuesLength + 1}`;
 			valuesLength = valuesLength + 2;
 			values.push(columnsToMatchOn[0], valueToMatchOn);

@@ -42,7 +42,7 @@ const properties: INodeProperties[] = [
 			'Whether to map node input properties and the table data automatically or manually',
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -56,7 +56,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['autoMapInputData'],
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -76,7 +76,7 @@ const properties: INodeProperties[] = [
 		hint: "Used to find the correct row(s) to update. Doesn't get changed. Has to be unique.",
 		displayOptions: {
 			show: {
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -90,7 +90,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 	},
@@ -106,7 +106,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				dataMode: ['defineBelow'],
-				'@version': [2],
+				'@version': [2, 2.1],
 			},
 		},
 		default: {},
@@ -159,7 +159,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [3],
+				'@version': [2.2],
 			},
 		},
 	},
@@ -200,12 +200,12 @@ export async function execute(
 
 		const nodeVersion = this.getNode().typeVersion;
 		const columnsToMatchOn: string[] =
-			nodeVersion < 3
+			nodeVersion < 2.2
 				? [this.getNodeParameter('columnToMatchOn', i) as string]
 				: (this.getNodeParameter('columns.matchingColumns', i) as string[]);
 
 		const dataMode =
-			nodeVersion < 3
+			nodeVersion < 2.2
 				? (this.getNodeParameter('dataMode', i) as string)
 				: (this.getNodeParameter('columns.mappingMode', i) as string);
 
@@ -217,12 +217,12 @@ export async function execute(
 
 		if (dataMode === 'defineBelow') {
 			const valuesToSend =
-				nodeVersion < 3
+				nodeVersion < 2.2
 					? ((this.getNodeParameter('valuesToSend', i, []) as IDataObject).values as IDataObject[])
 					: ((this.getNodeParameter('columns.values', i, []) as IDataObject)
 							.values as IDataObject[]);
 
-			if (nodeVersion < 3) {
+			if (nodeVersion < 2.2) {
 				item = prepareItem(valuesToSend);
 				item[columnsToMatchOn[0]] = this.getNodeParameter('valueToMatchOn', i) as string;
 			} else {
