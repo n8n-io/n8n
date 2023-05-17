@@ -276,9 +276,12 @@ export class VersionControlGitService {
 		return this.git.push(VERSION_CONTROL_ORIGIN, branch);
 	}
 
-	async stage(files: Set<string>): Promise<string> {
+	async stage(files: Set<string>, deletedFiles?: Set<string>): Promise<string> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
+		}
+		if (deletedFiles?.size) {
+			await this.git.rm(Array.from(deletedFiles));
 		}
 		return this.git.add(Array.from(files));
 	}
