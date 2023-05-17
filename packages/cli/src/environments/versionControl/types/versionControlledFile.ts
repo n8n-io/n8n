@@ -15,4 +15,5 @@ export type VersionControlledFile = {
 	type: VersionControlledFileType;
 	status: VersionControlledFileStatus;
 	location: VersionControlledFileLocation;
+	conflict: boolean;
 };

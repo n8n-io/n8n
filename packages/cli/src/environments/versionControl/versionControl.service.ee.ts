@@ -191,7 +191,8 @@ export class VersionControlService {
 	): Promise<PushResult | VersionControlledFile[]> {
 		if (!options.skipDiff) {
 			const diffResult = await this.getStatus();
-			if (diffResult?.length > 0 && options.force !== true) {
+			const possibleConflicts = diffResult?.filter((file) => file.conflict);
+			if (possibleConflicts?.length > 0 && options.force !== true) {
 				await this.unstage();
 				return diffResult;
 			}
@@ -208,7 +209,8 @@ export class VersionControlService {
 		options: VersionControllPullOptions,
 	): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
 		const diffResult = await this.getStatus();
-		if (diffResult?.length > 0) {
+		const possibleConflicts = diffResult?.filter((file) => file.conflict);
+		if (possibleConflicts?.length > 0) {
 			await this.unstage();
 			if (options.force === true) {
 				return this.resetWorkfolder(options);
@@ -271,6 +273,7 @@ export class VersionControlService {
 	): Promise<VersionControlledFile | undefined> {
 		let id: string | undefined = undefined;
 		let name = '';
+		let conflict = false;
 		let status: VersionControlledFileStatus | undefined = undefined;
 		let type: VersionControlledFileType = 'file';
 		if (fileName.startsWith(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
@@ -322,8 +325,10 @@ export class VersionControlService {
 
 		if (!status) {
 			if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
-			else if (statusResult.conflicted.find((e) => e === fileName)) status = 'conflicted';
-			else if (statusResult.created.find((e) => e === fileName)) status = 'created';
+			else if (statusResult.conflicted.find((e) => e === fileName)) {
+				status = 'conflicted';
+				conflict = true;
+			} else if (statusResult.created.find((e) => e === fileName)) status = 'created';
 			else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
 			else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
 			else {
@@ -338,6 +343,7 @@ export class VersionControlService {
 			type,
 			status,
 			location,
+			conflict,
 		};
 	}
 
@@ -363,6 +369,16 @@ export class VersionControlService {
 				}
 			}) ?? []),
 		]);
+		versionControlledFiles.forEach((e, index, array) => {
+			const similarItems = array.filter(
+				(f) => f.type === e.type && (f.file === e.file || f.id === e.id),
+			);
+			if (similarItems.length > 1) {
+				similarItems.forEach((item) => {
+					item.conflict = true;
+				});
+			}
+		});
 		return versionControlledFiles;
 	}
 
