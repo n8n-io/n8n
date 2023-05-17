@@ -82,12 +82,7 @@ import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import type {
-	ClientOAuth2Options,
-	ClientOAuth2RequestObject,
-	ClientOAuth2TokenData,
-} from '@n8n/client-oauth2';
-import { ClientOAuth2 } from '@n8n/client-oauth2';
+import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
@@ -1086,14 +1081,14 @@ export async function requestOAuth2(
 		throw new Error('OAuth credentials not connected!');
 	}
 
-	const oAuthClient = new ClientOAuth2({
+	const oAuthClient = new clientOAuth2({
 		clientId: credentials.clientId as string,
 		clientSecret: credentials.clientSecret as string,
 		accessTokenUri: credentials.accessTokenUrl as string,
 		scopes: (credentials.scope as string).split(' '),
 	});
 
-	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
@@ -1121,20 +1116,15 @@ export async function requestOAuth2(
 		oauthTokenData = data;
 	}
 
-	const accessToken =
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
-	const refreshToken = oauthTokenData.refreshToken;
 	const token = oAuthClient.createToken(
-		{
-			...oauthTokenData,
-			...(accessToken ? { access_token: accessToken } : {}),
-			...(refreshToken ? { refresh_token: refreshToken } : {}),
-		},
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
+		oauthTokenData.refreshToken,
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+		oauthTokenData,
 	);
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
-	const newRequestOptions = token.sign(requestOptions as ClientOAuth2RequestObject);
+	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
 	const newRequestHeaders = (newRequestOptions.headers = newRequestOptions.headers ?? {});
 	// If keep bearer is false remove the it from the authorization header
 	if (oAuth2Options?.keepBearer === false && typeof newRequestHeaders.Authorization === 'string') {
@@ -1174,7 +1164,7 @@ export async function requestOAuth2(
 				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
 					newToken = await getClientCredentialsToken(token.client, credentials);
 				} else {
-					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+					newToken = await token.refresh(tokenRefreshOptions);
 				}
 
 				Logger.debug(
@@ -1194,7 +1184,7 @@ export async function requestOAuth2(
 					credentialsType,
 					credentials,
 				);
-				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
+				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
 
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 					Object.assign(newRequestHeaders, {
@@ -1207,11 +1197,6 @@ export async function requestOAuth2(
 			throw error;
 		});
 	}
-	const tokenExpiredStatusCode =
-		oAuth2Options?.tokenExpiredStatusCode === undefined
-			? 401
-			: oAuth2Options?.tokenExpiredStatusCode;
-
 	return this.helpers
 		.request(newRequestOptions)
 		.then((response) => {
@@ -1219,14 +1204,21 @@ export async function requestOAuth2(
 			if (
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
-				response.statusCode === tokenExpiredStatusCode
+				response.statusCode ===
+					(oAuth2Options?.tokenExpiredStatusCode === undefined
+						? 401
+						: oAuth2Options?.tokenExpiredStatusCode)
 			) {
 				throw response;
 			}
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			if (error.statusCode === tokenExpiredStatusCode) {
+			const statusCodeReturned =
+				oAuth2Options?.tokenExpiredStatusCode === undefined
+					? 401
+					: oAuth2Options?.tokenExpiredStatusCode;
+			if (error.statusCode === statusCodeReturned) {
 				// Token is probably not valid anymore. So try refresh it.
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
@@ -1251,7 +1243,7 @@ export async function requestOAuth2(
 				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
 					newToken = await getClientCredentialsToken(token.client, credentials);
 				} else {
-					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
+					newToken = await token.refresh(tokenRefreshOptions);
 				}
 				Logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
@@ -1279,7 +1271,7 @@ export async function requestOAuth2(
 				);
 
 				// Make the request again with the new token
-				const newRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
+				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
 				newRequestOptions.headers = newRequestOptions.headers ?? {};
 
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
