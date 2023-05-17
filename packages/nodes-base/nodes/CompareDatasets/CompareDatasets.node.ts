@@ -21,7 +21,6 @@ export class CompareDatasets implements INodeType {
 		version: [1, 2, 2.1, 2.2],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
-		// TODO: Add tests for forceInputNodeExecution!
 		forceInputNodeExecution: '={{ $version < 2.2 }}',
 		requiredInputs: '={{ $version < 2.2 ? undefined : 1 }}',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

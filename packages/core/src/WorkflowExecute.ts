@@ -1264,6 +1264,7 @@ export class WorkflowExecute {
 						// waiting nodes that do not require data on all inputs and execute them,
 						// one by one.
 
+						// TODO: Should this also care about workflow position (top-left first?)
 						for (let i = 0; i < waitingNodes.length; i++) {
 							const nodeName = waitingNodes[i];
 
@@ -1276,7 +1277,7 @@ export class WorkflowExecute {
 								checkNode.typeVersion,
 							);
 
-							// Check if the node is only allowed execute if both inputs received data
+							// Check if the node is only allowed execute if all inputs received data
 							let requiredInputs = nodeType.description.requiredInputs;
 							if (requiredInputs !== undefined) {
 								if (typeof requiredInputs === 'string') {
