@@ -81,7 +81,7 @@ export default defineComponent({
 		loadingMessage: {
 			type: String,
 			default() {
-				this.$locale.baseText('genericHelpers.loading');
+				return this.$locale.baseText('genericHelpers.loading');
 			},
 		},
 	},
@@ -96,7 +96,7 @@ export default defineComponent({
 			return this.getArgument('editor') === 'htmlEditor';
 		},
 		shouldShowExpressionSelector(): boolean {
-			return this.parameter.noDataExpression !== true && this.$props.showExpressionSelector;
+			return this.parameter.noDataExpression !== true && this.showExpressionSelector;
 		},
 		shouldShowOptions(): boolean {
 			if (this.isReadOnly === true) {
@@ -128,8 +128,8 @@ export default defineComponent({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
-			if (Array.isArray(this.$props.customActions) && this.$props.customActions.length > 0) {
-				return this.$props.customActions;
+			if (Array.isArray(this.customActions) && this.customActions.length > 0) {
+				return this.customActions;
 			}
 
 			if (this.isHtmlEditor && !this.isValueExpression) {

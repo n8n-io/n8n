@@ -876,7 +876,6 @@ export default defineComponent({
 					value: i,
 				});
 			}
-			console.log(branches);
 			return branches;
 		},
 		editMode(): { enabled: boolean; value: string } {

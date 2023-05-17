@@ -100,7 +100,7 @@ defineExpose({
 <template>
 	<div data-test-id="mapping-mode-select">
 		<n8n-input-label
-			:label="$locale.baseText('resourceMapper.mappingMode.label')"
+			:label="locale.baseText('resourceMapper.mappingMode.label')"
 			:bold="false"
 			:required="false"
 			:size="labelSize"
@@ -129,7 +129,7 @@ defineExpose({
 					<n8n-text v-if="loading" size="small">
 						<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 						{{
-							$locale.baseText('resourceMapper.fetchingFields.message', {
+							locale.baseText('resourceMapper.fetchingFields.message', {
 								interpolate: {
 									fieldWord:
 										props.typeOptions?.fieldWords?.plural ||
@@ -143,7 +143,7 @@ defineExpose({
 						<n8n-icon icon="exclamation-triangle" size="xsmall" />
 						{{ errorMessage }}
 						<n8n-link size="small" theme="danger" :underline="true" @click="onRetryClick">
-							{{ $locale.baseText('generic.retry') }}
+							{{ locale.baseText('generic.retry') }}
 						</n8n-link>
 					</n8n-text>
 				</div>

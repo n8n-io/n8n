@@ -1887,13 +1887,18 @@ const validateResourceMapperValue = (
 	node: INode,
 	skipRequiredCheck = false,
 ): ExtendedValidationResult => {
+	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
+	const paramNameParts = parameterName.split('.');
+	if (paramNameParts.length !== 2) {
+		return result;
+	}
 	const resourceMapperParamName = parameterName.split('.')[0];
 	const resourceMapperField = node.parameters[resourceMapperParamName];
-	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
 	if (resourceMapperField && isResourceMapperValue(resourceMapperField)) {
 		const schema = resourceMapperField.schema;
-		for (let i = 0; i < Object.keys(paramValues).length; i++) {
-			const key = Object.keys(paramValues)[i];
+		const paramValueNames = Object.keys(paramValues);
+		for (let i = 0; i < paramValueNames.length; i++) {
+			const key = paramValueNames[i];
 			const resolvedValue = paramValues[key];
 			const schemaEntry = schema.find((s) => s.id === key);
 
