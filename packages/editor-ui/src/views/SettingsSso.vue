@@ -99,11 +99,11 @@ const onSave = async () => {
 				await onTest();
 			}
 		}
-
-		await getSamlConfig();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
+	} finally {
+		await getSamlConfig();
 	}
 };
 
