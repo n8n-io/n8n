@@ -141,6 +141,7 @@ export class VersionControlService {
 			workflows: undefined,
 		};
 		try {
+			// comment next line if needed
 			await this.versionControlExportService.cleanWorkFolder();
 			result.tags = await this.versionControlExportService.exportTagsToWorkFolder();
 			result.variables = await this.versionControlExportService.exportVariablesToWorkFolder();
@@ -205,6 +206,19 @@ export class VersionControlService {
 		});
 	}
 
+	// async pushWorkfolder(
+	// 	options: VersionControlPushWorkFolder,
+	// ): Promise<PushResult | VersionControlledFile[]> {
+	// 	await this.gitService.fetch();
+	// 	await this.export(); // refresh workfolder
+	// 	await this.stage(options);
+	// 	await this.gitService.commit(options.message ?? 'Updated Workfolder');
+	// 	return this.gitService.push({
+	// 		branch: this.versionControlPreferencesService.getBranchName(),
+	// 		force: options.force ?? false,
+	// 	});
+	// }
+
 	async pullWorkfolder(
 		options: VersionControllPullOptions,
 	): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
@@ -224,6 +238,25 @@ export class VersionControlService {
 		}
 		return pullResult;
 	}
+
+	// async pullWorkfolder(
+	// 	options: VersionControllPullOptions,
+	// ): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
+	// 	// await this.versionControlExportService.cleanWorkFolder();
+
+	// 	await this.resetWorkfolder(options);
+	// 	await this.export(); // refresh workfolder
+	// 	const status = await this.gitService.status();
+	// 	console.log(status);
+
+	// 	if (status.modified.length > 0 && options.force !== true) {
+	// 		console.log('Erase local changes?');
+	// 		return;
+	// 	}
+	// 	await this.resetWorkfolder(options);
+	// 	// await this.gitService.pull();
+	// 	return this.import(options);
+	// }
 
 	async stage(
 		options: Pick<VersionControlPushWorkFolder, 'fileNames' | 'credentialIds' | 'workflowIds'>,
