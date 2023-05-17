@@ -44,7 +44,7 @@ import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import { ExecutionRepository } from '@/databases/repositories';
 
-interface IGetExecutionsQueryFilter {
+export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
 	finished?: boolean;
 	mode?: string;
@@ -269,89 +269,8 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const findWhere: FindOptionsWhere<ExecutionEntity> = {
-			workflowId: In(sharedWorkflowIds),
-		};
-		if (filter?.status) {
-			Object.assign(findWhere, { status: In(filter.status) });
-		}
-		if (filter?.finished) {
-			Object.assign(findWhere, { finished: filter.finished });
-		}
-
-		const rangeQuery: string[] = [];
-		const rangeQueryParams: {
-			lastId?: string;
-			firstId?: string;
-			executingWorkflowIds?: string[];
-		} = {};
-
-		if (req.query.lastId) {
-			rangeQuery.push('execution.id < :lastId');
-			rangeQueryParams.lastId = req.query.lastId;
-		}
-
-		if (req.query.firstId) {
-			rangeQuery.push('execution.id > :firstId');
-			rangeQueryParams.firstId = req.query.firstId;
-		}
-
-		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push('execution.id NOT IN (:...executingWorkflowIds)');
-			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
-		}
-
-		if (rangeQuery.length) {
-			Object.assign(findWhere, {
-				id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
-			});
-		}
-
-		// TODO: Remove query from here and move to repository
-		// Omit `data` from the Execution since it is the largest and not necessary for the list.
-		let query = Db.collections.Execution.createQueryBuilder('execution')
-			.select([
-				'execution.id',
-				'execution.finished',
-				'execution.mode',
-				'execution.retryOf',
-				'execution.retrySuccessId',
-				'execution.waitTill',
-				'execution.startedAt',
-				'execution.stoppedAt',
-				'execution.status',
-				'ed.workflowData',
-			])
-			.orderBy('execution.id', 'DESC')
-			.innerJoin(ExecutionData, 'ed', 'ed.executionId = execution.id')
-			.take(limit)
-			.where(findWhere);
-
 		const countFilter = deepCopy(filter ?? {});
 		const metadata = isAdvancedExecutionFiltersEnabled() ? filter?.metadata : undefined;
-
-		if (metadata?.length) {
-			query = query.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
-			for (const md of metadata) {
-				query = query.andWhere('md.key = :key AND md.value = :value', md);
-			}
-		}
-
-		if (filter?.startedAfter) {
-			query = query.andWhere({
-				startedAt: MoreThanOrEqual(
-					DateUtils.mixedDateToUtcDatetimeString(new Date(filter.startedAfter)),
-				),
-			});
-		}
-
-		if (filter?.startedBefore) {
-			query = query.andWhere({
-				startedAt: LessThanOrEqual(
-					DateUtils.mixedDateToUtcDatetimeString(new Date(filter.startedBefore)),
-				),
-			});
-		}
 
 		// deepcopy breaks the In operator so we need to reapply it
 		if (filter?.status) {
@@ -359,15 +278,8 @@ export class ExecutionsService {
 			Object.assign(countFilter, { status: In(filter.status) });
 		}
 
-		if (filter) {
-			this.massageFilters(filter as IDataObject);
-			query = query.andWhere(filter);
-		}
-
 		this.massageFilters(countFilter as IDataObject);
 		countFilter.id = Not(In(executingWorkflowIds));
-
-		const executions = await query.getMany();
 
 		const { count, estimated } = await this.getExecutionsCount(
 			countFilter as IDataObject,
@@ -375,67 +287,12 @@ export class ExecutionsService {
 			metadata,
 		);
 
-		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
-			// inject potential node execution errors into the execution response
-			const nodeExecutionStatus = {};
-			let lastNodeExecuted;
-			let executionError;
-			// fill execution status for old executions that will return null
-			if (!execution.status) {
-				execution.status = getStatusUsingPreviousExecutionStatusMethod({
-					...execution,
-					data: parse(execution.executionData.data),
-					workflowData: execution.executionData.workflowData,
-				});
-			}
-			try {
-				const data = parse(execution.executionData.data) as IRunExecutionData;
-				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
-				executionError = data?.resultData?.error;
-				if (data?.resultData?.runData) {
-					for (const key of Object.keys(data.resultData.runData)) {
-						const errors = data.resultData.runData[key]
-							?.filter((taskdata) => taskdata.error?.name)
-							?.map((taskdata) => {
-								if (taskdata.error?.name === 'NodeOperationError') {
-									return {
-										name: (taskdata.error as NodeOperationError).name,
-										message: (taskdata.error as NodeOperationError).message,
-										description: (taskdata.error as NodeOperationError).description,
-									};
-								} else {
-									return {
-										name: taskdata.error?.name,
-									};
-								}
-							});
-						Object.assign(nodeExecutionStatus, {
-							[key]: {
-								executionStatus: data.resultData.runData[key][0].executionStatus,
-								errors,
-								data: data.resultData.runData[key][0].data ?? undefined,
-							},
-						});
-					}
-				}
-			} catch {}
-			return {
-				id: execution.id,
-				finished: execution.finished,
-				mode: execution.mode,
-				retryOf: execution.retryOf?.toString(),
-				retrySuccessId: execution?.retrySuccessId?.toString(),
-				waitTill: execution.waitTill as Date | undefined,
-				startedAt: execution.startedAt,
-				stoppedAt: execution.stoppedAt,
-				workflowId: execution.executionData.workflowData?.id ?? '',
-				workflowName: execution.executionData.workflowData?.name,
-				status: execution.status,
-				lastNodeExecuted,
-				executionError,
-				nodeExecutionStatus,
-			} as IExecutionsSummary;
-		});
+		const formattedExecutions = await Container.get(ExecutionRepository).searchExecutions(
+			filter,
+			limit,
+			executingWorkflowIds,
+			sharedWorkflowIds,
+		);
 		return {
 			count,
 			results: formattedExecutions,

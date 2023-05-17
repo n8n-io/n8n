@@ -1,10 +1,20 @@
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import { Column, Entity, Generated, Index, OneToMany, OneToOne, PrimaryColumn } from 'typeorm';
+import {
+	Column,
+	Entity,
+	Generated,
+	Index,
+	ManyToOne,
+	OneToMany,
+	OneToOne,
+	PrimaryColumn,
+} from 'typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { ExecutionData } from './ExecutionData';
 import type { ExecutionMetadata } from './ExecutionMetadata';
+import { WorkflowEntity } from './WorkflowEntity';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -50,4 +60,7 @@ export class ExecutionEntity {
 
 	@OneToOne('ExecutionData', 'execution')
 	executionData: ExecutionData;
+
+	@ManyToOne('WorkflowEntity')
+	workflow: WorkflowEntity;
 }

@@ -1,12 +1,18 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
 import type { IExecutionFlattedDb, IExecutionResponse } from '@/Interfaces';
-import type { IRunExecutionData } from 'n8n-workflow';
+import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { ExecutionDataRepository } from './executionData.repository';
 import { ExecutionData } from '../entities/ExecutionData';
+import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
+import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
+import { ExecutionMetadata } from '../entities/ExecutionMetadata';
+import { DateUtils } from 'typeorm/util/DateUtils';
+import { exec } from 'shelljs';
+import { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
@@ -168,5 +174,71 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async deleteExecution(executionId: string) {
 		return this.delete({ id: executionId });
+	}
+
+	async searchExecutions(
+		filters: IGetExecutionsQueryFilter | undefined,
+		limit: number,
+		excludedExecutionIds: string[],
+		workflowIdAllowList: string[],
+	): Promise<IExecutionsSummary[]> {
+		const query = this.createQueryBuilder('execution')
+			.select([
+				'execution.id',
+				'execution.finished',
+				'execution.mode',
+				'execution.retryOf',
+				'execution.retrySuccessId',
+				'execution.status',
+				'execution.startedAt',
+				'execution.stoppedAt',
+				'execution.workflowId',
+				'execution.waitTill',
+				'workflow.name',
+			])
+			.innerJoin('execution.workflow', 'workflow')
+			.limit(limit)
+			.orderBy('execution.startedAt', 'DESC')
+			.andWhere('execution.id NOT IN (:...excludedExecutionIds)', { excludedExecutionIds })
+			.andWhere('execution.workflowId IN (:...workflowIdAllowList)', { workflowIdAllowList });
+
+		if (filters?.status) {
+			query.andWhere('execution.status', In(filters.status));
+		}
+		if (filters?.finished) {
+			query.andWhere('execution.finished', In([filters.finished]));
+		}
+		if (filters?.metadata && isAdvancedExecutionFiltersEnabled()) {
+			query.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
+			for (const md of filters.metadata) {
+				query.andWhere('md.key = :key AND md.value = :value', md);
+			}
+		}
+		if (filters?.startedAfter) {
+			query.andWhere({
+				startedAt: MoreThanOrEqual(
+					DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedAfter)),
+				),
+			});
+		}
+		if (filters?.startedBefore) {
+			query.andWhere({
+				startedAt: LessThanOrEqual(
+					DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedBefore)),
+				),
+			});
+		}
+
+		const executions = await query.getMany();
+		console.log(executions[0]);
+
+		return executions.map((execution) => {
+			const { workflow, waitTill, ...rest } = execution;
+			return {
+				...rest,
+				waitTill: waitTill ?? undefined,
+				workflowName: workflow.name,
+			};
+		});
 	}
 }

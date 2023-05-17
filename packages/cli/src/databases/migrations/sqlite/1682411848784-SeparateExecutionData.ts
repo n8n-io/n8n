@@ -11,7 +11,7 @@ export class SeparateExecutionData1682411848784 implements ReversibleMigration {
 
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}execution_data" (
-				"executionId" int,
+				"executionId" int PRIMARY KEY NOT NULL,
 				"workflowData" text NOT NULL,
 				"data" text NOT NULL,
 				FOREIGN KEY("executionId") REFERENCES "${tablePrefix}execution_entity" ("id") ON DELETE CASCADE
