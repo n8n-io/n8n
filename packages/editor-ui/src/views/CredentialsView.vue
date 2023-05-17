@@ -57,11 +57,12 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
 export default defineComponent({
-	name: 'SettingsPersonalView',
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
 		CredentialCard,
@@ -74,10 +75,17 @@ export default defineComponent({
 				sharedWith: '',
 				type: '',
 			},
+			versionControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useUsersStore,
+			useVersionControlStore,
+		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
 		},
@@ -140,6 +148,18 @@ export default defineComponent({
 		'filters.type'() {
 			this.sendFiltersTelemetry('type');
 		},
+	},
+	mounted() {
+		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.versionControlStoreUnsubscribe();
 	},
 });
 </script>
