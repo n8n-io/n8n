@@ -190,7 +190,7 @@ export class VersionControlService {
 		options: VersionControlPushWorkFolder,
 	): Promise<PushResult | VersionControlledFile[]> {
 		if (!options.skipDiff) {
-			const diffResult = await this.updateLocalAndDiff();
+			const diffResult = await this.getStatus();
 			if (diffResult?.length > 0 && options.force !== true) {
 				await this.unstage();
 				return diffResult;
@@ -207,7 +207,7 @@ export class VersionControlService {
 	async pullWorkfolder(
 		options: VersionControllPullOptions,
 	): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
-		const diffResult = await this.updateLocalAndDiff();
+		const diffResult = await this.getStatus();
 		if (diffResult?.length > 0) {
 			await this.unstage();
 			if (options.force === true) {
@@ -221,13 +221,6 @@ export class VersionControlService {
 			return this.import(options);
 		}
 		return pullResult;
-	}
-
-	private async updateLocalAndDiff(): Promise<VersionControlledFile[]> {
-		await this.versionControlExportService.cleanWorkFolder();
-		await this.export(); // refresh workfolder
-		await this.gitService.fetch();
-		return this.getStatus();
 	}
 
 	async stage(
@@ -349,7 +342,6 @@ export class VersionControlService {
 	}
 
 	async getStatus(): Promise<VersionControlledFile[]> {
-		await this.versionControlExportService.cleanWorkFolder();
 		await this.export();
 		await this.stage({});
 		await this.gitService.fetch();

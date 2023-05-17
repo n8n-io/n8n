@@ -140,6 +140,7 @@ export class VersionControlExportService {
 			await Promise.all(variablesFile.map(async (e) => fsRm(e)));
 			await Promise.all(workflowFiles.map(async (e) => fsRm(e)));
 			await Promise.all(credentialFiles.map(async (e) => fsRm(e)));
+			LoggerProxy.debug('Cleaned work folder.');
 		} catch (error) {
 			LoggerProxy.error(`Failed to clean work folder: ${(error as Error).message}`);
 		}
@@ -325,8 +326,8 @@ export class VersionControlExportService {
 						id: e.credentials.id,
 						name: e.credentials.name,
 						type: e.credentials.type,
-						// nodesAccess: e.credentials.nodesAccess,
 					};
+					LoggerProxy.debug(`Writing credential ${e.credentials.id} to ${fileName}`);
 					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
 				}),
 			);

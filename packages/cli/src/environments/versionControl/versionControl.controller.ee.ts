@@ -181,10 +181,6 @@ export class VersionControlController {
 		}
 	}
 
-	// #region Version Control Test Functions
-	//TODO: SEPARATE FUNCTIONS FOR DEVELOPMENT ONLY
-	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
-
 	@Authorized(['global', 'owner'])
 	@Post('/generate-key-pair', { middlewares: [versionControlLicensedMiddleware] })
 	async generateKeyPair() {
@@ -194,6 +190,10 @@ export class VersionControlController {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
+
+	// #region Version Control Test Functions
+	//TODO: SEPARATE FUNCTIONS FOR DEVELOPMENT ONLY
+	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
 
 	@Authorized(['global', 'owner'])
 	@Get('/export', { middlewares: [versionControlLicensedMiddleware] })
