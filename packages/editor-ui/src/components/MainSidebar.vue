@@ -51,7 +51,7 @@
 							<n8n-icon icon="code-branch" />
 							{{ currentBranch }}
 						</span>
-						<div :class="{ 'pt-xs': !isCollapsed }">
+						<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
 							<n8n-button
 								:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }"
 								icon="arrow-down"
@@ -186,6 +186,9 @@ export default defineComponent({
 		),
 		currentBranch(): string {
 			return this.versionControlStore.preferences.branchName;
+		},
+		versionControlLoading(): boolean {
+			return this.versionControlStore.state.loading;
 		},
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;

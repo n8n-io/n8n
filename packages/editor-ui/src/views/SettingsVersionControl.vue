@@ -78,6 +78,7 @@ const goToUpgrade = () => {
 		}}</n8n-heading>
 		<div
 			v-if="versionControlStore.isEnterpriseVersionControlEnabled"
+			v-loading="versionControlStore.state.loading"
 			data-test-id="version-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">

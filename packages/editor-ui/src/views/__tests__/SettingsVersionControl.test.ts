@@ -26,7 +26,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 		},
 	);
 
-describe('SettingsSso', () => {
+describe('SettingsVersionControl', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({
 			initialState: {
