@@ -1883,17 +1883,17 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 
 const validateResourceMapperValue = (
 	parameterName: string,
-	paramValues: object,
+	paramValues: { [key: string]: unknown },
 	node: INode,
 	skipRequiredCheck = false,
 ): ExtendedValidationResult => {
 	const resourceMapperParamName = parameterName.split('.')[0];
 	const resourceMapperField = node.parameters[resourceMapperParamName];
-	const result: ExtendedValidationResult = { valid: true };
+	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
 	if (resourceMapperField && isResourceMapperValue(resourceMapperField)) {
 		const schema = resourceMapperField.schema;
 		for (let i = 0; i < Object.keys(paramValues).length; i++) {
-			const key = Object.keys(paramValues)[i] as keyof typeof paramValues;
+			const key = Object.keys(paramValues)[i];
 			const resolvedValue = paramValues[key];
 			const schemaEntry = schema.find((s) => s.id === key);
 
@@ -1919,6 +1919,9 @@ const validateResourceMapperValue = (
 				);
 				if (!validationResult.valid) {
 					return { ...validationResult, fieldName: key };
+				} else {
+					// If it's valid, set the casted value
+					paramValues[key] = validationResult.newValue;
 				}
 			}
 		}
@@ -1929,12 +1932,12 @@ const validateResourceMapperValue = (
 const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
-	returnData: string | number | boolean | object | null | undefined,
+	inputValues: string | number | boolean | object | null | undefined,
 	parameterName: string,
 	runIndex: number,
 	itemIndex: number,
 ) => {
-	let validationResult: ExtendedValidationResult = { valid: true };
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
 	// Currently only validate resource mapper values
 	const resourceMapperField = nodeType.description.properties.find(
 		(prop) =>
@@ -1943,10 +1946,10 @@ const validateValueAgainstSchema = (
 			parameterName === `${prop.name}.value`,
 	);
 
-	if (resourceMapperField && typeof returnData === 'object') {
+	if (resourceMapperField && typeof inputValues === 'object') {
 		validationResult = validateResourceMapperValue(
 			parameterName,
-			returnData as object,
+			inputValues as { [key: string]: unknown },
 			node,
 			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
 		);
@@ -1966,6 +1969,7 @@ const validateValueAgainstSchema = (
 			},
 		);
 	}
+	return validationResult.newValue;
 };
 
 /**
@@ -2030,7 +2034,14 @@ export function getNodeParameter(
 	}
 
 	// Validate parameter value if it has a schema defined
-	validateValueAgainstSchema(node, nodeType, returnData, parameterName, runIndex, itemIndex);
+	returnData = validateValueAgainstSchema(
+		node,
+		nodeType,
+		returnData,
+		parameterName,
+		runIndex,
+		itemIndex,
+	);
 
 	return returnData;
 }

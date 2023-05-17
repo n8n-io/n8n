@@ -42,18 +42,11 @@ import type {
 	ResourceMapperValue,
 	ValidationResult,
 } from './Interfaces';
-import {
-	isBoolean,
-	isDateTime,
-	isNumeric,
-	isObject,
-	isResourceMapperValue,
-	isTime,
-	isValidResourceLocatorParameterValue,
-} from './type-guards';
+import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
+import { DateTime } from 'luxon';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1119,38 +1112,149 @@ export const validateFieldType = (
 	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
 	switch (type.toLowerCase()) {
 		case 'number': {
-			return { valid: isNumeric(value), errorMessage: defaultErrorMessage };
+			try {
+				return { valid: true, newValue: tryToParseNumber(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		case 'boolean': {
-			return { valid: isBoolean(value), errorMessage: defaultErrorMessage };
+			try {
+				return { valid: true, newValue: tryToParseBoolean(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		case 'datetime': {
-			return { valid: isDateTime(value), errorMessage: defaultErrorMessage };
+			try {
+				return { valid: true, newValue: tryToParseDateTime(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		case 'time': {
-			return {
-				valid: isTime(value),
-				errorMessage: `'${fieldName}' expects time [hh:mm(:ss)] but we got '${String(value)}'`,
-			};
+			try {
+				return { valid: true, newValue: tryToParseTime(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		case 'object': {
-			return { valid: isObject(value), errorMessage: defaultErrorMessage };
+			try {
+				return { valid: true, newValue: tryToParseObject(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		case 'array': {
-			return { valid: Array.isArray(value), errorMessage: defaultErrorMessage };
+			try {
+				return { valid: true, newValue: tryToParseArray(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
 		}
 		case 'options': {
 			const validOptions = options?.map((option) => option.value).join(', ') || '';
-			return {
-				valid: options?.some((option) => option.value === value) || false,
-				errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
-					value,
-				)}'`,
-			};
+			const isValidOption = options?.some((option) => option.value === value) || false;
+
+			if (!isValidOption) {
+				return {
+					valid: false,
+					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+						value,
+					)}'`,
+				};
+			}
+			return { valid: true, newValue: value };
 		}
 		default: {
-			return { valid: true };
+			return { valid: true, newValue: value };
 		}
+	}
+};
+
+export const tryToParseNumber = (value: unknown): number => {
+	const isValidNumber = !isNaN(Number(value));
+
+	if (!isValidNumber) {
+		throw new Error(`Could not parse '${String(value)}' to number.`);
+	}
+	return Number(value);
+};
+
+export const tryToParseBoolean = (value: unknown): value is boolean => {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
+		return value.toLowerCase() === 'true';
+	}
+
+	const num = Number(value);
+	if (num === 0) {
+		return false;
+	} else if (num === 1) {
+		return true;
+	}
+	throw new Error(`Could not parse '${String(value)}' to boolean.`);
+};
+
+export const tryToParseDateTime = (value: unknown): DateTime => {
+	const dateString = String(value);
+
+	// Rely on luxon to parse different date formats
+	const isoDate = DateTime.fromISO(dateString);
+	if (isoDate.isValid) {
+		return isoDate;
+	}
+	const httpDate = DateTime.fromHTTP(dateString);
+	if (httpDate.isValid) {
+		return httpDate;
+	}
+	const rfc2822Date = DateTime.fromRFC2822(dateString);
+	if (rfc2822Date.isValid) {
+		return rfc2822Date;
+	}
+	const sqlDate = DateTime.fromSQL(dateString);
+	if (sqlDate.isValid) {
+		return sqlDate;
+	}
+
+	throw new Error(`The value "${dateString}" is not a valid date.`);
+};
+
+export const tryToParseTime = (value: unknown): string => {
+	const isTimeInput = /\d{2}:\d{2}(:\d{2})?(\-|\+\d{4})?/s.test(String(value));
+	if (!isTimeInput) {
+		throw new Error(`The value "${String(value)}" is not a valid time.`);
+	}
+	return String(value);
+};
+
+export const tryToParseArray = (value: unknown): unknown[] => {
+	try {
+		const isValidArray = Array.isArray(JSON.parse(`[${String(value)}]`));
+		if (!isValidArray) {
+			throw new Error('Not a valid array');
+		}
+		return JSON.parse(`[${String(value)}]`);
+	} catch (e) {
+		throw new Error(`The value "${String(value)}" is not a valid array.`);
+	}
+};
+
+export const tryToParseObject = (value: unknown): object => {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const o = JSON.parse(String(value));
+		const isValidObject = !Array.isArray(o);
+		if (!isValidObject) {
+			throw new Error('Not a valid object');
+		}
+		return o;
+	} catch (e) {
+		throw new Error(`The value "${String(value)}" is not a valid object.`);
 	}
 };
 

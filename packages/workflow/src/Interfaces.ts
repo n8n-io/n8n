@@ -1984,6 +1984,7 @@ export type FieldType =
 export type ValidationResult = {
 	valid: boolean;
 	errorMessage?: string;
+	newValue?: unknown;
 };
 
 export type ResourceMapperValue = {
