@@ -115,7 +115,8 @@ export class VersionControlService {
 		} else {
 			try {
 				writeFileSync(path.join(this.gitFolder, '/README.md'), VERSION_CONTROL_README);
-				await this.stage({ fileNames: new Set<string>(['README.md']) });
+
+				await this.gitService.stage(new Set<string>(['README.md']));
 				await this.gitService.commit('Initial commit');
 				await this.gitService.push({
 					branch: preferences.branchName,
