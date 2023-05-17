@@ -148,7 +148,7 @@ export class VersionControlGitService {
 		if (versionControlPreferences.initRepo) {
 			try {
 				await this.git.init();
-				await this.git.checkoutLocalBranch(versionControlPreferences.branchName);
+				await this.git.raw(['branch', '-M', versionControlPreferences.branchName]);
 			} catch (error) {
 				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
 			}

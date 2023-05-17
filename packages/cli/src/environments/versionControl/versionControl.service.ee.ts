@@ -115,7 +115,8 @@ export class VersionControlService {
 		} else {
 			try {
 				writeFileSync(path.join(this.gitFolder, '/README.md'), VERSION_CONTROL_README);
-				await this.stage({ fileNames: new Set<string>(['README.md']) });
+
+				await this.gitService.stage(new Set<string>(['README.md']));
 				await this.gitService.commit('Initial commit');
 				await this.gitService.push({
 					branch: preferences.branchName,
@@ -177,6 +178,7 @@ export class VersionControlService {
 	// this will discard all local changes
 	async resetWorkfolder(options: VersionControllPullOptions): Promise<ImportResult | undefined> {
 		const currentBranch = await this.gitService.getCurrentBranch();
+		await this.versionControlExportService.cleanWorkFolder();
 		await this.gitService.resetBranch({
 			hard: true,
 			target: currentBranch.remote,
@@ -220,44 +222,44 @@ export class VersionControlService {
 	// 	});
 	// }
 
-	async pullWorkfolder(
-		options: VersionControllPullOptions,
-	): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
-		const diffResult = await this.getStatus();
-		const possibleConflicts = diffResult?.filter((file) => file.conflict);
-		if (possibleConflicts?.length > 0 || options.force === true) {
-			await this.unstage();
-			if (options.force === true) {
-				return this.resetWorkfolder(options);
-			} else {
-				return diffResult;
-			}
-		}
-		const pullResult = await this.gitService.pull();
-		if (options.importAfterPull) {
-			return this.import(options);
-		}
-		return pullResult;
-	}
-
+	// TODO: Alternate implementation for pull
 	// async pullWorkfolder(
 	// 	options: VersionControllPullOptions,
 	// ): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
-	// 	// await this.versionControlExportService.cleanWorkFolder();
-
-	// 	await this.resetWorkfolder(options);
-	// 	await this.export(); // refresh workfolder
-	// 	const status = await this.gitService.status();
-	// 	console.log(status);
-
-	// 	if (status.modified.length > 0 && options.force !== true) {
-	// 		console.log('Erase local changes?');
-	// 		return;
+	// 	const diffResult = await this.getStatus();
+	// 	const possibleConflicts = diffResult?.filter((file) => file.conflict);
+	// 	if (possibleConflicts?.length > 0 || options.force === true) {
+	// 		await this.unstage();
+	// 		if (options.force === true) {
+	// 			return this.resetWorkfolder(options);
+	// 		} else {
+	// 			return diffResult;
+	// 		}
 	// 	}
-	// 	await this.resetWorkfolder(options);
-	// 	// await this.gitService.pull();
-	// 	return this.import(options);
+	// 	const pullResult = await this.gitService.pull();
+	// 	if (options.importAfterPull) {
+	// 		return this.import(options);
+	// 	}
+	// 	return pullResult;
 	// }
+
+	async pullWorkfolder(
+		options: VersionControllPullOptions,
+	): Promise<ImportResult | StatusResult | undefined> {
+		await this.resetWorkfolder({
+			importAfterPull: false,
+			userId: options.userId,
+			force: false,
+		});
+		await this.export(); // refresh workfolder
+		const status = await this.gitService.status();
+
+		if (status.modified.length > 0 && options.force !== true) {
+			return status;
+		}
+		await this.resetWorkfolder(options);
+		return this.import(options);
+	}
 
 	async stage(
 		options: Pick<VersionControlPushWorkFolder, 'fileNames' | 'credentialIds' | 'workflowIds'>,
