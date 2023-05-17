@@ -3,21 +3,14 @@
 
 ### Bug Fixes
 
-* Add itemSize config to workflows view recycle scroller (no-changelog) ([#6238](https://github.com/n8n-io/n8n/issues/6238)) ([b4fd9ba](https://github.com/n8n-io/n8n/commit/b4fd9ba94d783d33819049796082698ba90f6e9b))
 * **Code Node:** Restore help text ([#6231](https://github.com/n8n-io/n8n/issues/6231)) ([e72d564](https://github.com/n8n-io/n8n/commit/e72d564bf84460ce085f022f186e8101524f2e7b))
 * **core:** Make sure that special polling parameters are available on community nodes as well ([#6230](https://github.com/n8n-io/n8n/issues/6230)) ([9db49d0](https://github.com/n8n-io/n8n/commit/9db49d0c18f007b974594b918728e430ec510f54))
-* **editor:** Fix close and cancel operations on useMessage (no-changelog) ([#6260](https://github.com/n8n-io/n8n/issues/6260)) ([4a0e1b9](https://github.com/n8n-io/n8n/commit/4a0e1b9e020386da3f7ac7b0fe2d606f96fce056))
-* **editor:** Fix typo and change text sizes in ExecutionUsage component (no-changelog) ([#6261](https://github.com/n8n-io/n8n/issues/6261)) ([a422464](https://github.com/n8n-io/n8n/commit/a4224649c54bd8cdda7572841cd23847926eafa4))
-* Prevent type error messages for manual executions (no-changelog) ([#6229](https://github.com/n8n-io/n8n/issues/6229)) ([8402c0f](https://github.com/n8n-io/n8n/commit/8402c0f4006d0251db41735542f38bb8a24cef9d))
 * Remove workflow execution credential error message when instance owner ([#6116](https://github.com/n8n-io/n8n/issues/6116)) ([e81a964](https://github.com/n8n-io/n8n/commit/e81a96483af6e0d0a3cf62481f5e9a37d6a62b6e))
-* Revert "Replace client-oauth2 with an in-repo package" (no-changelog) ([#6265](https://github.com/n8n-io/n8n/issues/6265)) ([b7d30f3](https://github.com/n8n-io/n8n/commit/b7d30f3eab3bbc9daf46c5c68d9541727aa61a05)), closes [#6056](https://github.com/n8n-io/n8n/issues/6056)
 
 
 ### Features
 
-* **core:** Add experimental proxy support to License-SDK (no-changelog) ([#6253](https://github.com/n8n-io/n8n/issues/6253)) ([f1598d6](https://github.com/n8n-io/n8n/commit/f1598d6fdc531a19ce28c8895bf500dd5f1b54dd))
 * **core:** Reduce the number of events sent to Sentry ([#6235](https://github.com/n8n-io/n8n/issues/6235)) ([a4c0cc9](https://github.com/n8n-io/n8n/commit/a4c0cc9b5c56639067918f1bad1baf4eb201e48b))
-* **core:** Replace client-oauth2 with an in-repo package ([#6056](https://github.com/n8n-io/n8n/issues/6056)) ([77ac953](https://github.com/n8n-io/n8n/commit/77ac953eafe64b96ccfd677cd5f417380702cf8d))
 * **core:** Return OAuth2 error body if available ([#5794](https://github.com/n8n-io/n8n/issues/5794)) ([79d0a0f](https://github.com/n8n-io/n8n/commit/79d0a0f2470905f98b71fb5c8ca007244004f99a))
 * **editor:** Add cloud ExecutionsUsage and API blocking using licenses ([#6159](https://github.com/n8n-io/n8n/issues/6159)) ([cd7c312](https://github.com/n8n-io/n8n/commit/cd7c312fbd172b5d3c8bbeaf775f7b5bb4611aa5)), closes [#6187](https://github.com/n8n-io/n8n/issues/6187)
 * **editor:** Add color picker design system component ([#6179](https://github.com/n8n-io/n8n/issues/6179)) ([823e885](https://github.com/n8n-io/n8n/commit/823e88500c35508d6322242bca5749d711fb2b31))
@@ -26,11 +19,6 @@
 * **editor:** Version Control settings update (WIP) ([#6233](https://github.com/n8n-io/n8n/issues/6233)) ([0666377](https://github.com/n8n-io/n8n/commit/0666377ef8074ad093391d41e08e194704a25dbd))
 * **Google Ads Node:** Update to support v13 ([#6212](https://github.com/n8n-io/n8n/issues/6212)) ([bd1bffc](https://github.com/n8n-io/n8n/commit/bd1bffcd536eedde8582a354c11349dbddd2b9a2))
 * **Respond to Webhook Node:** Move from Binary Buffer to Binary streaming ([#5613](https://github.com/n8n-io/n8n/issues/5613)) ([8ae2d80](https://github.com/n8n-io/n8n/commit/8ae2d801d8e2c881fcff5f7cf4fcb699c10b2be2))
-
-
-### Reverts
-
-* Revert "refactor(editor): Turn showMessage mixin to composable" (#6243) ([638e3f2](https://github.com/n8n-io/n8n/commit/638e3f209da6b23e72dd962ac7acdaeaebb5e79e)), closes [#6243](https://github.com/n8n-io/n8n/issues/6243) [#6081](https://github.com/n8n-io/n8n/issues/6081)
 
 
 
