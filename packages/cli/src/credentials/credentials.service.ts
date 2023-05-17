@@ -297,8 +297,6 @@ export class CredentialsService {
 		};
 		const properties = getExtendedProps(credType);
 
-		console.log(copiedData);
-
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData') {
