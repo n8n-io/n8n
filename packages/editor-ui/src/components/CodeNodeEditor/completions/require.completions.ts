@@ -1,8 +1,8 @@
 import Vue from 'vue';
-import { AUTOCOMPLETABLE_BUILT_IN_MODULES } from '../constants';
+import { AUTOCOMPLETABLE_BUILT_IN_MODULES_JS } from '../constants';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { CodeNodeEditorMixin } from '../types';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export const requireCompletions = (Vue as CodeNodeEditorMixin).extend({
 	methods: {
@@ -25,7 +25,7 @@ export const requireCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (allowedModules.builtIn) {
 				if (allowedModules.builtIn.includes('*')) {
-					options.push(...AUTOCOMPLETABLE_BUILT_IN_MODULES.map(toOption));
+					options.push(...AUTOCOMPLETABLE_BUILT_IN_MODULES_JS.map(toOption));
 				} else if (allowedModules?.builtIn?.length > 0) {
 					options.push(...allowedModules.builtIn.map(toOption));
 				}

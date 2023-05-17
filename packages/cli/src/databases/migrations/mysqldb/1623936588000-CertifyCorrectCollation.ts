@@ -1,30 +1,22 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class CertifyCorrectCollation1623936588000 implements MigrationInterface {
-	name = 'CertifyCorrectCollation1623936588000';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-		const databaseType = config.getEnv('database.type');
-
-		if (databaseType === 'mariadb') {
+export class CertifyCorrectCollation1623936588000 implements IrreversibleMigration {
+	async up({ queryRunner, tablePrefix, dbType, dbName }: MigrationContext) {
+		if (dbType === 'mariadb') {
 			// This applies to MySQL only.
 			return;
 		}
 
-		const checkCollationExistence = await queryRunner.query(
-			`show collation where collation like 'utf8mb4_0900_ai_ci';`,
-		);
+		const checkCollationExistence = (await queryRunner.query(
+			"show collation where collation like 'utf8mb4_0900_ai_ci';",
+		)) as unknown[];
 		let collation = 'utf8mb4_general_ci';
 		if (checkCollationExistence.length > 0) {
 			collation = 'utf8mb4_0900_ai_ci';
 		}
 
-		const databaseName = config.getEnv(`database.mysqldb.database`);
-
 		await queryRunner.query(
-			`ALTER DATABASE \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE ${collation};`,
+			`ALTER DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE ${collation};`,
 		);
 
 		for (const tableName of [
@@ -41,9 +33,6 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 		}
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		// There is nothing to undo in this case as we already expect default collation to be utf8mb4
-		// This migration exists simply to enforce that n8n will work with
-		// older mysql versions
-	}
+	// There is no down migration in this case as we already expect default collation to be utf8mb4
+	// The up migration exists simply to enforce that n8n will work with older mysql versions
 }

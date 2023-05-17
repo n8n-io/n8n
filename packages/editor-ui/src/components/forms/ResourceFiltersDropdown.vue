@@ -66,7 +66,7 @@
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 import type { PropType } from 'vue';
 import type { IUser } from '@/Interface';
 

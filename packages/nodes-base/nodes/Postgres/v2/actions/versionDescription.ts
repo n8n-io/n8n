@@ -8,7 +8,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'postgres',
 	icon: 'file:postgres.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{ $parameter["operation"] }}',
 	description: 'Get, add and update data in Postgres',
 	defaults: {

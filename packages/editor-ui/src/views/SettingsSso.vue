@@ -1,16 +1,17 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
-import { useSSOStore } from '@/stores/sso';
-import { useUIStore } from '@/stores/ui';
+import { useSSOStore } from '@/stores/sso.store';
+import { useUIStore } from '@/stores/ui.store';
 import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
-import { useMessage, useToast } from '@/composables';
+import { useI18n, useMessage, useToast } from '@/composables';
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
 };
 
+const { i18n } = useI18n();
 const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();
@@ -18,8 +19,8 @@ const toast = useToast();
 
 const ssoActivatedLabel = computed(() =>
 	ssoStore.isSamlLoginEnabled
-		? locale.baseText('settings.sso.activated')
-		: locale.baseText('settings.sso.deactivated'),
+		? i18n.baseText('settings.sso.activated')
+		: i18n.baseText('settings.sso.deactivated'),
 );
 const ssoSettingsSaved = ref(false);
 
@@ -28,11 +29,11 @@ const entityId = ref();
 
 const ipsOptions = ref([
 	{
-		label: locale.baseText('settings.sso.settings.ips.options.url'),
+		label: i18n.baseText('settings.sso.settings.ips.options.url'),
 		value: IdentityProviderSettingsType.URL,
 	},
 	{
-		label: locale.baseText('settings.sso.settings.ips.options.xml'),
+		label: i18n.baseText('settings.sso.settings.ips.options.xml'),
 		value: IdentityProviderSettingsType.XML,
 	},
 ]);
@@ -85,18 +86,21 @@ const onSave = async () => {
 		await ssoStore.saveSamlConfig(config);
 
 		if (!ssoStore.isSamlLoginEnabled) {
-			await message.confirm(
-				locale.baseText('settings.sso.settings.save.activate.message'),
-				locale.baseText('settings.sso.settings.save.activate.title'),
+			const answer = await message.confirm(
+				i18n.baseText('settings.sso.settings.save.activate.message'),
+				i18n.baseText('settings.sso.settings.save.activate.title'),
 				{
-					confirmButtonText: locale.baseText('settings.sso.settings.save.activate.test'),
-					cancelButtonText: locale.baseText('settings.sso.settings.save.activate.cancel'),
+					confirmButtonText: i18n.baseText('settings.sso.settings.save.activate.test'),
+					cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.cancel'),
 				},
 			);
 
-			await onTest();
+			if (answer === 'confirm') {
+				await onTest();
+			}
 		}
 	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
 	} finally {
 		await getSamlConfig();
@@ -133,16 +137,16 @@ onMounted(async () => {
 
 <template>
 	<div>
-		<n8n-heading size="2xlarge">{{ locale.baseText('settings.sso.title') }}</n8n-heading>
+		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</n8n-heading>
 		<div :class="$style.top">
-			<n8n-heading size="xlarge">{{ locale.baseText('settings.sso.subtitle') }}</n8n-heading>
+			<n8n-heading size="xlarge">{{ i18n.baseText('settings.sso.subtitle') }}</n8n-heading>
 			<n8n-tooltip
 				v-if="ssoStore.isEnterpriseSamlEnabled"
 				:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
 			>
 				<template #content>
 					<span>
-						{{ locale.baseText('settings.sso.activation.tooltip') }}
+						{{ i18n.baseText('settings.sso.activation.tooltip') }}
 					</span>
 				</template>
 				<el-switch
@@ -154,32 +158,32 @@ onMounted(async () => {
 			</n8n-tooltip>
 		</div>
 		<n8n-info-tip>
-			{{ locale.baseText('settings.sso.info') }}
+			{{ i18n.baseText('settings.sso.info') }}
 			<a href="https://docs.n8n.io/user-management/saml/" target="_blank">
-				{{ locale.baseText('settings.sso.info.link') }}
+				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</n8n-info-tip>
 		<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
 			<div :class="$style.group">
-				<label>{{ locale.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+				<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 				<CopyInput
 					:value="redirectUrl"
-					:copy-button-text="locale.baseText('generic.clickToCopy')"
-					:toast-title="locale.baseText('settings.sso.settings.redirectUrl.copied')"
+					:copy-button-text="i18n.baseText('generic.clickToCopy')"
+					:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
 				/>
-				<small>{{ locale.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+				<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 			</div>
 			<div :class="$style.group">
-				<label>{{ locale.baseText('settings.sso.settings.entityId.label') }}</label>
+				<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
 				<CopyInput
 					:value="entityId"
-					:copy-button-text="locale.baseText('generic.clickToCopy')"
-					:toast-title="locale.baseText('settings.sso.settings.entityId.copied')"
+					:copy-button-text="i18n.baseText('generic.clickToCopy')"
+					:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
 				/>
-				<small>{{ locale.baseText('settings.sso.settings.entityId.help') }}</small>
+				<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
 			</div>
 			<div :class="$style.group">
-				<label>{{ locale.baseText('settings.sso.settings.ips.label') }}</label>
+				<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 				<div class="mt-2xs mb-s">
 					<n8n-radio-buttons :options="ipsOptions" v-model="ipsType" />
 				</div>
@@ -189,18 +193,18 @@ onMounted(async () => {
 						type="text"
 						name="metadataUrl"
 						size="large"
-						:placeholder="locale.baseText('settings.sso.settings.ips.url.placeholder')"
+						:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
 					/>
-					<small>{{ locale.baseText('settings.sso.settings.ips.url.help') }}</small>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
 				</div>
 				<div v-show="ipsType === IdentityProviderSettingsType.XML">
 					<n8n-input v-model="metadata" type="textarea" name="metadata" :rows="4" />
-					<small>{{ locale.baseText('settings.sso.settings.ips.xml.help') }}</small>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 				</div>
 			</div>
 			<div :class="$style.buttons">
 				<n8n-button :disabled="!isSaveEnabled" @click="onSave" data-test-id="sso-save">
-					{{ locale.baseText('settings.sso.settings.save') }}
+					{{ i18n.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 				<n8n-button
 					:disabled="!isTestEnabled"
@@ -208,23 +212,23 @@ onMounted(async () => {
 					@click="onTest"
 					data-test-id="sso-test"
 				>
-					{{ locale.baseText('settings.sso.settings.test') }}
+					{{ i18n.baseText('settings.sso.settings.test') }}
 				</n8n-button>
 			</div>
 			<footer :class="$style.footer">
-				{{ locale.baseText('settings.sso.settings.footer.hint') }}
+				{{ i18n.baseText('settings.sso.settings.footer.hint') }}
 			</footer>
 		</div>
 		<n8n-action-box
 			v-else
 			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
-			:description="locale.baseText('settings.sso.actionBox.description')"
-			:buttonText="locale.baseText('settings.sso.actionBox.buttonText')"
+			:description="i18n.baseText('settings.sso.actionBox.description')"
+			:buttonText="i18n.baseText('settings.sso.actionBox.buttonText')"
 			@click="goToUpgrade"
 		>
 			<template #heading>
-				<span>{{ locale.baseText('settings.sso.actionBox.title') }}</span>
+				<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
 			</template>
 		</n8n-action-box>
 	</div>
