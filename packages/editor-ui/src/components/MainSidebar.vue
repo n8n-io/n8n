@@ -547,7 +547,7 @@ export default defineComponent({
 					confirmButtonText: 'Pull and override',
 					cancelButtonText: 'Cancel',
 				});
-				if (confirm) {
+				if (confirm === 'confirm') {
 					await this.versionControlStore.pullWorkfolder(true);
 				}
 			}
