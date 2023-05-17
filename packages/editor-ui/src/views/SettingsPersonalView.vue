@@ -95,7 +95,6 @@
 
 <script lang="ts">
 import { useToast } from '@/composables';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import type { IFormInputs, IUser } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
@@ -232,7 +231,10 @@ export default defineComponent({
 					duration: 0,
 				});
 			} catch (e) {
-				this.showError(e, this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
+				this.showError(
+					e,
+					this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.error.message'),
+				);
 			}
 		},
 	},
