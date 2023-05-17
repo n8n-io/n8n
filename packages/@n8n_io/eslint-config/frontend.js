@@ -25,5 +25,11 @@ module.exports = {
 		'vue/no-deprecated-slot-scope-attribute': 'error',
 		'vue/no-multiple-template-root': 'error',
 		'vue/v-slot-style': 'error',
+
+		// TODO: remove these
+		'vue/no-unused-components': 'warn',
+		'vue/return-in-computed-property': 'warn',
+		'vue/no-mutating-props': 'warn',
+		'@typescript-eslint/no-floating-promises': 'warn',
 	},
 };

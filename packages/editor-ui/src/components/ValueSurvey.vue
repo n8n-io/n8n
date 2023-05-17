@@ -56,14 +56,14 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
 import type { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from '@/components/ModalDrawer.vue';
 
-import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
@@ -75,8 +75,9 @@ const GREAT_FEEDBACK_TITLE =
 const DEFAULT_FEEDBACK_TITLE =
 	"Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?";
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'ValueSurvey',
+	mixins: [workflowHelpers],
 	props: ['isActive'],
 	components: {
 		ModalDrawer,

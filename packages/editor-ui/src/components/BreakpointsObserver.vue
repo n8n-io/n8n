@@ -5,6 +5,7 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/constants';
 
 /**
@@ -16,12 +17,12 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
  * xl >= 1920
  */
 
-import mixins from 'vue-typed-mixins';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 
-export default mixins(genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'BreakpointsObserver',
+	mixins: [genericHelpers, debounceHelper],
 	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
 	data() {
 		return {

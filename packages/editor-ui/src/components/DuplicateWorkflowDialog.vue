@@ -49,14 +49,13 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
@@ -66,9 +65,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from '@/event-bus';
 import { useCredentialsStore } from '@/stores';
 
-export default mixins(workflowHelpers).extend({
-	components: { TagsDropdown, Modal },
+export default defineComponent({
 	name: 'DuplicateWorkflow',
+	mixins: [workflowHelpers],
+	components: { TagsDropdown, Modal },
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
 		return {

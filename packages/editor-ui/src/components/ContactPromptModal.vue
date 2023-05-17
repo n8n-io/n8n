@@ -33,21 +33,21 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from '@/components/Modal.vue';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from '@/event-bus';
 import { useToast } from '@/composables';
 
-export default mixins(workflowHelpers).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'ContactPromptModal',
+	mixins: [workflowHelpers],
+	components: { Modal },
 	props: ['modalName'],
 	setup() {
 		return {
