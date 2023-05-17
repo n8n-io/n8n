@@ -1,4 +1,5 @@
-import ClientOAuth2 from 'client-oauth2';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
 import get from 'lodash.get';
@@ -119,7 +120,7 @@ oauth2CredentialController.get(
 		};
 		const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
-		const oAuthOptions: ClientOAuth2.Options = {
+		const oAuthOptions: ClientOAuth2Options = {
 			clientId: get(oauthCredentials, 'clientId') as string,
 			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
@@ -250,11 +251,11 @@ oauth2CredentialController.get(
 				return renderCallbackError(res, errorMessage);
 			}
 
-			let options = {};
+			let options: Partial<ClientOAuth2Options> = {};
 
-			const oAuth2Parameters = {
+			const oAuth2Parameters: ClientOAuth2Options = {
 				clientId: get(oauthCredentials, 'clientId') as string,
-				clientSecret: get(oauthCredentials, 'clientSecret', '') as string | undefined,
+				clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
@@ -268,6 +269,7 @@ oauth2CredentialController.get(
 						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
+				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
 			}
 
@@ -278,7 +280,8 @@ oauth2CredentialController.get(
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
 			const oauthToken = await oAuthObj.code.getToken(
-				`${oAuth2Parameters.redirectUri}?${queryParameters}`,
+				`${oAuth2Parameters.redirectUri as string}?${queryParameters}`,
+				// @ts-ignore
 				options,
 			);
 
