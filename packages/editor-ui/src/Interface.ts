@@ -1452,6 +1452,32 @@ export type VersionControlPreferences = {
 	currentBranch?: string;
 };
 
+export interface VersionControlStatus {
+	ahead: number;
+	behind: number;
+	conflicted: string[];
+	created: string[];
+	current: string;
+	deleted: string[];
+	detached: boolean;
+	files: Array<{
+		path: string;
+		index: string;
+		working_dir: string;
+	}>;
+	modified: string[];
+	not_added: string[];
+	renamed: string[];
+	staged: string[];
+	tracking: null;
+}
+
+export interface VersionControlAggregatedFile {
+	path: string;
+	status: string;
+	staged: boolean;
+}
+
 export declare namespace Cloud {
 	export interface PlanData {
 		planId: number;

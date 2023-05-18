@@ -46,37 +46,10 @@
 							}}
 						</n8n-text>
 					</div>
-					<div :class="$style.sync" v-if="versionControlStore.preferences.connected">
-						<span>
-							<n8n-icon icon="code-branch" />
-							{{ currentBranch }}
-						</span>
-						<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
-							<n8n-button
-								:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }"
-								icon="arrow-down"
-								type="tertiary"
-								size="mini"
-								:square="isCollapsed"
-								@click="pullWorkfolder"
-							>
-								<span v-if="!isCollapsed">{{
-									$locale.baseText('settings.versionControl.button.pull')
-								}}</span>
-							</n8n-button>
-							<n8n-button
-								:square="isCollapsed"
-								icon="arrow-up"
-								type="tertiary"
-								size="mini"
-								@click="pushWorkfolder"
-							>
-								<span v-if="!isCollapsed">{{
-									$locale.baseText('settings.versionControl.button.push')
-								}}</span>
-							</n8n-button>
-						</div>
-					</div>
+					<MainSidebarVersionControl
+						v-if="versionControlStore.preferences.connected"
+						:is-collapsed="isCollapsed"
+					/>
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -130,7 +103,6 @@
 
 <script lang="ts">
 import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -151,14 +123,16 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
 		ExecutionsUsage,
+		MainSidebarVersionControl,
 	},
 	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
 	setup(props) {
@@ -184,12 +158,6 @@ export default defineComponent({
 			useVersionControlStore,
 			useCloudPlanStore,
 		),
-		currentBranch(): string {
-			return this.versionControlStore.preferences.branchName;
-		},
-		versionControlLoading(): boolean {
-			return this.versionControlStore.state.loading;
-		},
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
 		},
@@ -516,42 +484,6 @@ export default defineComponent({
 				});
 			}
 		},
-		async pushWorkfolder() {
-			const prompt = (await this.prompt(
-				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
-					interpolate: { branch: this.versionControlStore.state.currentBranch },
-				}),
-				this.$locale.baseText('settings.versionControl.sync.prompt.title', {
-					interpolate: { branch: this.versionControlStore.state.currentBranch },
-				}),
-				{
-					confirmButtonText: 'Sync',
-					cancelButtonText: 'Cancel',
-					inputPlaceholder: this.$locale.baseText(
-						'settings.versionControl.sync.prompt.placeholder',
-					),
-					inputPattern: /^.+$/,
-					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
-				},
-			)) as MessageBoxInputData;
-
-			if (prompt.value) {
-				await this.versionControlStore.pushWorkfolder({ commitMessage: prompt.value });
-			}
-		},
-		async pullWorkfolder() {
-			try {
-				await this.versionControlStore.pullWorkfolder(false);
-			} catch (error) {
-				const confirm = await this.confirm('Override local changes', 'XXX', {
-					confirmButtonText: 'Pull and override',
-					cancelButtonText: 'Cancel',
-				});
-				if (confirm) {
-					await this.versionControlStore.pullWorkfolder(true);
-				}
-			}
-		},
 	},
 });
 </script>
@@ -665,31 +597,6 @@ export default defineComponent({
 @media screen and (max-height: 470px) {
 	:global(#help) {
 		display: none;
-	}
-}
-
-.sync {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
-	margin: 0 calc(var(--spacing-l) * -1) calc(var(--spacing-m) * -1);
-	background: var(--color-background-light);
-	border-top: 1px solid var(--color-foreground-light);
-	font-size: var(--font-size-2xs);
-
-	span {
-		color: var(--color-text-base);
-	}
-
-	button {
-		font-size: var(--font-size-3xs);
-	}
-
-	.sideMenuCollapsed & {
-		text-align: center;
-		margin-left: calc(var(--spacing-xl) * -1);
-
-		> span {
-			display: none;
-		}
 	}
 }
 </style>

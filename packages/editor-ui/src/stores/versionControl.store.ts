@@ -31,17 +31,16 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		commitMessage: 'commit message',
 	});
 
-	const pushWorkfolder = async (data: { commitMessage: string }) => {
-		state.loading = true;
+	const pushWorkfolder = async (data: { commitMessage: string; fileNames?: string[] }) => {
 		state.commitMessage = data.commitMessage;
-		await vcApi.pushWorkfolder(rootStore.getRestApiContext, { message: data.commitMessage });
-		state.loading = false;
+		await vcApi.pushWorkfolder(rootStore.getRestApiContext, {
+			message: data.commitMessage,
+			...(data.fileNames ? { fileNames: data.fileNames } : {}),
+		});
 	};
 
 	const pullWorkfolder = async (force: boolean) => {
-		state.loading = true;
 		await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
-		state.loading = false;
 	};
 
 	const setPreferences = (data: Partial<VersionControlPreferences>) => {
@@ -94,6 +93,11 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		state.loading = false;
 	};
 
+	const getStatus = async () => {
+		const data = await vcApi.getStatus(rootStore.getRestApiContext);
+		return data;
+	};
+
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
@@ -106,5 +110,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		savePreferences,
 		setBranch,
 		disconnect,
+		getStatus,
 	};
 });

@@ -49,6 +49,8 @@ export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const USER_ACTIVATION_SURVEY_MODAL = 'userActivationSurvey';
 
+export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
+
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
 	UPDATE: 'update',
