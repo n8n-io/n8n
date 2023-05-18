@@ -48,6 +48,9 @@
     "axios": "^0.21.1",
     "@n8n/client-oauth2": "workspace:*",
     "concat-stream": "^2.0.0",
+    /*
+      Don't remove cron dependency without removing from the cloud hooks
+    */
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
     "fast-glob": "^3.2.5",
