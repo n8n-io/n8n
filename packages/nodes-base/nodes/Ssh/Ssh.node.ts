@@ -315,7 +315,12 @@ export class Ssh implements INodeType {
 					if (resource === 'command') {
 						if (operation === 'execute') {
 							const command = this.getNodeParameter('command', i) as string;
-							const cwd = this.getNodeParameter('cwd', i) as string;
+							const cwd = await resolveHomeDir.call(
+								this,
+								this.getNodeParameter('cwd', i) as string,
+								ssh,
+								i,
+							);
 							returnItems.push({
 								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
 								pairedItem: {
