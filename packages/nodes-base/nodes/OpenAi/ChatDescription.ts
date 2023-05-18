@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { sendErrorPostReceive } from './GenericFunctions';
 
 export const chatOperations: INodeProperties[] = [
 	{
@@ -22,6 +23,7 @@ export const chatOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/chat/completions',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 		],
