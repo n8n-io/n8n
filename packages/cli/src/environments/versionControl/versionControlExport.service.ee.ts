@@ -9,10 +9,11 @@ import {
 } from './constants';
 import * as Db from '@/Db';
 import glob from 'fast-glob';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { writeFile as fsWriteFile, readFile as fsReadFile, rm as fsRm } from 'fs/promises';
 import { VersionControlGitService } from './versionControlGit.service.ee';
-import { UserSettings } from 'n8n-core';
+import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
@@ -313,21 +314,51 @@ export class VersionControlExportService {
 		}
 	}
 
+	private replaceCredentialData = (
+		data: ICredentialDataDecryptedObject,
+	): ICredentialDataDecryptedObject => {
+		for (const [key] of Object.entries(data)) {
+			try {
+				if (typeof data[key] === 'object') {
+					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
+				} else if (typeof data[key] === 'string') {
+					data[key] = (data[key] as string)?.startsWith('={{') ? data[key] : '';
+				} else if (typeof data[key] === 'number') {
+					// TODO: leaving numbers in for now, but maybe we should remove them
+					// data[key] = 0;
+				}
+			} catch (error) {
+				LoggerProxy.error(`Failed to sanitize credential data: ${(error as Error).message}`);
+				throw error;
+			}
+		}
+		return data;
+	};
+
 	async exportCredentialsToWorkFolder(): Promise<ExportResult> {
 		try {
 			versionControlFoldersExistCheck([this.credentialExportFolder]);
 			const sharedCredentials = await Db.collections.SharedCredentials.find({
 				relations: ['credentials', 'role', 'user'],
 			});
+			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
-				sharedCredentials.map(async (e) => {
-					const fileName = path.join(this.credentialExportFolder, `${e.credentials.id}.json`);
+				sharedCredentials.map(async (sharedCredential) => {
+					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
+					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
+					const plainData = credentialObject.getData(encryptionKey);
+					const sanitizedData = this.replaceCredentialData(plainData);
+					const fileName = path.join(
+						this.credentialExportFolder,
+						`${sharedCredential.credentials.id}.json`,
+					);
 					const sanitizedCredential: ExportableCredential = {
-						id: e.credentials.id,
-						name: e.credentials.name,
-						type: e.credentials.type,
+						id: sharedCredential.credentials.id,
+						name: sharedCredential.credentials.name,
+						type: sharedCredential.credentials.type,
+						data: sanitizedData,
 					};
-					LoggerProxy.debug(`Writing credential ${e.credentials.id} to ${fileName}`);
+					LoggerProxy.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
 					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
 				}),
 			);
@@ -353,6 +384,7 @@ export class VersionControlExportService {
 		});
 		const existingCredentials = await Db.collections.Credentials.find();
 		const ownerCredentialRole = await this.getOwnerCredentialRole();
+		const encryptionKey = await UserSettings.getEncryptionKey();
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		await Db.transaction(async (transactionManager) => {
 			importCredentialsResult = await Promise.all(
@@ -365,20 +397,23 @@ export class VersionControlExportService {
 						(e) => e.id === credential.id && e.type === credential.type,
 					);
 
-					const newCredential = new CredentialsEntity();
-					newCredential.id = credential.id;
-					newCredential.name = credential.name;
-					newCredential.type = credential.type;
-					newCredential.data = existingCredential?.data ?? '';
-					newCredential.nodesAccess = existingCredential?.nodesAccess ?? [];
-
+					const { name, type, data, id } = credential;
+					const newCredentialObject = new Credentials({ id, name }, type, []);
+					if (existingCredential?.data) {
+						newCredentialObject.data = existingCredential.data;
+					} else {
+						newCredentialObject.setData(data, encryptionKey);
+					}
+					if (existingCredential?.nodesAccess) {
+						newCredentialObject.nodesAccess = existingCredential.nodesAccess;
+					}
 					const newSharedCredential = new SharedCredentials();
-					newSharedCredential.credentialsId = newCredential.id;
+					newSharedCredential.credentialsId = newCredentialObject.id as string;
 					newSharedCredential.userId = userId;
 					newSharedCredential.roleId = ownerCredentialRole.id;
 
-					LoggerProxy.debug(`Updating credential id ${newCredential.id}`);
-					await transactionManager.upsert(CredentialsEntity, { ...newCredential }, ['id']);
+					LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
+					await transactionManager.upsert(CredentialsEntity, newCredentialObject, ['id']);
 					await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
 						'credentialsId',
 						'userId',
@@ -390,9 +425,9 @@ export class VersionControlExportService {
 						);
 					}
 					return {
-						id: newCredential.id,
-						name: newCredential.name,
-						type: newCredential.type,
+						id: newCredentialObject.id as string,
+						name: newCredentialObject.name,
+						type: newCredentialObject.type,
 					};
 				}),
 			);

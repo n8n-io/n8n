@@ -148,7 +148,7 @@ export class VersionControlGitService {
 		if (versionControlPreferences.initRepo) {
 			try {
 				await this.git.init();
-				await this.git.checkoutLocalBranch(versionControlPreferences.branchName);
+				await this.git.raw(['branch', '-M', versionControlPreferences.branchName]);
 			} catch (error) {
 				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
 			}
@@ -276,9 +276,12 @@ export class VersionControlGitService {
 		return this.git.push(VERSION_CONTROL_ORIGIN, branch);
 	}
 
-	async stage(files: Set<string>): Promise<string> {
+	async stage(files: Set<string>, deletedFiles?: Set<string>): Promise<string> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');
+		}
+		if (deletedFiles?.size) {
+			await this.git.rm(Array.from(deletedFiles));
 		}
 		return this.git.add(Array.from(files));
 	}

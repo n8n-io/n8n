@@ -103,6 +103,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -128,6 +129,7 @@ const WorkflowsView = defineComponent({
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
+			versionControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -137,6 +139,7 @@ const WorkflowsView = defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 			useCredentialsStore,
+			useVersionControlStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
@@ -220,6 +223,17 @@ const WorkflowsView = defineComponent({
 	},
 	mounted() {
 		void this.usersStore.showPersonalizationSurvey();
+
+		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.versionControlStoreUnsubscribe();
 	},
 });
 

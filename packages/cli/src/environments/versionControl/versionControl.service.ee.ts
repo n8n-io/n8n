@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
 import path from 'path';
+import * as Db from '@/Db';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import {
@@ -114,7 +115,8 @@ export class VersionControlService {
 		} else {
 			try {
 				writeFileSync(path.join(this.gitFolder, '/README.md'), VERSION_CONTROL_README);
-				await this.stage({ fileNames: new Set<string>(['README.md']) });
+
+				await this.gitService.stage(new Set<string>(['README.md']));
 				await this.gitService.commit('Initial commit');
 				await this.gitService.push({
 					branch: preferences.branchName,
@@ -176,6 +178,7 @@ export class VersionControlService {
 	// this will discard all local changes
 	async resetWorkfolder(options: VersionControllPullOptions): Promise<ImportResult | undefined> {
 		const currentBranch = await this.gitService.getCurrentBranch();
+		await this.versionControlExportService.cleanWorkFolder();
 		await this.gitService.resetBranch({
 			hard: true,
 			target: currentBranch.remote,
@@ -219,44 +222,44 @@ export class VersionControlService {
 	// 	});
 	// }
 
-	async pullWorkfolder(
-		options: VersionControllPullOptions,
-	): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
-		const diffResult = await this.getStatus();
-		const possibleConflicts = diffResult?.filter((file) => file.conflict);
-		if (possibleConflicts?.length > 0) {
-			await this.unstage();
-			if (options.force === true) {
-				return this.resetWorkfolder(options);
-			} else {
-				return diffResult;
-			}
-		}
-		const pullResult = await this.gitService.pull();
-		if (options.importAfterPull) {
-			return this.import(options);
-		}
-		return pullResult;
-	}
-
+	// TODO: Alternate implementation for pull
 	// async pullWorkfolder(
 	// 	options: VersionControllPullOptions,
 	// ): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
-	// 	// await this.versionControlExportService.cleanWorkFolder();
-
-	// 	await this.resetWorkfolder(options);
-	// 	await this.export(); // refresh workfolder
-	// 	const status = await this.gitService.status();
-	// 	console.log(status);
-
-	// 	if (status.modified.length > 0 && options.force !== true) {
-	// 		console.log('Erase local changes?');
-	// 		return;
+	// 	const diffResult = await this.getStatus();
+	// 	const possibleConflicts = diffResult?.filter((file) => file.conflict);
+	// 	if (possibleConflicts?.length > 0 || options.force === true) {
+	// 		await this.unstage();
+	// 		if (options.force === true) {
+	// 			return this.resetWorkfolder(options);
+	// 		} else {
+	// 			return diffResult;
+	// 		}
 	// 	}
-	// 	await this.resetWorkfolder(options);
-	// 	// await this.gitService.pull();
-	// 	return this.import(options);
+	// 	const pullResult = await this.gitService.pull();
+	// 	if (options.importAfterPull) {
+	// 		return this.import(options);
+	// 	}
+	// 	return pullResult;
 	// }
+
+	async pullWorkfolder(
+		options: VersionControllPullOptions,
+	): Promise<ImportResult | StatusResult | undefined> {
+		await this.resetWorkfolder({
+			importAfterPull: false,
+			userId: options.userId,
+			force: false,
+		});
+		await this.export(); // refresh workfolder
+		const status = await this.gitService.status();
+
+		if (status.modified.length > 0 && options.force !== true) {
+			return status;
+		}
+		await this.resetWorkfolder(options);
+		return this.import(options);
+	}
 
 	async stage(
 		options: Pick<VersionControlPushWorkFolder, 'fileNames' | 'credentialIds' | 'workflowIds'>,
@@ -275,11 +278,12 @@ export class VersionControlService {
 			mergedFileNames = new Set<string>([
 				...status.not_added,
 				...status.created,
-				...status.deleted,
 				...status.modified,
 			]);
 		}
-		const stageResult = await this.gitService.stage(mergedFileNames);
+		const deletedFiles = new Set<string>(status.deleted);
+		await this.unstage();
+		const stageResult = await this.gitService.stage(mergedFileNames, deletedFiles);
 		if (!stageResult) {
 			const statusResult = await this.gitService.status();
 			return { staged: statusResult.staged };
@@ -307,39 +311,83 @@ export class VersionControlService {
 		let id: string | undefined = undefined;
 		let name = '';
 		let conflict = false;
-		let status: VersionControlledFileStatus | undefined = undefined;
+		let status: VersionControlledFileStatus = 'unknown';
 		let type: VersionControlledFileType = 'file';
+
+		// initialize status from git status result
+		if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
+		else if (statusResult.conflicted.find((e) => e === fileName)) {
+			status = 'conflicted';
+			conflict = true;
+		} else if (statusResult.created.find((e) => e === fileName)) status = 'created';
+		else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
+		else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
+
 		if (fileName.startsWith(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
-			const workflow = await this.versionControlExportService.getWorkflowFromFile(fileName);
-			if (!workflow?.id) {
-				if (location === 'local') {
-					return;
-				}
-				id = fileName
-					.replace(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER + '/', '')
-					.replace('.json', '');
-				status = 'created';
-			} else {
-				id = workflow.id;
-				name = workflow.name;
-			}
 			type = 'workflow';
+			if (status === 'deleted') {
+				id = fileName
+					.replace(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER, '')
+					.replace(/[\/,\\]/, '')
+					.replace('.json', '');
+				if (location === 'remote') {
+					const existingWorkflow = await Db.collections.Workflow.find({
+						where: { id },
+					});
+					if (existingWorkflow?.length > 0) {
+						name = existingWorkflow[0].name;
+					}
+				} else {
+					name = '(deleted)';
+				}
+			} else {
+				const workflow = await this.versionControlExportService.getWorkflowFromFile(fileName);
+				if (!workflow?.id) {
+					if (location === 'local') {
+						return;
+					}
+					id = fileName
+						.replace(VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER + '/', '')
+						.replace('.json', '');
+					status = 'created';
+				} else {
+					id = workflow.id;
+					name = workflow.name;
+				}
+			}
 		}
 		if (fileName.startsWith(VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
-			const credential = await this.versionControlExportService.getCredentialFromFile(fileName);
-			if (!credential?.id) {
-				if (location === 'local') {
-					return;
-				}
-				id = fileName
-					.replace(VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER + '/', '')
-					.replace('.json', '');
-				status = 'created';
-			} else {
-				id = credential.id;
-				name = credential.name;
-			}
 			type = 'credential';
+			if (status === 'deleted') {
+				id = fileName
+					.replace(VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER, '')
+					.replace(/[\/,\\]/, '')
+					.replace('.json', '');
+				if (location === 'remote') {
+					const existingCredential = await Db.collections.Credentials.find({
+						where: { id },
+					});
+					if (existingCredential?.length > 0) {
+						name = existingCredential[0].name;
+					}
+				} else {
+					name = '(deleted)';
+				}
+			} else {
+				const credential = await this.versionControlExportService.getCredentialFromFile(fileName);
+				if (!credential?.id) {
+					if (location === 'local') {
+						return;
+					}
+					id = fileName
+						.replace(VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER + '/', '')
+						.replace('.json', '');
+					status = 'created';
+				} else {
+					id = credential.id;
+					name = credential.name;
+				}
+			}
 		}
 
 		if (fileName.startsWith(VERSION_CONTROL_VARIABLES_EXPORT_FILE)) {
@@ -355,19 +403,6 @@ export class VersionControlService {
 		}
 
 		if (!id) return;
-
-		if (!status) {
-			if (statusResult.not_added.find((e) => e === fileName)) status = 'new';
-			else if (statusResult.conflicted.find((e) => e === fileName)) {
-				status = 'conflicted';
-				conflict = true;
-			} else if (statusResult.created.find((e) => e === fileName)) status = 'created';
-			else if (statusResult.deleted.find((e) => e === fileName)) status = 'deleted';
-			else if (statusResult.modified.find((e) => e === fileName)) status = 'modified';
-			else {
-				status = 'unknown';
-			}
-		}
 
 		return {
 			file: fileName,
