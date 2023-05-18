@@ -36,6 +36,7 @@ const INVALID_DATES = [
 	'',
 	'Wed, 17 May 2023 10:52:32',
 	'SMT, 17 May 2023 10:52:32',
+	'1234567890', // We are not supporting timestamps
 ];
 
 describe('Type Validation', () => {
