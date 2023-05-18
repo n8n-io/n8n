@@ -1202,11 +1202,18 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 };
 
 export const tryToParseDateTime = (value: unknown): DateTime => {
-	const dateString = String(value);
+	const dateString = String(value).trim();
+	console.log('tryToParseDateTime', dateString);
 
 	// Rely on luxon to parse different date formats
 	const isoDate = DateTime.fromISO(dateString);
-	if (isoDate.isValid) {
+	if (!isoDate.isValid) {
+		// Try once more by forcing the timezone
+		const isoDateWithTimezone = DateTime.fromISO(dateString, { setZone: true });
+		if (isoDateWithTimezone.isValid) {
+			return isoDateWithTimezone;
+		}
+	} else {
 		return isoDate;
 	}
 	const httpDate = DateTime.fromHTTP(dateString);
