@@ -92,7 +92,7 @@ function setStagedStatus(file: VersionControlAggregatedFile) {
 	];
 }
 
-function cancel() {
+function close() {
 	uiStore.closeModal(VERSION_CONTROL_PUSH_MODAL_KEY);
 }
 
@@ -105,6 +105,10 @@ async function commitAndPush() {
 			commitMessage: commitMessage.value,
 			fileNames,
 		});
+
+		// @TODO Show success message
+
+		close();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	} finally {
@@ -175,7 +179,7 @@ async function commitAndPush() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button type="tertiary" class="mr-2xs" :disabled="loading" @click="cancel">
+				<n8n-button type="tertiary" class="mr-2xs" :disabled="loading" @click="close">
 					{{ i18n.baseText('settings.versionControl.modals.push.buttons.cancel') }}
 				</n8n-button>
 				<n8n-button type="primary" :loading="loading" @click="commitAndPush">
