@@ -130,7 +130,7 @@ defineExpose({
 			color="text-dark"
 		>
 			<n8n-select
-				:multiple="typeOptions?.multiKeyMatch === true"
+				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
 				:value="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"

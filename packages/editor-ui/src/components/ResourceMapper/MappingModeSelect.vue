@@ -16,9 +16,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const { resourceMapperTypeOptions, pluralFieldWord } = useNodeSpecificationValues(
-	props.typeOptions,
-);
+const { resourceMapperTypeOptions, pluralFieldWord, singularFieldWord } =
+	useNodeSpecificationValues(props.typeOptions);
 
 // Mapping mode options: Labels here use field words defined in parameter type options
 const mappingModeOptions = [
@@ -27,7 +26,7 @@ const mappingModeOptions = [
 		value: 'defineBelow',
 		description: locale.baseText('resourceMapper.mappingMode.defineBelow.description', {
 			interpolate: {
-				fieldWord: pluralFieldWord.value,
+				fieldWord: singularFieldWord.value,
 			},
 		}),
 	},
