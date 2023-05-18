@@ -17,7 +17,7 @@ import type { Readable } from 'stream';
 
 const resolveHomeDir = async (path: string, ssh: NodeSSH) => {
 	if (path.startsWith('~')) {
-		return path.replace('~', '/home/' + (await ssh.execCommand('whoami')).stdout);
+		return path.replace('~', (await ssh.execCommand('echo $HOME')).stdout);
 	}
 
 	return path;
