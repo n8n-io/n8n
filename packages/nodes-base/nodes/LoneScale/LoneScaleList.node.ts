@@ -85,8 +85,8 @@ export class LoneScaleList implements INodeType {
 					{
 						name: 'Create',
 						value: 'add',
-						description: 'Add an item',
-						action: 'Add a item',
+						description: 'Create an item',
+						action: 'Create a item',
 					},
 				],
 				default: 'add',
