@@ -16,6 +16,7 @@ import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores';
 import { fieldCannotBeDeleted, isMatchingField, parseResourceMapperFieldName } from '@/utils';
+import { useNodeSpecificationValues } from '@/composables';
 
 interface Props {
 	parameter: INodeProperties;
@@ -32,6 +33,14 @@ interface Props {
 
 const props = defineProps<Props>();
 const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object'];
+
+const {
+	resourceMapperTypeOptions,
+	singularFieldWord,
+	singularFieldWordCapitalized,
+	pluralFieldWord,
+	pluralFieldWordCapitalized,
+} = useNodeSpecificationValues(props.parameter.typeOptions);
 
 const emit = defineEmits<{
 	(event: 'fieldValueChanged', value: IUpdateInformation): void;
@@ -77,28 +86,6 @@ const orderedFields = computed<INodeProperties[]>(() => {
 
 const removedFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => field.removed === true && field.display !== false);
-});
-
-const singularFieldWord = computed<string>(() => {
-	const singularFieldWord =
-		props.parameter.typeOptions?.resourceMapper?.fieldWords?.singular ||
-		locale.baseText('generic.field');
-	return singularFieldWord;
-});
-
-const singularFieldWordCapitalized = computed<string>(() => {
-	return singularFieldWord.value.charAt(0).toUpperCase() + singularFieldWord.value.slice(1);
-});
-
-const pluralFieldWord = computed<string>(() => {
-	return (
-		props.parameter.typeOptions?.resourceMapper?.fieldWords?.plural ||
-		locale.baseText('generic.fields')
-	);
-});
-
-const pluralFieldWordCapitalized = computed<string>(() => {
-	return pluralFieldWord.value.charAt(0).toUpperCase() + pluralFieldWord.value.slice(1);
 });
 
 const addFieldOptions = computed<Array<{ name: string; value: string; disabled?: boolean }>>(() => {
@@ -156,7 +143,7 @@ const isRemoveAllAvailable = computed<boolean>(() => {
 });
 
 const resourceMapperMode = computed<string | undefined>(() => {
-	return props.parameter.typeOptions?.resourceMapper?.mode;
+	return resourceMapperTypeOptions.value?.mode;
 });
 
 const valuesLabel = computed<string>(() => {
@@ -208,16 +195,16 @@ function getParameterValue(parameterName: string) {
 }
 
 function getFieldIssues(field: INodeProperties): string[] {
+	if (!ndvStore.activeNode) return [];
+
+	const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
+	const fieldName = parseResourceMapperFieldName(field.name);
+	if (!fieldName) return [];
+
 	let fieldIssues: string[] = [];
-	if (ndvStore.activeNode) {
-		const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
-		const fieldName = parseResourceMapperFieldName(field.name);
-		if (fieldName) {
-			const key = `${props.parameter.name}.${fieldName}`;
-			if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
-				fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
-			}
-		}
+	const key = `${props.parameter.name}.${fieldName}`;
+	if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
+		fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
 	}
 	return fieldIssues;
 }

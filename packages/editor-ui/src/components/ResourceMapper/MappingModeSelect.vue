@@ -1,20 +1,24 @@
 <script setup lang="ts">
-import type { ResourceMapperFields, ResourceMapperTypeOptions } from 'n8n-workflow';
+import type { INodePropertyTypeOptions, ResourceMapperFields } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
+import { useNodeSpecificationValues } from '@/composables';
 
 interface Props {
 	initialValue: string;
 	fieldsToMap: ResourceMapperFields['fields'];
 	inputSize: string;
 	labelSize: string;
-	typeOptions: ResourceMapperTypeOptions | undefined;
+	typeOptions: INodePropertyTypeOptions | undefined;
 	serviceName: string;
 	loading: boolean;
 	loadingError: boolean;
 }
 
 const props = defineProps<Props>();
+const { resourceMapperTypeOptions, pluralFieldWord } = useNodeSpecificationValues(
+	props.typeOptions,
+);
 
 // Mapping mode options: Labels here use field words defined in parameter type options
 const mappingModeOptions = [
@@ -23,7 +27,7 @@ const mappingModeOptions = [
 		value: 'defineBelow',
 		description: locale.baseText('resourceMapper.mappingMode.defineBelow.description', {
 			interpolate: {
-				fieldWord: props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field'),
+				fieldWord: pluralFieldWord.value,
 			},
 		}),
 	},
@@ -32,7 +36,7 @@ const mappingModeOptions = [
 		value: 'autoMapInputData',
 		description: locale.baseText('resourceMapper.mappingMode.autoMapInputData.description', {
 			interpolate: {
-				fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
+				fieldWord: pluralFieldWord.value,
 				serviceName: props.serviceName,
 			},
 		}),
@@ -59,7 +63,7 @@ const errorMessage = computed<string>(() => {
 		if (props.loadingError) {
 			return locale.baseText('resourceMapper.fetchingFields.errorMessage', {
 				interpolate: {
-					fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
+					fieldWord: pluralFieldWord.value,
 				},
 			});
 		}
@@ -67,10 +71,10 @@ const errorMessage = computed<string>(() => {
 		if (props.fieldsToMap.length === 0) {
 			return (
 				// Use custom error message if defined
-				props.typeOptions?.noFieldsError ||
+				resourceMapperTypeOptions.value?.noFieldsError ||
 				locale.baseText('resourceMapper.fetchingFields.noFieldsFound', {
 					interpolate: {
-						fieldWord: props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields'),
+						fieldWord: pluralFieldWord.value,
 						serviceName: props.serviceName,
 					},
 				})
@@ -131,10 +135,7 @@ defineExpose({
 						{{
 							locale.baseText('resourceMapper.fetchingFields.message', {
 								interpolate: {
-									fieldWord:
-										props.typeOptions?.fieldWords?.plural ||
-										locale.baseText('generic.fields') ||
-										'fields',
+									fieldWord: pluralFieldWord,
 								},
 							})
 						}}

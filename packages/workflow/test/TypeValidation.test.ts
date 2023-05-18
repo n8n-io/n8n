@@ -1,5 +1,5 @@
-import { validateFieldType } from "@/NodeHelpers";
-import type { DateTime } from "luxon";
+import { validateFieldType } from '@/NodeHelpers';
+import type { DateTime } from 'luxon';
 
 const VALID_ISO_DATES = [
 	'1994-11-05T08:15:30-05:00',

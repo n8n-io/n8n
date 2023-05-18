@@ -1892,42 +1892,43 @@ const validateResourceMapperValue = (
 	if (paramNameParts.length !== 2) {
 		return result;
 	}
-	const resourceMapperParamName = parameterName.split('.')[0];
+	const resourceMapperParamName = paramNameParts[0];
 	const resourceMapperField = node.parameters[resourceMapperParamName];
-	if (resourceMapperField && isResourceMapperValue(resourceMapperField)) {
-		const schema = resourceMapperField.schema;
-		const paramValueNames = Object.keys(paramValues);
-		for (let i = 0; i < paramValueNames.length; i++) {
-			const key = paramValueNames[i];
-			const resolvedValue = paramValues[key];
-			const schemaEntry = schema.find((s) => s.id === key);
+	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
+		return result;
+	}
+	const schema = resourceMapperField.schema;
+	const paramValueNames = Object.keys(paramValues);
+	for (let i = 0; i < paramValueNames.length; i++) {
+		const key = paramValueNames[i];
+		const resolvedValue = paramValues[key];
+		const schemaEntry = schema.find((s) => s.id === key);
 
-			if (
-				!skipRequiredCheck &&
-				schemaEntry?.required === true &&
-				schemaEntry.type !== 'boolean' &&
-				!resolvedValue
-			) {
-				return {
-					valid: false,
-					errorMessage: `The value "${String(key)}" is required but not set`,
-					fieldName: key,
-				};
-			}
+		if (
+			!skipRequiredCheck &&
+			schemaEntry?.required === true &&
+			schemaEntry.type !== 'boolean' &&
+			!resolvedValue
+		) {
+			return {
+				valid: false,
+				errorMessage: `The value "${String(key)}" is required but not set`,
+				fieldName: key,
+			};
+		}
 
-			if (schemaEntry?.type) {
-				const validationResult = validateFieldType(
-					key,
-					resolvedValue,
-					schemaEntry.type,
-					schemaEntry.options,
-				);
-				if (!validationResult.valid) {
-					return { ...validationResult, fieldName: key };
-				} else {
-					// If it's valid, set the casted value
-					paramValues[key] = validationResult.newValue;
-				}
+		if (schemaEntry?.type) {
+			const validationResult = validateFieldType(
+				key,
+				resolvedValue,
+				schemaEntry.type,
+				schemaEntry.options,
+			);
+			if (!validationResult.valid) {
+				return { ...validationResult, fieldName: key };
+			} else {
+				// If it's valid, set the casted value
+				paramValues[key] = validationResult.newValue;
 			}
 		}
 	}

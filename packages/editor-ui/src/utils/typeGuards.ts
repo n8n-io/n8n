@@ -37,5 +37,5 @@ export const isCredentialModalState = (value: unknown): value is NewCredentialsM
 };
 
 export const isResourceMapperValue = (value: unknown): value is string | number | boolean => {
-	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+	return ['string', 'number', 'boolean'].includes(typeof value);
 };

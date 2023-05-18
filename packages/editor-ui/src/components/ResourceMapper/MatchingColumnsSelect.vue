@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import type {
+	INodePropertyTypeOptions,
 	ResourceMapperField,
 	ResourceMapperFields,
-	ResourceMapperTypeOptions,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
+import { useNodeSpecificationValues } from '@/composables';
 
 interface Props {
 	initialValue: string[];
 	fieldsToMap: ResourceMapperFields['fields'];
-	typeOptions: ResourceMapperTypeOptions | undefined;
+	typeOptions: INodePropertyTypeOptions | undefined;
 	labelSize: string;
 	inputSize: string;
 	loading: boolean;
@@ -18,6 +19,13 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const {
+	resourceMapperTypeOptions,
+	singularFieldWord,
+	singularFieldWordCapitalized,
+	pluralFieldWord,
+	pluralFieldWordCapitalized,
+} = useNodeSpecificationValues(props.typeOptions);
 
 // Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
 const state = reactive({
@@ -28,7 +36,9 @@ watch(
 	() => props.initialValue,
 	() => {
 		state.selected =
-			props.typeOptions?.multiKeyMatch === true ? props.initialValue : props.initialValue[0];
+			resourceMapperTypeOptions.value?.multiKeyMatch === true
+				? props.initialValue
+				: props.initialValue[0];
 	},
 );
 
@@ -44,11 +54,11 @@ const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 
 // Field label, description and tooltip: Labels here use content and field words defined in parameter type options
 const fieldLabel = computed<string>(() => {
-	if (props.typeOptions?.matchingFieldsLabels?.title) {
-		return props.typeOptions.matchingFieldsLabels.title;
+	if (resourceMapperTypeOptions.value?.matchingFieldsLabels?.title) {
+		return resourceMapperTypeOptions.value.matchingFieldsLabels.title;
 	}
 	const fieldWord =
-		props.typeOptions?.multiKeyMatch === true
+		resourceMapperTypeOptions.value?.multiKeyMatch === true
 			? pluralFieldWordCapitalized.value
 			: singularFieldWordCapitalized.value;
 	return locale.baseText('resourceMapper.columnsToMatchOn.label', {
@@ -59,17 +69,17 @@ const fieldLabel = computed<string>(() => {
 });
 
 const fieldDescription = computed<string>(() => {
-	if (props.typeOptions?.matchingFieldsLabels?.hint) {
-		return props.typeOptions.matchingFieldsLabels.hint;
+	if (resourceMapperTypeOptions.value?.matchingFieldsLabels?.hint) {
+		return resourceMapperTypeOptions.value.matchingFieldsLabels.hint;
 	}
 	const labeli18nKey =
-		props.typeOptions?.multiKeyMatch === true
+		resourceMapperTypeOptions.value?.multiKeyMatch === true
 			? 'resourceMapper.columnsToMatchOn.multi.description'
 			: 'resourceMapper.columnsToMatchOn.single.description';
 	return locale.baseText(labeli18nKey, {
 		interpolate: {
 			fieldWord:
-				props.typeOptions?.multiKeyMatch === true
+				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
 		},
@@ -77,39 +87,21 @@ const fieldDescription = computed<string>(() => {
 });
 
 const fieldTooltip = computed<string>(() => {
-	if (props.typeOptions?.matchingFieldsLabels?.description) {
-		return props.typeOptions.matchingFieldsLabels.description;
+	if (resourceMapperTypeOptions.value?.matchingFieldsLabels?.description) {
+		return resourceMapperTypeOptions.value.matchingFieldsLabels.description;
 	}
 	return locale.baseText('resourceMapper.columnsToMatchOn.tooltip', {
 		interpolate: {
 			fieldWord:
-				props.typeOptions?.multiKeyMatch === true
+				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
 		},
 	});
 });
 
-const singularFieldWord = computed<string>(() => {
-	const singularFieldWord =
-		props.typeOptions?.fieldWords?.singular || locale.baseText('generic.field');
-	return singularFieldWord;
-});
-
-const singularFieldWordCapitalized = computed<string>(() => {
-	return singularFieldWord.value.charAt(0).toUpperCase() + singularFieldWord.value.slice(1);
-});
-
-const pluralFieldWord = computed<string>(() => {
-	return props.typeOptions?.fieldWords?.plural || locale.baseText('generic.fields');
-});
-
-const pluralFieldWordCapitalized = computed<string>(() => {
-	return pluralFieldWord.value.charAt(0).toUpperCase() + pluralFieldWord.value.slice(1);
-});
-
 function onSelectionChange(value: string | string[]) {
-	if (props.typeOptions?.multiKeyMatch === true) {
+	if (resourceMapperTypeOptions.value?.multiKeyMatch === true) {
 		state.selected = value as string[];
 	} else {
 		state.selected = value as string;

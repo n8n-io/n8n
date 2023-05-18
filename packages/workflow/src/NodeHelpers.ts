@@ -1102,6 +1102,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
+// Validates field against the schema and tries to parse it to the correct type
 export const validateFieldType = (
 	fieldName: string,
 	value: unknown,
