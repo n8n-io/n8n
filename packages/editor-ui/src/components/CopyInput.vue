@@ -17,11 +17,12 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
+	mixins: [copyPaste],
 	props: {
 		label: {
 			type: String,
@@ -56,12 +57,17 @@ export default mixins(copyPaste, showMessage).extend({
 			default: 'large',
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	methods: {
 		copy(): void {
 			this.$emit('copy');
 			this.copyToClipboard(this.value);
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.toastTitle,
 				message: this.toastMessage,
 				type: 'success',

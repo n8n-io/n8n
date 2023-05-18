@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { sendErrorPostReceive } from './GenericFunctions';
 
 export const textOperations: INodeProperties[] = [
 	{
@@ -22,6 +23,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/completions',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 			{
@@ -34,6 +36,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/edits',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 			{
@@ -46,6 +49,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/moderations',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 		],
@@ -84,7 +88,7 @@ const completeOperations: INodeProperties[] = [
 							{
 								type: 'filter',
 								properties: {
-									pass: "={{ !$responseItem.id.startsWith('audio-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
+									pass: "={{ !$responseItem.id.startsWith('audio-') && !$responseItem.id.startsWith('gpt-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
 								},
 							},
 							{
@@ -247,7 +251,7 @@ const moderateOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'e.g. I want to kill them',
+		placeholder: 'e.g. My cat is adorable ❤️❤️',
 		description: 'The input text to classify',
 		displayOptions: {
 			show: {

@@ -1,12 +1,12 @@
-import _Vue from 'vue';
-import { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
-import { Route } from 'vue-router';
+import type _Vue from 'vue';
+import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { Route } from 'vue-router';
 
 import type { INodeCreateElement } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useTelemetryStore } from '@/stores/telemetry';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTelemetryStore } from '@/stores/telemetry.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: Route }>;
@@ -136,10 +136,6 @@ export class Telemetry {
 						this.track('User opened nodes panel', properties);
 					}
 					break;
-				case 'nodeCreateList.selectedTypeChanged':
-					this.userNodesPanelSession.data.filterMode = properties.new_filter as string;
-					this.track('User changed nodes panel filter', properties);
-					break;
 				case 'nodeCreateList.destroyed':
 					if (
 						this.userNodesPanelSession.data.nodeFilter.length > 0 &&
@@ -183,10 +179,7 @@ export class Telemetry {
 					this.track('User added action', properties);
 					break;
 				case 'nodeCreateList.onSubcategorySelected':
-					const selectedProperties = (properties.selected as IDataObject).properties as IDataObject;
-					if (selectedProperties && selectedProperties.subcategory) {
-						properties.category_name = selectedProperties.subcategory;
-					}
+					properties.category_name = properties.subcategory;
 					properties.is_subcategory = true;
 					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 					delete properties.selected;

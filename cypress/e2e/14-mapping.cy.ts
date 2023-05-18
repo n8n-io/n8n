@@ -17,11 +17,12 @@ describe('Data mapping', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 
-		cy.window()
-			// @ts-ignore
-			.then(
-				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
-			);
+		cy.window().then(
+			(win) => {
+				// @ts-ignore
+				win.preventNodeViewBeforeUnload = true;
+			},
+		);
 	});
 
 	it('maps expressions from table header', () => {
@@ -155,7 +156,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('maps expressions from schema view', () => {
@@ -171,7 +172,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 
@@ -179,7 +180,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('maps expressions from previous nodes', () => {
@@ -193,7 +194,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', `{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }}`);
+			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
 		ndv.getters.parameterExpressionPreview('value').should('not.exist');
 
 		ndv.actions.switchInputMode('Table');
@@ -202,19 +203,19 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should(
 				'have.text',
-				`{{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input[0].count }} {{ $node['${SCHEDULE_TRIGGER_NODE_NAME}'].json.input }}`,
+				`{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }} {{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input }}`,
 			);
-		ndv.getters.parameterExpressionPreview('value').should('not.exist');
+		ndv.actions.validateExpressionPreview('value', ' ');
 
 		ndv.actions.selectInputNode('Set');
 
 		ndv.actions.executePrevious();
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 
 		ndv.getters.inputTbodyCell(2, 0).realHover();
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '1 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '1 [object Object]');
 	});
 
 	it('maps keys to path', () => {
@@ -281,7 +282,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
+		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 
@@ -289,7 +290,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.getters.parameterExpressionPreview('value').should('include.text', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
 	});
 
 	it('shows you can drop to inputs, including booleans', () => {
@@ -310,12 +311,12 @@ describe('Data mapping', () => {
 		ndv.getters.parameterInput('keepOnlySet').find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 
 		ndv.getters.parameterInput('value').find('input[type="text"]')
 		.should('exist')
 		.invoke('css', 'border')
-		.then((border) => expect(border).to.include('1.5px dashed rgb(90, 76, 194)'));
+		.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
 	});
 
 });

@@ -13,17 +13,13 @@ async function processCampaignSearchResponse(
 ): Promise<INodeExecutionData[]> {
 	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
 
-	return Promise.resolve(
-		results.map((result) => {
-			return {
-				json: {
-					...result.campaign,
-					...result.metrics,
-					...result.campaignBudget,
-				},
-			};
-		}),
-	);
+	return results.map((result) => ({
+		json: {
+			...result.campaign,
+			...result.metrics,
+			...result.campaignBudget,
+		},
+	}));
 }
 
 export const campaignOperations: INodeProperties[] = [
@@ -45,7 +41,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v11/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
+						url: '={{"/v13/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
 							query:
 								'={{ "' +
@@ -93,7 +89,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v11/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
+						url: '={{"/v13/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
 							query:

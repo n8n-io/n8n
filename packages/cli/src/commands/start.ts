@@ -21,7 +21,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import * as Server from '@/Server';
+import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
@@ -61,6 +61,8 @@ export class Start extends BaseCommand {
 	};
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
+
+	protected server = new Server();
 
 	/**
 	 * Opens the UI in browser
@@ -144,6 +146,7 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = config.getEnv('path');
+		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -167,6 +170,7 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -187,8 +191,16 @@ export class Start extends BaseCommand {
 		await license.init(this.instanceId);
 
 		const activationKey = config.getEnv('license.activationKey');
+
 		if (activationKey) {
+			const hasCert = (await license.loadCertStr()).length > 0;
+
+			if (hasCert) {
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
 			try {
+				LoggerProxy.debug('Attempting license activation');
 				await license.activate(activationKey);
 			} catch (e) {
 				LoggerProxy.error('Could not activate license', e as Error);
@@ -198,6 +210,7 @@ export class Start extends BaseCommand {
 
 	async init() {
 		await this.initCrashJournal();
+
 		await super.init();
 		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
@@ -341,7 +354,7 @@ export class Start extends BaseCommand {
 			);
 		}
 
-		await Server.start();
+		await this.server.start();
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();

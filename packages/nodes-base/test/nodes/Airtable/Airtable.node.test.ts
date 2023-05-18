@@ -1,6 +1,6 @@
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
-import { WorkflowTestData } from '../types';
+import type { WorkflowTestData } from '../types';
 import nock from 'nock';
 
 const records = [
@@ -26,7 +26,7 @@ describe('Execute Airtable Node', () => {
 		nock.restore();
 	});
 
-	const tests: Array<WorkflowTestData> = [
+	const tests: WorkflowTestData[] = [
 		{
 			description: 'List Airtable Records',
 			input: {

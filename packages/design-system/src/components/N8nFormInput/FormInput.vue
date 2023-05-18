@@ -92,10 +92,10 @@ import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
-import ElSwitch from 'element-ui/lib/switch';
+import { Switch as ElSwitch } from 'element-ui';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
+import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
 
 import { t } from '../../locale';
 
@@ -212,7 +212,15 @@ function onEnter(event: Event) {
 const validationError = computed<string | null>(() => {
 	const error = getInputValidationError();
 
-	return error ? t(error.messageKey, error.options) : null;
+	if (error) {
+		if (error.messageKey) {
+			return t(error.messageKey, error.options);
+		} else {
+			return error.message;
+		}
+	}
+
+	return null;
 });
 
 const hasDefaultSlot = computed(() => !!slots.default);
