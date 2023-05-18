@@ -22,7 +22,13 @@ async function resolveHomeDir(
 	itemIndex: number,
 ) {
 	if (path.startsWith('~/')) {
-		return path.replace('~', (await ssh.execCommand('echo $HOME')).stdout);
+		let homeDir = (await ssh.execCommand('echo $HOME')).stdout;
+
+		if (homeDir.charAt(homeDir.length - 1) !== '/') {
+			homeDir += '/';
+		}
+
+		return path.replace('~/', homeDir);
 	}
 
 	if (path.startsWith('~')) {
