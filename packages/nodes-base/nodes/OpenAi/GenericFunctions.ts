@@ -11,7 +11,7 @@ export async function sendErrorPostReceive(
 	data: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	if (response.statusCode !== 200) {
+	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
 		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
 	}
 	return data;
