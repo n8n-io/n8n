@@ -15,6 +15,14 @@ import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
 import type { Readable } from 'stream';
 
+const resolveHomeDir = async (path: string, ssh: NodeSSH) => {
+	if (path.startsWith('~')) {
+		return path.replace('~', '/home/' + (await ssh.execCommand('whoami')).stdout);
+	}
+
+	return path;
+};
+
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSH',
@@ -226,7 +234,7 @@ export class Ssh implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['file'],
-						operation: ['upload'],
+						operation: ['upload', 'download'],
 					},
 				},
 				default: {},
@@ -305,7 +313,10 @@ export class Ssh implements INodeType {
 					if (resource === 'file') {
 						if (operation === 'download') {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-							const parameterPath = this.getNodeParameter('path', i) as string;
+							const parameterPath = await resolveHomeDir(
+								this.getNodeParameter('path', i) as string,
+								ssh,
+							);
 
 							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
@@ -329,14 +340,18 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
+							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								path,
-								parameterPath,
+								fileName || parameterPath,
 							);
 						}
 
 						if (operation === 'upload') {
-							const parameterPath = this.getNodeParameter('path', i) as string;
+							const parameterPath = await resolveHomeDir(
+								this.getNodeParameter('path', i) as string,
+								ssh,
+							);
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
