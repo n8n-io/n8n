@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { rm, writeFile } from 'fs/promises';
 
@@ -15,13 +15,28 @@ import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
 import type { Readable } from 'stream';
 
-const resolveHomeDir = async (path: string, ssh: NodeSSH) => {
-	if (path.startsWith('~')) {
+async function resolveHomeDir(
+	this: IExecuteFunctions,
+	path: string,
+	ssh: NodeSSH,
+	itemIndex: number,
+) {
+	if (path.startsWith('~/')) {
 		return path.replace('~', (await ssh.execCommand('echo $HOME')).stdout);
 	}
 
+	if (path.startsWith('~')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Invalid path. Replace "~" with home directory or "~/"',
+			{
+				itemIndex,
+			},
+		);
+	}
+
 	return path;
-};
+}
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
@@ -313,9 +328,11 @@ export class Ssh implements INodeType {
 					if (resource === 'file') {
 						if (operation === 'download') {
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-							const parameterPath = await resolveHomeDir(
+							const parameterPath = await resolveHomeDir.call(
+								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
+								i,
 							);
 
 							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
@@ -348,9 +365,11 @@ export class Ssh implements INodeType {
 						}
 
 						if (operation === 'upload') {
-							const parameterPath = await resolveHomeDir(
+							const parameterPath = await resolveHomeDir.call(
+								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
+								i,
 							);
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
