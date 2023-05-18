@@ -11,13 +11,10 @@ module.exports = {
 	ignorePatterns: [
 		'jest.config.js',
 		// TODO: Remove these
-		'src/databases/migrations/**',
 		'src/databases/ormconfig.ts',
 	],
 
 	rules: {
-		'@typescript-eslint/consistent-type-imports': 'error',
-
 		// TODO: Remove this
 		'import/no-cycle': 'warn',
 		'import/order': 'off',

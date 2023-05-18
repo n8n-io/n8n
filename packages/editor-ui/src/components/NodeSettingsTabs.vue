@@ -3,23 +3,24 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { externalHooks } from '@/mixins/externalHooks';
 import {
 	BUILTIN_NODES_DOCS_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	NPM_PACKAGE_DOCS_BASE_URL,
 } from '@/constants';
-import { INodeUi, ITab } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { INodeTypeDescription } from 'n8n-workflow';
-import { mapStores } from 'pinia';
+import type { INodeUi, ITab } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { isCommunityPackageName } from '@/utils';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'NodeSettingsTabs',
+	mixins: [externalHooks],
 	props: {
 		value: {
 			type: String,
@@ -115,7 +116,7 @@ export default mixins(externalHooks).extend({
 	methods: {
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
-				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', {
+				void this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', {
 					nodeType: this.nodeType as INodeTypeDescription,
 					documentationUrl: this.documentationUrl,
 				});

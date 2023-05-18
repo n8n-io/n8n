@@ -10,7 +10,7 @@ const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
 const MOCK_ACTIVATION_KEY = 'activation-key';
 const MOCK_FEATURE_FLAG = 'feat:mock';
-const MOCK_MAIN_PLAN_ID = 1234;
+const MOCK_MAIN_PLAN_ID = '1b765dc4-d39d-4ffe-9885-c56dd67c4b26';
 
 describe('License', () => {
 	beforeAll(() => {
@@ -82,12 +82,21 @@ describe('License', () => {
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
 
-	test('check main plan', async () => {
+	test('getMainPlan() returns the right entitlement', async () => {
 		// mock entitlements response
 		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
 			{
+				id: '84a9c852-1349-478d-9ad1-b3f55510e477',
+				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
+				productMetadata: {},
+				features: {},
+				featureOverrides: {},
+				validFrom: new Date(),
+				validTo: new Date(),
+			},
+			{
 				id: MOCK_MAIN_PLAN_ID,
-				productId: '',
+				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
 				productMetadata: {
 					terms: {
 						isMainPlan: true,
@@ -103,5 +112,33 @@ describe('License', () => {
 
 		const mainPlan = license.getMainPlan();
 		expect(mainPlan?.id).toBe(MOCK_MAIN_PLAN_ID);
+	});
+
+	test('getMainPlan() returns undefined if there is no main plan', async () => {
+		// mock entitlements response
+		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
+			{
+				id: '84a9c852-1349-478d-9ad1-b3f55510e477',
+				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
+				productMetadata: {}, // has no `productMetadata.terms.isMainPlan`!
+				features: {},
+				featureOverrides: {},
+				validFrom: new Date(),
+				validTo: new Date(),
+			},
+			{
+				id: 'c1aae471-c24e-4874-ad88-b97107de486c',
+				productId: '670650f2-72d8-4397-898c-c249906e2cc2',
+				productMetadata: {}, // has no `productMetadata.terms.isMainPlan`!
+				features: {},
+				featureOverrides: {},
+				validFrom: new Date(),
+				validTo: new Date(),
+			},
+		]);
+		jest.fn(license.getMainPlan).mockReset();
+
+		const mainPlan = license.getMainPlan();
+		expect(mainPlan).toBeUndefined();
 	});
 });

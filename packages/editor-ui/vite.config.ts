@@ -1,6 +1,4 @@
 import vue from '@vitejs/plugin-vue2';
-import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
@@ -15,9 +13,9 @@ const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
 	'vue2-boring-avatars',
 	'vue-template-compiler',
-	'jquery',
 	'@fontsource/open-sans',
 	'normalize-wheel',
+	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',
 ];
 
@@ -73,25 +71,7 @@ const alias = [
 	},
 ];
 
-// https://github.com/vitest-dev/vitest/discussions/1806
-if (NODE_ENV === 'test') {
-	alias.push({
-		find: /^monaco-editor$/,
-		replacement: __dirname + '/node_modules/monaco-editor/esm/vs/editor/editor.api',
-	});
-}
-
-const plugins = [
-	vue(),
-	legacy({
-		targets: ['>1%', 'last 3 versions', 'not dead'],
-	}),
-	monacoEditorPlugin({
-		publicPath: 'assets/monaco-editor',
-		customDistPath: (root: string, buildOutDir: string, base: string) =>
-			`${root}/${buildOutDir}/assets/monaco-editor`,
-	}),
-];
+const plugins = [vue()];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {
@@ -153,7 +133,6 @@ export default mergeConfig(
 			coverage: {
 				provider: 'c8',
 				reporter: coverageReporters,
-				include: ['src/**/*.ts'],
 				all: true,
 			},
 			css: {

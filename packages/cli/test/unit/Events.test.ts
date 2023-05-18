@@ -1,12 +1,13 @@
-import { IRun, LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
-import { QueryFailedError } from 'typeorm';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
-import { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
+import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
+import type { WorkflowStatisticsRepository } from '@db/repositories';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { getLogger } from '@/Logger';
@@ -14,6 +15,7 @@ import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../integration/shared/utils';
 import { UserService } from '@/user/user.service';
+import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 jest.mock('@/Db', () => {
 	return {
@@ -201,8 +203,14 @@ describe('Events', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			workflowStatisticsRepository.insert.mockImplementationOnce(() => {
-				throw new QueryFailedError('invalid insert', [], '');
+			workflowStatisticsRepository.findOne.mockImplementationOnce(async () => {
+				return {
+					count: 1,
+					name: StatisticsNames.dataLoaded,
+					latestEvent: new Date(),
+					workflowId: '2',
+					workflow: new WorkflowEntity(),
+				};
 			});
 			const workflowId = '1';
 			const node = {

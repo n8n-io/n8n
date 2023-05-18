@@ -28,6 +28,7 @@
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
+				<slot name="beforeLowerMenu"></slot>
 				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
@@ -54,7 +55,8 @@
 <script lang="ts">
 import { Menu as ElMenu } from 'element-ui';
 import N8nMenuItem from '../N8nMenuItem';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import type { IMenuItem, RouteObject } from '../../types';
 
 export default defineComponent({

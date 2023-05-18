@@ -7,7 +7,11 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import VariablesRow from '@/components/VariablesRow.vue';
 
 import { EnterpriseEditionFeature } from '@/constants';
-import { DatatableColumn, EnvironmentVariable, TemporaryEnvironmentVariable } from '@/Interface';
+import type {
+	DatatableColumn,
+	EnvironmentVariable,
+	TemporaryEnvironmentVariable,
+} from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
 import { getVariablesPermissions } from '@/permissions';
 
@@ -16,7 +20,7 @@ const environmentsStore = useEnvironmentsStore();
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
-const i18n = useI18n();
+const { i18n } = useI18n();
 const message = useMessage();
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);

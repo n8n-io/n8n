@@ -1,15 +1,16 @@
 import { MAIN_HEADER_TABS } from '@/constants';
-import { useNDVStore } from '@/stores/ndv';
-import { BulkCommand, Undoable } from '@/models/history';
-import { useHistoryStore } from '@/stores/history';
-import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv.store';
+import type { Undoable } from '@/models/history';
+import { BulkCommand } from '@/models/history';
+import { useHistoryStore } from '@/stores/history.store';
+import { useUIStore } from '@/stores/ui.store';
 
-import { ref, onMounted, onUnmounted, Ref, nextTick, getCurrentInstance } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, getCurrentInstance } from 'vue';
 import { Command } from '@/models/history';
 import { useDebounceHelper } from './useDebounce';
 import useDeviceSupportHelpers from './useDeviceSupport';
 import { getNodeViewTab } from '@/utils';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 
@@ -26,7 +27,7 @@ export function useHistoryHelper(activeRoute: Route) {
 
 	const isNDVOpen = ref<boolean>(ndvStore.activeNodeName !== null);
 
-	const undo = () =>
+	const undo = async () =>
 		callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToUndo();
@@ -55,7 +56,7 @@ export function useHistoryHelper(activeRoute: Route) {
 			{ debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL },
 		);
 
-	const redo = () =>
+	const redo = async () =>
 		callDebounced(
 			async () => {
 				const command = historyStore.popUndoableToRedo();
@@ -112,9 +113,9 @@ export function useHistoryHelper(activeRoute: Route) {
 			event.preventDefault();
 			if (!isNDVOpen.value) {
 				if (event.shiftKey) {
-					redo();
+					void redo();
 				} else {
-					undo();
+					void undo();
 				}
 			} else if (!event.shiftKey) {
 				trackUndoAttempt(event);
