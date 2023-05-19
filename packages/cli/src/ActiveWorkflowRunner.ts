@@ -651,9 +651,10 @@ export class ActiveWorkflowRunner {
 				}
 			};
 
-			returnFunctions.__emitError = async (error: ExecutionError): Promise<void> => {
-				await createErrorExecution(error, node, workflowData, workflow, mode);
-				this.executeErrorWorkflow(error, workflowData, mode);
+			returnFunctions.__emitError = (error: ExecutionError): void => {
+				void createErrorExecution(error, node, workflowData, workflow, mode).then(() => {
+					this.executeErrorWorkflow(error, workflowData, mode);
+				});
 			};
 			return returnFunctions;
 		};
@@ -707,7 +708,7 @@ export class ActiveWorkflowRunner {
 					executePromise.catch(Logger.error);
 				}
 			};
-			returnFunctions.emitError = async (error: Error): Promise<void> => {
+			returnFunctions.emitError = (error: Error): void => {
 				Logger.info(
 					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
 					{
@@ -719,7 +720,7 @@ export class ActiveWorkflowRunner {
 
 				// Remove the workflow as "active"
 
-				await this.activeWorkflows.remove(workflowData.id);
+				void this.activeWorkflows.remove(workflowData.id);
 				this.activationErrors[workflowData.id] = {
 					time: new Date().getTime(),
 					error: {
