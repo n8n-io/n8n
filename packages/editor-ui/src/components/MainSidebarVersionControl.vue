@@ -66,6 +66,7 @@ async function pullWorkfolder() {
 		</span>
 		<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
 			<n8n-button
+				:title="i18n.baseText('settings.versionControl.button.pull')"
 				:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }"
 				icon="arrow-down"
 				type="tertiary"
@@ -76,6 +77,7 @@ async function pullWorkfolder() {
 				<span v-if="!isCollapsed">{{ i18n.baseText('settings.versionControl.button.pull') }}</span>
 			</n8n-button>
 			<n8n-button
+				:title="i18n.baseText('settings.versionControl.button.push')"
 				:square="isCollapsed"
 				icon="arrow-up"
 				type="tertiary"
