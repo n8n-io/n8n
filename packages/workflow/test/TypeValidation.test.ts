@@ -113,7 +113,9 @@ describe('Type Validation', () => {
 	it('should validate and cast JSON properly', () => {
 		expect(validateFieldType('json', '{"a": 1}', 'object').newValue).toEqual({ a: 1 });
 		expect(validateFieldType('json', '{a: 1}', 'object').valid).toEqual(false);
-		expect(validateFieldType('json', '["apples", "oranges"]', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '["apples", "oranges"]', 'object').valid).toEqual(true);
+		expect(validateFieldType('json', { name: 'John' }, 'object').valid).toEqual(true);
+		expect(validateFieldType('json', ['one', 'two'], 'object').valid).toEqual(true);
 	});
 
 	it('should validate and cast arrays properly', () => {

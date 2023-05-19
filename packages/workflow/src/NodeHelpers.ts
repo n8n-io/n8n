@@ -1266,16 +1266,12 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 
 export const tryToParseObject = (value: unknown): object => {
 	if (value && typeof value === 'object') {
-		return value;
+		return Array.isArray(value) ? { ...value } : value;
 	}
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const o = JSON.parse(String(value));
-		const isArray = Array.isArray(o);
-		if (isArray) {
-			return { ...o };
-		}
-		return o;
+		return Array.isArray(o) ? { ...o } : o;
 	} catch (e) {
 		throw new Error(`The value "${String(value)}" is not a valid object.`);
 	}

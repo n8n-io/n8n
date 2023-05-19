@@ -334,7 +334,7 @@ defineExpose({
 					:value="getParameterValue(field.name)"
 					:displayOptions="true"
 					:path="`${props.path}.${field.name}`"
-					:isReadOnly="props.refreshInProgress"
+					:isReadOnly="refreshInProgress"
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"
