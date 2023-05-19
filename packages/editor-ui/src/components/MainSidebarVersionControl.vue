@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore } from '@/stores';
 import { VERSION_CONTROL_PUSH_MODAL_KEY } from '@/constants';
@@ -40,13 +39,17 @@ async function pullWorkfolder() {
 	try {
 		await versionControlStore.pullWorkfolder(false);
 	} catch (error) {
-		const confirm = await message.confirm('Override local changes', 'XXX', {
-			confirmButtonText: 'Pull and override',
-			cancelButtonText: 'Cancel',
-		});
+		const confirm = await message.confirm(
+			i18n.baseText('settings.versionControl.modals.pull.description'),
+			i18n.baseText('settings.versionControl.modals.pull.title'),
+			{
+				confirmButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.save'),
+				cancelButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.cancel'),
+			},
+		);
 
 		try {
-			if (confirm) {
+			if (confirm === 'confirm') {
 				await versionControlStore.pullWorkfolder(true);
 			}
 		} catch (error) {

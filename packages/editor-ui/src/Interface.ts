@@ -1473,9 +1473,13 @@ export interface VersionControlStatus {
 }
 
 export interface VersionControlAggregatedFile {
-	path: string;
+	conflict: boolean;
+	file: string;
+	id: string;
+	location: string;
+	name: string;
 	status: string;
-	staged: boolean;
+	type: string;
 }
 
 export declare namespace Cloud {

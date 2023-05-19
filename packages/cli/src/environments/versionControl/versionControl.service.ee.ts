@@ -69,15 +69,15 @@ export class VersionControlService {
 		});
 	}
 
-	async connect() {
-		try {
-			await this.init();
-			await this.versionControlPreferencesService.setPreferences({ connected: true });
-			return this.versionControlPreferencesService.versionControlPreferences;
-		} catch (error) {
-			throw Error(`Failed to connect to version control: ${(error as Error).message}`);
-		}
-	}
+	// async connect() {
+	// 	try {
+	// 		await this.init();
+	// 		await this.versionControlPreferencesService.setPreferences({ connected: true });
+	// 		return this.versionControlPreferencesService.versionControlPreferences;
+	// 	} catch (error) {
+	// 		throw Error(`Failed to connect to version control: ${(error as Error).message}`);
+	// 	}
+	// }
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
@@ -201,6 +201,7 @@ export class VersionControlService {
 				return diffResult;
 			}
 		}
+		await this.unstage();
 		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
 		return this.gitService.push({

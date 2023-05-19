@@ -281,7 +281,11 @@ export class VersionControlGitService {
 			throw new Error('Git is not initialized');
 		}
 		if (deletedFiles?.size) {
-			await this.git.rm(Array.from(deletedFiles));
+			try {
+				await this.git.rm(Array.from(deletedFiles));
+			} catch (error) {
+				LoggerProxy.debug(`Git rm: ${(error as Error).message}`);
+			}
 		}
 		return this.git.add(Array.from(files));
 	}

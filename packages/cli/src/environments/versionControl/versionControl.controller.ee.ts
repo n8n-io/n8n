@@ -61,15 +61,15 @@ export class VersionControlController {
 		}
 	}
 
-	@Authorized(['global', 'owner'])
-	@Post('/connect')
-	async connect() {
-		try {
-			return await this.versionControlService.connect();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
+	// @Authorized(['global', 'owner'])
+	// @Post('/connect')
+	// async connect() {
+	// 	try {
+	// 		return await this.versionControlService.connect();
+	// 	} catch (error) {
+	// 		throw new BadRequestError((error as { message: string }).message);
+	// 	}
+	// }
 
 	@Authorized(['global', 'owner'])
 	@Post('/disconnect')
