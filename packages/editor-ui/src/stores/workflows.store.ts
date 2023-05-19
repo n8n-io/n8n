@@ -86,7 +86,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { NodeMetadataMap } from '@/Interface';
+import type { NodeMetadataMap } from '@/Interface';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
 	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,

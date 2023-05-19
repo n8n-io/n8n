@@ -39,7 +39,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 
 import type { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';

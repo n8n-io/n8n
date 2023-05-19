@@ -194,7 +194,7 @@ import {
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import type { PropType } from 'vue';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/constants';
 import Modal from '@/components/Modal.vue';
 import { useMessage } from '@/composables';
