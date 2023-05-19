@@ -1206,7 +1206,6 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 
 export const tryToParseDateTime = (value: unknown): DateTime => {
 	const dateString = String(value).trim();
-	console.log('tryToParseDateTime', dateString);
 
 	// Rely on luxon to parse different date formats
 	const isoDate = DateTime.fromISO(dateString);
