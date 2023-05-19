@@ -50,7 +50,7 @@ async function pullWorkfolder() {
 		);
 
 		try {
-			if (confirm) {
+			if (confirm === 'confirm') {
 				await versionControlStore.pullWorkfolder(true);
 			}
 		} catch (error) {
@@ -69,23 +69,11 @@ async function pullWorkfolder() {
 			{{ currentBranch }}
 		</span>
 		<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
-			<n8n-button
-				:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }"
-				icon="arrow-down"
-				type="tertiary"
-				size="mini"
-				:square="isCollapsed"
-				@click="pullWorkfolder"
-			>
+			<n8n-button :class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }" icon="arrow-down" type="tertiary" size="mini"
+				:square="isCollapsed" @click="pullWorkfolder">
 				<span v-if="!isCollapsed">{{ i18n.baseText('settings.versionControl.button.pull') }}</span>
 			</n8n-button>
-			<n8n-button
-				:square="isCollapsed"
-				icon="arrow-up"
-				type="tertiary"
-				size="mini"
-				@click="pushWorkfolder"
-			>
+			<n8n-button :square="isCollapsed" icon="arrow-up" type="tertiary" size="mini" @click="pushWorkfolder">
 				<span v-if="!isCollapsed">{{ i18n.baseText('settings.versionControl.button.push') }}</span>
 			</n8n-button>
 		</div>
@@ -113,7 +101,7 @@ async function pullWorkfolder() {
 	text-align: center;
 	margin-left: calc(var(--spacing-xl) * -1);
 
-	> span {
+	>span {
 		display: none;
 	}
 }

@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
+import type { Rule, RuleGroup } from 'n8n-design-system/types';
+import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -69,6 +71,47 @@ const onSelect = async (b: string) => {
 const goToUpgrade = () => {
 	uiStore.goToUpgrade('version-control', 'upgrade-version-control');
 };
+
+const formValidationStatus = reactive<Record<string, boolean>>({
+	repoUrl: false,
+	authorName: false,
+	authorEmail: false,
+});
+
+function onValidate(key: string, value: boolean) {
+	formValidationStatus[key] = value;
+}
+
+const repoUrlValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'REQUIRED' },
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: /(?:git|ssh|https?|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$/,
+			message: locale.baseText('settings.versionControl.repoUrlInvalid'),
+		},
+	},
+];
+
+const authorNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+
+const authorEmailValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'REQUIRED' },
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: VALID_EMAIL_REGEX,
+			message: locale.baseText('settings.versionControl.authorEmailInvalid'),
+		},
+	},
+];
+
+const validForConnection = computed(
+	() =>
+		formValidationStatus.repoUrl &&
+		formValidationStatus.authorName &&
+		formValidationStatus.authorEmail,
+);
 </script>
 
 <template>
@@ -96,14 +139,20 @@ const goToUpgrade = () => {
 			<div :class="$style.group">
 				<label for="repoUrl">{{ locale.baseText('settings.versionControl.repoUrl') }}</label>
 				<div :class="$style.groupFlex">
-					<n8n-input
-						:disabled="isConnected"
+					<n8n-form-input
+						label
+						class="ml-0"
 						id="repoUrl"
+						name="repoUrl"
+						validateOnBlur
+						:validationRules="repoUrlValidationRules"
+						:disabled="isConnected"
 						:placeholder="locale.baseText('settings.versionControl.repoUrlPlaceholder')"
 						v-model="versionControlStore.preferences.repositoryUrl"
+						@validate="(value) => onValidate('repoUrl', value)"
 					/>
 					<n8n-button
-						class="mt-3xs ml-2xs"
+						class="mt-xs ml-2xs"
 						type="tertiary"
 						v-if="isConnected"
 						@click="onDisconnect"
@@ -119,13 +168,30 @@ const goToUpgrade = () => {
 					<label for="authorName">{{
 						locale.baseText('settings.versionControl.authorName')
 					}}</label>
-					<n8n-input id="authorName" v-model="versionControlStore.preferences.authorName" />
+					<n8n-form-input
+						label
+						id="authorName"
+						name="authorName"
+						validateOnBlur
+						:validationRules="authorNameValidationRules"
+						v-model="versionControlStore.preferences.authorName"
+						@validate="(value) => onValidate('authorName', value)"
+					/>
 				</div>
 				<div>
 					<label for="authorEmail">{{
 						locale.baseText('settings.versionControl.authorEmail')
 					}}</label>
-					<n8n-input id="authorEmail" v-model="versionControlStore.preferences.authorEmail" />
+					<n8n-form-input
+						label
+						type="email"
+						id="authorEmail"
+						name="authorEmail"
+						validateOnBlur
+						:validationRules="authorEmailValidationRules"
+						v-model="versionControlStore.preferences.authorEmail"
+						@validate="(value) => onValidate('authorEmail', value)"
+					/>
 				</div>
 			</div>
 			<div v-if="versionControlStore.preferences.publicKey" :class="$style.group">
@@ -144,9 +210,14 @@ const goToUpgrade = () => {
 					</i18n>
 				</n8n-notice>
 			</div>
-			<n8n-button v-if="!isConnected" @click="onConnect" size="small" :class="$style.connect">{{
-				locale.baseText('settings.versionControl.button.connect')
-			}}</n8n-button>
+			<n8n-button
+				v-if="!isConnected"
+				@click="onConnect"
+				size="small"
+				:disabled="!validForConnection"
+				:class="$style.connect"
+				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
+			>
 			<div v-if="isConnected">
 				<div :class="$style.group">
 					<hr />
@@ -238,7 +309,7 @@ const goToUpgrade = () => {
 
 .groupFlex {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 
 	> div {
 		flex: 1;
