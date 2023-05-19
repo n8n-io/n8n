@@ -164,17 +164,21 @@ export class MqttTrigger implements INodeType {
 							}
 
 							let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+							console.log(options?.parallelProcessing === false);
+							console.log('paralell', options.parallelProcessing);
 							if (options?.parallelExecution === false) {
 								responsePromise = await this.helpers.createDeferredPromise();
 							}
+							this.emit(
+								[this.helpers.returnJsonArray([result as any])],
+								undefined,
+								responsePromise,
+							);
 							if (responsePromise) {
-								this.emit(
-									[this.helpers.returnJsonArray([result as any])],
-									undefined,
-									responsePromise,
-								);
-							} else {
-								this.emit([this.helpers.returnJsonArray([result as any])]);
+								console.log(result);
+								await responsePromise.promise().then(async (data: IRun) => {
+									console.log('data', data);
+								});
 							}
 							resolve(true);
 						});
