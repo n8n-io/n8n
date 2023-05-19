@@ -50,7 +50,10 @@ const onDisconnect = async () => {
 
 const onSave = async () => {
 	try {
-		await versionControlStore.setBranch(versionControlStore.preferences.branchName);
+		await Promise.all([
+			versionControlStore.setBranch(versionControlStore.preferences.branchName),
+			versionControlStore.setBranchReadonly(versionControlStore.preferences.branchReadOnly),
+		]);
 		toast.showMessage({
 			title: 'Success',
 			message: 'Settings saved successfully',

@@ -59,15 +59,20 @@ export const getAggregatedStatus = async (
 	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/get-status`);
 };
 
-export const connect = async (context: IRestApiContext): Promise<string> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/connect`);
-};
-
 export const disconnect = async (
 	context: IRestApiContext,
 	keepKeyPair: boolean,
 ): Promise<string> => {
 	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/disconnect`, {
 		keepKeyPair,
+	});
+};
+
+export const setBranchReadonly = async (
+	context: IRestApiContext,
+	branchReadOnly: boolean,
+): Promise<string> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/set-read-only`, {
+		branchReadOnly,
 	});
 };

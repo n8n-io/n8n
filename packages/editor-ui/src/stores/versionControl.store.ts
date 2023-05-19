@@ -93,7 +93,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		state.loading = true;
 		try {
 			const data = await vcApi.setBranch(rootStore.getRestApiContext, branch);
-			await vcApi.connect(rootStore.getRestApiContext);
 			setPreferences({ ...data, connected: true });
 		} catch (error) {
 			setError(error);
@@ -120,6 +119,10 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
 	};
 
+	const setBranchReadonly = async (branchReadOnly: boolean) => {
+		return vcApi.setBranchReadonly(rootStore.getRestApiContext, branchReadOnly);
+	};
+
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
@@ -134,5 +137,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		disconnect,
 		getStatus,
 		getAggregatedStatus,
+		setBranchReadonly,
 	};
 });
