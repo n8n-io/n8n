@@ -1,12 +1,13 @@
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 
@@ -25,7 +26,6 @@ export class OnfleetTrigger implements INodeType {
 		description: 'Starts the workflow when Onfleet events occur',
 		defaults: {
 			name: 'Onfleet Trigger',
-			color: '#AA81F3',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -53,11 +53,10 @@ export class OnfleetTrigger implements INodeType {
 		properties: [eventDisplay, eventNameField],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				// Webhook got created before so check if it still exists
@@ -76,7 +75,7 @@ export class OnfleetTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const { name = '' } = this.getNodeParameter('additionalFields') as IDataObject;
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
-				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
@@ -92,7 +91,7 @@ export class OnfleetTrigger implements INodeType {
 					newWebhookName = `n8n-webhook:${name}`;
 				}
 
-				const path = `/webhooks`;
+				const path = '/webhooks';
 				const body = {
 					name: newWebhookName,
 					url: webhookUrl,
@@ -103,7 +102,7 @@ export class OnfleetTrigger implements INodeType {
 					const webhook = await onfleetApiRequest.call(this, 'POST', path, body);
 
 					if (webhook.id === undefined) {
-						throw new NodeApiError(this.getNode(), webhook, {
+						throw new NodeApiError(this.getNode(), webhook as JsonObject, {
 							message: 'Onfleet webhook creation response did not contain the expected data',
 						});
 					}
@@ -122,7 +121,7 @@ export class OnfleetTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+				const webhookData = this.getWorkflowStaticData('node');
 				// Get the data of the already registered webhook
 				const endpoint = `/webhooks/${webhookData.id}`;
 				await onfleetApiRequest.call(this, 'DELETE', endpoint);

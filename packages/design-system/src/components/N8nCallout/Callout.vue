@@ -1,14 +1,13 @@
 <template>
 	<div :class="classes" role="alert">
-
-		<div :class="$style['message-section']">
-			<div :class="$style.icon">
-				<n8n-icon
-					:icon="getIcon"
-					:size="theme === 'secondary' ? 'medium' : 'large'"
-				/>
+		<div :class="$style.messageSection">
+			<div :class="$style.icon" v-if="!iconless">
+				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
 			</div>
-			<slot />&nbsp;
+			<n8n-text size="small">
+				<slot />
+			</n8n-text>
+			&nbsp;
 			<slot name="actions" />
 		</div>
 
@@ -17,7 +16,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 
 const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
@@ -27,9 +27,10 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	danger: 'times-circle',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-callout',
 	components: {
+		N8nText,
 		N8nIcon,
 	},
 	props: {
@@ -43,6 +44,12 @@ export default Vue.extend({
 			type: String,
 			default: 'info-circle',
 		},
+		iconless: {
+			type: Boolean,
+		},
+		slim: {
+			type: Boolean,
+		},
 	},
 	computed: {
 		classes(): string[] {
@@ -50,6 +57,7 @@ export default Vue.extend({
 				'n8n-callout',
 				this.$style.callout,
 				this.$style[this.theme],
+				this.slim ? this.$style.slim : '',
 			];
 		},
 		getIcon(): string {
@@ -73,13 +81,20 @@ export default Vue.extend({
 	border-radius: var(--border-radius-base);
 	align-items: center;
 	line-height: var(--font-line-height-loose);
+
+	&.slim {
+		line-height: var(--font-line-height-loose);
+		padding: var(--spacing-3xs) var(--spacing-2xs);
+	}
 }
 
-.message-section {
+.messageSection {
 	display: flex;
+	align-items: center;
 }
 
-.info, .custom {
+.info,
+.custom {
 	border-color: var(--color-foreground-base);
 	background-color: var(--color-background-light);
 	color: var(--color-info);
@@ -111,7 +126,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-secondary);
-	background-color: var(--color-secondary-tint-2);
+	background-color: var(--color-secondary-tint-3);
 	border-color: var(--color-secondary-tint-1);
 }
 </style>

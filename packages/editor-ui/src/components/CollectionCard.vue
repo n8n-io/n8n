@@ -1,10 +1,6 @@
 <template>
-	<Card
-		:loading="loading"
-		:title="collection.name"
-		@click="onClick"
-	>
-		<template v-slot:footer>
+	<Card :loading="loading" :title="collection.name" @click="onClick">
+		<template #footer>
 			<n8n-text size="small" color="text-light">
 				{{ collection.workflows.length }}
 				{{ $locale.baseText('templates.workflows') }}
@@ -15,13 +11,14 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { defineComponent } from 'vue';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import Card from '@/components/CollectionWorkflowCard.vue';
-import mixins from 'vue-typed-mixins';
 import NodeList from '@/components/NodeList.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'CollectionCard',
+	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,
@@ -42,6 +39,4 @@ export default mixins(genericHelpers).extend({
 });
 </script>
 
-<style lang="scss" module>
-
-</style>
+<style lang="scss" module></style>

@@ -1,6 +1,6 @@
-@use "./common/var";
-@use "mixins/mixins";
-@use "mixins/utils";
+@use './common/var';
+@use 'mixins/mixins';
+@use 'mixins/utils';
 
 @include mixins.b(row) {
 	position: relative;

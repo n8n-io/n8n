@@ -1,14 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 
-import { DocumentGetAllOptions, FieldsUiValues } from './types';
+import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
-import { omit } from 'lodash';
+import omit from 'lodash.omit';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,7 +65,7 @@ export class Elasticsearch implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -93,7 +98,7 @@ export class Elasticsearch implements INodeType {
 					const documentId = this.getNodeParameter('documentId', i);
 
 					const qs = {} as IDataObject;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					if (Object.keys(options).length) {
 						Object.assign(qs, options);
@@ -127,7 +132,12 @@ export class Elasticsearch implements INodeType {
 
 					if (Object.keys(options).length) {
 						const { query, ...rest } = options;
-						if (query) Object.assign(body, JSON.parse(query));
+						if (query) {
+							Object.assign(
+								body,
+								jsonParse(query, { errorMessage: "Invalid JSON in 'Query' option" }),
+							);
+						}
 						Object.assign(qs, rest);
 						qs._source = true;
 					}
@@ -173,7 +183,7 @@ export class Elasticsearch implements INodeType {
 						responseData = responseData.map((item: IDataObject) => {
 							return {
 								_id: item._id,
-								...(item._source as {}),
+								...(item._source as IDataObject),
 							};
 						});
 					}
@@ -205,7 +215,7 @@ export class Elasticsearch implements INodeType {
 					}
 
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, omit(additionalFields, ['documentId']));
@@ -272,7 +282,7 @@ export class Elasticsearch implements INodeType {
 
 					const body = {} as IDataObject;
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						const { aliases, mappings, settings, ...rest } = additionalFields;
@@ -304,7 +314,7 @@ export class Elasticsearch implements INodeType {
 					const indexId = this.getNodeParameter('indexId', i) as string;
 
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, additionalFields);
@@ -320,18 +330,20 @@ export class Elasticsearch implements INodeType {
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
-					responseData = Object.keys(responseData).map((i) => ({ indexId: i }));
+					responseData = Object.keys(responseData as IDataObject).map((index) => ({
+						indexId: index,
+					}));
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

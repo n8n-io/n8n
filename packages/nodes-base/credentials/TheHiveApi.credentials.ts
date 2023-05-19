@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class TheHiveApi implements ICredentialType {
 	name = 'theHiveApi';
+
 	displayName = 'The Hive API';
+
 	documentationUrl = 'theHive';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -51,18 +54,20 @@ export class TheHiveApi implements ICredentialType {
 			default: false,
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=Bearer {{$credentials.ApiKey}}',
+				Authorization: '=Bearer {{$credentials?.ApiKey}}',
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.url}}',
-			url: '/api/alert',
+			baseURL: '={{$credentials?.url}}',
+			url: '/api/case',
 		},
 	};
 }

@@ -1,15 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getFieldsObject,
@@ -120,36 +119,36 @@ export class QuickBase implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
-		const headers: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'field') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
-					const qs: IDataObject = {
-						tableId,
-					};
-
-					Object.assign(qs, options);
+					Object.assign(
+						{
+							tableId,
+						},
+						options,
+					);
 
 					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
 
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i);
 
 						responseData = responseData.splice(0, limit);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -176,7 +175,7 @@ export class QuickBase implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -208,7 +207,7 @@ export class QuickBase implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					responseData = await quickbaseApiRequest.call(
 						this,
@@ -220,7 +219,7 @@ export class QuickBase implements INodeType {
 					);
 
 					//content-disposition': 'attachment; filename="dog-puppy-on-garden-royalty-free-image-1586966191.jpg"',
-					const contentDisposition = responseData.headers['content-disposition'];
+					const contentDisposition: string = responseData.headers['content-disposition'];
 
 					const data = Buffer.from(responseData.body as string, 'base64');
 
@@ -242,7 +241,7 @@ export class QuickBase implements INodeType {
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -281,21 +280,21 @@ export class QuickBase implements INodeType {
 
 				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
 
-				if (simple === true) {
+				if (simple) {
 					const { data: records } = responseData;
 					responseData = [];
 
 					for (const record of records) {
-						const data: IDataObject = {};
-						for (const [key, value] of Object.entries(record)) {
-							data[key] = (value as IDataObject).value;
+						const recordData: IDataObject = {};
+						for (const [key, value] of Object.entries(record as IDataObject)) {
+							recordData[key] = (value as IDataObject).value;
 						}
-						responseData.push(data);
+						responseData.push(recordData);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -316,7 +315,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(this, 'DELETE', '/records', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -326,11 +325,11 @@ export class QuickBase implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {
 						from: tableId,
@@ -359,7 +358,7 @@ export class QuickBase implements INodeType {
 							qs,
 						);
 					} else {
-						body.options = { top: this.getNodeParameter('limit', i) as number };
+						body.options = { top: this.getNodeParameter('limit', i) };
 
 						responseData = await quickbaseApiRequest.call(this, 'POST', '/records/query', body, qs);
 
@@ -374,14 +373,14 @@ export class QuickBase implements INodeType {
 
 						for (const record of records) {
 							const data: IDataObject = {};
-							for (const [key, value] of Object.entries(record)) {
+							for (const [key, value] of Object.entries(record as IDataObject)) {
 								data[fieldsIdKey[key]] = (value as IDataObject).value;
 							}
 							responseData.push(data);
 						}
 					}
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -392,7 +391,10 @@ export class QuickBase implements INodeType {
 			if (operation === 'update') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
+				const { fieldsLabelKey: _fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(
+					this,
+					tableId,
+				);
 
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
@@ -400,7 +402,7 @@ export class QuickBase implements INodeType {
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -448,21 +450,21 @@ export class QuickBase implements INodeType {
 
 				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
 
-				if (simple === true) {
+				if (simple) {
 					const { data: records } = responseData;
 					responseData = [];
 
 					for (const record of records) {
-						const data: IDataObject = {};
-						for (const [key, value] of Object.entries(record)) {
-							data[fieldsIdKey[key]] = (value as IDataObject).value;
+						const recordData: IDataObject = {};
+						for (const [key, value] of Object.entries(record as IDataObject)) {
+							recordData[fieldsIdKey[key]] = (value as IDataObject).value;
 						}
-						responseData.push(data);
+						responseData.push(recordData);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -480,7 +482,7 @@ export class QuickBase implements INodeType {
 
 				const data: IDataObject[] = [];
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -531,21 +533,21 @@ export class QuickBase implements INodeType {
 
 				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
 
-				if (simple === true) {
+				if (simple) {
 					const { data: records } = responseData;
 					responseData = [];
 
 					for (const record of records) {
-						const data: IDataObject = {};
-						for (const [key, value] of Object.entries(record)) {
-							data[key] = (value as IDataObject).value;
+						const recordData: IDataObject = {};
+						for (const [key, value] of Object.entries(record as IDataObject)) {
+							recordData[key] = (value as IDataObject).value;
 						}
-						responseData.push(data);
+						responseData.push(recordData);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: 0 } },
 				);
 
@@ -556,7 +558,7 @@ export class QuickBase implements INodeType {
 		if (resource === 'report') {
 			if (operation === 'run') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
@@ -573,7 +575,7 @@ export class QuickBase implements INodeType {
 							qs,
 						);
 					} else {
-						qs.top = this.getNodeParameter('limit', i) as number;
+						qs.top = this.getNodeParameter('limit', i);
 
 						responseData = await quickbaseApiRequest.call(
 							this,
@@ -594,7 +596,7 @@ export class QuickBase implements INodeType {
 
 						for (const record of records) {
 							const data: IDataObject = {};
-							for (const [key, value] of Object.entries(record)) {
+							for (const [key, value] of Object.entries(record as IDataObject)) {
 								data[fieldsIdKey[key]] = (value as IDataObject).value;
 							}
 							responseData.push(data);
@@ -602,7 +604,7 @@ export class QuickBase implements INodeType {
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -627,7 +629,7 @@ export class QuickBase implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 

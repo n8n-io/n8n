@@ -32,12 +32,13 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import TemplateCard from './TemplateCard.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateList',
+	mixins: [genericHelpers],
 	props: {
 		infiniteScrollEnabled: {
 			type: Boolean,
@@ -76,12 +77,12 @@ export default mixins(genericHelpers).extend({
 	},
 	methods: {
 		onScroll() {
-			const el = this.$refs.loader;
-			if (!el || this.loading) {
+			const loaderRef = this.$refs.loader as HTMLElement | undefined;
+			if (!loaderRef || this.loading) {
 				return;
 			}
 
-			const rect = (el as Element).getBoundingClientRect();
+			const rect = loaderRef.getBoundingClientRect();
 			const inView =
 				rect.top >= 0 &&
 				rect.left >= 0 &&
@@ -93,10 +94,10 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openTemplate', {event, id});
+			this.$emit('openTemplate', { event, id });
 		},
 		onUseWorkflow(event: MouseEvent, id: string) {
-			this.$emit('useWorkflow', {event, id});
+			this.$emit('useWorkflow', { event, id });
 		},
 	},
 });
@@ -118,5 +119,4 @@ export default mixins(genericHelpers).extend({
 		}
 	}
 }
-
 </style>

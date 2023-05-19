@@ -1,12 +1,14 @@
+import type * as esprima from 'esprima-next';
 import type { Completion } from '@codemirror/autocomplete';
 import type { Node } from 'estree';
 import type { RangeNode } from './types';
 
 export function walk<T extends RangeNode>(
-	node: Node,
+	node: Node | esprima.Program,
 	test: (node: Node) => boolean,
 	found: Node[] = [],
 ) {
+	// @ts-ignore
 	if (test(node)) found.push(node);
 
 	for (const key in node) {
@@ -26,12 +28,6 @@ export function walk<T extends RangeNode>(
 
 	return found as T[];
 }
-
-export const isAllowedInDotNotation = (str: string) => {
-	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
-
-	return !DOT_NOTATION_BANNED_CHARS.test(str);
-};
 
 export const escape = (str: string) =>
 	str

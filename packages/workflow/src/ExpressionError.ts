@@ -1,18 +1,21 @@
-/* eslint-disable import/no-cycle */
-import { IDataObject } from './Interfaces';
+import type { IDataObject } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 
 /**
  * Class for instantiating an expression error
  */
 export class ExpressionError extends ExecutionBaseError {
+	clientOnly = false;
+
 	constructor(
 		message: string,
 		options?: {
+			cause?: Error;
 			causeDetailed?: string;
 			description?: string;
 			descriptionTemplate?: string;
 			failExecution?: boolean;
+			clientOnly?: boolean; // whether to throw error only on frontend
 			functionality?: 'pairedItem';
 			itemIndex?: number;
 			messageTemplate?: string;
@@ -22,10 +25,14 @@ export class ExpressionError extends ExecutionBaseError {
 			type?: string;
 		},
 	) {
-		super(new Error(message));
+		super(message, { cause: options?.cause });
 
 		if (options?.description !== undefined) {
 			this.description = options.description;
+		}
+
+		if (options?.clientOnly) {
+			this.clientOnly = options.clientOnly;
 		}
 
 		this.context.failExecution = !!options?.failExecution;
@@ -48,5 +55,12 @@ export class ExpressionError extends ExecutionBaseError {
 				}
 			});
 		}
+	}
+}
+
+export class ExpressionExtensionError extends ExpressionError {
+	constructor(message: string) {
+		super(message);
+		this.context.failExecution = true;
 	}
 }

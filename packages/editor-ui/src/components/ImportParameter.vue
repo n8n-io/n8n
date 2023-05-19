@@ -3,6 +3,7 @@
 		<n8n-button
 			type="secondary"
 			:label="$locale.baseText('importParameter.label')"
+			:disabled="isReadOnly"
 			size="mini"
 			@click="onImportCurlClicked"
 		/>
@@ -10,15 +11,25 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { useUIStore } from '@/stores/ui.store';
+import { mapStores } from 'pinia';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'import-parameter',
+	props: {
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		onImportCurlClicked() {
-			this.$store.dispatch('ui/openModal', IMPORT_CURL_MODAL_KEY);
+			this.uiStore.openModal(IMPORT_CURL_MODAL_KEY);
 		},
 	},
 });

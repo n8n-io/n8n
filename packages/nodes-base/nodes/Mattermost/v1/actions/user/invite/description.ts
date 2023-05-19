@@ -1,4 +1,4 @@
-import { UserProperties } from '../../Interfaces';
+import type { UserProperties } from '../../Interfaces';
 
 export const userInviteDescription: UserProperties = [
 	{

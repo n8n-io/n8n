@@ -1,11 +1,11 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const logOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
-		type: 'options',
 		noDataExpression: true,
+		type: 'options',
 		required: true,
 		default: 'getAll',
 		displayOptions: {

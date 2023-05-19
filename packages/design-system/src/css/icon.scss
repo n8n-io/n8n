@@ -1,10 +1,9 @@
-@use "./common/var";
+@use './common/var';
 
 @font-face {
 	font-family: 'element-icons';
 	src: url('#{var.$font-path}/element-icons.woff') format('woff'),
-		/* chrome, firefox */ url('#{var.$font-path}/element-icons.ttf')
-			format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+		/* chrome, firefox */ url('#{var.$font-path}/element-icons.ttf') format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
 	font-weight: normal;
 	font-display: var.$font-display;
 	font-style: normal;

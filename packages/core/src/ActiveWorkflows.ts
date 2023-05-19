@@ -4,24 +4,21 @@
 /* eslint-disable no-restricted-syntax */
 import { CronJob } from 'cron';
 
-import {
+import type {
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
-	LoggerProxy as Logger,
 	TriggerTime,
-	toCronExpression,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowActivationError,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger, toCronExpression, WorkflowActivationError } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import type { IWorkflowData } from '.';
+import type { IWorkflowData } from './Interfaces';
 
 export class ActiveWorkflows {
 	private workflowData: {
@@ -95,8 +92,7 @@ export class ActiveWorkflows {
 				throw new WorkflowActivationError(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem activating the workflow: "${error.message}"`,
-					error,
-					triggerNode,
+					{ cause: error as Error, node: triggerNode },
 				);
 			}
 		}
@@ -122,8 +118,7 @@ export class ActiveWorkflows {
 					throw new WorkflowActivationError(
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 						`There was a problem activating the workflow: "${error.message}"`,
-						error,
-						pollNode,
+						{ cause: error as Error, node: pollNode },
 					);
 				}
 			}
@@ -162,7 +157,6 @@ export class ActiveWorkflows {
 				const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 				if (pollResponse !== null) {
-					// eslint-disable-next-line no-underscore-dangle
 					pollFunctions.__emit(pollResponse);
 				}
 			} catch (error) {
@@ -172,8 +166,7 @@ export class ActiveWorkflows {
 				if (testingTrigger) {
 					throw error;
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, no-underscore-dangle
-				pollFunctions.__emit(error);
+				pollFunctions.__emitError(error);
 			}
 		};
 

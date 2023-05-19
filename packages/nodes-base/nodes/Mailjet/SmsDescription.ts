@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const smsOperations: INodeProperties[] = [
 	{
@@ -62,9 +62,6 @@ export const smsFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {

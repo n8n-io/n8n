@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const agentOperations: INodeProperties[] = [
 	{
@@ -27,7 +27,7 @@ export const agentOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many agents of the current user\'s organization',
+				description: "Get many agents of the current user's organization",
 				action: 'Get many agents',
 			},
 			{

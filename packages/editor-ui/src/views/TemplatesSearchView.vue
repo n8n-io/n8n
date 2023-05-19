@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading tag="h1" size="2xlarge">
@@ -16,11 +16,11 @@
 				</div>
 			</div>
 		</template>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.contentWrapper">
 				<div :class="$style.filters">
 					<TemplateFilters
-						:categories="allCategories"
+						:categories="templatesStore.allCategories"
 						:sortOnPopulate="areCategoriesPrepopulated"
 						:loading="loadingCategories"
 						:selected="categories"
@@ -37,7 +37,9 @@
 						@blur="trackSearch"
 						clearable
 					>
-						<font-awesome-icon icon="search" slot="prefix" />
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
 					</n8n-input>
 					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
 						<div :class="$style.header">
@@ -73,41 +75,75 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
-import TemplatesView from './TemplatesView.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
-import { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/components/helpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import type {
+	ITemplatesCollection,
+	ITemplatesWorkflow,
+	ITemplatesQuery,
+	ITemplatesCategory,
+} from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
-import { debounceHelper } from '@/components/mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables';
 
 interface ISearchEvent {
 	search_string: string;
 	workflow_results_count: number;
 	collection_results_count: number;
 	categories_applied: ITemplatesCategory[];
-	wf_template_repo_session_id: number;
+	wf_template_repo_session_id: string;
 }
 
-export default mixins(genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'TemplatesSearchView',
+	mixins: [genericHelpers, debounceHelper],
 	components: {
 		CollectionsCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			areCategoriesPrepopulated: false,
+			categories: [] as number[],
+			loading: true,
+			loadingCategories: true,
+			loadingCollections: true,
+			loadingWorkflows: true,
+			search: '',
+			searchEventToTrack: null as null | ISearchEvent,
+			errorLoadingWorkflows: false,
+		};
+	},
 	computed: {
-		...mapGetters('templates', ['allCategories', 'getSearchedWorkflowsTotal', 'getSearchedWorkflows', 'getSearchedCollections']),
-		...mapGetters('settings', ['isTemplatesEndpointReachable']),
+		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore),
+		totalWorkflows(): number {
+			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
+		},
+		workflows(): ITemplatesWorkflow[] {
+			return this.templatesStore.getSearchedWorkflows(this.query) || [];
+		},
 		collections(): ITemplatesCollection[] {
-			return this.getSearchedCollections(this.query) || [];
+			return this.templatesStore.getSearchedCollections(this.query) || [];
 		},
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
@@ -116,8 +152,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
 				return this.$locale.baseText('templates.endResult');
 			}
-			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
-				if (!this.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
+			if (
+				!this.loadingCollections &&
+				this.workflows.length === 0 &&
+				this.collections.length === 0
+			) {
+				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
 				return this.$locale.baseText('templates.noSearchResults');
@@ -139,31 +179,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				this.collections.length === 0
 			);
 		},
-		totalWorkflows(): number {
-			return this.getSearchedWorkflowsTotal(this.query);
-		},
-		workflows(): ITemplatesWorkflow[] {
-			return this.getSearchedWorkflows(this.query) || [];
-		},
-	},
-	data() {
-		return {
-			areCategoriesPrepopulated: false,
-			categories: [] as number[],
-			loading: true,
-			loadingCategories: true,
-			loadingCollections: true,
-			loadingWorkflows: true,
-			search: '',
-			searchEventToTrack: null as null | ISearchEvent,
-			errorLoadingWorkflows: false,
-		};
 	},
 	methods: {
-		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
+		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
-		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
@@ -172,12 +193,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				void this.$router.push({ name: page, params: { id } });
 			}
 		},
 		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
-			this.loadWorkflowsAndCollections(false);
+			void this.loadWorkflowsAndCollections(false);
 		},
 		updateSearchTracking(search: string, categories: number[]) {
 			if (!search) {
@@ -189,28 +210,32 @@ export default mixins(genericHelpers, debounceHelper).extend({
 
 			this.searchEventToTrack = {
 				search_string: search,
-				workflow_results_count: this.getSearchedWorkflowsTotal({search, categories}),
-				collection_results_count: this.getSearchedCollections({search, categories}).length,
+				workflow_results_count: this.workflows.length,
+				collection_results_count: this.collections.length,
 				categories_applied: categories.map((categoryId) =>
-					this.$store.getters['templates/getCategoryById'](categoryId),
+					this.templatesStore.getCategoryById(categoryId.toString()),
 				) as ITemplatesCategory[],
-				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				wf_template_repo_session_id: this.templatesStore.currentSessionId,
 			};
 		},
 		trackSearch() {
 			if (this.searchEventToTrack) {
-				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
+				this.$telemetry.track(
+					'User searched workflow templates',
+					this.searchEventToTrack as unknown as IDataObject,
+				);
 				this.searchEventToTrack = null;
 			}
 		},
 		openNewWorkflow() {
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			this.uiStore.nodeViewInitialized = false;
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
 
 			if (search.length === 0) {
 				this.trackSearch();
@@ -235,9 +260,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				this.$telemetry.track('User changed template filters', {
 					search_string: this.search,
 					categories_applied: this.categories.map((categoryId: number) =>
-						this.$store.getters['templates/getCategoryById'](categoryId),
+						this.templatesStore.getCollectionById(categoryId.toString()),
 					),
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
 				});
 			}
 		},
@@ -256,7 +281,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				delete query.search;
 			}
 
-			this.$router.replace({ query });
+			void this.$router.replace({ query });
 		},
 		async onLoadMore() {
 			if (this.workflows.length >= this.totalWorkflows) {
@@ -264,12 +289,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			}
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getMoreWorkflows', {
+				await this.templatesStore.getMoreWorkflows({
 					categories: this.categories,
 					search: this.search,
 				});
 			} catch (e) {
-				this.$showMessage({
+				this.showMessage({
 					title: 'Error',
 					message: 'Could not load more workflows',
 					type: 'error',
@@ -280,28 +305,25 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 		async loadCategories() {
 			try {
-				await this.$store.dispatch('templates/getCategories');
-			} catch (e) {
-			}
-
+				await this.templatesStore.getCategories();
+			} catch (e) {}
 			this.loadingCategories = false;
 		},
 		async loadCollections() {
 			try {
 				this.loadingCollections = true;
-				await this.$store.dispatch('templates/getCollections', {
+				await this.templatesStore.getCollections({
 					categories: this.categories,
 					search: this.search,
 				});
-			} catch (e) {
-			}
+			} catch (e) {}
 
 			this.loadingCollections = false;
 		},
 		async loadWorkflows() {
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getWorkflows', {
+				await this.templatesStore.getWorkflows({
 					search: this.search,
 					categories: this.categories,
 				});
@@ -343,7 +365,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
-			if (this.$route.meta && this.$route.meta.setScrollPosition && typeof this.$route.meta.setScrollPosition === 'function') {
+			if (
+				this.$route.meta &&
+				this.$route.meta.setScrollPosition &&
+				typeof this.$route.meta.setScrollPosition === 'function'
+			) {
 				this.$route.meta.setScrollPosition(contentArea.scrollTop);
 			}
 		}
@@ -353,9 +379,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
-		this.loadCategories();
-		this.loadWorkflowsAndCollections(true);
-		this.$store.dispatch('users/showPersonalizationSurvey');
+		void this.loadCategories();
+		void this.loadWorkflowsAndCollections(true);
+		void this.usersStore.showPersonalizationSurvey();
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
@@ -370,7 +396,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
+			this.categories = this.$route.query.categories
+				.split(',')
+				.map((categoryId) => parseInt(categoryId, 10));
 			this.areCategoriesPrepopulated = true;
 		}
 	},
@@ -413,5 +441,4 @@ export default mixins(genericHelpers, debounceHelper).extend({
 .header {
 	margin-bottom: var(--spacing-2xs);
 }
-
 </style>

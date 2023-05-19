@@ -1,8 +1,7 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, IHookFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Dropbox
@@ -16,7 +15,6 @@ export async function dropboxApiRequest(
 	query: IDataObject = {},
 	headers: object = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers,
@@ -42,7 +40,7 @@ export async function dropboxApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -51,11 +49,10 @@ export async function dropboxpiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
@@ -68,19 +65,26 @@ export async function dropboxpiRequestAllItems(
 
 	let responseData;
 	do {
-		responseData = await dropboxApiRequest.call(this, method, endpoint, body, query, headers);
+		responseData = await dropboxApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body as IDataObject,
+			query,
+			headers,
+		);
 		const cursor = responseData.cursor;
 		if (cursor !== undefined) {
 			endpoint = paginationEndpoint[resource] as string;
 			body = { cursor };
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.has_more !== false);
 
 	return returnData;
 }
 
-export function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
+export async function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
 	return dropboxApiRequest.call(
 		this,
 		'POST',

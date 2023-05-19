@@ -1,0 +1,51 @@
+{
+	"name": "Read Binary File Unit Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "209e36b6-de70-4cc4-ac95-ca17fd3f83ff",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				1020,
+				640
+			]
+		},
+		{
+			"parameters": {
+				"filePath": "C:\\Test\\image.jpg"
+			},
+			"id": "1901bee9-d429-4485-9fdb-e5cd3aa64eab",
+			"name": "Read Binary File",
+			"type": "n8n-nodes-base.readBinaryFile",
+			"typeVersion": 1,
+			"position": [
+				1240,
+				640
+			]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Read Binary File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c0b978b3-92e6-4c62-9c85-9539922b0443",
+	"id": "184",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

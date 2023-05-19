@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { questionsFields, questionsOperations } from './QuestionsDescription';
 
@@ -19,7 +19,6 @@ export class Metabase implements INodeType {
 		description: 'Use the Metabase API',
 		defaults: {
 			name: 'Metabase',
-			color: '#ff0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -1,6 +1,7 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -16,12 +17,11 @@ export class CalTrigger implements INodeType {
 		name: 'calTrigger',
 		icon: 'file:cal.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 2],
 		subtitle: '=Events: {{$parameter["events"].join(", ")}}',
 		description: 'Handle Cal events via webhooks',
 		defaults: {
 			name: 'Cal Trigger',
-			color: '#888',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -60,9 +60,58 @@ export class CalTrigger implements INodeType {
 						value: 'BOOKING_RESCHEDULED',
 						description: 'Receive notifications when a Cal event is rescheduled',
 					},
+					{
+						name: 'Meeting Ended',
+						value: 'MEETING_ENDED',
+						description: 'Receive notifications when a Cal event or meeting has ended',
+					},
 				],
 				default: [],
 				required: true,
+			},
+			{
+				displayName: 'API Version',
+				name: 'version',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				isNodeSetting: true,
+				options: [
+					{
+						name: 'Before v2.0',
+						value: 1,
+					},
+					{
+						name: 'v2.0 Onwards',
+						value: 2,
+					},
+				],
+				default: 1,
+			},
+			{
+				displayName: 'API Version',
+				name: 'version',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				isNodeSetting: true,
+				options: [
+					{
+						name: 'Before v2.0',
+						value: 1,
+					},
+					{
+						name: 'v2.0 Onwards',
+						value: 2,
+					},
+				],
+				default: 2,
 			},
 			{
 				displayName: 'Options',
@@ -96,7 +145,6 @@ export class CalTrigger implements INodeType {
 						description: 'Template to customize the webhook payload',
 						default: '',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 4,
 						},
 					},
@@ -123,17 +171,20 @@ export class CalTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const version = this.getNodeParameter('version', 0) as number;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string;
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const data = await calApiRequest.call(this, 'GET', '/hooks', {});
+				const data =
+					version === 2
+						? await calApiRequest.call(this, 'GET', '/webhooks', {})
+						: await calApiRequest.call(this, 'GET', '/hooks', {});
 
 				for (const webhook of data.webhooks) {
 					if (webhook.subscriberUrl === webhookUrl) {
@@ -150,6 +201,7 @@ export class CalTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const version = this.getNodeParameter('version', 0) as number;
 				const webhookData = this.getWorkflowStaticData('node');
 				const subscriberUrl = this.getNodeWebhookUrl('default');
 				const eventTriggers = this.getNodeParameter('events') as string;
@@ -163,7 +215,10 @@ export class CalTrigger implements INodeType {
 					...(options as object),
 				};
 
-				const responseData = await calApiRequest.call(this, 'POST', '/hooks', body);
+				const responseData =
+					version === 2
+						? await calApiRequest.call(this, 'POST', '/webhooks', body)
+						: await calApiRequest.call(this, 'POST', '/hooks', body);
 
 				if (responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
@@ -174,9 +229,13 @@ export class CalTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const version = this.getNodeParameter('version', 0) as number;
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/hooks/${webhookData.webhookId}`;
+					const endpoint =
+						version === 2
+							? `/webhooks/${webhookData.webhookId}`
+							: `/hooks/${webhookData.webhookId}`;
 
 					try {
 						await calApiRequest.call(this, 'DELETE', endpoint);
@@ -185,7 +244,7 @@ export class CalTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -198,9 +257,9 @@ export class CalTrigger implements INodeType {
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray({
-					triggerEvent: req.body.triggerEvent,
-					createdAt: req.body.createdAt,
-					...req.body.payload,
+					triggerEvent: req.body.triggerEvent as string,
+					createdAt: req.body.createdAt as string,
+					...(req.body.payload as IDataObject),
 				}),
 			],
 		};

@@ -6,7 +6,7 @@
 		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
@@ -21,7 +21,7 @@
 				</n8n-input-label>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-notice
 					:class="$style.notice"
@@ -40,37 +40,46 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 import {
 	IMPORT_CURL_MODAL_KEY,
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
-} from '../constants';
-import { showMessage } from './mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-import { INodeUi } from '@/Interface';
+} from '@/constants';
+import { useToast } from '@/composables';
+import { defineComponent } from 'vue';
+import type { INodeUi } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { createEventBus } from '@/event-bus';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'ImportCurlModal',
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
 			IMPORT_CURL_MODAL_KEY,
 			curlCommand: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
-		node(): INodeUi {
-			return this.$store.getters.activeNode;
+		...mapStores(useNDVStore, useUIStore),
+		node(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 	},
 	methods: {
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onInput(value: string): void {
 			this.curlCommand = value;
@@ -80,8 +89,7 @@ export default mixins(showMessage).extend({
 			if (curlCommand === '') return;
 
 			try {
-				const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
-
+				const parameters = await this.uiStore.getCurlToJson(curlCommand);
 				const url = parameters['parameters.url'];
 
 				const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
@@ -89,7 +97,8 @@ export default mixins(showMessage).extend({
 				);
 
 				if (!invalidProtocol) {
-					this.$store.dispatch('ui/setHttpNodeParameters', {
+					this.uiStore.setHttpNodeParameters({
+						name: IMPORT_CURL_MODAL_KEY,
 						parameters: JSON.stringify(parameters),
 					});
 
@@ -114,11 +123,11 @@ export default mixins(showMessage).extend({
 
 				this.sendTelemetry({ success: false, invalidProtocol: false });
 			} finally {
-				this.$store.dispatch('ui/setCurlCommand', { command: this.curlCommand });
+				this.uiStore.setCurlCommand({ name: IMPORT_CURL_MODAL_KEY, command: this.curlCommand });
 			}
 		},
 		showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidProtocol1.title', {
 					interpolate: {
 						node,
@@ -134,7 +143,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		showProtocolError(protocol: string): void {
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidProtocol2.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
 					interpolate: {
@@ -146,7 +155,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		showInvalidcURLCommandError(): void {
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidCurlCommand.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidCurlCommand.message'),
 				type: 'error',
@@ -168,7 +177,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.curlCommand = this.$store.getters['ui/getCurlCommand'];
+		this.curlCommand = this.uiStore.getCurlCommand || '';
 		setTimeout(() => {
 			(this.$refs.input as HTMLTextAreaElement).focus();
 		});

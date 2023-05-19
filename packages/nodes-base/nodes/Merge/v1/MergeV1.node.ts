@@ -1,9 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { get } from 'lodash';
+import get from 'lodash.get';
 
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	GenericValue,
 	INodeExecutionData,
 	INodeType,
@@ -11,6 +10,9 @@ import {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+
+import { oldVersionNotice } from '../../../utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -29,6 +31,7 @@ const versionDescription: INodeTypeDescription = {
 	outputs: ['main'],
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Mode',
 			name: 'mode',
@@ -427,7 +430,7 @@ export class MergeV1 implements INodeType {
 						continue;
 					} else if (mode === 'mergeByKey') {
 						// Copy the entry as the data gets changed
-						entry = JSON.parse(JSON.stringify(entry));
+						entry = deepCopy(entry);
 
 						for (key of Object.keys(copyData[referenceValue as string].json)) {
 							if (key === propertyName2) {

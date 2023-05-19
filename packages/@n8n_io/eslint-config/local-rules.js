@@ -30,12 +30,14 @@ module.exports = {
 		meta: {
 			type: 'problem',
 			docs: {
-				description: 'Calls to JSON.parse() must be surrounded with a try/catch block.',
+				description:
+					'Calls to `JSON.parse()` must be replaced with `jsonParse()` from `n8n-workflow` or surrounded with a try/catch block.',
 				recommended: 'error',
 			},
 			schema: [],
 			messages: {
-				noUncaughtJsonParse: 'Surround the JSON.parse() call with a try/catch block.',
+				noUncaughtJsonParse:
+					'Use `jsonParse()` from `n8n-workflow` or surround the `JSON.parse()` call with a try/catch block.',
 			},
 		},
 		defaultOptions: [],
@@ -98,6 +100,99 @@ module.exports = {
 							node,
 							data: { argText },
 							fix: (fixer) => fixer.replaceText(node, `deepCopy(${argText})`),
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-unneeded-backticks': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Template literal backticks may only be used for string interpolation or multiline strings.',
+				recommended: 'error',
+			},
+			messages: {
+				noUneededBackticks: 'Use single or double quotes, not backticks',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				TemplateLiteral(node) {
+					if (node.expressions.length > 0) return;
+					if (node.quasis.every((q) => q.loc.start.line !== q.loc.end.line)) return;
+
+					node.quasis.forEach((q) => {
+						const escaped = q.value.raw.replace(/(?<!\\)'/g, "\\'");
+
+						context.report({
+							messageId: 'noUneededBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(q, `'${escaped}'`),
+						});
+					});
+				},
+			};
+		},
+	},
+
+	'no-unused-param-in-catch-clause': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Unused param in catch clause must be omitted.',
+				recommended: 'error',
+			},
+			messages: {
+				removeUnusedParam: 'Remove unused param in catch clause',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				CatchClause(node) {
+					if (node.param?.name?.startsWith('_')) {
+						const start = node.range[0] + 'catch '.length;
+						const end = node.param.range[1] + '()'.length;
+
+						context.report({
+							messageId: 'removeUnusedParam',
+							node,
+							fix: (fixer) => fixer.removeRange([start, end]),
+						});
+					}
+				},
+			};
+		},
+	},
+
+	'no-interpolation-in-regular-string': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'String interpolation `${...}` requires backticks, not single or double quotes.',
+				recommended: 'error',
+			},
+			messages: {
+				useBackticks: 'Use backticks to interpolate',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				Literal(node) {
+					if (typeof node.value !== 'string') return;
+
+					if (/\$\{/.test(node.value)) {
+						context.report({
+							messageId: 'useBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(node, `\`${node.value}\``),
 						});
 					}
 				},

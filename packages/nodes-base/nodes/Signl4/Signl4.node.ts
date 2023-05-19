@@ -1,13 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SIGNL4ApiRequest } from './GenericFunctions';
 
@@ -76,9 +74,6 @@ export class Signl4 implements INodeType {
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
@@ -233,10 +228,9 @@ export class Signl4 implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'alert') {
@@ -244,7 +238,7 @@ export class Signl4 implements INodeType {
 					// Send alert
 					if (operation === 'send') {
 						const message = this.getNodeParameter('message', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const data: IDataObject = {
 							message,
@@ -283,39 +277,31 @@ export class Signl4 implements INodeType {
 
 						// Attachments
 						const attachments = additionalFields.attachmentsUi as IDataObject;
-						if (attachments) {
-							if (attachments.attachmentsBinary && items[i].binary) {
-								const propertyName = (attachments.attachmentsBinary as IDataObject)
-									.property as string;
+						if (attachments?.attachmentsBinary) {
+							const propertyName = (attachments.attachmentsBinary as IDataObject)
+								.property as string;
 
-								const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
+							const binaryData = this.helpers.assertBinaryData(i, propertyName);
 
-								if (binaryProperty) {
-									const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
+							if (binaryData) {
+								const supportedFileExtension = ['png', 'jpg', 'jpeg', 'bmp', 'gif', 'mp3', 'wav'];
 
-									if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
-										throw new NodeOperationError(
-											this.getNode(),
-											`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`,
-											{ itemIndex: i },
-										);
-									}
-
-									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
-									data.attachment = {
-										value: binaryDataBuffer,
-										options: {
-											filename: binaryProperty.fileName,
-											contentType: binaryProperty.mimeType,
-										},
-									};
-								} else {
+								if (!supportedFileExtension.includes(binaryData.fileExtension as string)) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`Binary property ${propertyName} does not exist on input`,
+										`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`,
 										{ itemIndex: i },
 									);
 								}
+
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyName);
+								data.attachment = {
+									value: binaryDataBuffer,
+									options: {
+										filename: binaryData.fileName,
+										contentType: binaryData.mimeType,
+									},
+								};
 							}
 						}
 

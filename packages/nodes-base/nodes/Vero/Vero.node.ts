@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { validateJSON, veroApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
 import { eventFields, eventOperations } from './EventDescripion';
@@ -65,20 +65,19 @@ export class Vero implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developers.getvero.com/?bash#users
 				if (resource === 'user') {
 					//https://developers.getvero.com/?bash#users-identify
 					if (operation === 'create') {
 						const id = this.getNodeParameter('id', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-						const body = {
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
+						const body: IDataObject = {
 							id,
 						};
 						if (additionalFields.email) {
-							// @ts-ignore
 							body.email = additionalFields.email as string;
 						}
 						if (!jsonActive) {
@@ -86,11 +85,10 @@ export class Vero implements INodeType {
 								this.getNodeParameter('dataAttributesUi', i) as IDataObject
 							).dataAttributesValues as IDataObject[];
 							if (dataAttributesValues) {
-								const dataAttributes = {};
-								for (let i = 0; i < dataAttributesValues.length; i++) {
-									// @ts-ignore
-									dataAttributes[dataAttributesValues[i].key] = dataAttributesValues[i].value;
-									// @ts-ignore
+								const dataAttributes: IDataObject = {};
+								for (let index = 0; index < dataAttributesValues.length; index++) {
+									dataAttributes[dataAttributesValues[index].key as string] =
+										dataAttributesValues[index].value;
 									body.data = dataAttributes;
 								}
 							}
@@ -99,14 +97,13 @@ export class Vero implements INodeType {
 								this.getNodeParameter('dataAttributesJson', i) as string,
 							);
 							if (dataAttributesJson) {
-								// @ts-ignore
 								body.data = dataAttributesJson;
 							}
 						}
 						try {
 							responseData = await veroApiRequest.call(this, 'POST', '/users/track', body);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developers.getvero.com/?bash#users-alias
@@ -120,7 +117,7 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'PUT', '/users/reidentify', body);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developers.getvero.com/?bash#users-unsubscribe
@@ -138,29 +135,27 @@ export class Vero implements INodeType {
 						try {
 							responseData = await veroApiRequest.call(this, 'POST', `/users/${operation}`, body);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developers.getvero.com/?bash#tags-add
 					//https://developers.getvero.com/?bash#tags-remove
 					if (operation === 'addTags' || operation === 'removeTags') {
 						const id = this.getNodeParameter('id', i) as string;
-						const tags = (this.getNodeParameter('tags', i) as string).split(',') as string[];
-						const body = {
+						const tags = (this.getNodeParameter('tags', i) as string).split(',');
+						const body: IDataObject = {
 							id,
 						};
 						if (operation === 'addTags') {
-							// @ts-ignore
 							body.add = JSON.stringify(tags);
 						}
 						if (operation === 'removeTags') {
-							// @ts-ignore
 							body.remove = JSON.stringify(tags);
 						}
 						try {
 							responseData = await veroApiRequest.call(this, 'PUT', '/users/tags/edit', body);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -171,8 +166,8 @@ export class Vero implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const eventName = this.getNodeParameter('eventName', i) as string;
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
-						const body = {
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
+						const body: IDataObject = {
 							identity: { id, email },
 							event_name: eventName,
 							email,
@@ -182,11 +177,10 @@ export class Vero implements INodeType {
 								this.getNodeParameter('dataAttributesUi', i) as IDataObject
 							).dataAttributesValues as IDataObject[];
 							if (dataAttributesValues) {
-								const dataAttributes = {};
-								for (let i = 0; i < dataAttributesValues.length; i++) {
-									// @ts-ignore
-									dataAttributes[dataAttributesValues[i].key] = dataAttributesValues[i].value;
-									// @ts-ignore
+								const dataAttributes: IDataObject = {};
+								for (let index = 0; index < dataAttributesValues.length; index++) {
+									dataAttributes[dataAttributesValues[index].key as string] =
+										dataAttributesValues[index].value;
 									body.data = JSON.stringify(dataAttributes);
 								}
 							}
@@ -194,11 +188,10 @@ export class Vero implements INodeType {
 								this.getNodeParameter('extraAttributesUi', i) as IDataObject
 							).extraAttributesValues as IDataObject[];
 							if (extraAttributesValues) {
-								const extraAttributes = {};
-								for (let i = 0; i < extraAttributesValues.length; i++) {
-									// @ts-ignore
-									extraAttributes[extraAttributesValues[i].key] = extraAttributesValues[i].value;
-									// @ts-ignore
+								const extraAttributes: IDataObject = {};
+								for (let index = 0; index < extraAttributesValues.length; index++) {
+									extraAttributes[extraAttributesValues[index].key as string] =
+										extraAttributesValues[index].value;
 									body.extras = JSON.stringify(extraAttributes);
 								}
 							}
@@ -207,21 +200,19 @@ export class Vero implements INodeType {
 								this.getNodeParameter('dataAttributesJson', i) as string,
 							);
 							if (dataAttributesJson) {
-								// @ts-ignore
 								body.data = JSON.stringify(dataAttributesJson);
 							}
 							const extraAttributesJson = validateJSON(
 								this.getNodeParameter('extraAttributesJson', i) as string,
 							);
 							if (extraAttributesJson) {
-								// @ts-ignore
 								body.extras = JSON.stringify(extraAttributesJson);
 							}
 						}
 						try {
 							responseData = await veroApiRequest.call(this, 'POST', '/events/track', body);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}

@@ -1,4 +1,4 @@
-import {
+import type {
 	IDataObject,
 	IHookFunctions,
 	INodeType,
@@ -27,7 +27,6 @@ export class KoBoToolboxTrigger implements INodeType {
 		description: 'Process KoBoToolbox submissions',
 		defaults: {
 			name: 'KoBoToolbox Trigger',
-			color: '#64C0FF',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -75,13 +74,12 @@ export class KoBoToolboxTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 				const webhooks = await koBoToolboxApiRequest.call(this, {
 					url: `/api/v2/assets/${formId}/hooks/`,
 				});
@@ -98,7 +96,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const workflow = this.getWorkflow();
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 
 				const response = await koBoToolboxApiRequest.call(this, {
 					method: 'POST',
@@ -120,7 +118,7 @@ export class KoBoToolboxTrigger implements INodeType {
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 				try {
 					await koBoToolboxApiRequest.call(this, {
 						method: 'DELETE',
@@ -147,13 +145,15 @@ export class KoBoToolboxTrigger implements INodeType {
 
 		// prettier-ignore
 		const responseData = formatOptions.reformat
-			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
+			? formatSubmission(req.body as IDataObject, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
 			: req.body;
 
 		if (formatOptions.download) {
 			// Download related attachments
 			return {
-				workflowData: [[await downloadAttachments.call(this, responseData, formatOptions)]],
+				workflowData: [
+					[await downloadAttachments.call(this, responseData as IDataObject, formatOptions)],
+				],
 			};
 		} else {
 			return {

@@ -1,21 +1,22 @@
-import {
+import type {
 	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
-	NodePropertyTypes,
 } from 'n8n-workflow';
 
 export class WhatsAppApi implements ICredentialType {
 	name = 'whatsAppApi';
+
 	displayName = 'WhatsApp API';
+
 	documentationUrl = 'whatsApp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			type: 'string',
+			typeOptions: { password: true },
 			name: 'accessToken',
 			default: '',
 			required: true,

@@ -1,12 +1,12 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { affinityApiRequest, eventsExist, mapResource } from './GenericFunctions';
 
@@ -20,7 +20,7 @@ export class AffinityTrigger implements INodeType {
 		version: 1,
 		description: 'Handle Affinity events via webhooks',
 		defaults: {
-			name: 'Affinity-Trigger',
+			name: 'Affinity Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -152,7 +152,6 @@ export class AffinityTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -167,7 +166,10 @@ export class AffinityTrigger implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 
 				for (const webhook of responseData) {
-					if (eventsExist(webhook.subscriptions, events) && webhook.webhook_url === webhookUrl) {
+					if (
+						eventsExist(webhook.subscriptions as string[], events) &&
+						webhook.webhook_url === webhookUrl
+					) {
 						// Set webhook-id to be sure that it can be deleted
 						const webhookData = this.getWorkflowStaticData('node');
 						webhookData.webhookId = webhook.id as string;
@@ -217,7 +219,7 @@ export class AffinityTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;

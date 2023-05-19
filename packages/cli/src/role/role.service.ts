@@ -1,14 +1,21 @@
-/* eslint-disable import/no-cycle */
-import { EntityManager } from 'typeorm';
-import { Db } from '..';
-import { Role } from '../databases/entities/Role';
+import { Service } from 'typedi';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
+import { Role } from '@db/entities/Role';
+import { SharedWorkflowRepository } from '@db/repositories';
 
+@Service()
 export class RoleService {
-	static async get(role: Partial<Role>): Promise<Role | undefined> {
-		return Db.collections.Role.findOne(role);
+	constructor(private sharedWorkflowRepository: SharedWorkflowRepository) {}
+
+	static async trxGet(transaction: EntityManager, role: FindOptionsWhere<Role>) {
+		return transaction.findOneBy(Role, role);
 	}
 
-	static async trxGet(transaction: EntityManager, role: Partial<Role>) {
-		return transaction.findOne(Role, role);
+	async getUserRoleForWorkflow(userId: string, workflowId: string) {
+		const shared = await this.sharedWorkflowRepository.findOne({
+			where: { workflowId, userId },
+			relations: ['role'],
+		});
+		return shared?.role;
 	}
 }

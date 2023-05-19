@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -24,7 +23,6 @@ export class Cloudflare implements INodeType {
 		description: 'Consume Cloudflare API',
 		defaults: {
 			name: 'Cloudflare',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -75,8 +73,8 @@ export class Cloudflare implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -110,8 +108,8 @@ export class Cloudflare implements INodeType {
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-list-certificates
 					if (operation === 'getMany') {
 						const zoneId = this.getNodeParameter('zoneId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i, {});
 
 						Object.assign(qs, filters);
 
@@ -125,7 +123,7 @@ export class Cloudflare implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { per_page: limit });
 							responseData = await cloudflareApiRequest.call(
 								this,
@@ -161,9 +159,12 @@ export class Cloudflare implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-						itemData: { item: i },
-					}),
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: { item: i },
+						},
+					),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {
