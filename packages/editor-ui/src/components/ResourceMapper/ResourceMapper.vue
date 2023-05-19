@@ -365,6 +365,7 @@ function emitValueChanged(): void {
 		value: state.paramValue,
 		node: props.node?.name,
 	});
+	updateNodeIssues();
 }
 
 function pruneParamValues(): void {

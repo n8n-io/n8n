@@ -148,4 +148,14 @@ describe('Type Validation', () => {
 			]).valid,
 		).toEqual(false);
 	});
+
+	it('should validate and cast time properly', () => {
+		expect(validateFieldType('time', '23:23', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '23:23:23', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '23:23:23:23', 'time').valid).toEqual(false);
+		expect(validateFieldType('time', '23', 'time').valid).toEqual(false);
+		expect(validateFieldType('time', 'foo', 'time').valid).toEqual(false);
+		expect(validateFieldType('time', '23:23:', 'time').valid).toEqual(false);
+		expect(validateFieldType('time', '23::23::23', 'time').valid).toEqual(false);
+	});
 });

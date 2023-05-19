@@ -1140,7 +1140,10 @@ export const validateFieldType = (
 			try {
 				return { valid: true, newValue: tryToParseTime(value) };
 			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
+				return {
+					valid: false,
+					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
+				};
 			}
 		}
 		case 'object': {
@@ -1235,7 +1238,7 @@ export const tryToParseDateTime = (value: unknown): DateTime => {
 };
 
 export const tryToParseTime = (value: unknown): string => {
-	const isTimeInput = /\d{2}:\d{2}(:\d{2})?(\-|\+\d{4})?/s.test(String(value));
+	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?(\-|\+\d{4})?$/s.test(String(value));
 	if (!isTimeInput) {
 		throw new Error(`The value "${String(value)}" is not a valid time.`);
 	}
@@ -1314,7 +1317,9 @@ export const validateResourceLocatorParameter = (
 export const validateResourceMapperParameter = (
 	nodeProperties: INodeProperties,
 	value: ResourceMapperValue,
+	skipRequiredCheck = false,
 ): Record<string, string[]> => {
+	console.log('validateResourceMapperParameter', skipRequiredCheck);
 	const issues: Record<string, string[]> = {};
 	let fieldWordSingular =
 		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
@@ -1323,7 +1328,7 @@ export const validateResourceMapperParameter = (
 		const fieldValue = value.value ? value.value[field.id] : null;
 		const key = `${nodeProperties.name}.${field.id}`;
 		const fieldErrors: string[] = [];
-		if (field.required) {
+		if (field.required && !skipRequiredCheck) {
 			if (value.value === null || fieldValue === null || fieldValue === undefined) {
 				const error = `${fieldWordSingular} "${field.id}" is required`;
 				fieldErrors.push(error);
@@ -1452,19 +1457,18 @@ export function getParameterIssues(
 			}
 		}
 	} else if (nodeProperties.type === 'resourceMapper' && isDisplayed) {
-		if (nodeProperties.typeOptions?.resourceMapper?.mode === 'add') {
-			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
-			if (isResourceMapperValue(value)) {
-				const issues = validateResourceMapperParameter(nodeProperties, value);
-				if (Object.keys(issues).length > 0) {
-					if (foundIssues.parameters === undefined) {
-						foundIssues.parameters = {};
-					}
-					if (foundIssues.parameters[nodeProperties.name] === undefined) {
-						foundIssues.parameters[nodeProperties.name] = [];
-					}
-					foundIssues.parameters = { ...foundIssues.parameters, ...issues };
+		const skipRequiredCheck = nodeProperties.typeOptions?.resourceMapper?.mode !== 'add';
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isResourceMapperValue(value)) {
+			const issues = validateResourceMapperParameter(nodeProperties, value, skipRequiredCheck);
+			if (Object.keys(issues).length > 0) {
+				if (foundIssues.parameters === undefined) {
+					foundIssues.parameters = {};
 				}
+				if (foundIssues.parameters[nodeProperties.name] === undefined) {
+					foundIssues.parameters[nodeProperties.name] = [];
+				}
+				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
 		}
 	}
