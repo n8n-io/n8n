@@ -1,13 +1,12 @@
 <script lang="ts" setup>
 import Modal from './Modal.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, VERSION_CONTROL_PUSH_MODAL_KEY } from '@/constants';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
-import type { VersionControlAggregatedFile, VersionControlStatus } from '@/Interface';
-import { useI18n, useToast } from '@/composables';
+import type { VersionControlAggregatedFile } from '@/Interface';
+import { useI18n, useLoadingService, useToast } from '@/composables';
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import { aggregateVersionControlFiles } from '@/utils';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router/composables';
 
@@ -18,30 +17,36 @@ const props = defineProps({
 	},
 });
 
+const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const toast = useToast();
 const { i18n } = useI18n();
 const versionControlStore = useVersionControlStore();
 const route = useRoute();
 
+const staged = ref<Record<string, boolean>>({});
 const files = ref<VersionControlAggregatedFile[]>([]);
+
 const commitMessage = ref('');
 const loading = ref(true);
 const context = ref<'workflow' | 'workflows' | 'credentials' | string>('');
 
+const isSubmitDisabled = computed(() => {
+	return !commitMessage.value || Object.values(staged.value).every((value) => !value);
+});
+
 onMounted(async () => {
+	loadingService.startLoading();
 	context.value = getContext();
 
 	try {
-		const status = await versionControlStore.getStatus();
-		files.value = aggregateVersionControlFiles({
-			...status,
-			staged: getStagedFilesByContext(status),
-		});
+		files.value = await versionControlStore.getAggregatedStatus();
+		staged.value = getStagedFilesByContext(files.value);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	} finally {
 		loading.value = false;
+		loadingService.stopLoading();
 	}
 });
 
@@ -60,36 +65,28 @@ function getContext() {
 	return '';
 }
 
-function getStagedFilesByContext(status: VersionControlStatus): string[] {
+function getStagedFilesByContext(files: VersionControlAggregatedFile[]): Record<string, boolean> {
+	const stagedFiles: VersionControlAggregatedFile[] = [];
 	if (context.value === 'workflows') {
-		return status.files
-			.filter((file) => file.path.startsWith('workflows'))
-			.map((file) => file.path);
+		stagedFiles.push(...files.filter((file) => file.file.startsWith('workflows')));
 	} else if (context.value === 'credentials') {
-		return status.files
-			.filter((file) => file.path.startsWith('credentials'))
-			.map((file) => file.path);
+		stagedFiles.push(...files.filter((file) => file.file.startsWith('credentials')));
 	} else if (context.value === 'workflow') {
 		const workflowId = route.params.name as string;
-		return status.files
-			.filter((file) => file.path === `workflows/${workflowId}.json`)
-			.map((file) => file.path);
+		stagedFiles.push(...files.filter((file) => file.type === 'workflow' && file.id === workflowId));
 	}
 
-	return [];
+	return stagedFiles.reduce<Record<string, boolean>>((acc, file) => {
+		acc[file.file] = true;
+		return acc;
+	}, {});
 }
 
-function setStagedStatus(file: VersionControlAggregatedFile) {
-	const fileIndex = files.value.findIndex((f) => f.path === file.path);
-
-	files.value = [
-		...files.value.slice(0, fileIndex),
-		{
-			...file,
-			staged: !file.staged,
-		},
-		...files.value.slice(fileIndex + 1),
-	];
+function setStagedStatus(file: VersionControlAggregatedFile, status: boolean) {
+	staged.value = {
+		...staged.value,
+		[file.file]: status,
+	};
 }
 
 function close() {
@@ -97,22 +94,26 @@ function close() {
 }
 
 async function commitAndPush() {
-	const fileNames = files.value.filter((file) => file.staged).map((file) => file.path);
+	const fileNames = files.value.filter((file) => staged.value[file.file]).map((file) => file.file);
 
-	loading.value = true;
+	loadingService.startLoading(i18n.baseText('settings.versionControl.modals.push.loading'));
+	close();
+
 	try {
 		await versionControlStore.pushWorkfolder({
 			commitMessage: commitMessage.value,
 			fileNames,
 		});
 
-		// @TODO Show success message
-
-		close();
+		toast.showToast({
+			title: i18n.baseText('settings.versionControl.modals.push.success.title'),
+			message: i18n.baseText('settings.versionControl.modals.push.success.description'),
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	} finally {
-		loading.value = false;
+		loadingService.stopLoading();
 	}
 }
 </script>
@@ -144,45 +145,50 @@ async function commitAndPush() {
 					</n8n-text>
 					<n8n-card
 						v-for="file in files"
-						:key="file.path"
+						:key="file.file"
 						:class="$style.listItem"
-						@click="setStagedStatus(file, !file.staged)"
+						@click="setStagedStatus(file, !staged[file.file])"
 					>
 						<div :class="$style.listItemBody">
 							<n8n-checkbox
-								:value="file.staged"
+								:value="staged[file.file]"
 								:class="$style.listItemCheckbox"
 								@input="setStagedStatus(file, $event)"
 							/>
 							<n8n-text bold>
-								{{ file.path }}
+								{{ file.name }}
 							</n8n-text>
 							<n8n-badge :class="$style.listItemStatus">
 								{{ file.status }}
 							</n8n-badge>
 						</div>
 					</n8n-card>
-				</div>
 
-				<n8n-text bold tag="p" class="mt-l mb-2xs">
-					{{ i18n.baseText('settings.versionControl.modals.push.commitMessage') }}
-				</n8n-text>
-				<n8n-input
-					type="text"
-					v-model="commitMessage"
-					:placeholder="
-						i18n.baseText('settings.versionControl.modals.push.commitMessage.placeholder')
-					"
-				/>
+					<n8n-text bold tag="p" class="mt-l mb-2xs">
+						{{ i18n.baseText('settings.versionControl.modals.push.commitMessage') }}
+					</n8n-text>
+					<n8n-input
+						type="text"
+						v-model="commitMessage"
+						:placeholder="
+							i18n.baseText('settings.versionControl.modals.push.commitMessage.placeholder')
+						"
+					/>
+				</div>
+				<div v-else-if="!loading">
+					<n8n-callout class="mt-l">
+						{{ i18n.baseText('settings.versionControl.modals.push.everythingIsUpToDate') }}
+					</n8n-callout>
+				</div>
 			</div>
 		</template>
 
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button type="tertiary" class="mr-2xs" :disabled="loading" @click="close">
+				<n8n-button type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.versionControl.modals.push.buttons.cancel') }}
 				</n8n-button>
-				<n8n-button type="primary" :loading="loading" @click="commitAndPush">
+				<n8n-button type="primary" :disabled="isSubmitDisabled" @click="commitAndPush">
 					{{ i18n.baseText('settings.versionControl.modals.push.buttons.save') }}
 				</n8n-button>
 			</div>

@@ -40,10 +40,14 @@ async function pullWorkfolder() {
 	try {
 		await versionControlStore.pullWorkfolder(false);
 	} catch (error) {
-		const confirm = await message.confirm('Override local changes', 'XXX', {
-			confirmButtonText: 'Pull and override',
-			cancelButtonText: 'Cancel',
-		});
+		const confirm = await message.confirm(
+			i18n.baseText('settings.versionControl.modals.pull.description'),
+			i18n.baseText('settings.versionControl.modals.pull.title'),
+			{
+				confirmButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.save'),
+				cancelButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.cancel'),
+			},
+		);
 
 		try {
 			if (confirm === 'confirm') {
