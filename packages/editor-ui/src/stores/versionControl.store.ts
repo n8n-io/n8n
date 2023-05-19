@@ -72,12 +72,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		try {
 			const data = await vcApi.getPreferences(rootStore.getRestApiContext);
 			setPreferences(data);
-			if (!data.publicKey) {
-				await savePreferences({});
-			}
-			if (data.connected) {
-				await getBranches();
-			}
 		} catch (error) {
 			setError(error);
 		}

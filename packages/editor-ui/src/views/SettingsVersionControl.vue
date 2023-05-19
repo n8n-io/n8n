@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive } from 'vue';
+import { computed, reactive, onBeforeMount } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n as locale } from '@/plugins/i18n';
@@ -71,6 +71,12 @@ const onSelect = async (b: string) => {
 const goToUpgrade = () => {
 	uiStore.goToUpgrade('version-control', 'upgrade-version-control');
 };
+
+onBeforeMount(async () => {
+	if (versionControlStore.preferences.connected) {
+		await versionControlStore.getBranches();
+	}
+});
 
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
@@ -239,7 +245,7 @@ const validForConnection = computed(
 							:label="b"
 						/>
 					</n8n-select>
-					<!-- <n8n-checkbox
+					<n8n-checkbox
 						v-model="versionControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
@@ -253,7 +259,7 @@ const validForConnection = computed(
 								</a>
 							</template>
 						</i18n>
-					</n8n-checkbox> -->
+					</n8n-checkbox>
 				</div>
 				<!-- <div :class="$style.group">
 					<label>{{ locale.baseText('settings.versionControl.color') }}</label>
