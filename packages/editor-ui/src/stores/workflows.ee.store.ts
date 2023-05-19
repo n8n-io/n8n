@@ -1,4 +1,3 @@
-import Vue from 'vue';
 import type { IUser } from '../Interface';
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
@@ -29,8 +28,14 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 		setWorkflowOwnedBy(payload: { workflowId: string; ownedBy: Partial<IUser> }): void {
 			const workflowsStore = useWorkflowsStore();
 
-			Vue.set(workflowsStore.workflowsById[payload.workflowId], 'ownedBy', payload.ownedBy);
-			Vue.set(workflowsStore.workflow, 'ownedBy', payload.ownedBy);
+			workflowsStore.workflowsById[payload.workflowId] = {
+				...workflowsStore.workflowsById[payload.workflowId],
+				ownedBy: payload.ownedBy,
+			};
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				ownedBy: payload.ownedBy,
+			};
 		},
 		setWorkflowSharedWith(payload: {
 			workflowId: string;
@@ -38,30 +43,34 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 		}): void {
 			const workflowsStore = useWorkflowsStore();
 
-			Vue.set(workflowsStore.workflowsById[payload.workflowId], 'sharedWith', payload.sharedWith);
-			Vue.set(workflowsStore.workflow, 'sharedWith', payload.sharedWith);
+			workflowsStore.workflowsById[payload.workflowId] = {
+				...workflowsStore.workflowsById[payload.workflowId],
+				sharedWith: payload.sharedWith,
+			};
+			workflowsStore.workflow = {
+				...workflowsStore.workflow,
+				sharedWith: payload.sharedWith,
+			};
 		},
 		addWorkflowSharee(payload: { workflowId: string; sharee: Partial<IUser> }): void {
 			const workflowsStore = useWorkflowsStore();
 
-			Vue.set(
-				workflowsStore.workflowsById[payload.workflowId],
-				'sharedWith',
-				(workflowsStore.workflowsById[payload.workflowId].sharedWith || []).concat([
+			workflowsStore.workflowsById[payload.workflowId] = {
+				...workflowsStore.workflowsById[payload.workflowId],
+				sharedWith: (workflowsStore.workflowsById[payload.workflowId].sharedWith || []).concat([
 					payload.sharee,
 				]),
-			);
+			};
 		},
 		removeWorkflowSharee(payload: { workflowId: string; sharee: Partial<IUser> }): void {
 			const workflowsStore = useWorkflowsStore();
 
-			Vue.set(
-				workflowsStore.workflowsById[payload.workflowId],
-				'sharedWith',
-				(workflowsStore.workflowsById[payload.workflowId].sharedWith || []).filter(
+			workflowsStore.workflowsById[payload.workflowId] = {
+				...workflowsStore.workflowsById[payload.workflowId],
+				sharedWith: (workflowsStore.workflowsById[payload.workflowId].sharedWith || []).filter(
 					(sharee) => sharee.id !== payload.sharee.id,
 				),
-			);
+			};
 		},
 		async saveWorkflowSharedWith(payload: {
 			sharedWith: Array<Partial<IUser>>;

@@ -433,7 +433,7 @@ export default defineComponent({
 			this.allVisibleSelected = !this.allVisibleSelected;
 			if (!this.allVisibleSelected) {
 				this.allExistingSelected = false;
-				Vue.set(this, 'selectedItems', {});
+				this.selectedItems = {};
 			} else {
 				this.selectAllVisibleExecutions();
 			}
@@ -442,7 +442,10 @@ export default defineComponent({
 			if (this.selectedItems[executionId]) {
 				Vue.delete(this.selectedItems, executionId);
 			} else {
-				Vue.set(this.selectedItems, executionId, true);
+				this.selectedItems = {
+					...this.selectedItems,
+					[executionId]: true,
+				};
 			}
 			this.allVisibleSelected =
 				Object.keys(this.selectedItems).length === this.combinedExecutions.length;
@@ -503,7 +506,7 @@ export default defineComponent({
 		handleClearSelection(): void {
 			this.allVisibleSelected = false;
 			this.allExistingSelected = false;
-			Vue.set(this, 'selectedItems', {});
+			this.selectedItems = {};
 		},
 		async onFilterChanged(filter: ExecutionFilterType) {
 			this.filter = filter;
@@ -633,7 +636,7 @@ export default defineComponent({
 			this.finishedExecutionsCount = results[0].count;
 			this.finishedExecutionsCountEstimated = results[0].estimated;
 
-			Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
+			this.finishedExecutions = alreadyPresentExecutionsFiltered;
 			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
 
 			this.adjustSelectionAfterMoreItemsLoaded();
@@ -704,7 +707,8 @@ export default defineComponent({
 		},
 		async loadWorkflows() {
 			try {
-				const workflows = await this.workflowsStore.fetchAllWorkflows();
+				const workflows =
+					(await this.workflowsStore.fetchAllWorkflows()) as IWorkflowShortResponse[];
 				workflows.sort((a, b) => {
 					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
@@ -715,13 +719,12 @@ export default defineComponent({
 					return 0;
 				});
 
-				// @ts-ignore
 				workflows.unshift({
 					id: 'all',
 					name: this.$locale.baseText('executionsList.allWorkflows'),
-				});
+				} as IWorkflowShortResponse);
 
-				Vue.set(this, 'workflows', workflows);
+				this.workflows = workflows;
 			} catch (error) {
 				this.showError(
 					error,
@@ -898,7 +901,7 @@ export default defineComponent({
 				await this.refreshData();
 
 				if (this.allVisibleSelected) {
-					Vue.set(this, 'selectedItems', {});
+					this.selectedItems = {};
 					this.selectAllVisibleExecutions();
 				}
 			} catch (error) {
@@ -920,7 +923,7 @@ export default defineComponent({
 		},
 		selectAllVisibleExecutions() {
 			this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
-				Vue.set(this.selectedItems, execution.id, true);
+				this.selectedItems = { ...this.selectedItems, [execution.id]: true };
 			});
 		},
 		adjustSelectionAfterMoreItemsLoaded() {

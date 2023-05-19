@@ -109,7 +109,7 @@ export default defineComponent({
 	methods: {
 		onObserved({ el, isIntersecting }: { el: HTMLElement; isIntersecting: boolean }) {
 			if (el.dataset.id) {
-				Vue.set(this.$data.visibility, el.dataset.id, isIntersecting);
+				this.$data.visibility = { ...this.$data.visibility, [el.dataset.id]: isIntersecting };
 			}
 		},
 		onClick(e: MouseEvent, tag: TagEl) {

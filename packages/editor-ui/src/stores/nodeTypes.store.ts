@@ -19,7 +19,6 @@ import type {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
 
@@ -114,7 +113,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				},
 				{ ...this.nodeTypes },
 			);
-			Vue.set(this, 'nodeTypes', nodeTypes);
+			this.nodeTypes = nodeTypes;
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(
