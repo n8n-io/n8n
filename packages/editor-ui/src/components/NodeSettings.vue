@@ -572,6 +572,8 @@ export default defineComponent({
 							value,
 						);
 					}
+
+					this.nodeValues = { ...this.nodeValues };
 				}
 			}
 		},
