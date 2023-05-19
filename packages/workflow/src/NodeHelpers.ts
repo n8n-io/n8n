@@ -1110,7 +1110,7 @@ export const validateFieldType = (
 	options?: INodePropertyOptions[],
 ): ValidationResult => {
 	if (value === null || value === undefined) return { valid: true };
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'.`;
 	switch (type.toLowerCase()) {
 		case 'number': {
 			try {
@@ -1130,7 +1130,10 @@ export const validateFieldType = (
 			try {
 				return { valid: true, newValue: tryToParseDateTime(value) };
 			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
+				const luxonDocsURL =
+					'https://moment.github.io/luxon/api-docs/index.html#datetimefromformat';
+				const errorMessage = `${defaultErrorMessage} <br/><br/> Consider using <a href="${luxonDocsURL}" target="_blank"><code>DateTime.fromFormat</code></a> to work with custom date formats.`;
+				return { valid: false, errorMessage };
 			}
 		}
 		case 'time': {
