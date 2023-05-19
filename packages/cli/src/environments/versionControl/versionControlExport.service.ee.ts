@@ -159,7 +159,7 @@ export class VersionControlExportService {
 		workflowsToBeExported: SharedWorkflow[],
 	): Promise<Set<string>> {
 		const sharedWorkflowsFileNames = new Set<string>(
-			workflowsToBeExported.map((e) => this.getWorkflowPath(e.workflow.name)),
+			workflowsToBeExported.map((e) => this.getWorkflowPath(e?.workflow?.name)),
 		);
 		const existingWorkflowsInFolder = new Set<string>(
 			await glob('*.json', {
@@ -180,51 +180,30 @@ export class VersionControlExportService {
 	}
 
 	private async writeExportableWorkflowsToExportFolder(workflowsToBeExported: SharedWorkflow[]) {
-		const workflowVersionIdMap = await this.getWorkflowAndVersionIdsInWorkFolder();
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
-				if (workflowVersionIdMap.get(e.workflowId) === e.workflow.versionId) {
+				if (!e.workflow) {
 					LoggerProxy.debug(
-						`Skipping workflow ${e.workflowId} export as its versionId is already up to date`,
+						`Found no corresponding workflow ${e.workflowId ?? 'unknown'}, skipping export`,
 					);
 					return;
 				}
-				const fileName = this.getWorkflowPath(e.workflow.id);
+				const fileName = this.getWorkflowPath(e.workflow?.id);
 				const sanitizedWorkflow: ExportableWorkflow = {
-					active: e.workflow.active,
-					id: e.workflow.id,
-					name: e.workflow.name,
-					nodes: e.workflow.nodes,
-					connections: e.workflow.connections,
-					settings: e.workflow.settings,
-					triggerCount: e.workflow.triggerCount,
+					active: e.workflow?.active,
+					id: e.workflow?.id,
+					name: e.workflow?.name,
+					nodes: e.workflow?.nodes,
+					connections: e.workflow?.connections,
+					settings: e.workflow?.settings,
+					triggerCount: e.workflow?.triggerCount,
 					owner: e.user.email,
-					versionId: e.workflow.versionId,
+					versionId: e.workflow?.versionId,
 				};
 				LoggerProxy.debug(`Writing workflow ${e.workflowId} to ${fileName}`);
 				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
 			}),
 		);
-	}
-
-	private async getWorkflowAndVersionIdsInWorkFolder(): Promise<Map<string, string>> {
-		const workflowFiles = await glob('*.json', {
-			cwd: this.workflowExportFolder,
-			absolute: true,
-		});
-
-		const workflowVersionIdMap = new Map<string, string>();
-		await Promise.all(
-			workflowFiles.map(async (file) => {
-				const importedWorkflow = jsonParse<IWorkflowToImport>(
-					await fsReadFile(file, { encoding: 'utf8' }),
-				);
-				if (importedWorkflow.id && importedWorkflow.versionId) {
-					workflowVersionIdMap.set(importedWorkflow.id, importedWorkflow.versionId);
-				}
-			}),
-		);
-		return workflowVersionIdMap;
 	}
 
 	async exportWorkflowsToWorkFolder(): Promise<ExportResult> {
@@ -244,14 +223,13 @@ export class VersionControlExportService {
 			const removedFiles = await this.rmDeletedWorkflowsFromExportFolder(sharedWorkflows);
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(sharedWorkflows);
-
 			return {
 				count: sharedWorkflows.length,
 				folder: this.workflowExportFolder,
 				files: sharedWorkflows.map((e) => ({
-					id: e.workflow.id,
+					id: e?.workflow?.id,
 					// name: path.join(this.workflowExportFolder, `${e.workflow.name}.json`),
-					name: this.getWorkflowPath(e.workflow.name),
+					name: this.getWorkflowPath(e?.workflow?.name),
 				})),
 				removedFiles: [...removedFiles],
 			};

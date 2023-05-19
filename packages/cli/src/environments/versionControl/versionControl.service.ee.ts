@@ -201,6 +201,7 @@ export class VersionControlService {
 				return diffResult;
 			}
 		}
+		await this.unstage();
 		await this.stage(options);
 		await this.gitService.commit(options.message ?? 'Updated Workfolder');
 		return this.gitService.push({

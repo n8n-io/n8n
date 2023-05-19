@@ -599,7 +599,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !window.localStorage.getItem('version-control'),
+							// shouldDeny: () => !window.localStorage.getItem('version-control'),
 						},
 					},
 				},
