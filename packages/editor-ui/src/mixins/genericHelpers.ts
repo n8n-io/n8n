@@ -1,10 +1,15 @@
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import dateformat from 'dateformat';
 
 import { VIEWS } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-export const genericHelpers = mixins(showMessage).extend({
+export const genericHelpers = defineComponent({
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,7 +51,7 @@ export const genericHelpers = mixins(showMessage).extend({
 		},
 		editAllowedCheck(): boolean {
 			if (this.isReadOnly) {
-				this.$showMessage({
+				this.showMessage({
 					// title: 'Workflow can not be changed!',
 					title: this.$locale.baseText('genericHelpers.showMessage.title'),
 					message: this.$locale.baseText('genericHelpers.showMessage.message'),

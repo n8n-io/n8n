@@ -22,13 +22,13 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { IWorkflowDb } from '../Interface';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
+import type { IWorkflowDb } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'WorkflowPreview',
 	props: {
 		loading: {
@@ -57,6 +57,11 @@ export default mixins(showMessage).extend({
 			default: 'image',
 			validator: (value: string): boolean => ['image', 'spinner'].includes(value),
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -96,9 +101,9 @@ export default mixins(showMessage).extend({
 					throw new Error(this.$locale.baseText('workflowPreview.showError.arrayEmpty'));
 				}
 
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
+				const iframeRef = this.$refs.preview_iframe as HTMLIFrameElement | undefined;
+				if (iframeRef?.contentWindow) {
+					iframeRef.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openWorkflow',
 							workflow: this.workflow,
@@ -107,7 +112,7 @@ export default mixins(showMessage).extend({
 					);
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowPreview.showError.previewError.title'),
 					this.$locale.baseText('workflowPreview.showError.previewError.message'),
@@ -119,9 +124,9 @@ export default mixins(showMessage).extend({
 				if (!this.executionId) {
 					throw new Error(this.$locale.baseText('workflowPreview.showError.missingExecution'));
 				}
-				const iframe = this.$refs.preview_iframe as HTMLIFrameElement;
-				if (iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
+				const iframeRef = this.$refs.preview_iframe as HTMLIFrameElement | undefined;
+				if (iframeRef?.contentWindow) {
+					iframeRef.contentWindow.postMessage(
 						JSON.stringify({
 							command: 'openExecution',
 							executionId: this.executionId,
@@ -131,7 +136,7 @@ export default mixins(showMessage).extend({
 					);
 				}
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowPreview.showError.previewError.title'),
 					this.$locale.baseText('workflowPreview.executionMode.showError.previewError.message'),

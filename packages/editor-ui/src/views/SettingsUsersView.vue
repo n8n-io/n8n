@@ -59,25 +59,26 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import PageAlert from '../components/PageAlert.vue';
-import { IUser, IUserListAction } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import type { IUser, IUserListAction } from '@/Interface';
+import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { BaseTextKey } from '@/plugins/i18n';
-import { useUsageStore } from '@/stores/usage';
-import { useSSOStore } from '@/stores/sso';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useSSOStore } from '@/stores/sso.store';
 
-export default mixins(showMessage, copyPaste).extend({
+export default defineComponent({
 	name: 'SettingsUsersView',
-	components: {
-		PageAlert,
+	mixins: [copyPaste],
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	async mounted() {
 		if (!this.usersStore.showUMSetupWarning) {
@@ -110,7 +111,7 @@ export default mixins(showMessage, copyPaste).extend({
 	},
 	methods: {
 		redirectToSetup() {
-			this.$router.push({ name: VIEWS.SETUP });
+			void this.$router.push({ name: VIEWS.SETUP });
 		},
 		onInvite() {
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
@@ -127,7 +128,7 @@ export default mixins(showMessage, copyPaste).extend({
 				try {
 					await this.usersStore.reinviteUser({ id: user.id });
 
-					this.$showToast({
+					this.showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
 						message: this.$locale.baseText('settings.users.emailSentTo', {
@@ -135,7 +136,7 @@ export default mixins(showMessage, copyPaste).extend({
 						}),
 					});
 				} catch (e) {
-					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));
+					this.showError(e, this.$locale.baseText('settings.users.userReinviteError'));
 				}
 			}
 		},
@@ -144,7 +145,7 @@ export default mixins(showMessage, copyPaste).extend({
 			if (user?.inviteAcceptUrl) {
 				this.copyToClipboard(user.inviteAcceptUrl);
 
-				this.$showToast({
+				this.showToast({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.inviteUrlCreated'),
 					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
@@ -152,17 +153,7 @@ export default mixins(showMessage, copyPaste).extend({
 			}
 		},
 		goToUpgrade() {
-			const linkUrlTranslationKey = this.uiStore.contextBasedTranslationKeys
-				.upgradeLinkUrl as BaseTextKey;
-			let linkUrl = this.$locale.baseText(linkUrlTranslationKey);
-
-			if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-				linkUrl = `${this.usageStore.viewPlansUrl}&source=users`;
-			} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-				linkUrl = `${linkUrl}&utm_campaign=upgrade-users`;
-			}
-
-			window.open(linkUrl, '_blank');
+			this.uiStore.goToUpgrade('users', 'upgrade-users');
 		},
 	},
 });

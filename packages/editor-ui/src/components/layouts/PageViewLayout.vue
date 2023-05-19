@@ -12,11 +12,11 @@
 </template>
 
 <script lang="ts">
-import { useUIStore } from '@/stores/ui';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'PageViewLayout',
 	data() {
 		return {

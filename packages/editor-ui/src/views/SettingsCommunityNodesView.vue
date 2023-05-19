@@ -58,22 +58,29 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import { useToast } from '@/composables';
+import { pushConnection } from '@/mixins/pushConnection';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { useUIStore } from '@/stores/ui';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { BaseTextKey } from '@/plugins/i18n';
+import { useSettingsStore } from '@/stores/settings.store';
+import { defineComponent } from 'vue';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SettingsCommunityNodesView',
+	mixins: [pushConnection],
 	components: {
 		CommunityPackageCard,
+	},
+	setup(props) {
+		return {
+			...useToast(),
+			...pushConnection.setup?.(props),
+		};
 	},
 	data() {
 		return {
@@ -81,6 +88,9 @@ export default mixins(showMessage).extend({
 		};
 	},
 	async mounted() {
+		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
+		this.pushConnect();
+
 		try {
 			this.$data.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
@@ -110,7 +120,7 @@ export default mixins(showMessage).extend({
 				number_of_updates_available: packagesToUpdate.length,
 			});
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				this.$locale.baseText('settings.communityNodes.fetchError.title'),
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),
@@ -123,6 +133,9 @@ export default mixins(showMessage).extend({
 		} finally {
 			this.$data.loading = false;
 		}
+	},
+	beforeDestroy() {
+		this.pushDisconnect();
 	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
@@ -210,7 +223,11 @@ export default mixins(showMessage).extend({
 				is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0,
 			};
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
-			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
+
+			void this.$externalHooks().run(
+				'settingsCommunityNodesView.openInstallModal',
+				telemetryPayload,
+			);
 			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},

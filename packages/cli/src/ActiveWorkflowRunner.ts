@@ -66,6 +66,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { START_NODES } from './constants';
+import { webhookNotFoundErrorMessage } from './utils';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -221,7 +222,7 @@ export class ActiveWorkflowRunner {
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.NotFoundError(
-					`The requested webhook "${httpMethod} ${path}" is not registered.`,
+					webhookNotFoundErrorMessage(path, httpMethod),
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -247,7 +248,7 @@ export class ActiveWorkflowRunner {
 			});
 			if (webhook === null) {
 				throw new ResponseHelper.NotFoundError(
-					`The requested webhook "${httpMethod} ${path}" is not registered.`,
+					webhookNotFoundErrorMessage(path, httpMethod),
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -650,9 +651,10 @@ export class ActiveWorkflowRunner {
 				}
 			};
 
-			returnFunctions.__emitError = async (error: ExecutionError): Promise<void> => {
-				await createErrorExecution(error, node, workflowData, workflow, mode);
-				this.executeErrorWorkflow(error, workflowData, mode);
+			returnFunctions.__emitError = (error: ExecutionError): void => {
+				void createErrorExecution(error, node, workflowData, workflow, mode).then(() => {
+					this.executeErrorWorkflow(error, workflowData, mode);
+				});
 			};
 			return returnFunctions;
 		};
@@ -706,7 +708,7 @@ export class ActiveWorkflowRunner {
 					executePromise.catch(Logger.error);
 				}
 			};
-			returnFunctions.emitError = async (error: Error): Promise<void> => {
+			returnFunctions.emitError = (error: Error): void => {
 				Logger.info(
 					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
 					{
@@ -718,7 +720,7 @@ export class ActiveWorkflowRunner {
 
 				// Remove the workflow as "active"
 
-				await this.activeWorkflows.remove(workflowData.id);
+				void this.activeWorkflows.remove(workflowData.id);
 				this.activationErrors[workflowData.id] = {
 					time: new Date().getTime(),
 					error: {

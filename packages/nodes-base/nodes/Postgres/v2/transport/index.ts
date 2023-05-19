@@ -11,7 +11,7 @@ import pgPromise from 'pg-promise';
 import { rm, writeFile } from 'fs/promises';
 import { file } from 'tmp-promise';
 
-import type { PgpClient, PgpDatabase } from '../helpers/interfaces';
+import type { PgpDatabase } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {
@@ -40,12 +40,25 @@ async function createSshConnectConfig(credentials: IDataObject) {
 	}
 }
 
-async function configurePostgres(
+export async function configurePostgres(
 	credentials: IDataObject,
 	options: IDataObject = {},
 	createdSshClient?: Client,
 ) {
-	const pgp = pgPromise();
+	const pgp = pgPromise({
+		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
+		// duplicate connections created when auto loading parameters, they are closed imidiatly after, but several could be open at the same time
+		noWarnings: true,
+	});
+
+	if (typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
+		// Always return dates as ISO strings
+		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
+			pgp.pg.types.setTypeParser(type, (value: string) => {
+				return new Date(value).toISOString();
+			});
+		});
+	}
 
 	if (options.largeNumbersOutput === 'numbers') {
 		pgp.pg.types.setTypeParser(20, (value: string) => {
@@ -174,36 +187,3 @@ async function configurePostgres(
 		return { db, pgp, sshClient };
 	}
 }
-
-export const Connections = (function () {
-	let instance: { db: PgpDatabase; pgp: PgpClient; sshClient?: Client } | null = null;
-
-	return {
-		async getInstance(
-			credentials: IDataObject = {},
-			options: IDataObject = {},
-			reload = false,
-			createdSshClient?: Client,
-			nulify = false,
-		) {
-			if (nulify) {
-				instance = null;
-				return instance;
-			}
-
-			if (instance !== null && reload) {
-				if (instance.sshClient) {
-					instance.sshClient.end();
-				}
-				instance.pgp.end();
-
-				instance = null;
-			}
-
-			if (instance === null && Object.keys(credentials).length) {
-				instance = await configurePostgres(credentials, options, createdSshClient);
-			}
-			return instance;
-		},
-	};
-})();

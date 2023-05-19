@@ -88,23 +88,28 @@
 </template>
 
 <script lang="ts">
-import Modal from './Modal.vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
+import Modal from '@/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	NPM_KEYWORD_SEARCH_URL,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
-} from '../constants';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { mapStores } from 'pinia';
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { createEventBus } from '@/event-bus';
+} from '@/constants';
+import { useToast } from '@/composables';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'CommunityPackageInstallModal',
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -144,7 +149,7 @@ export default mixins(showMessage).extend({
 					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
 					this.modalBus.emit('close');
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('settings.communityNodes.messages.install.success'),
 						type: 'success',
 					});
@@ -152,7 +157,7 @@ export default mixins(showMessage).extend({
 					if (error.httpStatusCode && error.httpStatusCode === 400) {
 						this.infoTextErrorMessage = error.message;
 					} else {
-						this.$showError(
+						this.showError(
 							error,
 							this.$locale.baseText('settings.communityNodes.messages.install.error'),
 						);

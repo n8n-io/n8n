@@ -1,0 +1,99 @@
+{
+	"name": "My workflow 12",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "7db7d51a-83c2-4aa0-a736-9c3d1c031b60",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [360, 340]
+		},
+		{
+			"parameters": {
+				"authentication": "serviceAccount",
+				"operation": "insert",
+				"projectId": {
+					"__rl": true,
+					"value": "test-project",
+					"mode": "list",
+					"cachedResultName": "test-project",
+					"cachedResultUrl": "https://console.cloud.google.com/bigquery?project=test-project"
+				},
+				"datasetId": {
+					"__rl": true,
+					"value": "bigquery_node_dev_test_dataset",
+					"mode": "list",
+					"cachedResultName": "bigquery_node_dev_test_dataset"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "test_json",
+					"mode": "list",
+					"cachedResultName": "test_json"
+				},
+				"dataMode": "define",
+				"fieldsUi": {
+					"values": [
+						{
+							"fieldId": "active",
+							"fieldValue": "true"
+						},
+						{
+							"fieldId": "name with space",
+							"fieldValue": "some name"
+						},
+						{
+							"fieldId": "json",
+							"fieldValue": "{\"test\": 1}"
+						}
+					]
+				},
+				"options": {
+					"traceId": "trace_id"
+				}
+			},
+			"id": "83d00275-0f98-4d5e-a3d6-bbca940ff8ac",
+			"name": "Google BigQuery",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 2,
+			"position": [620, 340],
+			"credentials": {
+				"googleApi": {
+					"id": "66",
+					"name": "Google account 5"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Google BigQuery": [
+			{
+				"json": {
+					"kind": "bigquery#tableDataInsertAllResponse"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Google BigQuery",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "abd49f26-184d-4f9b-95f0-389ea20df809",
+	"id": "156",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

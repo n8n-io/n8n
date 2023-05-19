@@ -47,7 +47,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 
 export interface N8nTabOptions {

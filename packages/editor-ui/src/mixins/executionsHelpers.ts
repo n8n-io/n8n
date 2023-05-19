@@ -1,9 +1,9 @@
-import { useWorkflowsStore } from '@/stores/workflows';
-import { i18n as locale } from '@/plugins/i18n';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { i18n as locale } from '@/plugins/i18n';
 import { genericHelpers } from './genericHelpers';
-import { IExecutionsSummary } from 'n8n-workflow';
+import type { IExecutionsSummary } from 'n8n-workflow';
 
 export interface IExecutionUIData {
 	name: string;
@@ -12,7 +12,8 @@ export interface IExecutionUIData {
 	runningTime: string;
 }
 
-export const executionHelpers = mixins(genericHelpers).extend({
+export const executionHelpers = defineComponent({
+	mixins: [genericHelpers],
 	computed: {
 		...mapStores(useWorkflowsStore),
 		executionId(): string {

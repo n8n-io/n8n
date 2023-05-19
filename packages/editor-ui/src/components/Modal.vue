@@ -43,12 +43,13 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { useUIStore } from '@/stores/ui';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Modal',
 	props: {
 		name: {
@@ -121,15 +122,8 @@ export default Vue.extend({
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
-		if (this.eventBus) {
-			this.eventBus.on('close', () => {
-				this.closeDialog();
-			});
-
-			this.eventBus.on('closeAll', () => {
-				this.uiStore.closeAllModals();
-			});
-		}
+		this.eventBus?.on('close', this.closeDialog);
+		this.eventBus?.on('closeAll', this.uiStore.closeAllModals);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -137,6 +131,8 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
+		this.eventBus?.off('close', this.closeDialog);
+		this.eventBus?.off('closeAll', this.uiStore.closeAllModals);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
 	computed: {

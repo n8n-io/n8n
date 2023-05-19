@@ -325,42 +325,46 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import {
+import { useToast } from '@/composables';
+import type {
 	ITimeoutHMS,
 	IUser,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
-	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '../constants';
+} from '@/constants';
 
-import mixins from 'vue-typed-mixins';
-
+import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useSettingsStore } from '@/stores/settings';
-import { useRootStore } from '@/stores/n8nRootStore';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
-import { createEventBus } from '@/event-bus';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
+export default defineComponent({
 	name: 'WorkflowSettings',
+	mixins: [externalHooks, genericHelpers],
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -449,7 +453,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		this.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			this.$showMessage({
+			this.showMessage({
 				title: 'No workflow active',
 				message: 'No workflow active to display settings of.',
 				type: 'error',
@@ -478,7 +482,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		try {
 			await Promise.all(promises);
 		} catch (error) {
-			this.$showError(
+			this.showError(
 				error,
 				'Problem loading settings',
 				'The following error occurred loading the data:',
@@ -504,7 +508,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		}
 		if (workflowSettings.callerPolicy === undefined) {
 			workflowSettings.callerPolicy = this.defaultValues
-				.workflowCallerPolicy as WorkflowCallerPolicyDefaultOption;
+				.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
 			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
@@ -517,7 +521,9 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
 
-		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
+		void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+			dialogVisible: true,
+		});
 		this.$telemetry.track('User opened workflow settings', {
 			workflow_id: this.workflowsStore.workflowId,
 		});
@@ -530,7 +536,9 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
-			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
+			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
+				dialogVisible: false,
+			});
 		},
 		setTimeout(key: string, value: string) {
 			const time = value ? parseInt(value, 10) : 0;
@@ -703,7 +711,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				return;
 			}
 
-			const timezones = await this.restApi().getTimezones();
+			const timezones = await this.settingsStore.getTimezones();
 
 			let defaultTimezoneValue = timezones[this.defaultValues.timezone] as string | undefined;
 			if (defaultTimezoneValue === undefined) {
@@ -724,7 +732,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			}
 		},
 		async loadWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
+			const workflows = await this.workflowsStore.fetchAllWorkflows();
 			workflows.sort((a, b) => {
 				if (a.name.toLowerCase() < b.name.toLowerCase()) {
 					return -1;
@@ -755,7 +763,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				data.settings!.executionTimeout !== -1 ? hours * 3600 + minutes * 60 + seconds : -1;
 
 			if (data.settings!.executionTimeout === 0) {
-				this.$showError(
+				this.showError(
 					new Error(this.$locale.baseText('workflowSettings.showError.saveSettings1.errorMessage')),
 					this.$locale.baseText('workflowSettings.showError.saveSettings1.title'),
 					this.$locale.baseText('workflowSettings.showError.saveSettings1.message') + ':',
@@ -768,7 +776,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				const { hours, minutes, seconds } = this.convertToHMS(
 					this.workflowSettings.maxExecutionTimeout as number,
 				);
-				this.$showError(
+				this.showError(
 					new Error(
 						this.$locale.baseText('workflowSettings.showError.saveSettings2.errorMessage', {
 							interpolate: {
@@ -789,10 +797,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			data.versionId = this.workflowsStore.workflowVersionId;
 
 			try {
-				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
+				const workflow = await this.workflowsStore.updateWorkflow(this.$route.params.name, data);
 				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('workflowSettings.showError.saveSettings3.title'),
 				);
@@ -814,14 +822,14 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 			this.isLoading = false;
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('workflowSettings.showMessage.saveSettings.title'),
 				type: 'success',
 			});
 
 			this.closeDialog();
 
-			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
+			void this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
 			this.$telemetry.track('User updated workflow settings', {
 				workflow_id: this.workflowsStore.workflowId,
 			});

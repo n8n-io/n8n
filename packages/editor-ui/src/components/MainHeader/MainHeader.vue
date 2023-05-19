@@ -15,7 +15,9 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { Route } from 'vue-router';
+import { mapStores } from 'pinia';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -25,18 +27,23 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import type { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { Route } from 'vue-router';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default mixins(pushConnection, workflowHelpers).extend({
+export default defineComponent({
 	name: 'MainHeader',
 	components: {
 		WorkflowDetails,
 		TabBar,
+	},
+	mixins: [pushConnection, workflowHelpers],
+	setup(props) {
+		return {
+			...pushConnection.setup?.(props),
+			...workflowHelpers.setup?.(props),
+		};
 	},
 	data() {
 		return {
@@ -110,14 +117,14 @@ export default mixins(pushConnection, workflowHelpers).extend({
 				case MAIN_HEADER_TABS.WORKFLOW:
 					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
 						if (this.$route.name !== VIEWS.WORKFLOW) {
-							this.$router.push({
+							void this.$router.push({
 								name: VIEWS.WORKFLOW,
 								params: { name: this.workflowToReturnTo },
 							});
 						}
 					} else {
 						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 							this.uiStore.stateIsDirty = this.dirtyState;
 						}
 					}
@@ -136,7 +143,10 @@ export default mixins(pushConnection, workflowHelpers).extend({
 							})
 							.catch(() => {});
 					} else {
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
+						void this.$router.push({
+							name: VIEWS.EXECUTION_HOME,
+							params: { name: routeWorkflowId },
+						});
 					}
 					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;

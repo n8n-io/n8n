@@ -49,7 +49,7 @@ jobs:
         working-directory: n8n
         run: |
           pnpm install
-          pnpm build
+          pnpm  --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base --filter n8n build
         shell: bash
 
       - name: Import credentials

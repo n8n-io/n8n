@@ -19,12 +19,13 @@
 </template>
 
 <script lang="ts">
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import Vue, { PropType } from 'vue';
-import { EventBus } from '@/event-bus';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ModalDrawer',
 	props: {
 		name: {
@@ -53,12 +54,7 @@ export default Vue.extend({
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
-
-		if (this.eventBus) {
-			this.eventBus.on('close', () => {
-				this.close();
-			});
-		}
+		this.eventBus?.on('close', this.close);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -66,6 +62,7 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
+		this.eventBus?.off('close', this.close);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
 	computed: {

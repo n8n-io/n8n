@@ -1,7 +1,7 @@
 // Vitest Snapshot v1
 
 exports[`VariablesRow > should render correctly 1`] = `
-"<tr class=\\"variablesRow\\">
+"<tr data-test-id=\\"variables-row\\" class=\\"variablesRow\\">
   <td class=\\"variables-key-column\\">
     <div><span>key</span></div>
   </td>
@@ -29,7 +29,7 @@ exports[`VariablesRow > should render correctly 1`] = `
 `;
 
 exports[`VariablesRow > should show key and value inputs in edit mode 1`] = `
-"<tr class=\\"variablesRow\\">
+"<tr data-test-id=\\"variables-row\\" class=\\"variablesRow\\">
   <td class=\\"variables-key-column\\">
     <div>
       <div class=\\"container\\" data-test-id=\\"variable-row-key-input\\">

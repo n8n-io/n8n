@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import type { Config } from '@/config';
-import { Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import type { IDatabaseCollections, IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
 import { TagEntity } from '@db/entities/TagEntity';
 import type { TagRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
-import { BadRequestError, UnauthorizedError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseHelper';
 import { TagsRequest } from '@/requests';
 
+@Authorized()
 @RestController('/tags')
 export class TagsController {
 	private config: Config;
@@ -91,15 +92,9 @@ export class TagsController {
 		return tag;
 	}
 
+	@Authorized(['global', 'owner'])
 	@Delete('/:id(\\d+)')
 	async deleteTag(req: TagsRequest.Delete) {
-		const isInstanceOwnerSetUp = this.config.getEnv('userManagement.isInstanceOwnerSetUp');
-		if (isInstanceOwnerSetUp && req.user.globalRole.name !== 'owner') {
-			throw new UnauthorizedError(
-				'You are not allowed to perform this action',
-				'Only owners can remove tags',
-			);
-		}
 		const { id } = req.params;
 		await this.externalHooks.run('tag.beforeDelete', [id]);
 
