@@ -25,11 +25,13 @@ module.exports = {
 		'vue/no-deprecated-slot-scope-attribute': 'error',
 		'vue/no-multiple-template-root': 'error',
 		'vue/v-slot-style': 'error',
+		'vue/no-unused-components': 'error',
+		'vue/multi-word-component-names': 'off',
 
 		// TODO: remove these
-		'vue/no-unused-components': 'warn',
-		'vue/return-in-computed-property': 'warn',
 		'vue/no-mutating-props': 'warn',
-		'@typescript-eslint/no-floating-promises': 'warn',
+		'vue/no-side-effects-in-computed-properties': 'warn',
+		'vue/no-v-text-v-html-on-component': 'warn',
+		'vue/return-in-computed-property': 'warn',
 	},
 };
