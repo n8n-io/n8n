@@ -70,7 +70,7 @@ async function pullWorkfolder() {
 		<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
 			<n8n-button
 				:title="i18n.baseText('settings.versionControl.button.pull')"
-				:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed }"
+				:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed && !versionControlStore.preferences.branchReadOnly }"
 				icon="arrow-down"
 				type="tertiary"
 				size="mini"
