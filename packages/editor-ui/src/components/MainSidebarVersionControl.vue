@@ -80,6 +80,7 @@ async function pullWorkfolder() {
 				<span v-if="!isCollapsed">{{ i18n.baseText('settings.versionControl.button.pull') }}</span>
 			</n8n-button>
 			<n8n-button
+				v-if="!versionControlStore.preferences.branchReadOnly"
 				:title="i18n.baseText('settings.versionControl.button.push')"
 				:square="isCollapsed"
 				icon="arrow-up"
