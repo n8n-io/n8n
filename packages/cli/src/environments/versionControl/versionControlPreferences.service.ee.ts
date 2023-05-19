@@ -93,6 +93,10 @@ export class VersionControlPreferencesService {
 		}
 	}
 
+	isBranchReadOnly(): boolean {
+		return this._versionControlPreferences.branchReadOnly;
+	}
+
 	isVersionControlConnected(): boolean {
 		return this.versionControlPreferences.connected;
 	}
@@ -107,6 +111,10 @@ export class VersionControlPreferencesService {
 
 	getPreferences(): VersionControlPreferences {
 		return this.versionControlPreferences;
+	}
+
+	setBranchReadOnly(branchReadOnly: boolean): void {
+		this._versionControlPreferences.branchReadOnly = branchReadOnly;
 	}
 
 	async validateVersionControlPreferences(

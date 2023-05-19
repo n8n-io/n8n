@@ -29,7 +29,10 @@ export class VersionControlController {
 	@Authorized(['global', 'owner'])
 	@Post('/preferences', { middlewares: [versionControlLicensedMiddleware] })
 	async setPreferences(req: VersionControlRequest.UpdatePreferences) {
-		if (this.versionControlPreferencesService.isVersionControlConnected()) {
+		if (
+			req.body.branchReadOnly === undefined &&
+			this.versionControlPreferencesService.isVersionControlConnected()
+		) {
 			throw new BadRequestError(
 				'Cannot change preferences while connected to a version control provider. Please disconnect first.',
 			);
@@ -61,15 +64,16 @@ export class VersionControlController {
 		}
 	}
 
-	// @Authorized(['global', 'owner'])
-	// @Post('/connect')
-	// async connect() {
-	// 	try {
-	// 		return await this.versionControlService.connect();
-	// 	} catch (error) {
-	// 		throw new BadRequestError((error as { message: string }).message);
-	// 	}
-	// }
+	@Authorized(['global', 'owner'])
+	@Post('/set-read-only')
+	async setReadOnly(req: VersionControlRequest.SetReadOnly) {
+		try {
+			this.versionControlPreferencesService.setBranchReadOnly(req.body.branchReadOnly);
+			return this.versionControlPreferencesService.getPreferences();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
 
 	@Authorized(['global', 'owner'])
 	@Post('/disconnect')
@@ -107,6 +111,9 @@ export class VersionControlController {
 		req: VersionControlRequest.PushWorkFolder,
 		res: express.Response,
 	): Promise<PushResult | VersionControlledFile[]> {
+		if (this.versionControlPreferencesService.isBranchReadOnly()) {
+			throw new BadRequestError('Cannot push onto read-only branch.');
+		}
 		try {
 			const result = await this.versionControlService.pushWorkfolder(req.body);
 			if ((result as PushResult).pushed) {
@@ -240,6 +247,9 @@ export class VersionControlController {
 	@Authorized(['global', 'owner'])
 	@Post('/push')
 	async push(req: VersionControlRequest.Push): Promise<PushResult> {
+		if (this.versionControlPreferencesService.isBranchReadOnly()) {
+			throw new BadRequestError('Cannot push onto read-only branch.');
+		}
 		try {
 			return await this.versionControlService.push(req.body.force);
 		} catch (error) {

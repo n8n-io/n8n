@@ -69,16 +69,6 @@ export class VersionControlService {
 		});
 	}
 
-	// async connect() {
-	// 	try {
-	// 		await this.init();
-	// 		await this.versionControlPreferencesService.setPreferences({ connected: true });
-	// 		return this.versionControlPreferencesService.versionControlPreferences;
-	// 	} catch (error) {
-	// 		throw Error(`Failed to connect to version control: ${(error as Error).message}`);
-	// 	}
-	// }
-
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
 			await this.versionControlPreferencesService.setPreferences({ connected: false });
@@ -193,6 +183,9 @@ export class VersionControlService {
 	async pushWorkfolder(
 		options: VersionControlPushWorkFolder,
 	): Promise<PushResult | VersionControlledFile[]> {
+		if (this.versionControlPreferencesService.isBranchReadOnly()) {
+			throw new BadRequestError('Cannot push onto read-only branch.');
+		}
 		if (!options.skipDiff) {
 			const diffResult = await this.getStatus();
 			const possibleConflicts = diffResult?.filter((file) => file.conflict);

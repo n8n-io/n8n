@@ -7,9 +7,11 @@ import type { VersionControlPush } from './versionControlPush';
 import type { VersionControlPushWorkFolder } from './versionControlPushWorkFolder';
 import type { VersionControlPullWorkFolder } from './versionControlPullWorkFolder';
 import type { VersionControlDisconnect } from './versionControlDisconnect';
+import type { VersionControlSetReadOnly } from './versionControlSetReadOnly';
 
 export declare namespace VersionControlRequest {
 	type UpdatePreferences = AuthenticatedRequest<{}, {}, Partial<VersionControlPreferences>, {}>;
+	type SetReadOnly = AuthenticatedRequest<{}, {}, VersionControlSetReadOnly, {}>;
 	type SetBranch = AuthenticatedRequest<{}, {}, VersionControlSetBranch, {}>;
 	type Commit = AuthenticatedRequest<{}, {}, VersionControlCommit, {}>;
 	type Stage = AuthenticatedRequest<{}, {}, VersionControlStage, {}>;
