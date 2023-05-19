@@ -21,6 +21,7 @@ export type ColumnInfo = {
 	data_type: string;
 	is_nullable: string;
 	udt_name: string;
+	column_default?: string;
 };
 export type EnumInfo = {
 	typname: string;

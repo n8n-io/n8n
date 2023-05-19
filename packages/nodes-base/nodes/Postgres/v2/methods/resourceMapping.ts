@@ -67,13 +67,15 @@ export async function getMappingColumns(
 		const enumInfo = await getEnums(db);
 		const fields = await Promise.all(
 			columns.map(async (col) => {
-				const canBeUsedToMatch = operation === 'upsert' ? unique.some((u) => u.column_name === col.column_name) : true;
+				const canBeUsedToMatch =
+					operation === 'upsert' ? unique.some((u) => u.column_name === col.column_name) : true;
 				const type = mapPostgresType(col.data_type);
 				const options = type === 'options' ? getEnumValues(enumInfo, col.udt_name) : undefined;
+				const isAutoIncrement = col.column_default?.startsWith('nextval');
 				return {
 					id: col.column_name,
 					displayName: col.column_name,
-					required: col.is_nullable !== 'YES',
+					required: col.is_nullable !== 'YES' && !isAutoIncrement,
 					defaultMatch: col.column_name === 'id',
 					display: true,
 					type,

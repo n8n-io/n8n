@@ -56,6 +56,7 @@ watch(
 	async (currentValue, oldValue) => {
 		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
 			state.paramValue.value = null;
+			state.paramValue.schema = [];
 			emitValueChanged();
 			await initFetching();
 			setDefaultFieldValues(true);
@@ -358,10 +359,23 @@ function removeAllFields(): void {
 }
 
 function emitValueChanged(): void {
+	pruneParamValues();
 	emit('valueChanged', {
 		name: `${props.path}`,
 		value: state.paramValue,
 		node: props.node?.name,
+	});
+}
+
+function pruneParamValues(): void {
+	if (!state.paramValue.value) {
+		return;
+	}
+	const valueKeys = Object.keys(state.paramValue.value);
+	valueKeys.forEach((key) => {
+		if (state.paramValue.value && state.paramValue.value[key] === null) {
+			delete state.paramValue.value[key];
+		}
 	});
 }
 

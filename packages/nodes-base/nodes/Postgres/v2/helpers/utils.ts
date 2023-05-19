@@ -327,7 +327,7 @@ export async function getTableSchema(
 	table: string,
 ): Promise<ColumnInfo[]> {
 	const columns = await db.any(
-		'SELECT column_name, data_type, is_nullable, udt_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+		'SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
 		[schema, table],
 	);
 
