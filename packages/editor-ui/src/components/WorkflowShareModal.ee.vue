@@ -123,6 +123,10 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
+
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
@@ -134,10 +138,8 @@ import {
 import type { IUser, IWorkflowDb } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import { defineComponent } from 'vue';
 import { useToast, useMessage } from '@/composables';
-import { createEventBus, nodeViewEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
+import { nodeViewEventBus } from '@/event-bus';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';

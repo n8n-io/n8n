@@ -39,7 +39,7 @@ import Modal from '@/components/Modal.vue';
 import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTagsStore } from '@/stores/tags.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'TagsManager',

@@ -94,8 +94,7 @@
     "patchedDependencies": {
       "element-ui@2.15.12": "patches/element-ui@2.15.12.patch",
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
-      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch",
-      "@typescript-eslint/eslint-plugin@5.59.0": "patches/@typescript-eslint__eslint-plugin@5.59.0.patch"
+      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch"
     }
   }
 }
