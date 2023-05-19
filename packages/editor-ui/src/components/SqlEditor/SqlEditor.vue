@@ -7,7 +7,7 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, history, redo } from '@codemirror/commands';
-import { foldGutter, indentOnInput } from '@codemirror/language';
+import { foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
@@ -20,10 +20,21 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import { MSSQL, MySQL, PostgreSQL, sql, StandardSQL } from '@codemirror/lang-sql';
+import {
+	keywordCompletion,
+	MSSQL,
+	MySQL,
+	PostgreSQL,
+	schemaCompletion,
+	StandardSQL,
+} from './custom-lang-sql'; // update with: codemirror-lang-n8n-sql
 import type { SQLDialect } from 'n8n-workflow';
 
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { expressionManager } from '@/mixins/expressionManager';
 
 const SQL_DIALECTS = {
 	standard: StandardSQL,
@@ -32,8 +43,18 @@ const SQL_DIALECTS = {
 	postgres: PostgreSQL,
 } as const;
 
+// @TODO: support configs, dialects, etc.
+function sqlLanguageSupport() {
+	return new LanguageSupport(StandardSQL.language, [
+		schemaCompletion({}),
+		keywordCompletion(StandardSQL, true),
+		n8nCompletionSources().map((source) => StandardSQL.language.data.of(source)),
+	]);
+}
+
 export default defineComponent({
 	name: 'sql-editor',
+	mixins: [expressionManager],
 	props: {
 		query: {
 			type: String,
@@ -62,7 +83,8 @@ export default defineComponent({
 	mounted() {
 		const dialect = SQL_DIALECTS[this.dialect as SQLDialect] ?? SQL_DIALECTS.standard;
 		const extensions: Extension[] = [
-			sql({ dialect, upperCaseKeywords: true }),
+			sqlLanguageSupport(),
+			expressionInputHandler(),
 			codeNodeEditorTheme({ maxHeight: false }),
 			lineNumbers(),
 			EditorView.lineWrapping,
@@ -84,12 +106,18 @@ export default defineComponent({
 				dropCursor(),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
+
+					highlighter.removeColor(this.editor, this.plaintextSegments);
+					highlighter.addColor(this.editor, this.resolvableSegments);
+
 					this.$emit('valueChanged', this.doc);
 				}),
 			);
 		}
 		const state = EditorState.create({ doc: this.query, extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
+
+		highlighter.addColor(this.editor, this.resolvableSegments);
 	},
 });
 </script>
