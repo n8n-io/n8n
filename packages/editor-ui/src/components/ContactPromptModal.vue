@@ -41,7 +41,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 import { useToast } from '@/composables';
 
 export default defineComponent({

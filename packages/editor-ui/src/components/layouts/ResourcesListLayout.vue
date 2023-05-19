@@ -207,7 +207,6 @@ import {
 	GITHUB_STARS_BANNER_SHOW_UNTIL_DATE,
 	MAIN_REPOSITORY_URL,
 } from '@/constants';
-import TemplateCard from '@/components/TemplateCard.vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
@@ -240,7 +239,6 @@ export default defineComponent({
 	name: 'resources-list-layout',
 	mixins: [debounceHelper],
 	components: {
-		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceOwnershipSelect,
@@ -500,7 +498,11 @@ export default defineComponent({
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
+			void this.callDebounced(
+				'sendFiltersTelemetry',
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
 		},
 		sortBy(newValue) {
 			this.$emit('sort', newValue);
