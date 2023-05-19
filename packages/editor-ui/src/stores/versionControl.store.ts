@@ -119,8 +119,11 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	};
 
 	const getStatus = async () => {
-		const data = await vcApi.getStatus(rootStore.getRestApiContext);
-		return data;
+		return vcApi.getStatus(rootStore.getRestApiContext);
+	};
+
+	const getAggregatedStatus = async () => {
+		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
 	};
 
 	return {
@@ -136,5 +139,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setBranch,
 		disconnect,
 		getStatus,
+		getAggregatedStatus,
 	};
 });

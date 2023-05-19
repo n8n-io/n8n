@@ -1,4 +1,9 @@
-import type { IRestApiContext, VersionControlPreferences, VersionControlStatus } from '@/Interface';
+import type {
+	IRestApiContext,
+	VersionControlAggregatedFile,
+	VersionControlPreferences,
+	VersionControlStatus,
+} from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -46,6 +51,12 @@ export const getPreferences = async (
 
 export const getStatus = async (context: IRestApiContext): Promise<VersionControlStatus> => {
 	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/status`);
+};
+
+export const getAggregatedStatus = async (
+	context: IRestApiContext,
+): Promise<VersionControlAggregatedFile[]> => {
+	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/get-status`);
 };
 
 export const connect = async (context: IRestApiContext): Promise<string> => {
