@@ -58,7 +58,7 @@ watch(
 			state.paramValue.value = null;
 			emitValueChanged();
 			await initFetching();
-			setDefaultFieldValues();
+			setDefaultFieldValues(true);
 		}
 	},
 );
@@ -229,7 +229,7 @@ async function onModeChanged(mode: string): Promise<void> {
 	emitValueChanged();
 }
 
-function setDefaultFieldValues(): void {
+function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
 	Vue.set(state.paramValue, 'value', {});
 	const hideAllFields = props.parameter.typeOptions?.resourceMapper?.addAllFields === false;
 	state.paramValue.schema.forEach((field) => {
@@ -246,7 +246,7 @@ function setDefaultFieldValues(): void {
 		}
 	});
 	emitValueChanged();
-	if (!state.paramValue.matchingColumns) {
+	if (!state.paramValue.matchingColumns || forceMatchingFieldsUpdate) {
 		state.paramValue.matchingColumns = defaultSelectedMatchingColumns.value;
 		emitValueChanged();
 	}
