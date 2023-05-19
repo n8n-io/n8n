@@ -166,83 +166,7 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['reply'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Attachments',
-				name: 'attachmentsUi',
-				placeholder: 'Add Attachment',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'attachmentsBinary',
-						displayName: 'Attachment Binary',
-						values: [
-							{
-								displayName: 'Attachment Field Name',
-								name: 'property',
-								type: 'string',
-								default: 'data',
-								description:
-									'Add the field name from the input node. Multiple properties can be set separated by comma.',
-								hint: 'The name of the field with the attachment in the node input',
-							},
-						],
-					},
-				],
-				default: {},
-				description: 'Array of supported attachments to add to the message',
-			},
-			{
-				displayName: 'BCC',
-				name: 'bccList',
-				type: 'string',
-				description:
-					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
-				placeholder: 'info@example.com',
-				default: '',
-			},
-			{
-				displayName: 'CC',
-				name: 'ccList',
-				type: 'string',
-				description:
-					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
-				placeholder: 'info@example.com',
-				default: '',
-			},
-			{
-				displayName: 'Sender Name',
-				name: 'senderName',
-				type: 'string',
-				placeholder: 'e.g. Nathan',
-				default: '',
-				description: "The name that will be shown in recipients' inboxes",
-			},
-			{
-				displayName: 'Reply to Sender Only',
-				name: 'replyToSenderOnly',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to reply to the sender only or to the entire list of recipients',
-			},
-		],
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['send'],
+				operation: ['reply', 'send'],
 			},
 		},
 		default: {},
@@ -308,6 +232,23 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'reply@example.com',
 				default: '',
 				description: 'The email address that the reply message is sent to',
+				displayOptions: {
+					hide: {
+						'/operation': ['reply'],
+					},
+				},
+			},
+			{
+				displayName: 'Reply to Sender Only',
+				name: 'replyToSenderOnly',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to reply to the sender only or to the entire list of recipients',
+				displayOptions: {
+					hide: {
+						'/operation': ['send'],
+					},
+				},
 			},
 		],
 	},
