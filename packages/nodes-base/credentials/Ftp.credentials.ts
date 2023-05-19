@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Ftp implements ICredentialType {
 	name = 'ftp';
+
 	displayName = 'FTP';
+
 	documentationUrl = 'ftp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

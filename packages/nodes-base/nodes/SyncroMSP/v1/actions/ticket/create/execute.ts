@@ -1,20 +1,17 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { apiRequest } from '../../../transport';
 
-import {
-	apiRequest,
-} from '../../../transport';
-
-export async function createTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function createTicket(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('customerId', index) as IDataObject;
 	const subject = this.getNodeParameter('subject', index) as IDataObject;
-	const { assetId, dueDate, issueType, status, contactId } = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const { assetId, issueType, status, contactId } = this.getNodeParameter(
+		'additionalFields',
+		index,
+	);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
@@ -32,9 +29,7 @@ export async function createTicket(this: IExecuteFunctions, index: number): Prom
 	body.customer_id = id;
 	body.subject = subject;
 
-	let responseData;
-	
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.ticket);
+	return this.helpers.returnJsonArray(responseData.ticket as IDataObject[]);
 }

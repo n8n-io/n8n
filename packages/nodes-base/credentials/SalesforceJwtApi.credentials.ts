@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
+
 	displayName = 'Salesforce JWT API';
+
 	documentationUrl = 'salesforce';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment Type',
@@ -48,7 +48,8 @@ export class SalesforceJwtApi implements ICredentialType {
 			},
 			default: '',
 			required: true,
-			description: 'Use the multiline editor. Make sure it is in standard PEM key format:<br />-----BEGIN PRIVATE KEY-----<br />KEY DATA GOES HERE<br />-----END PRIVATE KEY-----',
+			description:
+				'Use the multiline editor. Make sure it is in standard PEM key format:<br />-----BEGIN PRIVATE KEY-----<br />KEY DATA GOES HERE<br />-----END PRIVATE KEY-----',
 		},
 	];
 }

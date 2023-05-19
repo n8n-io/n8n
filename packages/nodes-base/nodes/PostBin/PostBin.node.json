@@ -2,14 +2,11 @@
 	"node": "n8n-nodes-base.postbin",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Data & Storage"
-	],
+	"categories": ["Development", "Data & Storage"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.postbin/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postbin/"
 			}
 		]
 	}

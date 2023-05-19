@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const attachmentOperations: INodeProperties[] = [
 	{
@@ -10,23 +8,23 @@ export const attachmentOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
+				resource: ['attachment'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Gets the metadata of a message attachment. The attachment data is fetched using the media API.',
+				description:
+					'Gets the metadata of a message attachment. The attachment data is fetched using the media API.',
+				action: 'Get an attachment',
 			},
 		],
 		default: 'get',
 	},
 ];
 
-export const  attachmentFields: INodeProperties[] = [
+export const attachmentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 attachments:get                              */
 	/* -------------------------------------------------------------------------- */
@@ -37,12 +35,8 @@ export const  attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attachment'],
+				operation: ['get'],
 			},
 		},
 		default: '',

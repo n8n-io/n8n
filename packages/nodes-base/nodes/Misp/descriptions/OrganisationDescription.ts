@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const organisationOperations: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const organisationOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
+				resource: ['organisation'],
 			},
 		},
 		noDataExpression: true,
@@ -19,22 +15,27 @@ export const organisationOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an organization',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an organization',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many organizations',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an organization',
 			},
 		],
 		default: 'create',
@@ -53,12 +54,8 @@ export const organisationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['organisation'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -70,12 +67,8 @@ export const organisationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['organisation'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -133,12 +126,8 @@ export const organisationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['organisation'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -155,12 +144,8 @@ export const organisationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['organisation'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -172,12 +157,8 @@ export const organisationFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['organisation'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -192,15 +173,9 @@ export const organisationFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['organisation'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -217,12 +192,8 @@ export const organisationFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['organisation'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -234,12 +205,8 @@ export const organisationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'organisation',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['organisation'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-// eslint-disable-next-line import/no-cycle
-import { ILogger, LogTypes } from './Interfaces';
+import type { ILogger, LogTypes } from './Interfaces';
 
 let logger: ILogger | undefined;
 
-export function init(loggerInstance: ILogger) {
+export function init<L extends ILogger>(loggerInstance: L) {
 	logger = loggerInstance;
+	return loggerInstance;
 }
 
 export function getInstance(): ILogger {

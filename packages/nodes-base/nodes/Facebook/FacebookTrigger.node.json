@@ -2,18 +2,16 @@
 	"node": "n8n-nodes-base.facebookTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Marketing & Content"
-	],
+	"categories": ["Marketing & Content"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/facebookGraphApp"
+				"url": "https://docs.n8n.io/integrations/credentials/facebookapp/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.facebookTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebooktrigger/"
 			}
 		]
 	}

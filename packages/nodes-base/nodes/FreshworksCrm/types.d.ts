@@ -1,7 +1,7 @@
 export type FreshworksCrmApiCredentials = {
 	apiKey: string;
 	domain: string;
-}
+};
 
 export type FreshworksConfigResponse<T> = {
 	[key: string]: T[];
@@ -29,7 +29,7 @@ export type SalesAccounts = {
 export type ViewsResponse = {
 	filters: View[];
 	meta: object;
-}
+};
 
 export type View = {
 	id: number;

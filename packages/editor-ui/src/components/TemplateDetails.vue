@@ -9,10 +9,10 @@
 					:key="node.name"
 					:class="$style.icon"
 				>
-					<HoverableNodeIcon
+					<NodeIcon
 						:nodeType="node"
-						:title="node.name"
 						:size="24"
+						:showTooltip="true"
 						@click="redirectToSearchPage(node)"
 					/>
 				</div>
@@ -20,7 +20,7 @@
 		</template-details-block>
 
 		<template-details-block
-			v-if="!loading && template.categories.length > 0"
+			v-if="!loading && template?.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click="redirectToCategory" />
@@ -47,15 +47,16 @@
 	</div>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
-import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { abbreviateNumber, filterTemplateNodes } from '@/utils';
+import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useTemplatesStore } from '@/stores/templates.store';
 
-import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
-import { ITemplatesNode } from '@/Interface';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'TemplateDetails',
 	props: {
 		blockTitle: {
@@ -65,23 +66,26 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		template: {
-			type: Object,
+			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
 		},
 	},
 	components: {
-		HoverableNodeIcon,
+		NodeIcon,
 		TemplateDetailsBlock,
+	},
+	computed: {
+		...mapStores(useTemplatesStore),
 	},
 	methods: {
 		abbreviateNumber,
 		filterTemplateNodes,
 		redirectToCategory(id: string) {
-			this.$store.commit('templates/resetSessionId');
-			this.$router.push(`/templates?categories=${id}`);
+			this.templatesStore.resetSessionId();
+			void this.$router.push(`/templates?categories=${id}`);
 		},
 		redirectToSearchPage(node: ITemplatesNode) {
-			this.$store.commit('templates/resetSessionId');
-			this.$router.push(`/templates?search=${node.displayName}`);
+			this.templatesStore.resetSessionId();
+			void this.$router.push(`/templates?search=${node.displayName}`);
 		},
 	},
 });
@@ -91,12 +95,11 @@ export default Vue.extend({
 	display: flex;
 	flex-wrap: wrap;
 }
-
 .icon {
 	margin-right: var(--spacing-xs);
 	margin-bottom: var(--spacing-xs);
+	cursor: pointer;
 }
-
 .text {
 	padding-bottom: var(--spacing-xs);
 }

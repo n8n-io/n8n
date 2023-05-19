@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'crm.objects.contacts.read',
@@ -12,13 +9,18 @@ const scopes = [
 	'crm.schemas.deals.read',
 ];
 
+// eslint-disable-next-line n8n-nodes-base/cred-class-name-missing-oauth2-suffix
 export class HubspotDeveloperApi implements ICredentialType {
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-missing-oauth2
 	name = 'hubspotDeveloperApi';
+
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-display-name-missing-oauth2
 	displayName = 'HubSpot Developer API';
+
 	documentationUrl = 'hubspot';
-	extends = [
-		'oAuth2Api',
-	];
+
+	extends = ['oAuth2Api'];
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
@@ -56,6 +58,8 @@ export class HubspotDeveloperApi implements ICredentialType {
 			displayName: 'Developer API Key',
 			name: 'apiKey',
 			type: 'string',
+			required: true,
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

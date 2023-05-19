@@ -1,17 +1,11 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { apiRequest } from '../../../transport';
 
-import {
-	apiRequest,
-} from '../../../transport';
-
-export async function getAll(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function getAll(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
 
@@ -20,8 +14,8 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 	//limit parameters
 	const simplifyOutput: boolean = this.getNodeParameter('simplifyOutput', index) as boolean;
-	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit: number = this.getNodeParameter('limit', 0, 0) as number;
+	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false);
+	const limit: number = this.getNodeParameter('limit', 0, 0);
 
 	//endpoint
 	const endpoint = `employees/${id}/files/view/`;
@@ -50,9 +44,9 @@ export async function getAll(this: IExecuteFunctions, index: number): Promise<IN
 
 	//return limited result
 	if (!returnAll && responseData.categories.length > limit) {
-		return this.helpers.returnJsonArray(responseData.categories.slice(0, limit));
+		return this.helpers.returnJsonArray(responseData.categories.slice(0, limit) as IDataObject[]);
 	}
 
 	//return
-	return this.helpers.returnJsonArray(responseData.categories);
+	return this.helpers.returnJsonArray(responseData.categories as IDataObject[]);
 }

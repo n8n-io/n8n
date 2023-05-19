@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -12,8 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	elasticSecurityApiRequest,
@@ -35,16 +32,14 @@ import {
 	connectorOperations,
 } from './descriptions';
 
-import {
+import type {
 	Connector,
 	ConnectorCreatePayload,
 	ConnectorType,
 	ElasticSecurityApiCredentials,
 } from './types';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class ElasticSecurity implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,13 +102,17 @@ export class ElasticSecurity implements INodeType {
 	methods = {
 		loadOptions: {
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const tags = await elasticSecurityApiRequest.call(this, 'GET', '/cases/tags') as string[];
-				return tags.map(tag => ({ name: tag, value: tag }));
+				const tags = (await elasticSecurityApiRequest.call(this, 'GET', '/cases/tags')) as string[];
+				return tags.map((tag) => ({ name: tag, value: tag }));
 			},
 
 			async getConnectors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const endpoint = '/cases/configure/connectors/_find';
-				const connectors = await elasticSecurityApiRequest.call(this, 'GET', endpoint) as Connector[];
+				const connectors = (await elasticSecurityApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+				)) as Connector[];
 				return connectors.map(({ name, id }) => ({ name, value: id }));
 			},
 		},
@@ -164,25 +163,21 @@ export class ElasticSecurity implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'case') {
-
 					// **********************************************************************
 					//                                  case
 					// **********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//               case: create
 						// ----------------------------------------
@@ -208,12 +203,16 @@ export class ElasticSecurity implements INodeType {
 							type: fetchedType,
 						} = await getConnector.call(this, connectorId);
 
-						const selectedConnectorType = this.getNodeParameter('connectorType', i) as ConnectorType;
+						const selectedConnectorType = this.getNodeParameter(
+							'connectorType',
+							i,
+						) as ConnectorType;
 
 						if (fetchedType !== selectedConnectorType) {
 							throw new NodeOperationError(
 								this.getNode(),
 								'Connector Type does not match the type of the connector in Connector Name',
+								{ itemIndex: i },
 							);
 						}
 
@@ -252,16 +251,14 @@ export class ElasticSecurity implements INodeType {
 						const {
 							syncAlerts, // ignored because already set
 							...rest
-						} = this.getNodeParameter('additionalFields', i) as IDataObject;
+						} = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(rest).length) {
 							Object.assign(body, rest);
 						}
 
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', '/cases', body);
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//               case: delete
 						// ----------------------------------------
@@ -271,9 +268,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 						await elasticSecurityApiRequest.call(this, 'DELETE', `/cases?ids=["${caseId}"]`);
 						responseData = { success: true };
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                case: get
 						// ----------------------------------------
@@ -282,9 +277,7 @@ export class ElasticSecurity implements INodeType {
 
 						const caseId = this.getNodeParameter('caseId', i);
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//               case: getAll
 						// ----------------------------------------
@@ -292,10 +285,10 @@ export class ElasticSecurity implements INodeType {
 						// https://www.elastic.co/guide/en/security/current/cases-api-find-cases.html
 
 						const qs = {} as IDataObject;
-						const {
-							tags,
-							status,
-						} = this.getNodeParameter('filters', i) as IDataObject & { tags: string[], status: string };
+						const { tags, status } = this.getNodeParameter('filters', i) as IDataObject & {
+							tags: string[];
+							status: string;
+						};
 						const sortOptions = this.getNodeParameter('sortOptions', i) as IDataObject;
 
 						qs.sortField = sortOptions.sortField ?? 'createdAt';
@@ -310,9 +303,7 @@ export class ElasticSecurity implements INodeType {
 						}
 
 						responseData = await handleListing.call(this, 'GET', '/cases/_find', {}, qs);
-
 					} else if (operation === 'getStatus') {
-
 						// ----------------------------------------
 						//             case: getStatus
 						// ----------------------------------------
@@ -320,9 +311,7 @@ export class ElasticSecurity implements INodeType {
 						// https://www.elastic.co/guide/en/security/current/cases-api-get-status.html
 
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', '/cases/status');
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//               case: update
 						// ----------------------------------------
@@ -332,7 +321,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
@@ -352,17 +341,13 @@ export class ElasticSecurity implements INodeType {
 						});
 
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', '/cases', body);
-
 					}
-
 				} else if (resource === 'caseTag') {
-
 					// **********************************************************************
 					//                               caseTag
 					// **********************************************************************
 
 					if (operation === 'add') {
-
 						// ----------------------------------------
 						//              caseTag: add
 						// ----------------------------------------
@@ -371,14 +356,8 @@ export class ElasticSecurity implements INodeType {
 
 						const caseId = this.getNodeParameter('caseId', i);
 
-						const {
-							title,
-							connector,
-							owner,
-							description,
-							settings,
-							tags,
-						} = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
+						const { title, connector, owner, description, settings, tags } =
+							await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`);
 
 						const tagToAdd = this.getNodeParameter('tag', i);
 
@@ -386,6 +365,7 @@ export class ElasticSecurity implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Cannot add tag "${tagToAdd}" to case ID ${caseId} because this case already has this tag.`,
+								{ itemIndex: i },
 							);
 						}
 
@@ -407,25 +387,25 @@ export class ElasticSecurity implements INodeType {
 						});
 
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', '/cases', body);
-
 					} else if (operation === 'remove') {
-
 						// https://www.elastic.co/guide/en/security/current/cases-api-update.html
 
 						const caseId = this.getNodeParameter('caseId', i);
 						const tagToRemove = this.getNodeParameter('tag', i) as string;
 
-						const {
-							title,
-							connector,
-							owner,
-							description,
-							settings,
-							tags,
-						} = await elasticSecurityApiRequest.call(this, 'GET', `/cases/${caseId}`) as IDataObject & { tags: string[] };
+						const { title, connector, owner, description, settings, tags } =
+							(await elasticSecurityApiRequest.call(
+								this,
+								'GET',
+								`/cases/${caseId}`,
+							)) as IDataObject & { tags: string[] };
 
 						if (!tags.includes(tagToRemove)) {
-							throw new NodeOperationError(this.getNode(), `Cannot remove tag "${tagToRemove}" from case ID ${caseId} because this case does not have this tag.`);
+							throw new NodeOperationError(
+								this.getNode(),
+								`Cannot remove tag "${tagToRemove}" from case ID ${caseId} because this case does not have this tag.`,
+								{ itemIndex: i },
+							);
 						}
 
 						const body = {};
@@ -446,17 +426,13 @@ export class ElasticSecurity implements INodeType {
 						});
 
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', '/cases', body);
-
 					}
-
 				} else if (resource === 'caseComment') {
-
 					// **********************************************************************
 					//                              caseComment
 					// **********************************************************************
 
 					if (operation === 'add') {
-
 						// ----------------------------------------
 						//             caseComment: add
 						// ----------------------------------------
@@ -465,7 +441,7 @@ export class ElasticSecurity implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body = {
 							comment: this.getNodeParameter('comment', i),
@@ -477,13 +453,11 @@ export class ElasticSecurity implements INodeType {
 						const endpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//             caseComment: get
 						// ----------------------------------------
@@ -495,9 +469,7 @@ export class ElasticSecurity implements INodeType {
 
 						const endpoint = `/cases/${caseId}/comments/${commentId}`;
 						responseData = await elasticSecurityApiRequest.call(this, 'GET', endpoint);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//           caseComment: getAll
 						// ----------------------------------------
@@ -508,9 +480,7 @@ export class ElasticSecurity implements INodeType {
 
 						const endpoint = `/cases/${caseId}/comments`;
 						responseData = await handleListing.call(this, 'GET', endpoint);
-
 					} else if (operation === 'remove') {
-
 						// ----------------------------------------
 						//           caseComment: remove
 						// ----------------------------------------
@@ -523,9 +493,7 @@ export class ElasticSecurity implements INodeType {
 						const endpoint = `/cases/${caseId}/comments/${commentId}`;
 						await elasticSecurityApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//           caseComment: update
 						// ----------------------------------------
@@ -547,17 +515,13 @@ export class ElasticSecurity implements INodeType {
 						const patchEndpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
-
 					}
-
 				} else if (resource === 'connector') {
-
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//           connector: create
 						// ----------------------------------------
@@ -599,26 +563,33 @@ export class ElasticSecurity implements INodeType {
 							};
 						}
 
-						responseData = await elasticSecurityApiRequest.call(this, 'POST', '/actions/connector', body);
-
+						responseData = await elasticSecurityApiRequest.call(
+							this,
+							'POST',
+							'/actions/connector',
+							body,
+						);
 					}
-
 				}
 
-				Array.isArray(responseData)
-					? returnData.push(...responseData)
-					: returnData.push(responseData);
-
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
-
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

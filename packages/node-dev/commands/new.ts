@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -17,7 +18,7 @@ const fsAccess = promisify(fs.access);
 export class New extends Command {
 	static description = 'Create new credentials/node';
 
-	static examples = [`$ n8n-node-dev new`];
+	static examples = ['$ n8n-node-dev new'];
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
@@ -135,7 +136,7 @@ export class New extends Command {
 				// File does not exist. That is exactly what we want so go on.
 			}
 
-			// Make sure that the variables in the template file get formated
+			// Make sure that the variables in the template file get formatted
 			// in the correct way
 			const replaceValues = {
 				ClassNameReplace: changeCase.pascalCase(nodeName),
@@ -146,7 +147,7 @@ export class New extends Command {
 
 			await createTemplate(sourceFilePath, destinationFilePath, replaceValues);
 
-			this.log('\nExecution was successfull:');
+			this.log('\nExecution was successful:');
 			this.log('====================================');
 
 			this.log(`Node got created: ${destinationFilePath}`);

@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.microsoftExcel",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage",
-		"Productivity"
-	],
+	"categories": ["Data & Storage", "Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,12 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.microsoftExcel/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftexcel/"
 			}
 		]
 	},
-	"alias": [
-		"CSV",
-		"Spreadsheet"
-	]
+	"alias": ["CSV", "Spreadsheet"]
 }

@@ -1,19 +1,13 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	customerIoApiRequest,
-	eventExists,
-} from './GenericFunctions';
+import { customerIoApiRequest, eventExists } from './GenericFunctions';
 
 interface IEvent {
 	customer?: IDataObject;
@@ -224,7 +218,7 @@ export class CustomerIoTrigger implements INodeType {
 			},
 		],
 	};
-	// @ts-ignore (because of request)
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -236,15 +230,23 @@ export class CustomerIoTrigger implements INodeType {
 
 				const endpoint = '/reporting_webhooks';
 
-				let { reporting_webhooks: webhooks } = await customerIoApiRequest.call(this, 'GET', endpoint, {}, 'beta');
+				let { reporting_webhooks: webhooks } = await customerIoApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					'beta',
+				);
 
 				if (webhooks === null) {
 					webhooks = [];
 				}
 
 				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl &&
-						eventExists(currentEvents, webhook.events)) {
+					if (
+						webhook.endpoint === webhookUrl &&
+						eventExists(currentEvents, webhook.events as IDataObject)
+					) {
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -253,7 +255,6 @@ export class CustomerIoTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events', []) as string[];
 
@@ -294,7 +295,7 @@ export class CustomerIoTrigger implements INodeType {
 					events: data,
 				};
 
-				webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'beta');
+				const webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'beta');
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhook.id as string;
@@ -320,9 +321,7 @@ export class CustomerIoTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

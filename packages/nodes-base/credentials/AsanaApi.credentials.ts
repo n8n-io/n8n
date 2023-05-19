@@ -1,18 +1,18 @@
-import {
-	IAuthenticateGeneric,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AsanaApi implements ICredentialType {
 	name = 'asanaApi';
+
 	displayName = 'Asana API';
+
 	documentationUrl = 'asana';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -25,5 +25,4 @@ export class AsanaApi implements ICredentialType {
 			},
 		},
 	};
-
 }

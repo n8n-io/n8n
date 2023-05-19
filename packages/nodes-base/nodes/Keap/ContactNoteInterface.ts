@@ -1,4 +1,3 @@
-
 export interface INote {
 	body?: string;
 	contact_id?: number;

@@ -1,22 +1,15 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { apiRequest } from '../../../transport';
 
-import {
-	apiRequest,
-} from '../../../transport';
-
-
-export async function addAlert(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function addAlert(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const customerId = this.getNodeParameter('customerId', index) as IDataObject;
 	const assetId = this.getNodeParameter('assetId', index) as IDataObject;
 	const description = this.getNodeParameter('description', index) as IDataObject;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
@@ -31,8 +24,7 @@ export async function addAlert(this: IExecuteFunctions, index: number): Promise<
 	body.asset_id = assetId;
 	body.description = description;
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.alert);
+	return this.helpers.returnJsonArray(responseData.alert as IDataObject);
 }

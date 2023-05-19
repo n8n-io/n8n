@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const teamOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const teamOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
+				resource: ['team'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const teamOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a team',
+				action: 'Create a team',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a team',
+				action: 'Delete a team',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a team',
+				action: 'Get a team',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all teams',
+				description: 'Retrieve many teams',
+				action: 'Get many teams',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a team',
+				action: 'Update a team',
 			},
 		],
 		default: 'create',
@@ -60,12 +61,8 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,12 +74,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -109,12 +102,8 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['team'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -131,12 +120,8 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['team'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -152,12 +137,8 @@ export const teamFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['team'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -172,15 +153,9 @@ export const teamFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['team'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -192,12 +167,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['team'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -223,12 +194,8 @@ export const teamFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['team'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -240,12 +207,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['team'],
+				operation: ['update'],
 			},
 		},
 		options: [

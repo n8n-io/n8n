@@ -2,14 +2,11 @@
 	"node": "n8n-nodes-base.coinGecko",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Productivity",
-		"Finance & Accounting"
-	],
+	"categories": ["Productivity", "Finance & Accounting"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.coinGecko/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.coingecko/"
 			}
 		],
 		"generic": [

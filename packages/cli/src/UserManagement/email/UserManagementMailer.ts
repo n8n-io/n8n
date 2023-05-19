@@ -1,98 +1,80 @@
-/* eslint-disable import/no-cycle */
-import { existsSync, readFileSync } from 'fs';
-import { IDataObject } from 'n8n-workflow';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
+import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import { GenericHelpers } from '../..';
-import * as config from '../../../config';
-import {
-	InviteEmailData,
-	PasswordResetData,
-	SendEmailResult,
-	UserManagementMailerImplementation,
-} from './Interfaces';
+import { Service } from 'typedi';
+import config from '@/config';
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
-// TODO: make function fully async (remove sync functions)
-async function getTemplate(configKeyName: string, defaultFilename: string) {
-	const templateOverride = (await GenericHelpers.getConfigValue(
-		`userManagement.emails.templates.${configKeyName}`,
-	)) as string;
+type Template = HandlebarsTemplateDelegate<unknown>;
+type TemplateName = 'invite' | 'passwordReset';
 
-	let template;
-	if (templateOverride && existsSync(templateOverride)) {
-		template = readFileSync(templateOverride, {
-			encoding: 'utf-8',
-		});
-	} else {
-		template = readFileSync(pathJoin(__dirname, `templates/${defaultFilename}`), {
-			encoding: 'utf-8',
-		});
+const templates: Partial<Record<TemplateName, Template>> = {};
+
+async function getTemplate(
+	templateName: TemplateName,
+	defaultFilename = `${templateName}.html`,
+): Promise<Template> {
+	let template = templates[templateName];
+	if (!template) {
+		const templateOverride = config.getEnv(`userManagement.emails.templates.${templateName}`);
+
+		let markup;
+		if (templateOverride && existsSync(templateOverride)) {
+			markup = await readFile(templateOverride, 'utf-8');
+		} else {
+			markup = await readFile(pathJoin(__dirname, `templates/${defaultFilename}`), 'utf-8');
+		}
+		template = Handlebars.compile(markup);
+		templates[templateName] = template;
 	}
 	return template;
 }
 
-function replaceStrings(template: string, data: IDataObject) {
-	let output = template;
-	const keys = Object.keys(data);
-	keys.forEach((key) => {
-		const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
-		output = output.replace(regex, data[key] as string);
-	});
-	return output;
-}
-
+@Service()
 export class UserManagementMailer {
-	private mailer: UserManagementMailerImplementation | undefined;
+	private mailer: NodeMailer | undefined;
 
 	constructor() {
 		// Other implementations can be used in the future.
-		if (config.getEnv('userManagement.emails.mode') === 'smtp') {
+		if (
+			config.getEnv('userManagement.emails.mode') === 'smtp' &&
+			config.getEnv('userManagement.emails.smtp.host') !== ''
+		) {
 			this.mailer = new NodeMailer();
 		}
 	}
 
 	async verifyConnection(): Promise<void> {
-		if (!this.mailer) return Promise.reject();
+		if (!this.mailer) throw new Error('No mailer configured.');
 
 		return this.mailer.verifyConnection();
 	}
 
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
-		let template = await getTemplate('invite', 'invite.html');
-		template = replaceStrings(template, inviteEmailData);
-
+		const template = await getTemplate('invite');
 		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
-			body: template,
+			body: template(inviteEmailData),
 		});
 
 		// If mailer does not exist it means mail has been disabled.
-		return result ?? { success: true };
+		// No error, just say no email was sent.
+		return result ?? { emailSent: false };
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
-		let template = await getTemplate('passwordReset', 'passwordReset.html');
-		template = replaceStrings(template, passwordResetData);
-
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		const template = await getTemplate('passwordReset', 'passwordReset.html');
 		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
-			body: template,
+			body: template(passwordResetData),
 		});
 
 		// If mailer does not exist it means mail has been disabled.
-		return result ?? { success: true };
+		// No error, just say no email was sent.
+		return result ?? { emailSent: false };
 	}
-}
-
-let mailerInstance: UserManagementMailer | undefined;
-
-export async function getInstance(): Promise<UserManagementMailer> {
-	if (mailerInstance === undefined) {
-		mailerInstance = new UserManagementMailer();
-		await mailerInstance.verifyConnection();
-	}
-	return mailerInstance;
 }

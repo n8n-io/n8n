@@ -1,6 +1,6 @@
-import { OptionsWithUri } from 'request';
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
+import type { IDataObject, IExecuteFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
@@ -9,33 +9,33 @@ export interface RundeckCredentials {
 
 export class RundeckApi {
 	private credentials?: RundeckCredentials;
-	private executeFunctions: IExecuteFunctions;
 
+	private executeFunctions: IExecuteFunctions;
 
 	constructor(executeFunctions: IExecuteFunctions) {
 		this.executeFunctions = executeFunctions;
 	}
 
-
 	protected async request(method: string, endpoint: string, body: IDataObject, query: object) {
+		const credentialType = 'rundeckApi';
 
 		const options: OptionsWithUri = {
-			headers: {
-				'user-agent': 'n8n',
-				'X-Rundeck-Auth-Token': this.credentials?.token,
-			},
 			rejectUnauthorized: false,
 			method,
 			qs: query,
-			uri: this.credentials?.url + endpoint,
+			uri: (this.credentials?.url as string) + endpoint,
 			body,
 			json: true,
 		};
 
 		try {
-			return await this.executeFunctions.helpers.request!(options);
+			return await this.executeFunctions.helpers.requestWithAuthentication.call(
+				this.executeFunctions,
+				credentialType,
+				options,
+			);
 		} catch (error) {
-			throw new NodeApiError(this.executeFunctions.getNode(), error);
+			throw new NodeApiError(this.executeFunctions.getNode(), error as JsonObject);
 		}
 	}
 
@@ -49,13 +49,12 @@ export class RundeckApi {
 		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
-	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
-
+	async executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
 		let params = '';
 
-		if(args) {
-			for(const arg of args) {
-				params += '-' + arg.name + ' ' + arg.value + ' ';
+		if (args) {
+			for (const arg of args) {
+				params += '-' + (arg.name as string) + ' ' + (arg.value as string) + ' ';
 			}
 		}
 
@@ -66,8 +65,7 @@ export class RundeckApi {
 		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
 	}
 
-	getJobMetadata(jobId: string): Promise<IDataObject> {
+	async getJobMetadata(jobId: string): Promise<IDataObject> {
 		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
-
 }

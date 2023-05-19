@@ -1,20 +1,16 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { apiRequest } from '../../../transport';
 
-import {
-	apiRequest,
-} from '../../../transport';
-
-
-export async function updateContact(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function updateContact(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('contactId', index) as IDataObject;
-	const { address, customerId, email, name, notes, phone } = this.getNodeParameter('updateFields', index) as IDataObject;
+	const { address, customerId, email, name, notes, phone } = this.getNodeParameter(
+		'updateFields',
+		index,
+	);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -23,7 +19,7 @@ export async function updateContact(this: IExecuteFunctions, index: number): Pro
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address1 = addressData.address;
 	}
 
@@ -37,8 +33,7 @@ export async function updateContact(this: IExecuteFunctions, index: number): Pro
 		phone,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject);
 }

@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Snowflake implements ICredentialType {
 	name = 'snowflake';
+
 	displayName = 'Snowflake';
+
 	documentationUrl = 'snowflake';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Account',
@@ -27,7 +27,8 @@ export class Snowflake implements ICredentialType {
 			name: 'warehouse',
 			type: 'string',
 			default: '',
-			description: 'The default virtual warehouse to use for the session after connecting. Used for performing queries, loading data, etc.',
+			description:
+				'The default virtual warehouse to use for the session after connecting. Used for performing queries, loading data, etc.',
 		},
 		{
 			displayName: 'Username',
@@ -63,7 +64,8 @@ export class Snowflake implements ICredentialType {
 			name: 'clientSessionKeepAlive',
 			type: 'boolean',
 			default: false,
-			description: 'Whether to keep alive the client session. By default, client connections typically time out approximately 3-4 hours after the most recent query was executed. If the parameter clientSessionKeepAlive is set to true, the client’s connection to the server will be kept alive indefinitely, even if no queries are executed.',
+			description:
+				'Whether to keep alive the client session. By default, client connections typically time out approximately 3-4 hours after the most recent query was executed. If the parameter clientSessionKeepAlive is set to true, the client’s connection to the server will be kept alive indefinitely, even if no queries are executed.',
 		},
 	];
 }

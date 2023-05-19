@@ -1,22 +1,26 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function autopilotApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function autopilotApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
 
-	const credentials = await this.getCredentials('autopilotApi') as IDataObject;
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	_option: IDataObject = {},
+): Promise<any> {
+	const credentials = (await this.getCredentials('autopilotApi')) as IDataObject;
 
 	const apiKey = `${credentials.apiKey}`;
 
@@ -33,7 +37,7 @@ export async function autopilotApiRequest(this: IExecuteFunctions | IWebhookFunc
 		uri: uri || `${endpoint}${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 	if (!Object.keys(query).length) {
@@ -41,14 +45,21 @@ export async function autopilotApiRequest(this: IExecuteFunctions | IWebhookFunc
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function autopilotApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function autopilotApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 
@@ -58,12 +69,11 @@ export async function autopilotApiRequestAllItems(this: IExecuteFunctions | ILoa
 	do {
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
 		endpoint = `${base}/${responseData.bookmark}`;
-		returnData.push.apply(returnData, responseData[propertyName]);
-		if (query.limit && returnData.length >= query.limit && returnAll === false) {
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit && !returnAll) {
 			return returnData;
 		}
-	} while (
-		responseData.bookmark !== undefined
-	);
+	} while (responseData.bookmark !== undefined);
 	return returnData;
 }

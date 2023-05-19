@@ -1,20 +1,21 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
-import { runChunked } from '../../utils/migrationHelpers';
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { MigrationContext, ReversibleMigration } from '@db/types';
+import { runInBatches } from '@db/utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
 
-export class UpdateWorkflowCredentials1630451444017 implements MigrationInterface {
-	name = 'UpdateWorkflowCredentials1630451444017';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		const credentialsEntities = await queryRunner.query(`
+export class UpdateWorkflowCredentials1630451444017 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type
 			FROM ${tablePrefix}credentials_entity
-		`);
+		`)) as Array<{ id: string; name: string; type: string }>;
 
 		const workflowsQuery = `
 			SELECT id, nodes
@@ -22,7 +23,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 		`;
 
 		// @ts-ignore
-		await runChunked(queryRunner, workflowsQuery, (workflows) => {
+		await runInBatches(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				let credentialsUpdated = false;
@@ -36,7 +37,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -54,7 +55,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -65,7 +66,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 			WHERE waitTill IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
+		await runInBatches(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = execution.workflowData;
 				let credentialsUpdated = false;
@@ -79,7 +80,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -97,7 +98,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -123,7 +124,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 								// @ts-ignore
 								(credentials) => credentials.name === name && credentials.type === type,
 							);
-							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+							node.credentials[type] = { id: matchingCredentials?.id || null, name };
 							credentialsUpdated = true;
 						}
 					}
@@ -140,25 +141,23 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
-		const credentialsEntities = await queryRunner.query(`
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
+		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type
 			FROM ${tablePrefix}credentials_entity
-		`);
+		`)) as Array<{ id: string; name: string; type: string }>;
 
 		const workflowsQuery = `
 			SELECT id, nodes
 			FROM ${tablePrefix}workflow_entity
 		`;
 		// @ts-ignore
-		await runChunked(queryRunner, workflowsQuery, (workflows) => {
+		await runInBatches(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				let credentialsUpdated = false;
@@ -195,7 +194,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -206,7 +205,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 			WHERE waitTill IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
+		await runInBatches(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = execution.workflowData;
 				let credentialsUpdated = false;
@@ -244,7 +243,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -293,7 +292,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
 	}

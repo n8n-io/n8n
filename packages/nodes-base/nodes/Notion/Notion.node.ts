@@ -1,33 +1,22 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
-import {
-	NotionV1,
-} from './v1/NotionV1.node';
+import { NotionV1 } from './v1/NotionV1.node';
+import { NotionV2 } from './v2/NotionV2.node';
 
-import {
-	NotionV2,
-} from './v2/NotionV2.node';
-
-import {
-	NodeVersionedType,
-} from '../../src/NodeVersionedType';
-
-export class Notion extends NodeVersionedType {
+export class Notion extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Notion (Beta)',
+			displayName: 'Notion',
 			name: 'notion',
 			icon: 'file:notion.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Consume Notion API (Beta)',
+			description: 'Consume Notion API',
 			defaultVersion: 2,
 		};
 
-		const nodeVersions: INodeVersionedType['nodeVersions'] = {
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new NotionV1(baseDescription),
 			2: new NotionV2(baseDescription),
 		};

@@ -2,6 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		data-test-id="setup-form"
 		@submit="onSubmit"
 		@secondaryClick="showSkipConfirmation"
 	/>
@@ -9,26 +10,32 @@
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { defineComponent } from 'vue';
 
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
-import { restApi } from '@/components/mixins/restApi';
+import { useToast, useMessage } from '@/composables';
+import type { IFormBoxConfig } from '@/Interface';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
-
-export default mixins(
-	showMessage,
-	restApi,
-).extend({
+export default defineComponent({
 	name: 'SetupView',
 	components: {
 		AuthView,
 	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	async mounted() {
-		const getAllCredentialsPromise = this.getAllCredentials();
-		const getAllWorkflowsPromise = this.getAllWorkflows();
-		await Promise.all([getAllCredentialsPromise, getAllWorkflowsPromise]);
+		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
+		this.credentialsCount = credentials;
+		this.workflowsCount = workflows;
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -79,6 +86,13 @@ export default mixins(
 						capitalize: true,
 					},
 				},
+				{
+					name: 'agree',
+					properties: {
+						label: this.$locale.baseText('auth.agreement.label'),
+						type: 'checkbox',
+					},
+				},
 			],
 		};
 
@@ -89,85 +103,96 @@ export default mixins(
 			credentialsCount: 0,
 		};
 	},
+	computed: {
+		...mapStores(useCredentialsStore, useSettingsStore, useUIStore, useUsersStore),
+	},
 	methods: {
-		async getAllCredentials() {
-			const credentials = await this.$store.dispatch('credentials/fetchAllCredentials');
-			this.credentialsCount = credentials.length;
-		},
-		async getAllWorkflows() {
-			const workflows = await this.restApi().getWorkflows();
-			this.workflowsCount = workflows.length;
-		},
 		async confirmSetupOrGoBack(): Promise<boolean> {
 			if (this.workflowsCount === 0 && this.credentialsCount === 0) {
 				return true;
 			}
 
-			const workflows = this.workflowsCount > 0
-				? this.$locale.baseText(
-					'auth.setup.setupConfirmation.existingWorkflows',
-					{ adjustToNumber: this.workflowsCount },
-				)
-				: '';
+			const workflows =
+				this.workflowsCount > 0
+					? this.$locale.baseText('auth.setup.setupConfirmation.existingWorkflows', {
+							adjustToNumber: this.workflowsCount,
+					  })
+					: '';
 
-			const credentials = this.credentialsCount > 0
-				? this.$locale.baseText(
-					'auth.setup.setupConfirmation.credentials',
-					{ adjustToNumber: this.credentialsCount },
-				)
-				: '';
+			const credentials =
+				this.credentialsCount > 0
+					? this.$locale.baseText('auth.setup.setupConfirmation.credentials', {
+							adjustToNumber: this.credentialsCount,
+					  })
+					: '';
 
-			const entities = workflows && credentials ? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {interpolate: { workflows, credentials }}) : (workflows || credentials);
-			return await this.confirmMessage(
+			const entities =
+				workflows && credentials
+					? this.$locale.baseText('auth.setup.setupConfirmation.concatEntities', {
+							interpolate: { workflows, credentials },
+					  })
+					: workflows || credentials;
+			const confirm = await this.confirm(
 				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
 					interpolate: {
 						entities,
 					},
 				}),
 				this.$locale.baseText('auth.setup.confirmOwnerSetup'),
-				null,
-				this.$locale.baseText('auth.setup.createAccount'),
-				this.$locale.baseText('auth.setup.goBack'),
+				{
+					confirmButtonText: this.$locale.baseText('auth.setup.createAccount'),
+					cancelButtonText: this.$locale.baseText('auth.setup.goBack'),
+				},
 			);
+
+			return confirm === MODAL_CONFIRM;
 		},
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: { [key: string]: string | boolean }) {
 			try {
 				const confirmSetup = await this.confirmSetupOrGoBack();
 				if (!confirmSetup) {
 					return;
 				}
 
-				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
+				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
-				await this.$store.dispatch('users/createOwner', values);
-				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.HOMEPAGE });
-				}
-				else {
-					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
+				await this.usersStore.createOwner(
+					values as { firstName: string; lastName: string; email: string; password: string },
+				);
+
+				if (values.agree === true) {
+					try {
+						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
+					} catch {}
 				}
 
+				if (forceRedirectedHere) {
+					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+				} else {
+					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
+				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
+				this.showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
 			this.loading = false;
 		},
 		async showSkipConfirmation() {
-			const skip = await this.confirmMessage(
+			const skip = await this.confirm(
 				this.$locale.baseText('auth.setup.ownerAccountBenefits'),
 				this.$locale.baseText('auth.setup.skipOwnerSetupQuestion'),
-				null,
-				this.$locale.baseText('auth.setup.skipSetup'),
-				this.$locale.baseText('auth.setup.goBack'),
+				{
+					confirmButtonText: this.$locale.baseText('auth.setup.skipSetup'),
+					cancelButtonText: this.$locale.baseText('auth.setup.goBack'),
+				},
 			);
-			if (skip) {
+			if (skip === MODAL_CONFIRM) {
 				this.onSkip();
 			}
 		},
 		onSkip() {
-			this.$store.dispatch('users/skipOwnerSetup');
-			this.$router.push({
-				name: VIEWS.HOMEPAGE,
+			void this.usersStore.skipOwnerSetup();
+			void this.$router.push({
+				name: VIEWS.NEW_WORKFLOW,
 			});
 		},
 	},

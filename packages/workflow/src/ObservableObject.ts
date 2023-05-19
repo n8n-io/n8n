@@ -2,10 +2,9 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
-// eslint-disable-next-line import/no-cycle
-import { IDataObject, IObservableObject } from '.';
+import type { IDataObject, IObservableObject } from './Interfaces';
 
-export interface IObservableOptions {
+interface IObservableOptions {
 	ignoreEmptyOnFirstChild?: boolean;
 }
 
@@ -18,7 +17,7 @@ export function create(
 	// eslint-disable-next-line no-param-reassign, @typescript-eslint/prefer-nullish-coalescing
 	depth = depth || 0;
 
-	// Make all the children of target also observeable
+	// Make all the children of target also observable
 	// eslint-disable-next-line no-restricted-syntax
 	for (const key in target) {
 		if (typeof target[key] === 'object' && target[key] !== null) {
@@ -61,6 +60,7 @@ export function create(
 					depth === 0 &&
 					target[name.toString()] === undefined &&
 					typeof value === 'object' &&
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					Object.keys(value).length === 0
 					// eslint-disable-next-line no-empty
 				) {

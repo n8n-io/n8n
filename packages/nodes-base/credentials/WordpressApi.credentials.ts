@@ -1,12 +1,17 @@
-import {
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class WordpressApi implements ICredentialType {
 	name = 'wordpressApi';
+
 	displayName = 'Wordpress API';
+
 	documentationUrl = 'wordpress';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
@@ -31,4 +36,22 @@ export class WordpressApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',
+			url: '/users',
+			method: 'GET',
+		},
+	};
 }

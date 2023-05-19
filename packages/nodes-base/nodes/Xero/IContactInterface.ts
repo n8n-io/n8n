@@ -1,4 +1,3 @@
-
 export interface IAddress {
 	AddressType?: string;
 	AddressLine1?: string;

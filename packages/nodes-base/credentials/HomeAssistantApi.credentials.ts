@@ -1,12 +1,12 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HomeAssistantApi implements ICredentialType {
 	name = 'homeAssistantApi';
+
 	displayName = 'Home Assistant API';
+
 	documentationUrl = 'homeAssistant';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
@@ -30,6 +30,7 @@ export class HomeAssistantApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

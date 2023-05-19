@@ -1,11 +1,8 @@
 import * as formidable from 'formidable';
 
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -13,11 +10,9 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import {
-	jotformApiRequest,
-} from './GenericFunctions';
-
+import { jotformApiRequest } from './GenericFunctions';
 
 interface IQuestionData {
 	name: string;
@@ -62,7 +57,8 @@ export class JotFormTrigger implements INodeType {
 					loadOptionsMethod: 'getForms',
 				},
 				default: '',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Resolve Data',
@@ -70,7 +66,8 @@ export class JotFormTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
+				description:
+					'By default does the webhook-data use internal keys instead of the names. If this option gets activated, it will resolve the keys automatically to the actual names.',
 			},
 			{
 				displayName: 'Only Answers',
@@ -80,18 +77,17 @@ export class JotFormTrigger implements INodeType {
 				description: 'Whether to return only the answers of the form and not any of the other data',
 			},
 		],
-
 	};
 
 	methods = {
 		loadOptions: {
-			// Get all the available forms to display them to user so that he can
+			// Get all the available forms to display them to user so that they can
 			// select them easily
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {
 					limit: 1000,
-				 };
+				};
 				const forms = await jotformApiRequest.call(this, 'GET', '/user/forms', {}, qs);
 				for (const form of forms.content) {
 					const formName = form.title;
@@ -105,7 +101,7 @@ export class JotFormTrigger implements INodeType {
 			},
 		},
 	};
-	// @ts-ignore
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -116,13 +112,13 @@ export class JotFormTrigger implements INodeType {
 				try {
 					const responseData = await jotformApiRequest.call(this, 'GET', endpoint);
 
-					const webhookUrls = Object.values(responseData.content);
+					const webhookUrls = Object.values(responseData.content as IDataObject);
 					const webhookUrl = this.getNodeWebhookUrl('default');
 					if (!webhookUrls.includes(webhookUrl)) {
 						return false;
 					}
 
-					const webhookIds = Object.keys(responseData.content);
+					const webhookIds = Object.keys(responseData.content as IDataObject);
 					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
 				} catch (error) {
 					return false;
@@ -139,7 +135,7 @@ export class JotFormTrigger implements INodeType {
 					//webhookURL: 'https://en0xsizp3qyt7f.x.pipedream.net/',
 				};
 				const { content } = await jotformApiRequest.call(this, 'POST', endpoint, body);
-				webhookData.webhookId = Object.keys(content)[0];
+				webhookData.webhookId = Object.keys(content as IDataObject)[0];
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -149,7 +145,7 @@ export class JotFormTrigger implements INodeType {
 				const endpoint = `/form/${formId}/webhooks/${webhookData.webhookId}`;
 				try {
 					responseData = await jotformApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				if (responseData.message !== 'success') {
@@ -161,7 +157,6 @@ export class JotFormTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const formId = this.getNodeParameter('form') as string;
@@ -170,25 +165,21 @@ export class JotFormTrigger implements INodeType {
 
 		const form = new formidable.IncomingForm({});
 
-		return new Promise((resolve, reject) => {
-
-			form.parse(req, async (err, data, files) => {
-
-				const rawRequest = JSON.parse(data.rawRequest as string);
+		return new Promise((resolve, _reject) => {
+			form.parse(req, async (err, data, _files) => {
+				const rawRequest = jsonParse<any>(data.rawRequest as string);
 				data.rawRequest = rawRequest;
 
 				let returnData: IDataObject;
-				if (resolveData === false) {
-					if (onlyAnswers === true) {
+				if (!resolveData) {
+					if (onlyAnswers) {
 						returnData = data.rawRequest as unknown as IDataObject;
 					} else {
 						returnData = data;
 					}
 
 					resolve({
-						workflowData: [
-							this.helpers.returnJsonArray(returnData),
-						],
+						workflowData: [this.helpers.returnJsonArray(returnData)],
 					});
 				}
 
@@ -198,14 +189,16 @@ export class JotFormTrigger implements INodeType {
 
 				// Create a dictionary to resolve the keys
 				const questionNames: IDataObject = {};
-				for (const question of Object.values(responseData.content) as IQuestionData[]) {
+				for (const question of Object.values<IQuestionData>(
+					responseData.content as IQuestionData[],
+				)) {
 					questionNames[question.name] = question.text;
 				}
 
 				// Resolve the keys
 				let questionKey: string;
 				const questionsData: IDataObject = {};
-				for (const key of Object.keys(rawRequest)) {
+				for (const key of Object.keys(rawRequest as IDataObject)) {
 					if (!key.includes('_')) {
 						continue;
 					}
@@ -218,7 +211,7 @@ export class JotFormTrigger implements INodeType {
 					questionsData[questionNames[questionKey] as string] = rawRequest[key];
 				}
 
-				if (onlyAnswers === true) {
+				if (onlyAnswers) {
 					returnData = questionsData as unknown as IDataObject;
 				} else {
 					// @ts-ignore
@@ -227,12 +220,9 @@ export class JotFormTrigger implements INodeType {
 				}
 
 				resolve({
-					workflowData: [
-						this.helpers.returnJsonArray(returnData),
-					],
+					workflowData: [this.helpers.returnJsonArray(returnData)],
 				});
 			});
-
 		});
 	}
 }

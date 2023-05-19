@@ -1,15 +1,17 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
+
 	displayName = 'Cortex API';
+
 	documentationUrl = 'cortex';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -42,5 +44,4 @@ export class CortexApi implements ICredentialType {
 			url: '/api/analyzer',
 		},
 	};
-
 }

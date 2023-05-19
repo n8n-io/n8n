@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -36,14 +33,9 @@ import {
 	userOperations,
 } from './descriptions';
 
-import {
-	SplunkCredentials,
-	SplunkFeedResponse,
-} from './types';
+import type { SplunkCredentials, SplunkFeedResponse } from './types';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import type { OptionsWithUri } from 'request';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -112,11 +104,15 @@ export class Splunk implements INodeType {
 		loadOptions: {
 			async getRoles(this: ILoadOptionsFunctions) {
 				const endpoint = '/services/authorization/roles';
-				const responseData = await splunkApiRequest.call(this, 'GET', endpoint) as SplunkFeedResponse;
+				const responseData = (await splunkApiRequest.call(
+					this,
+					'GET',
+					endpoint,
+				)) as SplunkFeedResponse;
 				const { entry: entries } = responseData.feed;
 
 				return Array.isArray(entries)
-					? entries.map(entry => ({ name: entry.title, value: entry.title }))
+					? entries.map((entry) => ({ name: entry.title, value: entry.title }))
 					: [{ name: entries.title, value: entries.title }];
 			},
 		},
@@ -125,17 +121,13 @@ export class Splunk implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const {
-					authToken,
-					baseUrl,
-					allowUnauthorizedCerts,
-				} = credential.data as SplunkCredentials;
+				const { authToken, baseUrl, allowUnauthorizedCerts } = credential.data as SplunkCredentials;
 
 				const endpoint = '/services/alerts/fired_alerts';
 
 				const options: OptionsWithUri = {
 					headers: {
-						'Authorization': `Bearer ${authToken}`,
+						Authorization: `Bearer ${authToken}`,
 						'Content-Type': 'application/x-www-form-urlencoded',
 					},
 					method: 'GET',
@@ -166,23 +158,19 @@ export class Splunk implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'firedAlert') {
-
 					// **********************************************************************
 					//                               firedAlert
 					// **********************************************************************
 
 					if (operation === 'getReport') {
-
 						// ----------------------------------------
 						//            firedAlert: getReport
 						// ----------------------------------------
@@ -191,17 +179,13 @@ export class Splunk implements INodeType {
 
 						const endpoint = '/services/alerts/fired_alerts';
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
-
 					}
-
 				} else if (resource === 'searchConfiguration') {
-
 					// **********************************************************************
 					//                          searchConfiguration
 					// **********************************************************************
 
 					if (operation === 'delete') {
-
 						// ----------------------------------------
 						//       searchConfiguration: delete
 						// ----------------------------------------
@@ -210,14 +194,15 @@ export class Splunk implements INodeType {
 
 						const partialEndpoint = '/services/saved/searches/';
 						const searchConfigurationId = getId.call(
-							this, i, 'searchConfigurationId', '/search/saved/searches/',
+							this,
+							i,
+							'searchConfigurationId',
+							'/search/saved/searches/',
 						); // id endpoint differs from operation endpoint
 						const endpoint = `${partialEndpoint}/${searchConfigurationId}`;
 
 						responseData = await splunkApiRequest.call(this, 'DELETE', endpoint);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//         searchConfiguration: get
 						// ----------------------------------------
@@ -226,14 +211,15 @@ export class Splunk implements INodeType {
 
 						const partialEndpoint = '/services/saved/searches/';
 						const searchConfigurationId = getId.call(
-							this, i, 'searchConfigurationId', '/search/saved/searches/',
+							this,
+							i,
+							'searchConfigurationId',
+							'/search/saved/searches/',
 						); // id endpoint differs from operation endpoint
 						const endpoint = `${partialEndpoint}/${searchConfigurationId}`;
 
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//       searchConfiguration: getAll
 						// ----------------------------------------
@@ -241,24 +227,22 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#saved.2Fsearches
 
 						const qs = {} as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						populate(options, qs);
 						setCount.call(this, qs);
 
 						const endpoint = '/services/saved/searches';
-						responseData = await splunkApiRequest.call(this, 'GET', endpoint, {}, qs).then(formatFeed);
-
+						responseData = await splunkApiRequest
+							.call(this, 'GET', endpoint, {}, qs)
+							.then(formatFeed);
 					}
-
 				} else if (resource === 'searchJob') {
-
 					// **********************************************************************
 					//                               searchJob
 					// **********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//            searchJob: create
 						// ----------------------------------------
@@ -269,35 +253,31 @@ export class Splunk implements INodeType {
 							search: this.getNodeParameter('search', i),
 						} as IDataObject;
 
-						const {
-							earliest_time,
-							latest_time,
-							index_earliest,
-							index_latest,
-							...rest
-						} = this.getNodeParameter('additionalFields', i) as IDataObject & {
-							earliest_time?: string;
-							latest_time?: string;
-							index_earliest?: string,
-							index_latest?: string,
-						};
+						const { earliest_time, latest_time, index_earliest, index_latest, ...rest } =
+							this.getNodeParameter('additionalFields', i) as IDataObject & {
+								earliest_time?: string;
+								latest_time?: string;
+								index_earliest?: string;
+								index_latest?: string;
+							};
 
-						populate({
-							...earliest_time && { earliest_time: toUnixEpoch(earliest_time) },
-							...latest_time && { latest_time: toUnixEpoch(latest_time) },
-							...index_earliest && { index_earliest: toUnixEpoch(index_earliest) },
-							...index_latest && { index_latest: toUnixEpoch(index_latest) },
-							...rest,
-						}, body);
+						populate(
+							{
+								...(earliest_time && { earliest_time: toUnixEpoch(earliest_time) }),
+								...(latest_time && { latest_time: toUnixEpoch(latest_time) }),
+								...(index_earliest && { index_earliest: toUnixEpoch(index_earliest) }),
+								...(index_latest && { index_latest: toUnixEpoch(index_latest) }),
+								...rest,
+							},
+							body,
+						);
 
 						const endpoint = '/services/search/jobs';
 						responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
 
 						const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
 						responseData = await splunkApiRequest.call(this, 'GET', getEndpoint).then(formatSearch);
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//            searchJob: delete
 						// ----------------------------------------
@@ -308,9 +288,7 @@ export class Splunk implements INodeType {
 						const searchJobId = getId.call(this, i, 'searchJobId', partialEndpoint);
 						const endpoint = `${partialEndpoint}/${searchJobId}`;
 						responseData = await splunkApiRequest.call(this, 'DELETE', endpoint);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//              searchJob: get
 						// ----------------------------------------
@@ -321,9 +299,7 @@ export class Splunk implements INodeType {
 						const searchJobId = getId.call(this, i, 'searchJobId', partialEndpoint);
 						const endpoint = `${partialEndpoint}/${searchJobId}`;
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatSearch);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//            searchJob: getAll
 						// ----------------------------------------
@@ -331,25 +307,27 @@ export class Splunk implements INodeType {
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#search.2Fjobs
 
 						const qs = {} as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						populate(options, qs);
 						setCount.call(this, qs);
 
 						const endpoint = '/services/search/jobs';
-						responseData = await splunkApiRequest.call(this, 'GET', endpoint, {}, qs) as SplunkFeedResponse;
+						responseData = (await splunkApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							qs,
+						)) as SplunkFeedResponse;
 						responseData = formatFeed(responseData);
-
 					}
-
 				} else if (resource === 'searchResult') {
-
 					// **********************************************************************
 					//                              searchResult
 					// **********************************************************************
 
 					if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//           searchResult: getAll
 						// ----------------------------------------
@@ -360,9 +338,9 @@ export class Splunk implements INodeType {
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject & {
-							keyValueMatch?: { keyValuePair?: { key: string; value: string; } }
+							keyValueMatch?: { keyValuePair?: { key: string; value: string } };
 						};
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const keyValuePair = filters?.keyValueMatch?.keyValuePair;
 
@@ -374,18 +352,16 @@ export class Splunk implements INodeType {
 						setCount.call(this, qs);
 
 						const endpoint = `/services/search/jobs/${searchJobId}/results`;
-						responseData = await splunkApiRequest.call(this, 'GET', endpoint, {}, qs).then(formatResults);
-
+						responseData = await splunkApiRequest
+							.call(this, 'GET', endpoint, {}, qs)
+							.then(formatResults);
 					}
-
 				} else if (resource === 'user') {
-
 					// **********************************************************************
 					//                                  user
 					// **********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//               user: create
 						// ----------------------------------------
@@ -400,16 +376,19 @@ export class Splunk implements INodeType {
 							password: this.getNodeParameter('password', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						populate(additionalFields, body);
 
 						const endpoint = '/services/authentication/users';
-						responseData = await splunkApiRequest.call(this, 'POST', endpoint, body) as SplunkFeedResponse;
+						responseData = (await splunkApiRequest.call(
+							this,
+							'POST',
+							endpoint,
+							body,
+						)) as SplunkFeedResponse;
 						responseData = formatFeed(responseData);
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------------
 						//               user: delete
 						// ----------------------------------------
@@ -421,9 +400,7 @@ export class Splunk implements INodeType {
 						const endpoint = `${partialEndpoint}/${userId}`;
 						await splunkApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                user: get
 						// ----------------------------------------
@@ -434,9 +411,7 @@ export class Splunk implements INodeType {
 						const userId = getId.call(this, i, 'userId', '/services/authentication/users/');
 						const endpoint = `${partialEndpoint}/${userId}`;
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//               user: getAll
 						// ----------------------------------------
@@ -447,10 +422,10 @@ export class Splunk implements INodeType {
 						setCount.call(this, qs);
 
 						const endpoint = '/services/authentication/users';
-						responseData = await splunkApiRequest.call(this, 'GET', endpoint, {}, qs).then(formatFeed);
-
+						responseData = await splunkApiRequest
+							.call(this, 'GET', endpoint, {}, qs)
+							.then(formatFeed);
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//               user: update
 						// ----------------------------------------
@@ -462,20 +437,22 @@ export class Splunk implements INodeType {
 							roles: string[];
 						};
 
-						populate({
-							...roles && { roles },
-							...rest,
-						}, body);
+						populate(
+							{
+								...(roles && { roles }),
+								...rest,
+							},
+							body,
+						);
 
 						const partialEndpoint = '/services/authentication/users/';
 						const userId = getId.call(this, i, 'userId', partialEndpoint);
 						const endpoint = `${partialEndpoint}/${userId}`;
-						responseData = await splunkApiRequest.call(this, 'POST', endpoint, body).then(formatFeed);
-
+						responseData = await splunkApiRequest
+							.call(this, 'POST', endpoint, body)
+							.then(formatFeed);
 					}
-
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.cause.error });
@@ -486,9 +463,8 @@ export class Splunk implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
+				? returnData.push(...(responseData as IDataObject[]))
 				: returnData.push(responseData as IDataObject);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

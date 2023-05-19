@@ -1,21 +1,16 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	githubApiRequest,
-} from './GenericFunctions';
-
+import { githubApiRequest } from './GenericFunctions';
+import { getRepositories, getUsers } from './SearchFunctions';
 
 export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +19,8 @@ export class GithubTrigger implements INodeType {
 		icon: 'file:github.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
+		subtitle:
+			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when Github events occur',
 		defaults: {
 			name: 'Github Trigger',
@@ -37,9 +33,7 @@ export class GithubTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -48,9 +42,7 @@ export class GithubTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -64,6 +56,13 @@ export class GithubTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'Only members with owner privileges for an organization or admin privileges for a repository can set up the webhooks this node requires.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
@@ -83,20 +82,111 @@ export class GithubTrigger implements INodeType {
 			{
 				displayName: 'Repository Owner',
 				name: 'owner',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				placeholder: 'n8n-io',
-				description: 'Owner of the repsitory',
+				modes: [
+					{
+						displayName: 'Repository Owner',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an owner...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+							searchFilterRequired: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/github.com\\/([-_0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n-io',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_a-zA-Z0-9]+',
+									errorMessage: 'Not a valid Github Owner Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$value}}',
+					},
+				],
 			},
 			{
 				displayName: 'Repository Name',
 				name: 'repository',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				placeholder: 'n8n',
-				description: 'The name of the repsitory',
+				modes: [
+					{
+						displayName: 'Repository Name',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Repository...',
+						typeOptions: {
+							searchListMethod: 'getRepositories',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://github.com/n8n-io/n8n',
+						extractValue: {
+							type: 'regex',
+							regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https:\\/\\/github.com\\/(?:[-_0-9a-zA-Z]+)\\/([-_.0-9a-zA-Z]+)(?:.*)',
+									errorMessage: 'Not a valid Github Repository URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'e.g. n8n',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[-_.0-9a-zA-Z]+',
+									errorMessage: 'Not a valid Github Repository Name',
+								},
+							},
+						],
+						url: '=https://github.com/{{$parameter["owner"]}}/{{$value}}',
+					},
+				],
 			},
 			{
 				displayName: 'Events',
@@ -111,7 +201,8 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'Check Run',
 						value: 'check_run',
-						description: 'Triggered when a check run is created, rerequested, completed, or has a requested_action',
+						description:
+							'Triggered when a check run is created, rerequested, completed, or has a requested_action',
 					},
 					{
 						name: 'Check Suite',
@@ -122,11 +213,6 @@ export class GithubTrigger implements INodeType {
 						name: 'Commit Comment',
 						value: 'commit_comment',
 						description: 'Triggered when a commit comment is created',
-					},
-					{
-						name: 'Content Reference',
-						value: 'content_reference',
-						description: 'Triggered when the body or comment of an issue or pull request includes a URL that matches a configured content reference domain. Only GitHub Apps can receive this event.',
 					},
 					{
 						name: 'Create',
@@ -171,7 +257,8 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'Installation',
 						value: 'installation',
-						description: 'Triggered when someone installs (created), uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
+						description:
+							'Triggered when someone installs (created), uninstalls (deleted), or accepts new permissions (new_permissions_accepted) for a GitHub App. When a GitHub App owner requests new permissions, the person who installed the GitHub App must accept the new permissions request.',
 					},
 					{
 						name: 'Installation Repositories',
@@ -186,27 +273,31 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'Issues',
 						value: 'issues',
-						description: 'Triggered when an issue is opened, edited, deleted, transferred, pinned, unpinned, closed, reopened, assigned, unassigned, labeled, unlabeled, locked, unlocked, milestoned, or demilestoned',
+						description:
+							'Triggered when an issue is opened, edited, deleted, transferred, pinned, unpinned, closed, reopened, assigned, unassigned, labeled, unlabeled, locked, unlocked, milestoned, or demilestoned',
 					},
 					{
 						name: 'Label',
 						value: 'label',
-						description: 'Triggered when a repository\'s label is created, edited, or deleted',
+						description: "Triggered when a repository's label is created, edited, or deleted",
 					},
 					{
 						name: 'Marketplace Purchase',
 						value: 'marketplace_purchase',
-						description: 'Triggered when someone purchases a GitHub Marketplace plan, cancels their plan, upgrades their plan (effective immediately), downgrades a plan that remains pending until the end of the billing cycle, or cancels a pending plan change',
+						description:
+							'Triggered when someone purchases a GitHub Marketplace plan, cancels their plan, upgrades their plan (effective immediately), downgrades a plan that remains pending until the end of the billing cycle, or cancels a pending plan change',
 					},
 					{
 						name: 'Member',
 						value: 'member',
-						description: 'Triggered when a user accepts an invitation or is removed as a collaborator to a repository, or has their permissions changed',
+						description:
+							'Triggered when a user accepts an invitation or is removed as a collaborator to a repository, or has their permissions changed',
 					},
 					{
 						name: 'Membership',
 						value: 'membership',
-						description: 'Triggered when a user is added or removed from a team. Organization hooks only.',
+						description:
+							'Triggered when a user is added or removed from a team. Organization hooks only.',
 					},
 					{
 						name: 'Meta',
@@ -216,32 +307,38 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'Milestone',
 						value: 'milestone',
-						description: 'Triggered when a milestone is created, closed, opened, edited, or deleted',
+						description:
+							'Triggered when a milestone is created, closed, opened, edited, or deleted',
 					},
 					{
 						name: 'Org Block',
 						value: 'org_block',
-						description: 'Triggered when an organization blocks or unblocks a user. Organization hooks only.',
+						description:
+							'Triggered when an organization blocks or unblocks a user. Organization hooks only.',
 					},
 					{
 						name: 'Organization',
 						value: 'organization',
-						description: 'Triggered when an organization is deleted and renamed, and when a user is added, removed, or invited to an organization. Organization hooks only.',
+						description:
+							'Triggered when an organization is deleted and renamed, and when a user is added, removed, or invited to an organization. Organization hooks only.',
 					},
 					{
 						name: 'Page Build',
 						value: 'page_build',
-						description: 'Triggered on push to a GitHub Pages enabled branch (gh-pages for project pages, master for user and organization pages)',
+						description:
+							'Triggered on push to a GitHub Pages enabled branch (gh-pages for project pages, master for user and organization pages)',
 					},
 					{
 						name: 'Project',
 						value: 'project',
-						description: 'Triggered when a project is created, updated, closed, reopened, or deleted',
+						description:
+							'Triggered when a project is created, updated, closed, reopened, or deleted',
 					},
 					{
 						name: 'Project Card',
 						value: 'project_card',
-						description: 'Triggered when a project card is created, edited, moved, converted to an issue, or deleted',
+						description:
+							'Triggered when a project card is created, edited, moved, converted to an issue, or deleted',
 					},
 					{
 						name: 'Project Column',
@@ -254,39 +351,46 @@ export class GithubTrigger implements INodeType {
 						description: 'Triggered when a private repository is open sourced',
 					},
 					{
-						name: 'Pull Pequest',
+						name: 'Pull Request',
 						value: 'pull_request',
-						description: 'Triggered when a pull request is assigned, unassigned, labeled, unlabeled, opened, edited, closed, reopened, synchronize, ready_for_review, locked, unlocked, a pull request review is requested, or a review request is removed',
+						description:
+							'Triggered when a pull request is assigned, unassigned, labeled, unlabeled, opened, edited, closed, reopened, synchronize, ready_for_review, locked, unlocked, a pull request review is requested, or a review request is removed',
 					},
 					{
 						name: 'Pull Request Review',
 						value: 'pull_request_review',
-						description: 'Triggered when a pull request review is submitted into a non-pending state, the body is edited, or the review is dismissed',
+						description:
+							'Triggered when a pull request review is submitted into a non-pending state, the body is edited, or the review is dismissed',
 					},
 					{
 						name: 'Pull Request Review Comment',
 						value: 'pull_request_review_comment',
-						description: 'Triggered when a comment on a pull request\'s unified diff is created, edited, or deleted (in the Files Changed tab)',
+						description:
+							"Triggered when a comment on a pull request's unified diff is created, edited, or deleted (in the Files Changed tab)",
 					},
 					{
 						name: 'Push',
 						value: 'push',
-						description: 'Triggered on a push to a repository branch. Branch pushes and repository tag pushes also trigger webhook push events. This is the default event.',
+						description:
+							'Triggered on a push to a repository branch. Branch pushes and repository tag pushes also trigger webhook push events. This is the default event.',
 					},
 					{
 						name: 'Release',
 						value: 'release',
-						description: 'Triggered when a release is published, unpublished, created, edited, deleted, or prereleased',
+						description:
+							'Triggered when a release is published, unpublished, created, edited, deleted, or prereleased',
 					},
 					{
 						name: 'Repository',
 						value: 'repository',
-						description: 'Triggered when a repository is created, archived, unarchived, renamed, edited, transferred, made public, or made private. Organization hooks are also triggered when a repository is deleted.',
+						description:
+							'Triggered when a repository is created, archived, unarchived, renamed, edited, transferred, made public, or made private. Organization hooks are also triggered when a repository is deleted.',
 					},
 					{
 						name: 'Repository Import',
 						value: 'repository_import',
-						description: 'Triggered when a successful, cancelled, or failed repository import finishes for a GitHub organization or a personal repository',
+						description:
+							'Triggered when a successful, cancelled, or failed repository import finishes for a GitHub organization or a personal repository',
 					},
 					{
 						name: 'Repository Vulnerability Alert',
@@ -296,7 +400,8 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'Security Advisory',
 						value: 'security_advisory',
-						description: 'Triggered when a new security advisory is published, updated, or withdrawn',
+						description:
+							'Triggered when a new security advisory is published, updated, or withdrawn',
 					},
 					{
 						name: 'Star',
@@ -311,7 +416,8 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'Team',
 						value: 'team',
-						description: 'Triggered when an organization\'s team is created, deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only.',
+						description:
+							"Triggered when an organization's team is created, deleted, edited, added_to_repository, or removed_from_repository. Organization hooks only.",
 					},
 					{
 						name: 'Team Add',
@@ -331,7 +437,6 @@ export class GithubTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -343,14 +448,16 @@ export class GithubTrigger implements INodeType {
 				}
 
 				// Webhook got created before so check if it still exists
-				const owner = this.getNodeParameter('owner') as string;
-				const repository = this.getNodeParameter('repository') as string;
+				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+				const repository = this.getNodeParameter('repository', '', {
+					extractValue: true,
+				}) as string;
 				const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404') {
+					if (error.cause.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -361,7 +468,6 @@ export class GithubTrigger implements INodeType {
 					// Some error occured
 					throw error;
 				}
-
 				// If it did not error then the webhook exists
 				return true;
 			},
@@ -369,11 +475,16 @@ export class GithubTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
-					throw new NodeOperationError(this.getNode(), 'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+					);
 				}
 
-				const owner = this.getNodeParameter('owner') as string;
-				const repository = this.getNodeParameter('repository') as string;
+				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+				const repository = this.getNodeParameter('repository', '', {
+					extractValue: true,
+				}) as string;
 				const events = this.getNodeParameter('events', []);
 
 				const endpoint = `/repos/${owner}/${repository}/hooks`;
@@ -396,14 +507,14 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.httpCode === '422') {
+					if (error.cause.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook
 						responseData = await githubApiRequest.call(this, 'GET', endpoint, body);
 
 						for (const webhook of responseData as IDataObject[]) {
-							if ((webhook!.config! as IDataObject).url! === webhookUrl) {
+							if ((webhook.config! as IDataObject).url! === webhookUrl) {
 								// Webhook got found
 								if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
 									// Webhook with same events exists already so no need to
@@ -415,7 +526,17 @@ export class GithubTrigger implements INodeType {
 							}
 						}
 
-						throw new NodeOperationError(this.getNode(), 'A webhook with the identical URL probably exists already. Please delete it manually on Github!');
+						throw new NodeOperationError(
+							this.getNode(),
+							'A webhook with the identical URL probably exists already. Please delete it manually on Github!',
+						);
+					}
+
+					if (error.cause.httpCode === '404') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Check that the repository exists and that you have permission to create the webhooks this node requires',
+						);
 					}
 
 					throw error;
@@ -423,7 +544,9 @@ export class GithubTrigger implements INodeType {
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
-					throw new NodeApiError(this.getNode(), responseData, { message: 'Github webhook creation response did not contain the expected data.' });
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+						message: 'Github webhook creation response did not contain the expected data.',
+					});
 				}
 
 				webhookData.webhookId = responseData.id as string;
@@ -435,8 +558,10 @@ export class GithubTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const owner = this.getNodeParameter('owner') as string;
-					const repository = this.getNodeParameter('repository') as string;
+					const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
+					const repository = this.getNodeParameter('repository', '', {
+						extractValue: true,
+					}) as string;
 					const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 					const body = {};
 
@@ -447,7 +572,7 @@ export class GithubTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}
@@ -457,7 +582,12 @@ export class GithubTrigger implements INodeType {
 		},
 	};
 
-
+	methods = {
+		listSearch: {
+			getUsers,
+			getRepositories,
+		},
+	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
@@ -472,23 +602,19 @@ export class GithubTrigger implements INodeType {
 			};
 		}
 
-		// Is a regular webhoook call
+		// Is a regular webhook call
 
 		// TODO: Add headers & requestPath
 		const returnData: IDataObject[] = [];
 
-		returnData.push(
-			{
-				body: bodyData,
-				headers: this.getHeaderData(),
-				query: this.getQueryData(),
-			},
-		);
+		returnData.push({
+			body: bodyData,
+			headers: this.getHeaderData(),
+			query: this.getQueryData(),
+		});
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(returnData),
-			],
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }

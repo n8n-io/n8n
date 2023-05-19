@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const firedAlertOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const firedAlertOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'firedAlert',
-				],
+				resource: ['firedAlert'],
 			},
 		},
 		options: [
@@ -20,6 +16,7 @@ export const firedAlertOperations: INodeProperties[] = [
 				name: 'Get Report',
 				value: 'getReport',
 				description: 'Retrieve a fired alerts report',
+				action: 'Get a fired alerts report',
 			},
 		],
 		default: 'getReport',

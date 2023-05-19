@@ -1,9 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -62,7 +58,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Datastore',
+			name: 'Customer Datastore (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -90,9 +86,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAllPeople',
-						],
+						operation: ['getAllPeople'],
 					},
 				},
 				default: false,
@@ -104,12 +98,8 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAllPeople',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAllPeople'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -124,36 +114,37 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-
 			if (operation === 'getOnePerson') {
-
 				responseData = data[0];
 			}
 
 			if (operation === 'getAllPeople') {
+				const returnAll = this.getNodeParameter('returnAll', i);
 
-				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = data;
 				} else {
-					const limit = this.getNodeParameter('limit', i) as number;
+					const limit = this.getNodeParameter('limit', i);
 					responseData = data.slice(0, limit);
 				}
 			}
 
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+				returnData.push({ json: responseData });
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

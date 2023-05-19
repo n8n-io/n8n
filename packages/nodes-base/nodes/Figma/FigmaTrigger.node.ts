@@ -1,29 +1,21 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	figmaApiRequest,
-} from './GenericFunctions';
+import { figmaApiRequest } from './GenericFunctions';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
-import {
-	randomBytes,
-} from 'crypto';
+import { randomBytes } from 'crypto';
 
 export class FigmaTrigger implements INodeType {
 	description: INodeTypeDescription = {
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Figma Trigger (Beta)',
 		name: 'figmaTrigger',
 		icon: 'file:figma.svg',
@@ -57,7 +49,8 @@ export class FigmaTrigger implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: 'Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/.',
+				description:
+					'Trigger will monitor this Figma Team for changes. Team ID can be found in the URL of a Figma Team page when viewed in a web browser: figma.com/files/team/{TEAM-ID}/.',
 			},
 			{
 				displayName: 'Trigger On',
@@ -72,17 +65,20 @@ export class FigmaTrigger implements INodeType {
 					{
 						name: 'File Deleted',
 						value: 'fileDelete',
-						description: 'Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted.',
+						description:
+							'Triggers whenever a file has been deleted. Does not trigger on all files within a folder, if the folder is deleted.',
 					},
 					{
 						name: 'File Updated',
 						value: 'fileUpdate',
-						description: 'Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made.',
+						description:
+							'Triggers whenever a file saves or is deleted. This occurs whenever a file is closed or within 30 seconds after changes have been made.',
 					},
 					{
 						name: 'File Version Updated',
 						value: 'fileVersionUpdate',
-						description: 'Triggers whenever a named version is created in the version history of a file',
+						description:
+							'Triggers whenever a named version is created in the version history of a file',
 					},
 					{
 						name: 'Library Publish',
@@ -96,7 +92,6 @@ export class FigmaTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -106,12 +101,18 @@ export class FigmaTrigger implements INodeType {
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const { webhooks } = await figmaApiRequest.call(this, 'GET', `/v2/teams/${teamId}/webhooks`);
+				const { webhooks } = await figmaApiRequest.call(
+					this,
+					'GET',
+					`/v2/teams/${teamId}/webhooks`,
+				);
 				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl
-						&& webhook.team_id === teamId
-						&& webhook.event_type === snakeCase(triggerOn).toUpperCase()
-						&& webhook.status === 'ACTIVE') {
+					if (
+						webhook.endpoint === webhookUrl &&
+						webhook.team_id === teamId &&
+						webhook.event_type === snakeCase(triggerOn).toUpperCase() &&
+						webhook.status === 'ACTIVE'
+					) {
 						webhookData.webhookId = webhook.id as string;
 						return true;
 					}
@@ -130,7 +131,7 @@ export class FigmaTrigger implements INodeType {
 					team_id: teamId,
 					description: `n8n-webhook:${webhookUrl}`,
 					endpoint: webhookUrl,
-					passcode: randomBytes(10).toString('hex') as string,
+					passcode: randomBytes(10).toString('hex'),
 				};
 
 				const responseData = await figmaApiRequest.call(this, 'POST', endpoint, body);
@@ -146,7 +147,6 @@ export class FigmaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
 						await figmaApiRequest.call(this, 'DELETE', endpoint);
@@ -154,7 +154,7 @@ export class FigmaTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -174,9 +174,7 @@ export class FigmaTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

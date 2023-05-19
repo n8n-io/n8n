@@ -1,7 +1,5 @@
-/* eslint-disable n8n-nodes-base/filesystem-wrong-node-filename */
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import * as customer from './customer';
 import * as ticket from './ticket';
@@ -19,7 +17,6 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Gets data from SyncroMSP',
 	defaults: {
 		name: 'SyncroMSP',
-		color: '#08a4ab',
 	},
 	inputs: ['main'],
 	outputs: ['main'],

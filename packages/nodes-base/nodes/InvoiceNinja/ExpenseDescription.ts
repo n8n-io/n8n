@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const expenseOperations: INodeProperties[] = [
 	{
@@ -8,9 +8,7 @@ export const expenseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
+				resource: ['expense'],
 			},
 		},
 		options: [
@@ -18,21 +16,25 @@ export const expenseOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new expense',
+				action: 'Create an expense',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an expense',
+				action: 'Delete an expense',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an expense',
+				action: 'Get an expense',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all expenses',
+				description: 'Get data of many expenses',
+				action: 'Get many expenses',
 			},
 		],
 		default: 'create',
@@ -40,9 +42,9 @@ export const expenseOperations: INodeProperties[] = [
 ];
 
 export const expenseFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 expense:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 expense:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -51,12 +53,8 @@ export const expenseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'expense',
-				],
+				operation: ['create'],
+				resource: ['expense'],
 			},
 		},
 		options: [
@@ -76,7 +74,8 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -98,7 +97,8 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getExpenseCategories',
 				},
@@ -256,18 +256,12 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -304,7 +298,8 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Vendor Name or ID',
 				name: 'vendor',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getVendors',
 				},
@@ -312,9 +307,9 @@ export const expenseFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 expense:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 expense:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Expense ID',
 		name: 'expenseId',
@@ -323,18 +318,14 @@ export const expenseFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['expense'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  expense:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  expense:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Expense ID',
 		name: 'expenseId',
@@ -343,30 +334,22 @@ export const expenseFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['expense'],
+				operation: ['get'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  expense:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  expense:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['expense'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -378,15 +361,9 @@ export const expenseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'expense',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['expense'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

@@ -1,22 +1,15 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { apiRequest } from '../../../transport';
 
-import {
-	apiRequest,
-} from '../../../transport';
-
-
-export async function updateTicket(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function updateTicket(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('ticketId', index) as IDataObject;
-	const { assetId, customerId, dueDate, issueType, status, subject, ticketType, contactId } = this.getNodeParameter('updateFields', index) as IDataObject;
-
+	const { assetId, customerId, dueDate, issueType, status, subject, ticketType, contactId } =
+		this.getNodeParameter('updateFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -35,11 +28,12 @@ export async function updateTicket(this: IExecuteFunctions, index: number): Prom
 	};
 
 	if (!Object.keys(body).length) {
-		throw new NodeOperationError(this.getNode(), 'At least one update fields has to be defined');
+		throw new NodeOperationError(this.getNode(), 'At least one update fields has to be defined', {
+			itemIndex: index,
+		});
 	}
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.ticket);
+	return this.helpers.returnJsonArray(responseData.ticket as IDataObject[]);
 }

@@ -1,18 +1,12 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	sms77ApiRequest,
-} from './GenericFunctions';
+import { sms77ApiRequest } from './GenericFunctions';
 
 export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
@@ -62,9 +56,7 @@ export class Sms77 implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
+						resource: ['sms'],
 					},
 				},
 				options: [
@@ -72,6 +64,7 @@ export class Sms77 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
@@ -83,9 +76,7 @@ export class Sms77 implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'voice',
-						],
+						resource: ['voice'],
 					},
 				},
 				options: [
@@ -93,6 +84,7 @@ export class Sms77 implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Converts text to voice and calls a given number',
+						action: 'Convert text to voice',
 					},
 				],
 				default: 'send',
@@ -105,15 +97,12 @@ export class Sms77 implements INodeType {
 				placeholder: '+4901234567890',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
-				description: 'The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters.',
+				description:
+					'The caller ID displayed in the receivers display. Max 16 numeric or 11 alphanumeric characters.',
 			},
 			{
 				displayName: 'To',
@@ -124,16 +113,12 @@ export class Sms77 implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
-				description: 'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from Sms77.',
+				description:
+					'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from Sms77.',
 			},
 			{
 				displayName: 'Message',
@@ -141,18 +126,10 @@ export class Sms77 implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
 				description: 'The message to send. Max. 1520 characters',
@@ -165,12 +142,8 @@ export class Sms77 implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
+						operation: ['send'],
+						resource: ['sms'],
 					},
 				},
 				options: [
@@ -202,7 +175,7 @@ export class Sms77 implements INodeType {
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'Send as flash message being displayed directly the receiver\'s display',
+						description: "Send as flash message being displayed directly the receiver's display",
 					},
 					{
 						displayName: 'Label',
@@ -224,7 +197,8 @@ export class Sms77 implements INodeType {
 						name: 'performance_tracking',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to enable performance tracking for URLs found in the message text',
+						description:
+							'Whether to enable performance tracking for URLs found in the message text',
 					},
 					{
 						displayName: 'TTL',
@@ -234,7 +208,8 @@ export class Sms77 implements INodeType {
 						typeOptions: {
 							minValue: 1,
 						},
-						description: 'Custom time to live specifying the validity period of a message in minutes',
+						description:
+							'Custom time to live specifying the validity period of a message in minutes',
 					},
 				],
 			},
@@ -246,12 +221,8 @@ export class Sms77 implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['voice'],
 					},
 				},
 				options: [
@@ -268,7 +239,8 @@ export class Sms77 implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '+4901234567890',
-						description: 'The caller ID. Please use only verified sender IDs, one of your virtual inbound numbers or one of our shared virtual numbers.',
+						description:
+							'The caller ID. Please use only verified sender IDs, one of your virtual inbound numbers or one of our shared virtual numbers.',
 					},
 					{
 						displayName: 'XML',
@@ -295,7 +267,7 @@ export class Sms77 implements INodeType {
 						const from = this.getNodeParameter('from', i) as string;
 						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							from,
 							to,
@@ -310,7 +282,7 @@ export class Sms77 implements INodeType {
 					if (operation === 'send') {
 						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							to,
 							text,
@@ -325,7 +297,6 @@ export class Sms77 implements INodeType {
 				} else if (responseData !== undefined) {
 					returnData.push(responseData as IDataObject);
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

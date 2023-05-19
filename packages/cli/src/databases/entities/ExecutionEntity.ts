@@ -1,26 +1,10 @@
-/* eslint-disable import/no-cycle */
-import { WorkflowExecuteMode } from 'n8n-workflow';
-
-import { Column, ColumnOptions, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import * as config from '../../../config';
-import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
+import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
+import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn } from 'typeorm';
+import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
+import { IWorkflowDb } from '@/Interfaces';
+import type { IExecutionFlattedDb } from '@/Interfaces';
+import { idStringifier } from '../utils/transformers';
+import type { ExecutionMetadata } from './ExecutionMetadata';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -29,8 +13,9 @@ function resolveDataType(dataType: string) {
 @Index(['workflowId', 'finished', 'id'])
 @Index(['workflowId', 'waitTill', 'id'])
 export class ExecutionEntity implements IExecutionFlattedDb {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	@Column('text')
 	data: string;
@@ -47,19 +32,25 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column({ nullable: true })
 	retrySuccessId: string;
 
-	@Column(resolveDataType('datetime'))
+	@Column('varchar', { nullable: true })
+	status: ExecutionStatus;
+
+	@Column(datetimeColumnType)
 	startedAt: Date;
 
 	@Index()
-	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
+	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	workflowData: IWorkflowDb;
 
-	@Column({ nullable: true })
+	@Column({ nullable: true, transformer: idStringifier })
 	workflowId: string;
 
-	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
-	waitTill: Date;
+	@Column({ type: datetimeColumnType, nullable: true })
+	waitTill: Date | null;
+
+	@OneToMany('ExecutionMetadata', 'execution')
+	metadata: ExecutionMetadata[];
 }

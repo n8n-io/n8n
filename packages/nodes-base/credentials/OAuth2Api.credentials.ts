@@ -1,14 +1,14 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OAuth2Api implements ICredentialType {
 	name = 'oAuth2Api';
+
 	displayName = 'OAuth2 API';
+
 	documentationUrl = 'httpRequest';
+
 	genericAuth = true;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
@@ -32,9 +32,7 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					grantType: [
-						'authorizationCode',
-					],
+					grantType: ['authorizationCode'],
 				},
 			},
 			default: '',
@@ -76,26 +74,18 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					grantType: [
-						'authorizationCode',
-					],
+					grantType: ['authorizationCode'],
 				},
 			},
 			default: '',
-			description: 'For some services additional query parameters have to be set which can be defined here',
+			description:
+				'For some services additional query parameters have to be set which can be defined here',
 			placeholder: 'access_type=offline',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
-			displayOptions: {
-				show: {
-					grantType: [
-						'authorizationCode',
-					],
-				},
-			},
 			options: [
 				{
 					name: 'Body',

@@ -1,18 +1,13 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	mailerliteApiRequest,
-} from './GenericFunctions';
+import { mailerliteApiRequest } from './GenericFunctions';
 
 export class MailerLiteTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -101,7 +96,7 @@ export class MailerLiteTrigger implements INodeType {
 					{
 						name: 'Subscriber Updated',
 						value: 'subscriber.update',
-						description: 'Fired when any of the subscriber\'s custom fields are updated',
+						description: "Fired when any of the subscriber's custom fields are updated",
 					},
 				],
 				required: true,
@@ -111,7 +106,6 @@ export class MailerLiteTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -123,8 +117,7 @@ export class MailerLiteTrigger implements INodeType {
 				const endpoint = '/webhooks';
 				const { webhooks } = await mailerliteApiRequest.call(this, 'GET', endpoint, {});
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl &&
-						webhook.event === event) {
+					if (webhook.url === webhookUrl && webhook.event === event) {
 						// Set webhook-id to be sure that it can be deleted
 						webhookData.webhookId = webhook.id as string;
 						return true;
@@ -157,7 +150,6 @@ export class MailerLiteTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/webhooks/${webhookData.webhookId}`;
 
 					try {
@@ -167,7 +159,7 @@ export class MailerLiteTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -176,14 +168,12 @@ export class MailerLiteTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData() as IDataObject;
+		const body = this.getBodyData();
 
 		const events = body.events as IDataObject[];
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(events),
-			],
+			workflowData: [this.helpers.returnJsonArray(events)],
 		};
 	}
 }

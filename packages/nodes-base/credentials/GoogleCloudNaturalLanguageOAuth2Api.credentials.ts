@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'https://www.googleapis.com/auth/cloud-language',
@@ -10,11 +7,13 @@ const scopes = [
 
 export class GoogleCloudNaturalLanguageOAuth2Api implements ICredentialType {
 	name = 'googleCloudNaturalLanguageOAuth2Api';
-	extends = [
-		'googleOAuth2Api',
-	];
+
+	extends = ['googleOAuth2Api'];
+
 	displayName = 'Google Cloud Natural Language OAuth2 API';
-	documentationUrl = 'google';
+
+	documentationUrl = 'google/oauth-single-service';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

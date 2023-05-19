@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const channelOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'channel',
-				],
+				resource: ['channel'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const channelOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a channel',
+				action: 'Create a channel',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a channel',
+				action: 'Delete a channel',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a channel',
+				action: 'Get a channel',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all channels',
+				description: 'Get many channels',
+				action: 'Get many channels',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a channel',
+				action: 'Update a channel',
 			},
 		],
 		default: 'create',
@@ -47,7 +48,6 @@ export const channelOperations: INodeProperties[] = [
 ];
 
 export const channelFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -56,18 +56,15 @@ export const channelFields: INodeProperties[] = [
 		name: 'teamId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -79,12 +76,8 @@ export const channelFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -96,12 +89,8 @@ export const channelFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['create'],
+				resource: ['channel'],
 			},
 		},
 		default: {},
@@ -111,11 +100,8 @@ export const channelFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Channel\'s description',
+				description: "Channel's description",
 			},
 			{
 				displayName: 'Type',
@@ -145,18 +131,15 @@ export const channelFields: INodeProperties[] = [
 		name: 'teamId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['delete'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -165,21 +148,16 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['delete'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -193,18 +171,15 @@ export const channelFields: INodeProperties[] = [
 		name: 'teamId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['get'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -213,21 +188,16 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['get'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -241,18 +211,15 @@ export const channelFields: INodeProperties[] = [
 		name: 'teamId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -263,12 +230,8 @@ export const channelFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
 			},
 		},
 		default: false,
@@ -280,15 +243,9 @@ export const channelFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'channel',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['channel'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -307,18 +264,15 @@ export const channelFields: INodeProperties[] = [
 		name: 'teamId',
 		required: true,
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTeams',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['update'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -327,21 +281,16 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel Name or ID',
 		name: 'channelId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			loadOptionsDependsOn: ['teamId'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['update'],
+				resource: ['channel'],
 			},
 		},
 		default: '',
@@ -352,12 +301,8 @@ export const channelFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['update'],
+				resource: ['channel'],
 			},
 		},
 		default: {},
@@ -374,11 +319,8 @@ export const channelFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Channel\'s description',
+				description: "Channel's description",
 			},
 		],
 	},

@@ -2,19 +2,16 @@
 	"node": "n8n-nodes-base.emailSend",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Core Nodes"
-	],
+	"categories": ["Communication", "Core Nodes"],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/smtp"
+				"url": "https://docs.n8n.io/integrations/credentials/sendemail/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.emailSend/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
 			}
 		],
 		"generic": [
@@ -31,8 +28,7 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
-	}
+		"Core Nodes": ["Helpers"]
+	},
+	"alias": ["SMTP"]
 }

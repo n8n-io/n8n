@@ -1,6 +1,7 @@
-import { INodeParameters, INodeProperties, NodeHelpers } from '../src';
+import type { INodeParameters, INodeProperties } from '@/Interfaces';
+import { getNodeParameters } from '@/NodeHelpers';
 
-describe('Workflow', () => {
+describe('NodeHelpers', () => {
 	describe('getParameterValue', () => {
 		const tests: Array<{
 			description: string;
@@ -2249,7 +2250,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2360,7 +2361,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2471,7 +2472,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -3340,7 +3341,7 @@ describe('Workflow', () => {
 		for (const testData of tests) {
 			test(testData.description, () => {
 				// returnDefaults: false | returnNoneDisplayed: false
-				let result = NodeHelpers.getNodeParameters(
+				let result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
@@ -3350,7 +3351,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: false
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
@@ -3360,7 +3361,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedFalse.defaultsTrue);
 
 				// returnDefaults: false | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					false,
@@ -3370,7 +3371,7 @@ describe('Workflow', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsFalse);
 
 				// returnDefaults: true | returnNoneDisplayed: true
-				result = NodeHelpers.getNodeParameters(
+				result = getNodeParameters(
 					testData.input.nodePropertiesArray,
 					testData.input.nodeValues,
 					true,
