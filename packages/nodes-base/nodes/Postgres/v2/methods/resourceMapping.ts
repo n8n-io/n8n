@@ -1,7 +1,6 @@
 import type { ILoadOptionsFunctions, ResourceMapperFields, FieldType } from 'n8n-workflow';
 import { getEnumValues, getEnums, getTableSchema, uniqueColumns } from '../helpers/utils';
-import { Connections } from '../transport';
-import type { ConnectionsData } from '../helpers/interfaces';
+import { configurePostgres } from '../transport';
 
 const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
 	string: ['text', 'varchar', 'character varying', 'character', 'char'],
@@ -47,7 +46,7 @@ export async function getMappingColumns(
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
 
-	const { db } = (await Connections.getInstance(credentials)) as ConnectionsData;
+	const { db } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,

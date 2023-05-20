@@ -1319,7 +1319,6 @@ export const validateResourceMapperParameter = (
 	value: ResourceMapperValue,
 	skipRequiredCheck = false,
 ): Record<string, string[]> => {
-	console.log('validateResourceMapperParameter', skipRequiredCheck);
 	const issues: Record<string, string[]> = {};
 	let fieldWordSingular =
 		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';

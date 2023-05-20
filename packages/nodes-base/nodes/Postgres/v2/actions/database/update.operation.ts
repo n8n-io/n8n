@@ -241,8 +241,14 @@ export async function execute(
 
 		const matchValues: string[] = [];
 		if (nodeVersion < 2.2) {
-			matchValues.push(columnsToMatchOn[0]);
+			if (!item[columnsToMatchOn[0]] && dataMode === 'autoMapInputData') {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+				);
+			}
 			matchValues.push(valueToMatchOn);
+			matchValues.push(columnsToMatchOn[0]);
 		} else {
 			columnsToMatchOn.forEach((column) => {
 				matchValues.push(column);
@@ -269,6 +275,7 @@ export async function execute(
 				);
 			}
 		}
+
 		const tableSchema = await getTableSchema(db, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
@@ -293,6 +300,13 @@ export async function execute(
 		}
 
 		const updateColumns = Object.keys(item).filter((column) => !columnsToMatchOn.includes(column));
+
+		if (!Object.keys(updateColumns).length) {
+			throw new NodeOperationError(
+				this.getNode(),
+				"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",
+			);
+		}
 
 		const updates: string[] = [];
 

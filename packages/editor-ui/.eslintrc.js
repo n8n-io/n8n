@@ -8,8 +8,6 @@ module.exports = {
 
 	...sharedOptions(__dirname, 'frontend'),
 
-	ignorePatterns: ['*.d.cts'],
-
 	rules: {
 		// TODO: Remove these
 		'id-denylist': 'off',

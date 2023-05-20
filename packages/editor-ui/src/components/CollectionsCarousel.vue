@@ -63,7 +63,7 @@ export default defineComponent({
 	components: {
 		Card,
 		CollectionCard,
-		VueAgile,
+		agile: VueAgile,
 	},
 	data() {
 		return {
