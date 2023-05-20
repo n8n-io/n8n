@@ -135,7 +135,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'PersonalizationModal',

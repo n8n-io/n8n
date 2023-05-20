@@ -63,7 +63,6 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import PageAlert from '@/components/PageAlert.vue';
 import type { IUser, IUserListAction } from '@/Interface';
 import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
@@ -76,9 +75,6 @@ import { useSSOStore } from '@/stores/sso.store';
 export default defineComponent({
 	name: 'SettingsUsersView',
 	mixins: [copyPaste],
-	components: {
-		PageAlert,
-	},
 	setup() {
 		return {
 			...useToast(),
