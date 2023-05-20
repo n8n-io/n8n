@@ -130,7 +130,7 @@ const showMappingFields = computed<boolean>(() => {
 });
 
 const matchingColumns = computed<string[]>(() => {
-	if (!showMatchingColumnsSelector) {
+	if (!showMatchingColumnsSelector.value) {
 		return [];
 	}
 	if (state.paramValue.matchingColumns) {
