@@ -194,6 +194,8 @@ export declare namespace OwnerRequest {
 			password: string;
 			firstName: string;
 			lastName: string;
+			otpSecret: string;
+			otp: string;
 		}>,
 		{}
 	>;
@@ -260,6 +262,8 @@ export declare namespace UserRequest {
 			firstName: string;
 			lastName: string;
 			password: string;
+			otpSecret: string;
+			otp: string;
 		}
 	>;
 }
@@ -274,6 +278,7 @@ export type LoginRequest = AuthlessRequest<
 	{
 		email: string;
 		password: string;
+		otp: string;
 	}
 >;
 

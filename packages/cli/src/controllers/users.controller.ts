@@ -2,6 +2,7 @@ import validator from 'validator';
 import { In } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import speakeasy from 'speakeasy';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -288,9 +289,9 @@ export class UsersController {
 	async updateUser(req: UserRequest.Update, res: Response) {
 		const { id: inviteeId } = req.params;
 
-		const { inviterId, firstName, lastName, password } = req.body;
+		const { inviterId, firstName, lastName, password, otpSecret, otp } = req.body;
 
-		if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
+		if (!inviterId || !inviteeId || !firstName || !lastName || !password || !otpSecret || !otp) {
 			this.logger.debug(
 				'Request to fill out a user shell failed because of missing properties in payload',
 				{ payload: req.body },
@@ -318,7 +319,7 @@ export class UsersController {
 
 		const invitee = users.find((user) => user.id === inviteeId) as User;
 
-		if (invitee.password) {
+		if (invitee.password || invitee.otpsecret) {
 			this.logger.debug(
 				'Request to fill out a user shell failed because the invite had already been accepted',
 				{ inviteeId },
@@ -326,9 +327,20 @@ export class UsersController {
 			throw new BadRequestError('This invite has been accepted already');
 		}
 
+		const verified = speakeasy.totp.verify({
+			secret: otpSecret,
+			encoding: 'base32',
+			token: otp,
+		});
+
+		if (!verified) {
+			throw new BadRequestError('OTP token is not valid');
+		}
+
 		invitee.firstName = firstName;
 		invitee.lastName = lastName;
 		invitee.password = await hashPassword(validPassword);
+		invitee.otpsecret = otpSecret;
 
 		const updatedUser = await this.userRepository.save(invitee);
 

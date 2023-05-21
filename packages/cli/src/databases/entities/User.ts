@@ -113,4 +113,7 @@ export class User extends AbstractEntity implements IUser {
 	computeIsPending(): void {
 		this.isPending = this.password === null;
 	}
+
+	@Column({ nullable: true, type: String })
+	otpsecret?: string | null;
 }

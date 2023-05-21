@@ -11,6 +11,7 @@ import {
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
+	generateOTPSecret,
 	signup,
 	skipOwnerSetup,
 	submitPersonalizationSurvey,
@@ -181,11 +182,17 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async preOwnerSetup() {
 			return preOwnerSetup(useRootStore().getRestApiContext);
 		},
+		async generateOTPSecret() {
+			const rootStore = useRootStore();
+			return generateOTPSecret(rootStore.getRestApiContext);
+		},
 		async createOwner(params: {
 			firstName: string;
 			lastName: string;
 			email: string;
 			password: string;
+			otp: string;
+			otpSecret: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await setupOwner(rootStore.getRestApiContext, params);
@@ -209,6 +216,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			firstName: string;
 			lastName: string;
 			password: string;
+			otp: string;
+			otpSecret: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await signup(rootStore.getRestApiContext, params);

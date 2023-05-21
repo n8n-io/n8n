@@ -70,6 +70,15 @@ export default mixins(showMessage).extend({
 						capitalize: true,
 					},
 				},
+				{
+					name: 'otp',
+					properties: {
+						label: this.$locale.baseText('auth.otp'),
+						maxlength: 32,
+						required: true,
+						capitalize: true,
+					},
+				},
 			],
 		};
 
