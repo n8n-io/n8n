@@ -1,5 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { sendErrorPostReceive } from './GenericFunctions';
+import { prepareAwesomePromps, sendErrorPostReceive } from './GenericFunctions';
 
 export const chatOperations: INodeProperties[] = [
 	{
@@ -91,6 +91,31 @@ const completeOperations: INodeProperties[] = [
 			},
 		},
 		default: 'gpt-3.5-turbo',
+	},
+	{
+		displayName: 'Act as ...',
+		name: 'actAs',
+		type: 'options',
+		default: 'noAttunement',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					// request: {
+					// 	method: 'GET',
+					// 	url: 'https://github.com/f/awesome-chatgpt-prompts/raw/main/prompts.csv',
+					// },
+					output: {
+						postReceive: [prepareAwesomePromps],
+					},
+				},
+			},
+		},
+		displayOptions: {
+			show: {
+				operation: ['complete'],
+				resource: ['chat'],
+			},
+		},
 	},
 	{
 		displayName: 'Prompt',
