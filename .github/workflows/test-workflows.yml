@@ -88,8 +88,6 @@ jobs:
           channel: '#updates-build-alerts-test'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
-            "Workflow test failed. Please check the following link for more details: \n
-            ${{ steps.tests.outputs.slackMessage}} \n
-            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test workflow> \n
-            Sent By: ${{ github.actor }}
-            "
+            🛑 Workflow test failed 🛑:
+            ${{ steps.tests.outputs.slackMessage}}
+            Sent by Github Action: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test workflow>
