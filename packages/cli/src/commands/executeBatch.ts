@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
 import fs from 'fs';
+import os from 'os';
 import { flags } from '@oclif/command';
 import type { ITaskData } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
@@ -497,10 +498,17 @@ export class ExecuteBatch extends BaseCommand {
 					result.slackMessage = `*${result.summary.errors.length} Executions errors*`;
 					console.log(result.slackMessage);
 				}
+				this.setOutput('slackMessage', JSON.stringify(result.slackMessage));
 			}
-			console.log(result);
 			res(result);
 		});
+	}
+
+	setOutput(key: string, value: any) {
+		// Temporary hack until we move to the new action.
+		const output = process.env.GITHUB_OUTPUT;
+		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+		fs.appendFileSync(output as unknown as fs.PathOrFileDescriptor, `${key}=${value}${os.EOL}`);
 	}
 
 	updateStatus() {
