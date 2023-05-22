@@ -10,7 +10,7 @@
   "packageManager": "pnpm@8.1.0",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
-    "build": "turbo run build",
+    "buildx": "turbo run build",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
@@ -18,7 +18,7 @@
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
-    "start": "run-script-os",
+    "startx": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
