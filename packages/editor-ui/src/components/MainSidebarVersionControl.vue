@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore } from '@/stores';
 import { VERSION_CONTROL_PUSH_MODAL_KEY } from '@/constants';
@@ -28,10 +28,19 @@ const currentBranch = computed(() => {
 });
 
 async function pushWorkfolder() {
-	uiStore.openModalWithData({
-		name: VERSION_CONTROL_PUSH_MODAL_KEY,
-		data: { eventBus },
-	});
+	loadingService.startLoading();
+	try {
+		const status = await versionControlStore.getAggregatedStatus();
+
+		uiStore.openModalWithData({
+			name: VERSION_CONTROL_PUSH_MODAL_KEY,
+			data: { eventBus, status },
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	} finally {
+		loadingService.stopLoading();
+	}
 }
 
 async function pullWorkfolder() {
@@ -70,7 +79,10 @@ async function pullWorkfolder() {
 		<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
 			<n8n-button
 				:title="i18n.baseText('settings.versionControl.button.pull')"
-				:class="{ 'mr-2xs': !isCollapsed, 'mb-2xs': isCollapsed && !versionControlStore.preferences.branchReadOnly }"
+				:class="{
+					'mr-2xs': !isCollapsed,
+					'mb-2xs': isCollapsed && !versionControlStore.preferences.branchReadOnly,
+				}"
 				icon="arrow-down"
 				type="tertiary"
 				size="mini"
