@@ -90,4 +90,4 @@ jobs:
           message: |
             🛑 Workflow test failed 🛑:
             ${{ steps.tests.outputs.slackMessage}}
-            Sent by Github Action: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test workflow>
+            Sent by *Github Action*: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test workflow>

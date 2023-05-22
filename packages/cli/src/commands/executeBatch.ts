@@ -488,11 +488,11 @@ export class ExecuteBatch extends BaseCommand {
 			if (ExecuteBatch.githubWorkflow) {
 				if (result.summary.errors.length < 6) {
 					const errorMessage = result.summary.errors.map((error) => {
-						return `*${error.workflowId}*: ${error.error} "\n\r"`;
+						return `*${error.workflowId}*: ${error.error}`;
 					});
 					result.slackMessage = `*${
 						result.summary.errors.length
-					} Executions errors*. "\n\r" Workflows failing: ${errorMessage.join(' ')} `;
+					} Executions errors*. Workflows failing: ${errorMessage.join(' ')} `;
 				} else {
 					result.slackMessage = `*${result.summary.errors.length} Executions errors*`;
 				}
