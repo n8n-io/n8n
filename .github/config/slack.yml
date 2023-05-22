@@ -5,15 +5,20 @@ pretext: Triggered via {{eventName}} by {{actor}} {{or action "action"}} {{ref}}
 title: Test Workflow
 title_link: https://support.github.com
 
-text: |
-  *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* ffor <{{refUrl}}|`{{ref}}` > TEST {{jobSteps.tests.outputs.slackMessage}}
+blocks:
+  # title
+  - type: section
+    text:
+      type: mrkdwn
+      text: |
+       *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>*
 
-
-
-fields:
-  - title: Error
-    value: "{{jobSteps.tests.outputs.slackMessage}}"
-    short: false
+ # title
+  - type: section
+    text:
+      type: mrkdwn
+      text: |
+      {{jobSteps.tests.outputs.slackMessage}}
 
 footer: >-
   <{{repositoryUrl}}|{{repositoryName}}> Sent Via Github Action #{{runNumber}}
