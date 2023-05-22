@@ -82,6 +82,7 @@
 	"auth.lastName": "Last Name",
 	"auth.newPassword": "New Password",
 	"auth.password": "Password",
+	"auth.otp": "OTP",
 	"auth.role": "Role",
 	"auth.roles.member": "Member",
 	"auth.roles.owner": "Owner",

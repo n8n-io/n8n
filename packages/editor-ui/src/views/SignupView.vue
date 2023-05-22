@@ -1,10 +1,13 @@
 <template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:formLoading="loading"
-		:subtitle="inviteMessage"
-		@submit="onSubmit"
-	/>
+	<AuthView :form="FORM_CONFIG" :formLoading="loading" :subtitle="inviteMessage" @submit="onSubmit">
+		<div :class="$style.otp">
+			<p :class="$style.otpLabel">Secret:</p>
+			<p :class="$style.otp32">{{ otpSecretBase32 }}</p>
+			<div :class="$style.otpQR">
+				<img :src="otpSecretAuthURL" />
+			</div>
+		</div>
+	</AuthView>
 </template>
 
 <script lang="ts">
@@ -12,6 +15,7 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
+import QRCode from 'qrcode';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
@@ -61,6 +65,15 @@ export default mixins(showMessage).extend({
 					},
 				},
 				{
+					name: 'otp',
+					properties: {
+						label: this.$locale.baseText('auth.otp'),
+						maxlength: 32,
+						required: true,
+						capitalize: true,
+					},
+				},
+				{
 					name: 'agree',
 					properties: {
 						label: this.$locale.baseText('auth.agreement.label'),
@@ -75,6 +88,8 @@ export default mixins(showMessage).extend({
 			inviter: null as null | { firstName: string; lastName: string },
 			inviterId: null as string | null,
 			inviteeId: null as string | null,
+			otpSecretBase32: '',
+			otpSecretAuthURL: '',
 		};
 	},
 	async mounted() {
@@ -86,6 +101,7 @@ export default mixins(showMessage).extend({
 			!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string'
 				? null
 				: this.$route.query.inviteeId;
+
 		try {
 			if (!inviterId || !inviteeId) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
@@ -99,6 +115,13 @@ export default mixins(showMessage).extend({
 			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
 			this.$router.replace({ name: VIEWS.SIGNIN });
 		}
+
+		const { base32, otpauth_url } = await this.usersStore.generateOTPSecret();
+
+		this.otpSecretBase32 = base32;
+		QRCode.toDataURL(otpauth_url, (_err, dataUrl) => {
+			this.otpSecretAuthURL = dataUrl;
+		});
 	},
 	computed: {
 		...mapStores(useUIStore, useUsersStore),
@@ -128,12 +151,15 @@ export default mixins(showMessage).extend({
 					...values,
 					inviterId: this.inviterId,
 					inviteeId: this.inviteeId,
+					otpSecret: this.otpSecretBase32,
 				} as {
 					inviteeId: string;
 					inviterId: string;
 					firstName: string;
 					lastName: string;
 					password: string;
+					otpSecret: string;
+					otp: string;
 				});
 
 				if (values.agree === true) {
@@ -151,3 +177,23 @@ export default mixins(showMessage).extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+.otp {
+	margin-bottom: 10px;
+}
+
+.otpLabel {
+	font-size: var(--font-size-s);
+	font-weight: 600;
+}
+
+.otp32 {
+	font-size: var(--font-size-xs);
+	overflow-wrap: break-word;
+}
+
+.otpQR {
+	text-align: center;
+}
+</style>

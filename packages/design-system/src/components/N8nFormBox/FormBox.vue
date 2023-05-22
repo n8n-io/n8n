@@ -14,6 +14,7 @@
 				@submit="onSubmit"
 			/>
 		</div>
+		<slot name="additional" />
 		<div :class="$style.buttonsContainer" v-if="secondaryButtonText || buttonText">
 			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
 				<n8n-link size="medium" theme="text" @click="onSecondaryButtonClick">

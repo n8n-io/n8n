@@ -571,6 +571,11 @@ export interface CurrentUserResponse extends IUserResponse {
 	featureFlags?: FeatureFlags;
 }
 
+export interface GenerateOTPSecretResponse {
+	base32: string;
+	otpauth_url: string;
+}
+
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;

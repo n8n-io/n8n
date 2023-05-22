@@ -1,5 +1,6 @@
 import type {
 	CurrentUserResponse,
+	GenerateOTPSecretResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
@@ -10,6 +11,10 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<CurrentUserResponse | null> {
 	return makeRestApiRequest(context, 'GET', '/login');
+}
+
+export function generateOTPSecret(context: IRestApiContext): Promise<GenerateOTPSecretResponse> {
+	return makeRestApiRequest(context, 'POST', '/otp-secret');
 }
 
 export function login(
@@ -31,7 +36,14 @@ export function preOwnerSetup(
 
 export function setupOwner(
 	context: IRestApiContext,
-	params: { firstName: string; lastName: string; email: string; password: string },
+	params: {
+		firstName: string;
+		lastName: string;
+		email: string;
+		password: string;
+		otp: string;
+		otpSecret: string;
+	},
 ): Promise<IUserResponse> {
 	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
 }

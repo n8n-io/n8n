@@ -1,4 +1,5 @@
 import validator from 'validator';
+import speakeasy from 'speakeasy';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
@@ -57,13 +58,27 @@ export class AuthController {
 	}
 
 	/**
+	 * Generate OTP Secret
+	 */
+	@Post('/otp-secret')
+	generateOTPSecret() {
+		const secret = speakeasy.generateSecret();
+
+		return {
+			base32: secret.base32,
+			otpauth_url: secret.otpauth_url,
+		};
+	}
+
+	/**
 	 * Log in a user.
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
-		const { email, password } = req.body;
+		const { email, password, otp } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
+		if (!otp) throw new Error('OTP is required to log in');
 
 		let user: User | undefined;
 
@@ -81,12 +96,25 @@ export class AuthController {
 		} else {
 			user = await handleEmailLogin(email, password);
 		}
-		if (user) {
-			await issueCookie(res, user);
-			return withFeatureFlags(this.postHog, sanitizeUser(user));
+
+		if (!user) {
+			throw new AuthError('Wrong username or password. Do you have caps lock on?');
 		}
 
-		throw new AuthError('Wrong username or password. Do you have caps lock on?');
+		if (user.otpsecret) {
+			const verified = speakeasy.totp.verify({
+				secret: user.otpsecret,
+				encoding: 'base32',
+				token: otp,
+			});
+
+			if (!verified) {
+				throw new AuthError('OTP is not valid');
+			}
+		}
+
+		await issueCookie(res, user);
+		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
 
 	/**

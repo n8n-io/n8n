@@ -495,10 +495,7 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		// Route for Swagger editor assets
 		// ----------------------------------------
-		this.app.use(
-			'/deep-consulting-swagger',
-			express.static(SWAGGER_DIR),
-		);
+		this.app.use('/deep-consulting-swagger', express.static(SWAGGER_DIR));
 
 		// ----------------------------------------
 		// Public API

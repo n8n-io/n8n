@@ -5,7 +5,15 @@
 		data-test-id="setup-form"
 		@submit="onSubmit"
 		@secondaryClick="showSkipConfirmation"
-	/>
+	>
+		<div :class="$style.otp">
+			<p :class="$style.otpLabel">Secret:</p>
+			<p :class="$style.otp32">{{ otpSecretBase32 }}</p>
+			<div :class="$style.otpQR">
+				<img :src="otpSecretAuthURL" />
+			</div>
+		</div>
+	</AuthView>
 </template>
 
 <script lang="ts">
@@ -13,6 +21,7 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
+import QRCode from 'qrcode';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
@@ -27,9 +36,17 @@ export default mixins(showMessage).extend({
 		AuthView,
 	},
 	async mounted() {
-		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
+		const [{ credentials, workflows }, { base32, otpauth_url }] = await Promise.all([
+			this.usersStore.preOwnerSetup(),
+			this.usersStore.generateOTPSecret(),
+		]);
+
 		this.credentialsCount = credentials;
 		this.workflowsCount = workflows;
+		this.otpSecretBase32 = base32;
+		QRCode.toDataURL(otpauth_url, (_err, dataUrl) => {
+			this.otpSecretAuthURL = dataUrl;
+		});
 	},
 	data() {
 		const FORM_CONFIG: IFormBoxConfig = {
@@ -81,6 +98,15 @@ export default mixins(showMessage).extend({
 					},
 				},
 				{
+					name: 'otp',
+					properties: {
+						label: this.$locale.baseText('auth.otp'),
+						maxlength: 32,
+						required: true,
+						capitalize: true,
+					},
+				},
+				{
 					name: 'agree',
 					properties: {
 						label: this.$locale.baseText('auth.agreement.label'),
@@ -95,6 +121,8 @@ export default mixins(showMessage).extend({
 			loading: false,
 			workflowsCount: 0,
 			credentialsCount: 0,
+			otpSecretBase32: '',
+			otpSecretAuthURL: '',
 		};
 	},
 	computed: {
@@ -147,9 +175,20 @@ export default mixins(showMessage).extend({
 
 				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
-				await this.usersStore.createOwner(
-					values as { firstName: string; lastName: string; email: string; password: string },
-				);
+
+				const inputValues = {
+					...values,
+					otpSecret: this.otpSecretBase32,
+				} as {
+					firstName: string;
+					lastName: string;
+					email: string;
+					password: string;
+					otp: string;
+					otpSecret: string;
+				};
+
+				await this.usersStore.createOwner(inputValues);
 
 				if (values.agree === true) {
 					try {
@@ -188,3 +227,23 @@ export default mixins(showMessage).extend({
 	},
 });
 </script>
+
+<style lang="scss" module>
+.otp {
+	margin-bottom: 10px;
+}
+
+.otpLabel {
+	font-size: var(--font-size-s);
+	font-weight: 600;
+}
+
+.otp32 {
+	font-size: var(--font-size-xs);
+	overflow-wrap: break-word;
+}
+
+.otpQR {
+	text-align: center;
+}
+</style>
