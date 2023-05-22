@@ -18,7 +18,8 @@ export const CurrentDateDescription: INodeProperties[] = [
 		name: 'includeTime',
 		type: 'boolean',
 		default: true,
-		description: 'Whether deactivated, the time will be set to midnight',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description: 'When deactivated, the time will be set to midnight',
 		displayOptions: {
 			show: {
 				operation: ['getCurrentDate'],
