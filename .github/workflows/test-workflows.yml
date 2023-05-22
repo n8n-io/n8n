@@ -88,30 +88,15 @@ jobs:
         with:
           payload: |
             {
-              "blocks":
-                [
-                  {
-                    "type": "header",
-                    "text":
-                      {
-                        "type": "plain_text",
-                        "text": " 🛑 Test Workflow Failed 🛑",
-                        "emoji": true
-                      }
-                  },
-                  {
-                    "type": "section",
-                    "text":
-                      {
-                        "type": "mrkdwn",
-                        "text": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test Workflow > for `${{github.event.pull_request.title}}`",
-                      }
-                  },
-                  { "type": "divider" },
-                  {
-                    "type": "section",
-                    "text": { "type": "mrkdwn", "text": "${{ steps.tests.outputs.slackMessage}}" },
+              "text": "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
                   }
-                ]
-              }
+                }
+              ]
+            }
           channel-id: 'C058UD406CA'
