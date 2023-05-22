@@ -170,7 +170,6 @@ export class ActiveWorkflowRunner {
 
 		const activeWorkflows = await this.getActiveWorkflows();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
-
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
 
@@ -353,7 +352,7 @@ export class ActiveWorkflowRunner {
 				select: ['id'],
 				where: { active: true },
 			});
-			return activeWorkflows.map((workflow) => workflow.id);
+			return activeWorkflows.map((workflow) => workflow.id.toString());
 		} else {
 			const active = await Db.collections.Workflow.find({
 				select: ['id'],
@@ -369,7 +368,7 @@ export class ActiveWorkflowRunner {
 				select: ['workflowId'],
 				where,
 			});
-			return shared.map((id) => id.workflowId);
+			return shared.map((id) => id.workflowId.toString());
 		}
 	}
 
