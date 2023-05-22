@@ -177,7 +177,7 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
+	void runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 
@@ -198,7 +198,7 @@ function addHttpNode() {
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
 	const app_identifier = actions.value[0].key;
-	runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
+	void runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
 		app_identifier,
 	});
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });

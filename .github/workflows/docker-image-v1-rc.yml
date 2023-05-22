@@ -1,14 +1,17 @@
-name: Docker Nightly Image - V1
+name: Docker Image - V1 RC
 
 on:
   schedule:
     - cron: '0 2 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v2.2.4
       - uses: actions/setup-node@v3

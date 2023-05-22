@@ -158,7 +158,8 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type {
 	INodeTypeDescription,
 	INodeParameters,
@@ -181,7 +182,6 @@ import {
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
@@ -191,10 +191,8 @@ import { get, set, unset } from 'lodash-es';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -203,14 +201,14 @@ import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
 
-export default mixins(externalHooks, nodeHelpers).extend({
+export default defineComponent({
 	name: 'NodeSettings',
+	mixins: [externalHooks, nodeHelpers],
 	components: {
 		NodeTitle,
 		NodeCredentials,
-		ParameterInputFull,
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
@@ -578,7 +576,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			if (this.node) {
@@ -672,7 +670,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 						}
 					}
 
-					this.$externalHooks().run('nodeSettings.valueChanged', {
+					void this.$externalHooks().run('nodeSettings.valueChanged', {
 						parameterPath,
 						newValue,
 						parameters: this.parameters,
@@ -780,7 +778,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 
-				this.$externalHooks().run('nodeSettings.valueChanged', {
+				void this.$externalHooks().run('nodeSettings.valueChanged', {
 					parameterPath,
 					newValue,
 					parameters: this.parameters,

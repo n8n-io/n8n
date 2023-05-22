@@ -60,7 +60,9 @@ function clear() {
 }
 
 onMounted(() => {
-	runExternalHook('nodeCreator_searchBar.mount', useWebhooksStore(), { inputRef: state.inputRef });
+	void runExternalHook('nodeCreator_searchBar.mount', useWebhooksStore(), {
+		inputRef: state.inputRef,
+	});
 	setTimeout(focus, 0);
 });
 
