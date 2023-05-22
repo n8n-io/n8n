@@ -71,6 +71,8 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
+			if (!this.editor || !this.editor.state) return [];
+
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(
