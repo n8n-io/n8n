@@ -81,10 +81,10 @@ jobs:
           SKIP_STATISTICS_EVENTS: true
 
       - name: Notify Slack on failure
-        uses: act10ns/slack@v2.0.0
+        uses: slackapi/slack-github-action@v1.24.0
         if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
-          status: ${{ job.status }}
-          channel: '#updates-build-alerts-test'
-          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-        #  message: ${{ steps.tests.outputs.slackMessage}} / (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          payload-file-path: '../payloadSlack.json'
+          channel-id: '#updates-build-alerts-test'
