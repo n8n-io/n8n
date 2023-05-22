@@ -492,7 +492,7 @@ export class ExecuteBatch extends BaseCommand {
 					});
 					result.slackMessage = `*${
 						result.summary.errors.length
-					} Executions errors*. Workflows failing: \n ${errorMessage.join('\n')} `;
+					} Executions errors*. Workflows failing: \ ${errorMessage.join('\\')} `;
 				} else {
 					result.slackMessage = `*${result.summary.errors.length} Executions errors*`;
 				}
