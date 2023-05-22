@@ -23,7 +23,7 @@ export class RabbitMQ implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:rabbitmq.png',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Sends messages to a RabbitMQ topic',
 		defaults: {
 			name: 'RabbitMQ',
@@ -43,18 +43,71 @@ export class RabbitMQ implements INodeType {
 				name: 'operation',
 				type: 'hidden',
 				noDataExpression: true,
-				default: 'send_message',
+				default: 'sendMessage',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				// To remove when action view is fixed
 				options: [
 					{
 						name: 'Send a Message to RabbitMQ',
-						value: 'send_message',
+						value: 'sendMessage',
+						action: 'Send a Message to RabbitMQ',
+					},
+					{
+						name: 'Delete From Queue',
+						value: 'deleteMessage',
+						action: 'Delete From Queue',
 					},
 				],
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'sendMessage',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+				options: [
+					{
+						name: 'Send a Message to RabbitMQ',
+						value: 'sendMessage',
+						action: 'Send a Message to RabbitMQ',
+					},
+					{
+						name: 'Delete From Queue',
+						value: 'deleteMessage',
+						action: 'Delete From Queue',
+					},
+				],
+			},
+			{
+				displayName:
+					'Will delete an item from the queue triggered earlier in the workflow by a RabbitMQ Trigger node',
+				name: 'deleteMessage',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['deleteMessage'],
+					},
+				},
 			},
 			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
+				displayOptions: {
+					hide: {
+						operation: ['deleteMessage'],
+					},
+				},
 				options: [
 					{
 						name: 'Queue',
@@ -81,6 +134,9 @@ export class RabbitMQ implements INodeType {
 				displayOptions: {
 					show: {
 						mode: ['queue'],
+					},
+					hide: {
+						operation: ['deleteMessage'],
 					},
 				},
 				default: '',
@@ -161,6 +217,11 @@ export class RabbitMQ implements INodeType {
 				displayName: 'Send Input Data',
 				name: 'sendInputData',
 				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['sendMessage'],
+					},
+				},
 				default: true,
 				description: 'Whether to send the the data the node receives as JSON',
 			},
@@ -181,6 +242,11 @@ export class RabbitMQ implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
+				displayOptions: {
+					show: {
+						operation: ['sendMessage'],
+					},
+				},
 				placeholder: 'Add Option',
 				options: [
 					{
@@ -341,10 +407,13 @@ export class RabbitMQ implements INodeType {
 		let channel, options: IDataObject;
 		try {
 			const items = this.getInputData();
-			const mode = this.getNodeParameter('mode', 0) as string;
-
+			const operation = this.getNodeParameter('operation', 0);
+			if (operation === 'deleteMessage') {
+				this.sendResponse(items[0].json);
+				return await this.prepareOutputData(items);
+			}
+			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const returnItems: INodeExecutionData[] = [];
-
 			if (mode === 'queue') {
 				const queue = this.getNodeParameter('queue', 0) as string;
 
@@ -355,7 +424,6 @@ export class RabbitMQ implements INodeType {
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 				let message: string;
-
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
 					if (sendInputData) {
@@ -378,7 +446,6 @@ export class RabbitMQ implements INodeType {
 						);
 						headers = additionalHeaders;
 					}
-
 					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
 				}
 
