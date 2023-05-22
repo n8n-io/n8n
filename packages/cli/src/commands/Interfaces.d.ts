@@ -1,5 +1,6 @@
 interface IResult {
 	totalWorkflows: number;
+	slackMessage: string;
 	summary: {
 		failedExecutions: number;
 		successfulExecutions: number;
