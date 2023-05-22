@@ -676,6 +676,7 @@ export default defineComponent({
 						// Close the creator panel if user clicked on the link
 						if (this.createNodeActive) notice.close();
 					}, 0),
+				dangerouslyUseHTMLString: true,
 			});
 		},
 		clearExecutionData() {
@@ -1449,6 +1450,7 @@ export default defineComponent({
 							cancelButtonText: this.$locale.baseText(
 								'nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText',
 							),
+							dangerouslyUseHTMLString: true,
 						},
 					);
 
