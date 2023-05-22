@@ -6,16 +6,19 @@ title: GitHub Actions
 title_link: https://support.github.com
 
 text: |
-  *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* for <{{refUrl}}|`{{ref}}`>
-  *Error*
-  {{jobSteps.tests.outputs.slackMessage}}
-  {{payload.slackMessage}}
+  *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* for <{{refUrl}}|`{{ref}}` {{jobSteps.tests.outputs.slackMessage}}>
+
 
 fallback: |-
   [GitHub] {{workflow}} #{{runNumber}} {{jobName}} is {{jobStatus}}
 
+fields:
+  - title: Error
+    value: "{{jobSteps.tests.outputs.slackMessage}}"
+    short: false
+
 footer: >-
-  <{{repositoryUrl}}|{{repositoryName}}> {{workflow}} #{{runNumber}}
+  <{{repositoryUrl}}|{{repositoryName}}> Sent Via Github Action #{{runNumber}}
 
 colors:
   success: '#5DADE2'
