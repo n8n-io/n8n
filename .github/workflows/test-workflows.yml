@@ -87,4 +87,5 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts-test'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          config: .github/slack-config.yml
           #message: ${{ steps.tests.outputs.slackMessage}} \ (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
