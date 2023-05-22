@@ -14,6 +14,7 @@ const properties: INodeProperties[] = [
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
+		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
 		},
@@ -31,6 +32,7 @@ const properties: INodeProperties[] = [
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
+		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
 		},

@@ -85,7 +85,7 @@ export default defineComponent({
 		const extensions: Extension[] = [
 			sqlLanguageSupport(),
 			expressionInputHandler(),
-			codeNodeEditorTheme({ maxHeight: false }),
+			codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
 			lineNumbers(),
 			EditorView.lineWrapping,
 			lintGutter(),

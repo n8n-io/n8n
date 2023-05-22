@@ -73,6 +73,7 @@ export class CrateDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
 					sqlDialect: 'postgres',

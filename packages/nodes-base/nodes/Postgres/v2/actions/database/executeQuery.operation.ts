@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions, getResolvables } from '../../../../../utils/utilities';
 
 import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
 
@@ -17,6 +17,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. SELECT id, name FROM product WHERE quantity > $1 AND price <= $2',
+		noDataExpression: true,
 		required: true,
 		description:
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
@@ -58,7 +59,11 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const query = this.getNodeParameter('query', i) as string;
+		let query = this.getNodeParameter('query', i) as string;
+
+		for (const resolvable of getResolvables(query)) {
+			query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+		}
 
 		let values: IDataObject[] = [];
 

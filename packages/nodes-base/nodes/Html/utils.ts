@@ -1,26 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
 import type { IValueData, Cheerio } from './types';
 
-/**
- * @TECH_DEBT Explore replacing with handlebars
- */
-export function getResolvables(html: string) {
-	if (!html) return [];
-
-	const resolvables = [];
-	const resolvableRegex = /({{[\s\S]*?}})/g;
-
-	let match;
-
-	while ((match = resolvableRegex.exec(html)) !== null) {
-		if (match[1]) {
-			resolvables.push(match[1]);
-		}
-	}
-
-	return resolvables;
-}
-
 // The extraction functions
 const extractFunctions: {
 	[key: string]: ($: Cheerio, valueData: IValueData) => string | undefined;
