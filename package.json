@@ -18,7 +18,7 @@
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
-    "startx": "run-script-os",
+    "start": "echo omri",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
