@@ -32,7 +32,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object'];
+const FORCE_TEXT_INPUT_FOR_TYPES: FieldType[] = ['time', 'object', 'array'];
 
 const {
 	resourceMapperTypeOptions,
@@ -284,14 +284,7 @@ defineExpose({
 			}"
 		>
 			<div
-				v-if="
-					fieldCannotBeDeleted(
-						field,
-						props.showMatchingColumnsSelector,
-						resourceMapperMode,
-						props.paramValue.matchingColumns,
-					)
-				"
+				v-if="resourceMapperMode === 'add' && field.required"
 				:class="['delete-option', 'mt-5xs', $style.parameterTooltipIcon]"
 			>
 				<n8n-tooltip placement="top">

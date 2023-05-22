@@ -27,6 +27,7 @@ const fieldTypeMapping: Partial<Record<FieldType, string[]>> = {
 	time: ['time', 'time without time zone', 'time with time zone'],
 	object: ['json', 'jsonb'],
 	options: ['enum', 'USER-DEFINED'],
+	array: ['ARRAY'],
 };
 
 function mapPostgresType(postgresType: string): FieldType {
