@@ -6,7 +6,7 @@ title: Test Workflow
 title_link: https://support.github.com
 
 text: |
-  *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* for <{{refUrl}}|`{{ref}}` {{jobSteps.tests.outputs.slackMessage}}>
+  *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* ffor <{{refUrl}}|`{{ref}}` > TEST {{jobSteps.tests.outputs.slackMessage}}
 
 
 
