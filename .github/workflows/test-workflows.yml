@@ -73,7 +73,7 @@ jobs:
         shell: bash
 
       - name: Run tests
-        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --shortOutput --concurrency=16 --compare=test-workflows/snapshots
+        run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --githubWorkflow --shortOutput --concurrency=16 --compare=test-workflows/snapshots
         shell: bash
         id: tests
         env:
@@ -103,4 +103,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts-test'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: ${{ steps.tests.outputs.slackMessage}} \| ${{ steps.tests.outcome}} \| ${{steps.tests.conclusion}} ${{'\n'}} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message: ${{ steps.tests.outputs.slackMessage}} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
