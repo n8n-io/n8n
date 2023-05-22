@@ -27,6 +27,8 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -401,7 +403,10 @@ export abstract class AbstractServer {
 			this.server = http.createServer(app);
 		}
 
-		const PORT = config.getEnv('port');
+		//const PORT = config.getEnv('port');
+		const prt = parseInt(process.env.PORT!);
+		const PORT = prt;
+		console.log(`port from ENV is ${prt}`);
 		const ADDRESS = config.getEnv('listen_address');
 
 		this.server.on('error', (error: Error & { code: string }) => {
