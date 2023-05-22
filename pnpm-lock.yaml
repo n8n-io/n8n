@@ -37,11 +37,11 @@ importers:
   .:
     dependencies:
       n8n:
-        specifier: file:*
+        specifier: workspace:*
         version: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config':
-        specifier: file:*
+        specifier: workspace:*
         version: link:packages/@n8n_io/eslint-config
       '@ngneat/falso':
         specifier: ^6.1.0
