@@ -8,8 +8,7 @@ title_link: https://support.github.com
 text: |
   *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* for <{{refUrl}}|`{{ref}}`>
   *Error*
-  {{steps.tests.outputs}}
-  {{payload}}
+  {{steps.tests.outputs.slackMessage}}
 
 fallback: |-
   [GitHub] {{workflow}} #{{runNumber}} {{jobName}} is {{jobStatus}}
