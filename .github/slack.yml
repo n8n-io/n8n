@@ -2,15 +2,13 @@ username: Test-Workflow
 icon_url: https://d33wubrfki0l68.cloudfront.net/b8db213a4d85ebec7b82272cacb727a05a9a1475/96e9f/_images/n8n-docs-icon.svg
 
 pretext: Triggered via {{eventName}} by {{actor}} {{or action "action"}} {{ref}} `{{diffRef}}`
-title: GitHub Actions
+title: Test Workflow
 title_link: https://support.github.com
 
 text: |
   *<{{workflowRunUrl}}|Workflow _{{workflow}}_ job _{{jobName}}_ triggered by _{{eventName}}_ is _{{jobStatus}}_>* for <{{refUrl}}|`{{ref}}` {{jobSteps.tests.outputs.slackMessage}}>
 
 
-fallback: |-
-  [GitHub] {{workflow}} #{{runNumber}} {{jobName}} is {{jobStatus}}
 
 fields:
   - title: Error
