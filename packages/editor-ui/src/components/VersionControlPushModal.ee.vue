@@ -12,7 +12,7 @@ import { useRoute } from 'vue-router/composables';
 
 const props = defineProps({
 	data: {
-		type: Object as PropType<{ eventBus: EventBus }>,
+		type: Object as PropType<{ eventBus: EventBus; status: VersionControlAggregatedFile[] }>,
 		default: () => ({}),
 	},
 });
@@ -25,7 +25,7 @@ const versionControlStore = useVersionControlStore();
 const route = useRoute();
 
 const staged = ref<Record<string, boolean>>({});
-const files = ref<VersionControlAggregatedFile[]>([]);
+const files = ref<VersionControlAggregatedFile[]>(props.data.status || []);
 
 const commitMessage = ref('');
 const loading = ref(true);
@@ -36,17 +36,13 @@ const isSubmitDisabled = computed(() => {
 });
 
 onMounted(async () => {
-	loadingService.startLoading();
 	context.value = getContext();
-
 	try {
-		files.value = await versionControlStore.getAggregatedStatus();
 		staged.value = getStagedFilesByContext(files.value);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	} finally {
 		loading.value = false;
-		loadingService.stopLoading();
 	}
 });
 
