@@ -1248,6 +1248,8 @@ export const tryToParseTime = (value: unknown): string => {
 export const tryToParseArray = (value: unknown): unknown[] => {
 	try {
 		let stringValue = String(value);
+		// SQL uses curly brackets for arrays, so we replace them with square brackets
+		stringValue = stringValue.replace(/{/g, '[').replace(/}/g, ']');
 		if (!stringValue.startsWith('[') && !stringValue.endsWith(']')) {
 			if (!stringValue.startsWith('[')) {
 				stringValue = `[${stringValue}`;

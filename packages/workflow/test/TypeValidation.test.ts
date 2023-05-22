@@ -129,6 +129,18 @@ describe('Type Validation', () => {
 		]);
 		expect(validateFieldType('array', '[1, 2]', 'array').newValue).toEqual([1, 2]);
 		expect(validateFieldType('array', '1, 2', 'array').newValue).toEqual([1, 2]);
+		expect(validateFieldType('array', '{1, 2, {3, 4}, 5}', 'array').newValue).toEqual([
+			1,
+			2,
+			[3, 4],
+			5,
+		]);
+		expect(validateFieldType('array', '1, 2, {3, 4}, 5', 'array').newValue).toEqual([
+			1,
+			2,
+			[3, 4],
+			5,
+		]);
 		expect(validateFieldType('array', '[1, 2, 3', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', '1, 2, 3]', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', '1. 2. 3', 'array').valid).toEqual(false);
