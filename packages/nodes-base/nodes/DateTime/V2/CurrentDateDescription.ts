@@ -18,7 +18,7 @@ export const CurrentDateDescription: INodeProperties[] = [
 		name: 'includeTime',
 		type: 'boolean',
 		default: true,
-		description: 'Whether deactivated, the time will be set to midnight',
+		description: 'When deactivated, the time will be set to midnight',
 		displayOptions: {
 			show: {
 				operation: ['getCurrentDate'],
