@@ -86,5 +86,32 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         with:
-          payload-file-path: '../payloadSlack.json'
-          channel-id: '#updates-build-alerts-test'
+          payload: |
+            {
+              'blocks':
+                [
+                  {
+                    'type': 'header',
+                    'text':
+                      {
+                        'type': 'plain_text',
+                        'text': ' 🛑 Test Workflow Failed 🛑',
+                        'emoji': true,
+                      },
+                  },
+                  {
+                    'type': 'section',
+                    'text':
+                      {
+                        'type': 'mrkdwn',
+                        'text': '<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Test Workflow > for `${{github.event.pull_request.title}}`',
+                      },
+                  },
+                  { 'type': 'divider' },
+                  {
+                    'type': 'section',
+                    'text': { 'type': 'mrkdwn', 'text': '${{ steps.tests.outputs.slackMessage}}' },
+                  },
+                ],
+            }
+          channel-id: 'C058UD406CA'
