@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "@n8n/client-oauth2": "workspace:*,",
+    "@n8n/client-oauth2": "workspace:*",
     "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
@@ -57,7 +57,7 @@
     "lodash.get": "^4.4.2",
     "lodash.pick": "^4.4.0",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "workspace:*,",
+    "n8n-workflow": "workspace:*",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",

@@ -43,7 +43,7 @@ export const fileOperations: INodeProperties[] = [
 
 export const fileFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                workspace:*,                                    */
+	/*                                workspace:*                                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Form Name or ID',
