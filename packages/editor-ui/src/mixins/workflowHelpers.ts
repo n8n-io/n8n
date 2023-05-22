@@ -757,6 +757,7 @@ export const workflowHelpers = defineComponent({
 						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
 						{
+							dangerouslyUseHTMLString: true,
 							confirmButtonText: this.$locale.baseText(
 								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
 							),

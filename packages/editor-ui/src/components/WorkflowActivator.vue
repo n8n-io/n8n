@@ -132,6 +132,7 @@ export default defineComponent({
 				message: errorMessage,
 				type: 'warning',
 				duration: 0,
+				dangerouslyUseHTMLString: true,
 			});
 		},
 	},
