@@ -559,10 +559,14 @@ export class Webhook implements INodeType {
 				};
 
 				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-				returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
+
+				const binaryFileCopy = await this.nodeHelpers.copyBinaryFile(
 					binaryFile.path,
+					binaryPropertyName, //TODO: get binary file name
 					mimeType,
 				);
+
+				returnItem.binary![binaryPropertyName] = binaryFileCopy;
 
 				return {
 					workflowData: [[returnItem]],
