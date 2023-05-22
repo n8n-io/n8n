@@ -9,6 +9,13 @@ export class StrapiApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'The authentication is functioning correctly for regular users but is not working for users in the administrator group, such as Super Admins, Editors, Authors etc.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Email',
 			name: 'email',
 			type: 'string',
