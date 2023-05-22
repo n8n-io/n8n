@@ -302,6 +302,7 @@ export default defineComponent({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
+							dangerouslyUseHTMLString: true,
 						});
 
 						this.ndvStore.disableMappingHint();

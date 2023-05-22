@@ -140,6 +140,7 @@ export default defineComponent({
 				}),
 				this.$locale.baseText('auth.setup.confirmOwnerSetup'),
 				{
+					dangerouslyUseHTMLString: true,
 					confirmButtonText: this.$locale.baseText('auth.setup.createAccount'),
 					cancelButtonText: this.$locale.baseText('auth.setup.goBack'),
 				},
