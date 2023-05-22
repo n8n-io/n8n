@@ -19,6 +19,7 @@
 				:data="data"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
+				:readonly="isReadonly"
 			/>
 		</template>
 		<template #empty>
@@ -165,6 +166,9 @@ const WorkflowsView = defineComponent({
 					value: StatusFilter.DEACTIVATED,
 				},
 			];
+		},
+		isReadonly(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
