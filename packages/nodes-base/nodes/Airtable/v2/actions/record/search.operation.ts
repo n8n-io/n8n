@@ -3,6 +3,8 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import type { IRecord } from '../../helpers/interfaces';
+import { flattenOutput } from '../../helpers/utils';
+import { viewRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -47,32 +49,21 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Download Attachments',
-				name: 'downloadAttachments',
-				type: 'boolean',
-				default: false,
-				description:
-					"Whether to download the attachments of the fields defined in 'Download Fields'",
-			},
-			{
-				displayName: 'Download Field Names or IDs',
-				name: 'downloadFieldNames',
+				name: 'downloadFields',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getAttachmentColumns',
 					loadOptionsDependsOn: ['base.value', 'table.value'],
 				},
-				displayOptions: {
-					show: {
-						downloadAttachments: [true],
-					},
-				},
 				default: [],
-				description:
-					'The fields of type \'attachment\' that should be downloaded. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description: "The fields of type 'attachment' that should be downloaded",
 			},
 			{
-				displayName: 'Output Field Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Output Fields',
 				name: 'fields',
 				type: 'multiOptions',
 				typeOptions: {
@@ -80,71 +71,60 @@ const properties: INodeProperties[] = [
 					loadOptionsDependsOn: ['base.value', 'table.value'],
 				},
 				default: [],
-				description:
-					'The fields you want to include in the output. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description: 'The fields you want to include in the output',
 			},
+			viewRLC,
+		],
+	},
+	{
+		displayName: 'Sort',
+		name: 'sort',
+		placeholder: 'Add Sort Rule',
+		description: 'Defines how the returned records should be ordered',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
 			{
-				displayName: 'Sort',
-				name: 'sort',
-				placeholder: 'Add Sort Rule',
-				description: 'Defines how the returned records should be ordered',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
+				name: 'property',
+				displayName: 'Property',
+				values: [
 					{
-						name: 'property',
-						displayName: 'Property',
-						values: [
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Field',
+						name: 'field',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getColumns',
+							loadOptionsDependsOn: ['base.value', 'table.value'],
+						},
+						default: '',
+						description:
+							'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
 							{
-								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-								displayName: 'Field',
-								name: 'field',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getColumns',
-									loadOptionsDependsOn: ['base.value', 'table.value'],
-								},
-								default: '',
-								description:
-									'Name of the field to sort on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+								name: 'ASC',
+								value: 'asc',
+								description: 'Sort in ascending order (small -> large)',
 							},
 							{
-								displayName: 'Direction',
-								name: 'direction',
-								type: 'options',
-								options: [
-									{
-										name: 'ASC',
-										value: 'asc',
-										description: 'Sort in ascending order (small -> large)',
-									},
-									{
-										name: 'DESC',
-										value: 'desc',
-										description: 'Sort in descending order (large -> small)',
-									},
-								],
-								default: 'asc',
-								description: 'The sort direction',
+								name: 'DESC',
+								value: 'desc',
+								description: 'Sort in descending order (large -> small)',
 							},
 						],
+						default: 'asc',
+						description: 'The sort direction',
 					},
 				],
-			},
-			{
-				displayName: 'View Name or ID',
-				name: 'view',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getViews',
-					loadOptionsDependsOn: ['base.value', 'table.value'],
-				},
-				default: '',
-				description:
-					'If set, only the records in that view will be returned. The sorting in the view will be preserved. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -175,6 +155,7 @@ export async function execute(
 	try {
 		const returnAll = this.getNodeParameter('returnAll', 0);
 		const options = this.getNodeParameter('options', 0, {});
+		const sort = this.getNodeParameter('sort', 0, {}) as IDataObject;
 		const filterByFormula = this.getNodeParameter('filterByFormula', 0) as string;
 
 		if (filterByFormula) {
@@ -189,12 +170,12 @@ export async function execute(
 			}
 		}
 
-		if (options.sort) {
-			qs.sort = (options.sort as IDataObject).property;
+		if (sort.property) {
+			qs.sort = sort.property;
 		}
 
 		if (options.view) {
-			qs.view = options.view as string;
+			qs.view = (options.view as IDataObject).value as string;
 		}
 
 		let responseData;
@@ -208,33 +189,25 @@ export async function execute(
 
 		returnData = responseData.records as INodeExecutionData[];
 
-		if (options.downloadAttachments === true) {
-			if (!options.downloadFieldNames) {
-				throw new Error(
-					"When 'Download Attachments' set to true you must specify at least one field to download under options 'Download Field Names or IDs'",
-				);
+		if (options.downloadFields) {
+			let downloadFields: string | string[] = options.downloadFields as string;
+			if (typeof downloadFields === 'string') {
+				downloadFields = downloadFields.split(',').map((item) => item.trim());
 			}
-			let downloadFieldNames: string | string[] = options.downloadFieldNames as string;
-			if (typeof downloadFieldNames === 'string') {
-				downloadFieldNames = downloadFieldNames.split(',').map((item) => item.trim());
+			if (!downloadFields.length) {
+				throw new Error("Specify field to download in 'Download Attachments' options");
 			}
 			const data = await downloadRecordAttachments.call(
 				this,
 				responseData.records as IRecord[],
-				downloadFieldNames,
+				downloadFields,
 			);
 			return data;
 		}
 
-		returnData = returnData.map((record) => {
-			const { fields, ...rest } = record;
-			return {
-				json: {
-					...rest,
-					...(fields as IDataObject),
-				},
-			};
-		});
+		returnData = returnData.map((record) => ({
+			json: flattenOutput(record as IDataObject),
+		}));
 
 		returnData = this.helpers.constructExecutionMetaData(returnData, {
 			itemData: { item: 0 },

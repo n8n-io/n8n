@@ -57,3 +57,11 @@ export function processAirtableError(error: NodeApiError, id?: string) {
 	}
 	return error;
 }
+
+export const flattenOutput = (record: IDataObject) => {
+	const { fields, ...rest } = record;
+	return {
+		...rest,
+		...(fields as IDataObject),
+	};
+};

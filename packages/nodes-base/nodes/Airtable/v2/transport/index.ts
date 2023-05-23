@@ -9,6 +9,7 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import type { IAttachment, IRecord } from '../helpers/interfaces';
+import { flattenOutput } from '../helpers/utils';
 
 /**
  * Make an API request to Airtable
@@ -88,7 +89,7 @@ export async function downloadRecordAttachments(
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
-		element.json = record as unknown as IDataObject;
+		element.json = flattenOutput(record as unknown as IDataObject);
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {
 				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {

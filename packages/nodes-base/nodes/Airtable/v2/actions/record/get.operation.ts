@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
-import { processAirtableError } from '../../helpers/utils';
+import { flattenOutput, processAirtableError } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -43,7 +43,7 @@ export async function execute(
 			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`);
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(responseData as IDataObject[]),
+				wrapData(flattenOutput(responseData as IDataObject)),
 				{ itemData: { item: i } },
 			);
 

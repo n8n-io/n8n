@@ -108,6 +108,58 @@ export const tableRLC: INodeProperties = {
 	],
 };
 
+export const viewRLC: INodeProperties = {
+	displayName: 'View',
+	name: 'view',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'viewSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
+						errorMessage: 'Not a valid Airtable View URL',
+					},
+				},
+			],
+			extractValue: {
+				type: 'regex',
+				regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9]{2,}',
+						errorMessage: 'Not a valid Airtable View ID',
+					},
+				},
+			],
+			placeholder: 'viw3dirwqeidke',
+		},
+	],
+};
+
 export const insertUpdateOptions: INodeProperties[] = [
 	{
 		displayName: 'Options',
