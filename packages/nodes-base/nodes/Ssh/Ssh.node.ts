@@ -47,14 +47,6 @@ async function resolveHomeDir(
 	return path;
 }
 
-function sanitizePrivateKey(privateKey: string) {
-	const [openSshKey, bodySshKey, endSshKey] = privateKey
-		.split('-----')
-		.filter((item) => item !== '');
-
-	return `-----${openSshKey}-----\n${bodySshKey.replace(/ /g, '\n')}\n-----${endSshKey}-----`;
-}
-
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSH',
@@ -84,7 +76,6 @@ export class Ssh implements INodeType {
 			{
 				name: 'sshPrivateKey',
 				required: true,
-				testedBy: 'sshConnectionTest',
 				displayOptions: {
 					show: {
 						authentication: ['privateKey'],
@@ -306,7 +297,7 @@ export class Ssh implements INodeType {
 					} else {
 						const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 						temporaryFiles.push(path);
-						await writeFile(path, sanitizePrivateKey(credentials.privateKey as string));
+						await writeFile(path, credentials.privateKey as string);
 
 						const options: Config = {
 							host: credentials.host as string,
@@ -367,8 +358,7 @@ export class Ssh implements INodeType {
 
 				const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 				temporaryFiles.push(path);
-
-				await writeFile(path, sanitizePrivateKey(credentials.privateKey as string));
+				await writeFile(path, credentials.privateKey as string);
 
 				const options: Config = {
 					host: credentials.host as string,
