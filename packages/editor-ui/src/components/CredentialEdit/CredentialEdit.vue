@@ -511,7 +511,7 @@ export default defineComponent({
 						),
 					},
 				);
-				keepEditing = confirmAction !== MODAL_CONFIRM;
+				keepEditing = confirmAction === MODAL_CONFIRM;
 			} else if (this.credentialPermissions.isOwner && this.isOAuthType && !this.isOAuthConnected) {
 				const confirmAction = await this.confirm(
 					this.$locale.baseText(
@@ -529,7 +529,7 @@ export default defineComponent({
 						),
 					},
 				);
-				keepEditing = confirmAction !== MODAL_CONFIRM;
+				keepEditing = confirmAction === MODAL_CONFIRM;
 			}
 
 			if (!keepEditing) {

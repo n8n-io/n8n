@@ -767,7 +767,7 @@ export const workflowHelpers = defineComponent({
 						},
 					);
 
-					if (overwrite !== MODAL_CONFIRM) {
+					if (overwrite === MODAL_CONFIRM) {
 						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
