@@ -189,7 +189,7 @@ function getNodeTypes(): INodeTypes {
 	return useWorkflowsStore().getNodeTypes();
 }
 
-function shouldReplaceInputDataWithPinData() {
+export function shouldReplaceInputDataWithPinData() {
 	const workflowsStore = useWorkflowsStore();
 	return (
 		!workflowsStore.activeWorkflowExecution ||
