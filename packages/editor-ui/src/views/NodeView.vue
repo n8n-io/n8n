@@ -3782,7 +3782,7 @@ export default defineComponent({
 			if (e.persisted) {
 				this.stopLoading();
 			}
-		}
+		},
 	},
 	async mounted() {
 		this.resetWorkspace();
