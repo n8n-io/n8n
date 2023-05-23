@@ -15,14 +15,14 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getMany',
-				description: 'Get many bases',
-				action: 'List all the bases',
+				description: 'List all the bases',
+				action: 'Get many bases',
 			},
 			{
 				name: 'Get Schema',
 				value: 'getSchema',
-				description: 'Get base schema',
-				action: 'Get the schema of the tables in a base',
+				description: 'Get the schema of the tables in a base',
+				action: 'Get base schema',
 			},
 		],
 		default: 'getMany',

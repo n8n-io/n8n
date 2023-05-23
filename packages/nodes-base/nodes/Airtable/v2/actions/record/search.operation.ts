@@ -10,10 +10,10 @@ const properties: INodeProperties[] = [
 		name: 'filterByFormula',
 		type: 'string',
 		default: '',
-		placeholder: "e.g. NOT({Name} = '')",
-		hint: 'Leave empty to not filter records',
+		placeholder: "e.g. NOT({Name} = 'Admin')",
+		hint: 'If empty, all the records will be returned',
 		description:
-			'The formula will be evaluated for each record, and if the result is not falsy, empty or error that record will be included in the response. <a href="https://support.airtable.com/docs/formula-field-reference" target="_blank">More info</a>.',
+			'The formula will be evaluated for each record, and if the result is not 0, false, "", NaN, [], or #Error! the record will be included in the response. <a href="https://support.airtable.com/docs/formula-field-reference" target="_blank">More info</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -144,7 +144,7 @@ const properties: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'If set, only the records in that view will be returned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'If set, only the records in that view will be returned. The sorting in the view will be preserved. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

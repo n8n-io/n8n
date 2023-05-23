@@ -61,8 +61,7 @@ const properties: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description:
-					'The fields you want to include in the output. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description: 'Filter the returned bases by one or more permission levels',
 			},
 		],
 	},
