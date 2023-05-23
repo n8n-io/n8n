@@ -28,7 +28,6 @@ import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -184,28 +183,6 @@ export class Start extends BaseCommand {
 		await compileFile('index.html');
 		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
 		await Promise.all(files.map(compileFile));
-	}
-
-	async initLicense(): Promise<void> {
-		const license = Container.get(License);
-		await license.init(this.instanceId);
-
-		const activationKey = config.getEnv('license.activationKey');
-
-		if (activationKey) {
-			const hasCert = (await license.loadCertStr()).length > 0;
-
-			if (hasCert) {
-				return LoggerProxy.debug('Skipping license activation');
-			}
-
-			try {
-				LoggerProxy.debug('Attempting license activation');
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e as Error);
-			}
-		}
 	}
 
 	async init() {
