@@ -215,6 +215,10 @@ export abstract class AbstractServer {
 				}
 				return 500;
 			},
+			tls: {
+				rejectUnauthorized: false,
+				requestCert: true,
+			}
 		});
 
 		redis.on('close', () => {
