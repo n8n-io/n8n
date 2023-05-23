@@ -270,6 +270,12 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 		...state.paramValue,
 		matchingColumns,
 	};
+	// Set all matching fields to be visible
+	state.paramValue.schema.forEach((field) => {
+		if (state.paramValue.matchingColumns?.includes(field.id)) {
+			Vue.set(field, 'removed', false);
+		}
+	});
 	if (!state.loading) {
 		emitValueChanged();
 	}

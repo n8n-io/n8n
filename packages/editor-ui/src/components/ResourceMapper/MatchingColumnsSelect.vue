@@ -48,7 +48,7 @@ const emit = defineEmits<{
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
 	return props.fieldsToMap.filter((field) => {
-		return field.canBeUsedToMatch !== false && field.display !== false && field.removed !== true;
+		return field.canBeUsedToMatch !== false && field.display !== false;
 	});
 });
 
