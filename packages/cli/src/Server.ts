@@ -766,8 +766,7 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-				return activeWorkflows.map(({ id }) => id);
+				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
 			}),
 		);
 

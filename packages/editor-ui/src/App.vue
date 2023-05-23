@@ -96,6 +96,7 @@ export default defineComponent({
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 
 				throw e;
