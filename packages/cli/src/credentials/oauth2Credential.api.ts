@@ -2,6 +2,7 @@ import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
+import pkceChallenge from 'pkce-challenge';
 import get from 'lodash.get';
 import omit from 'lodash.omit';
 import set from 'lodash.set';
@@ -45,7 +46,7 @@ oauth2CredentialController.use((req, res, next) => {
 	}
 	next();
 });
-
+let codeVerifier = '';
 const restEndpoint = config.getEnv('endpoints.rest');
 
 /**
@@ -162,6 +163,12 @@ oauth2CredentialController.get(
 			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${percentEncoded}`;
 		}
 
+		if (oauthCredentials.grantType === 'pkce') {
+			const { code_verifier, code_challenge } = pkceChallenge();
+			returnUri += `&code_challenge=${code_challenge}&code_challenge_method=S256`;
+			codeVerifier = code_verifier;
+		}
+
 		if (authQueryParameters) {
 			returnUri += `&${authQueryParameters}`;
 		}
@@ -265,8 +272,10 @@ oauth2CredentialController.get(
 			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
-						client_id: get(oauthCredentials, 'clientId') as string,
-						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
+						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
+						...(oauthCredentials.grantType === 'authorizationCode' && {
+							client_secret: get(oauthCredentials, 'clientSecret', '') as string,
+						}),
 					},
 				};
 				// @ts-ignore

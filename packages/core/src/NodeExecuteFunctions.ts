@@ -1154,9 +1154,13 @@ export async function requestOAuth2(
 				);
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+					credentials.grantType =
+						credentials.grantType === undefined ? 'authorizationCode' : credentials.grantType;
 					const body: IDataObject = {
 						client_id: credentials.clientId as string,
-						client_secret: credentials.clientSecret as string,
+						...(credentials.grantType === 'authorizationCode' && {
+							client_secret: credentials.clientSecret as string,
+						}),
 					};
 					tokenRefreshOptions.body = body;
 					tokenRefreshOptions.headers = {
