@@ -1,5 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { prepareAwesomePromps, sendErrorPostReceive } from './GenericFunctions';
+import { preparePromt, sendErrorPostReceive } from './GenericFunctions';
 
 export const chatOperations: INodeProperties[] = [
 	{
@@ -22,6 +22,9 @@ export const chatOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '/v1/chat/completions',
+					},
+					send: {
+						preSend: [preparePromt],
 					},
 					output: { postReceive: [sendErrorPostReceive] },
 				},
@@ -93,23 +96,16 @@ const completeOperations: INodeProperties[] = [
 		default: 'gpt-3.5-turbo',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Act as ...',
 		name: 'actAs',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
 		type: 'options',
 		default: 'noAttunement',
 		typeOptions: {
-			loadOptions: {
-				routing: {
-					// request: {
-					// 	method: 'GET',
-					// 	url: 'https://github.com/f/awesome-chatgpt-prompts/raw/main/prompts.csv',
-					// },
-					output: {
-						postReceive: [prepareAwesomePromps],
-					},
-				},
-			},
+			loadOptionsMethod: 'getAwesomePromps',
 		},
+
 		displayOptions: {
 			show: {
 				operation: ['complete'],

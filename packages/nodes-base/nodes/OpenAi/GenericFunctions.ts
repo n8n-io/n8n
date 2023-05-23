@@ -1,12 +1,12 @@
 import type {
+	IDataObject,
 	IExecuteSingleFunctions,
+	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { createWriteStream } from 'fs';
 
 import axios from 'axios';
 
@@ -20,27 +20,15 @@ export async function sendErrorPostReceive(
 	}
 	return data;
 }
-export async function prepareAwesomePromps(
-	this: IExecuteSingleFunctions,
-): Promise<INodeExecutionData[]> {
-	return await awesomePrompts();
-}
 
 export async function awesomePrompts() {
 	const result = [];
 	try {
 		const response = await axios.get(
 			'https://github.com/f/awesome-chatgpt-prompts/raw/main/prompts.csv',
-			{ responseType: 'stream' },
+			{ responseType: 'arraybuffer' },
 		);
-		const writer = createWriteStream('prompts.csv');
-
-		response.data.pipe(writer);
-
-		const csv = await new Promise((resolve, reject) => {
-			writer.on('finish', resolve);
-			writer.on('error', reject);
-		});
+		const csv = response.data.toString('utf8');
 
 		const lines = (csv as string).split('\n');
 
@@ -56,4 +44,43 @@ export async function awesomePrompts() {
 		throw error;
 	}
 	return result;
+}
+
+export async function preparePromt(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const actAs = this.getNodeParameter('actAs', 0) as string;
+
+	if (actAs === 'noAttunment') {
+		return requestOptions;
+	} else {
+		if (!((requestOptions.body as IDataObject) || {})?.messages) {
+			return requestOptions;
+		}
+
+		const promts = await awesomePrompts();
+		const promtEntry = promts.find((entry) => entry.act === actAs);
+
+		if (promtEntry === undefined) {
+			throw new Error('Attunment not found');
+		}
+
+		const promt = promtEntry.prompt.split('My first ')[0];
+		const messages = (requestOptions.body as IDataObject).messages as IDataObject[];
+		const updatedMessages = messages.map((message) => {
+			return {
+				...message,
+				content: `${promt} My first question is: ${message.content}`,
+			};
+		});
+
+		return {
+			...requestOptions,
+			body: {
+				...(requestOptions.body as IDataObject),
+				messages: updatedMessages,
+			},
+		};
+	}
 }

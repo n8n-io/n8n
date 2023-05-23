@@ -1,7 +1,13 @@
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { imageFields, imageOperations } from './ImageDescription';
 import { textFields, textOperations } from './TextDescription';
 import { chatFields, chatOperations } from './ChatDescription';
+import { awesomePrompts } from './GenericFunctions';
 
 export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,5 +65,31 @@ export class OpenAi implements INodeType {
 			...textOperations,
 			...textFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getAwesomePromps(this: ILoadOptionsFunctions) {
+				const promts = await awesomePrompts();
+
+				const result: INodePropertyOptions[] = [
+					{
+						name: 'No Attunment',
+						value: 'noAttunment',
+					},
+				];
+
+				for (const prompt of promts) {
+					if (!prompt.act) continue;
+
+					result.push({
+						name: prompt.act,
+						value: prompt.act,
+					});
+				}
+
+				return result;
+			},
+		},
 	};
 }
