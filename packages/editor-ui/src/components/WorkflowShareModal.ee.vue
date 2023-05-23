@@ -391,6 +391,7 @@ export default defineComponent({
 						cancelButtonText: this.$locale.baseText(
 							'workflows.shareModal.list.delete.confirm.cancelButtonText',
 						),
+						dangerouslyUseHTMLString: true,
 					},
 				);
 
