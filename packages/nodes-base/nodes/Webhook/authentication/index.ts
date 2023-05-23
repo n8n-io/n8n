@@ -27,7 +27,7 @@ export const verifyCrmToken = async (
 			url: `${blockedTokenUrl}?where=(Token,eq,${token})`,
 			method: 'GET',
 			headers: {
-				'xc-token': process.env.NOCO_DB_API_TOKEN,
+				'xc-token': process.env.DCS_NOCODB_API_TOKEN,
 			},
 		});
 		if (response?.list?.length) throw new Error('Token is invalid');
@@ -53,7 +53,7 @@ export const verifyPortalToken = async (
 			url: `${blockedTokenUrl}?where=(Token,eq,${token})`,
 			method: 'GET',
 			headers: {
-				'xc-token': process.env.NOCO_DB_API_TOKEN,
+				'xc-token': process.env.DCS_NOCODB_API_TOKEN,
 			},
 		});
 		if (response?.list?.length) throw new Error('Token is invalid');
@@ -68,18 +68,25 @@ export const verifyPortalToken = async (
 				requestHandler({
 					url: `${userTableUrl}?where=(Id,eq,${decodedToken.userID})`,
 					method: 'GET',
+					headers: {
+						'xc-token': process.env.DCS_NOCODB_API_TOKEN,
+					},
 				})
+					.finally()
 					.then((res) => {
-						if (!res?.Id) reject('User does not exist');
-						else if (!res.isActive) reject('The user is not active');
+						const userRecord: Record<string, any> | undefined = res?.list?.[0];
+
+						if (!userRecord?.Id) reject('User does not exist');
+						else if (!userRecord.IsActive) reject('The user is not active');
 						else {
-							response.contactID = res?.Contact?.Id;
+							response.contactID = userRecord?.Contact?.Id;
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							resolve(response);
 						}
 					})
-					.catch((_) => {
-						reject('Error fetching user details');
+					.catch((error) => {
+						const message = error?.message || error?.toString();
+						reject('Error fetching user details' + (message ? ` : ${message}` : ''));
 					});
 			}
 		});
