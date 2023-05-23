@@ -402,10 +402,6 @@ export const schema = {
 						default: false,
 						type: Boolean,
 					},
-					requestCert: {
-						default: true,
-						type: Boolean,
-					},
 				}
 			},
 			queueRecoveryInterval: {
