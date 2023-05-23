@@ -397,6 +397,16 @@ export const schema = {
 					default: '',
 					env: 'QUEUE_BULL_REDIS_USERNAME',
 				},
+				tls: {
+					rejectUnauthorized: {
+						default: false,
+						type: Boolean,
+					},
+					requestCert: {
+						default: true,
+						type: Boolean,
+					},
+				}
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',

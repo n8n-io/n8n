@@ -188,7 +188,7 @@ export abstract class AbstractServer {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+		const { host, port, username, password, db, tls }: RedisOptions = config.getEnv('queue.bull.redis');
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
 		const redis = new Redis({
@@ -215,9 +215,7 @@ export abstract class AbstractServer {
 				}
 				return 500;
 			},
-			tls: {
-				rejectUnauthorized: false,
-			}
+			tls,
 		});
 
 		redis.on('close', () => {
