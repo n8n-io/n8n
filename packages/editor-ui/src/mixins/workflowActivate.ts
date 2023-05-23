@@ -1,19 +1,21 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
-export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
+export const workflowActivate = defineComponent({
+	mixins: [externalHooks, workflowHelpers],
 	setup() {
 		return {
 			...useToast(),
@@ -61,7 +63,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
 				ndv_input: telemetrySource === 'ndv',
 			};
 			this.$telemetry.track('User set workflow active status', telemetryPayload);
-			this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+			void this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 			try {
 				if (isWorkflowActive && newActiveState) {
@@ -105,7 +107,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers).extend({
 			const activationEventName = isCurrentWorkflow
 				? 'workflow.activeChangeCurrent'
 				: 'workflow.activeChange';
-			this.$externalHooks().run(activationEventName, {
+			void this.$externalHooks().run(activationEventName, {
 				workflowId: currWorkflowId,
 				active: newActiveState,
 			});

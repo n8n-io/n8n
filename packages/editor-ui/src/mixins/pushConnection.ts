@@ -22,7 +22,6 @@ import type {
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -34,14 +33,16 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
+import { defineComponent } from 'vue';
 
-export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers).extend({
+export const pushConnection = defineComponent({
 	setup() {
 		return {
 			...useTitleChange(),
 			...useToast(),
 		};
 	},
+	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
@@ -379,7 +380,7 @@ export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						void this.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -437,6 +438,7 @@ export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
+							dangerouslyUseHTMLString: true,
 						});
 					}
 				} else {
@@ -510,7 +512,7 @@ export const pushConnection = mixins(externalHooks, nodeHelpers, workflowHelpers
 							.length;
 				}
 
-				this.$externalHooks().run('pushConnection.executionFinished', {
+				void this.$externalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,

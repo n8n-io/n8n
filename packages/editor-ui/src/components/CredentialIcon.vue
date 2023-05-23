@@ -7,12 +7,13 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
 
 export default defineComponent({
 	props: {

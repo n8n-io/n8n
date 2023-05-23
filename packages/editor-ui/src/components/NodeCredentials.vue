@@ -97,7 +97,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import type {
 	ICredentialsResponse,
 	INodeUi,
@@ -118,9 +120,6 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { useToast } from '@/composables';
 
 import TitledList from '@/components/TitledList.vue';
-
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -141,8 +140,9 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers).extend({
+export default defineComponent({
 	name: 'NodeCredentials',
+	mixins: [genericHelpers, nodeHelpers],
 	props: {
 		readonly: {
 			type: Boolean,

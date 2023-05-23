@@ -1,3 +1,5 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -45,10 +47,8 @@ import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -321,7 +321,8 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers],
 	setup() {
 		return {
 			...useToast(),
@@ -731,7 +732,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -756,6 +757,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
 						{
+							dangerouslyUseHTMLString: true,
 							confirmButtonText: this.$locale.baseText(
 								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
 							),
@@ -895,7 +897,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers).extend({
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;

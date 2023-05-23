@@ -35,8 +35,8 @@ const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
 export default defineComponent({
-	components: { TagsTableHeader, TagsTable },
 	name: 'TagsView',
+	components: { TagsTableHeader, TagsTable },
 	props: ['tags', 'isLoading'],
 	data() {
 		return {

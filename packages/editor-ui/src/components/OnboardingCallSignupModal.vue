@@ -55,13 +55,13 @@ import { defineComponent } from 'vue';
 import { useToast } from '@/composables';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
+	name: 'OnboardingCallSignupModal',
 	components: {
 		Modal,
 	},
-	name: 'OnboardingCallSignupModal',
 	props: ['modalName'],
 	setup() {
 		return {

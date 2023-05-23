@@ -37,11 +37,11 @@ import type { IFormInputs } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
-	components: { Modal },
 	name: 'ChangePasswordModal',
+	components: { Modal },
 	props: {
 		modalName: {
 			type: String,

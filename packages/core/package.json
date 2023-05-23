@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.167.0",
+  "version": "0.168.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "client-oauth2": "^4.2.5",
+    "@n8n/client-oauth2": "workspace:*",
     "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",

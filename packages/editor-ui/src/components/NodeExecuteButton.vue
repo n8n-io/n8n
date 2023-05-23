@@ -18,20 +18,21 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
 import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast, useMessage } from '@/composables';
 
-export default mixins(workflowRun, pinData).extend({
+export default defineComponent({
+	mixins: [workflowRun, pinData],
 	props: {
 		nodeName: {
 			type: String,
@@ -57,10 +58,11 @@ export default mixins(workflowRun, pinData).extend({
 			type: String,
 		},
 	},
-	setup() {
+	setup(props) {
 		return {
 			...useToast(),
 			...useMessage(),
+			...workflowRun.setup?.(props),
 		};
 	},
 	computed: {

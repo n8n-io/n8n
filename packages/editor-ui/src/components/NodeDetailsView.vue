@@ -125,6 +125,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
 import type {
 	INodeConnections,
 	INodeTypeDescription,
@@ -142,7 +145,6 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
-import mixins from 'vue-typed-mixins';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -156,8 +158,7 @@ import {
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
-import { createEventBus, dataPinningEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
+import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -166,14 +167,9 @@ import { useSettingsStore } from '@/stores/settings.store';
 import useDeviceSupport from '@/composables/useDeviceSupport';
 import { useMessage } from '@/composables';
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	workflowHelpers,
-	workflowActivate,
-	pinData,
-).extend({
+export default defineComponent({
 	name: 'NodeDetailsView',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -193,10 +189,11 @@ export default mixins(
 			default: false,
 		},
 	},
-	setup() {
+	setup(props) {
 		return {
 			...useDeviceSupport(),
 			...useMessage(),
+			...workflowActivate.setup?.(props),
 		};
 	},
 	data() {
@@ -423,7 +420,7 @@ export default mixins(
 				this.avgInputRowHeight = 0;
 
 				setTimeout(this.ndvStore.setNDVSessionId, 0);
-				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
+				void this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
