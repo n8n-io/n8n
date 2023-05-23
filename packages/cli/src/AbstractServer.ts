@@ -217,7 +217,6 @@ export abstract class AbstractServer {
 			},
 			tls: {
 				rejectUnauthorized: false,
-				requestCert: true,
 			}
 		});
 
