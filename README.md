@@ -1,3 +1,16 @@
+# n8n - ESA
+
+## ENV Vars
+Please load current envs to check if an env you need already exist before deciding creating new one to avoid duplicates. Below are envs used by n8n code( i.e. not installed dependencies ).
+
+```
+DCS_ENV=
+ESA_PROJECT_NAME=
+ESA_N8N_WEBHOOKS_POSTMAN_WORKSPACE_UID=
+ESA_POSTMAN_API_KEY=
+ESA_POSTMAN_ID_COLLISION_RETRY_COUNT=
+```
+
 ![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
 # n8n - Workflow automation tool
@@ -36,7 +49,7 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
   [how to run n8n in **Docker**](https://docs.n8n.io/hosting/installation/docker/)
 
 ## Start
-You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed. 
+You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed.
 From the terminal, run:
 
 `npx n8n`

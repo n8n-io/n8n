@@ -204,14 +204,14 @@ export const createPostmanCollectionRequestsForWorkflowWebhooks = async (
 				}
 			}
 
+			if (!collectionItemData.id) collectionItemData.id = uuid();
+
 			if (!collectionItems) collectionItems = [];
 
 			if (collectionRequestItemIndex <= -1) {
 				collectionItems.push(collectionItemData);
 				collectionRequestItemIndex = collectionItems.length - 1;
 			}
-
-			if (!collectionItemData.id) collectionItemData.id = uuid();
 
 			let currentRetryStage = -1;
 			let retry: boolean;
