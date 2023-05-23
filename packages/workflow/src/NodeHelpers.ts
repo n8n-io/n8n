@@ -1238,7 +1238,9 @@ export const tryToParseDateTime = (value: unknown): DateTime => {
 };
 
 export const tryToParseTime = (value: unknown): string => {
-	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?(\-|\+\d{4})?$/s.test(String(value));
+	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?((\-|\+)\d{4})?((\-|\+)\d{1,2}(:\d{2})?)?$/s.test(
+		String(value),
+	);
 	if (!isTimeInput) {
 		throw new Error(`The value "${String(value)}" is not a valid time.`);
 	}

@@ -164,6 +164,12 @@ describe('Type Validation', () => {
 	it('should validate and cast time properly', () => {
 		expect(validateFieldType('time', '23:23', 'time').valid).toEqual(true);
 		expect(validateFieldType('time', '23:23:23', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '23:23:23+1000', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '23:23:23-1000', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '22:00:00+01:00', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '22:00:00-01:00', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '22:00:00+01', 'time').valid).toEqual(true);
+		expect(validateFieldType('time', '22:00:00-01', 'time').valid).toEqual(true);
 		expect(validateFieldType('time', '23:23:23:23', 'time').valid).toEqual(false);
 		expect(validateFieldType('time', '23', 'time').valid).toEqual(false);
 		expect(validateFieldType('time', 'foo', 'time').valid).toEqual(false);
