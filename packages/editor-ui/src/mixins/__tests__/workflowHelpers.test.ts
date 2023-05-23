@@ -2,12 +2,6 @@ import { shouldReplaceInputDataWithPinData } from '../workflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowsStore } from '@/stores';
 
-// vi.mock('@/stores/useWorkflowsStore', () => ({
-// 	useWorkflowsStore: vi.fn(() => ({
-// 		activeWorkflowExecution: null,
-// 	})),
-// }));
-
 let pinia: ReturnType<typeof createTestingPinia>;
 beforeAll(() => {
 	pinia = createTestingPinia();
