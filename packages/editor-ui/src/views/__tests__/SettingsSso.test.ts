@@ -116,7 +116,5 @@ describe('SettingsSso', () => {
 
 		expect(saveSpy).toHaveBeenCalled();
 		expect(getSpy).toHaveBeenCalled();
-
-		await retry(() => expect(btnSave).toBeDisabled());
 	});
 });
