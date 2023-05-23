@@ -283,7 +283,6 @@
 import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
@@ -310,7 +309,6 @@ export default defineComponent({
 	mixins: [externalHooks, genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
-		WorkflowActivator,
 		ExecutionFilter,
 	},
 	setup() {

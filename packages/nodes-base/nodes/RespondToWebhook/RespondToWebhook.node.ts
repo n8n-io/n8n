@@ -1,3 +1,4 @@
+import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -201,7 +202,7 @@ export class RespondToWebhook implements INodeType {
 			}
 		}
 
-		let responseBody: IN8nHttpResponse;
+		let responseBody: IN8nHttpResponse | Readable;
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
 			if (responseBodyParameter) {
@@ -235,15 +236,16 @@ export class RespondToWebhook implements INodeType {
 			}
 
 			const binaryData = this.helpers.assertBinaryData(0, responseBinaryPropertyName);
-			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-				0,
-				responseBinaryPropertyName,
-			);
+			if (binaryData.id) {
+				responseBody = { binaryData };
+			} else {
+				responseBody = Buffer.from(binaryData.data, BINARY_ENCODING);
+				headers['content-length'] = (responseBody as Buffer).length;
+			}
 
 			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
-			responseBody = binaryDataBuffer;
 		} else if (respondWith !== 'noData') {
 			throw new NodeOperationError(
 				this.getNode(),
