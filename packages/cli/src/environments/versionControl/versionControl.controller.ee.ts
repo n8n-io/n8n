@@ -51,11 +51,17 @@ export class VersionControlController {
 				sanitizedPreferences,
 			);
 			if (sanitizedPreferences.initRepo === true) {
-				await this.versionControlService.initializeRepository({
-					...newPreferences,
-					initRepo: true,
-				});
-				await this.versionControlPreferencesService.setPreferences({ connected: true });
+				try {
+					await this.versionControlService.initializeRepository({
+						...newPreferences,
+						initRepo: true,
+					});
+					await this.versionControlPreferencesService.setPreferences({ connected: true });
+				} catch (error) {
+					// if initialization fails, run cleanup to remove any intermediate state and throw the error
+					await this.versionControlService.disconnect({ keepKeyPair: true });
+					throw error;
+				}
 			}
 			await this.versionControlService.init();
 			return newPreferences;
