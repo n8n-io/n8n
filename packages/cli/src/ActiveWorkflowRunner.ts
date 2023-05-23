@@ -67,6 +67,7 @@ import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { START_NODES } from './constants';
 import { webhookNotFoundErrorMessage } from './utils';
+import { In } from 'typeorm';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -168,11 +169,7 @@ export class ActiveWorkflowRunner {
 		activeWorkflowIds.push.apply(activeWorkflowIds, this.activeWorkflows.allActiveWorkflows());
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowIds = [
-			...activeWorkflowIds,
-			...activeWorkflows.map((workflow) => workflow.id.toString()),
-		];
-
+		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
 
@@ -348,30 +345,31 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Returns the ids of the currently active workflows
 	 */
-	async getActiveWorkflows(user?: User): Promise<IWorkflowDb[]> {
+	async getActiveWorkflows(user?: User): Promise<string[]> {
 		let activeWorkflows: WorkflowEntity[] = [];
-
 		if (!user || user.globalRole.name === 'owner') {
 			activeWorkflows = await Db.collections.Workflow.find({
 				select: ['id'],
 				where: { active: true },
 			});
+			return activeWorkflows.map((workflow) => workflow.id.toString());
 		} else {
-			const shared = await Db.collections.SharedWorkflow.find({
-				relations: ['workflow'],
-				where: whereClause({
-					user,
-					entityType: 'workflow',
-				}),
+			const active = await Db.collections.Workflow.find({
+				select: ['id'],
+				where: { active: true },
 			});
-
-			activeWorkflows = shared.reduce<WorkflowEntity[]>((acc, cur) => {
-				if (cur.workflow.active) acc.push(cur.workflow);
-				return acc;
-			}, []);
+			const activeIds = active.map((workflow) => workflow.id);
+			const where = whereClause({
+				user,
+				entityType: 'workflow',
+			});
+			Object.assign(where, { workflowId: In(activeIds) });
+			const shared = await Db.collections.SharedWorkflow.find({
+				select: ['workflowId'],
+				where,
+			});
+			return shared.map((id) => id.workflowId.toString());
 		}
-
-		return activeWorkflows.filter((workflow) => this.activationErrors[workflow.id] === undefined);
 	}
 
 	/**
