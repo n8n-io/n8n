@@ -149,7 +149,7 @@ async function commitAndPush() {
 							<n8n-checkbox
 								:value="staged[file.file]"
 								:class="$style.listItemCheckbox"
-								@input="setStagedStatus(file, $event)"
+								@input="setStagedStatus(file, !staged[file.file])"
 							/>
 							<n8n-text bold>
 								<span v-if="file.status === 'deleted'">
