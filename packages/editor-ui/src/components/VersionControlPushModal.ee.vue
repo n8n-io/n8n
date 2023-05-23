@@ -152,7 +152,14 @@ async function commitAndPush() {
 								@input="setStagedStatus(file, $event)"
 							/>
 							<n8n-text bold>
-								{{ file.name }}
+								<span v-if="file.status === 'deleted'">
+									<span v-if="file.type === 'workflow'"> Workflow </span>
+									<span v-if="file.type === 'credential'"> Credential </span>
+									Id: {{ file.id }}
+								</span>
+								<span v-else>
+									{{ file.name }}
+								</span>
 							</n8n-text>
 							<n8n-badge :class="$style.listItemStatus">
 								{{ file.status }}

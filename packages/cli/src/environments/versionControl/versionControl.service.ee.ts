@@ -276,6 +276,7 @@ export class VersionControlService {
 			]);
 		}
 		const deletedFiles = new Set<string>(status.deleted);
+		deletedFiles.forEach((e) => mergedFileNames.delete(e));
 		await this.unstage();
 		const stageResult = await this.gitService.stage(mergedFileNames, deletedFiles);
 		if (!stageResult) {
