@@ -2,7 +2,6 @@
 import { computed, ref, onMounted } from 'vue';
 import { useSSOStore } from '@/stores/sso.store';
 import { useUIStore } from '@/stores/ui.store';
-import { i18n as locale } from '@/plugins/i18n';
 import CopyInput from '@/components/CopyInput.vue';
 import { useI18n, useMessage, useToast } from '@/composables';
 
