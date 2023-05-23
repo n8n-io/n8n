@@ -449,12 +449,15 @@ export default defineComponent({
 				!this.temporaryExecution
 			) {
 				this.workflowsStore.activeWorkflowExecution = this.executions[0];
-				this.$router
-					.push({
-						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-					})
-					.catch(() => {});
+
+				if (this.$route.name === VIEWS.EXECUTION_HOME) {
+					this.$router
+						.push({
+							name: VIEWS.EXECUTION_PREVIEW,
+							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+						})
+						.catch(() => {});
+				}
 			}
 		},
 		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {
