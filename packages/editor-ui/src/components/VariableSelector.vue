@@ -24,6 +24,8 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE } from '@/constants';
 
 import type {
@@ -44,8 +46,6 @@ import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -53,8 +53,9 @@ import { useNDVStore } from '@/stores/ndv.store';
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'VariableSelector',
+	mixins: [workflowHelpers],
 	components: {
 		VariableSelectorItem,
 	},
