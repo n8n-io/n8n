@@ -11,20 +11,20 @@ export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execution Data',
 		name: 'executionData',
-		icon: 'fa:list',
+		icon: 'fa:tasks',
 		group: ['input'],
 		version: 1,
-		description: 'Add execution data',
+		description: 'Add execution data for search',
 		defaults: {
 			name: 'Execution Data',
-			color: '#0000FF',
+			color: '#29A568',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
 			{
 				displayName:
-					"Use this node to save fields you want to use later to easily find an execution (e.g. a user ID). You'll be able to search by this data in the 'executions' tab.<br>This feature is available on our Pro and Enterprise plans. <a href='https://n8n.io/pricing/' target='_blank'>More Info</a>",
+					"Use this node to save fields you want to use later to easily find an execution (e.g. a user ID). You'll be able to search by this data in the 'executions' tab.<br>This feature is available on our Pro and Enterprise plans. <a href='https://n8n.io/pricing/' target='_blank'>More Info</a>.",
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -38,7 +38,7 @@ export class ExecutionData implements INodeType {
 				options: [
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Save execution data for search',
+						name: 'Save Execution Data for Search',
 						value: 'save',
 						action: 'Save execution data for search',
 					},
