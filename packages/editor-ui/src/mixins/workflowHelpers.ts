@@ -223,32 +223,39 @@ function connectionInputData(
 		}
 	}
 
-	const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
-		const pinData = useWorkflowsStore().pinDataByNodeName(parentNodeName);
+	const workflowsStore = useWorkflowsStore();
+	if (
+		!workflowsStore.activeWorkflowExecution ||
+		(workflowsStore.activeWorkflowExecution &&
+			workflowsStore.activeWorkflowExecution.mode === 'manual')
+	) {
+		const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
+			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
 
-		if (pinData) {
-			acc.push({
-				json: pinData[0],
-				pairedItem: {
-					item: index,
-					input: 1,
-				},
-			});
-		}
+			if (pinData) {
+				acc.push({
+					json: pinData[0],
+					pairedItem: {
+						item: index,
+						input: 1,
+					},
+				});
+			}
 
-		return acc;
-	}, []);
+			return acc;
+		}, []);
 
-	if (parentPinData.length > 0) {
-		if (connectionInputData && connectionInputData.length > 0) {
-			parentPinData.forEach((parentPinDataEntry) => {
-				connectionInputData![0].json = {
-					...connectionInputData![0].json,
-					...parentPinDataEntry.json,
-				};
-			});
-		} else {
-			connectionInputData = parentPinData;
+		if (parentPinData.length > 0) {
+			if (connectionInputData && connectionInputData.length > 0) {
+				parentPinData.forEach((parentPinDataEntry) => {
+					connectionInputData![0].json = {
+						...connectionInputData![0].json,
+						...parentPinDataEntry.json,
+					};
+				});
+			} else {
+				connectionInputData = parentPinData;
+			}
 		}
 	}
 
@@ -272,20 +279,28 @@ function executeData(
 		// which does not use the node name
 		const parentNodeName = parentNode[0];
 
-		const parentPinData = useWorkflowsStore().getPinData![parentNodeName];
+		const workflowsStore = useWorkflowsStore();
 
-		// populate `executeData` from `pinData`
+		if (
+			!workflowsStore.activeWorkflowExecution ||
+			(workflowsStore.activeWorkflowExecution &&
+				workflowsStore.activeWorkflowExecution.mode === 'manual')
+		) {
+			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
-		if (parentPinData) {
-			executeData.data = { main: [parentPinData] };
-			executeData.source = { main: [{ previousNode: parentNodeName }] };
+			// populate `executeData` from `pinData`
 
-			return executeData;
+			if (parentPinData) {
+				executeData.data = { main: [parentPinData] };
+				executeData.source = { main: [{ previousNode: parentNodeName }] };
+
+				return executeData;
+			}
 		}
 
 		// populate `executeData` from `runData`
 
-		const workflowRunData = useWorkflowsStore().getWorkflowRunData;
+		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
 		}
