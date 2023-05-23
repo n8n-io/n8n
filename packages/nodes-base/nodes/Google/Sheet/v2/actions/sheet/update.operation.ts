@@ -335,6 +335,12 @@ export async function execute(
 						"At least one value has to be added under 'Values to Send'",
 					);
 				}
+				// Setting empty values to empty string so that they are not ignored by the API
+				Object.keys(mappingValues).forEach((key) => {
+					if (mappingValues[key] === undefined || mappingValues[key] === null) {
+						mappingValues[key] = '';
+					}
+				});
 				data.push(mappingValues);
 				mappedValues.push(mappingValues);
 			}
