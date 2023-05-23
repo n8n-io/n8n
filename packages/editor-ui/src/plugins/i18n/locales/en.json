@@ -1216,7 +1216,7 @@
 	"settings.log-streaming.actionBox.title": "Available on Enterprise plan",
 	"settings.log-streaming.actionBox.description": "Log Streaming is available as a paid feature. Learn more about it.",
 	"settings.log-streaming.actionBox.button": "See plans",
-	"settings.log-streaming.infoText": "Send logs to external endpoints of your choice. You can also write logs to a file or the console using environment variables. <a href=\"https://docs.n8n.io/hosting/logging/\" target=\"_blank\">More info</a>",
+	"settings.log-streaming.infoText": "Send logs to external endpoints of your choice. You can also write logs to a file or the console using environment variables. <a href=\"https://docs.n8n.io/log-streaming/\" target=\"_blank\">More info</a>",
 	"settings.log-streaming.addFirstTitle": "Set up a destination to get started",
 	"settings.log-streaming.addFirst": "Add your first destination by clicking on the button and selecting a destination type.",
 	"settings.log-streaming.saving": "Saving",
