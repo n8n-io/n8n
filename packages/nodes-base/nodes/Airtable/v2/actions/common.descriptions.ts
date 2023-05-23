@@ -195,7 +195,7 @@ export const insertUpdateOptions: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to update all rows that match the "Column to Match On" or just the first one',
+					'Whether to update all records matching the value in the "Column to Match On". If not set, only the first matching record will be updated.',
 				displayOptions: {
 					show: {
 						'/operation': ['update', 'upsert'],
