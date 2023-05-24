@@ -543,16 +543,18 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			const { usageLeft, trialDaysLeft, userIsTrialing } = this.cloudPlanStore;
-			const { executionsLeft, workflowsLeft } = usageLeft;
+			if (useSettingsStore().deploymentType === 'cloud') {
+				const { usageLeft, trialDaysLeft, userIsTrialing } = this.cloudPlanStore;
+				const { executionsLeft, workflowsLeft } = usageLeft;
 
-			this.$telemetry.track('User clicked upgrade CTA', {
-				source: 'canvas-nav',
-				isTrial: userIsTrialing,
-				trialDaysLeft,
-				executionsLeft,
-				workflowsLeft,
-			});
+				this.$telemetry.track('User clicked upgrade CTA', {
+					source: 'canvas-nav',
+					isTrial: userIsTrialing,
+					trialDaysLeft,
+					executionsLeft,
+					workflowsLeft,
+				});
+			}
 
 			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},

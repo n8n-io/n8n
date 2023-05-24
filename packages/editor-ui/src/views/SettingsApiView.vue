@@ -139,16 +139,18 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			const { usageLeft, trialDaysLeft, userIsTrialing } = this.cloudPlanStore;
-			const { executionsLeft, workflowsLeft } = usageLeft;
+			if (useSettingsStore().deploymentType === 'cloud') {
+				const { usageLeft, trialDaysLeft, userIsTrialing } = this.cloudPlanStore;
+				const { executionsLeft, workflowsLeft } = usageLeft;
 
-			this.$telemetry.track('User clicked upgrade CTA', {
-				source: 'settings-n8n-api',
-				isTrial: userIsTrialing,
-				trialDaysLeft,
-				executionsLeft,
-				workflowsLeft,
-			});
+				this.$telemetry.track('User clicked upgrade CTA', {
+					source: 'settings-n8n-api',
+					isTrial: userIsTrialing,
+					trialDaysLeft,
+					executionsLeft,
+					workflowsLeft,
+				});
+			}
 
 			location.href = CLOUD_CHANGE_PLAN_PAGE;
 		},
