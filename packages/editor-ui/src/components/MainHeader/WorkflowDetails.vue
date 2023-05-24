@@ -161,7 +161,7 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {

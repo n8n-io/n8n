@@ -5,7 +5,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable no-param-reassign */
@@ -75,8 +74,7 @@ export class WorkflowRunner {
 	 * The process did send a hook message so execute the appropriate hook
 	 */
 	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
+		void workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
 	}
 
 	/**
@@ -305,11 +303,8 @@ export class WorkflowRunner {
 					error,
 					error.node,
 				);
-				additionalData.hooks
-					.executeHookFunctions('workflowExecuteAfter', [failedExecution])
-					.then(() => {
-						this.activeExecutions.remove(executionId, failedExecution);
-					});
+				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
+				this.activeExecutions.remove(executionId, failedExecution);
 				return executionId;
 			}
 
@@ -382,7 +377,7 @@ export class WorkflowRunner {
 			if (workflowTimeout > 0) {
 				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
 				executionTimeout = setTimeout(() => {
-					this.activeExecutions.stopExecution(executionId, 'timeout');
+					void this.activeExecutions.stopExecution(executionId, 'timeout');
 				}, timeout);
 			}
 
@@ -395,15 +390,15 @@ export class WorkflowRunner {
 					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.remove(executionId, fullRunData);
 				})
-				.catch((error) => {
+				.catch(async (error) =>
 					this.processError(
 						error,
 						new Date(),
 						data.executionMode,
 						executionId,
 						additionalData.hooks,
-					);
-				});
+					),
+				);
 		} catch (error) {
 			await this.processError(
 				error,
@@ -467,7 +462,7 @@ export class WorkflowRunner {
 
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			hooks.executeHookFunctions('workflowExecuteBefore', []);
+			await hooks.executeHookFunctions('workflowExecuteBefore', []);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -585,7 +580,7 @@ export class WorkflowRunner {
 				this.activeExecutions.remove(executionId, runData);
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
-				hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 				try {
 					// Check if this execution data has to be removed from database
 					// based on workflow settings.
@@ -668,7 +663,7 @@ export class WorkflowRunner {
 		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 
 		const processTimeoutFunction = (timeout: number) => {
-			this.activeExecutions.stopExecution(executionId, 'timeout');
+			void this.activeExecutions.stopExecution(executionId, 'timeout');
 			executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
 		};
 
@@ -732,7 +727,7 @@ export class WorkflowRunner {
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
 				// No need to add hook here as the subprocess takes care of calling the hooks
-				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+				await this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			} else if (message.type === 'startExecution') {
 				const executionId = await this.activeExecutions.add(message.data.runData);
 				childExecutionIds.push(executionId);
