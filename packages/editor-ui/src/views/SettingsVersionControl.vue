@@ -5,13 +5,14 @@ import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast, useMessage } from '@/composables';
+import { useToast, useMessage, useLoadingService } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
 const message = useMessage();
+const loadingService = useLoadingService();
 
 const isConnected = computed(
 	() =>
@@ -19,14 +20,8 @@ const isConnected = computed(
 		versionControlStore.preferences.connected,
 );
 
-const shouldSave = computed(
-	() =>
-		versionControlStore.preferences.branchName !== versionControlStore.preferences.currentBranch ||
-		(versionControlStore.preferences.branchName !== '' &&
-			!versionControlStore.preferences.connected),
-);
-
 const onConnect = async () => {
+	loadingService.startLoading();
 	try {
 		await versionControlStore.savePreferences({
 			authorName: versionControlStore.preferences.authorName,
@@ -42,13 +37,26 @@ const onConnect = async () => {
 	} catch (error) {
 		toast.showError(error, 'Error connecting to Git');
 	}
+	loadingService.stopLoading();
 };
 
 const onDisconnect = async () => {
-	void versionControlStore.disconnect(true);
+	loadingService.startLoading();
+	try {
+		await versionControlStore.disconnect(true);
+		toast.showMessage({
+			title: 'Success',
+			message: 'Repository disconnected successfully',
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, 'Error disconnecting from Git');
+	}
+	loadingService.stopLoading();
 };
 
 const onSave = async () => {
+	loadingService.startLoading();
 	try {
 		await Promise.all([
 			versionControlStore.setBranch(versionControlStore.preferences.branchName),
@@ -62,6 +70,7 @@ const onSave = async () => {
 	} catch (error) {
 		toast.showError(error, 'Error setting branch');
 	}
+	loadingService.stopLoading();
 };
 
 const onSelect = async (b: string) => {
@@ -77,7 +86,7 @@ const goToUpgrade = () => {
 
 onBeforeMount(async () => {
 	if (versionControlStore.preferences.connected) {
-		await versionControlStore.getBranches();
+		void versionControlStore.getBranches();
 	}
 });
 
@@ -130,7 +139,6 @@ const validForConnection = computed(
 		}}</n8n-heading>
 		<div
 			v-if="versionControlStore.isEnterpriseVersionControlEnabled"
-			v-loading="versionControlStore.state.loading"
 			data-test-id="version-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
@@ -271,7 +279,7 @@ const validForConnection = computed(
 					</div>
 				</div> -->
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button :disabled="!shouldSave" @click="onSave" size="small">{{
+					<n8n-button @click="onSave" size="small">{{
 						locale.baseText('settings.versionControl.button.save')
 					}}</n8n-button>
 				</div>

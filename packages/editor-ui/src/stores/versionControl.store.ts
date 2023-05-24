@@ -27,18 +27,10 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	});
 
 	const state = reactive<{
-		loading: boolean;
 		commitMessage: string;
-		error: Error | null;
 	}>({
-		loading: false,
 		commitMessage: 'commit message',
-		error: null,
 	});
-
-	const setError = (error: Error | null) => {
-		state.error = error;
-	};
 
 	const pushWorkfolder = async (data: { commitMessage: string; fileNames?: string[] }) => {
 		state.commitMessage = data.commitMessage;
@@ -57,58 +49,28 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	};
 
 	const getBranches = async () => {
-		state.loading = true;
-		try {
-			const data = await vcApi.getBranches(rootStore.getRestApiContext);
-			setPreferences(data);
-		} catch (error) {
-			setError(error);
-		}
-		state.loading = false;
+		const data = await vcApi.getBranches(rootStore.getRestApiContext);
+		setPreferences(data);
 	};
 
 	const getPreferences = async () => {
-		state.loading = true;
-		try {
-			const data = await vcApi.getPreferences(rootStore.getRestApiContext);
-			setPreferences(data);
-		} catch (error) {
-			setError(error);
-		}
-		state.loading = false;
+		const data = await vcApi.getPreferences(rootStore.getRestApiContext);
+		setPreferences(data);
 	};
 
 	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
-		state.loading = true;
-		try {
-			const data = await vcApi.setPreferences(rootStore.getRestApiContext, preferences);
-			setPreferences(data);
-		} catch (error) {
-			setError(error);
-		}
-		state.loading = false;
+		const data = await vcApi.setPreferences(rootStore.getRestApiContext, preferences);
+		setPreferences(data);
 	};
 
 	const setBranch = async (branch: string) => {
-		state.loading = true;
-		try {
-			const data = await vcApi.setBranch(rootStore.getRestApiContext, branch);
-			setPreferences({ ...data, connected: true });
-		} catch (error) {
-			setError(error);
-		}
-		state.loading = false;
+		const data = await vcApi.setBranch(rootStore.getRestApiContext, branch);
+		setPreferences({ ...data, connected: true });
 	};
 
 	const disconnect = async (keepKeyPair: boolean) => {
-		state.loading = true;
-		try {
-			await vcApi.disconnect(rootStore.getRestApiContext, keepKeyPair);
-			setPreferences({ connected: false, branches: [] });
-		} catch (error) {
-			setError(error);
-		}
-		state.loading = false;
+		await vcApi.disconnect(rootStore.getRestApiContext, keepKeyPair);
+		setPreferences({ connected: false, branches: [] });
 	};
 
 	const getStatus = async () => {

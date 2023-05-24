@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore } from '@/stores';
 import { VERSION_CONTROL_PUSH_MODAL_KEY } from '@/constants';
@@ -18,10 +18,6 @@ const toast = useToast();
 const { i18n } = useI18n();
 
 const eventBus = createEventBus();
-
-const versionControlLoading = computed(() => {
-	return versionControlStore.state.loading;
-});
 
 const currentBranch = computed(() => {
 	return versionControlStore.preferences.branchName;
@@ -76,7 +72,7 @@ async function pullWorkfolder() {
 			<n8n-icon icon="code-branch" />
 			{{ currentBranch }}
 		</span>
-		<div v-loading="versionControlLoading" :class="{ 'pt-xs': !isCollapsed }">
+		<div :class="{ 'pt-xs': !isCollapsed }">
 			<n8n-button
 				:title="i18n.baseText('settings.versionControl.button.pull')"
 				:class="{
