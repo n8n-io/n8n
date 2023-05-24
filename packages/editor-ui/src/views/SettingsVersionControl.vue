@@ -241,7 +241,7 @@ const validForConnection = computed(
 			<n8n-button
 				v-if="!isConnected"
 				@click="onConnect"
-				size="medium"
+				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
@@ -290,7 +290,7 @@ const validForConnection = computed(
 					</div>
 				</div> -->
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button @click="onSave" size="medium">{{
+					<n8n-button @click="onSave" size="large">{{
 						locale.baseText('settings.versionControl.button.save')
 					}}</n8n-button>
 				</div>
