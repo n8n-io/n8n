@@ -74,6 +74,8 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
@@ -85,17 +87,16 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 
-export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'ExpressionEdit',
+	mixins: [externalHooks, genericHelpers, debounceHelper],
 	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
 		ExpressionEditorModalInput,
@@ -143,7 +144,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 		itemSelected(eventData: IVariableItemSelected) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
-			this.$externalHooks().run('expressionEdit.itemSelected', {
+			void this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
 				value: this.value,
 				selectedItem: eventData,
@@ -222,7 +223,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
 				undefined;
-			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
+			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,
 				value: this.value,

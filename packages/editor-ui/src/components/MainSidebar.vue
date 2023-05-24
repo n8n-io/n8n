@@ -25,6 +25,12 @@
 					/>
 				</div>
 			</template>
+
+			<template #beforeLowerMenu>
+				<ExecutionsUsage
+					:cloud-plan-data="currentPlanAndUsageData"
+					v-if="!isCollapsed && userIsTrialing"
+			/></template>
 			<template #menuSuffix>
 				<div v-if="hasVersionUpdates || versionControlStore.state.currentBranch">
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
@@ -110,21 +116,19 @@
 </template>
 
 <script lang="ts">
-import type { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
-
+import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
+import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
-import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useMessage } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
-import mixins from 'vue-typed-mixins';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -134,23 +138,24 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
-export default mixins(
-	genericHelpers,
-	showMessage,
-	workflowHelpers,
-	workflowRun,
-	userHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'MainSidebar',
 	components: {
 		GiftNotificationIcon,
-		WorkflowSettings,
+		ExecutionsUsage,
+	},
+	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
+	setup(props) {
+		return {
+			...useMessage(),
+			...workflowRun.setup?.(props),
+		};
 	},
 	data() {
 		return {
-			// @ts-ignore
 			basePath: '',
 			fullyExpanded: false,
 		};
@@ -164,6 +169,7 @@ export default mixins(
 			useVersionsStore,
 			useWorkflowsStore,
 			useVersionControlStore,
+			useCloudPlanStore,
 		),
 		currentBranch(): string {
 			return this.versionControlStore.state.currentBranch;
@@ -326,11 +332,23 @@ export default mixins(
 			];
 			return [...items, ...regularItems];
 		},
+		userIsTrialing(): boolean {
+			return this.cloudPlanStore.userIsTrialing;
+		},
+		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
+			const planData = this.cloudPlanStore.currentPlanData;
+			const usage = this.cloudPlanStore.currentUsageData;
+			if (!planData || !usage) return null;
+			return {
+				...planData,
+				usage,
+			};
+		},
 	},
 	async mounted() {
 		this.basePath = this.rootStore.baseUrl;
 		if (this.$refs.user) {
-			this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+			void this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 		}
 		if (window.innerWidth < 900 || this.uiStore.isNodeView) {
 			this.uiStore.sidebarMenuCollapsed = true;
@@ -468,7 +486,7 @@ export default mixins(
 			return defaultSettingsRoute;
 		},
 		onResize(event: UIEvent) {
-			this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
+			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
 		},
 		onResizeEnd(event: UIEvent) {
 			const browserWidth = (event.target as Window).outerWidth;
@@ -483,7 +501,7 @@ export default mixins(
 			}
 		},
 		async sync() {
-			const prompt = await this.$prompt(
+			const prompt = (await this.prompt(
 				this.$locale.baseText('settings.versionControl.sync.prompt.description', {
 					interpolate: { branch: this.versionControlStore.state.currentBranch },
 				}),
@@ -499,7 +517,7 @@ export default mixins(
 					inputPattern: /^.+$/,
 					inputErrorMessage: this.$locale.baseText('settings.versionControl.sync.prompt.error'),
 				},
-			);
+			)) as MessageBoxInputData;
 
 			if (prompt.value) {
 				await this.versionControlStore.sync({ commitMessage: prompt.value });

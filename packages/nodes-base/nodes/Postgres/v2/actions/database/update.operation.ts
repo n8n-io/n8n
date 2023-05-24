@@ -1,5 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -181,6 +182,13 @@ export async function execute(
 			valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 		}
 
+		if (!item[columnToMatchOn] && dataMode === 'autoMapInputData') {
+			throw new NodeOperationError(
+				this.getNode(),
+				"Column to match on not found in input item. Add a column to match on or set the 'Data Mode' to 'Define Below' to define the value to match on.",
+			);
+		}
+
 		const tableSchema = await getTableSchema(db, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
@@ -194,6 +202,13 @@ export async function execute(
 		values.push(columnToMatchOn, valueToMatchOn);
 
 		const updateColumns = Object.keys(item).filter((column) => column !== columnToMatchOn);
+
+		if (!Object.keys(updateColumns).length) {
+			throw new NodeOperationError(
+				this.getNode(),
+				"Add values to update to the input item or set the 'Data Mode' to 'Define Below' to define the values to update.",
+			);
+		}
 
 		const updates: string[] = [];
 

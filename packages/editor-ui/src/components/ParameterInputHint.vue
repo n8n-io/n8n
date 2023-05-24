@@ -11,8 +11,8 @@
 </template>
 
 <script lang="ts">
-import { sanitizeHtml } from '@/utils';
 import { defineComponent } from 'vue';
+import { sanitizeHtml } from '@/utils';
 
 export default defineComponent({
 	name: 'InputHint',

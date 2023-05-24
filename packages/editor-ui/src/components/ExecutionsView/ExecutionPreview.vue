@@ -126,20 +126,22 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
+import { useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { Dropdown as ElDropdown } from 'element-ui';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
-export default mixins(showMessage, executionHelpers).extend({
+export default defineComponent({
 	name: 'execution-preview',
+	mixins: [executionHelpers],
 	components: {
 		ElDropdown,
 		WorkflowPreview,
@@ -147,6 +149,11 @@ export default mixins(showMessage, executionHelpers).extend({
 	data() {
 		return {
 			VIEWS,
+		};
+	},
+	setup() {
+		return {
+			...useMessage(),
 		};
 	},
 	computed: {
@@ -163,14 +170,18 @@ export default mixins(showMessage, executionHelpers).extend({
 	},
 	methods: {
 		async onDeleteExecution(): Promise<void> {
-			const deleteConfirmed = await this.confirmMessage(
+			const deleteConfirmed = await this.confirm(
 				this.$locale.baseText('executionDetails.confirmMessage.message'),
 				this.$locale.baseText('executionDetails.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
-				'',
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'executionDetails.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: '',
+				},
 			);
-			if (!deleteConfirmed) {
+			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			}
 			this.$emit('deleteCurrentExecution');

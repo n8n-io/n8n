@@ -24,8 +24,6 @@ export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 		select: ['workflowId'],
 	});
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
-
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
 export async function getSharedWorkflow(
