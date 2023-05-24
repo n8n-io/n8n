@@ -374,14 +374,15 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Returns all IDs if user is global owner (see `whereClause`)
  */
 export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
-	let allRoles: Role[] = [];
-	const where = { userId: user.id };
-	if (roles) {
-		allRoles = await Db.collections.Role.find({
-			select: ['id', 'name'],
+	const where: FindOptionsWhere<SharedWorkflow> = {
+		userId: user.id,
+	};
+	if (roles?.length) {
+		const roleIds = await Db.collections.Role.find({
+			select: ['id'],
 			where: { name: In(roles), scope: In(['workflow', 'global']) },
-		});
-		Object.assign(where, { roleId: In(allRoles.map((role) => role.id)) });
+		}).then((data) => data.map(({ id }) => id));
+		where.roleId = In(roleIds);
 	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		where,
