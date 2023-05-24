@@ -139,12 +139,13 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			const { executionsLeft, workflowsLeft } = this.cloudPlanStore.usageLeft;
+			const { usageLeft, trialDaysLeft } = this.cloudPlanStore;
+			const { executionsLeft, workflowsLeft } = usageLeft;
 
 			this.$telemetry.track('User clicked upgrade CTA', {
 				source: 'settings-n8n-api',
 				isTrial: this.cloudPlanStore.userIsTrialing,
-				trialDaysLeft: this.cloudPlanStore.trialDaysLeft,
+				trialDaysLeft,
 				executionsLeft,
 				workflowsLeft,
 			});

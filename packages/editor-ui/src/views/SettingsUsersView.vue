@@ -161,12 +161,13 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			const { executionsLeft, workflowsLeft } = this.cloudPlanStore.usageLeft;
+			const { usageLeft, trialDaysLeft } = this.cloudPlanStore;
+			const { executionsLeft, workflowsLeft } = usageLeft;
 
 			this.$telemetry.track('User clicked upgrade CTA', {
 				source: 'settings-users',
 				isTrial: this.cloudPlanStore.userIsTrialing,
-				trialDaysLeft: this.cloudPlanStore.trialDaysLeft,
+				trialDaysLeft,
 				executionsLeft,
 				workflowsLeft,
 			});

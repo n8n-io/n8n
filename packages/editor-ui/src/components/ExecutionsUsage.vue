@@ -68,6 +68,7 @@ import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
 import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
+import { useCloudPlanStore, useTelemetryStore } from '@/stores';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
@@ -114,6 +115,17 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
+	const { usageLeft, trialDaysLeft } = useCloudPlanStore();
+	const { executionsLeft, workflowsLeft } = usageLeft;
+
+	useTelemetryStore().track('User clicked upgrade CTA', {
+		source: 'error-toast',
+		isTrial: true,
+		trialDaysLeft,
+		executionsLeft,
+		workflowsLeft,
+	});
+
 	location.href = CLOUD_CHANGE_PLAN_PAGE;
 };
 </script>
