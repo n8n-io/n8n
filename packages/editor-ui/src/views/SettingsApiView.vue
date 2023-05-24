@@ -139,6 +139,16 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
+			const { executionsLeft, workflowsLeft } = this.cloudPlanStore.usageLeft;
+
+			this.$telemetry.track('User clicked upgrade CTA', {
+				source: 'settings-n8n-api',
+				isTrial: this.cloudPlanStore.userIsTrialing,
+				trialDaysLeft: this.cloudPlanStore.trialDaysLeft,
+				executionsLeft,
+				workflowsLeft,
+			});
+
 			location.href = CLOUD_CHANGE_PLAN_PAGE;
 		},
 		async showDeleteModal() {

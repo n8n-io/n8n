@@ -162,6 +162,7 @@ import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { createEventBus } from 'n8n-design-system';
+import { useCloudPlanStore } from '@/stores';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -212,6 +213,7 @@ export default defineComponent({
 			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
+			useCloudPlanStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -541,6 +543,16 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
+			const { executionsLeft, workflowsLeft } = this.cloudPlanStore.usageLeft;
+
+			this.$telemetry.track('User clicked upgrade CTA', {
+				source: 'canvas nav',
+				isTrial: this.cloudPlanStore.userIsTrialing,
+				trialDaysLeft: this.cloudPlanStore.trialDaysLeft,
+				executionsLeft,
+				workflowsLeft,
+			});
+
 			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 	},
