@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/consistent-type-imports */
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import type {
@@ -31,11 +32,11 @@ import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
+import { Role } from './databases/entities/Role';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -373,15 +374,21 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Returns all IDs if user is global owner (see `whereClause`)
  */
 export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
+	let allRoles: Role[] = [];
+	const where = { userId: user.id };
+	if (roles) {
+		allRoles = await Db.collections.Role.find({
+			select: ['id', 'name'],
+			where: { name: In(roles) },
+		});
+		Object.assign(where, { roleId: In(allRoles.map((role) => role.id)) });
+	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		relations: ['workflow', 'role'],
-		where: whereClause({ user, entityType: 'workflow', roles }),
+		where,
 		select: ['workflowId'],
 	});
-
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
-
 /**
  * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
  * If user does, set flag in its settings.
