@@ -220,9 +220,9 @@ const validForConnection = computed(
 				<n8n-notice type="info" class="mt-s">
 					<i18n path="settings.versionControl.sshKeyDescription">
 						<template #link>
-							<a href="#" target="_blank">
-								{{ locale.baseText('settings.versionControl.sshKeyDescriptionLink') }}
-							</a>
+							<a href="#" target="_blank">{{
+								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
+							}}</a>
 						</template>
 					</i18n>
 				</n8n-notice>
