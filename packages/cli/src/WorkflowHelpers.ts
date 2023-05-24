@@ -379,7 +379,7 @@ export async function getSharedWorkflowIds(user: User, roles?: string[]): Promis
 	if (roles) {
 		allRoles = await Db.collections.Role.find({
 			select: ['id', 'name'],
-			where: { name: In(roles) },
+			where: { name: In(roles), scope: In(['workflow', 'global']) },
 		});
 		Object.assign(where, { roleId: In(allRoles.map((role) => role.id)) });
 	}
