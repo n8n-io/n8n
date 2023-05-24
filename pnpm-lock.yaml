@@ -1152,6 +1152,9 @@ importers:
       kafkajs:
         specifier: ^1.14.0
         version: 1.16.0
+      ldapts:
+        specifier: ^4.2.6
+        version: 4.2.6
       lodash.assign:
         specifier: ^4
         version: 4.2.0
@@ -16236,6 +16239,21 @@ packages:
 
   /ldapts@4.2.2:
     resolution: {integrity: sha512-UHe7BtEhPUFHZZ6XHnRvLHWQrftTap3PgGU0nOLtrFeigZvfpXSsqJ8C9uXNouDV+iDHqoWwplS0eHoDu/GIEQ==}
+    engines: {node: '>=14'}
+    dependencies:
+      '@types/asn1': 0.2.0
+      '@types/node': 16.18.12
+      '@types/uuid': 9.0.0
+      asn1: 0.2.6
+      debug: 4.3.4(supports-color@8.1.1)
+      strict-event-emitter-types: 2.0.0
+      uuid: 9.0.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /ldapts@4.2.6:
+    resolution: {integrity: sha512-r1eOj2PtTJi+9aZxLirktoHntuYXlbQD9ZXCjiZmJx0VBQtBcWc+rueqABuh/AxMcFHNPDSJLJAXxoj5VevTwQ==}
     engines: {node: '>=14'}
     dependencies:
       '@types/asn1': 0.2.0
