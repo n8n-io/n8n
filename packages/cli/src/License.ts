@@ -114,23 +114,23 @@ export class License {
 	}
 
 	isLdapEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+		return true;
 	}
 
 	isSamlEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+		return true;
 	}
 
 	isAdvancedExecutionFiltersEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+		return true;
 	}
 
 	isVariablesEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+		return true;
 	}
 
 	isVersionControlLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+		return true;
 	}
 
 	isAPIDisabled() {
