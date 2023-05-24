@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
-import { In } from 'typeorm';
+import { FindOptionsWhere, In } from 'typeorm';
 import { Container } from 'typedi';
 import type {
 	IDataObject,
@@ -36,7 +36,7 @@ import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
-import { Role } from './databases/entities/Role';
+import { SharedWorkflow } from './databases/entities/SharedWorkflow';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
