@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, reactive, onBeforeMount } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
-import { VALID_EMAIL_REGEX } from '@/constants';
+import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
 import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -41,14 +41,25 @@ const onConnect = async () => {
 };
 
 const onDisconnect = async () => {
-	loadingService.startLoading();
 	try {
-		await versionControlStore.disconnect(true);
-		toast.showMessage({
-			title: 'Success',
-			message: 'Repository disconnected successfully',
-			type: 'success',
-		});
+		const confirmation = await message.confirm(
+			locale.baseText('settings.versionControl.modals.disconnect.message'),
+			locale.baseText('settings.versionControl.modals.disconnect.title'),
+			{
+				confirmButtonText: locale.baseText('settings.versionControl.modals.disconnect.confirm'),
+				cancelButtonText: locale.baseText('settings.versionControl.modals.disconnect.cancel'),
+			},
+		);
+
+		if (confirmation === MODAL_CONFIRM) {
+			loadingService.startLoading();
+			await versionControlStore.disconnect(true);
+			toast.showMessage({
+				title: 'Success',
+				message: 'Repository disconnected successfully',
+				type: 'success',
+			});
+		}
 	} catch (error) {
 		toast.showError(error, 'Error disconnecting from Git');
 	}
