@@ -80,7 +80,7 @@ export class AuthController {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				throw new AuthError('SAML is enabled, please log in with SAML');
+				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			user = await handleLdapLogin(email, password);
