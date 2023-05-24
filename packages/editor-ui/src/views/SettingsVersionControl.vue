@@ -214,6 +214,7 @@ const validForConnection = computed(
 			<div v-if="versionControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.versionControl.sshKey') }}</label>
 				<CopyInput
+					size="medium"
 					:value="versionControlStore.preferences.publicKey"
 					:copy-button-text="locale.baseText('generic.clickToCopy')"
 				/>
@@ -230,7 +231,7 @@ const validForConnection = computed(
 			<n8n-button
 				v-if="!isConnected"
 				@click="onConnect"
-				size="large"
+				size="medium"
 				:disabled="!validForConnection"
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
@@ -279,7 +280,7 @@ const validForConnection = computed(
 					</div>
 				</div> -->
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button @click="onSave" size="large">{{
+					<n8n-button @click="onSave" size="medium">{{
 						locale.baseText('settings.versionControl.button.save')
 					}}</n8n-button>
 				</div>
