@@ -459,7 +459,6 @@ const config = (module.exports = {
 				'@typescript-eslint/naming-convention': 'off',
 				'@typescript-eslint/no-duplicate-imports': 'off',
 				'@typescript-eslint/no-empty-function': 'off',
-				'@typescript-eslint/no-floating-promises': 'off',
 				'@typescript-eslint/no-loop-func': 'off',
 				'@typescript-eslint/no-non-null-assertion': 'off',
 				'@typescript-eslint/no-shadow': 'off',

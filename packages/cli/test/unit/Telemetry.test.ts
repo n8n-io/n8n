@@ -1,3 +1,4 @@
+import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
 import { flushPromises } from './Helpers';
@@ -18,8 +19,13 @@ describe('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
+	const mockRudderStack: Pick<RudderStack, 'flush' | 'identify' | 'track'> = {
+		flush: (resolve) => resolve?.(),
+		identify: (data, resolve) => resolve?.(),
+		track: (data, resolve) => resolve?.(),
+	};
+
 	let telemetry: Telemetry;
-	const n8nVersion = '0.0.0';
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 
@@ -33,35 +39,31 @@ describe('Telemetry', () => {
 		config.set('deployment.type', 'n8n-testing');
 	});
 
-	afterAll(() => {
+	afterAll(async () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		startPulseSpy.mockRestore();
-		telemetry.trackN8nStop();
+		await telemetry.trackN8nStop();
 	});
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		spyTrack.mockClear();
 
 		const postHog = new PostHogClient();
-		postHog.init(instanceId);
+		await postHog.init(instanceId);
 
 		telemetry = new Telemetry(postHog, mock());
 		telemetry.setInstanceId(instanceId);
-		(telemetry as any).rudderStack = {
-			flush: () => {},
-			identify: () => {},
-			track: () => {},
-		};
+		(telemetry as any).rudderStack = mockRudderStack;
 	});
 
-	afterEach(() => {
-		telemetry.trackN8nStop();
+	afterEach(async () => {
+		await telemetry.trackN8nStop();
 	});
 
 	describe('trackN8nStop', () => {
-		test('should call track method', () => {
-			telemetry.trackN8nStop();
+		test('should call track method', async () => {
+			await telemetry.trackN8nStop();
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 		});
 	});
