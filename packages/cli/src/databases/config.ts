@@ -11,6 +11,7 @@ import { sqliteMigrations } from './migrations/sqlite';
 import type { DatabaseType } from '@db/types';
 import config from '@/config';
 import { parsePostgresUrl } from '@/ParserHelper';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
 
@@ -39,6 +40,8 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 					host: config.getEnv(`database.${configDBType}.host`),
 					port: config.getEnv(`database.${configDBType}.port`),
 			  };
+	} else {
+		Logger.debug(`Postgres is configured globally to: host: ${connectionDetails.host}, port: ${connectionDetails.port}, db: ${connectionDetails.database}`);
 	}
 
 	return {

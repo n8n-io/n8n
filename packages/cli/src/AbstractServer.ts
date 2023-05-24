@@ -191,6 +191,7 @@ export abstract class AbstractServer {
 		let cumulativeTimeout = 0;
 		const { host, port, password, db}: RedisOptions = parseRedisUrl() || config.getEnv('queue.bull.redis');
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
+		Logger.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
 
 		const redis = new Redis({
 			host,
