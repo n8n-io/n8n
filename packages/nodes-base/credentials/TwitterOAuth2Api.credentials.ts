@@ -1,5 +1,6 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+const scopes = ['twitter:write', 'tweet:read', 'forms:read'];
 export class TwitterOAuth2Api implements ICredentialType {
 	name = 'twitterOAuth2Api';
 
@@ -11,10 +12,10 @@ export class TwitterOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Request Token URL',
-			name: 'requestTokenUrl',
+			displayName: 'Grant Type',
+			name: 'grantType',
 			type: 'hidden',
-			default: 'https://api.twitter.com/oauth/request_token',
+			default: 'pkce',
 		},
 		{
 			displayName: 'Authorization URL',
@@ -29,26 +30,22 @@ export class TwitterOAuth2Api implements ICredentialType {
 			default: 'https://api.twitter.com/oauth/access_token',
 		},
 		{
-			displayName: 'Signature Method',
-			name: 'signatureMethod',
+			displayName: 'Scope',
+			name: 'scope',
 			type: 'hidden',
-			default: 'HMAC-SHA1',
+			default: scopes.join(' '),
 		},
 		{
-			displayName: 'Grant Type',
-			name: 'grantType',
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
 			type: 'hidden',
-			options: [
-				{
-					name: 'Authorization Code',
-					value: 'authorizationCode',
-				},
-				{
-					name: 'Authorization Code with PKCE',
-					value: 'pkce',
-				},
-			],
-			default: 'authorizationCode',
+			default: `user_scope=${scopes.join(' ')}`,
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'body',
 		},
 	];
 }
