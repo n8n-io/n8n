@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('path');
+
 /**
  * This file contains any locally defined ESLint rules. They are picked up by
  * eslint-plugin-n8n-local-rules and exposed as 'n8n-local-rules/<rule-name>'.
@@ -215,9 +217,24 @@ module.exports = {
 			},
 		},
 		create(context) {
-			const LOCALE_MAP_FILEPATH = './src/plugins/i18n/locales/en.json';
-			const LOCALE_MAP = JSON.parse(require('fs').readFileSync(LOCALE_MAP_FILEPATH));
+			const cwd = context.getCwd();
+			const locale = 'src/plugins/i18n/locales/en.json';
+
 			const LOCALE_NAMESPACE = '$locale';
+			const LOCALE_FILEPATH = cwd.endsWith('editor-ui')
+				? path.join(cwd, locale)
+				: path.join(cwd, 'packages/editor-ui', locale);
+
+			let LOCALE_MAP;
+
+			try {
+				LOCALE_MAP = JSON.parse(require('fs').readFileSync(LOCALE_FILEPATH));
+			} catch {
+				console.log(
+					'[dangerously-use-html-string-missing] Failed to load locale map, skipping rule...',
+				);
+				return {};
+			}
 
 			const METHODS_POSSIBLY_REQUIRING_HTML = new Set(['showToast', 'showMessage']);
 			const PROPERTIES_POSSIBLY_CONTAINING_HTML = new Set(['title', 'message']);
