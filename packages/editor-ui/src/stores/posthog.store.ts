@@ -154,9 +154,6 @@ export const usePostHog = defineStore('posthog', () => {
 			if (name === TEMPLATE_EXPERIMENT.name && variant === TEMPLATE_EXPERIMENT.variant) {
 				settingsStore.disableTemplates();
 			}
-			if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
-				segmentStore.showAppCuesChecklist();
-			}
 		});
 	};
 	const evaluateExperimentsDebounced = debounce(evaluateExperiments, 2000);
@@ -178,6 +175,10 @@ export const usePostHog = defineStore('posthog', () => {
 		});
 
 		trackedDemoExp.value[name] = variant;
+
+		if (name === ONBOARDING_EXPERIMENT.name && variant === ONBOARDING_EXPERIMENT.variant) {
+			segmentStore.showAppCuesChecklist();
+		}
 	};
 
 	return {
