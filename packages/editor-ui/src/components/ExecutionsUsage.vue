@@ -115,12 +115,12 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
-	const { usageLeft, trialDaysLeft } = useCloudPlanStore();
+	const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 	const { executionsLeft, workflowsLeft } = usageLeft;
 
 	useTelemetryStore().track('User clicked upgrade CTA', {
 		source: 'error-toast',
-		isTrial: true,
+		isTrial: userIsTrialing,
 		trialDaysLeft,
 		executionsLeft,
 		workflowsLeft,
