@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import * as vcApi from '@/api/versionControl';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import type { VersionControlPreferences } from '@/Interface';
+import { generateKeyPair } from '@/api/versionControl';
 
 export const useVersionControlStore = defineStore('versionControl', () => {
 	const rootStore = useRootStore();
@@ -73,6 +74,15 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setPreferences({ connected: false, branches: [] });
 	};
 
+	const generateKeyPair = async () => {
+		await vcApi.generateKeyPair(rootStore.getRestApiContext);
+		const data = await vcApi.getPreferences(rootStore.getRestApiContext); // To be removed once the API is updated
+
+		preferences.publicKey = data.publicKey;
+
+		return { publicKey: data.publicKey };
+	};
+
 	const getStatus = async () => {
 		return vcApi.getStatus(rootStore.getRestApiContext);
 	};
@@ -93,6 +103,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		pullWorkfolder,
 		getPreferences,
 		setPreferences,
+		generateKeyPair,
 		getBranches,
 		savePreferences,
 		setBranch,

@@ -2,12 +2,12 @@
 import { computed, reactive, onBeforeMount } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
-import { i18n as locale } from '@/plugins/i18n';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast, useMessage, useLoadingService } from '@/composables';
+import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
+const { i18n: locale } = useI18n();
 const versionControlStore = useVersionControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
@@ -141,6 +141,29 @@ const validForConnection = computed(
 		formValidationStatus.authorName &&
 		formValidationStatus.authorEmail,
 );
+
+async function refreshSshKey() {
+	try {
+		const confirmation = await message.confirm(
+			locale.baseText('settings.versionControl.modals.refreshSshKey.message'),
+			locale.baseText('settings.versionControl.modals.refreshSshKey.title'),
+			{
+				confirmButtonText: locale.baseText('settings.versionControl.modals.refreshSshKey.confirm'),
+				cancelButtonText: locale.baseText('settings.versionControl.modals.refreshSshKey.cancel'),
+			},
+		);
+
+		if (confirmation === MODAL_CONFIRM) {
+			await versionControlStore.generateKeyPair();
+			toast.showMessage({
+				title: locale.baseText('settings.versionControl.refreshSshKey.successful.title'),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('settings.versionControl.refreshSshKey.error.title'));
+	}
+}
 </script>
 
 <template>
@@ -224,10 +247,24 @@ const validForConnection = computed(
 			</div>
 			<div v-if="versionControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.versionControl.sshKey') }}</label>
-				<CopyInput
-					:value="versionControlStore.preferences.publicKey"
-					:copy-button-text="locale.baseText('generic.clickToCopy')"
-				/>
+				<div :class="{ [$style.sshInput]: !isConnected }">
+					<CopyInput
+						collapse
+						size="medium"
+						:value="versionControlStore.preferences.publicKey"
+						:copy-button-text="locale.baseText('generic.clickToCopy')"
+					/>
+					<n8n-button
+						v-if="!isConnected"
+						size="large"
+						type="tertiary"
+						icon="sync"
+						class="ml-s"
+						@click="refreshSshKey"
+					>
+						{{ locale.baseText('settings.versionControl.refreshSshKey') }}
+					</n8n-button>
+				</div>
 				<n8n-notice type="info" class="mt-s">
 					<i18n path="settings.versionControl.sshKeyDescription">
 						<template #link>
@@ -314,6 +351,8 @@ const validForConnection = computed(
 <style lang="scss" module>
 .group {
 	padding: 0 0 var(--spacing-s);
+	width: 100%;
+	display: block;
 
 	label {
 		display: inline-block;
@@ -358,6 +397,20 @@ const validForConnection = computed(
 
 .actionBox {
 	margin: var(--spacing-2xl) 0 0;
+}
+
+.sshInput {
+	width: 100%;
+	display: flex;
+	align-items: center;
+
+	> div {
+		width: calc(100% - 144px - var(--spacing-s));
+	}
+
+	> button {
+		height: 42px;
+	}
 }
 
 hr {

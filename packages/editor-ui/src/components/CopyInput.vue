@@ -108,7 +108,7 @@ export default defineComponent({
 
 .medium {
 	span {
-		font-size: var(--font-size-2xs);
+		font-size: var(--font-size-xs);
 		line-height: 1;
 	}
 }
