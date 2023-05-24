@@ -9,6 +9,8 @@ module.exports = {
 	...sharedOptions(__dirname, 'frontend'),
 
 	rules: {
+		'n8n-local-rules/dangerously-use-html-string-missing': 'off',
+
 		// TODO: Remove these
 		'import/no-default-export': 'off',
 		'import/order': 'off',

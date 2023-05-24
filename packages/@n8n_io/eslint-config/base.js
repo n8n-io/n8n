@@ -452,14 +452,16 @@ const config = (module.exports = {
 		},
 		{
 			files: ['test/**/*.ts'],
-			// TODO: Remove these
 			rules: {
+				'n8n-local-rules/no-skipped-tests':
+					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
+
+				// TODO: Remove these
 				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
 				'@typescript-eslint/naming-convention': 'off',
 				'@typescript-eslint/no-duplicate-imports': 'off',
 				'@typescript-eslint/no-empty-function': 'off',
-				'@typescript-eslint/no-floating-promises': 'off',
 				'@typescript-eslint/no-loop-func': 'off',
 				'@typescript-eslint/no-non-null-assertion': 'off',
 				'@typescript-eslint/no-shadow': 'off',

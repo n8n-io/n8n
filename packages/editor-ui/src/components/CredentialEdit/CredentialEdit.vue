@@ -529,7 +529,7 @@ export default defineComponent({
 						),
 					},
 				);
-				keepEditing = confirmAction !== MODAL_CONFIRM;
+				keepEditing = confirmAction === MODAL_CONFIRM;
 			}
 
 			if (!keepEditing) {
