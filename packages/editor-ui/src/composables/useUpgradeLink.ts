@@ -1,11 +1,10 @@
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useUIStore, useUsageStore } from '@/stores';
+import { useUIStore } from '@/stores';
 import { useI18n } from './useI18n';
 import { computed } from 'vue';
 
 export function useUpgradeLink(queryParams = { default: '', desktop: '' }) {
 	const uiStore = useUIStore();
-	const usageStore = useUsageStore();
 	const { i18n } = useI18n();
 
 	const upgradeLinkUrl = computed(() => {
@@ -13,11 +12,10 @@ export function useUpgradeLink(queryParams = { default: '', desktop: '' }) {
 		let url = i18n.baseText(linkUrlTranslationKey);
 
 		if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-			url = `${usageStore.viewPlansUrl}${queryParams.default}`;
+			url = `${url}${queryParams.default}`;
 		} else if (linkUrlTranslationKey.endsWith('.desktop')) {
 			url = `${url}${queryParams.desktop}`;
 		}
-
 		return url;
 	});
 

@@ -48,7 +48,7 @@ import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
-import { useUsageStore } from './usage.store';
+import { useTelemetry } from '@/composables';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 
@@ -316,15 +316,14 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		upgradeLinkUrl() {
 			return (source: string, utm_campaign: string): string => {
-				const usageStore = useUsageStore();
 				const linkUrlTranslationKey = this.contextBasedTranslationKeys
 					.upgradeLinkUrl as BaseTextKey;
 				let linkUrl = locale.baseText(linkUrlTranslationKey);
 
 				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${usageStore.viewPlansUrl}&source=${source}`;
+					linkUrl = `${linkUrl}?source=${source}`;
 				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
+					linkUrl = `${linkUrl}?utm_campaign=${utm_campaign || source}`;
 				}
 
 				return linkUrl;
@@ -480,6 +479,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		goToUpgrade(source: string, utm_campaign: string): void {
+			useTelemetry().track('User clicked on paywall CTA', { source });
 			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
 		},
 	},
