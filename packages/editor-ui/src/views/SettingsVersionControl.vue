@@ -214,7 +214,6 @@ const validForConnection = computed(
 			<div v-if="versionControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.versionControl.sshKey') }}</label>
 				<CopyInput
-					size="medium"
 					:value="versionControlStore.preferences.publicKey"
 					:copy-button-text="locale.baseText('generic.clickToCopy')"
 				/>
