@@ -251,8 +251,11 @@ export class VersionControlService {
 		if (status.modified.length > 0 && options.force !== true) {
 			return status;
 		}
-		await this.resetWorkfolder(options);
-		return this.import(options);
+		await this.resetWorkfolder({ ...options, importAfterPull: false });
+		if (options.importAfterPull) {
+			return this.import(options);
+		}
+		return;
 	}
 
 	async stage(
