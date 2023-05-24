@@ -170,6 +170,46 @@ module.exports = {
 		},
 	},
 
+	'no-skipped-tests': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Tests must not be skipped.',
+				recommended: 'error',
+			},
+			messages: {
+				removeSkip: 'Remove `.skip()` call',
+				removeOnly: 'Remove `.only()` call',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			const TESTING_FUNCTIONS = new Set(['test', 'it', 'describe']);
+			const SKIPPING_METHODS = new Set(['skip', 'only']);
+			const toMessageId = (s) => 'remove' + s.charAt(0).toUpperCase() + s.slice(1);
+
+			return {
+				MemberExpression(node) {
+					if (
+						node.object.type === 'Identifier' &&
+						TESTING_FUNCTIONS.has(node.object.name) &&
+						node.property.type === 'Identifier' &&
+						SKIPPING_METHODS.has(node.property.name)
+					) {
+						context.report({
+							messageId: toMessageId(node.property.name),
+							node,
+							fix: (fixer) => {
+								const [start, end] = node.property.range;
+								return fixer.removeRange([start - '.'.length, end]);
+							},
+						});
+					}
+				},
+			};
+		},
+	},
+
 	'no-interpolation-in-regular-string': {
 		meta: {
 			type: 'problem',
