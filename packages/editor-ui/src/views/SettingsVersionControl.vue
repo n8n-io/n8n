@@ -169,11 +169,11 @@ const validForConnection = computed(
 						@validate="(value) => onValidate('repoUrl', value)"
 					/>
 					<n8n-button
-						class="mt-xs ml-2xs"
+						class="ml-2xs"
 						type="tertiary"
 						v-if="isConnected"
 						@click="onDisconnect"
-						size="small"
+						size="large"
 						icon="trash"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
@@ -230,7 +230,7 @@ const validForConnection = computed(
 			<n8n-button
 				v-if="!isConnected"
 				@click="onConnect"
-				size="small"
+				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
@@ -279,7 +279,7 @@ const validForConnection = computed(
 					</div>
 				</div> -->
 				<div :class="[$style.group, 'pt-s']">
-					<n8n-button @click="onSave" size="small">{{
+					<n8n-button @click="onSave" size="large">{{
 						locale.baseText('settings.versionControl.button.save')
 					}}</n8n-button>
 				</div>
