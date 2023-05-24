@@ -122,15 +122,15 @@ export class License {
 	}
 
 	isAdvancedExecutionFiltersEnabled() {
-		return true;
+		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
 
 	isVariablesEnabled() {
-		return true;
+		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
 
 	isVersionControlLicensed() {
-		return true;
+		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
 	}
 
 	isAPIDisabled() {
