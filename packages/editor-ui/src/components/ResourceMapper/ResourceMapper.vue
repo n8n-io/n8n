@@ -7,6 +7,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	ResourceMapperField,
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -16,7 +17,6 @@ import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldName } from '@/utils';
 import { i18n as locale } from '@/plugins/i18n';
-import Vue from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
 
 interface Props {
@@ -41,8 +41,8 @@ const state = reactive({
 	paramValue: {
 		mappingMode: 'defineBelow',
 		value: {},
-		matchingColumns: [],
-		schema: [],
+		matchingColumns: [] as string[],
+		schema: [] as ResourceMapperField[],
 	} as ResourceMapperValue,
 	parameterValues: {} as INodeParameters,
 	loading: false,
@@ -55,8 +55,11 @@ watch(
 	() => props.dependentParametersValues,
 	async (currentValue, oldValue) => {
 		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
-			state.paramValue.value = null;
-			state.paramValue.schema = [];
+			state.paramValue = {
+				...state.paramValue,
+				value: null,
+				schema: [],
+			};
 			emitValueChanged();
 			await initFetching();
 			setDefaultFieldValues(true);
@@ -66,27 +69,47 @@ watch(
 
 onMounted(async () => {
 	if (props.node) {
-		Vue.set(state, 'parameterValues', { parameters: props.node.parameters });
+		state.parameterValues = {
+			...state.parameterValues,
+			parameters: props.node.parameters,
+		};
 	}
 	const params = state.parameterValues.parameters as INodeParameters;
 	const parameterName = props.parameter.name;
+
+	if (!(parameterName in params)) {
+		return;
+	}
 	let hasSchema = false;
-	if (parameterName in params) {
-		const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
-		Vue.set(state, 'paramValue', nodeValues);
-		if (!state.paramValue.schema) {
-			Vue.set(state.paramValue, 'schema', []);
-		} else {
-			hasSchema = true;
+	const nodeValues = params[parameterName] as unknown as ResourceMapperValue;
+	state.paramValue = {
+		...state.paramValue,
+		...nodeValues,
+	};
+	if (!state.paramValue.schema) {
+		state.paramValue = {
+			...state.paramValue,
+			schema: [],
+		};
+	} else {
+		hasSchema = state.paramValue.schema.length > 0;
+	}
+	Object.keys(state.paramValue.value || {}).forEach((key) => {
+		if (state.paramValue.value && state.paramValue.value[key] === '') {
+			state.paramValue = {
+				...state.paramValue,
+				value: {
+					...state.paramValue.value,
+					[key]: null,
+				},
+			};
 		}
-		Object.keys(state.paramValue.value || {}).forEach((key) => {
-			if (state.paramValue.value && state.paramValue.value[key] === '') {
-				Vue.set(state.paramValue.value, key, null);
-			}
-		});
-		if (nodeValues.matchingColumns) {
-			Vue.set(state.paramValue, 'matchingColumns', nodeValues.matchingColumns);
-		}
+	});
+	if (nodeValues.matchingColumns) {
+		state.paramValue = {
+			...state.paramValue,
+			matchingColumns: nodeValues.matchingColumns,
+		};
 	}
 	await initFetching(hasSchema);
 	// Set default values if this is the first time the parameter is being set
@@ -215,7 +238,10 @@ async function loadFieldsToMap(): Promise<void> {
 			}
 			return field;
 		});
-		Vue.set(state.paramValue, 'schema', newSchema);
+		state.paramValue = {
+			...state.paramValue,
+			schema: newSchema,
+		};
 		emitValueChanged();
 	}
 }
@@ -231,18 +257,24 @@ async function onModeChanged(mode: string): Promise<void> {
 }
 
 function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
-	Vue.set(state.paramValue, 'value', {});
+	state.paramValue.value = {};
 	const hideAllFields = props.parameter.typeOptions?.resourceMapper?.addAllFields === false;
 	state.paramValue.schema.forEach((field) => {
 		if (state.paramValue.value) {
 			// Hide all non-required fields if it's configured in node definition
 			if (hideAllFields) {
-				Vue.set(field, 'removed', !field.required);
+				field.removed = !field.required;
 			}
 			if (field.type === 'boolean') {
-				Vue.set(state.paramValue.value, field.id, false);
+				state.paramValue.value = {
+					...state.paramValue.value,
+					[field.id]: false,
+				};
 			} else {
-				Vue.set(state.paramValue.value, field.id, null);
+				state.paramValue.value = {
+					...state.paramValue.value,
+					[field.id]: null,
+				};
 			}
 		}
 	});
@@ -273,7 +305,7 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 	// Set all matching fields to be visible
 	state.paramValue.schema.forEach((field) => {
 		if (state.paramValue.matchingColumns?.includes(field.id)) {
-			Vue.set(field, 'removed', false);
+			field.removed = false;
 		}
 	});
 	if (!state.loading) {
@@ -293,7 +325,10 @@ function fieldValueChanged(updateInfo: IUpdateInformation): void {
 	}
 	const fieldName = parseResourceMapperFieldName(updateInfo.name);
 	if (fieldName && state.paramValue.value) {
-		Vue.set(state.paramValue.value, fieldName, newValue);
+		state.paramValue.value = {
+			...state.paramValue.value,
+			[fieldName]: newValue,
+		};
 		emitValueChanged();
 	}
 }
@@ -308,7 +343,8 @@ function removeField(name: string): void {
 			delete state.paramValue.value[fieldName];
 			const field = state.paramValue.schema.find((f) => f.id === fieldName);
 			if (field) {
-				Vue.set(field, 'removed', true);
+				field.removed = true;
+				state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 			}
 			emitValueChanged();
 		}
@@ -328,7 +364,8 @@ function addField(name: string): void {
 	};
 	const field = state.paramValue.schema.find((f) => f.id === name);
 	if (field) {
-		Vue.set(field, 'removed', false);
+		field.removed = false;
+		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 	}
 	emitValueChanged();
 }
@@ -338,7 +375,8 @@ function addAllFields(): void {
 	state.paramValue.schema.forEach((field) => {
 		if (field.display && field.removed) {
 			newValues[field.id] = null;
-			Vue.set(field, 'removed', false);
+			field.removed = false;
+			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 		}
 	});
 	state.paramValue.value = {
@@ -358,7 +396,8 @@ function removeAllFields(): void {
 				matchingColumns.value,
 			)
 		) {
-			Vue.set(field, 'removed', true);
+			field.removed = true;
+			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 		}
 	});
 	emitValueChanged();
