@@ -2,7 +2,10 @@
 	"node": "n8n-nodes-base.executionData",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Core Nodes", "Utility"],
+	"categories": ["Development", "Core Nodes"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	},
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -15,8 +18,5 @@
 			}
 		]
 	},
-	"alias": ["Filter", "Set", "Data"],
-	"subcategories": {
-		"Core Nodes": ["Data Transformation"]
-	}
+	"alias": ["Filter", "Set", "Data"]
 }
