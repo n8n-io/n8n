@@ -76,3 +76,7 @@ export const setBranchReadonly = async (
 		branchReadOnly,
 	});
 };
+
+export const generateKeyPair = async (context: IRestApiContext): Promise<string> => {
+	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/generate-key-pair`);
+};
