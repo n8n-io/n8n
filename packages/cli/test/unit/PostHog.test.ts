@@ -73,7 +73,7 @@ describe('PostHog', () => {
 		const ph = new PostHogClient();
 		await ph.init(instanceId);
 
-		ph.getFeatureFlags({
+		await ph.getFeatureFlags({
 			id: userId,
 			createdAt,
 		});
