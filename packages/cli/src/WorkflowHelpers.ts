@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
-import { FindOptionsWhere, In } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 import { Container } from 'typedi';
 import type {
 	IDataObject,
@@ -27,7 +27,6 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
-
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
@@ -36,7 +35,8 @@ import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import type { RoleNames } from './databases/entities/Role';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -373,7 +373,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
-export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
+export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {
 		userId: user.id,
 	};
