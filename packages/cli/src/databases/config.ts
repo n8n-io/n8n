@@ -10,6 +10,7 @@ import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
 import type { DatabaseType } from '@db/types';
 import config from '@/config';
+import { parsePostgresUrl } from '@/ParserHelper';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
 
@@ -17,7 +18,13 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	const entityPrefix = config.getEnv('database.tablePrefix');
 	const migrationsDir = path.resolve(__dirname, 'migrations', dbType);
 	const configDBType = dbType === 'mariadb' ? 'mysqldb' : dbType;
-	const connectionDetails =
+	let connectionDetails;
+
+	if (dbType == 'postgresdb') {
+		connectionDetails = parsePostgresUrl();
+	}
+	if (!connectionDetails) {
+		connectionDetails =
 		configDBType === 'sqlite'
 			? {
 					database: path.resolve(
@@ -32,6 +39,8 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 					host: config.getEnv(`database.${configDBType}.host`),
 					port: config.getEnv(`database.${configDBType}.port`),
 			  };
+	}
+
 	return {
 		entityPrefix,
 		entities: Object.values(entities),

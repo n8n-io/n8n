@@ -8,6 +8,7 @@ import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
+import { parseRedisUrl } from '@/ParserHelper'
 
 import type { WebhookHttpMethod } from 'n8n-workflow';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -188,14 +189,13 @@ export abstract class AbstractServer {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		const { host, port, username, password, db, tls }: RedisOptions = config.getEnv('queue.bull.redis');
+		const { host, port, password, db}: RedisOptions = parseRedisUrl() || config.getEnv('queue.bull.redis');
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
 		const redis = new Redis({
 			host,
 			port,
 			db,
-			username,
 			password,
 			retryStrategy: (): number | null => {
 				const now = Date.now();
@@ -215,7 +215,9 @@ export abstract class AbstractServer {
 				}
 				return 500;
 			},
-			tls,
+			tls: {
+				rejectUnauthorized: false,
+			},
 		});
 
 		redis.on('close', () => {
