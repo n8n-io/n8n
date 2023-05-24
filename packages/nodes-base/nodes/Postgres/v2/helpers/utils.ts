@@ -338,12 +338,10 @@ export async function uniqueColumns(db: PgpDatabase, table: string) {
 	// Using the modified query from https://wiki.postgresql.org/wiki/Retrieve_primary_key_columns
 	const unique = await db.any(
 		`
-		SELECT DISTINCT a.attname FROM pg_index i
-			JOIN  pg_attribute a
-				ON 	a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-		WHERE  	i.indrelid = quote_ident($1)::regclass
-			AND  	i.indisprimary
-			OR 		i.indisunique;
+		SELECT DISTINCT a.attname
+			FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+		WHERE i.indrelid = quote_ident($1)::regclass
+			AND (i.indisprimary OR i.indisunique);
 		`,
 		[table],
 	);
