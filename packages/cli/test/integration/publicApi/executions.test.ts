@@ -245,6 +245,7 @@ describe('GET /executions', () => {
 	});
 
 	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test.skip('should paginate two executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
