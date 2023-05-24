@@ -53,13 +53,22 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	};
 };
 
-export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
-	database: config.getEnv(`database.${dbType}.database`),
-	host: config.getEnv(`database.${dbType}.host`),
-	port: config.getEnv(`database.${dbType}.port`),
-	username: config.getEnv(`database.${dbType}.user`),
-	password: config.getEnv(`database.${dbType}.password`),
-});
+export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => {
+	let connectionDetails;
+	if (dbType == 'postgresdb') {
+		connectionDetails = parsePostgresUrl();
+	}
+	if (!connectionDetails) {
+		connectionDetails = {
+			database: config.getEnv(`database.${dbType}.database`),
+			host: config.getEnv(`database.${dbType}.host`),
+			port: config.getEnv(`database.${dbType}.port`),
+			username: config.getEnv(`database.${dbType}.user`),
+			password: config.getEnv(`database.${dbType}.password`),
+		}
+	}
+	return connectionDetails;
+}
 
 export const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
 	type: 'sqlite',
