@@ -334,39 +334,16 @@ export async function getTableSchema(
 	return columns;
 }
 
-export async function isColumnUnique(
-	db: PgpDatabase,
-	table: string,
-	column: string,
-): Promise<boolean> {
-	const unique = await db.any(
-		`
-			SELECT *
-			FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-					inner join INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cu
-							on cu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
-			WHERE
-					tc.CONSTRAINT_TYPE = 'UNIQUE'
-					or tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
-					and tc.TABLE_NAME = $1
-					and cu.COLUMN_NAME = $2
-		`,
-		[table, column],
-	);
-	return unique.some((u) => u.column_name === column);
-}
-
 export async function uniqueColumns(db: PgpDatabase, table: string) {
+	// Using the modified query from https://wiki.postgresql.org/wiki/Retrieve_primary_key_columns
 	const unique = await db.any(
 		`
-			SELECT *
-			FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-					inner join INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE cu
-							on cu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
-			WHERE
-					tc.CONSTRAINT_TYPE = 'UNIQUE'
-					or tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
-					and tc.TABLE_NAME = $1
+		SELECT DISTINCT a.attname FROM pg_index i
+			JOIN  pg_attribute a
+				ON 	a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+		WHERE  	i.indrelid = quote_ident($1)::regclass
+			AND  	i.indisprimary
+			OR 		i.indisunique;
 		`,
 		[table],
 	);
