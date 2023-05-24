@@ -418,6 +418,9 @@ const config = (module.exports = {
 			},
 		],
 
+		/** https://eslint.org/docs/latest/rules/no-unreachable */
+		'no-unreachable': 'error',
+
 		// ----------------------------------
 		//              import
 		// ----------------------------------
