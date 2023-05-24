@@ -54,11 +54,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		ldap: {
 			loginLabel: '',
-			loginEnabled: false,
+			loginEnabled: true,
 		},
 		saml: {
 			loginLabel: '',
-			loginEnabled: false,
+			loginEnabled: true,
 		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
