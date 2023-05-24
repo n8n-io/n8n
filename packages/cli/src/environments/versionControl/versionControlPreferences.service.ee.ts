@@ -77,7 +77,7 @@ export class VersionControlPreferencesService {
 	 * Will generate an ed25519 key pair and save it to the database and the file system
 	 * Note: this will overwrite any existing key pair
 	 */
-	async generateAndSaveKeyPair() {
+	async generateAndSaveKeyPair(): Promise<VersionControlPreferences> {
 		versionControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		const keyPair = generateSshKeyPair('ed25519');
 		if (keyPair.publicKey && keyPair.privateKey) {
@@ -91,6 +91,7 @@ export class VersionControlPreferencesService {
 				throw Error(`Failed to save key pair: ${(error as Error).message}`);
 			}
 		}
+		return this.getPreferences();
 	}
 
 	isBranchReadOnly(): boolean {
