@@ -295,7 +295,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
  */
 export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	workflowRunner.init();
+	await workflowRunner.init();
 	return workflowRunner;
 }
 
@@ -654,12 +654,12 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export function initConfigFile() {
+export async function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		UserSettings.writeUserSettings(userSettings, settingsPath);
+		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
 }
 
@@ -677,7 +677,7 @@ export function createAgent(
 	const agent = request.agent(app);
 
 	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
-		agent.use(prefix(REST_PATH_SEGMENT));
+		void agent.use(prefix(REST_PATH_SEGMENT));
 		if (options?.auth && options?.user) {
 			const { token } = issueJWT(options.user);
 			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -685,10 +685,10 @@ export function createAgent(
 	}
 
 	if (options?.apiPath === 'public') {
-		agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
+		void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
 
 		if (options?.auth && options?.user.apiKey) {
-			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
+			void agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
 		}
 	}
 
