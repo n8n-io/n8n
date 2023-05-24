@@ -1211,25 +1211,19 @@ export const tryToParseDateTime = (value: unknown): DateTime => {
 	const dateString = String(value).trim();
 
 	// Rely on luxon to parse different date formats
-	const isoDate = DateTime.fromISO(dateString);
-	if (!isoDate.isValid) {
-		// Try once more by forcing the timezone
-		const isoDateWithTimezone = DateTime.fromISO(dateString, { setZone: true });
-		if (isoDateWithTimezone.isValid) {
-			return isoDateWithTimezone;
-		}
-	} else {
+	const isoDate = DateTime.fromISO(dateString, { setZone: true });
+	if (isoDate.isValid) {
 		return isoDate;
 	}
-	const httpDate = DateTime.fromHTTP(dateString);
+	const httpDate = DateTime.fromHTTP(dateString, { setZone: true });
 	if (httpDate.isValid) {
 		return httpDate;
 	}
-	const rfc2822Date = DateTime.fromRFC2822(dateString);
+	const rfc2822Date = DateTime.fromRFC2822(dateString, { setZone: true });
 	if (rfc2822Date.isValid) {
 		return rfc2822Date;
 	}
-	const sqlDate = DateTime.fromSQL(dateString);
+	const sqlDate = DateTime.fromSQL(dateString, { setZone: true });
 	if (sqlDate.isValid) {
 		return sqlDate;
 	}
