@@ -196,7 +196,8 @@ oauth2CredentialController.get(
 		try {
 			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
-
+			console.log('Callback');
+			console.log('code', code);
 			if (!code || !stateEncoded) {
 				return renderCallbackError(
 					res,
@@ -278,6 +279,7 @@ oauth2CredentialController.get(
 						}),
 					},
 				};
+				console.log(options);
 				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
 			}

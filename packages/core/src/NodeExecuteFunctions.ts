@@ -1094,14 +1094,14 @@ export async function requestOAuth2(
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-
+	console.log('Getting OAuth2 Token Data');
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
 		credentials.grantType === OAuth2GrantType.clientCredentials &&
 		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
 	) {
 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
-
+		console.log(data);
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
 			throw new Error(
@@ -1140,7 +1140,7 @@ export async function requestOAuth2(
 	if (oAuth2Options?.keepBearer === false && typeof newRequestHeaders.Authorization === 'string') {
 		newRequestHeaders.Authorization = newRequestHeaders.Authorization.split(' ')[1];
 	}
-
+	console.log('New Request Headers', newRequestHeaders);
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 		Object.assign(newRequestHeaders, {
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
