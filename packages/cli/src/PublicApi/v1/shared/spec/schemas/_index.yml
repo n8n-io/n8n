@@ -1,22 +1,26 @@
 Error:
-  $ref: './error.yml'
+  $ref: "./error.yml"
 Execution:
-  $ref: './../../../handlers/executions/spec/schemas/execution.yml'
+  $ref: "./../../../handlers/executions/spec/schemas/execution.yml"
 Node:
-  $ref: './../../../handlers/workflows/spec/schemas/node.yml'
+  $ref: "./../../../handlers/workflows/spec/schemas/node.yml"
 Tag:
-  $ref: './../../../handlers/workflows/spec/schemas/tag.yml'
+  $ref: "./../../../handlers/workflows/spec/schemas/tag.yml"
 Workflow:
-  $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
+  $ref: "./../../../handlers/workflows/spec/schemas/workflow.yml"
 WorkflowSettings:
-  $ref: './../../../handlers/workflows/spec/schemas/workflowSettings.yml'
+  $ref: "./../../../handlers/workflows/spec/schemas/workflowSettings.yml"
 ExecutionList:
-  $ref: './../../../handlers/executions/spec/schemas/executionList.yml'
+  $ref: "./../../../handlers/executions/spec/schemas/executionList.yml"
 WorkflowList:
-  $ref: './../../../handlers/workflows/spec/schemas/workflowList.yml'
+  $ref: "./../../../handlers/workflows/spec/schemas/workflowList.yml"
 Credential:
-  $ref: './../../../handlers/credentials/spec/schemas/credential.yml'
+  $ref: "./../../../handlers/credentials/spec/schemas/credential.yml"
 CredentialType:
-  $ref: './../../../handlers/credentials/spec/schemas/credentialType.yml'
+  $ref: "./../../../handlers/credentials/spec/schemas/credentialType.yml"
 Audit:
-  $ref: './../../../handlers/audit/spec/schemas/audit.yml'
+  $ref: "./../../../handlers/audit/spec/schemas/audit.yml"
+Pull:
+  $ref: "./../../../handlers/versionControl/spec/schemas/pull.yml"
+ImportResult:
+  $ref: "./../../../handlers/versionControl/spec/schemas/importResult.yml"

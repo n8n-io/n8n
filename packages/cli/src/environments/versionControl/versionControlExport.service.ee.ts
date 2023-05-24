@@ -228,7 +228,6 @@ export class VersionControlExportService {
 				folder: this.workflowExportFolder,
 				files: sharedWorkflows.map((e) => ({
 					id: e?.workflow?.id,
-					// name: path.join(this.workflowExportFolder, `${e.workflow.name}.json`),
 					name: this.getWorkflowPath(e?.workflow?.name),
 				})),
 				removedFiles: [...removedFiles],
@@ -422,15 +421,24 @@ export class VersionControlExportService {
 		});
 		if (variablesFile.length > 0) {
 			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
+			const overriddenKeys = Object.keys(valueOverrides ?? {});
 			const importedVariables = jsonParse<Variables[]>(
 				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: [] },
 			);
-			const existingVariables = await Db.collections.Variables.find();
 			const importedKeys = importedVariables.map((variable) => variable.key);
+			const existingVariables = await Db.collections.Variables.find();
 			const existingKeys = existingVariables.map((variable) => variable.key);
-			const addedKeys = without(importedKeys, ...existingKeys);
-			const addedVariables = importedVariables.filter((e) => addedKeys.includes(e.key));
+			const addedKeysFromImport = without(importedKeys, ...existingKeys);
+			const addedKeysFromOverride = without(overriddenKeys, ...existingKeys);
+			const addedVariables = importedVariables.filter((e) => addedKeysFromImport.includes(e.key));
+			addedKeysFromOverride.forEach((key) => {
+				addedVariables.push({
+					key,
+					value: valueOverrides ? valueOverrides[key] : '',
+					type: 'string',
+				} as Variables);
+			});
 
 			// first round, add missing variable keys to Db without touching values
 			await Db.transaction(async (transactionManager) => {
@@ -445,7 +453,6 @@ export class VersionControlExportService {
 			});
 
 			// second round, update values of existing variables if overridden
-			const overriddenKeys = Object.keys(valueOverrides ?? {});
 			if (valueOverrides) {
 				await Db.transaction(async (transactionManager) => {
 					await Promise.all(
@@ -455,7 +462,10 @@ export class VersionControlExportService {
 					);
 				});
 			}
-			return { added: addedVariables.map((e) => e.key), changed: overriddenKeys };
+			return {
+				added: [...addedKeysFromImport, ...addedKeysFromOverride],
+				changed: without(overriddenKeys, ...addedKeysFromOverride),
+			};
 		}
 		return { added: [], changed: [] };
 	}
