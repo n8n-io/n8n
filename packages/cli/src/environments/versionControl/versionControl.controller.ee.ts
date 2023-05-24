@@ -196,9 +196,10 @@ export class VersionControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/generate-key-pair', { middlewares: [versionControlLicensedMiddleware] })
-	async generateKeyPair() {
+	async generateKeyPair(): Promise<VersionControlPreferences> {
 		try {
-			return await this.versionControlPreferencesService.generateAndSaveKeyPair();
+			const result = await this.versionControlPreferencesService.generateAndSaveKeyPair();
+			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
