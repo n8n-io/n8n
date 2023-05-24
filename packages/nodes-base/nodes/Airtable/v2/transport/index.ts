@@ -84,8 +84,14 @@ export async function apiRequestAllItems(
 export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IRecord[],
-	fieldNames: string[],
+	fieldNames: string | string[],
 ): Promise<INodeExecutionData[]> {
+	if (typeof fieldNames === 'string') {
+		fieldNames = fieldNames.split(',').map((item) => item.trim());
+	}
+	if (!fieldNames.length) {
+		throw new Error("Specify field to download in 'Download Attachments' option");
+	}
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };

@@ -190,19 +190,11 @@ export async function execute(
 		returnData = responseData.records as INodeExecutionData[];
 
 		if (options.downloadFields) {
-			let downloadFields: string | string[] = options.downloadFields as string;
-			if (typeof downloadFields === 'string') {
-				downloadFields = downloadFields.split(',').map((item) => item.trim());
-			}
-			if (!downloadFields.length) {
-				throw new Error("Specify field to download in 'Download Attachments' options");
-			}
-			const data = await downloadRecordAttachments.call(
+			return await downloadRecordAttachments.call(
 				this,
 				responseData.records as IRecord[],
-				downloadFields,
+				options.downloadFields as string[],
 			);
-			return data;
 		}
 
 		returnData = returnData.map((record) => ({
