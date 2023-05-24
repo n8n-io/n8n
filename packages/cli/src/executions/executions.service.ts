@@ -200,7 +200,6 @@ export class ExecutionsService {
 		}
 	}
 
-	// TODO: Refactor this whole method, it's a mess
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
@@ -274,7 +273,6 @@ export class ExecutionsService {
 
 		// deepcopy breaks the In operator so we need to reapply it
 		if (filter?.status) {
-			Object.assign(filter, { status: In(filter.status) });
 			Object.assign(countFilter, { status: In(filter.status) });
 		}
 
@@ -292,6 +290,10 @@ export class ExecutionsService {
 			limit,
 			executingWorkflowIds,
 			sharedWorkflowIds,
+			{
+				lastId: req.query.lastId,
+				firstId: req.query.firstId,
+			},
 		);
 		return {
 			count,
@@ -312,6 +314,9 @@ export class ExecutionsService {
 				id: executionId,
 				workflowId: In(sharedWorkflowIds),
 			},
+			includeData: true,
+			includeWorkflowData: true,
+			unflattenData: false,
 		});
 
 		if (!execution) {

@@ -181,6 +181,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		limit: number,
 		excludedExecutionIds: string[],
 		workflowIdAllowList: string[],
+		additionalFilters?: { lastId?: string; firstId?: string },
 	): Promise<IExecutionsSummary[]> {
 		const query = this.createQueryBuilder('execution')
 			.select([
@@ -202,11 +203,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.andWhere('execution.id NOT IN (:...excludedExecutionIds)', { excludedExecutionIds })
 			.andWhere('execution.workflowId IN (:...workflowIdAllowList)', { workflowIdAllowList });
 
+		if (additionalFilters?.lastId) {
+			query.andWhere('execution.id < :lastId', { lastId: additionalFilters.lastId });
+		}
+		if (additionalFilters?.firstId) {
+			query.andWhere('execution.id > :firstId', { firstId: additionalFilters.firstId });
+		}
 		if (filters?.status) {
-			query.andWhere('execution.status', In(filters.status));
+			query.andWhere('execution.status IN (:...workflowStatus)', {
+				workflowStatus: filters.status,
+			});
 		}
 		if (filters?.finished) {
-			query.andWhere('execution.finished', In([filters.finished]));
+			query.andWhere({ finished: filters.finished });
 		}
 		if (filters?.metadata && isAdvancedExecutionFiltersEnabled()) {
 			query.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
@@ -228,9 +237,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				),
 			});
 		}
+		if (filters?.workflowId) {
+			query.andWhere({
+				workflowId: filters.workflowId,
+			});
+		}
 
 		const executions = await query.getMany();
-		console.log(executions[0]);
 
 		return executions.map((execution) => {
 			const { workflow, waitTill, ...rest } = execution;
