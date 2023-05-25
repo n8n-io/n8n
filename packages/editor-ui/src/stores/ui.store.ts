@@ -321,9 +321,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = locale.baseText(linkUrlTranslationKey);
 
 				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${linkUrl}?source=${source}`;
+					linkUrl = `${linkUrl}?ref=${source}`;
 				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-					linkUrl = `${linkUrl}?utm_campaign=${utm_campaign || source}`;
+					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
 				}
 
 				return linkUrl;
