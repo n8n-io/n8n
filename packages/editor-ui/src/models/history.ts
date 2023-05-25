@@ -1,7 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { IConnection } from 'n8n-workflow';
 import type { XYPosition } from '../Interface';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack

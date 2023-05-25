@@ -84,11 +84,12 @@ describe('Default owner', () => {
 	});
 
 	it('should be able to setup instance and migrate workflows and credentials', () => {
-		cy.setup({ email, firstName, lastName, password });
+		cy.setup({ email, firstName, lastName, password }, true);
 
 		messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential');
 
 		messageBox.actions.confirm();
+		cy.wait('@setupRequest');
 		cy.url().should('include', settingsUsersPage.url);
 		settingsSidebar.actions.back();
 

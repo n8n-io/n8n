@@ -44,7 +44,7 @@ import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/co
 
 import { isCommunityPackageName } from '@/utils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
@@ -100,7 +100,7 @@ const displayName = computed<any>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 
 	return instance?.proxy.$locale.headerText({
-		key: `headers.${shortNodeType}.displayName`,
+		key: `headers.${shortNodeType.value}.displayName`,
 		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
 });

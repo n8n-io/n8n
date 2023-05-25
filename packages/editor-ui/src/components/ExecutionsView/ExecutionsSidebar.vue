@@ -25,12 +25,10 @@
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
 		>
-			<div v-if="loading" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			<div v-if="loading" class="mr-l">
+				<n8n-loading variant="rect" />
 			</div>
-			<div v-if="executions.length === 0" :class="$style.noResultsContainer">
+			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
@@ -54,7 +52,7 @@
 				@retryExecution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
@@ -73,8 +71,8 @@ import type { Route } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
 type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
@@ -129,21 +127,38 @@ export default defineComponent({
 	},
 	mounted() {
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		if (this.autoRefresh) {
-			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
-		}
+		this.startAutoRefreshInterval();
+
 		// On larger screens, we need to load more then first page of executions
 		// for the scroll bar to appear and infinite scrolling is enabled
 		this.checkListSize();
 		this.scrollToActiveCard();
+
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	methods: {
+		startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshInterval) {
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				this.stopAutoRefreshInterval();
+			} else {
+				this.startAutoRefreshInterval();
+			}
+		},
 		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
@@ -171,14 +186,9 @@ export default defineComponent({
 		},
 		onAutoRefreshToggle(): void {
 			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
+
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			this.startAutoRefreshInterval();
 		},
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
@@ -289,5 +299,12 @@ export default defineComponent({
 	width: 100%;
 	margin-top: var(--spacing-2xl);
 	text-align: center;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-skeleton__item) {
+	height: 60px;
+	border-radius: 0;
 }
 </style>

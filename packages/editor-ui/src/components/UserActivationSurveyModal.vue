@@ -48,6 +48,13 @@
 		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-button
+					size="large"
+					type="secondary"
+					data-test-id="skip-button"
+					:label="locale.baseText('userActivationSurveyModal.form.button.skip')"
+					@click="onSkip"
+				/>
+				<n8n-button
 					:disabled="!hasAnyChanges"
 					@click="onShareFeedback"
 					size="large"
@@ -64,14 +71,14 @@
 import { onMounted, ref } from 'vue';
 import Modal from '@/components/Modal.vue';
 import { USER_ACTIVATION_SURVEY_MODAL } from '@/constants';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
 
 import confetti from 'canvas-confetti';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { createEventBus } from '@/event-bus';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { createEventBus } from 'n8n-design-system';
 
 const FEEDBACK_MAX_LENGTH = 300;
 
@@ -97,6 +104,10 @@ onMounted(async () => {
 const onShareFeedback = () => {
 	telemetry.track('User responded to activation modal', { response: getFeedback() });
 	showSharedFeedbackSuccess();
+	modalBus.emit('close');
+};
+
+const onSkip = () => {
 	modalBus.emit('close');
 };
 
@@ -142,7 +153,7 @@ const showSharedFeedbackError = () => {
 };
 
 const showConfetti = () => {
-	confetti({
+	void confetti({
 		particleCount: 200,
 		spread: 100,
 		origin: { y: 0.6 },

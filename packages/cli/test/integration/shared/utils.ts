@@ -7,25 +7,23 @@ import { CronJob } from 'cron';
 import express from 'express';
 import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-import {
+import type {
 	ICredentialType,
-	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy,
-	NodeHelpers,
-	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import superagent from 'superagent';
+import { deepCopy } from 'n8n-workflow';
+import { LoggerProxy, NodeHelpers, toCronExpression } from 'n8n-workflow';
+import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 import { mock } from 'jest-mock-extended';
-import { DeepPartial } from 'ts-essentials';
+import type { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -53,7 +51,6 @@ import type {
 	EndpointGroup,
 	InstalledNodePayload,
 	InstalledPackagePayload,
-	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
 import { registerController } from '@/decorators';
@@ -298,7 +295,7 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
  */
 export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	workflowRunner.init();
+	await workflowRunner.init();
 	return workflowRunner;
 }
 
@@ -368,7 +365,7 @@ export async function initNodeTypes() {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					return this.prepareOutputData(items);
@@ -571,7 +568,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -585,13 +582,13 @@ export async function initNodeTypes() {
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
-						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+						const options = this.getNodeParameter('options', itemIndex, {});
 
 						const newItem: INodeExecutionData = {
 							json: {},
 						};
 
-						if (keepOnlySet !== true) {
+						if (!keepOnlySet) {
 							if (item.binary !== undefined) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
@@ -600,7 +597,7 @@ export async function initNodeTypes() {
 								Object.assign(newItem.binary, item.binary);
 							}
 
-							newItem.json = JSON.parse(JSON.stringify(item.json));
+							newItem.json = deepCopy(item.json);
 						}
 
 						// Add boolean values
@@ -657,12 +654,12 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export function initConfigFile() {
+export async function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		UserSettings.writeUserSettings(userSettings, settingsPath);
+		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
 }
 
@@ -680,7 +677,7 @@ export function createAgent(
 	const agent = request.agent(app);
 
 	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
-		agent.use(prefix(REST_PATH_SEGMENT));
+		void agent.use(prefix(REST_PATH_SEGMENT));
 		if (options?.auth && options?.user) {
 			const { token } = issueJWT(options.user);
 			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -688,10 +685,10 @@ export function createAgent(
 	}
 
 	if (options?.apiPath === 'public') {
-		agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
+		void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
 
 		if (options?.auth && options?.user.apiKey) {
-			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
+			void agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
 		}
 	}
 
@@ -708,7 +705,7 @@ export function createAuthAgent(app: express.Application) {
  * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
  */
 export function prefix(pathSegment: string) {
-	return function (request: superagent.SuperAgentRequest) {
+	return async function (request: superagent.SuperAgentRequest) {
 		const url = new URL(request.url);
 
 		// enforce consistency at call sites
@@ -761,22 +758,6 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 		{ value: JSON.stringify(value) },
 	);
 };
-
-// ----------------------------------
-//              misc
-// ----------------------------------
-
-export function getPostgresSchemaSection(
-	schema = config.getSchema(),
-): PostgresSchemaSection | null {
-	for (const [key, value] of Object.entries(schema)) {
-		if (key === 'postgresdb') {
-			return value._cvtProperties;
-		}
-	}
-
-	return null;
-}
 
 // ----------------------------------
 //           community nodes

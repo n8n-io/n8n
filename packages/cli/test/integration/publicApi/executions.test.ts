@@ -81,7 +81,7 @@ afterAll(async () => {
 
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
+		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
 	};
@@ -213,7 +213,7 @@ describe('GET /executions', () => {
 
 		await testDb.createErrorExecution(workflow);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			status: 'success',
 		});
 
@@ -245,6 +245,7 @@ describe('GET /executions', () => {
 	});
 
 	// failing on Postgres and MySQL - ref: https://github.com/n8n-io/n8n/pull/3834
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test.skip('should paginate two executions', async () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 
@@ -254,7 +255,7 @@ describe('GET /executions', () => {
 
 		await testDb.createErrorExecution(workflow);
 
-		const firstExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+		const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
 			status: 'success',
 			limit: 1,
 		});
@@ -263,7 +264,7 @@ describe('GET /executions', () => {
 		expect(firstExecutionResponse.body.data.length).toBe(1);
 		expect(firstExecutionResponse.body.nextCursor).toBeDefined();
 
-		const secondExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+		const secondExecutionResponse = await authOwnerAgent.get('/executions').query({
 			status: 'success',
 			limit: 1,
 			cursor: firstExecutionResponse.body.nextCursor,
@@ -308,7 +309,7 @@ describe('GET /executions', () => {
 
 		const errorExecution = await testDb.createErrorExecution(workflow);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			status: 'error',
 		});
 
@@ -348,7 +349,7 @@ describe('GET /executions', () => {
 
 		const waitingExecution = await testDb.createWaitingExecution(workflow);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			status: 'waiting',
 		});
 
@@ -389,7 +390,7 @@ describe('GET /executions', () => {
 		);
 		await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
-		const response = await authOwnerAgent.get(`/executions`).query({
+		const response = await authOwnerAgent.get('/executions').query({
 			workflowId: workflow.id,
 		});
 
@@ -439,7 +440,7 @@ describe('GET /executions', () => {
 		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
 		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
 
-		const response = await authOwnerAgent.get(`/executions`);
+		const response = await authOwnerAgent.get('/executions');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(8);
@@ -463,7 +464,7 @@ describe('GET /executions', () => {
 		await testDb.createManyExecutions(2, firstWorkflowForUser2, testDb.createSuccessfulExecution);
 		await testDb.createManyExecutions(2, secondWorkflowForUser2, testDb.createSuccessfulExecution);
 
-		const response = await authUser1Agent.get(`/executions`);
+		const response = await authUser1Agent.get('/executions');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(4);
@@ -489,7 +490,7 @@ describe('GET /executions', () => {
 
 		await testDb.shareWorkflowWithUsers(firstWorkflowForUser2, [user1]);
 
-		const response = await authUser1Agent.get(`/executions`);
+		const response = await authUser1Agent.get('/executions');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(6);

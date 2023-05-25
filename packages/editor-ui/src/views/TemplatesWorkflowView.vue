@@ -55,20 +55,22 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import type { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
+import { useTemplatesStore } from '@/stores/templates.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesWorkflowView',
+	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplatesView,
@@ -98,7 +100,7 @@ export default mixins(workflowHelpers).extend({
 				wf_template_repo_session_id: this.templatesStore.currentSessionId,
 			};
 
-			this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+			void this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
 			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			if (e.metaKey || e.ctrlKey) {
@@ -106,7 +108,7 @@ export default mixins(workflowHelpers).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
+				void this.$router.push({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
 			}
 		},
 		onHidePreview() {

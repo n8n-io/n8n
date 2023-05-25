@@ -16,9 +16,9 @@ import {
 	AUTO_INSERT_ACTION_EXPERIMENT,
 } from '@/constants';
 
-import { usePostHog } from '@/stores/posthog';
-import { useUsersStore } from '@/stores/users';
-import { useWebhooksStore } from '@/stores/webhooks';
+import { usePostHog } from '@/stores/posthog.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
 
 import { useActions } from '../composables/useActions';
@@ -177,7 +177,7 @@ function trackActionsView() {
 		trigger_action_count,
 	};
 
-	runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
+	void runExternalHook('nodeCreateList.onViewActions', useWebhooksStore(), trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 
@@ -198,7 +198,7 @@ function addHttpNode() {
 	if (telemetry) setAddedNodeActionParameters(updateData);
 
 	const app_identifier = actions.value[0].key;
-	runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
+	void runExternalHook('nodeCreateList.onActionsCustmAPIClicked', useWebhooksStore(), {
 		app_identifier,
 	});
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });

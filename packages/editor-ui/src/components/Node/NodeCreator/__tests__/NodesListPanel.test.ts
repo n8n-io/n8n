@@ -3,7 +3,7 @@ import type { PropType } from 'vue';
 import { PiniaVuePlugin, createPinia } from 'pinia';
 import { render, screen, fireEvent } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { mockSimplifiedNodeType } from './utils';
 import NodesListPanel from '../Panel/NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
@@ -94,7 +94,7 @@ describe('NodesListPanel', () => {
 
 			expect(container.querySelector('.backButton')).toBeInTheDocument();
 
-			fireEvent.click(container.querySelector('.backButton')!);
+			await fireEvent.click(container.querySelector('.backButton')!);
 			await Vue.nextTick();
 
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
@@ -265,20 +265,20 @@ describe('NodesListPanel', () => {
 			screen.getByText('On app event').click();
 			await Vue.nextTick();
 
-			fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Ninth' },
 			});
 			await Vue.nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
 
-			fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Non sense' },
 			});
 			await Vue.nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0);
 			expect(screen.queryByText("We didn't make that... yet")).toBeInTheDocument();
 
-			fireEvent.click(container.querySelector('.clear')!);
+			await fireEvent.click(container.querySelector('.clear')!);
 			await Vue.nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
 		});

@@ -70,8 +70,8 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
@@ -79,15 +79,17 @@ import { executionDataToJson, isString, shorten } from '@/utils';
 import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
 
-const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
+const runDataJsonActions = async () => import('@/components/RunDataJsonActions.vue');
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'run-data-json',
+	mixins: [externalHooks],
 	components: {
 		VueJsonPretty,
 		Draggable,
@@ -125,7 +127,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
-			selectedJsonPath: null as null | string,
+			selectedJsonPath: nonExistingJsonPath,
 			draggingPath: null as null | string,
 			displayMode: 'json',
 		};
@@ -178,7 +180,7 @@ export default mixins(externalHooks).extend({
 					...mappingTelemetry,
 				};
 
-				this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
+				void this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

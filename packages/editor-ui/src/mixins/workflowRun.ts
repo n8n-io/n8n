@@ -1,3 +1,5 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
 import type { IRunData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
@@ -5,19 +7,19 @@ import { NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
 import { useTitleChange } from '@/composables/useTitleChange';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).extend({
+export const workflowRun = defineComponent({
+	mixins: [externalHooks, workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
+			...useToast(),
 		};
 	},
 	computed: {
@@ -106,16 +108,16 @@ export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).e
 							trackNodeIssues.push(trackNodeIssue);
 						}
 
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('workflowRun.showMessage.title'),
 							message: errorMessages.join('<br />'),
 							type: 'error',
 							duration: 0,
 						});
 						this.titleSet(workflow.name as string, 'ERROR');
-						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
+						void this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						await this.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
@@ -234,12 +236,12 @@ export const workflowRun = mixins(externalHooks, workflowHelpers, showMessage).e
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
+				await this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
 
 				return runWorkflowApiResponse;
 			} catch (error) {
 				this.titleSet(workflow.name as string, 'ERROR');
-				this.$showError(error, this.$locale.baseText('workflowRun.showError.title'));
+				this.showError(error, this.$locale.baseText('workflowRun.showError.title'));
 				return undefined;
 			}
 		},

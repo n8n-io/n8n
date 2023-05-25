@@ -11,13 +11,14 @@ export class Postgres extends VersionedNodeType {
 			name: 'postgres',
 			icon: 'file:postgres.svg',
 			group: ['input'],
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 			description: 'Get, add and update data in Postgres',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new PostgresV1(baseDescription),
 			2: new PostgresV2(baseDescription),
+			2.1: new PostgresV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
