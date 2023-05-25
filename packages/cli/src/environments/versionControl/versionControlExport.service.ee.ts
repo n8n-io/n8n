@@ -32,6 +32,7 @@ import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
 import without from 'lodash.without';
 import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
+import { In } from 'typeorm';
 
 @Service()
 export class VersionControlExportService {
@@ -95,9 +96,21 @@ export class VersionControlExportService {
 		}
 	}
 
-	private async getOwnerCredentialRole() {
+	private async getOwnerGlobalRole() {
 		const ownerCredentiallRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'global' },
+		});
+
+		if (!ownerCredentiallRole) {
+			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return ownerCredentiallRole;
+	}
+
+	private async getOwnerCredentialRole() {
+		const ownerCredentiallRole = await Db.collections.Role.findOne({
+			where: { name: 'owner', scope: 'credential' },
 		});
 
 		if (!ownerCredentiallRole) {
@@ -361,6 +374,7 @@ export class VersionControlExportService {
 		});
 		const existingCredentials = await Db.collections.Credentials.find();
 		const ownerCredentialRole = await this.getOwnerCredentialRole();
+		const ownerGlobalRole = await this.getOwnerGlobalRole();
 		const encryptionKey = await UserSettings.getEncryptionKey();
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		await Db.transaction(async (transactionManager) => {
@@ -373,6 +387,13 @@ export class VersionControlExportService {
 					const existingCredential = existingCredentials.find(
 						(e) => e.id === credential.id && e.type === credential.type,
 					);
+					const sharedOwner = await Db.collections.SharedCredentials.findOne({
+						select: ['userId'],
+						where: {
+							credentialsId: credential.id,
+							roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
+						},
+					});
 
 					const { name, type, data, id } = credential;
 					const newCredentialObject = new Credentials({ id, name }, type, []);
@@ -384,17 +405,22 @@ export class VersionControlExportService {
 					if (existingCredential?.nodesAccess) {
 						newCredentialObject.nodesAccess = existingCredential.nodesAccess;
 					}
-					const newSharedCredential = new SharedCredentials();
-					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.userId = userId;
-					newSharedCredential.roleId = ownerCredentialRole.id;
 
 					LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
 					await transactionManager.upsert(CredentialsEntity, newCredentialObject, ['id']);
-					await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
-						'credentialsId',
-						'userId',
-					]);
+
+					if (!sharedOwner) {
+						const newSharedCredential = new SharedCredentials();
+						newSharedCredential.credentialsId = newCredentialObject.id as string;
+						newSharedCredential.userId = userId;
+						newSharedCredential.roleId = ownerGlobalRole.id;
+
+						await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
+							'credentialsId',
+							'userId',
+						]);
+					}
+
 					// TODO: once IDs are unique, remove this
 					if (config.getEnv('database.type') === 'postgresdb') {
 						await transactionManager.query(
