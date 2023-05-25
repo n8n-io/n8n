@@ -127,21 +127,38 @@ export default defineComponent({
 	},
 	mounted() {
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		if (this.autoRefresh) {
-			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
-		}
+		this.startAutoRefreshInterval();
+
 		// On larger screens, we need to load more then first page of executions
 		// for the scroll bar to appear and infinite scrolling is enabled
 		this.checkListSize();
 		this.scrollToActiveCard();
+
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	methods: {
+		startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshInterval) {
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				this.stopAutoRefreshInterval();
+			} else {
+				this.startAutoRefreshInterval();
+			}
+		},
 		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
@@ -169,14 +186,9 @@ export default defineComponent({
 		},
 		onAutoRefreshToggle(): void {
 			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
+
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			this.startAutoRefreshInterval();
 		},
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
