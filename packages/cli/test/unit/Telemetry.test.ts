@@ -255,7 +255,7 @@ describe('Telemetry', () => {
 			payload.error_node_type = 'n8n-nodes-base.merge';
 			payload.is_manual = true;
 			await telemetry.trackWorkflowExecution(payload);
-			console.log(execBuffer);
+
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 
 			execBuffer = telemetry.getCountsBuffer();
