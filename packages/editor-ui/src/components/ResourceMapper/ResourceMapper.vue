@@ -306,6 +306,7 @@ function onMatchingColumnsChanged(matchingColumns: string[]): void {
 	state.paramValue.schema.forEach((field) => {
 		if (state.paramValue.matchingColumns?.includes(field.id)) {
 			field.removed = false;
+			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 		}
 	});
 	if (!state.loading) {

@@ -29,8 +29,7 @@ export async function getMappingColumns(
 			displayName: col,
 			required: false,
 			defaultMatch: col === 'id',
-			// TODO: Check with product about this condition before releasing
-			display: !col.startsWith('_'),
+			display: true,
 			type: 'string',
 			canBeUsedToMatch: true,
 		})),
