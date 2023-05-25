@@ -479,7 +479,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		goToUpgrade(source: string, utm_campaign: string): void {
-			useTelemetry().track('User clicked on paywall CTA', { source });
+			useTelemetry().track('User clicked upgrade CTA', { source });
 			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
 		},
 	},
