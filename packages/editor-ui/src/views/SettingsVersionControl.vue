@@ -30,8 +30,8 @@ const onConnect = async () => {
 		});
 		await versionControlStore.getBranches();
 		toast.showMessage({
-			title: 'Success',
-			message: 'Repository set successfully',
+			title: locale.baseText('settings.versionControl.toast.connected.title'),
+			message: locale.baseText('settings.versionControl.toast.connected.message'),
 			type: 'success',
 		});
 	} catch (error) {
@@ -170,11 +170,8 @@ async function refreshSshKey() {
 	<div>
 		<n8n-heading size="2xlarge" tag="h1">{{
 			locale.baseText('settings.versionControl.title')
-		}}</n8n-heading>
-		<div
-			v-if="versionControlStore.isEnterpriseVersionControlEnabled"
-			data-test-id="version-control-content-licensed"
-		>
+			}}</n8n-heading>
+		<div v-if="versionControlStore.isEnterpriseVersionControlEnabled" data-test-id="version-control-content-licensed">
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
 				<i18n path="settings.versionControl.description">
 					<template #link>
@@ -186,31 +183,16 @@ async function refreshSshKey() {
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.versionControl.gitConfig')
-			}}</n8n-heading>
+				}}</n8n-heading>
 			<div :class="$style.group">
 				<label for="repoUrl">{{ locale.baseText('settings.versionControl.repoUrl') }}</label>
 				<div :class="$style.groupFlex">
-					<n8n-form-input
-						label
-						class="ml-0"
-						id="repoUrl"
-						name="repoUrl"
-						validateOnBlur
-						:validationRules="repoUrlValidationRules"
-						:disabled="isConnected"
+					<n8n-form-input label class="ml-0" id="repoUrl" name="repoUrl" validateOnBlur
+						:validationRules="repoUrlValidationRules" :disabled="isConnected"
 						:placeholder="locale.baseText('settings.versionControl.repoUrlPlaceholder')"
-						v-model="versionControlStore.preferences.repositoryUrl"
-						@validate="(value) => onValidate('repoUrl', value)"
-					/>
-					<n8n-button
-						class="ml-2xs"
-						type="tertiary"
-						v-if="isConnected"
-						@click="onDisconnect"
-						size="large"
-						icon="trash"
-						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
-					>
+						v-model="versionControlStore.preferences.repositoryUrl" @validate="(value) => onValidate('repoUrl', value)" />
+					<n8n-button class="ml-2xs" type="tertiary" v-if="isConnected" @click="onDisconnect" size="large" icon="trash">{{
+						locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button>
 				</div>
 				<small>{{ locale.baseText('settings.versionControl.repoUrlDescription') }}</small>
 			</div>
@@ -218,50 +200,26 @@ async function refreshSshKey() {
 				<div>
 					<label for="authorName">{{
 						locale.baseText('settings.versionControl.authorName')
-					}}</label>
-					<n8n-form-input
-						label
-						id="authorName"
-						name="authorName"
-						validateOnBlur
-						:validationRules="authorNameValidationRules"
-						v-model="versionControlStore.preferences.authorName"
-						@validate="(value) => onValidate('authorName', value)"
-					/>
+						}}</label>
+					<n8n-form-input label id="authorName" name="authorName" validateOnBlur
+						:validationRules="authorNameValidationRules" v-model="versionControlStore.preferences.authorName"
+						@validate="(value) => onValidate('authorName', value)" />
 				</div>
 				<div>
 					<label for="authorEmail">{{
 						locale.baseText('settings.versionControl.authorEmail')
-					}}</label>
-					<n8n-form-input
-						label
-						type="email"
-						id="authorEmail"
-						name="authorEmail"
-						validateOnBlur
-						:validationRules="authorEmailValidationRules"
-						v-model="versionControlStore.preferences.authorEmail"
-						@validate="(value) => onValidate('authorEmail', value)"
-					/>
+						}}</label>
+					<n8n-form-input label type="email" id="authorEmail" name="authorEmail" validateOnBlur
+						:validationRules="authorEmailValidationRules" v-model="versionControlStore.preferences.authorEmail"
+						@validate="(value) => onValidate('authorEmail', value)" />
 				</div>
 			</div>
 			<div v-if="versionControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.versionControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
-					<CopyInput
-						collapse
-						size="medium"
-						:value="versionControlStore.preferences.publicKey"
-						:copy-button-text="locale.baseText('generic.clickToCopy')"
-					/>
-					<n8n-button
-						v-if="!isConnected"
-						size="large"
-						type="tertiary"
-						icon="sync"
-						class="ml-s"
-						@click="refreshSshKey"
-					>
+					<CopyInput collapse size="medium" :value="versionControlStore.preferences.publicKey"
+						:copy-button-text="locale.baseText('generic.clickToCopy')" />
+					<n8n-button v-if="!isConnected" size="large" type="tertiary" icon="sync" class="ml-s" @click="refreshSshKey">
 						{{ locale.baseText('settings.versionControl.refreshSshKey') }}
 					</n8n-button>
 				</div>
@@ -270,44 +228,25 @@ async function refreshSshKey() {
 						<template #link>
 							<a href="#" target="_blank">{{
 								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
-							}}</a>
+								}}</a>
 						</template>
 					</i18n>
 				</n8n-notice>
 			</div>
-			<n8n-button
-				v-if="!isConnected"
-				@click="onConnect"
-				size="large"
-				:disabled="!validForConnection"
-				:class="$style.connect"
-				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
-			>
+			<n8n-button v-if="!isConnected" @click="onConnect" size="large" :disabled="!validForConnection"
+				:class="$style.connect">{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button>
 			<div v-if="isConnected">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.versionControl.instanceSettings')
-					}}</n8n-heading>
+						}}</n8n-heading>
 					<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
-					<n8n-select
-						:value="versionControlStore.preferences.branchName"
-						class="mb-s"
-						size="medium"
-						filterable
-						@input="onSelect"
-					>
-						<n8n-option
-							v-for="b in versionControlStore.preferences.branches"
-							:key="b"
-							:value="b"
-							:label="b"
-						/>
+					<n8n-select :value="versionControlStore.preferences.branchName" class="mb-s" size="medium" filterable
+						@input="onSelect">
+						<n8n-option v-for="b in versionControlStore.preferences.branches" :key="b" :value="b" :label="b" />
 					</n8n-select>
-					<n8n-checkbox
-						v-model="versionControlStore.preferences.branchReadOnly"
-						:class="$style.readOnly"
-					>
+					<n8n-checkbox v-model="versionControlStore.preferences.branchReadOnly" :class="$style.readOnly">
 						<i18n path="settings.versionControl.readonly">
 							<template #bold>
 								<strong>{{ locale.baseText('settings.versionControl.readonly.bold') }}</strong>
@@ -329,18 +268,13 @@ async function refreshSshKey() {
 				<div :class="[$style.group, 'pt-s']">
 					<n8n-button @click="onSave" size="large">{{
 						locale.baseText('settings.versionControl.button.save')
-					}}</n8n-button>
+						}}</n8n-button>
 				</div>
 			</div>
 		</div>
-		<n8n-action-box
-			v-else
-			data-test-id="version-control-content-unlicensed"
-			:class="$style.actionBox"
+		<n8n-action-box v-else data-test-id="version-control-content-unlicensed" :class="$style.actionBox"
 			:description="locale.baseText('settings.versionControl.actionBox.description')"
-			:buttonText="locale.baseText('settings.versionControl.actionBox.buttonText')"
-			@click="goToUpgrade"
-		>
+			:buttonText="locale.baseText('settings.versionControl.actionBox.buttonText')" @click="goToUpgrade">
 			<template #heading>
 				<span>{{ locale.baseText('settings.versionControl.actionBox.title') }}</span>
 			</template>
@@ -378,7 +312,7 @@ async function refreshSshKey() {
 	display: flex;
 	align-items: flex-start;
 
-	> div {
+	>div {
 		flex: 1;
 
 		&:last-child {
@@ -404,11 +338,11 @@ async function refreshSshKey() {
 	display: flex;
 	align-items: center;
 
-	> div {
+	>div {
 		width: calc(100% - 144px - var(--spacing-s));
 	}
 
-	> button {
+	>button {
 		height: 42px;
 	}
 }
