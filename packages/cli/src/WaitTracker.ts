@@ -14,7 +14,6 @@ import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type {
 	IExecutionFlattedDb,

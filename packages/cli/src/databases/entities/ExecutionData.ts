@@ -1,5 +1,4 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
-import { IWorkflowDb } from '@/Interfaces';
 import { idStringifier } from '../utils/transformers';
 import { ExecutionEntity } from './ExecutionEntity';
 import { jsonColumnType } from './AbstractEntity';

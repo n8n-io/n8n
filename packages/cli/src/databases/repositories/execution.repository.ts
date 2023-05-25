@@ -1,22 +1,16 @@
 import { Service } from 'typedi';
-import {
-	DataSource,
-	In,
-	LessThanOrEqual,
-	MoreThanOrEqual,
-	Repository,
+import { DataSource, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import type {
+	FindManyOptions,
+	FindOneOptions,
+	FindOptionsWhere,
 	SelectQueryBuilder,
 } from 'typeorm';
-import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
-import type {
-	IExecutionDb,
-	IExecutionFlattedDb,
-	IExecutionResponse,
-	IWorkflowDb,
-} from '@/Interfaces';
-import { IExecutionsSummary, IRunExecutionData, IWorkflowBase, LoggerProxy } from 'n8n-workflow';
+import type { IExecutionDb, IExecutionFlattedDb, IExecutionResponse } from '@/Interfaces';
+import { LoggerProxy } from 'n8n-workflow';
+import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { ExecutionDataRepository } from './executionData.repository';
 import { ExecutionData } from '../entities/ExecutionData';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
@@ -303,7 +297,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (deleteConditions.deleteBefore) {
 			// delete executions by date, if user may access the underlying workflows
-			query.andWhere('execution.startedAt', LessThanOrEqual(deleteConditions.deleteBefore));
+			query.andWhere('execution.startedAt <= :deleteBefore', {
+				deleteBefore: deleteConditions.deleteBefore,
+			});
 			// Filters are only used when filtering by date
 			parseFiltersToQueryBuilder(query, filters);
 		} else if (deleteConditions.ids) {
@@ -313,26 +309,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const executions = await query.getMany();
 
-		// if (!executions.length) {
-		// 	if (deleteConditions.ids) {
-		// 		LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
-		// 			executionIds: deleteConditions.ids,
-		// 		});
-		// 	}
-		// 	return;
-		// }
+		if (!executions.length) {
+			if (deleteConditions.ids) {
+				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+					executionIds: deleteConditions.ids,
+				});
+			}
+			return;
+		}
 
-		// // const idsToDelete = executions.map(({ id }) => id);
+		const idsToDelete = executions.map(({ id }) => id);
 
-		// // const binaryDataManager = BinaryDataManager.getInstance();
-		// // await Promise.all(
-		// // 	idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-		// // );
+		const binaryDataManager = BinaryDataManager.getInstance();
+		await Promise.all(
+			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+		);
 
-		// // do {
-		// // 	// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-		// // 	const batch = idsToDelete.splice(0, 500);
-		// // 	await this.delete(batch);
-		// // } while (idsToDelete.length > 0);
+		do {
+			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
+			const batch = idsToDelete.splice(0, 500);
+			await this.delete(batch);
+		} while (idsToDelete.length > 0);
 	}
 }

@@ -2,24 +2,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { BinaryDataManager } from 'n8n-core';
-import type {
-	IDataObject,
-	IWorkflowBase,
-	JsonObject,
-	ExecutionStatus,
-	IRunExecutionData,
-	NodeOperationError,
-	IExecutionsSummary,
-} from 'n8n-workflow';
+import type { IDataObject, IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
 import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
-import type { FindOperator, FindOptionsWhere } from 'typeorm';
-import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Not, Raw } from 'typeorm';
+import type { FindOperator } from 'typeorm';
+import { In, IsNull, Not } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { ExecutionData } from '@db/entities/ExecutionData';
 import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -34,14 +23,12 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import { parse } from 'flatted';
 import { Container } from 'typedi';
 import {
 	getStatusUsingPreviousExecutionStatusMethod,
 	isAdvancedExecutionFiltersEnabled,
 } from './executionHelpers';
 import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
-import { DateUtils } from 'typeorm/util/DateUtils';
 import { ExecutionRepository } from '@/databases/repositories';
 
 export interface IGetExecutionsQueryFilter {

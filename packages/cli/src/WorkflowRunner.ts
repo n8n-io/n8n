@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, WorkflowExecute } from 'n8n-core';
+import { WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -34,7 +34,6 @@ import { fork } from 'child_process';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
-import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IProcessMessageDataHook,
@@ -610,8 +609,7 @@ export class WorkflowRunner {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						await Db.collections.Execution.delete(executionId);
-						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(executionId);
+						await Container.get(ExecutionRepository).deleteExecution(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {

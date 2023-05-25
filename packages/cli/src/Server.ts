@@ -1251,14 +1251,16 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.exist({
-					where: {
-						id: executionId,
-						workflowId: In(sharedWorkflowIds),
+				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+					executionId,
+					{
+						where: {
+							workflowId: In(sharedWorkflowIds),
+						},
 					},
-				});
+				);
 
-				if (!execution) {
+				if (!fullExecutionData) {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
@@ -1294,14 +1296,6 @@ export class Server extends AbstractServer {
 						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
 					} else {
 						await queue.stopJob(job);
-					}
-
-					const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-						req.params.id,
-					);
-
-					if (!fullExecutionData) {
-						throw new Error("Could not stop execution since it's data could not be found.");
 					}
 
 					const returnData: IExecutionsStopData = {

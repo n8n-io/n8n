@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import type {
@@ -29,9 +29,9 @@ import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
-import * as Db from '@/Db';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
+import { ExecutionRepository } from './databases/repositories';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -236,7 +236,9 @@ export class InternalHooks implements IInternalHooksClass {
 		data: IWorkflowExecutionDataProcess,
 	): Promise<void> {
 		void Promise.all([
-			Db.collections.Execution.update(executionId, { status: 'running' }),
+			Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+				status: 'running',
+			}),
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.started',
 				payload: {
@@ -426,9 +428,9 @@ export class InternalHooks implements IInternalHooksClass {
 		}
 
 		promises.push(
-			Db.collections.Execution.update(executionId, {
+			Container.get(ExecutionRepository).updateExistingExecution(executionId, {
 				status: executionStatus,
-			}) as unknown as Promise<void>,
+			}),
 		);
 
 		promises.push(

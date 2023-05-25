@@ -11,32 +11,22 @@ import type {
 import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
-import { stringify } from 'flatted';
 import type PCancelable from 'p-cancelable';
-import * as Db from '@/Db';
 import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
-	IExecutionFlattedDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
 import { isWorkflowIdValid } from '@/utils';
-import { Service } from 'typedi';
-import type { ExecutionRepository } from './databases/repositories';
+import Container, { Service } from 'typedi';
+import { ExecutionRepository } from './databases/repositories';
 
 @Service()
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
-
-	private executionRepository: ExecutionRepository;
-
-	constructor(executionRepository: ExecutionRepository) {
-		this.executionRepository = executionRepository;
-	}
 
 	/**
 	 * Add a new active execution
@@ -68,7 +58,9 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const executionResult = await this.executionRepository.createNewExecution(fullExecutionData);
+			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
+				fullExecutionData,
+			);
 			// TODO: what is going on here?
 			executionId = executionResult.id.toString();
 			if (executionId === undefined) {
@@ -85,7 +77,7 @@ export class ActiveExecutions {
 				status: executionStatus,
 			};
 
-			await this.executionRepository.updateExistingExecution(executionId, execution);
+			await Container.get(ExecutionRepository).updateExistingExecution(executionId, execution);
 		}
 
 		this.activeExecutions[executionId] = {
