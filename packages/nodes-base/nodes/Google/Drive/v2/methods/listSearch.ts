@@ -95,23 +95,40 @@ export async function driveSearch(
 		pageToken: paginationToken,
 	});
 
-	const results: INodeListSearchItems[] = [
-		{
-			name: RLC_DRIVE_DEFAULT,
-			value: RLC_DRIVE_DEFAULT,
-			url: 'https://drive.google.com/drive/my-drive',
-		},
-	];
+	const results: INodeListSearchItems[] = [];
 
-	res.drives.forEach((i: GoogleDriveDriveItem) => {
+	res.drives.forEach((drive: GoogleDriveDriveItem) => {
 		results.push({
-			name: i.name,
-			value: i.id,
+			name: drive.name,
+			value: drive.id,
+			url: `https://drive.google.com/drive/folders/${drive.id}`,
 		});
 	});
 
 	return {
 		results,
 		paginationToken: res.nextPageToken,
+	};
+}
+
+export async function driveSearchWithDefault(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const drives = await driveSearch.call(this, filter, paginationToken);
+
+	const results: INodeListSearchItems[] = [
+		{
+			name: RLC_DRIVE_DEFAULT,
+			value: RLC_DRIVE_DEFAULT,
+			url: 'https://drive.google.com/drive/my-drive',
+		},
+		...drives.results,
+	];
+
+	return {
+		results,
+		paginationToken: drives.paginationToken,
 	};
 }

@@ -5,7 +5,7 @@ import * as deleteDrive from './deleteDrive.operation';
 import * as get from './get.operation';
 import * as list from './list.operation';
 import * as update from './update.operation';
-import { driveRLC } from '../common.descriptions';
+import { sharedDriveRLC } from '../common.descriptions';
 
 export { create, deleteDrive, get, list, update };
 
@@ -37,8 +37,8 @@ export const description: INodeProperties[] = [
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List all drives',
-				action: 'List all drives',
+				description: 'List all shared drives',
+				action: 'List all shared drives',
 			},
 			{
 				name: 'Update',
@@ -55,7 +55,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		...driveRLC,
+		...sharedDriveRLC,
 		displayOptions: {
 			show: {
 				operation: ['deleteDrive', 'get', 'update'],

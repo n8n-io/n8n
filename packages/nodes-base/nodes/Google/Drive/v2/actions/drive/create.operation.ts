@@ -175,13 +175,6 @@ const properties: INodeProperties[] = [
 				description: 'The color of this shared drive as an RGB hex string',
 			},
 			{
-				displayName: 'Created Time',
-				name: 'createdTime',
-				type: 'dateTime',
-				default: '',
-				description: 'The time at which the shared drive was created (RFC 3339 date-time)',
-			},
-			{
 				displayName: 'Hidden',
 				name: 'hidden',
 				type: 'boolean',

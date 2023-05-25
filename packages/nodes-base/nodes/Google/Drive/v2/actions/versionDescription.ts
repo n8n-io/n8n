@@ -64,7 +64,7 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Drive',
+					name: 'Shared Drive',
 					value: 'drive',
 				},
 				{

@@ -126,7 +126,13 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(
+			this.getNode(),
+			{
+				reason: error.error,
+			} as JsonObject,
+			{ httpCode: String(error.statusCode) },
+		);
 	}
 }
 

@@ -123,7 +123,63 @@ export const driveRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: RLC_DRIVE_DEFAULT },
 	required: true,
-	hint: 'The Google Drive drive to operate on',
+	modes: [
+		{
+			displayName: 'Drive',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Drive',
+			typeOptions: {
+				searchListMethod: 'driveSearchWithDefault',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'Link',
+			name: 'url',
+			type: 'string',
+			placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+			extractValue: {
+				type: 'regex',
+				regex: 'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						errorMessage: 'Not a valid Google Drive Drive URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			hint: 'The ID of the shared drive',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Google Drive Drive ID',
+					},
+				},
+			],
+			url: '=https://drive.google.com/drive/folders/{{$value}}',
+		},
+	],
+	description: 'The ID of the drive',
+};
+
+export const sharedDriveRLC: INodeProperties = {
+	displayName: 'Shared Drive',
+	name: 'driveId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
 	modes: [
 		{
 			displayName: 'Drive',
