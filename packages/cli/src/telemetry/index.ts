@@ -128,7 +128,11 @@ export class Telemetry {
 				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 
-			if (!properties.success && properties.error_node_type?.startsWith('n8n-nodes-base')) {
+			if (
+				!properties.success &&
+				properties.is_manual &&
+				properties.error_node_type?.startsWith('n8n-nodes-base')
+			) {
 				void this.track('Workflow execution errored', properties);
 			}
 		}
