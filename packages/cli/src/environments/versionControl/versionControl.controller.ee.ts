@@ -1,5 +1,8 @@
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import { versionControlLicensedMiddleware } from './middleware/versionControlEnabledMiddleware.ee';
+import {
+	versionControlLicensedMiddleware,
+	versionControlLicensedAndEnabledMiddleware,
+} from './middleware/versionControlEnabledMiddleware.ee';
 import { VersionControlService } from './versionControl.service.ee';
 import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
@@ -56,7 +59,9 @@ export class VersionControlController {
 						...newPreferences,
 						initRepo: true,
 					});
-					await this.versionControlPreferencesService.setPreferences({ connected: true });
+					if (this.versionControlPreferencesService.getPreferences().branchName !== '') {
+						await this.versionControlPreferencesService.setPreferences({ connected: true });
+					}
 				} catch (error) {
 					// if initialization fails, run cleanup to remove any intermediate state and throw the error
 					await this.versionControlService.disconnect({ keepKeyPair: true });
@@ -71,7 +76,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/set-read-only')
+	@Post('/set-read-only', { middlewares: [versionControlLicensedMiddleware] })
 	async setReadOnly(req: VersionControlRequest.SetReadOnly) {
 		try {
 			this.versionControlPreferencesService.setBranchReadOnly(req.body.branchReadOnly);
@@ -82,7 +87,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/disconnect')
+	@Post('/disconnect', { middlewares: [versionControlLicensedMiddleware] })
 	async disconnect(req: VersionControlRequest.Disconnect) {
 		try {
 			return await this.versionControlService.disconnect(req.body);
@@ -92,7 +97,7 @@ export class VersionControlController {
 	}
 
 	@Authorized('any')
-	@Get('/get-branches')
+	@Get('/get-branches', { middlewares: [versionControlLicensedMiddleware] })
 	async getBranches() {
 		try {
 			return await this.versionControlService.getBranches();
@@ -102,7 +107,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/set-branch')
+	@Post('/set-branch', { middlewares: [versionControlLicensedMiddleware] })
 	async setBranch(req: VersionControlRequest.SetBranch) {
 		try {
 			return await this.versionControlService.setBranch(req.body.branch);
@@ -112,7 +117,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/push-workfolder')
+	@Post('/push-workfolder', { middlewares: [versionControlLicensedAndEnabledMiddleware] })
 	async pushWorkfolder(
 		req: VersionControlRequest.PushWorkFolder,
 		res: express.Response,
@@ -134,7 +139,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/pull-workfolder')
+	@Post('/pull-workfolder', { middlewares: [versionControlLicensedAndEnabledMiddleware] })
 	async pullWorkfolder(
 		req: VersionControlRequest.PullWorkFolder,
 		res: express.Response,
@@ -158,7 +163,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Get('/reset-workfolder')
+	@Get('/reset-workfolder', { middlewares: [versionControlLicensedAndEnabledMiddleware] })
 	async resetWorkfolder(
 		req: VersionControlRequest.PullWorkFolder,
 	): Promise<ImportResult | undefined> {
@@ -175,7 +180,7 @@ export class VersionControlController {
 	}
 
 	@Authorized('any')
-	@Get('/get-status')
+	@Get('/get-status', { middlewares: [versionControlLicensedAndEnabledMiddleware] })
 	async getStatus() {
 		try {
 			return await this.versionControlService.getStatus();
@@ -185,7 +190,7 @@ export class VersionControlController {
 	}
 
 	@Authorized('any')
-	@Get('/status')
+	@Get('/status', { middlewares: [versionControlLicensedMiddleware] })
 	async status(): Promise<StatusResult> {
 		try {
 			return await this.versionControlService.status();

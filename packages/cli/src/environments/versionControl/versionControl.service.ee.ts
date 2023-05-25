@@ -103,18 +103,25 @@ export class VersionControlService {
 		if (getBranchesResult.branches.includes(preferences.branchName)) {
 			await this.gitService.setBranch(preferences.branchName);
 		} else {
-			try {
-				writeFileSync(path.join(this.gitFolder, '/README.md'), VERSION_CONTROL_README);
+			if (getBranchesResult.branches?.length === 0) {
+				try {
+					writeFileSync(path.join(this.gitFolder, '/README.md'), VERSION_CONTROL_README);
 
-				await this.gitService.stage(new Set<string>(['README.md']));
-				await this.gitService.commit('Initial commit');
-				await this.gitService.push({
-					branch: preferences.branchName,
-					force: true,
+					await this.gitService.stage(new Set<string>(['README.md']));
+					await this.gitService.commit('Initial commit');
+					await this.gitService.push({
+						branch: preferences.branchName,
+						force: true,
+					});
+					getBranchesResult = await this.getBranches();
+				} catch (fileError) {
+					LoggerProxy.error(`Failed to create initial commit: ${(fileError as Error).message}`);
+				}
+			} else {
+				await this.versionControlPreferencesService.setPreferences({
+					branchName: '',
+					connected: false,
 				});
-				getBranchesResult = await this.getBranches();
-			} catch (fileError) {
-				LoggerProxy.error(`Failed to create initial commit: ${(fileError as Error).message}`);
 			}
 		}
 		return getBranchesResult;
@@ -160,7 +167,10 @@ export class VersionControlService {
 	}
 
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
-		await this.versionControlPreferencesService.setPreferences({ branchName: branch });
+		await this.versionControlPreferencesService.setPreferences({
+			branchName: branch,
+			connected: true,
+		});
 		return this.gitService.setBranch(branch);
 	}
 

@@ -5,6 +5,8 @@ import { authorize } from '../../shared/middlewares/global.middleware';
 import type { ImportResult } from '@/environments/versionControl/types/importResult';
 import Container from 'typedi';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlPreferencesService } from '@/environments/versionControl/versionControlPreferences.service.ee';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper.ee';
 
 export = {
 	pull: [
@@ -13,6 +15,17 @@ export = {
 			req: PublicVersionControlRequest.Pull,
 			res: express.Response,
 		): Promise<ImportResult | StatusResult | Promise<express.Response>> => {
+			const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+			if (!isVersionControlLicensed()) {
+				return res
+					.status(401)
+					.json({ status: 'Error', message: 'Version Control feature is not licensed' });
+			}
+			if (!versionControlPreferencesService.isVersionControlConnected()) {
+				return res
+					.status(400)
+					.json({ status: 'Error', message: 'Version Control is not connected to a repository' });
+			}
 			try {
 				const versionControlService = Container.get(VersionControlService);
 				const result = await versionControlService.pullWorkfolder({
