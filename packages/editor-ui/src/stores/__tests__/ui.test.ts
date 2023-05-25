@@ -15,16 +15,8 @@ describe('UI store', () => {
 	});
 
 	test.each([
-		[
-			'default',
-			'production',
-			'https://subscription.n8n.io?instanceid=123abc&version=0.223.0&source=test_source',
-		],
-		[
-			'default',
-			'development',
-			'https://staging-subscription.n8n.io?instanceid=123abc&version=0.223.0&source=test_source',
-		],
+		['default', 'production', 'https://n8n.io/pricing/?ref=test_source'],
+		['default', 'development', 'https://n8n.io/pricing/?ref=test_source'],
 		[
 			'desktop_win',
 			'production',
