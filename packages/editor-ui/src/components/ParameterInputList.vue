@@ -33,6 +33,18 @@
 				/>
 			</div>
 
+			<div v-else-if="parameter.type === 'sendgridPreview'">
+				<send-grid-preview
+					:node="node"
+					:path="path"
+					:nodeType="nodeType"
+					:parameter="parameter"
+					:parameters="parameters"
+					:nodeValues="nodeValues"
+					@valueChanged="valueChanged"
+				/>
+			</div>
+
 			<import-parameter
 				v-else-if="
 					parameter.type === 'curlImport' &&
@@ -126,13 +138,13 @@
 </template>
 
 <script lang="ts">
-import {
-	deepCopy,
+import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -141,6 +153,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 import SwaggerEditor from '@/components/SwaggerEditor/SwaggerEditor.vue';
+import SendGridPreview from '@/components/SendGridPreview/SendGridPreview.vue';
 
 import { get, set } from 'lodash-es';
 
@@ -161,6 +174,7 @@ export default mixins(workflowHelpers).extend({
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		ImportParameter,
 		SwaggerEditor,
+		SendGridPreview,
 	},
 	props: {
 		nodeValues: {
