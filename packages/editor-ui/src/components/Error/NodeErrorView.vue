@@ -118,24 +118,29 @@
 </template>
 
 <script lang="ts">
-//@ts-ignore
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
+import { useToast } from '@/composables';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
 	name: 'NodeErrorView',
+	mixins: [copyPaste],
 	props: ['error'],
 	components: {
 		VueJsonPretty,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
@@ -251,7 +256,7 @@ export default mixins(copyPaste, showMessage).extend({
 			this.copySuccess();
 		},
 		copySuccess() {
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('nodeErrorView.showMessage.title'),
 				type: 'info',
 			});

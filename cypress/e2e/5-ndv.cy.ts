@@ -227,4 +227,42 @@ describe('NDV', () => {
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
 	});
+
+	it('should display parameter hints correctly', () => {
+		workflowPage.actions.visit();
+
+		cy.createFixtureWorkflow('Test_workflow_3.json', `My test workflow`);
+		workflowPage.actions.openNode('Set1');
+
+		ndv.actions.typeIntoParameterInput('value', '='); // switch to expressions
+
+		[
+			{
+				input: 'hello',
+			},
+			{
+				input: '',
+				output: '[empty]',
+			},
+			{
+				input: ' test',
+			},
+			{
+				input: ' '
+			},
+			{
+				input: '<div></div>'
+			},
+		].forEach(({ input, output }) => {
+
+
+				if (input) {
+					ndv.actions.typeIntoParameterInput('value', input);
+				}
+				ndv.getters.parameterInput('name').click(); // remove focus from input, hide expression preview
+
+				ndv.actions.validateExpressionPreview('value', output || input);
+				ndv.getters.parameterInput('value').clear();
+			});
+	});
 });

@@ -27,7 +27,7 @@ jobs:
         run: pnpm install
 
       - name: Build nodes-base
-        run: pnpm --filter n8n-workflow --filter=n8n-core --filter=n8n-nodes-base build
+        run: pnpm --filter @n8n/client-oauth2 --filter n8n-workflow --filter n8n-core --filter n8n-nodes-base build
 
       - name: Test URLS
         run: node scripts/validate-docs-links.js

@@ -56,9 +56,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
-import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -73,14 +73,15 @@ import type {
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default defineComponent({
 	name: 'Sticky',
+	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
+
 	props: {
 		nodeViewScale: {
 			type: Number,

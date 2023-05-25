@@ -123,20 +123,23 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
+
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
-} from '../constants';
+} from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { createEventBus, nodeViewEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
+import { useToast, useMessage } from '@/composables';
+import { nodeViewEventBus } from '@/event-bus';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -147,7 +150,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'workflow-share-modal',
 	components: {
 		Modal,
@@ -157,6 +160,12 @@ export default mixins(showMessage).extend({
 			type: Object,
 			default: () => ({}),
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	data() {
 		const workflowsStore = useWorkflowsStore();
@@ -187,11 +196,6 @@ export default mixins(showMessage).extend({
 		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
-		},
-		fallbackLinkUrl(): string {
-			return `${this.$locale.baseText(
-				this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl as BaseTextKey,
-			)}${true ? '&utm_campaign=upgrade-workflow-sharing' : ''}`;
 		},
 		modalTitle(): string {
 			return this.$locale.baseText(
@@ -259,7 +263,7 @@ export default mixins(showMessage).extend({
 
 			this.loading = true;
 
-			const saveWorkflowPromise = () => {
+			const saveWorkflowPromise = async () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.emit('saveWorkflow', () => {
@@ -292,12 +296,12 @@ export default mixins(showMessage).extend({
 					sharees_removed: shareesRemoved.length,
 				});
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
+				this.showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
 			} finally {
 				this.modalBus.emit('close');
 				this.loading = false;
@@ -370,7 +374,7 @@ export default mixins(showMessage).extend({
 
 			let confirm = true;
 			if (!isNewSharee && isLastUserWithAccessToCredentials) {
-				confirm = await this.confirmMessage(
+				const confirmAction = await this.confirm(
 					this.$locale.baseText(
 						'workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message',
 						{
@@ -380,10 +384,18 @@ export default mixins(showMessage).extend({
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', {
 						interpolate: { name: user.fullName as string },
 					}),
-					null,
-					this.$locale.baseText('workflows.shareModal.list.delete.confirm.confirmButtonText'),
-					this.$locale.baseText('workflows.shareModal.list.delete.confirm.cancelButtonText'),
+					{
+						confirmButtonText: this.$locale.baseText(
+							'workflows.shareModal.list.delete.confirm.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'workflows.shareModal.list.delete.confirm.cancelButtonText',
+						),
+						dangerouslyUseHTMLString: true,
+					},
 				);
+
+				confirm = confirmAction === MODAL_CONFIRM;
 			}
 
 			if (confirm) {
@@ -399,21 +411,27 @@ export default mixins(showMessage).extend({
 		},
 		onRoleAction(user: IUser, action: string) {
 			if (action === 'remove') {
-				this.onRemoveSharee(user.id);
+				void this.onRemoveSharee(user.id);
 			}
 		},
 		async onCloseModal() {
 			if (this.isDirty) {
-				const shouldSave = await this.confirmMessage(
+				const shouldSave = await this.confirm(
 					this.$locale.baseText('workflows.shareModal.saveBeforeClose.message'),
 					this.$locale.baseText('workflows.shareModal.saveBeforeClose.title'),
-					'warning',
-					this.$locale.baseText('workflows.shareModal.saveBeforeClose.confirmButtonText'),
-					this.$locale.baseText('workflows.shareModal.saveBeforeClose.cancelButtonText'),
+					{
+						type: 'warning',
+						confirmButtonText: this.$locale.baseText(
+							'workflows.shareModal.saveBeforeClose.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'workflows.shareModal.saveBeforeClose.cancelButtonText',
+						),
+					},
 				);
 
-				if (shouldSave) {
-					return await this.onSave();
+				if (shouldSave === MODAL_CONFIRM) {
+					return this.onSave();
 				}
 			}
 
@@ -457,7 +475,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.initialize();
+		void this.initialize();
 	},
 	watch: {
 		workflow(workflow) {

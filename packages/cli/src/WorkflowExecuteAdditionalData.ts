@@ -610,16 +610,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						if (!fullRunData.waitTill) {
-							if (!isManualMode) {
-								executeErrorWorkflow(
-									this.workflowData,
-									fullRunData,
-									this.mode,
-									this.executionId,
-									this.retryOf,
-								);
-							}
+						if (!fullRunData.waitTill && !isManualMode) {
+							executeErrorWorkflow(
+								this.workflowData,
+								fullRunData,
+								this.mode,
+								this.executionId,
+								this.retryOf,
+							);
 							// Data is always saved, so we remove from database
 							await Db.collections.Execution.delete(this.executionId);
 							await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
@@ -927,12 +925,6 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		if (!Db.isInitialized) {
-			// The first time executeWorkflow gets called the Database has
-			// to get initialized first
-			await Db.init();
-		}
-
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
 		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });

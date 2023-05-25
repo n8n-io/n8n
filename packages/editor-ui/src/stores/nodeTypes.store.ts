@@ -142,7 +142,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		async getFullNodesProperties(nodesToBeFetched: INodeTypeNameVersion[]): Promise<void> {
 			const credentialsStore = useCredentialsStore();
-			credentialsStore.fetchCredentialTypes(true);
+			await credentialsStore.fetchCredentialTypes(true);
 			await this.getNodesInformation(nodesToBeFetched);
 		},
 		async getNodeTypes(): Promise<void> {
