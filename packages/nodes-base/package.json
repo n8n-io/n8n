@@ -840,6 +840,7 @@
     "js-nacl": "^1.4.0",
     "jsonwebtoken": "^9.0.0",
     "kafkajs": "^1.14.0",
+    "ldapts": "^4.2.6",
     "lodash.assign": "^4",
     "lodash.assignwith": "^4",
     "lodash.clone": "^4",
