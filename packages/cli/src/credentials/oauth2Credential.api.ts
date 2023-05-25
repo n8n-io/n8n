@@ -269,7 +269,7 @@ oauth2CredentialController.get(
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
-
+			console.log('Oauth2credential', get(oauthCredentials, 'authentication', 'header') as string);
 			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
@@ -279,7 +279,7 @@ oauth2CredentialController.get(
 						}),
 					},
 				};
-				console.log(options);
+				console.log(console.log('body', options));
 				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
 			}

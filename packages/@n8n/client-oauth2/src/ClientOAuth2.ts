@@ -85,6 +85,7 @@ export class ClientOAuth2 {
 		if (query) {
 			url += (url.indexOf('?') === -1 ? '?' : '&') + query;
 		}
+		console.log('Request options', options);
 		console.log('request headers', options.headers);
 		if (options?.headers?.Authorization === '') {
 			delete options?.headers?.Authorization;

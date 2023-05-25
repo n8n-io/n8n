@@ -45,7 +45,7 @@ export class TwitterOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden',
-			default: 'headers',
+			default: 'header',
 		},
 	];
 }
