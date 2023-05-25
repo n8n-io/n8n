@@ -5,6 +5,7 @@ import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
+import { parseRedisUrl } from './ParserHelper';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -32,7 +33,7 @@ export class Queue {
 
 	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+		const redisOptions: RedisOptions = parseRedisUrl() ||config.getEnv('queue.bull.redis');
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
