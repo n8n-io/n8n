@@ -5,6 +5,7 @@ import { authorize } from '../../shared/middlewares/global.middleware';
 import type { ImportResult } from '@/environments/versionControl/types/importResult';
 import Container from 'typedi';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlPreferencesService } from '@/environments/versionControl/versionControlPreferences.service.ee';
 
 export = {
 	pull: [
@@ -13,6 +14,10 @@ export = {
 			req: PublicVersionControlRequest.Pull,
 			res: express.Response,
 		): Promise<ImportResult | StatusResult | Promise<express.Response>> => {
+			const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+			if (!versionControlPreferencesService.isVersionControlLicensedAndEnabled()) {
+				return res.status(401).json({ status: 'error', message: 'Endpoint unavailable' });
+			}
 			try {
 				const versionControlService = Container.get(VersionControlService);
 				const result = await versionControlService.pullWorkfolder({
