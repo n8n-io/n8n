@@ -48,7 +48,7 @@ import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
-import { useTelemetry } from '@/composables';
+import { useTelemetryStore } from './telemetry.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 
@@ -479,7 +479,8 @@ export const useUIStore = defineStore(STORES.UI, {
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		goToUpgrade(source: string, utm_campaign: string): void {
-			useTelemetry().track('User clicked upgrade CTA', { source });
+			const { track } = useTelemetryStore();
+			track('User clicked upgrade CTA', { source });
 			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
 		},
 	},
