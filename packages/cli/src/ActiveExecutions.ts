@@ -24,12 +24,19 @@ import type {
 import * as ResponseHelper from '@/ResponseHelper';
 import { isWorkflowIdValid } from '@/utils';
 import { Service } from 'typedi';
+import type { ExecutionRepository } from './databases/repositories';
 
 @Service()
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
+
+	private executionRepository: ExecutionRepository;
+
+	constructor(executionRepository: ExecutionRepository) {
+		this.executionRepository = executionRepository;
+	}
 
 	/**
 	 * Add a new active execution
@@ -61,15 +68,9 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-			const executionResult = await Db.collections.Execution.save(execution as IExecutionFlattedDb);
+			const executionResult = await this.executionRepository.createNewExecution(fullExecutionData);
 			// TODO: what is going on here?
-			executionId =
-				typeof executionResult.id === 'object'
-					? // @ts-ignore
-					  executionResult.id!.toString()
-					: executionResult.id + '';
+			executionId = executionResult.id.toString();
 			if (executionId === undefined) {
 				throw new Error('There was an issue assigning an execution id to the execution');
 			}
@@ -77,14 +78,14 @@ export class ActiveExecutions {
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
-			const execution: Pick<IExecutionFlattedDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
-				data: stringify(executionData.executionData!),
+				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
 			};
 
-			await Db.collections.Execution.update(executionId, execution);
+			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
 
 		this.activeExecutions[executionId] = {

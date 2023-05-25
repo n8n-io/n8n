@@ -479,50 +479,9 @@ export class ExecutionsService {
 			}
 		}
 
-		if (!deleteBefore && !ids) {
-			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
-		}
-
-		const where: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
-
-		if (deleteBefore) {
-			// delete executions by date, if user may access the underlying workflows
-			where.startedAt = LessThanOrEqual(deleteBefore);
-			Object.assign(where, requestFilters);
-			if (where.status) {
-				where.status = In(requestFiltersRaw!.status as string[]);
-			}
-		} else if (ids) {
-			// delete executions by IDs, if user may access the underlying workflows
-			where.id = In(ids);
-		} else return;
-
-		const executions = await Db.collections.Execution.find({
-			select: ['id'],
-			where,
+		return Container.get(ExecutionRepository).deleteExecutions(requestFilters, sharedWorkflowIds, {
+			deleteBefore,
+			ids,
 		});
-
-		if (!executions.length) {
-			if (ids) {
-				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
-					userId: req.user.id,
-					executionIds: ids,
-				});
-			}
-			return;
-		}
-
-		const idsToDelete = executions.map(({ id }) => id);
-
-		const binaryDataManager = BinaryDataManager.getInstance();
-		await Promise.all(
-			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-		);
-
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = idsToDelete.splice(0, 500);
-			await Db.collections.Execution.delete(batch);
-		} while (idsToDelete.length > 0);
 	}
 }

@@ -185,7 +185,7 @@ export function executeErrorWorkflow(
 /**
  * Prunes Saved Execution which are older than configured.
  * Throttled to be executed just once in configured timeframe.
- *
+ * TODO: Consider moving this whole function to the repository or at least the queries
  */
 let throttling = false;
 async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
@@ -220,7 +220,6 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			}
 		}
 
-		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
 			setTimeout(() => {
 				throttling = false;
@@ -236,8 +235,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 				).map(({ id }) => id);
 				await Db.collections.Execution.delete({ id: In(executionIds) });
 				// Mark binary data for deletion for all executions
-				if (!isBinaryModeDefaultMode)
-					await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(executionIds);
+				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(executionIds);
 			} while (executionIds.length > 0);
 		} catch (error) {
 			ErrorReporter.error(error);
@@ -582,10 +580,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
 						// Data is always saved, so we remove from database
-						await Db.collections.Execution.delete(this.executionId);
-						await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
-							this.executionId,
-						);
+						await Container.get(ExecutionRepository).deleteExecution(this.executionId);
 
 						return;
 					}
@@ -623,10 +618,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.retryOf,
 							);
 							// Data is always saved, so we remove from database
-							await Db.collections.Execution.delete(this.executionId);
-							await BinaryDataManager.getInstance().markDataForDeletionByExecutionId(
-								this.executionId,
-							);
+							await Container.get(ExecutionRepository).deleteExecution(this.executionId);
 
 							return;
 						}
@@ -675,12 +667,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						stoppedAt: fullExecutionData.stoppedAt,
 					});
 
-					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-					// Save the Execution in DB
-					await Db.collections.Execution.update(
+					await Container.get(ExecutionRepository).updateExistingExecution(
 						this.executionId,
-						executionData as IExecutionFlattedDb,
+						fullExecutionData,
 					);
 
 					try {
@@ -692,9 +681,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
-						// If the retry was successful save the reference it on the original execution
-						// await Db.collections.Execution.save(executionData as IExecutionFlattedDb);
-						await Db.collections.Execution.update(this.retryOf, {
+						await Container.get(ExecutionRepository).updateExistingExecution(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
 					}
@@ -813,17 +800,15 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						fullExecutionData.workflowId = workflowId;
 					}
 
-					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-					// Save the Execution in DB
-					await Db.collections.Execution.update(
+					await Container.get(ExecutionRepository).updateExistingExecution(
 						this.executionId,
-						executionData as IExecutionFlattedDb,
+						fullExecutionData,
 					);
 
 					// For reasons(tm) the execution status is not updated correctly in the first update, so has to be written again (tbd)
-					await Db.collections.Execution.update(this.executionId, {
-						status: executionData.status,
+
+					await Container.get(ExecutionRepository).updateExistingExecution(this.executionId, {
+						status: fullExecutionData.status,
 					});
 
 					try {
@@ -836,7 +821,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
-						await Db.collections.Execution.update(this.retryOf, {
+						await Container.get(ExecutionRepository).updateExistingExecution(this.retryOf, {
 							retrySuccessId: this.executionId,
 						});
 					}
@@ -1094,9 +1079,10 @@ async function executeWorkflow(
 		// remove execution from active executions
 		Container.get(ActiveExecutions).remove(executionId, fullRunData);
 
-		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
-
-		await Db.collections.Execution.update(executionId, executionData as IExecutionFlattedDb);
+		await Container.get(ExecutionRepository).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
 		throw {
 			...error,
 			stack: error.stack,

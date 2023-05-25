@@ -65,23 +65,23 @@ export const connectionState: ConnectionState = {
 
 // Ping DB connection every 2 seconds
 let pingTimer: NodeJS.Timer | undefined;
-if (!inTest) {
-	const pingDBFn = async () => {
-		if (connection?.isInitialized) {
-			try {
-				await connection.query('SELECT 1');
-				connectionState.connected = true;
-				return;
-			} catch (error) {
-				ErrorReporter.error(error);
-			} finally {
-				pingTimer = setTimeout(pingDBFn, 2000);
-			}
-		}
-		connectionState.connected = false;
-	};
-	pingTimer = setTimeout(pingDBFn, 2000);
-}
+// if (!inTest) {
+// 	const pingDBFn = async () => {
+// 		if (connection?.isInitialized) {
+// 			try {
+// 				await connection.query('SELECT 1');
+// 				connectionState.connected = true;
+// 				return;
+// 			} catch (error) {
+// 				ErrorReporter.error(error);
+// 			} finally {
+// 				pingTimer = setTimeout(pingDBFn, 2000);
+// 			}
+// 		}
+// 		connectionState.connected = false;
+// 	};
+// 	pingTimer = setTimeout(pingDBFn, 2000);
+// }
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
