@@ -1366,8 +1366,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       vm2:
-        specifier: ~3.9.17
-        version: 3.9.17
+        specifier: ~3.9.18
+        version: 3.9.18
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz
         version: '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz'
@@ -11765,7 +11765,7 @@ packages:
       ast-types: 0.13.4
       escodegen: 1.14.3
       esprima: 4.0.1
-      vm2: 3.9.17
+      vm2: 3.9.18
     dev: false
 
   /del@6.1.1:
@@ -22539,8 +22539,8 @@ packages:
       - terser
     dev: true
 
-  /vm2@3.9.17:
-    resolution: {integrity: sha512-AqwtCnZ/ERcX+AVj9vUsphY56YANXxRuqMb7GsDtAr0m0PcQX3u0Aj3KWiXM0YAHy7i6JEeHrwOnwXbGYgRpAw==}
+  /vm2@3.9.18:
+    resolution: {integrity: sha512-iM7PchOElv6Uv6Q+0Hq7dcgDtWWT6SizYqVcvol+1WQc+E9HlgTCnPozbQNSP3yDV9oXHQOEQu530w2q/BCVZg==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:
