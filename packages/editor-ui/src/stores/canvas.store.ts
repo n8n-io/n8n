@@ -2,7 +2,13 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import normalizeWheel from 'normalize-wheel';
-import { useWorkflowsStore, useNodeTypesStore, useUIStore, useHistoryStore } from '@/stores';
+import {
+	useWorkflowsStore,
+	useNodeTypesStore,
+	useUIStore,
+	useHistoryStore,
+	useVersionControlStore,
+} from '@/stores';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
@@ -12,6 +18,7 @@ import type {
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
+import type { BrowserJsPlumbDefaults } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
@@ -37,6 +44,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
+	const versionControlStore = useVersionControlStore();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
@@ -52,6 +60,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
+	const readOnlyEnv = computed(() => versionControlStore.preferences.branchReadOnly);
 
 	Connectors.register(N8nConnector.type, N8nConnector);
 	N8nPlusEndpointRenderer.register();
@@ -152,7 +161,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			jsPlumbInstanceRef.value = undefined;
 		}
 
-		jsPlumbInstanceRef.value = newInstance({
+		const jsPlumbOptions: BrowserJsPlumbDefaults = {
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
@@ -163,7 +172,11 @@ export const useCanvasStore = defineStore('canvas', () => {
 			paintStyle: CONNECTOR_PAINT_STYLE_DEFAULT,
 			hoverPaintStyle: CONNECTOR_PAINT_STYLE_PRIMARY,
 			connectionOverlays: CONNECTOR_ARROW_OVERLAYS,
-			dragOptions: {
+			elementsDraggable: !readOnlyEnv.value,
+		};
+
+		if (!readOnlyEnv.value) {
+			jsPlumbOptions.dragOptions = {
 				cursor: 'pointer',
 				grid: { w: GRID_SIZE, h: GRID_SIZE },
 				start: (params: BeforeStartEventParams) => {
@@ -239,8 +252,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 					}
 				},
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
-			},
-		});
+			};
+		}
+
+		jsPlumbInstanceRef.value = newInstance(jsPlumbOptions);
 		jsPlumbInstanceRef.value?.setDragConstrainFunction((pos: PointXY) => {
 			const isReadOnly = uiStore.isReadOnlyView;
 			if (isReadOnly) {
