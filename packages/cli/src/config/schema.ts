@@ -47,7 +47,7 @@ export const schema = {
 			enabled: {
 				doc: 'Typeorm logging enabled flag.',
 				format: Boolean,
-				default: false,
+				default: true,
 				env: 'DB_LOGGING_ENABLED',
 			},
 			options: {
@@ -97,7 +97,7 @@ export const schema = {
 			schema: {
 				doc: 'PostgresDB Schema',
 				format: String,
-				default: 'public',
+				default: 'n8n',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
 
@@ -123,7 +123,7 @@ export const schema = {
 				rejectUnauthorized: {
 					doc: 'If unauthorized SSL connections should be rejected',
 					format: 'Boolean',
-					default: true,
+					default: false,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
