@@ -161,7 +161,7 @@ describe('Telemetry', () => {
 		test('should track production executions count correctly', async () => {
 			const payload = {
 				workflow_id: '1',
-				is_manual: true,
+				is_manual: false,
 				success: true,
 				error_node_type: 'node_type',
 			};
@@ -255,7 +255,7 @@ describe('Telemetry', () => {
 			payload.error_node_type = 'n8n-nodes-base.merge';
 			payload.is_manual = true;
 			await telemetry.trackWorkflowExecution(payload);
-
+			console.log(execBuffer);
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 
 			execBuffer = telemetry.getCountsBuffer();
