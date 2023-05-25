@@ -59,7 +59,9 @@ export class VersionControlController {
 						...newPreferences,
 						initRepo: true,
 					});
-					await this.versionControlPreferencesService.setPreferences({ connected: true });
+					if (this.versionControlPreferencesService.getPreferences().branchName !== '') {
+						await this.versionControlPreferencesService.setPreferences({ connected: true });
+					}
 				} catch (error) {
 					// if initialization fails, run cleanup to remove any intermediate state and throw the error
 					await this.versionControlService.disconnect({ keepKeyPair: true });
@@ -95,7 +97,7 @@ export class VersionControlController {
 	}
 
 	@Authorized('any')
-	@Get('/get-branches', { middlewares: [versionControlLicensedAndEnabledMiddleware] })
+	@Get('/get-branches', { middlewares: [versionControlLicensedMiddleware] })
 	async getBranches() {
 		try {
 			return await this.versionControlService.getBranches();
@@ -105,7 +107,7 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/set-branch', { middlewares: [versionControlLicensedAndEnabledMiddleware] })
+	@Post('/set-branch', { middlewares: [versionControlLicensedMiddleware] })
 	async setBranch(req: VersionControlRequest.SetBranch) {
 		try {
 			return await this.versionControlService.setBranch(req.body.branch);

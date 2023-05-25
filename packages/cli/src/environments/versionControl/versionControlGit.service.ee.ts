@@ -148,7 +148,6 @@ export class VersionControlGitService {
 		if (versionControlPreferences.initRepo) {
 			try {
 				await this.git.init();
-				await this.git.raw(['branch', '-M', versionControlPreferences.branchName]);
 			} catch (error) {
 				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
 			}
@@ -164,6 +163,16 @@ export class VersionControlGitService {
 		}
 		await this.git.addConfig('user.email', versionControlPreferences.authorEmail);
 		await this.git.addConfig('user.name', versionControlPreferences.authorName);
+		if (versionControlPreferences.initRepo) {
+			try {
+				const branches = await this.getBranches();
+				if (branches.branches?.length === 0) {
+					await this.git.raw(['branch', '-M', versionControlPreferences.branchName]);
+				}
+			} catch (error) {
+				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
+			}
+		}
 	}
 
 	async getBranches(): Promise<{ branches: string[]; currentBranch: string }> {
