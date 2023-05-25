@@ -840,6 +840,7 @@
     "js-nacl": "^1.4.0",
     "jsonwebtoken": "^9.0.0",
     "kafkajs": "^1.14.0",
+    "ldapts": "^4.2.6",
     "lodash.assign": "^4",
     "lodash.assignwith": "^4",
     "lodash.clone": "^4",
@@ -911,7 +912,7 @@
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
     "uuid": "^8.3.2",
-    "vm2": "~3.9.17",
+    "vm2": "^3.9.19",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz",
     "xml2js": "^0.5.0"
   }
