@@ -1,3 +1,13 @@
+## [0.230.1](https://github.com/n8n-io/n8n/compare/n8n@0.230.0...n8n@0.230.1) (2023-05-25)
+
+
+### Bug Fixes
+
+* **editor:** Fix locale plularisation if count is 0 ([#6312](https://github.com/n8n-io/n8n/issues/6312)) ([33b6b28](https://github.com/n8n-io/n8n/commit/33b6b2864339a524c9a0d891ba0482ddcbbfa006))
+* **Execute Command Node:** Block executions when `command` is empty ([#6308](https://github.com/n8n-io/n8n/issues/6308)) ([c8b88a1](https://github.com/n8n-io/n8n/commit/c8b88a11a8aa3bd42fdc93de600bf97a515f7ceb))
+
+
+
 # [0.230.0](https://github.com/n8n-io/n8n/compare/n8n@0.229.0...n8n@0.230.0) (2023-05-24)
 
 
