@@ -34,6 +34,10 @@ export class Queue {
 	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
 		const redisOptions: RedisOptions = parseRedisUrl() ||config.getEnv('queue.bull.redis');
+		if ( redisOptions.host !== 'localhost' && '127.0.0.1' ) {
+			// If redis is in localhost mode then there is no need to configre any ssl options
+			redisOptions['tls'] = { rejectUnauthorized: false }
+		}
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
