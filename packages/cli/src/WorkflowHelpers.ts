@@ -375,13 +375,13 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  */
 export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (user.globalRole.name !== 'owner') {
+	if (user.globalRole?.name !== 'owner') {
 		where.userId = user.id;
 	}
 	if (roles?.length) {
 		const roleIds = await Db.collections.Role.find({
 			select: ['id'],
-			where: { name: In(roles), scope: In(['workflow', 'global']) },
+			where: { name: In(roles), scope: 'workflow' },
 		}).then((data) => data.map(({ id }) => id));
 		where.roleId = In(roleIds);
 	}
