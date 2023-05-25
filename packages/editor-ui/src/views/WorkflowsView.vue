@@ -19,7 +19,7 @@
 				:data="data"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
-				:readonly="isReadonly"
+				:readOnly="readOnlyEnv"
 			/>
 		</template>
 		<template #empty>
@@ -167,7 +167,7 @@ const WorkflowsView = defineComponent({
 				},
 			];
 		},
-		isReadonly(): boolean {
+		readOnlyEnv(): boolean {
 			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},

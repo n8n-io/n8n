@@ -46,6 +46,7 @@
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
+					:readOnly="readOnly"
 					ref="activator"
 					data-test-id="workflow-card-activator"
 				/>
@@ -123,7 +124,7 @@ export default defineComponent({
 				versionId: '',
 			}),
 		},
-		readonly: {
+		readOnly: {
 			type: Boolean,
 			default: false,
 		},
@@ -148,14 +149,14 @@ export default defineComponent({
 				},
 			];
 
-			if (!this.readonly) {
+			if (!this.readOnly) {
 				actions.push({
 					label: this.$locale.baseText('workflows.item.duplicate'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
 				});
 			}
 
-			if (this.workflowPermissions.delete && !this.readonly) {
+			if (this.workflowPermissions.delete && !this.readOnly) {
 				actions.push({
 					label: this.$locale.baseText('workflows.item.delete'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
