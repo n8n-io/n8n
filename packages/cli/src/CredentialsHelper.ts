@@ -355,6 +355,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
+		await additionalData.secretsHelpers.update();
+
 		return this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
@@ -362,6 +364,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 			defaultTimezone,
 			expressionResolveValues,
+			true,
 		);
 	}
 
@@ -375,6 +378,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		mode: WorkflowExecuteMode,
 		defaultTimezone: string,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		canUseSecrets?: boolean,
 	): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
@@ -396,7 +400,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null);
+		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null, {
+			secretsEnabled: canUseSecrets,
+		});
 
 		if (expressionResolveValues) {
 			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;

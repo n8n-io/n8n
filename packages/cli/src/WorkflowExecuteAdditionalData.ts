@@ -72,6 +72,7 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { SecretsHelper } from './SecretsHelpers';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -1197,6 +1198,7 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
+		secretsHelpers: new SecretsHelper(),
 	};
 }
 

@@ -1706,6 +1706,7 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId: string;
 	variables: IDataObject;
+	secretsHelpers: SecretsHelpersBase;
 }
 
 export type WorkflowExecuteMode =
@@ -2055,4 +2056,13 @@ export interface IN8nUISettings {
 	variables: {
 		limit: number;
 	};
+}
+
+export interface SecretsHelpersBase {
+	update(): Promise<void>;
+
+	getSecret(provider: string, name: string): string | undefined;
+	hasProvider(provider: string): boolean;
+	listProviders(): string[];
+	listSecrets(provider: string): string[];
 }
