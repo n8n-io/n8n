@@ -1,10 +1,8 @@
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import dateformat from 'dateformat';
 
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables';
-import { useVersionControlStore } from '@/stores/versionControl.store';
 
 export const genericHelpers = defineComponent({
 	setup() {
@@ -19,12 +17,9 @@ export const genericHelpers = defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useVersionControlStore),
 		isReadOnly(): boolean {
-			return (
-				![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOG_STREAMING_SETTINGS].includes(
-					this.$route.name as VIEWS,
-				) || this.versionControlStore.preferences.branchReadOnly
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOG_STREAMING_SETTINGS].includes(
+				this.$route.name as VIEWS,
 			);
 		},
 	},
