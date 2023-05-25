@@ -189,11 +189,12 @@ export abstract class AbstractServer {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
+		let tlsConfig = {};
 		const { host, port, password, db}: RedisOptions = parseRedisUrl() || config.getEnv('queue.bull.redis');
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 		Logger.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
 
-		const redis = new Redis({
+		let redisConfig: RedisOptions = {
 			host,
 			port,
 			db,
@@ -216,10 +217,13 @@ export abstract class AbstractServer {
 				}
 				return 500;
 			},
-			tls: {
-				rejectUnauthorized: false,
-			},
-		});
+		}
+
+		if ( host !== 'localhost' && '127.0.0.1' ) {
+			// If redis is in localhost mode then there is no need to configre any ssl options
+			redisConfig['tls'] = { rejectUnauthorized: false }
+		}
+		const redis = new Redis(redisConfig);
 
 		redis.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');
