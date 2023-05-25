@@ -161,7 +161,7 @@ describe('Telemetry', () => {
 		test('should track production executions count correctly', async () => {
 			const payload = {
 				workflow_id: '1',
-				is_manual: false,
+				is_manual: true,
 				success: true,
 				error_node_type: 'node_type',
 			};
