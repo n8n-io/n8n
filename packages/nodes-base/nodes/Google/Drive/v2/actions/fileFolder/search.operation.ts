@@ -3,7 +3,7 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { driveRLC, folderRLC } from '../common.descriptions';
-import { googleApiRequest } from '../../transport';
+import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 import { prepareQueryString } from '../../helpers/utils';
 import type { SearchFilter } from '../../helpers/interfaces';
 import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../../helpers/interfaces';
@@ -55,131 +55,141 @@ const properties: INodeProperties[] = [
 			'Use the Google query strings syntax to search for a specific set of files or folders. <a href="https://developers.google.com/drive/api/v3/search-files" target="_blank">Learn more</a>.',
 	},
 	{
-		displayName: 'Max Results',
-		name: 'maxResults',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
 		type: 'number',
-		placeholder: 'e.g. 50',
+		default: 50,
+		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
 		},
-		default: 50,
-		description:
-			'Maximum number of files and folders to return. Too many results may slow down the query.',
+		displayOptions: {
+			show: {
+				returnAll: [false],
+			},
+		},
 	},
 	{
 		displayName: 'Filter',
 		name: 'filter',
-		type: 'fixedCollection',
+		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
 		options: [
+			{ ...driveRLC, required: false },
+			{ ...folderRLC, required: false },
 			{
-				displayName: 'Values',
-				name: 'values',
-				description: 'Filters to use to narrow down your search',
-				values: [
-					driveRLC,
-					folderRLC,
+				displayName: 'What to Search',
+				name: 'whatToSearch',
+				type: 'options',
+				default: 'all',
+				description:
+					'Narrows the search within the selected folder. By default, the root folder is used.',
+				options: [
 					{
-						displayName: 'What to Search',
-						name: 'whatToSearch',
-						type: 'options',
-						default: 'all',
-						description:
-							'Narrows the search within the selected folder. By default, the root folder is used.',
-						options: [
-							{
-								name: 'Files and Folders',
-								value: 'all',
-							},
-							{
-								name: 'Files',
-								value: 'files',
-							},
-							{
-								name: 'Folders',
-								value: 'folders',
-							},
-						],
+						name: 'Files and Folders',
+						value: 'all',
 					},
 					{
-						displayName: 'Drive File Types',
-						name: 'fileTypes',
-						type: 'multiOptions',
-						default: [],
-						description:
-							'Return only items corresponding to the selected types. Those mime types are specific to Google Drive, to filter by file extension use the "Additional Mime Types" option.',
-						// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
-						options: [
-							{
-								name: 'All',
-								value: '*',
-								description: 'Return all file types',
-							},
-							{
-								name: '3rd Party Shortcut',
-								value: DRIVE.SDK,
-							},
-							{
-								name: 'Audio',
-								value: DRIVE.AUDIO,
-							},
-							{
-								name: 'Google Apps Scripts',
-								value: DRIVE.APP_SCRIPTS,
-							},
-							{
-								name: 'Google Docs',
-								value: DRIVE.DOCUMENT,
-							},
-							{
-								name: 'Google Drawing',
-								value: DRIVE.DRAWING,
-							},
-							{
-								name: 'Google Forms',
-								value: DRIVE.FORM,
-							},
-							{
-								name: 'Google Fusion Tables',
-								value: DRIVE.FUSIONTABLE,
-							},
-							{
-								name: 'Google My Maps',
-								value: DRIVE.MAP,
-							},
-							{
-								name: 'Google Sheets',
-								value: DRIVE.SPREADSHEET,
-							},
-							{
-								name: 'Google Sites',
-								value: DRIVE.SITES,
-							},
-							{
-								name: 'Google Slides',
-								value: DRIVE.PRESENTATION,
-							},
-							{
-								name: 'Photo',
-								value: DRIVE.PHOTO,
-							},
-							{
-								name: 'Unknown',
-								value: DRIVE.UNKNOWN,
-							},
-							{
-								name: 'Video',
-								value: DRIVE.VIDEO,
-							},
-						],
-						displayOptions: {
-							hide: {
-								whatToSearch: ['all'],
-							},
-						},
+						name: 'Files',
+						value: 'files',
+					},
+					{
+						name: 'Folders',
+						value: 'folders',
 					},
 				],
+			},
+			{
+				displayName: 'Drive File Types',
+				name: 'fileTypes',
+				type: 'multiOptions',
+				default: [],
+				description:
+					'Return only items corresponding to the selected types. Those mime types are specific to Google Drive, to filter by file extension use the "Additional Mime Types" option.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
+				options: [
+					{
+						name: 'All',
+						value: '*',
+						description: 'Return all file types',
+					},
+					{
+						name: '3rd Party Shortcut',
+						value: DRIVE.SDK,
+					},
+					{
+						name: 'Audio',
+						value: DRIVE.AUDIO,
+					},
+					{
+						name: 'Google Apps Scripts',
+						value: DRIVE.APP_SCRIPTS,
+					},
+					{
+						name: 'Google Docs',
+						value: DRIVE.DOCUMENT,
+					},
+					{
+						name: 'Google Drawing',
+						value: DRIVE.DRAWING,
+					},
+					{
+						name: 'Google Forms',
+						value: DRIVE.FORM,
+					},
+					{
+						name: 'Google Fusion Tables',
+						value: DRIVE.FUSIONTABLE,
+					},
+					{
+						name: 'Google My Maps',
+						value: DRIVE.MAP,
+					},
+					{
+						name: 'Google Sheets',
+						value: DRIVE.SPREADSHEET,
+					},
+					{
+						name: 'Google Sites',
+						value: DRIVE.SITES,
+					},
+					{
+						name: 'Google Slides',
+						value: DRIVE.PRESENTATION,
+					},
+					{
+						name: 'Photo',
+						value: DRIVE.PHOTO,
+					},
+					{
+						name: 'Unknown',
+						value: DRIVE.UNKNOWN,
+					},
+					{
+						name: 'Video',
+						value: DRIVE.VIDEO,
+					},
+				],
+				displayOptions: {
+					hide: {
+						whatToSearch: ['folders'],
+					},
+				},
+			},
+			{
+				displayName: 'Include Trashed Items',
+				name: 'includeTrashed',
+				type: 'boolean',
+				default: false,
+				description: "Whether to return also items in the Drive's bin",
 			},
 		],
 	},
@@ -190,14 +200,6 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			{
-				displayName: 'Additional Mime Types',
-				name: 'mimeTypes',
-				type: 'string',
-				default: '',
-				description:
-					'Also include files with the those MIME type(s), to include multiple types separate them with a comma. Common <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">mime types</a>.',
-			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
@@ -276,60 +278,6 @@ const properties: INodeProperties[] = [
 				default: [],
 				description: 'The fields to return',
 			},
-			{
-				displayName: 'Include Trashed Items',
-				name: 'includeTrashed',
-				type: 'boolean',
-				default: false,
-				description: "Whether to return also items in the Drive's bin",
-			},
-			{
-				displayName: 'Spaces',
-				name: 'spaces',
-				type: 'options',
-				options: [
-					{
-						name: 'App Data Folder',
-						value: 'appDataFolder',
-						description: "Search for files or folders in the application's hidden app data folder",
-					},
-					{
-						name: 'Drive',
-						value: 'drive',
-						description: "The user's 'My Drive' folder",
-					},
-				],
-				default: 'drive',
-			},
-			{
-				displayName: 'Corpora',
-				name: 'corpora',
-				type: 'options',
-				options: [
-					{
-						name: 'User',
-						value: 'user',
-						description: 'All files in "My Drive" and "Shared with me"',
-					},
-					{
-						name: 'Domain',
-						value: 'domain',
-						description: "All files shared to the user's domain that are searchable",
-					},
-					{
-						name: 'Drive',
-						value: 'drive',
-						description: 'All files contained in a single shared drive',
-					},
-					{
-						name: 'allDrives',
-						value: 'allDrives',
-						description: 'All drives',
-					},
-				],
-				default: '',
-				description: 'The corpora to operate on',
-			},
 		],
 	},
 ];
@@ -360,24 +308,25 @@ export async function execute(
 		query.push(queryString);
 	}
 
-	const filter = this.getNodeParameter('filter.values', i, {}) as SearchFilter;
+	const filter = this.getNodeParameter('filter', i, {}) as SearchFilter;
 
 	let driveId = '';
 	const returnedTypes: string[] = [];
 
 	if (Object.keys(filter)?.length) {
-		if (filter.folderId.value !== RLC_FOLDER_DEFAULT) {
+		if (filter.folderId && filter.folderId.value !== RLC_FOLDER_DEFAULT) {
 			query.push(`'${filter.folderId.value}' in parents`);
 		}
 
-		if (filter.driveId.value !== RLC_DRIVE_DEFAULT) {
+		if (filter.driveId && filter.driveId.value !== RLC_DRIVE_DEFAULT) {
 			driveId = filter.driveId.value;
 		}
 
-		if (filter.whatToSearch === 'folders') {
+		const whatToSearch = filter.whatToSearch || 'all';
+		if (whatToSearch === 'folders') {
 			query.push(`mimeType = '${DRIVE.FOLDER}'`);
 		} else {
-			if (filter.whatToSearch === 'files') {
+			if (whatToSearch === 'files') {
 				query.push(`mimeType != '${DRIVE.FOLDER}'`);
 			}
 
@@ -387,50 +336,43 @@ export async function execute(
 				});
 			}
 		}
-	}
 
-	const additionalMimeType = this.getNodeParameter('options.mimeTypes', i, '') as string;
-	if (additionalMimeType) {
-		const mimes = additionalMimeType.split(',').map((type) => type.trim());
-		mimes.forEach((mime) => {
-			returnedTypes.push(`mimeType = '${mime}'`);
-		});
+		if (!filter.includeTrashed) {
+			query.push('trashed = false');
+		}
 	}
 
 	if (returnedTypes.length) {
 		query.push(`(${returnedTypes.join(' or ')})`);
 	}
 
-	const includeTrashed = this.getNodeParameter('options.includeTrashed', i, false) as boolean;
-	query.push(includeTrashed ? '' : 'trashed = false');
-
 	const queryFields = prepareQueryString(options.fields as string[]);
 
-	const pageSize = this.getNodeParameter('maxResults', i);
-
-	const querySpaces: string = this.getNodeParameter('options.spaces', i, '') as string;
-
-	const queryCorpora = this.getNodeParameter('options.corpora', i, '') as string;
-
 	const qs: IDataObject = {
-		pageSize,
 		fields: `nextPageToken, files(${queryFields})`,
-		spaces: querySpaces,
 		q: query.filter((q) => q).join(' and '),
-		includeItemsFromAllDrives: queryCorpora !== '' || driveId !== '',
-		supportsAllDrives: queryCorpora !== '' || driveId !== '',
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
+		spaces: 'appDataFolder, drive',
 	};
 
 	if (driveId) {
 		qs.driveId = driveId;
 	}
 
-	const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
+	const returnAll = this.getNodeParameter('returnAll', i, false);
 
-	const files = response.files;
+	let response;
+	if (returnAll) {
+		response = await googleApiRequestAllItems.call(this, 'GET', 'files', '/drive/v3/files', {}, qs);
+	} else {
+		qs.pageSize = this.getNodeParameter('limit', i);
+		response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
+		response = response.files;
+	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(files as IDataObject[]),
+		this.helpers.returnJsonArray(response as IDataObject[]),
 		{ itemData: { item: i } },
 	);
 

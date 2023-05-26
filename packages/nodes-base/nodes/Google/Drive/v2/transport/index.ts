@@ -78,11 +78,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-	body: any = {},
+	body: IDataObject | string | Buffer = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
 		0,
@@ -104,7 +104,7 @@ export async function googleApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		if (Object.keys(body as IDataObject).length === 0) {
+		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 
@@ -138,12 +138,12 @@ export async function googleApiRequest(
 
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	propertyName: string,
 	method: IHttpRequestMethods,
+	propertyName: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

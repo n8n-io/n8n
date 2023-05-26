@@ -83,8 +83,8 @@ export async function execute(
 	if (returnAll) {
 		response = await googleApiRequestAllItems.call(
 			this,
-			'drives',
 			'GET',
+			'drives',
 			'/drive/v3/drives',
 			{},
 			qs,

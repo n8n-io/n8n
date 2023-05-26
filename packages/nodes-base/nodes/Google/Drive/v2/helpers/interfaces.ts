@@ -1,14 +1,15 @@
 export const UPLOAD_CHUNK_SIZE = 256 * 1024;
 
 export type SearchFilter = {
-	driveId: {
+	driveId?: {
 		value: string;
 	};
-	folderId: {
+	folderId?: {
 		value: string;
 	};
-	whatToSearch: 'all' | 'files' | 'folders';
+	whatToSearch?: 'all' | 'files' | 'folders';
 	fileTypes?: string[];
+	includeTrashed?: boolean;
 };
 
 export const RLC_DRIVE_DEFAULT = 'My Drive';
