@@ -7,10 +7,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-960,
-				600
-			]
+			"position": [-960, 600]
 		},
 		{
 			"parameters": {
@@ -20,37 +17,28 @@
 			"name": "Sample Data",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-720,
-				600
-			]
+			"position": [-720, 600]
 		},
 		{
 			"parameters": {
-				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nlet sum = 0;\nfor (const item of $input.all()) {\n  sum += item.json.value;\n}\n\nreturn [ {sum} ];"
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nlet sum = 0;\nfor (const item of items) {\n  sum += item.json.value;\n}\n\nreturn [ {sum} ];"
 			},
 			"id": "2002ec71-fd88-4a5b-b2fe-0071fc5397e4",
 			"name": "Run Once for All Items",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-460,
-				480
-			]
+			"position": [-460, 480]
 		},
 		{
 			"parameters": {
 				"mode": "runOnceForEachItem",
-				"jsCode": "// Add a new field called 'myNewField' to the\n// JSON of the item\n$input.item.json.myNewField = $input.item.json.value;\n\nreturn $input.item;"
+				"jsCode": "// Add a new field called 'myNewField' to the\n// JSON of the item\nitem.json.myNewField = item.json.value;\n\nreturn item;"
 			},
 			"id": "9adbeb7a-c711-4ff6-881e-96d5e122c2bc",
 			"name": "Run Once for Each Item",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-460,
-				720
-			]
+			"position": [-460, 720]
 		}
 	],
 	"pinData": {
