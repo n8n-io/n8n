@@ -1,6 +1,13 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = ['schema.bases:read'];
+const scopes = [
+	'schema.bases:read',
+	'data.records:read',
+	'data.records:write',
+	'data.recordComments:read',
+	'schema.bases:write',
+	'webhook:manage',
+];
 
 export class AirtableOAuth2Api implements ICredentialType {
 	name = 'airtableOAuth2Api';
@@ -35,6 +42,18 @@ export class AirtableOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default: `${scopes.join(' ')}`,
+		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'header',
 		},
 	];
 }

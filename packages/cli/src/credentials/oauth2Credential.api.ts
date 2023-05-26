@@ -196,8 +196,6 @@ oauth2CredentialController.get(
 		try {
 			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
-			console.log('Callback');
-			console.log('code', code);
 			if (!code || !stateEncoded) {
 				return renderCallbackError(
 					res,
@@ -269,7 +267,6 @@ oauth2CredentialController.get(
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
-			console.log('Oauth2credential', get(oauthCredentials, 'authentication', 'header') as string);
 			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
@@ -279,9 +276,14 @@ oauth2CredentialController.get(
 						}),
 					},
 				};
-				console.log(console.log('body', options));
 				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
+			} else if (oauthCredentials.grantType === 'pkce') {
+				options = {
+					body: {
+						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
+					},
+				};
 			}
 
 			await Container.get(ExternalHooks).run('oauth2.callback', [oAuth2Parameters]);
