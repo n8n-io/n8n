@@ -30,10 +30,6 @@ export class TwitterV1 implements INodeType {
 	constructor(baseDecription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDecription,
-			displayName: 'Twitter',
-			name: 'twitter',
-			icon: 'file:twitter.svg',
-			group: ['input', 'output'],
 			version: 1,
 			description: 'Consume Twitter API',
 			subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
