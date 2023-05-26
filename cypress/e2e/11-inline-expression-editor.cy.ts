@@ -4,7 +4,6 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Inline expression editor', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
