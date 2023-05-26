@@ -67,10 +67,10 @@ export class Twitter implements INodeType {
 						name: 'oAuth1',
 						value: 'oAuth1',
 					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
+					// {
+					// 	name: 'OAuth2',
+					// 	value: 'oAuth2',
+					// },
 				],
 				default: 'oAuth1',
 			},
