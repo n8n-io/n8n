@@ -164,7 +164,13 @@ oauth2CredentialController.get(
 		}
 
 		if (oauthCredentials.grantType === 'pkce') {
-			const { code_verifier, code_challenge } = pkceChallenge();
+			let { code_verifier, code_challenge } = pkceChallenge();
+			if (code_verifier.includes('~')) {
+				do {
+					console.log('Code verifier contains invalid characters');
+					({ code_verifier, code_challenge } = pkceChallenge());
+				} while (code_verifier.includes('~'));
+			}
 			returnUri += `&code_challenge=${code_challenge}&code_challenge_method=S256`;
 			codeVerifier = code_verifier;
 		}
