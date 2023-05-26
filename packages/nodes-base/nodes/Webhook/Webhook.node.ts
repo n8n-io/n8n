@@ -489,13 +489,23 @@ export class Webhook implements INodeType {
 			try {
 				await verifyPortalToken(token, this.helpers.httpRequest);
 			} catch (error) {
-				return authorizationError(resp, realm, 401, error?.message as string);
+				return authorizationError(
+					resp,
+					realm,
+					401,
+					(error?.message || error?.toString()) as string,
+				);
 			}
 		} else if (authentication === 'zohoCRMAuth') {
 			try {
 				await verifyCrmToken(token, this.helpers.httpRequest);
 			} catch (error) {
-				return authorizationError(resp, realm, 401, error?.message as string);
+				return authorizationError(
+					resp,
+					realm,
+					401,
+					(error?.message || error?.toString()) as string,
+				);
 			}
 		} else if (authentication === 'headerAuth') {
 			// Special header with value is needed to call webhook

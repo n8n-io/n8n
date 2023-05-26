@@ -93,6 +93,7 @@ export const setupAuthMiddlewares = (
 			isAuthExcluded(req.url, ignoredEndpoints) ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
 			req.url.startsWith(`/${restEndpoint}/login`) ||
+			req.url.startsWith(`/${restEndpoint}/otp-secret`) ||
 			req.url.startsWith(`/${restEndpoint}/resolve-signup-token`) ||
 			isPostUsersId(req, restEndpoint) ||
 			req.url.startsWith(`/${restEndpoint}/forgot-password`) ||

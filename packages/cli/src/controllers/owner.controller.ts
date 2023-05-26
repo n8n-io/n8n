@@ -1,4 +1,5 @@
 import validator from 'validator';
+import speakeasy from 'speakeasy';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
@@ -76,7 +77,7 @@ export class OwnerController {
 	 */
 	@Post('/setup')
 	async setupOwner(req: OwnerRequest.Post, res: Response) {
-		const { email, firstName, lastName, password } = req.body;
+		const { email, firstName, lastName, password, otpSecret, otp } = req.body;
 		const { id: userId, globalRole } = req.user;
 
 		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -107,6 +108,14 @@ export class OwnerController {
 			throw new BadRequestError('First and last names are mandatory');
 		}
 
+		if (!otpSecret || !otp) {
+			this.logger.debug(
+				'Request to claim instance ownership failed because of missing otpSecret or otp in payload',
+				{ userId, payload: req.body },
+			);
+			throw new BadRequestError('otpSecret and otp are mandatory');
+		}
+
 		// TODO: This check should be in a middleware outside this class
 		if (globalRole.scope === 'global' && globalRole.name !== 'owner') {
 			this.logger.debug(
@@ -118,6 +127,16 @@ export class OwnerController {
 			throw new BadRequestError('Invalid request');
 		}
 
+		const verified = speakeasy.totp.verify({
+			secret: otpSecret,
+			encoding: 'base32',
+			token: otp,
+		});
+
+		if (!verified) {
+			throw new BadRequestError('OTP token is not valid');
+		}
+
 		let owner = req.user;
 
 		Object.assign(owner, {
@@ -125,6 +144,7 @@ export class OwnerController {
 			firstName,
 			lastName,
 			password: await hashPassword(validPassword),
+			otpSecret,
 		});
 
 		await validateEntity(owner);

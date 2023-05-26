@@ -16,6 +16,9 @@
 				@input="onInput"
 			>
 				<SSOLogin v-if="withSso" />
+				<template #additional>
+					<slot />
+				</template>
 			</n8n-form-box>
 		</div>
 	</div>
