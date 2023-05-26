@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
@@ -25,70 +26,75 @@ import type { ITweet, ITweetCreate } from './TweetInterface';
 import ISO6391 from 'iso-639-1';
 
 export class TwitterV2 implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Twitter',
-		name: 'twitter',
-		icon: 'file:twitter.svg',
-		group: ['input', 'output'],
-		version: 2,
-		description:
-			'Post, like, and search tweets, send messages, search users, and add users to lists',
-		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
-		defaults: {
-			name: 'Twitter',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'twitterOAuth1Api',
-				required: true,
+	description: INodeTypeDescription;
+
+	constructor(baseDecription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDecription,
+			displayName: 'Twitter',
+			name: 'twitter',
+			icon: 'file:twitter.svg',
+			group: ['input', 'output'],
+			version: 2,
+			description:
+				'Post, like, and search tweets, send messages, search users, and add users to lists',
+			subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
+			defaults: {
+				name: 'Twitter',
 			},
-		],
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Direct Message',
-						value: 'directMessage',
-						description: 'Send a direct message to a user',
-					},
-					{
-						name: 'List',
-						value: 'list',
-						description: 'Add a user to a list',
-					},
-					{
-						name: 'Tweet',
-						value: 'tweet',
-						description: 'Create, like, search, or delete a Tweet',
-					},
-					{
-						name: 'User',
-						value: 'user',
-						description: 'Search users by username',
-					},
-				],
-				default: 'tweet',
-			},
-			// DIRECT MESSAGE
-			...directMessageOperations,
-			...directMessageFields,
-			// LIST
-			...listOperations,
-			...listFields,
-			// TWEET
-			...tweetOperations,
-			...tweetFields,
-			// USER
-			...userOperations,
-			...userFields,
-		],
-	};
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'twitterOAuth1Api',
+					required: true,
+				},
+			],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Direct Message',
+							value: 'directMessage',
+							description: 'Send a direct message to a user',
+						},
+						{
+							name: 'List',
+							value: 'list',
+							description: 'Add a user to a list',
+						},
+						{
+							name: 'Tweet',
+							value: 'tweet',
+							description: 'Create, like, search, or delete a Tweet',
+						},
+						{
+							name: 'User',
+							value: 'user',
+							description: 'Search users by username',
+						},
+					],
+					default: 'tweet',
+				},
+				// DIRECT MESSAGE
+				...directMessageOperations,
+				...directMessageFields,
+				// LIST
+				...listOperations,
+				...listFields,
+				// TWEET
+				...tweetOperations,
+				...tweetFields,
+				// USER
+				...userOperations,
+				...userFields,
+			],
+		};
+	}
 
 	methods = {
 		loadOptions: {

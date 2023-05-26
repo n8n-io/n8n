@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
@@ -24,51 +25,56 @@ import type { ITweet, ITweetCreate } from './TweetInterface';
 import ISO6391 from 'iso-639-1';
 
 export class TwitterV1 implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Twitter',
-		name: 'twitter',
-		icon: 'file:twitter.svg',
-		group: ['input', 'output'],
-		version: 1,
-		description: 'Consume Twitter API',
-		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
-		defaults: {
-			name: 'Twitter',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'twitterOAuth1Api',
-				required: true,
+	description: INodeTypeDescription;
+
+	constructor(baseDecription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDecription,
+			displayName: 'Twitter',
+			name: 'twitter',
+			icon: 'file:twitter.svg',
+			group: ['input', 'output'],
+			version: 1,
+			description: 'Consume Twitter API',
+			subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
+			defaults: {
+				name: 'Twitter',
 			},
-		],
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Direct Message',
-						value: 'directMessage',
-					},
-					{
-						name: 'Tweet',
-						value: 'tweet',
-					},
-				],
-				default: 'tweet',
-			},
-			// DIRECT MESSAGE
-			...directMessageOperations,
-			...directMessageFields,
-			// TWEET
-			...tweetOperations,
-			...tweetFields,
-		],
-	};
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'twitterOAuth1Api',
+					required: true,
+				},
+			],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Direct Message',
+							value: 'directMessage',
+						},
+						{
+							name: 'Tweet',
+							value: 'tweet',
+						},
+					],
+					default: 'tweet',
+				},
+				// DIRECT MESSAGE
+				...directMessageOperations,
+				...directMessageFields,
+				// TWEET
+				...tweetOperations,
+				...tweetFields,
+			],
+		};
+	}
 
 	methods = {
 		loadOptions: {
