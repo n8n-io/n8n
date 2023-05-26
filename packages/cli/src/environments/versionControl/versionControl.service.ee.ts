@@ -71,7 +71,10 @@ export class VersionControlService {
 
 	async disconnect(options: { keepKeyPair?: boolean } = {}) {
 		try {
-			await this.versionControlPreferencesService.setPreferences({ connected: false });
+			await this.versionControlPreferencesService.setPreferences({
+				connected: false,
+				branchName: '',
+			});
 			await this.versionControlExportService.deleteRepositoryFolder();
 			if (!options.keepKeyPair) {
 				await this.versionControlPreferencesService.deleteKeyPairFiles();

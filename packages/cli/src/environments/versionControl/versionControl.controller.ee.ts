@@ -14,6 +14,7 @@ import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 import type { VersionControlledFile } from './types/versionControlledFile';
+import { VERSION_CONTROL_DEFAULT_BRANCH } from './constants';
 
 @RestController('/version-control')
 export class VersionControlController {
@@ -57,6 +58,7 @@ export class VersionControlController {
 				try {
 					await this.versionControlService.initializeRepository({
 						...newPreferences,
+						branchName: newPreferences.branchName ?? VERSION_CONTROL_DEFAULT_BRANCH,
 						initRepo: true,
 					});
 					if (this.versionControlPreferencesService.getPreferences().branchName !== '') {
