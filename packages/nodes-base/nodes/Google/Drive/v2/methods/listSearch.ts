@@ -23,7 +23,7 @@ export async function fileSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const query: string[] = [];
+	const query: string[] = ['trashed = false'];
 	if (filter) {
 		query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
@@ -33,6 +33,8 @@ export async function fileSearch(
 		pageToken: paginationToken,
 		fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 		orderBy: 'name_natural',
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
 	});
 	return {
 		results: res.files.map((i: GoogleDriveFilesItem) => ({
@@ -59,6 +61,8 @@ export async function folderSearch(
 		pageToken: paginationToken,
 		fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 		orderBy: 'name_natural',
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
 	});
 
 	const results: INodeListSearchItems[] = [

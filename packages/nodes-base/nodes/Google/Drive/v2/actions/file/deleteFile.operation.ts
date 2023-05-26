@@ -8,12 +8,21 @@ import { fileRLC } from '../common.descriptions';
 const properties: INodeProperties[] = [
 	fileRLC,
 	{
-		displayName: 'Delete Permanently',
-		name: 'deletePermanently',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to delete the file immediately. If false, the file will be moved to the trash.',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Delete Permanently',
+				name: 'deletePermanently',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to delete the file immediately. If false, the file will be moved to the trash.',
+			},
+		],
 	},
 ];
 
@@ -31,22 +40,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		extractValue: true,
 	}) as string;
 
-	const deletePermanently = this.getNodeParameter('deletePermanently', i, false) as boolean;
+	const deletePermanently = this.getNodeParameter('options.deletePermanently', i, false) as boolean;
+
+	const qs = {
+		supportsAllDrives: true,
+	};
 
 	if (deletePermanently) {
-		await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`, undefined, {
-			supportsAllDrives: true,
-		});
+		await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`, undefined, qs);
 	} else {
-		await googleApiRequest.call(
-			this,
-			'PATCH',
-			`/drive/v3/files/${fileId}`,
-			{ trashed: true },
-			{
-				supportsAllDrives: true,
-			},
-		);
+		await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${fileId}`, { trashed: true }, qs);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(

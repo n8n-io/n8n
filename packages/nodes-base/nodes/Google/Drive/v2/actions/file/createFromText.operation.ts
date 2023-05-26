@@ -27,6 +27,14 @@ const properties: INodeProperties[] = [
 			"The name of the file you want to create. If not specified, 'Untitled' will be used.",
 	},
 	{
+		...folderRLC,
+		displayName: 'Parent Folder',
+		name: 'parentFolderId',
+		required: false,
+		description:
+			'The Folder where you want to create the file in. By default, the root folder is used.',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -40,14 +48,6 @@ const properties: INodeProperties[] = [
 				default: false,
 				description: 'Whether to create a Google Document (instead of the .txt default format)',
 				hint: 'Google Docs API has to be enabled in the <a href="https://console.developers.google.com/apis/library/docs.googleapis.com" target="_blank">Google API Console</a>.',
-			},
-			{
-				...folderRLC,
-				displayName: 'Parent Folder',
-				name: 'parentFolderId',
-				required: false,
-				description:
-					'The Folder where you want to create the file in. By default, the root folder is used.',
 			},
 		],
 	},
@@ -66,9 +66,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const name = (this.getNodeParameter('name', i) as string) || 'Untitled';
 
 	const options = this.getNodeParameter('options', i, {});
-	const parentFolderId = ((options?.parentFolderId as IDataObject)?.value as string) || 'root';
 	const convertToGoogleDocument = (options.convertToGoogleDocument as boolean) || false;
 	const mimeType = convertToGoogleDocument ? DRIVE.DOCUMENT : 'text/plain';
+
+	const parentFolderId =
+		(this.getNodeParameter('parentFolderId', i, undefined, {
+			extractValue: true,
+		}) as string) || 'root';
 
 	const bodyParameters = {
 		name,
