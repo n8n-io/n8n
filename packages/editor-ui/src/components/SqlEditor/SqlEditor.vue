@@ -36,7 +36,7 @@ import {
 	PostgreSQL,
 	schemaCompletion,
 	StandardSQL,
-} from 'codemirror-lang-n8n-sql';
+} from './sql-parser-skipping-whitespace';
 import type { SQLDialect } from 'n8n-workflow';
 
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
