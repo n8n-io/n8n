@@ -71,6 +71,7 @@ services:
   n8n-worker:
     <<: *shared
     image: docker.n8n.io/n8nio/n8n
+    entrypoint: "sh", "-c"
     command: /bin/sh -c "sleep 5; n8n worker"
     depends_on:
       - n8n
