@@ -35,7 +35,7 @@ const onConnect = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, 'Error connecting to Git');
+		toast.showError(error, locale.baseText('settings.versionControl.toast.connected.error'));
 	}
 	loadingService.stopLoading();
 };
@@ -55,13 +55,13 @@ const onDisconnect = async () => {
 			loadingService.startLoading();
 			await versionControlStore.disconnect(true);
 			toast.showMessage({
-				title: 'Success',
-				message: 'Repository disconnected successfully',
+				title: locale.baseText('settings.versionControl.toast.disconnected.title'),
+				message: locale.baseText('settings.versionControl.toast.disconnected.message'),
 				type: 'success',
 			});
 		}
 	} catch (error) {
-		toast.showError(error, 'Error disconnecting from Git');
+		toast.showError(error, locale.baseText('settings.versionControl.toast.disconnected.error'));
 	}
 	loadingService.stopLoading();
 };
