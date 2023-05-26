@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -120,13 +121,27 @@ export class TwitterV2 implements INodeType {
 						if (me) {
 							responseData = await twitterApiRequest.call(this, 'GET', '/users/me', {});
 						} else {
-							const user = this.getNodeParameter('user', i, undefined, { extractValue: true });
-							responseData = await twitterApiRequest.call(
-								this,
-								'GET',
-								`/users/by/username/${user}`,
+							const userRlc = this.getNodeParameter(
+								'user',
+								i,
+								undefined,
 								{},
-							);
+							) as INodeParameterResourceLocator;
+							if (userRlc.mode === 'username') {
+								responseData = await twitterApiRequest.call(
+									this,
+									'GET',
+									`/users/by/username/${userRlc.value}`,
+									{},
+								);
+							} else if (userRlc.mode === 'id') {
+								responseData = await twitterApiRequest.call(
+									this,
+									'GET',
+									`/users/${userRlc.value}`,
+									{},
+								);
+							}
 						}
 					}
 				}
