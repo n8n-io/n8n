@@ -6,10 +6,9 @@ const ndv = new NDV();
 
 describe('NDV', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
-
 	});
+
 	beforeEach(() => {
 		workflowPage.actions.visit();
 		workflowPage.actions.renameWorkflow(uuid());
