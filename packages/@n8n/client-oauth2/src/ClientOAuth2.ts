@@ -85,9 +85,7 @@ export class ClientOAuth2 {
 		if (query) {
 			url += (url.indexOf('?') === -1 ? '?' : '&') + query;
 		}
-		if (options?.headers?.Authorization === '') {
-			delete options?.headers?.Authorization;
-		}
+
 		const response = await axios.request({
 			url,
 			method: options.method,
