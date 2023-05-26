@@ -71,7 +71,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { useCloudPlanStore } from '@/stores';
 
 export default defineComponent({
 	name: 'SettingsUsersView',
@@ -87,14 +86,7 @@ export default defineComponent({
 		}
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-			useUsageStore,
-			useSSOStore,
-			useCloudPlanStore,
-		),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
@@ -161,20 +153,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			if (useSettingsStore().deploymentType === 'cloud') {
-				const { usageLeft, trialDaysLeft, userIsTrialing } = this.cloudPlanStore;
-				const { executionsLeft, workflowsLeft } = usageLeft;
-
-				this.$telemetry.track('User clicked upgrade CTA', {
-					source: 'settings-users',
-					isTrial: userIsTrialing,
-					trialDaysLeft,
-					executionsLeft,
-					workflowsLeft,
-				});
-			}
-
-			this.uiStore.goToUpgrade('users', 'upgrade-users');
+			this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
 		},
 	},
 });
