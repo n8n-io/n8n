@@ -15,15 +15,8 @@ import { listOperations, listFields } from './ListDescription';
 import { tweetFields, tweetOperations } from './TweetDescription';
 import { userOperations, userFields } from './UserDescription';
 
-import {
-	twitterApiRequest,
-	twitterApiRequestAllItems,
-	uploadAttachments,
-} from './GenericFunctions';
-
-import type { ITweet, ITweetCreate } from './TweetInterface';
-
 import ISO6391 from 'iso-639-1';
+import { twitterApiRequest } from './GenericFunctions';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -31,10 +24,6 @@ export class TwitterV2 implements INodeType {
 	constructor(baseDecription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDecription,
-			displayName: 'Twitter',
-			name: 'twitter',
-			icon: 'file:twitter.svg',
-			group: ['input', 'output'],
 			version: 2,
 			description:
 				'Post, like, and search tweets, send messages, search users, and add users to lists',
@@ -46,7 +35,7 @@ export class TwitterV2 implements INodeType {
 			outputs: ['main'],
 			credentials: [
 				{
-					name: 'twitterOAuth1Api',
+					name: 'twitterOAuth2Api',
 					required: true,
 				},
 			],
@@ -125,216 +114,20 @@ export class TwitterV2 implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
-				if (resource === 'directMessage') {
-					//https://developer.twitter.com/en/docs/twitter-api/v1/direct-messages/sending-and-receiving/api-reference/new-event
-					if (operation === 'create') {
-						const userId = this.getNodeParameter('userId', i) as string;
-						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const body: ITweetCreate = {
-							type: 'message_create',
-							message_create: {
-								target: {
-									recipient_id: userId,
-								},
-								message_data: {
-									text,
-									attachment: {},
-								},
-							},
-						};
-
-						if (additionalFields.attachment) {
-							const attachment = additionalFields.attachment as string;
-
-							const attachmentProperties: string[] = attachment.split(',').map((propertyName) => {
-								return propertyName.trim();
-							});
-
-							const medias = await uploadAttachments.call(this, attachmentProperties, i);
-							body.message_create.message_data.attachment = {
-								type: 'media',
-								//@ts-ignore
-								media: { id: medias[0].media_id_string },
-							};
+				if (resource === 'user') {
+					if (operation === 'searchUser') {
+						const me = this.getNodeParameter('me', i, false) as boolean;
+						if (me) {
+							responseData = await twitterApiRequest.call(this, 'GET', '/users/me', {});
 						} else {
-							delete body.message_create.message_data.attachment;
-						}
-
-						responseData = await twitterApiRequest.call(
-							this,
-							'POST',
-							'/direct_messages/events/new.json',
-							{ event: body },
-						);
-
-						responseData = responseData.event;
-					}
-				}
-				if (resource === 'tweet') {
-					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
-					if (operation === 'create') {
-						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const body: ITweet = {
-							status: text,
-						};
-
-						if (additionalFields.inReplyToStatusId) {
-							body.in_reply_to_status_id = additionalFields.inReplyToStatusId as string;
-							body.auto_populate_reply_metadata = true;
-						}
-
-						if (additionalFields.attachments) {
-							const attachments = additionalFields.attachments as string;
-
-							const attachmentProperties: string[] = attachments.split(',').map((propertyName) => {
-								return propertyName.trim();
-							});
-
-							const medias = await uploadAttachments.call(this, attachmentProperties, i);
-
-							body.media_ids = (medias as IDataObject[])
-								.map((media: IDataObject) => media.media_id_string)
-								.join(',');
-						}
-
-						if (additionalFields.possiblySensitive) {
-							body.possibly_sensitive = additionalFields.possiblySensitive as boolean;
-						}
-
-						if (additionalFields.displayCoordinates) {
-							body.display_coordinates = additionalFields.displayCoordinates as boolean;
-						}
-
-						if (additionalFields.locationFieldsUi) {
-							const locationUi = additionalFields.locationFieldsUi as IDataObject;
-							if (locationUi.locationFieldsValues) {
-								const values = locationUi.locationFieldsValues as IDataObject;
-								body.lat = parseFloat(values.latitude as string);
-								body.long = parseFloat(values.longitude as string);
-							}
-						}
-
-						responseData = await twitterApiRequest.call(
-							this,
-							'POST',
-							'/statuses/update.json',
-							{},
-							body as unknown as IDataObject,
-						);
-					}
-					// https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-destroy-id
-					if (operation === 'delete') {
-						const tweetId = this.getNodeParameter('tweetId', i) as string;
-
-						responseData = await twitterApiRequest.call(
-							this,
-							'POST',
-							`/statuses/destroy/${tweetId}.json`,
-							{},
-							{},
-						);
-					}
-					// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
-					if (operation === 'search') {
-						const q = this.getNodeParameter('searchText', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const qs: IDataObject = {
-							q,
-						};
-
-						if (additionalFields.includeEntities) {
-							qs.include_entities = additionalFields.includeEntities as boolean;
-						}
-
-						if (additionalFields.resultType) {
-							qs.response_type = additionalFields.resultType as string;
-						}
-
-						if (additionalFields.until) {
-							qs.until = additionalFields.until as string;
-						}
-
-						if (additionalFields.lang) {
-							qs.lang = additionalFields.lang as string;
-						}
-
-						if (additionalFields.locationFieldsUi) {
-							const locationUi = additionalFields.locationFieldsUi as IDataObject;
-							if (locationUi.locationFieldsValues) {
-								const values = locationUi.locationFieldsValues as IDataObject;
-								qs.geocode = `${values.latitude as string},${values.longitude as string},${
-									values.distance
-								}${values.radius}`;
-							}
-						}
-
-						qs.tweet_mode = additionalFields.tweetMode || 'compat';
-
-						if (returnAll) {
-							responseData = await twitterApiRequestAllItems.call(
-								this,
-								'statuses',
-								'GET',
-								'/search/tweets.json',
-								{},
-								qs,
-							);
-						} else {
-							qs.count = this.getNodeParameter('limit', 0);
+							const user = this.getNodeParameter('user', i, undefined, { extractValue: true });
 							responseData = await twitterApiRequest.call(
 								this,
 								'GET',
-								'/search/tweets.json',
+								`/users/by/username/${user}`,
 								{},
-								qs,
 							);
-							responseData = responseData.statuses;
 						}
-					}
-					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
-					if (operation === 'like') {
-						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-
-						const qs: IDataObject = {
-							id: tweetId,
-						};
-
-						if (additionalFields.includeEntities) {
-							qs.include_entities = additionalFields.includeEntities as boolean;
-						}
-
-						responseData = await twitterApiRequest.call(
-							this,
-							'POST',
-							'/favorites/create.json',
-							{},
-							qs,
-						);
-					}
-					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-retweet-id
-					if (operation === 'retweet') {
-						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
-
-						const qs: IDataObject = {
-							id: tweetId,
-						};
-
-						if (additionalFields.trimUser) {
-							qs.trim_user = additionalFields.trimUser as boolean;
-						}
-
-						responseData = await twitterApiRequest.call(
-							this,
-							'POST',
-							`/statuses/retweet/${tweetId}.json`,
-							{},
-							qs,
-						);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

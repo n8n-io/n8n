@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -14,18 +14,18 @@ export const userOperations: INodeProperties[] = [
 		options: [
 			{
 				name: 'Search User',
-				value: 'searchuser',
+				value: 'searchUser',
 				description: 'Search user by username',
 				action: 'Search user by username',
 			},
 		],
-		default: 'searchuser',
+		default: 'searchUser',
 	},
 ];
 
 export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                user:searchuser                        */
+	/*                                user:searchUser                        */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User',
@@ -36,8 +36,11 @@ export const userFields: INodeProperties[] = [
 		description: 'The user you want to search',
 		displayOptions: {
 			show: {
-				operation: ['searchuser'],
+				operation: ['searchUser'],
 				resource: ['user'],
+			},
+			hide: {
+				me: [true],
 			},
 		},
 		modes: [
@@ -58,5 +61,12 @@ export const userFields: INodeProperties[] = [
 				url: '',
 			},
 		],
+	},
+	{
+		displayName: 'Me',
+		name: 'me',
+		type: 'boolean',
+		default: false,
+		description: 'Whether you want to search the authenticated user',
 	},
 ];
