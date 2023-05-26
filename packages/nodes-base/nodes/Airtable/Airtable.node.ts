@@ -42,6 +42,15 @@ export class Airtable implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'airtableOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableOAuth2Api'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -56,6 +65,10 @@ export class Airtable implements INodeType {
 					{
 						name: 'Access Token',
 						value: 'airtableTokenApi',
+					},
+					{
+						name: 'OAuth2',
+						value: 'airtableOAuth2Api',
 					},
 				],
 				default: 'airtableApi',

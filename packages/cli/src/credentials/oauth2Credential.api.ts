@@ -2,6 +2,7 @@ import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
+import pkceChallenge from 'pkce-challenge';
 import get from 'lodash.get';
 import omit from 'lodash.omit';
 import set from 'lodash.set';
@@ -45,7 +46,7 @@ oauth2CredentialController.use((req, res, next) => {
 	}
 	next();
 });
-
+let codeVerifier = '';
 const restEndpoint = config.getEnv('endpoints.rest');
 
 /**
@@ -162,6 +163,17 @@ oauth2CredentialController.get(
 			returnUri = `${get(oauthCredentials, 'authUrl', '') as string}?${percentEncoded}`;
 		}
 
+		if (oauthCredentials.grantType === 'pkce') {
+			let { code_verifier, code_challenge } = pkceChallenge();
+			if (code_verifier.includes('~')) {
+				do {
+					({ code_verifier, code_challenge } = pkceChallenge());
+				} while (code_verifier.includes('~'));
+			}
+			returnUri += `&code_challenge=${code_challenge}&code_challenge_method=S256`;
+			codeVerifier = code_verifier;
+		}
+
 		if (authQueryParameters) {
 			returnUri += `&${authQueryParameters}`;
 		}
@@ -189,7 +201,6 @@ oauth2CredentialController.get(
 		try {
 			// realmId it's currently just use for the quickbook OAuth2 flow
 			const { code, state: stateEncoded } = req.query;
-
 			if (!code || !stateEncoded) {
 				return renderCallbackError(
 					res,
@@ -261,16 +272,23 @@ oauth2CredentialController.get(
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
-
 			if ((get(oauthCredentials, 'authentication', 'header') as string) === 'body') {
 				options = {
 					body: {
-						client_id: get(oauthCredentials, 'clientId') as string,
-						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
+						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
+						...(oauthCredentials.grantType === 'authorizationCode' && {
+							client_secret: get(oauthCredentials, 'clientSecret', '') as string,
+						}),
 					},
 				};
 				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
+			} else if (oauthCredentials.grantType === 'pkce') {
+				options = {
+					body: {
+						...(oauthCredentials.grantType === 'pkce' && { code_verifier: codeVerifier }),
+					},
+				};
 			}
 
 			await Container.get(ExternalHooks).run('oauth2.callback', [oAuth2Parameters]);
