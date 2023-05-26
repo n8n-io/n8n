@@ -309,39 +309,39 @@ export const tweetFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Sort Order',
-				name: 'sortorder',
+				name: 'sortOrder',
 				type: 'options',
 				options: [
 					{
 						name: 'Recent',
-						value: 'recent',
+						value: 'recency',
 					},
 					{
 						name: 'Relevant',
-						value: 'relevant',
+						value: 'relevancy',
 					},
 				],
 				// required: true,
 				description: 'The order in which to return results',
-				default: 'recent',
+				default: 'recency',
 			},
 			{
 				displayName: 'After',
-				name: 'starttime',
+				name: 'startTime',
 				type: 'dateTime',
 				default: '',
 				description: 'Tweets before this date will not be returned',
 			},
 			{
 				displayName: 'Before',
-				name: 'endtime',
+				name: 'endTime',
 				type: 'dateTime',
 				default: '',
 				description: 'Tweets after this date will not be returned',
 			},
 			{
 				displayName: 'Tweet Fields',
-				name: 'tweetfields',
+				name: 'tweetFieldsObject',
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [

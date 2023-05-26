@@ -66,6 +66,12 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Me',
 		name: 'me',
 		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['searchUser'],
+				resource: ['user'],
+			},
+		},
 		default: false,
 		description: 'Whether you want to search the authenticated user',
 	},

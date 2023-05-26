@@ -18,6 +18,7 @@ import { userOperations, userFields } from './UserDescription';
 
 import ISO6391 from 'iso-639-1';
 import { twitterApiRequest } from './GenericFunctions';
+import { DateTime } from 'luxon';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -143,6 +144,50 @@ export class TwitterV2 implements INodeType {
 								);
 							}
 						}
+					}
+				}
+				if (resource === 'tweet') {
+					if (operation === 'search') {
+						const searchText = this.getNodeParameter('searchText', i, '', {});
+						const limit = this.getNodeParameter('limit', i, 0, {});
+						const { sortOrder, startTime, endTime, tweetFieldsObject } = this.getNodeParameter(
+							'additionalFields',
+							i,
+							{},
+						) as {
+							sortOrder: string;
+							startTime: string;
+							endTime: string;
+							tweetFieldsObject: string[];
+						};
+						const qs: IDataObject = {
+							query: searchText,
+						};
+						if (endTime) {
+							qs.end_time = endTime;
+						}
+						if (limit) {
+							qs.max_results = limit;
+						}
+						if (sortOrder) {
+							qs.sort_order = sortOrder;
+						}
+						if (startTime) {
+							const startTimeISO8601 = DateTime.fromISO(startTime).toISO();
+							qs.start_time = startTimeISO8601;
+						}
+						if (tweetFieldsObject) {
+							if (tweetFieldsObject.length > 0) {
+								qs['tweet.fields'] = tweetFieldsObject.join(',');
+							}
+						}
+						responseData = await twitterApiRequest.call(
+							this,
+							'GET',
+							'/tweets/search/recent',
+							{},
+							qs,
+						);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
