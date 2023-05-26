@@ -5,7 +5,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import * as vcApi from '@/api/versionControl';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import type { VersionControlPreferences } from '@/Interface';
-import { generateKeyPair } from '@/api/versionControl';
 
 export const useVersionControlStore = defineStore('versionControl', () => {
 	const rootStore = useRootStore();
