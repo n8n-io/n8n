@@ -34,7 +34,7 @@ ENV TOKEN_FOR_PACKAGES=${ACCESS_TOKEN}
 RUN cd /home/node && mkdir .n8n && cd .n8n && mkdir nodes && cd nodes
 WORKDIR /home/node/.n8n/nodes
 RUN printf "@deep-consulting-solutions:registry=https://npm.pkg.github.com/\nalways-auth=true\n//npm.pkg.github.com/:_authToken=%s" $TOKEN_FOR_PACKAGES > .npmrc
-RUN npm install "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-noco-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3"
+RUN npm install "@deep-consulting-solutions/n8n-nodes-dcs-crm" "@deep-consulting-solutions/n8n-nodes-dcs-noco-db" "@deep-consulting-solutions/n8n-nodes-dcs-s3" "@deep-consulting-solutinos/n8n-nodes-esa-sendgrid"
 
 # 3. Start with a new clean image with just the code that is needed to run n8n
 FROM n8nio/base:${NODE_VERSION}
