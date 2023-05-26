@@ -46,6 +46,9 @@ importers:
       '@ngneat/falso':
         specifier: ^6.1.0
         version: 6.1.0
+      '@rollup/pluginutils':
+        specifier: ^5.0.2
+        version: 5.0.2
       '@swc/core':
         specifier: ^1.3.60
         version: 1.3.60
@@ -5842,6 +5845,20 @@ packages:
       picocolors: 1.0.0
       tiny-glob: 0.2.9
       tslib: 2.5.0
+    dev: true
+
+  /@rollup/pluginutils@5.0.2:
+    resolution: {integrity: sha512-pTd9rIsP92h+B6wWwFbW8RkZv4hiR/xKsqre4SIuAOaOEQRxi0lqLke9k2/7WegC85GgUs9pjmOjCUi3In4vwA==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+    dependencies:
+      '@types/estree': 1.0.0
+      estree-walker: 2.0.2
+      picomatch: 2.3.1
     dev: true
 
   /@rudderstack/rudder-sdk-node@1.0.6:

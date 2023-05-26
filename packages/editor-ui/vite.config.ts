@@ -1,12 +1,10 @@
 import vue from '@vitejs/plugin-vue2';
 import path, { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
-import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
+import { RollupPluginSwc, vitestConfig } from '../design-system/vite.config';
 import packageJSON from './package.json';
-
-const { coverageReporters } = require('../../jest.config.js');
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -71,7 +69,7 @@ const alias = [
 	},
 ];
 
-const plugins = [vue()];
+const plugins = [vue(), RollupPluginSwc()];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {
@@ -92,6 +90,7 @@ if (release && authToken) {
 
 export default mergeConfig(
 	defineConfig({
+		esbuild: false,
 		define: {
 			// This causes test to fail but is required for actually running it
 			...(NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
@@ -125,21 +124,5 @@ export default mergeConfig(
 			},
 		},
 	}),
-	defineVitestConfig({
-		test: {
-			globals: true,
-			environment: 'jsdom',
-			setupFiles: ['./src/__tests__/setup.ts'],
-			coverage: {
-				provider: 'c8',
-				reporter: coverageReporters,
-				all: true,
-			},
-			css: {
-				modules: {
-					classNameStrategy: 'non-scoped',
-				},
-			},
-		},
-	}),
+	vitestConfig,
 );

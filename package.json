@@ -39,6 +39,7 @@
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
     "@ngneat/falso": "^6.1.0",
+    "@rollup/pluginutils": "^5.0.2",
     "@swc/core": "^1.3.60",
     "@swc/jest": "^0.2.26",
     "@types/jest": "^29.5.0",
