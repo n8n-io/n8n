@@ -2,7 +2,7 @@ import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
-import type { IUserSettings } from '@/Interfaces';
+import type { IUserSettings } from 'n8n-workflow';
 
 export class UserService {
 	static async get(where: FindOptionsWhere<User>): Promise<User | null> {
