@@ -59,7 +59,7 @@ import {
 	PostgreSQL,
 	schemaCompletion,
 	StandardSQL,
-} from './custom-lang-sql'; // update with: codemirror-lang-n8n-sql
+} from 'codemirror-lang-n8n-sql';
 import type { SQLDialect } from 'n8n-workflow';
 
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
