@@ -104,7 +104,7 @@
 				<SaveButton
 					type="primary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
-					:disabled="isWorkflowSaving"
+					:disabled="isWorkflowSaving || readOnly"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
