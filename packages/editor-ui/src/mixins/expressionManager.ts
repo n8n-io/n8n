@@ -86,13 +86,13 @@ export const expressionManager = defineComponent({
 			}
 
 			fullTree.cursor().iterate((node) => {
-				if (node.type.name === 'Program') return;
+				if (['Program', 'Script', 'Document'].includes(node.type.name)) return;
 
 				rawSegments.push({
 					from: node.from,
 					to: node.to,
 					text: this.editor.state.sliceDoc(node.from, node.to),
-					token: node.type.name,
+					token: node.type.name === 'Resolvable' ? 'Resolvable' : 'Plaintext',
 				});
 			});
 

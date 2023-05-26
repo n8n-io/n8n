@@ -1,36 +1,13 @@
 <template>
 	<div>
 		<div ref="sqlEditor" class="ph-no-capture"></div>
-		<!-- <div :class="$style.dropdown">
-			<n8n-text size="small" compact :class="$style.header">
-				{{ $locale.baseText('parameterInput.resultForItem') }} 0
-			</n8n-text>
-			<n8n-text :class="$style.body">
-				<InlineExpressionEditorOutput
-					:value="query"
-					:isReadOnly="isReadOnly"
-					:segments="segments.slice(2)"
-				/>
-			</n8n-text>
-			<div :class="$style.footer">
-				<n8n-text size="small" compact>
-					{{ $locale.baseText('parameterInput.anythingInside') }}
-				</n8n-text>
-				<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
-				<n8n-text size="small" compact>
-					{{ $locale.baseText('parameterInput.isJavaScript') }}
-				</n8n-text>
-				<n8n-link
-					:class="$style['learn-more']"
-					size="small"
-					underline
-					theme="text"
-					:to="expressionsDocsUrl"
-				>
-					{{ $locale.baseText('parameterInput.learnMore') }}
-				</n8n-link>
-			</div>
-		</div> -->
+		<InlineExpressionEditorOutput
+			:segments="previewSegments"
+			:value="query"
+			:isReadOnly="isReadOnly"
+			:visible="isFocused"
+			:hoveringItemNumber="1"
+		/>
 	</div>
 </template>
 
@@ -69,6 +46,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import type { Segment } from '@/types/expressions';
 
 const SQL_DIALECTS = {
 	standard: StandardSQL,
@@ -110,11 +88,15 @@ export default defineComponent({
 		return {
 			editor: {} as EditorView,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
+			isFocused: false,
 		};
 	},
 	computed: {
 		doc(): string {
 			return this.editor.state.doc.toString();
+		},
+		previewSegments(): Segment[] {
+			return this.segments.length > 1 ? this.segments.slice(1) : this.segments;
 		},
 	},
 
@@ -128,6 +110,14 @@ export default defineComponent({
 			EditorView.lineWrapping,
 			lintGutter(),
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({
+				focus: () => {
+					this.isFocused = true;
+				},
+				blur: () => {
+					this.isFocused = false;
+				},
+			}),
 		];
 
 		if (this.isReadOnly) {
