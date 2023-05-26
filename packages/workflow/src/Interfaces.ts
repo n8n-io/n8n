@@ -1016,6 +1016,7 @@ export type NodePropertyTypes =
 	| 'credentialsSelect'
 	| 'resourceLocator'
 	| 'curlImport'
+	| 'sendgridPreview'
 	| 'swaggerEditor';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';

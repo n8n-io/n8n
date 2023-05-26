@@ -79,12 +79,14 @@ export default mixins(workflowHelpers).extend({
 	},
 	mounted() {
 		this.swaggerElement = this.$refs.swaggerIframe;
-		const swaggerValue = this.$props.nodeValues.parameters.swagger
-		localStorage.setItem("swagger-editor-content", swaggerValue);
-		if(!swaggerValue || swaggerValue === "{}" ){
+		const swaggerValue = this.$props.nodeValues.parameters.swagger;
+		localStorage.setItem('swagger-editor-content', swaggerValue);
+
+		if (!swaggerValue || swaggerValue === '{}') {
 			const spec = this.updateSpec(this.$props.nodeValues);
-			localStorage.setItem("swagger-editor-content", spec);
+			localStorage.setItem('swagger-editor-content', spec);
 		}
+
 		window.addEventListener('message', this.messageHandler);
 	},
 	computed: {
@@ -178,7 +180,6 @@ export default mixins(workflowHelpers).extend({
 			if (this.isFirstMount) {
 				this.isFirstMount = false;
 				this.suppressEvent = true;
-				
 
 				if (swagger !== '{}') {
 					this.swaggerElement?.contentWindow?.postMessage(
