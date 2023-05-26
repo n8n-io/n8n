@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -270,7 +269,7 @@ export class Beeminder implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('beeminderApi');
@@ -318,7 +317,7 @@ export class Beeminder implements INodeType {
 						}
 						results = await createDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -336,7 +335,7 @@ export class Beeminder implements INodeType {
 
 						results = await getAllDatapoints.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -353,7 +352,7 @@ export class Beeminder implements INodeType {
 						}
 						results = await updateDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -365,7 +364,7 @@ export class Beeminder implements INodeType {
 						};
 						results = await deleteDatapoint.call(this, data);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(results),
+							this.helpers.returnJsonArray(results as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

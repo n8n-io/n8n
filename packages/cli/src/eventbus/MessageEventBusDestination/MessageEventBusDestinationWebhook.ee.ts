@@ -132,7 +132,7 @@ export class MessageEventBusDestinationWebhook
 			let encryptionKey: string | undefined;
 			try {
 				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch (_) {}
+			} catch {}
 			if (encryptionKey) {
 				this.credentialsHelper = new CredentialsHelper(encryptionKey);
 			}
@@ -173,9 +173,9 @@ export class MessageEventBusDestinationWebhook
 			acc: Promise<{ [key: string]: any }>,
 			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 		) => {
-			const acumulator = await acc;
-			acumulator[cur.name] = cur.value;
-			return acumulator;
+			const accumulator = await acc;
+			accumulator[cur.name] = cur.value;
+			return accumulator;
 		};
 
 		// Get parameters defined in the UI
@@ -189,7 +189,7 @@ export class MessageEventBusDestinationWebhook
 				// query is specified using JSON
 				try {
 					JSON.parse(this.jsonQuery);
-				} catch (_) {
+				} catch {
 					console.log('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
@@ -207,7 +207,7 @@ export class MessageEventBusDestinationWebhook
 				// body is specified using JSON
 				try {
 					JSON.parse(this.jsonHeaders);
-				} catch (_) {
+				} catch {
 					console.log('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
@@ -302,27 +302,27 @@ export class MessageEventBusDestinationWebhook
 			if (this.genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'httpDigestAuth') {
 				try {
 					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'httpHeaderAuth') {
 				try {
 					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'oAuth2Api') {
 				try {
 					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
-				} catch (_) {}
+				} catch {}
 			}
 		}
 

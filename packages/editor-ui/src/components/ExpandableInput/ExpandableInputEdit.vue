@@ -16,24 +16,32 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExpandableInputBase from './ExpandableInputBase.vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system';
 
-export default Vue.extend({
-	components: { ExpandableInputBase },
+export default defineComponent({
 	name: 'ExpandableInputEdit',
-	props: ['value', 'placeholder', 'maxlength', 'autofocus', 'eventBus'],
+	components: { ExpandableInputBase },
+	props: {
+		value: {},
+		placeholder: {},
+		maxlength: {},
+		autofocus: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
+	},
 	mounted() {
 		// autofocus on input element is not reliable
-		if (this.$props.autofocus && this.$refs.input) {
+		if (this.autofocus && this.$refs.input) {
 			this.focus();
 		}
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
-				this.focus();
-			});
-		}
+		this.eventBus?.on('focus', this.focus);
+	},
+	destroyed() {
+		this.eventBus?.off('focus', this.focus);
 	},
 	methods: {
 		focus() {

@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -1821,28 +1820,12 @@ export class Github implements INodeType {
 						body.message = this.getNodeParameter('commitMessage', i) as string;
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
 							// Currently internally n8n uses base64 and also Github expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
-							body.content = item.binary[binaryPropertyName].data;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							// TODO: Does this work with filesystem mode
+							body.content = binaryData.data;
 						} else {
 							// Is text file
 							// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
@@ -2250,7 +2233,7 @@ export class Github implements INodeType {
 					overwriteDataOperationsArray.includes(fullOperation)
 				) {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);

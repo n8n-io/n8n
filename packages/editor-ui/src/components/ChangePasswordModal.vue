@@ -29,29 +29,34 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-import { showMessage } from '@/mixins/showMessage';
-import Modal from './Modal.vue';
-import Vue from 'vue';
-import { IFormInputs } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
+import { useToast } from '@/composables';
+import Modal from '@/components/Modal.vue';
+import type { IFormInputs } from '@/Interface';
+import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'ChangePasswordModal',
+	components: { Modal },
 	props: {
 		modalName: {
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			config: null as null | IFormInputs,
-			formBus: new Vue(),
-			modalBus: new Vue(),
+			formBus: createEventBus(),
+			modalBus: createEventBus(),
 			password: '',
 			loading: false,
 			CHANGE_PASSWORD_MODAL_KEY,
@@ -127,20 +132,20 @@ export default mixins(showMessage).extend({
 				this.loading = true;
 				await this.usersStore.updateCurrentUserPassword(values);
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
 					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
 				});
 
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
+				this.showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},
 		onSubmitClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 	},
 });

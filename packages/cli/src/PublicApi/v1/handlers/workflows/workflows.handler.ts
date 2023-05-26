@@ -1,7 +1,7 @@
 import type express from 'express';
 
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { In, Like, QueryFailedError } from 'typeorm';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -21,16 +21,15 @@ import {
 	updateWorkflow,
 	hasStartNode,
 	getStartNode,
-	getWorkflows,
 	getSharedWorkflows,
-	getWorkflowsCount,
 	createWorkflow,
 	getWorkflowIdsViaTags,
 	parseTagNames,
-	updateTags,
+	getWorkflowsAndCount,
+	getWorkflowTags,
+	updateTags
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
-import * as TagHelpers from '@/TagHelpers';
 import { InternalHooks } from '@/InternalHooks';
 
 export = {
@@ -66,7 +65,7 @@ export = {
 
 			const workflow = await WorkflowsService.delete(req.user, workflowId);
 			if (!workflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -82,7 +81,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -101,29 +100,16 @@ export = {
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active = undefined, tags = undefined, name = undefined } = req.query;
 
-			let workflows: WorkflowEntity[];
-			let count: number;
-
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') })
-			};
-			const query: FindManyOptions<WorkflowEntity> = {
-				skip: offset,
-				take: limit,
-				where,
-				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			};
 
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(where, { id: In(workflowIds) });
+					where.id = In(workflowIds);
 				}
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
 			} else {
 				const options: { workflowIds?: string[] } = {};
 
@@ -141,13 +127,15 @@ export = {
 				}
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
-
-				Object.assign(where, { id: In(workflowsIds) });
-
-				workflows = await getWorkflows(query);
-
-				count = await getWorkflowsCount(query);
+				where.id = In(workflowsIds);
 			}
+
+			const [workflows, count] = await getWorkflowsAndCount({
+				skip: offset,
+				take: limit,
+				where,
+				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
+			});
 
 			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
@@ -174,7 +162,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -228,7 +216,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -262,7 +250,7 @@ export = {
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
-				// user trying to access a workflow he does not own
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -300,8 +288,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			const tags = await TagHelpers.getRelations(id, tablePrefix);
+			const tags = await getWorkflowTags(id);
 
 			return res.json(tags);
 		},
@@ -326,7 +313,8 @@ export = {
 
 			let tags;
 			try {
-				tags = await updateTags(id, newTags);
+				await updateTags(id, newTags);
+				tags = await await getWorkflowTags(id);
 			} catch (error) {
 				if (error instanceof QueryFailedError && error.message.includes("SQLITE_CONSTRAINT")) {
 					return res.status(404).json({ message: 'Some tags not found' });

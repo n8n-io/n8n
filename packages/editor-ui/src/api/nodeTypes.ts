@@ -1,4 +1,4 @@
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	INodeTranslationHeaders,
 	IResourceLocatorReqParams,
@@ -17,7 +17,7 @@ import type {
 import axios from 'axios';
 
 export async function getNodeTypes(baseUrl: string) {
-	const { data } = await axios.get(baseUrl + 'types/nodes.json');
+	const { data } = await axios.get(baseUrl + 'types/nodes.json', { withCredentials: true });
 	return data;
 }
 

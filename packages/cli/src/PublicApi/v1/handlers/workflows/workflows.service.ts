@@ -8,6 +8,7 @@ import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import { isInstanceOwner } from '../users/users.service';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
@@ -18,10 +19,11 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
+	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where: { userId: user.id },
+		where,
+		select: ['workflowId'],
 	});
-
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
@@ -109,14 +111,10 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return Db.collections.Workflow.remove(workflow);
 }
 
-export async function getWorkflows(
+export async function getWorkflowsAndCount(
 	options: FindManyOptions<WorkflowEntity>,
-): Promise<WorkflowEntity[]> {
-	return Db.collections.Workflow.find(options);
-}
-
-export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>): Promise<number> {
-	return Db.collections.Workflow.count(options);
+): Promise<[WorkflowEntity[], number]> {
+	return Db.collections.Workflow.findAndCount(options);
 }
 
 export async function updateWorkflow(
@@ -149,39 +147,26 @@ export function parseTagNames(tags: string): string[] {
 	return tags.split(',').map((tag) => tag.trim());
 }
 
+export async function getWorkflowTags(workflowId: string) {
+	return Db.collections.Tag.find({
+		select: ['id', 'name', 'createdAt', 'updatedAt'],
+		where: {
+			workflowMappings: {
+				...(workflowId && { workflowId: workflowId }),
+			}
+		}
+	});
+}
+
 export async function updateTags(
 	workflowId: string,
 	newTags: string[],
 ): Promise<any> {
-	const tablePrefix = config.getEnv('database.tablePrefix');
-	return Db.transaction(async (transactionManager) => {
-		await transactionManager.connection
-			.createQueryBuilder()
-			.delete()
-			.from(`${tablePrefix}workflows_tags`)
-			.where('workflowId = :id', { id: workflowId })
-			.execute();
-		
-		await transactionManager.connection
-			.createQueryBuilder()
-			.insert()
-			.into(`${tablePrefix}workflows_tags`)
-			.values(newTags.map((tagId) => ({ workflowId, tagId })))
-			.execute();
-		
-		return await transactionManager.connection
-			.createQueryBuilder()
-			.select(`${tablePrefix}tag_entity.id`, 'id')
-			.addSelect(`${tablePrefix}tag_entity.name`, 'name')
-			.addSelect(`${tablePrefix}tag_entity.createdAt`, 'createdAt')
-			.addSelect(`${tablePrefix}tag_entity.updatedAt`, 'updatedAt')
-			.from(`${tablePrefix}tag_entity`, 'tag_entity')
-			.leftJoin(
-				`${tablePrefix}workflows_tags`,
-				'workflows_tags',
-				`${tablePrefix}workflows_tags.tagId = tag_entity.id`,
-			)
-			.where('workflows_tags.workflowId = :id', { id: workflowId })
-			.execute();
+	await Db.transaction(async (transactionManager) => {
+		const oldTags = await Db.collections.WorkflowTagMapping.findBy({ workflowId: workflowId });
+		if (oldTags.length > 0) {
+			await transactionManager.delete(WorkflowTagMapping, oldTags);
+		}
+		await transactionManager.insert(WorkflowTagMapping, newTags.map((tagId) => ({ tagId, workflowId })));
 	});
 }

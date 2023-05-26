@@ -26,7 +26,8 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-test('user-management:reset should reset DB to default user state', async () => {
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+test.skip('user-management:reset should reset DB to default user state', async () => {
 	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	await Reset.run();

@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
@@ -119,7 +119,6 @@ export class StravaTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -223,7 +222,7 @@ export class StravaTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -271,7 +270,7 @@ export class StravaTrigger implements INodeType {
 			return {};
 		}
 
-		if (resolveData) {
+		if (resolveData && body.aspect_type !== 'delete') {
 			let endpoint = `/athletes/${body.object_id}/stats`;
 			if (body.object_type === 'activity') {
 				endpoint = `/activities/${body.object_id}`;

@@ -14,5 +14,8 @@
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
-	"references": [{ "path": "../workflow/tsconfig.build.json" }]
+	"references": [
+		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" }
+	]
 }

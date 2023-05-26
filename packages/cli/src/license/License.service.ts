@@ -1,4 +1,5 @@
-import { getLicense } from '@/License';
+import { Container } from 'typedi';
+import { License } from '@/License';
 import type { ILicenseReadResponse } from '@/Interfaces';
 import * as Db from '@/Db';
 
@@ -11,7 +12,7 @@ export class LicenseService {
 	// Helper for getting the basic license data that we want to return
 	static async getLicenseData(): Promise<ILicenseReadResponse> {
 		const triggerCount = await LicenseService.getActiveTriggerCount();
-		const license = getLicense();
+		const license = Container.get(License);
 		const mainPlan = license.getMainPlan();
 
 		return {

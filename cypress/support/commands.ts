@@ -24,9 +24,8 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 import 'cypress-real-events';
-import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage } from '../pages';
+import { WorkflowsPage, SigninPage, SignupPage, SettingsUsersPage, WorkflowPage } from '../pages';
 import { N8N_AUTH_COOKIE } from '../constants';
-import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { MessageBox } from '../pages/modals/message-box';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
@@ -34,15 +33,17 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 });
 
 Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
-	const WorkflowPage = new WorkflowPageClass();
+	const workflowPage = new WorkflowPage();
 
 	// We need to force the click because the input is hidden
-	WorkflowPage.getters
+	workflowPage.getters
 		.workflowImportInput()
 		.selectFile(`cypress/fixtures/${fixtureKey}`, { force: true });
-	WorkflowPage.actions.setWorkflowName(workflowName);
 
-	WorkflowPage.getters.saveButton().should('contain', 'Saved');
+	cy.waitForLoad(false);
+	workflowPage.actions.setWorkflowName(workflowName);
+
+	workflowPage.getters.saveButton().should('contain', 'Saved');
 });
 
 Cypress.Commands.add(
@@ -53,9 +54,15 @@ Cypress.Commands.add(
 	},
 );
 
-Cypress.Commands.add('waitForLoad', () => {
-	cy.getByTestId('node-view-loader', { timeout: 10000 }).should('not.exist');
-	cy.get('.el-loading-mask', { timeout: 10000 }).should('not.exist');
+Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
+	// These aliases are set-up before each test in cypress/support/e2e.ts
+	// we can't set them up here because at this point it would be too late
+	// and the requests would already have been made
+	if (waitForIntercepts) {
+		cy.wait(['@loadSettings', '@loadLogin']);
+	}
+	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
+	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
@@ -98,18 +105,22 @@ Cypress.Commands.add('signup', ({ firstName, lastName, password, url }) => {
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
+			cy.intercept('/rest/users/*').as('userSignup')
 			signupPage.getters.firstName().type(firstName);
 			signupPage.getters.lastName().type(lastName);
 			signupPage.getters.password().type(password);
 			signupPage.getters.submit().click();
+			cy.wait('@userSignup');
 		});
 	});
 });
 
-Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }, skipIntercept = false) => {
 	const signupPage = new SignupPage();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -118,7 +129,13 @@ Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 				signupPage.getters.firstName().type(firstName);
 				signupPage.getters.lastName().type(lastName);
 				signupPage.getters.password().type(password);
+
+				cy.intercept('POST', '/rest/owner/setup').as('setupRequest');
 				signupPage.getters.submit().click();
+
+				if(!skipIntercept) {
+					cy.wait('@setupRequest');
+				}
 			} else {
 				cy.log('User already signed up');
 			}
@@ -158,10 +175,12 @@ Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
 
 Cypress.Commands.add('skipSetup', () => {
 	const signupPage = new SignupPage();
-	const workflowsPage = new WorkflowsPage();
+	const workflowPage = new WorkflowPage();
 	const Confirmation = new MessageBox();
 
+	cy.intercept('GET', signupPage.url).as('setupPage');
 	cy.visit(signupPage.url);
+	cy.wait('@setupPage');
 
 	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
@@ -171,8 +190,10 @@ Cypress.Commands.add('skipSetup', () => {
 				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
 				Confirmation.actions.confirm();
 
-				// we should be redirected to /workflows
-				cy.url().should('include', workflowsPage.url);
+				// we should be redirected to empty canvas
+				cy.intercept('GET', '/rest/workflows/new').as('loading');
+				cy.url().should('include', workflowPage.url);
+				cy.wait('@loading');
 			} else {
 				cy.log('User already signed up');
 			}
@@ -190,7 +211,11 @@ Cypress.Commands.add('setupOwner', (payload) => {
 });
 
 Cypress.Commands.add('enableFeature', (feature) => {
-	cy.task('enable-feature', feature);
+	cy.task('set-feature', { feature, enabled: true });
+});
+
+Cypress.Commands.add('disableFeature', (feature) => {
+	cy.task('set-feature', { feature, enabled: false });
 });
 
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
@@ -206,8 +231,9 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 		);
 	}
 });
+
 Cypress.Commands.add('readClipboard', () =>
-	cy.window().its('navigator.clipboard').invoke('readText'),
+	cy.window().then((win) => win.navigator.clipboard.readText()),
 );
 
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
@@ -222,18 +248,19 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, pos) => {
+Cypress.Commands.add('drag', (selector, pos, options) => {
+	const index = options?.index || 0;
 	const [xDiff, yDiff] = pos;
-	const element = cy.get(selector);
+	const element = cy.get(selector).eq(index);
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+	const originalLocation = Cypress.$(selector)[index].getBoundingClientRect();
 
 	element.trigger('mousedown');
 	element.trigger('mousemove', {
 		which: 1,
-		pageX: originalLocation.right + xDiff,
-		pageY: originalLocation.top + yDiff,
+		pageX: options?.abs ? xDiff : originalLocation.right + xDiff,
+		pageY: options?.abs ? yDiff : originalLocation.top + yDiff,
 		force: true,
 	});
 	element.trigger('mouseup', { force: true });

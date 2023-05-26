@@ -111,9 +111,6 @@ export class User extends AbstractEntity implements IUser {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending =
-			this.globalRole?.name === 'owner' && this.globalRole.scope === 'global'
-				? false
-				: this.password === null;
+		this.isPending = this.password === null;
 	}
 }

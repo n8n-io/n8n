@@ -3,6 +3,7 @@ import { LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
+import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 
@@ -14,6 +15,8 @@ export class Webhook extends BaseCommand {
 	static flags = {
 		help: flags.help({ char: 'h' }),
 	};
+
+	protected server = new WebhookServer();
 
 	/**
 	 * Stops n8n in a graceful way.
@@ -74,12 +77,14 @@ export class Webhook extends BaseCommand {
 		await this.initCrashJournal();
 		await super.init();
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 	}
 
 	async run() {
-		await new WebhookServer().start();
+		await Container.get(Queue).init();
+		await this.server.start();
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close

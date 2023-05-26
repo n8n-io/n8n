@@ -1,3 +1,4 @@
+import type { Migration } from '@db/types';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -30,8 +31,12 @@ import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntit
 import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
 import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
+import { UpdateRunningExecutionStatus1677237073720 } from './1677237073720-UpdateRunningExecutionStatus';
+import { CreateExecutionMetadataTable1679416281777 } from './1679416281777-CreateExecutionMetadataTable';
+import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
+import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 
-const sqliteMigrations = [
+const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
 	CreateIndexStoppedAt1594825041918,
@@ -64,6 +69,10 @@ const sqliteMigrations = [
 	PurgeInvalidWorkflowConnections1675940580449,
 	AddStatusToExecutions1674138566000,
 	MigrateExecutionStatus1676996103000,
+	UpdateRunningExecutionStatus1677237073720,
+	CreateVariables1677501636752,
+	CreateExecutionMetadataTable1679416281777,
+	AddUserActivatedProperty1681134145996,
 ];
 
 export { sqliteMigrations };

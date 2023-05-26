@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -765,7 +764,7 @@ export class Clockify implements INodeType {
 							body.start = moment.tz(body.start, timezone).utc().format();
 						} else {
 							// even if you do not want to update the start time, it always has to be set
-							// to make it more simple to the user, if he did not set a start time look for the current start time
+							// to make it more simple to the user, if they did not set a start time look for the current start time
 							// and set it
 							const {
 								timeInterval: { start },
@@ -836,7 +835,7 @@ export class Clockify implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

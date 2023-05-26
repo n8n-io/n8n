@@ -7,14 +7,15 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
 
-export default Vue.extend({
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+
+export default defineComponent({
 	props: {
 		credentialTypeName: {
 			type: String,

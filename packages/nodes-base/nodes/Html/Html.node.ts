@@ -256,7 +256,10 @@ export class Html implements INodeType {
 					let html = this.getNodeParameter('html', itemIndex) as string;
 
 					for (const resolvable of getResolvables(html)) {
-						html = html.replace(resolvable, this.evaluateExpression(resolvable, itemIndex) as any);
+						html = html.replace(
+							resolvable,
+							this.evaluateExpression(resolvable, itemIndex) as string,
+						);
 					}
 
 					const result = this.helpers.constructExecutionMetaData(
@@ -293,23 +296,7 @@ export class Html implements INodeType {
 						}
 						htmlArray = item.json[dataPropertyName] as string;
 					} else {
-						if (item.binary === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'No item does not contain binary data!',
-								{
-									itemIndex,
-								},
-							);
-						}
-						if (item.binary[dataPropertyName] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`No property named "${dataPropertyName}" exists!`,
-								{ itemIndex },
-							);
-						}
-
+						this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 							itemIndex,
 							dataPropertyName,
@@ -332,13 +319,13 @@ export class Html implements INodeType {
 							},
 						};
 
-						// Itterate over all the defined values which should be extracted
+						// Iterate over all the defined values which should be extracted
 						let htmlElement;
 						for (const valueData of extractionValues.values as IValueData[]) {
 							htmlElement = $(valueData.cssSelector);
 
 							if (valueData.returnArray) {
-								// An array should be returned so itterate over one
+								// An array should be returned so iterate over one
 								// value at a time
 								newItem.json[valueData.key] = [];
 								htmlElement.each((i, el) => {

@@ -3,13 +3,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-floating-promises */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
 import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
@@ -17,7 +16,6 @@ import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ActiveExecutions } from '@/ActiveExecutions';
 import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
@@ -25,12 +23,9 @@ import type {
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import { Container, Service } from 'typedi';
 
 @Service()
 export class WaitTracker {
-	activeExecutionsInstance: ActiveExecutions;
-
 	private waitingExecutions: {
 		[key: string]: {
 			executionId: string;
@@ -41,14 +36,12 @@ export class WaitTracker {
 	mainTimer: NodeJS.Timeout;
 
 	constructor() {
-		this.activeExecutionsInstance = Container.get(ActiveExecutions);
-
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
-			this.getWaitingExecutions();
+			void this.getWaitingExecutions();
 		}, 60000);
 
-		this.getWaitingExecutions();
+		void this.getWaitingExecutions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -129,14 +122,14 @@ export class WaitTracker {
 		};
 
 		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.waitTill = undefined;
+		fullExecutionData.waitTill = null;
 		fullExecutionData.status = 'canceled';
 
 		await Db.collections.Execution.update(
 			executionId,
 			ResponseHelper.flattenExecutionData({
 				...fullExecutionData,
-			}),
+			}) as IExecutionFlattedDb,
 		);
 
 		return {

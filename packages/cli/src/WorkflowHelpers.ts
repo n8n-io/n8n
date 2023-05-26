@@ -1,4 +1,5 @@
 import { In } from 'typeorm';
+import { Container } from 'typedi';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -29,10 +30,12 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { Container } from 'typedi';
+import { isWorkflowIdValid } from './utils';
+import { UserService } from './user/user.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -72,15 +75,6 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 	}
 
 	return lastNodeRunData;
-}
-
-/**
- * Returns if the given id is a valid workflow id
- *
- * @param {(string | null | undefined)} id The id to check
- */
-export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
 }
 
 /**
@@ -396,17 +390,11 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRoleId = await Db.collections.Role.findOne({
-		select: ['id'],
-		where: {
-			name: 'owner',
-			scope: 'workflow',
-		},
-	}).then((role) => role?.id);
+	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		where: {
 			userId: user.id,
-			roleId: workflowOwnerRoleId,
+			roleId: workflowOwnerRole?.id,
 		},
 		select: ['workflowId'],
 	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
@@ -437,7 +425,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 
 	// user is above threshold --> set flag in settings
 	if (!belowThreshold) {
-		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+		void UserService.updateUserSettings(user.id, { isOnboarded: true });
 	}
 
 	return belowThreshold;
@@ -573,4 +561,13 @@ export function validateWorkflowCredentialUsage(
 	});
 
 	return newWorkflowVersion;
+}
+
+export async function getVariables(): Promise<IDataObject> {
+	return Object.freeze(
+		(await Db.collections.Variables.find()).reduce((prev, curr) => {
+			prev[curr.key] = curr.value;
+			return prev;
+		}, {} as IDataObject),
+	);
 }

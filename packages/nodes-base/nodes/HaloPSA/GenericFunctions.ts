@@ -1,9 +1,9 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
