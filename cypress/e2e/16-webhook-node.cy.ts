@@ -92,7 +92,6 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 describe('Webhook Trigger node', async () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
