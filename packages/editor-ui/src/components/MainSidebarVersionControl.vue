@@ -37,6 +37,7 @@ async function pushWorkfolder() {
 		toast.showError(error, i18n.baseText('error'));
 	} finally {
 		loadingService.stopLoading();
+		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
 	}
 }
 
@@ -64,6 +65,7 @@ async function pullWorkfolder() {
 		}
 	} finally {
 		loadingService.stopLoading();
+		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
 	}
 }
 </script>
