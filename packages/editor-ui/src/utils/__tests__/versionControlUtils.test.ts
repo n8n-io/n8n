@@ -1,4 +1,4 @@
-import { VersionControlStatus } from '@/Interface';
+import type { VersionControlStatus } from '@/Interface';
 import { beforeEach } from 'vitest';
 import { aggregateVersionControlFiles } from '@/utils';
 

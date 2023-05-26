@@ -18,7 +18,6 @@ import type {
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
-import type { BrowserJsPlumbDefaults } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';

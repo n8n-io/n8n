@@ -2233,7 +2233,13 @@ export default defineComponent({
 					this.enterTimer = undefined;
 				}
 
-				if (this.isReadOnly || this.readOnlyEnv || !connection || this.activeConnection?.id !== connection.id) return;
+				if (
+					this.isReadOnly ||
+					this.readOnlyEnv ||
+					!connection ||
+					this.activeConnection?.id !== connection.id
+				)
+					return;
 
 				this.exitTimer = setTimeout(() => {
 					this.exitTimer = undefined;

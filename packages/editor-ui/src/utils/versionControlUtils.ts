@@ -1,4 +1,4 @@
-import { VersionControlAggregatedFile, VersionControlStatus } from '@/Interface';
+import type { VersionControlAggregatedFile, VersionControlStatus } from '@/Interface';
 
 export function aggregateVersionControlFiles(versionControlStatus: VersionControlStatus) {
 	return versionControlStatus.files.reduce<VersionControlAggregatedFile[]>((acc, file) => {
