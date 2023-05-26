@@ -1,12 +1,24 @@
-const { compilerOptions } = require('./tsconfig.json');
-
-const tsJestOptions = {
-	isolatedModules: true,
-	tsconfig: {
-		...compilerOptions,
-		declaration: false,
-		sourceMap: true,
-		skipLibCheck: true,
+/** @type {import('@swc/core').Config} */
+const swcJestOptions = {
+	minify: false,
+	sourceMaps: true,
+	module: {
+		type: 'commonjs',
+	},
+	jsc: {
+		parser: {
+			syntax: 'typescript',
+			decorators: true,
+		},
+		target: 'es2022',
+		transform: {
+			legacyDecorator: true,
+			decoratorMetadata: true,
+			useDefineForClassFields: false,
+		},
+		experimental: {
+			plugins: [['jest_workaround', {}]],
+		},
 	},
 };
 
@@ -17,7 +29,7 @@ const config = {
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 	transform: {
-		'^.+\\.ts$': ['ts-jest', tsJestOptions],
+		'^.+\\.ts$': ['@swc/jest', swcJestOptions],
 	},
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
