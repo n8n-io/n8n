@@ -36,7 +36,12 @@ const INVALID_DATES = [
 	'',
 	'Wed, 17 May 2023 10:52:32',
 	'SMT, 17 May 2023 10:52:32',
-	'1234567890', // We are not supporting timestamps
+	'1685084980', // We are not supporting timestamps
+	'1685085012135',
+	1685084980,
+	1685085012135,
+	true,
+	[],
 ];
 
 describe('Type Validation', () => {
@@ -97,6 +102,8 @@ describe('Type Validation', () => {
 		expect(validateFieldType('boolean', 'tru', 'boolean').valid).toBe(false);
 		expect(validateFieldType('boolean', 'fals', 'boolean').valid).toBe(false);
 		expect(validateFieldType('boolean', 1111, 'boolean').valid).toBe(false);
+		expect(validateFieldType('boolean', 2, 'boolean').valid).toBe(false);
+		expect(validateFieldType('boolean', -1, 'boolean').valid).toBe(false);
 		expect(validateFieldType('boolean', 'yes', 'boolean').valid).toBe(false);
 		expect(validateFieldType('boolean', 'no', 'boolean').valid).toBe(false);
 	});
@@ -108,14 +115,24 @@ describe('Type Validation', () => {
 		expect(validateFieldType('number', '-1.1', 'number').newValue).toBe(-1.1);
 		expect(validateFieldType('number', 1, 'number').newValue).toBe(1);
 		expect(validateFieldType('number', 'A', 'number').valid).toBe(false);
+		expect(validateFieldType('number', '1,1', 'number').valid).toBe(false);
+		expect(validateFieldType('number', true, 'number').valid).toBe(true);
+		expect(validateFieldType('number', '1972-06-30T23:59:40Z', 'number').valid).toBe(false);
+		expect(validateFieldType('number', [1, 2], 'number').valid).toBe(false);
 	});
 
 	it('should validate and cast JSON properly', () => {
 		expect(validateFieldType('json', '{"a": 1}', 'object').newValue).toEqual({ a: 1 });
+		expect(validateFieldType('json', '{"a": 1, "b": { "c": 10, "d": "test"}}', 'object').valid).toEqual(true);
 		expect(validateFieldType('json', '{a: 1}', 'object').valid).toEqual(false);
 		expect(validateFieldType('json', '["apples", "oranges"]', 'object').valid).toEqual(true);
 		expect(validateFieldType('json', { name: 'John' }, 'object').valid).toEqual(true);
+		expect(validateFieldType('json', { name: 'John', address: { street: 'Via Roma', city: 'Milano'} }, 'object').valid).toEqual(true);
 		expect(validateFieldType('json', ['one', 'two'], 'object').valid).toEqual(true);
+		expect(validateFieldType('json', ["one", "two"], 'object').valid).toEqual(true);
+		expect(validateFieldType('json', '1.1', 'object').valid).toEqual(true);
+		expect(validateFieldType('json', 1.1, 'object').valid).toEqual(true);
+		expect(validateFieldType('json', '"a"', 'object').valid).toEqual(true);
 	});
 
 	it('should validate and cast arrays properly', () => {
@@ -144,6 +161,9 @@ describe('Type Validation', () => {
 		expect(validateFieldType('array', '[1, 2, 3', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', '1, 2, 3]', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', '1. 2. 3', 'array').valid).toEqual(false);
+		expect(validateFieldType('array', '1', 'array').valid).toEqual(true);
+		expect(validateFieldType('array', '1.1', 'array').valid).toEqual(true);
+		expect(validateFieldType('array', { name: 'John' }, 'array').valid).toEqual(false);
 	});
 
 	it('should validate options properly', () => {
