@@ -13,6 +13,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const EVENTS = {
+	SHOW_CHECKLIST: 'Show checklist',
 	ADDED_MANUAL_TRIGGER: 'User added manual trigger',
 	ADDED_SCHEDULE_TRIGGER: 'User added schedule trigger',
 	ADDED_DATA_TRIGGER: 'User added data trigger',
@@ -39,6 +40,8 @@ export const useSegment = defineStore('segment', () => {
 		if (isInIframe) {
 			return;
 		}
+
+		track(EVENTS.SHOW_CHECKLIST);
 	};
 
 	const trackAddedTrigger = (nodeTypeName: string) => {

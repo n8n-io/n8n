@@ -64,7 +64,7 @@ export class I18nClass {
 		key: BaseTextKey,
 		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
-		if (options && options.adjustToNumber) {
+		if (options?.adjustToNumber !== undefined) {
 			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
 		}
 

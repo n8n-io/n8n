@@ -467,13 +467,13 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .withIcon {
 	display: inline-flex;
 	justify-content: center;
+	align-items: center;
 }
 
 .icon {
 	display: inline-flex;
 	justify-content: center;
-	margin-top: -1px;
-	margin-bottom: -1px;
+	align-items: center;
 
 	svg {
 		display: block;
