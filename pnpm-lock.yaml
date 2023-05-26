@@ -29,7 +29,7 @@ patchedDependencies:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
   typedi@0.10.0:
-    hash: syy565ld7euwcedfbmx53j2qc4
+    hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
 
 importers:
@@ -456,7 +456,7 @@ importers:
         version: 1.1.1
       typedi:
         specifier: ^0.10.0
-        version: 0.10.0(patch_hash=syy565ld7euwcedfbmx53j2qc4)
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
         specifier: ^0.3.12
         version: 0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
@@ -21852,7 +21852,7 @@ packages:
   /typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  /typedi@0.10.0(patch_hash=syy565ld7euwcedfbmx53j2qc4):
+  /typedi@0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4):
     resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
     dev: false
     patched: true
