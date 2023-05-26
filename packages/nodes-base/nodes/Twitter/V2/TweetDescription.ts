@@ -128,7 +128,6 @@ export const tweetFields: INodeProperties[] = [
 				description:
 					'Name of the binary properties which contain data that should be added to the tweet as an attachment. Multiple attachments should be comma-separated. You may include up to 4 photos or 1 animated GIF or 1 video in a Tweet',
 			},
-
 			{
 				displayName: 'Quote a Tweet',
 				name: 'inQuoteToStatusId',

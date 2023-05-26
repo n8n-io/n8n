@@ -19,6 +19,7 @@ import { userOperations, userFields } from './UserDescription';
 import ISO6391 from 'iso-639-1';
 import { twitterApiRequest } from './GenericFunctions';
 import { DateTime } from 'luxon';
+import { addAdditionalFields } from '../../Telegram/GenericFunctions';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -188,6 +189,40 @@ export class TwitterV2 implements INodeType {
 							{},
 							qs,
 						);
+					}
+					if (operation === 'create') {
+						const text = this.getNodeParameter('text', i, '', {});
+						const { location, media, inQuoteToStatusId, inReplyToStatusId } = this.getNodeParameter(
+							'additionalFields',
+							i,
+							{},
+						) as {
+							location: IDataObject;
+							media: string;
+							inQuoteToStatusId: INodeParameterResourceLocator;
+							inReplyToStatusId: INodeParameterResourceLocator;
+						};
+						const body: IDataObject = {
+							text,
+						};
+						if (location) {
+						}
+						if (media) {
+						}
+						if (inQuoteToStatusId) {
+						}
+						if (inReplyToStatusId) {
+							const inReplyToStatusIdValue = {
+								reply: { in_reply_to_tweet_id: '' },
+							};
+							if (inReplyToStatusId.mode === 'id') {
+								inReplyToStatusIdValue.reply.in_reply_to_tweet_id =
+									inReplyToStatusId.value as string;
+							} else if (inReplyToStatusId.mode === 'url') {
+							}
+							body.reply = { ...inReplyToStatusIdValue.reply };
+						}
+						responseData = await twitterApiRequest.call(this, 'POST', '/tweets', body);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
