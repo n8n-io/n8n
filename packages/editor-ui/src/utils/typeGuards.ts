@@ -1,5 +1,5 @@
-import { INodeParameterResourceLocator } from 'n8n-workflow';
-import { ICredentialsResponse } from '@/Interface';
+import type { INodeParameterResourceLocator } from 'n8n-workflow';
+import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project
@@ -31,3 +31,7 @@ export function isString(value: unknown): value is string {
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
 }
+
+export const isCredentialModalState = (value: unknown): value is NewCredentialsModal => {
+	return typeof value === 'object' && value !== null && 'showAuthSelector' in value;
+};

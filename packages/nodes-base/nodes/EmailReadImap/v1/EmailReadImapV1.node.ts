@@ -1,34 +1,28 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	createDeferredPromise,
+import type {
+	ITriggerFunctions,
 	IBinaryData,
 	IBinaryKeyData,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
-	IDeferredPromise,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
-	connect as imapConnect,
-	getParts,
-	ImapSimple,
-	ImapSimpleOptions,
-	Message,
-} from 'imap-simple';
-import { simpleParser, Source as ParserSource } from 'mailparser';
+import type { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
+import { connect as imapConnect, getParts } from 'imap-simple';
+import type { Source as ParserSource } from 'mailparser';
+import { simpleParser } from 'mailparser';
 
-import _ from 'lodash';
+import isEmpty from 'lodash.isempty';
+import find from 'lodash.find';
 
 export async function parseRawEmail(
 	this: ITriggerFunctions,
@@ -247,7 +241,7 @@ export class EmailReadImapV1 implements INodeType {
 					if (credentials.secure) {
 						tlsOptions.servername = credentials.host as string;
 					}
-					if (!_.isEmpty(tlsOptions)) {
+					if (!isEmpty(tlsOptions)) {
 						config.imap.tlsOptions = tlsOptions;
 					}
 					const conn = imapConnect(config).then(async (entry) => {
@@ -277,7 +271,7 @@ export class EmailReadImapV1 implements INodeType {
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		const staticData = this.getWorkflowStaticData('node');
-		Logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
+		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
 		let connection: ImapSimple;
 
@@ -328,8 +322,8 @@ export class EmailReadImapV1 implements INodeType {
 					.then(async (partData) => {
 						// Return it in the format n8n expects
 						return this.helpers.prepareBinaryData(
-							partData,
-							attachmentPart.disposition.params.filename,
+							partData as Buffer,
+							attachmentPart.disposition.params.filename as string,
 						);
 					});
 
@@ -391,14 +385,14 @@ export class EmailReadImapV1 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: '' });
+					const part = find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
 					}
 					const parsedEmail = await parseRawEmail.call(
 						this,
-						part.body,
+						part.body as Buffer,
 						dataPropertyAttachmentsPrefixName,
 					);
 
@@ -442,7 +436,7 @@ export class EmailReadImapV1 implements INodeType {
 					});
 
 					messageBody = messageHeader[0].body;
-					for (propertyName of Object.keys(messageBody)) {
+					for (propertyName of Object.keys(messageBody as IDataObject)) {
 						if (messageBody[propertyName].length) {
 							if (topLevelProperties.includes(propertyName)) {
 								newEmail.json[propertyName] = messageBody[propertyName][0];
@@ -480,7 +474,7 @@ export class EmailReadImapV1 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const part = _.find(message.parts, { which: 'TEXT' });
+					const part = find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new NodeOperationError(this.getNode(), 'Email part could not be parsed.');
@@ -506,7 +500,7 @@ export class EmailReadImapV1 implements INodeType {
 			return newEmails;
 		};
 
-		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise();
+		const returnedPromise = await this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
@@ -543,7 +537,9 @@ export class EmailReadImapV1 implements INodeType {
 							 * - You can check if UIDs changed in the above example
 							 * by checking UIDValidity.
 							 */
-							Logger.debug('Querying for new messages on node "EmailReadImap"', { searchCriteria });
+							this.logger.debug('Querying for new messages on node "EmailReadImap"', {
+								searchCriteria,
+							});
 						}
 
 						try {
@@ -552,7 +548,7 @@ export class EmailReadImapV1 implements INodeType {
 								this.emit([returnData]);
 							}
 						} catch (error) {
-							Logger.error('Email Read Imap node encountered an error fetching new emails', {
+							this.logger.error('Email Read Imap node encountered an error fetching new emails', {
 								error,
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
@@ -575,7 +571,7 @@ export class EmailReadImapV1 implements INodeType {
 				tlsOptions.servername = credentials.host as string;
 			}
 
-			if (!_.isEmpty(tlsOptions)) {
+			if (!isEmpty(tlsOptions)) {
 				config.imap.tlsOptions = tlsOptions;
 			}
 
@@ -584,19 +580,21 @@ export class EmailReadImapV1 implements INodeType {
 			return imapConnect(config).then(async (conn) => {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
-					if (['ECONNRESET', 'EPIPE'].includes(errorCode)) {
-						Logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, { error });
+					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {
+						this.logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
+							error,
+						});
 						try {
 							connection = await establishConnection();
 							await connection.openBox(mailbox);
 							return;
 						} catch (e) {
-							Logger.error('IMAP reconnect did fail', { error: e });
+							this.logger.error('IMAP reconnect did fail', { error: e });
 							// If something goes wrong we want to run emitError
 						}
 					} else {
-						Logger.error('Email Read Imap node encountered a connection error', { error });
-						this.emitError(error);
+						this.logger.error('Email Read Imap node encountered a connection error', { error });
+						this.emitError(error as Error);
 					}
 				});
 				return conn;
@@ -611,7 +609,7 @@ export class EmailReadImapV1 implements INodeType {
 
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(async () => {
-				Logger.verbose('Forcing reconnection of IMAP node.');
+				this.logger.verbose('Forcing reconnection of IMAP node.');
 				connection.end();
 				connection = await establishConnection();
 				await connection.openBox(mailbox);

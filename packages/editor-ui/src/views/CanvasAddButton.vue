@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="$style.container"
+		:class="$style.canvasAddButton"
 		:style="containerCssVars"
 		ref="container"
 		data-test-id="canvas-add-button"
@@ -26,8 +26,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { XYPosition } from '@/Interface';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import type { XYPosition } from '@/Interface';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 export interface Props {
 	showTooltip: boolean;
@@ -44,7 +44,7 @@ const containerCssVars = computed(() => ({
 </script>
 
 <style lang="scss" module>
-.container {
+.canvasAddButton {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -82,7 +82,7 @@ const containerCssVars = computed(() => ({
 	}
 }
 
-.tooltip {
+:root .tooltip {
 	max-width: 180px;
 }
 

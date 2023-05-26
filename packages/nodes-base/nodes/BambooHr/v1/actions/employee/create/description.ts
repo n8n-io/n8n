@@ -1,4 +1,4 @@
-import { EmployeeProperties } from '../../Interfaces';
+import type { EmployeeProperties } from '../../Interfaces';
 
 import { createEmployeeSharedDescription } from './shareDescription';
 

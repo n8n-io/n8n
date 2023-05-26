@@ -1,9 +1,9 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 import { idStringifier } from '../utils/transformers';
 import { datetimeColumnType } from './AbstractEntity';
-import type { WorkflowEntity } from './WorkflowEntity';
+import { WorkflowEntity } from './WorkflowEntity';
 
-export enum StatisticsNames {
+export const enum StatisticsNames {
 	productionSuccess = 'production_success',
 	productionError = 'production_error',
 	manualSuccess = 'manual_success',

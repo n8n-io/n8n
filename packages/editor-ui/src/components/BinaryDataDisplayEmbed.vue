@@ -19,13 +19,15 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
-import { IBinaryData, jsonParse } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
+import { useWorkflowsStore } from '@/stores';
 
-export default mixins(restApi).extend({
+export default defineComponent({
 	name: 'BinaryDataDisplayEmbed',
 	components: {
 		VueJsonPretty,
@@ -44,19 +46,22 @@ export default mixins(restApi).extend({
 			jsonData: '',
 		};
 	},
+	computed: {
+		...mapStores(useWorkflowsStore),
+	},
 	async mounted() {
-		const id = this.binaryData?.id;
-		const isJSONData = this.binaryData.fileType === 'json';
+		const { id, data, fileName, fileType, mimeType } = (this.binaryData || {}) as IBinaryData;
+		const isJSONData = fileType === 'json';
 
 		if (!id) {
 			if (isJSONData) {
-				this.jsonData = jsonParse(atob(this.binaryData.data));
+				this.jsonData = jsonParse(atob(data));
 			} else {
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
+				this.embedSource = 'data:' + mimeType + ';base64,' + data;
 			}
 		} else {
 			try {
-				const binaryUrl = this.restApi().getBinaryUrl(id, 'view');
+				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
 				if (isJSONData) {
 					this.jsonData = await (await fetch(binaryUrl)).json();
 				} else {

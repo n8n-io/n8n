@@ -1,16 +1,16 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
+import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
 import { createHash } from 'crypto';
 
@@ -108,6 +108,32 @@ export class HubspotTrigger implements INodeType {
 										value: 'contact.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any contact in a customer's account",
+									},
+									{
+										name: 'Conversation Creation',
+										value: 'conversation.creation',
+										description: 'To get notified if a new thread is created in an account',
+									},
+									{
+										name: 'Conversation Deletion',
+										value: 'conversation.deletion',
+										description:
+											'To get notified if a thread is archived or soft-deleted in an account',
+									},
+									{
+										name: 'Conversation New Message',
+										value: 'conversation.newMessage',
+										description: 'To get notified if a new message on a thread has been received',
+									},
+									{
+										name: 'Conversation Privacy Deletion',
+										value: 'conversation.privacyDeletion',
+										description: 'To get notified if a thread is permanently deleted in an account',
+									},
+									{
+										name: 'Conversation Property Change',
+										value: 'conversation.propertyChange',
+										description: 'To get notified if a property on a thread has been changed',
 									},
 									{
 										name: 'Deal Created',
@@ -210,7 +236,7 @@ export class HubspotTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available contacts to display them to user so that he can
+			// Get all the available contacts to display them to user so that they can
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -226,7 +252,7 @@ export class HubspotTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available companies to display them to user so that he can
+			// Get all the available companies to display them to user so that they can
 			// select them easily
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -242,7 +268,7 @@ export class HubspotTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available deals to display them to user so that he can
+			// Get all the available deals to display them to user so that they can
 			// select them easily
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -261,7 +287,6 @@ export class HubspotTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -410,7 +435,7 @@ export class HubspotTrigger implements INodeType {
 			delete bodyData[i].objectId;
 		}
 		return {
-			workflowData: [this.helpers.returnJsonArray(bodyData)],
+			workflowData: [this.helpers.returnJsonArray(bodyData as IDataObject[])],
 		};
 	}
 }

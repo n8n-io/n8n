@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
 
@@ -655,7 +654,7 @@ export class Wekan implements INodeType {
 				}
 				let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				if (returnAll === false) {
+				if (returnAll === false && Array.isArray(responseData)) {
 					limit = this.getNodeParameter('limit', i);
 					responseData = responseData.splice(0, limit);
 				}

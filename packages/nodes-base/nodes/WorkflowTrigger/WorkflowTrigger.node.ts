@@ -1,5 +1,9 @@
-import { ITriggerFunctions } from 'n8n-core';
-import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 
 type eventType = 'Workflow activated' | 'Workflow updated' | undefined;
 type activationType = 'activate' | 'update';

@@ -1,14 +1,15 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 	IWebhookFunctions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function calApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -36,7 +37,7 @@ export async function calApiRequest(
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'calApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

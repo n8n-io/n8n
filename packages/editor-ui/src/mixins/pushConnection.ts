@@ -1,40 +1,51 @@
-import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IPushData } from '@/Interface';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IPushData,
+	IPushDataExecutionFinished,
+} from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange, useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import {
+import type {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
+	IRun,
+	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
-	TelemetryHelpers,
+	IExecuteContextData,
 } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { codeNodeEditorEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { parse } from 'flatted';
+import { useSegment } from '@/stores/segment.store';
+import { defineComponent } from 'vue';
 
-export const pushConnection = mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	titleChange,
-	workflowHelpers,
-).extend({
+export const pushConnection = defineComponent({
+	setup() {
+		return {
+			...useTitleChange(),
+			...useToast(),
+		};
+	},
+	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
-			eventSource: null as EventSource | null,
+			pushSource: null as WebSocket | EventSource | null,
 			reconnectTimeout: null as NodeJS.Timeout | null,
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ event: Event; retriesLeft: number }>,
@@ -43,79 +54,73 @@ export const pushConnection = mixins(
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useWorkflowsStore,
+			useSettingsStore,
+			useSegment,
+		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
 		},
 	},
 	methods: {
-		pushAutomaticReconnect(): void {
-			if (this.reconnectTimeout !== null) {
-				return;
-			}
-
-			this.reconnectTimeout = setTimeout(() => {
-				this.connectRetries++;
-				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
-				if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
-					this.lostConnection = true;
-
-					this.workflowsStore.executingNode = null;
-					this.uiStore.removeActiveAction('workflowRunning');
-
-					this.$showMessage({
-						title: this.$locale.baseText('pushConnection.executionFailed'),
-						message: this.$locale.baseText('pushConnection.executionFailed.message'),
-						type: 'error',
-						duration: 0,
-					});
-				}
-				this.pushConnect();
-			}, 3000);
+		attemptReconnect() {
+			this.pushConnect();
 		},
 
 		/**
-		 * Connect to server to receive data via EventSource
+		 * Connect to server to receive data via a WebSocket or EventSource
 		 */
 		pushConnect(): void {
-			// Make sure existing event-source instances get
-			// always removed that we do not end up with multiple ones
+			// always close the previous connection so that we do not end up with multiple connections
 			this.pushDisconnect();
 
-			const connectionUrl = `${this.rootStore.getRestUrl}/push?sessionId=${this.sessionId}`;
+			if (this.reconnectTimeout) {
+				clearTimeout(this.reconnectTimeout);
+				this.reconnectTimeout = null;
+			}
 
-			this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
-			this.eventSource.addEventListener('message', this.pushMessageReceived, false);
+			const useWebSockets = this.settingsStore.pushBackend === 'websocket';
 
-			this.eventSource.addEventListener(
-				'open',
-				() => {
-					this.connectRetries = 0;
-					this.lostConnection = false;
+			const { getRestUrl: restUrl } = this.rootStore;
+			const url = `/push?sessionId=${this.sessionId}`;
 
-					this.rootStore.pushConnectionActive = true;
-					if (this.reconnectTimeout !== null) {
-						clearTimeout(this.reconnectTimeout);
-						this.reconnectTimeout = null;
-					}
-				},
+			if (useWebSockets) {
+				const { protocol, host } = window.location;
+				const baseUrl = restUrl.startsWith('http')
+					? restUrl.replace(/^http/, 'ws')
+					: `${protocol === 'https:' ? 'wss' : 'ws'}://${host + restUrl}`;
+				this.pushSource = new WebSocket(`${baseUrl}${url}`);
+			} else {
+				this.pushSource = new EventSource(`${restUrl}${url}`, { withCredentials: true });
+			}
+
+			this.pushSource.addEventListener('open', this.onConnectionSuccess, false);
+			this.pushSource.addEventListener('message', this.pushMessageReceived, false);
+			this.pushSource.addEventListener(
+				useWebSockets ? 'close' : 'error',
+				this.onConnectionError,
 				false,
 			);
+		},
 
-			this.eventSource.addEventListener(
-				'error',
-				() => {
-					this.pushDisconnect();
+		onConnectionSuccess() {
+			this.connectRetries = 0;
+			this.lostConnection = false;
+			this.rootStore.pushConnectionActive = true;
+			this.clearAllStickyNotifications();
+			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
+		},
 
-					if (this.reconnectTimeout !== null) {
-						clearTimeout(this.reconnectTimeout);
-						this.reconnectTimeout = null;
-					}
-
-					this.rootStore.pushConnectionActive = false;
-					this.pushAutomaticReconnect();
-				},
-				false,
+		onConnectionError() {
+			this.pushDisconnect();
+			this.connectRetries++;
+			this.reconnectTimeout = setTimeout(
+				this.attemptReconnect,
+				Math.min(this.connectRetries * 2000, 8000), // maximum 8 seconds backoff
 			);
 		},
 
@@ -123,12 +128,15 @@ export const pushConnection = mixins(
 		 * Close connection to server
 		 */
 		pushDisconnect(): void {
-			if (this.eventSource !== null) {
-				this.eventSource.close();
-				this.eventSource = null;
-
-				this.rootStore.pushConnectionActive = false;
+			if (this.pushSource !== null) {
+				this.pushSource.removeEventListener('error', this.onConnectionError);
+				this.pushSource.removeEventListener('close', this.onConnectionError);
+				this.pushSource.removeEventListener('message', this.pushMessageReceived);
+				if (this.pushSource.readyState < 2) this.pushSource.close();
+				this.pushSource = null;
 			}
+
+			this.rootStore.pushConnectionActive = false;
 		},
 
 		/**
@@ -136,7 +144,6 @@ export const pushConnection = mixins(
 		 * the REST API so we do not know yet what execution ID
 		 * is currently active. So internally resend the message
 		 * a few more times
-		 *
 		 */
 		queuePushMessage(event: Event, retryAttempts: number) {
 			this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
@@ -178,11 +185,8 @@ export const pushConnection = mixins(
 
 		/**
 		 * Process a newly received message
-		 *
-		 * @param {Event} event The event data with the message data
-		 * @param {boolean} [isRetry] If it is a retry
 		 */
-		pushMessageReceived(event: Event, isRetry?: boolean): boolean {
+		async pushMessageReceived(event: Event, isRetry?: boolean): Promise<boolean> {
 			const retryAttempts = 5;
 			let receivedData: IPushData;
 			try {
@@ -225,11 +229,81 @@ export const pushConnection = mixins(
 				}
 			}
 
-			if (receivedData.type === 'executionFinished') {
-				// The workflow finished executing
-				const pushData = receivedData.data;
+			// recovered execution data is handled like executionFinished data, however for security reasons
+			// we need to fetch the data from the server again rather than push it to all clients
+			let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
+			if (receivedData.type === 'executionRecovered') {
+				const recoveredExecutionId = receivedData.data?.executionId;
+				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
+				if (isWorkflowRunning && this.workflowsStore.activeExecutionId === recoveredExecutionId) {
+					// pull execution data for the recovered execution from the server
+					const executionData = await this.workflowsStore.fetchExecutionDataById(
+						this.workflowsStore.activeExecutionId,
+					);
+					if (executionData?.data) {
+						// data comes in as 'flatten' object, so we need to parse it
+						executionData.data = parse(
+							executionData.data as unknown as string,
+						) as IRunExecutionData;
+						const iRunExecutionData: IRunExecutionData = {
+							startData: executionData.data?.startData,
+							resultData: executionData.data?.resultData ?? { runData: {} },
+							executionData: executionData.data?.executionData,
+						};
+						if (
+							this.workflowsStore.workflowExecutionData?.workflowId === executionData.workflowId
+						) {
+							const activeRunData =
+								this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+							if (activeRunData) {
+								for (const key of Object.keys(activeRunData)) {
+									iRunExecutionData.resultData.runData[key] = activeRunData[key];
+								}
+							}
+						}
+						const iRun: IRun = {
+							data: iRunExecutionData,
+							finished: executionData.finished,
+							mode: executionData.mode,
+							waitTill: executionData.data?.waitTill,
+							startedAt: executionData.startedAt,
+							stoppedAt: executionData.stoppedAt,
+							status: 'crashed',
+						};
+						if (executionData.data) {
+							recoveredPushData = {
+								executionId: executionData.id,
+								data: iRun,
+							};
+						}
+					}
+				}
+			}
 
-				this.workflowsStore.finishActiveExecution(pushData);
+			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
+				// The workflow finished executing
+				let pushData: IPushDataExecutionFinished;
+				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
+					pushData = recoveredPushData as IPushDataExecutionFinished;
+				} else {
+					pushData = receivedData.data as IPushDataExecutionFinished;
+				}
+
+				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+					const activeRunData =
+						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+					if (activeRunData) {
+						for (const key of Object.keys(activeRunData)) {
+							if (
+								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
+									?.isArtificialRecoveredEventItem === true &&
+								activeRunData[key].length > 0
+							)
+								pushData.data.data.resultData.runData[key] = activeRunData[key];
+						}
+					}
+					this.workflowsStore.finishActiveExecution(pushData);
+				}
 
 				if (!this.uiStore.isActionActive('workflowRunning')) {
 					// No workflow is running so ignore the messages
@@ -247,7 +321,13 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
+
+				if (pushData.data.status === 'crashed') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'pushConnection.executionFailed.message',
+					);
+				}
 
 				const lineNumber =
 					runDataExecuted &&
@@ -256,7 +336,7 @@ export const pushConnection = mixins(
 					runDataExecuted.data.resultData.error &&
 					runDataExecuted.data.resultData.error.lineNumber;
 
-				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
@@ -283,15 +363,15 @@ export const pushConnection = mixins(
 					}
 
 					// Workflow did start but had been put to wait
-					this.$titleSet(workflow.name as string, 'IDLE');
-					this.$showToast({
+					this.titleSet(workflow.name as string, 'IDLE');
+					this.showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 						type: 'success',
 						duration: 0,
 					});
 				} else if (runDataExecuted.finished !== true) {
-					this.$titleSet(workflow.name as string, 'ERROR');
+					this.titleSet(workflow.name as string, 'ERROR');
 
 					if (
 						runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -300,7 +380,7 @@ export const pushConnection = mixins(
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						void this.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -339,7 +419,7 @@ export const pushConnection = mixins(
 
 						this.workflowsStore.subWorkflowExecutionError = error;
 
-						this.$showMessage({
+						this.showMessage({
 							title: error.message,
 							message: error.description,
 							type: 'error',
@@ -353,16 +433,17 @@ export const pushConnection = mixins(
 							title = 'Problem executing workflow';
 						}
 
-						this.$showMessage({
+						this.showMessage({
 							title,
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
+							dangerouslyUseHTMLString: true,
 						});
 					}
 				} else {
 					// Workflow did execute without a problem
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
 					if (execution && execution.executedNode) {
@@ -375,8 +456,8 @@ export const pushConnection = mixins(
 							execution.data.resultData &&
 							execution.data.resultData.runData &&
 							execution.data.resultData.runData[execution.executedNode];
-						if (node && nodeType && !nodeOutput) {
-							this.$showMessage({
+						if (nodeType && nodeType.polling && !nodeOutput) {
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
 										service: getTriggerNodeServiceName(nodeType),
@@ -390,13 +471,13 @@ export const pushConnection = mixins(
 								type: 'success',
 							});
 						} else {
-							this.$showMessage({
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
 						}
 					} else {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
 							type: 'success',
 						});
@@ -431,13 +512,16 @@ export const pushConnection = mixins(
 							.length;
 				}
 
-				this.$externalHooks().run('pushConnection.executionFinished', {
+				void this.$externalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,
 					runDataExecutedStartData: runDataExecuted.data.startData,
 					resultDataError: runDataExecuted.data.resultData.error,
 				});
+				if (!runDataExecuted.data.resultData.error) {
+					this.segmentStore.trackSuccessfulWorkflowExecution(runDataExecuted);
+				}
 			} else if (receivedData.type === 'executionStarted') {
 				const pushData = receivedData.data;
 
@@ -479,19 +563,55 @@ export const pushConnection = mixins(
 
 				this.processWaitingPushMessages();
 			} else if (receivedData.type === 'reloadNodeType') {
-				this.nodeTypesStore.getNodeTypes();
-				this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
+				await this.nodeTypesStore.getNodeTypes();
+				await this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
 			} else if (receivedData.type === 'removeNodeType') {
 				const pushData = receivedData.data;
 
 				const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 				// Force reload of all credential types
-				this.credentialsStore.fetchCredentialTypes(false).then(() => {
+				await this.credentialsStore.fetchCredentialTypes(false).then(() => {
 					this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 				});
+			} else if (receivedData.type === 'nodeDescriptionUpdated') {
+				await this.nodeTypesStore.getNodeTypes();
+				await this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
+		},
+		getExecutionError(data: IRunExecutionData | IExecuteContextData) {
+			const error = data.resultData.error;
+
+			let errorMessage: string;
+
+			if (data.resultData.lastNodeExecuted && error) {
+				errorMessage = error.message || error.description;
+			} else {
+				errorMessage = this.$locale.baseText('pushConnection.executionError', {
+					interpolate: { error: '!' },
+				});
+
+				if (error && error.message) {
+					let nodeName: string | undefined;
+					if ('node' in error) {
+						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
+					}
+
+					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+					errorMessage = this.$locale.baseText('pushConnection.executionError', {
+						interpolate: {
+							error: `.${this.$locale.baseText('pushConnection.executionError.details', {
+								interpolate: {
+									details: receivedError,
+								},
+							})}`,
+						},
+					});
+				}
+			}
+
+			return errorMessage;
 		},
 	},
 });

@@ -1,28 +1,28 @@
 /* eslint-disable no-restricted-syntax */
 import { Credentials, UserSettings } from 'n8n-core';
-import {
-	deepCopy,
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
 	INodeProperties,
-	LoggerProxy,
-	NodeHelpers,
 } from 'n8n-workflow';
-import { FindManyOptions, FindOptionsWhere, In } from 'typeorm';
+import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import { Container } from 'typedi';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-
 import type { User } from '@db/entities/User';
+import { RoleRepository } from '@db/repositories';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 
@@ -116,9 +116,7 @@ export class CredentialsService {
 
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
-		const newCredentials = Db.collections.Credentials.create(
-			rest as ICredentialsDb,
-		) as CredentialsEntity;
+		const newCredentials = Db.collections.Credentials.create(rest as ICredentialsDb);
 
 		await validateEntity(newCredentials);
 
@@ -140,10 +138,8 @@ export class CredentialsService {
 		}
 
 		// This saves us a merge but requires some type casting. These
-		// types are compatiable for this case.
-		const updateData = Db.collections.Credentials.create(
-			mergedData as ICredentialsDb,
-		) as CredentialsEntity;
+		// types are compatible for this case.
+		const updateData = Db.collections.Credentials.create(mergedData as ICredentialsDb);
 
 		await validateEntity(updateData);
 
@@ -206,7 +202,7 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 	): Promise<ICredentialsDb | null> {
-		await ExternalHooks().run('credentials.update', [newCredentialData]);
+		await Container.get(ExternalHooks).run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(credentialId, newCredentialData);
@@ -225,12 +221,9 @@ export class CredentialsService {
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await ExternalHooks().run('credentials.create', [encryptedData]);
+		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
 
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
@@ -257,7 +250,7 @@ export class CredentialsService {
 	}
 
 	static async delete(credentials: CredentialsEntity): Promise<void> {
-		await ExternalHooks().run('credentials.delete', [credentials.id]);
+		await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 
 		await Db.collections.Credentials.remove(credentials);
 	}
@@ -280,7 +273,7 @@ export class CredentialsService {
 	): ICredentialDataDecryptedObject {
 		const copiedData = deepCopy(data);
 
-		const credTypes = CredentialTypes();
+		const credTypes = Container.get(CredentialTypes);
 		let credType: ICredentialType;
 		try {
 			credType = credTypes.getByName(credential.type);

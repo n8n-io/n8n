@@ -1,6 +1,6 @@
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import {
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,

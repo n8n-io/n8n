@@ -1,4 +1,5 @@
-import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { sendErrorPostReceive } from './GenericFunctions';
 
 export const textOperations: INodeProperties[] = [
 	{
@@ -22,6 +23,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/completions',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 			{
@@ -34,6 +36,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/edits',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 			{
@@ -46,6 +49,7 @@ export const textOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/moderations',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 		],
@@ -84,7 +88,7 @@ const completeOperations: INodeProperties[] = [
 							{
 								type: 'filter',
 								properties: {
-									pass: "={{ !$responseItem.id.startsWith('audio-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
+									pass: "={{ !$responseItem.id.startsWith('audio-') && !$responseItem.id.startsWith('gpt-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
 								},
 							},
 							{
@@ -247,7 +251,7 @@ const moderateOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'e.g. I want to kill them',
+		placeholder: 'e.g. My cat is adorable ❤️❤️',
 		description: 'The input text to classify',
 		displayOptions: {
 			show: {
@@ -380,6 +384,21 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Frequency Penalty',
+				name: 'frequency_penalty',
+				default: 0,
+				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+				description:
+					"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'frequency_penalty',
+					},
+				},
+			},
+			{
 				displayName: 'Maximum Number of Tokens',
 				name: 'maxTokens',
 				default: 16,
@@ -412,6 +431,21 @@ const sharedOperations: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'n',
+					},
+				},
+			},
+			{
+				displayName: 'Presence Penalty',
+				name: 'presence_penalty',
+				default: 0,
+				typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+				description:
+					"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'presence_penalty',
 					},
 				},
 			},

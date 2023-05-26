@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -26,7 +26,7 @@ export class NotionApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.notion.com/v1',
-			url: '/users',
+			url: '/users/me',
 		},
 	};
 

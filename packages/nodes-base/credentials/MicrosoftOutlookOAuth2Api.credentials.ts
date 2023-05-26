@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 	name = 'microsoftOutlookOAuth2Api';

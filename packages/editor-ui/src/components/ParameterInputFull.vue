@@ -69,15 +69,15 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
-import { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
+import { useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -85,17 +85,34 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
-import { BaseTextKey } from '@/plugins/i18n';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+} from 'n8n-workflow';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
+import { externalHooks } from '@/mixins/externalHooks';
+import { getMappedResult } from '@/utils/mappingUtils';
 
-export default mixins(showMessage).extend({
+type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
+
+const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
+
+export default defineComponent({
 	name: 'parameter-input-full',
+	mixins: [externalHooks],
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -104,7 +121,6 @@ export default mixins(showMessage).extend({
 			forceShowExpression: false,
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
-			localStorageMappingFlag: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true',
 		};
 	},
 	props: {
@@ -146,6 +162,7 @@ export default mixins(showMessage).extend({
 			{
 				attrs: {
 					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
 					click: mappingTooltipDismissHandler,
@@ -185,10 +202,11 @@ export default mixins(showMessage).extend({
 		showMappingTooltip(): boolean {
 			return (
 				this.mappingTooltipEnabled &&
+				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
 				!this.isInputDataEmpty &&
-				!this.localStorageMappingFlag
+				DISPLAY_MODES_WITH_DATA_MAPPING.includes(this.displayMode)
 			);
 		},
 	},
@@ -214,32 +232,28 @@ export default mixins(showMessage).extend({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
+			paramRef?.$emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const param = this.$refs.param as Vue | undefined;
+			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
 
 			if (isValueExpression(this.parameter, parameterData.value)) {
-				param?.$emit('optionSelected', 'addExpression');
+				paramRef?.$emit('optionSelected', 'addExpression');
 			}
 		},
-		onDrop(data: string) {
-			this.forceShowExpression = true;
+		onDrop(newParamValue: string) {
+			const updatedValue = getMappedResult(this.parameter, newParamValue, this.value);
+			const prevValue = this.isResourceLocator ? this.value.value : this.value;
+
+			if (updatedValue.startsWith('=')) {
+				this.forceShowExpression = true;
+			}
 			setTimeout(() => {
 				if (this.node) {
-					const prevValue = this.isResourceLocator ? this.value.value : this.value;
-					let updatedValue: string;
-					if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
-						updatedValue = `${prevValue} ${data}`;
-					} else {
-						updatedValue = `=${data}`;
-					}
-
 					let parameterData;
 					if (this.isResourceLocator) {
 						if (!isResourceLocatorValue(this.value)) {
@@ -283,14 +297,15 @@ export default mixins(showMessage).extend({
 
 					this.$emit('valueChanged', parameterData);
 
-					if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
-						this.$showMessage({
+					if (!this.ndvStore.isMappingOnboarded) {
+						this.showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
+							dangerouslyUseHTMLString: true,
 						});
 
-						window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						this.ndvStore.disableMappingHint();
 					}
 
 					this.ndvStore.setMappingTelemetry({
@@ -305,13 +320,15 @@ export default mixins(showMessage).extend({
 							hasExpressionMapping(prevValue),
 						success: true,
 					});
+
+					const segment = useSegment();
+					segment.track(segment.EVENTS.MAPPED_DATA);
 				}
 				this.forceShowExpression = false;
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
-			this.localStorageMappingFlag = true;
+			this.ndvStore.disableMappingHint(false);
 		},
 	},
 	watch: {

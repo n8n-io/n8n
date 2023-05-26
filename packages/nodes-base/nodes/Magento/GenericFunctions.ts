@@ -1,15 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
+	INodeProperties,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
-
-import { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
+import type { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -34,13 +37,13 @@ export async function magentoApiRequest(
 
 	try {
 		options = Object.assign({}, options, option);
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		//@ts-ignore
 		return await this.helpers.requestWithAuthentication.call(this, 'magento2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -59,7 +62,7 @@ export async function magentoApiRequestAllItems(
 
 	do {
 		responseData = await magentoApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.current_page = query.current_page ? (query.current_page as number)++ : 1;
 	} while (returnData.length < responseData.total_count);
 

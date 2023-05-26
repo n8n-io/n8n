@@ -82,7 +82,7 @@
 				v-if="hasForeignCredential"
 				:content="
 					$locale.baseText('nodeSettings.hasForeignCredential', {
-						interpolate: { owner: workflowOwnerName },
+						interpolate: { owner: credentialOwnerName },
 					})
 				"
 			/>
@@ -103,7 +103,9 @@
 					<node-credentials
 						:node="node"
 						:readonly="isReadOnly"
+						:showAll="true"
 						@credentialSelected="credentialSelected"
+						@valueChanged="valueChanged"
 						@blur="onParameterBlur"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 					/>
@@ -114,7 +116,11 @@
 					</n8n-text>
 				</div>
 
-				<div v-if="isCustomApiCallSelected(nodeValues)" class="parameter-item parameter-notice">
+				<div
+					v-if="isCustomApiCallSelected(nodeValues)"
+					class="parameter-item parameter-notice"
+					data-test-id="node-parameters-http-notice"
+				>
 					<n8n-notice
 						:content="
 							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
@@ -151,16 +157,22 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
-	NodeHelpers,
 	NodeParameterValue,
-	deepCopy,
 } from 'n8n-workflow';
-import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import type {
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+	IUsedCredential,
+} from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
@@ -170,34 +182,33 @@ import {
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import { get, set, unset } from 'lodash';
+import { get, set, unset } from 'lodash-es';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useHistoryStore } from '@/stores/history';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useHistoryStore } from '@/stores/history.store';
 import { RenameNodeCommand } from '@/models/history';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { EventBus } from 'n8n-design-system';
 
-export default mixins(externalHooks, nodeHelpers).extend({
+export default defineComponent({
 	name: 'NodeSettings',
+	mixins: [externalHooks, nodeHelpers],
 	components: {
 		NodeTitle,
 		NodeCredentials,
-		ParameterInputFull,
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
@@ -209,6 +220,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
+			useCredentialsStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
@@ -286,9 +298,30 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
 		},
+		hasForeignCredential(): boolean {
+			return this.foreignCredentials.length > 0;
+		},
+		usedCredentials(): IUsedCredential[] {
+			return Object.values(this.workflowsStore.usedCredentials).filter((credential) => {
+				return Object.values(this.node?.credentials || []).find((nodeCredential) => {
+					return nodeCredential.id === credential.id;
+				});
+			});
+		},
+		credentialOwnerName(): string {
+			const credential = this.usedCredentials
+				? Object.values(this.usedCredentials).find((credential) => {
+						return credential.id === this.foreignCredentials[0];
+				  })
+				: undefined;
+
+			return this.credentialsStore.getCredentialOwnerName(credential);
+		},
 	},
 	props: {
-		eventBus: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
 		dragging: {
 			type: Boolean,
 		},
@@ -302,9 +335,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			type: Boolean,
 			default: false,
 		},
-		hasForeignCredential: {
-			type: Boolean,
-			default: false,
+		foreignCredentials: {
+			type: Array as PropType<string[]>,
+			default: () => [],
 		},
 		blockUI: {
 			type: Boolean,
@@ -450,7 +483,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					});
 
 					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
-				} catch (_) {}
+				} catch {}
 			}
 		},
 	},
@@ -543,11 +576,11 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			if (this.node) {
-				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name));
 			}
 			// @ts-ignore
 			this.valueChanged({
@@ -637,7 +670,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 						}
 					}
 
-					this.$externalHooks().run('nodeSettings.valueChanged', {
+					void this.$externalHooks().run('nodeSettings.valueChanged', {
 						parameterPath,
 						newValue,
 						parameters: this.parameters,
@@ -745,7 +778,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 
-				this.$externalHooks().run('nodeSettings.valueChanged', {
+				void this.$externalHooks().run('nodeSettings.valueChanged', {
 					parameterPath,
 					newValue,
 					parameters: this.parameters,
@@ -858,17 +891,19 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		onStopExecution() {
 			this.$emit('stopExecution');
 		},
+		openSettings() {
+			this.openPanel = 'settings';
+		},
 	},
 	mounted() {
 		this.populateHiddenIssuesSet();
 		this.setNodeValues();
-		if (this.eventBus) {
-			(this.eventBus as Vue).$on('openSettings', () => {
-				this.openPanel = 'settings';
-			});
-		}
+		this.eventBus?.on('openSettings', this.openSettings);
 
 		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+	},
+	destroyed() {
+		this.eventBus?.off('openSettings', this.openSettings);
 	},
 });
 </script>

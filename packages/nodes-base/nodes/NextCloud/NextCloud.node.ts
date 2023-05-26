@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URLSearchParams } from 'url';
 
@@ -902,26 +901,9 @@ export class NextCloud implements INodeType {
 						endpoint = this.getNodeParameter('path', i) as string;
 
 						if (this.getNodeParameter('binaryDataUpload', i) === true) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = this.getNodeParameter('fileContent', i) as string;
@@ -1147,20 +1129,23 @@ export class NextCloud implements INodeType {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-						responseData,
+						responseData as Buffer,
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
 					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData, { explicitArray: false }, (err, data) => {
+						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
 								return reject(err);
 							}
 
 							if (data.ocs.meta.status !== 'ok') {
 								return reject(
-									new NodeApiError(this.getNode(), data.ocs.meta.message || data.ocs.meta.status),
+									new NodeApiError(
+										this.getNode(),
+										(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
+									),
 								);
 							}
 
@@ -1173,14 +1158,17 @@ export class NextCloud implements INodeType {
 					if (operation !== 'getAll') {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
 									return reject(err);
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
 									return reject(
-										new NodeApiError(this.getNode(), data.ocs.meta.message || data.ocs.meta.status),
+										new NodeApiError(
+											this.getNode(),
+											(data.ocs.meta.message || data.ocs.meta.status) as JsonObject,
+										),
 									);
 								}
 
@@ -1196,13 +1184,15 @@ export class NextCloud implements INodeType {
 					} else {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
 									return reject(err);
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new NodeApiError(this.getNode(), data.ocs.meta.message));
+									return reject(
+										new NodeApiError(this.getNode(), data.ocs.meta.message as JsonObject),
+									);
 								}
 
 								if (typeof data.ocs.data.users.element === 'string') {
@@ -1220,7 +1210,7 @@ export class NextCloud implements INodeType {
 				} else if (resource === 'folder' && operation === 'list') {
 					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData, { explicitArray: false }, (err, data) => {
+						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
 								return reject(err);
 							}

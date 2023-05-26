@@ -1,10 +1,11 @@
 /* eslint-disable no-param-reassign */
-import { DeleteResult, EntityManager, FindOptionsWhere, In, Not } from 'typeorm';
+import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
+import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
 import { RoleService } from '@/role/role.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { UserService } from '@/user/user.service';
 import { CredentialsService } from './credentials.service';
 import type { CredentialWithSharings } from './credentials.types';

@@ -3,22 +3,20 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-floating-promises */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+import { Service } from 'typedi';
+import type { FindManyOptions, ObjectLiteral } from 'typeorm';
+import { Not, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
+import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as GenericHelpers from '@/GenericHelpers';
-import * as ActiveExecutions from '@/ActiveExecutions';
-import {
-	DatabaseType,
+import type {
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
@@ -26,9 +24,8 @@ import {
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
-export class WaitTrackerClass {
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
-
+@Service()
+export class WaitTracker {
 	private waitingExecutions: {
 		[key: string]: {
 			executionId: string;
@@ -39,14 +36,12 @@ export class WaitTrackerClass {
 	mainTimer: NodeJS.Timeout;
 
 	constructor() {
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
-			this.getWaitingExecutions();
+			void this.getWaitingExecutions();
 		}, 60000);
 
-		this.getWaitingExecutions();
+		void this.getWaitingExecutions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -57,12 +52,14 @@ export class WaitTrackerClass {
 			select: ['id', 'waitTill'],
 			where: {
 				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				status: Not('crashed'),
 			},
 			order: {
 				waitTill: 'ASC',
 			},
 		};
-		const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
+
+		const dbType = config.getEnv('database.type');
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -125,11 +122,14 @@ export class WaitTrackerClass {
 		};
 
 		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.waitTill = undefined;
+		fullExecutionData.waitTill = null;
+		fullExecutionData.status = 'canceled';
 
 		await Db.collections.Execution.update(
 			executionId,
-			ResponseHelper.flattenExecutionData(fullExecutionData),
+			ResponseHelper.flattenExecutionData({
+				...fullExecutionData,
+			}) as IExecutionFlattedDb,
 		);
 
 		return {
@@ -137,6 +137,7 @@ export class WaitTrackerClass {
 			startedAt: new Date(fullExecutionData.startedAt),
 			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
 			finished: fullExecutionData.finished,
+			status: fullExecutionData.status,
 		};
 	}
 
@@ -183,14 +184,4 @@ export class WaitTrackerClass {
 			);
 		});
 	}
-}
-
-let waitTrackerInstance: WaitTrackerClass | undefined;
-
-export function WaitTracker(): WaitTrackerClass {
-	if (waitTrackerInstance === undefined) {
-		waitTrackerInstance = new WaitTrackerClass();
-	}
-
-	return waitTrackerInstance;
 }

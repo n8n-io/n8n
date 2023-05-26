@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -6,24 +5,22 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
-import axios, { AxiosRequestConfig, Method } from 'axios';
-import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageTypes } from '../EventMessageClasses';
-import {
-	jsonParse,
-	LoggerProxy,
+import axios from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
+import { jsonParse, LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type {
 	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 } from 'n8n-workflow';
-import { CredentialsHelper } from '../../CredentialsHelper';
+import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
-import config from '../../config';
+import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -75,8 +72,11 @@ export class MessageEventBusDestinationWebhook
 
 	axiosRequestOptions: AxiosRequestConfig;
 
-	constructor(options: MessageEventBusDestinationWebhookOptions) {
-		super(options);
+	constructor(
+		eventBusInstance: MessageEventBus,
+		options: MessageEventBusDestinationWebhookOptions,
+	) {
+		super(eventBusInstance, options);
 		this.url = options.url;
 		this.label = options.label ?? 'Webhook Endpoint';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.webhook;
@@ -132,7 +132,7 @@ export class MessageEventBusDestinationWebhook
 			let encryptionKey: string | undefined;
 			try {
 				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch (_) {}
+			} catch {}
 			if (encryptionKey) {
 				this.credentialsHelper = new CredentialsHelper(encryptionKey);
 			}
@@ -173,9 +173,9 @@ export class MessageEventBusDestinationWebhook
 			acc: Promise<{ [key: string]: any }>,
 			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 		) => {
-			const acumulator = await acc;
-			acumulator[cur.name] = cur.value;
-			return acumulator;
+			const accumulator = await acc;
+			accumulator[cur.name] = cur.value;
+			return accumulator;
 		};
 
 		// Get parameters defined in the UI
@@ -189,7 +189,7 @@ export class MessageEventBusDestinationWebhook
 				// query is specified using JSON
 				try {
 					JSON.parse(this.jsonQuery);
-				} catch (_) {
+				} catch {
 					console.log('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
@@ -207,7 +207,7 @@ export class MessageEventBusDestinationWebhook
 				// body is specified using JSON
 				try {
 					JSON.parse(this.jsonHeaders);
-				} catch (_) {
+				} catch {
 					console.log('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
@@ -247,6 +247,7 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	static deserialize(
+		eventBusInstance: MessageEventBus,
 		data: MessageEventBusDestinationOptions,
 	): MessageEventBusDestinationWebhook | null {
 		if (
@@ -254,12 +255,13 @@ export class MessageEventBusDestinationWebhook
 			data.__type === MessageEventBusDestinationTypeNames.webhook &&
 			isMessageEventBusDestinationWebhookOptions(data)
 		) {
-			return new MessageEventBusDestinationWebhook(data);
+			return new MessageEventBusDestinationWebhook(eventBusInstance, data);
 		}
 		return null;
 	}
 
-	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
+	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
+		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
 			if (!isLogStreamingEnabled()) return sendResult;
@@ -300,27 +302,27 @@ export class MessageEventBusDestinationWebhook
 			if (this.genericAuthType === 'httpBasicAuth') {
 				try {
 					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'httpDigestAuth') {
 				try {
 					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'httpHeaderAuth') {
 				try {
 					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'oAuth1Api') {
 				try {
 					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
-				} catch (_) {}
+				} catch {}
 			} else if (this.genericAuthType === 'oAuth2Api') {
 				try {
 					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
-				} catch (_) {}
+				} catch {}
 			}
 		}
 
@@ -346,13 +348,13 @@ export class MessageEventBusDestinationWebhook
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.status === this.expectedStatusCode) {
-						eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						confirmCallback(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					} else {
 						sendResult = false;
 					}
 				} else {
-					eventBus.confirmSent(msg, { id: this.id, name: this.label });
+					confirmCallback(msg, { id: this.id, name: this.label });
 					sendResult = true;
 				}
 			}

@@ -1,0 +1,116 @@
+{
+	"name": "My workflow 24",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "3691826c-caf3-4773-b0af-f5fe2eda42bc",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				-960,
+				600
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "return[\n  { value: 1 },\n  { value: 2 },\n]"
+			},
+			"id": "149e8223-20e2-480e-b675-2aeb6a9f9095",
+			"name": "Sample Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				-720,
+				600
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nlet sum = 0;\nfor (const item of $input.all()) {\n  sum += item.json.value;\n}\n\nreturn [ {sum} ];"
+			},
+			"id": "2002ec71-fd88-4a5b-b2fe-0071fc5397e4",
+			"name": "Run Once for All Items",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				-460,
+				480
+			]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the\n// JSON of the item\n$input.item.json.myNewField = $input.item.json.value;\n\nreturn $input.item;"
+			},
+			"id": "9adbeb7a-c711-4ff6-881e-96d5e122c2bc",
+			"name": "Run Once for Each Item",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [
+				-460,
+				720
+			]
+		}
+	],
+	"pinData": {
+		"Run Once for All Items": [
+			{
+				"json": {
+					"sum": 3
+				}
+			}
+		],
+		"Run Once for Each Item": [
+			{
+				"json": {
+					"value": 1,
+					"myNewField": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2,
+					"myNewField": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Sample Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sample Data": {
+			"main": [
+				[
+					{
+						"node": "Run Once for All Items",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Run Once for Each Item",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "b0d8ec77-92ab-4fa7-93b1-8a2e3543059d",
+	"id": "181",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

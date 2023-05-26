@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
-import type { WorkflowEntity } from './WorkflowEntity';
-import type { User } from './User';
-import type { Role } from './Role';
+import { WorkflowEntity } from './WorkflowEntity';
+import { User } from './User';
+import { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 

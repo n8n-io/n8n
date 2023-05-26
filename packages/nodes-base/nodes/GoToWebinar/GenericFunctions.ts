@@ -1,13 +1,14 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import moment from 'moment';
 
@@ -74,9 +75,9 @@ export async function goToWebinarApiRequest(
 		}
 
 		// https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
-		return losslessJSON.parse(response, convertLosslessNumber);
+		return losslessJSON.parse(response as string, convertLosslessNumber);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -87,7 +88,7 @@ export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	qs: IDataObject,
+	query: IDataObject,
 	body: IDataObject,
 	resource: string,
 ) {
@@ -102,23 +103,24 @@ export async function goToWebinarApiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
+		responseData = await goToWebinarApiRequest.call(this, method, endpoint, query, body);
 
-		if (responseData.page && parseInt(responseData.page.totalElements, 10) === 0) {
+		if (responseData.page && parseInt(responseData.page.totalElements as string, 10) === 0) {
 			return [];
 		} else if (responseData._embedded?.[key]) {
-			returnData.push(...responseData._embedded[key]);
+			returnData.push(...(responseData._embedded[key] as IDataObject[]));
 		} else {
-			returnData.push(...responseData);
+			returnData.push(...(responseData as IDataObject[]));
 		}
 
-		if (qs.limit && returnData.length >= qs.limit) {
-			returnData = returnData.splice(0, qs.limit as number);
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
+			returnData = returnData.splice(0, limit);
 			return returnData;
 		}
 	} while (
 		responseData.totalElements &&
-		parseInt(responseData.totalElements, 10) > returnData.length
+		parseInt(responseData.totalElements as string, 10) > returnData.length
 	);
 
 	return returnData;

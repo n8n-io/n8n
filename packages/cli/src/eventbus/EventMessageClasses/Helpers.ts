@@ -1,10 +1,14 @@
 import type { EventMessageTypes } from '.';
-import { EventMessageGeneric, EventMessageGenericOptions } from './EventMessageGeneric';
+import type { EventMessageGenericOptions } from './EventMessageGeneric';
+import { EventMessageGeneric } from './EventMessageGeneric';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
-import { EventMessageWorkflow, EventMessageWorkflowOptions } from './EventMessageWorkflow';
+import type { EventMessageWorkflowOptions } from './EventMessageWorkflow';
+import { EventMessageWorkflow } from './EventMessageWorkflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
-import { EventMessageAudit, EventMessageAuditOptions } from './EventMessageAudit';
-import { EventMessageNode, EventMessageNodeOptions } from './EventMessageNode';
+import type { EventMessageAuditOptions } from './EventMessageAudit';
+import { EventMessageAudit } from './EventMessageAudit';
+import type { EventMessageNodeOptions } from './EventMessageNode';
+import { EventMessageNode } from './EventMessageNode';
 
 export const getEventMessageObjectByType = (
 	message: AbstractEventMessageOptions,

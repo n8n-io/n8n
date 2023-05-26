@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="node-credentials-config-container">
 		<banner
 			v-show="showValidationWarning"
 			theme="danger"
@@ -39,7 +39,15 @@
 			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
-		/>
+		>
+			<template #button v-if="isGoogleOAuthType">
+				<p
+					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+					:class="$style.googleReconnectLabel"
+				/>
+				<GoogleAuthButton @click="$emit('oauth')" />
+			</template>
+		</banner>
 
 		<banner
 			v-show="testedSuccessfully && !showValidationWarning"
@@ -50,6 +58,7 @@
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
+			data-test-id="credentials-config-container-test-success"
 		/>
 
 		<template v-if="credentialPermissions.updateConnection">
@@ -61,6 +70,12 @@
 					</n8n-link>
 				</span>
 			</n8n-notice>
+
+			<AuthTypeSelector
+				v-if="showAuthTypeSelector && isNewCredential"
+				:credentialType="credentialType"
+				@authTypeChanged="onAuthTypeChange"
+			/>
 
 			<CopyInput
 				v-if="isOAuthType && credentialProperties.length"
@@ -107,39 +122,45 @@
 			@click="$emit('oauth')"
 		/>
 
-		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
 			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 		</n8n-text>
 	</div>
 </template>
 
 <script lang="ts">
-import { ICredentialType } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
-import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
-import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import { IPermissions } from '@/permissions';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
-import { useCredentialsStore } from '@/stores/credentials';
+import type { IPermissions } from '@/permissions';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ICredentialsResponse } from '@/Interface';
+import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
+import GoogleAuthButton from './GoogleAuthButton.vue';
 
-export default mixins(restApi).extend({
+export default defineComponent({
 	name: 'CredentialConfig',
 	components: {
+		AuthTypeSelector,
 		Banner,
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
+		GoogleAuthButton,
 	},
 	props: {
 		credentialType: {
@@ -182,6 +203,13 @@ export default mixins(restApi).extend({
 		requiredPropertiesFilled: {
 			type: Boolean,
 		},
+		mode: {
+			type: String,
+			required: true,
+		},
+		showAuthTypeSelector: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
@@ -197,7 +225,9 @@ export default mixins(restApi).extend({
 
 		if (this.$locale.exists(key)) return;
 
-		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
+		const credTranslation = await this.credentialsStore.getCredentialTranslation(
+			this.credentialType.name,
+		);
 
 		addCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },
@@ -205,7 +235,22 @@ export default mixins(restApi).extend({
 		);
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNDVStore,
+			useNodeTypesStore,
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		activeNodeType(): INodeTypeDescription | null {
+			const activeNode = this.ndvStore.activeNode;
+
+			if (activeNode) {
+				return this.nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
+			}
+			return null;
+		},
 		appName(): string {
 			if (!this.credentialType) {
 				return '';
@@ -222,7 +267,7 @@ export default mixins(restApi).extend({
 			return (this.credentialType as ICredentialType).name;
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
@@ -274,8 +319,17 @@ export default mixins(restApi).extend({
 				!this.authError
 			);
 		},
+		isMissingCredentials(): boolean {
+			return this.credentialType === null;
+		},
+		isNewCredential(): boolean {
+			return this.mode === 'new' && !this.credentialId;
+		},
 	},
 	methods: {
+		getCredentialOptions(type: string): ICredentialsResponse[] {
+			return this.credentialsStore.allUsableCredentialsByType[type];
+		},
 		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},
@@ -286,6 +340,9 @@ export default mixins(restApi).extend({
 				source: 'modal',
 				workflow_id: this.workflowsStore.workflowId,
 			});
+		},
+		onAuthTypeChange(newType: string): void {
+			this.$emit('authTypeChanged', newType);
 		},
 	},
 	watch: {
@@ -304,5 +361,8 @@ export default mixins(restApi).extend({
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
+}
+.googleReconnectLabel {
+	margin-right: var(--spacing-3xs);
 }
 </style>

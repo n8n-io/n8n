@@ -3,52 +3,29 @@
  */
 
 import { stringExtensions } from '@/Extensions/StringExtensions';
-import { dateExtensions } from '@/Extensions/DateExtensions';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
-		test('.isBlank() should work correctly on a string that is not empty', () => {
-			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(false);
+		test('.isEmpty() should work correctly on a string that is not empty', () => {
+			expect(evaluate('={{"NotBlank".isEmpty()}}')).toEqual(false);
 		});
 
-		test('.isBlank() should work correctly on a string that is empty', () => {
-			expect(evaluate('={{"".isBlank()}}')).toEqual(true);
+		test('.isEmpty() should work correctly on a string that is empty', () => {
+			expect(evaluate('={{"".isEmpty()}}')).toEqual(true);
 		});
 
-		test('.getOnlyFirstCharacters() should work correctly on a string', () => {
-			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(5)}}')).toEqual('myNew');
-
-			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(10)}}')).toEqual('myNewField');
-
-			expect(
-				evaluate('={{"myNewField".getOnlyFirstCharacters(5).length >= "myNewField".length}}'),
-			).toEqual(false);
-
-			expect(evaluate('={{DateTime.now().toLocaleString().getOnlyFirstCharacters(2)}}')).toEqual(
-				stringExtensions.functions.getOnlyFirstCharacters(
-					// @ts-ignore
-					dateExtensions.functions.toLocaleString(new Date(), []),
-					[2],
-				),
-			);
-		});
-
-		test('.sayHi() should work correctly on a string', () => {
-			expect(evaluate('={{ "abc".sayHi() }}')).toEqual('hi abc');
-		});
-
-		test('.encrypt() should work correctly on a string', () => {
-			expect(evaluate('={{ "12345".encrypt("sha256") }}')).toEqual(
-				stringExtensions.functions.encrypt('12345', ['sha256']),
+		test('.hash() should work correctly on a string', () => {
+			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
+				stringExtensions.functions.hash('12345', ['sha256']),
 			);
 
-			expect(evaluate('={{ "12345".encrypt("sha256") }}')).not.toEqual(
-				stringExtensions.functions.encrypt('12345', ['MD5']),
+			expect(evaluate('={{ "12345".hash("sha256") }}')).not.toEqual(
+				stringExtensions.functions.hash('12345', ['MD5']),
 			);
 
-			expect(evaluate('={{ "12345".encrypt("MD5") }}')).toEqual(
-				stringExtensions.functions.encrypt('12345', ['MD5']),
+			expect(evaluate('={{ "12345".hash("MD5") }}')).toEqual(
+				stringExtensions.functions.hash('12345', ['MD5']),
 			);
 
 			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
@@ -74,8 +51,8 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.stripTags should work correctly on a string', () => {
-			expect(evaluate('={{ "<html><head>test</head></html>".stripTags() }}')).toEqual('test');
+		test('.removeTags should work correctly on a string', () => {
+			expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
 		});
 
 		test('.removeMarkdown should work correctly on a string', () => {
@@ -90,48 +67,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "2022-09-01T19:42:28.164Z".toDate() }}')).toEqual(
 				new Date('2022-09-01T19:42:28.164Z'),
 			);
-		});
-
-		test('.toBoolean should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".toBoolean() }}`)).toEqual(true);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".toBoolean() }}`)).toEqual(false);
-			}
-
-			expect(evaluate('={{ "maybe".toBoolean() }}')).toEqual(false);
-		});
-
-		test('.isTrue should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".isTrue() }}`)).toEqual(true);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".isTrue() }}`)).toEqual(false);
-			}
-
-			expect(evaluate('={{ "maybe".isTrue() }}')).toEqual(false);
-		});
-
-		test('.isFalse should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".isFalse() }}`)).toEqual(false);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".isFalse() }}`)).toEqual(true);
-			}
-
-			expect(evaluate('={{ "maybe".isFalse() }}')).toEqual(false);
 		});
 
 		test('.toFloat should work correctly on a string', () => {
@@ -161,13 +96,43 @@ describe('Data Transformation Functions', () => {
 
 		test('.isUrl should work on a string', () => {
 			expect(evaluate('={{ "https://example.com/".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "http://example.com/".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "ftp://example.com/".isUrl() }}')).toEqual(true);
 			expect(evaluate('={{ "example.com".isUrl() }}')).toEqual(false);
+			expect(evaluate('={{ "www.example.com".isUrl() }}')).toEqual(false);
+			expect(evaluate('={{ "https://www.example.com/".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "https://example.com/path".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "https://example.com/path?query=1".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "https://example.com/path#fragment".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "https://example.com:8080".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "https://example.com?query=1".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "https://example.com#fragment".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "example.com/path".isUrl() }}')).toEqual(false);
+			expect(evaluate('={{ "http:///".isUrl() }}')).toEqual(false);
+			expect(evaluate('={{ "https://".isUrl() }}')).toEqual(false);
+			expect(evaluate('={{ "example".isUrl() }}')).toEqual(false);
+			expect(evaluate('={{ "".isUrl() }}')).toEqual(false);
 		});
 
 		test('.isDomain should work on a string', () => {
 			expect(evaluate('={{ "example.com".isDomain() }}')).toEqual(true);
 			expect(evaluate('={{ "asdf".isDomain() }}')).toEqual(false);
 			expect(evaluate('={{ "https://example.com/".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "www.example.com".isDomain() }}')).toEqual(true);
+			expect(evaluate('={{ "subdomain.example.com".isDomain() }}')).toEqual(true);
+			expect(evaluate('={{ "example.co.uk".isDomain() }}')).toEqual(true);
+			expect(evaluate('={{ "example".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "example.".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ ".com".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "example..com".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "example_com".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "example/com".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "example com".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "www.example..com".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "123.com".isDomain() }}')).toEqual(true);
+			expect(evaluate('={{ "xn--80aswg.xn--p1ai".isDomain() }}')).toEqual(true); // Punycode domain
+			expect(evaluate('={{ "example.com:8080".isDomain() }}')).toEqual(true);
+			expect(evaluate('={{ "".isDomain() }}')).toEqual(false);
 		});
 
 		test('.toSnakeCase should work on a string', () => {
@@ -185,27 +150,87 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "i am a test".toSentenceCase() }}')).toEqual('I am a test');
 		});
 
-		test('.toTitleCase should work on a string', () => {
-			expect(
-				evaluate(
-					'={{ "i am a test! i have multiple types of Punctuation. or do i?".toTitleCase() }}',
-				),
-			).toEqual('I Am A Test! I Have Multiple Types Of Punctuation. Or Do I?');
-			expect(evaluate('={{ "i am a test!".toTitleCase() }}')).toEqual('I Am A Test!');
-			expect(evaluate('={{ "i am a test".toTitleCase() }}')).toEqual('I Am A Test');
-		});
-
 		test('.extractUrl should work on a string', () => {
 			expect(
 				evaluate(
 					'={{ "I am a test with a url: https://example.net/ and I am a test with an email: test@example.org".extractUrl() }}',
 				),
 			).toEqual('https://example.net/');
+			expect(
+				evaluate(
+					'={{ "Check this out: https://subdomain.example.com:3000/path?q=1#hash".extractUrl() }}',
+				),
+			).toEqual('https://subdomain.example.com:3000/path?q=1#hash');
+			expect(evaluate('={{ "Invalid URL: http:///example.com".extractUrl() }}')).toEqual(undefined);
+			expect(
+				evaluate(
+					'={{ "Mixed content: https://www.example.com and http://www.example.org".extractUrl() }}',
+				),
+			).toEqual('https://www.example.com');
+			expect(
+				evaluate('={{ "Text without URL: This is just a simple text".extractUrl() }}'),
+			).toEqual(undefined);
+			expect(
+				evaluate('={{ "URL with Unicode: http://www.xn--80aswg.xn--j1amh".extractUrl() }}'),
+			).toEqual('http://www.xn--80aswg.xn--j1amh');
+			expect(
+				evaluate('={{ "Localhost URL: http://localhost:8080/test?x=1".extractUrl() }}'),
+			).toEqual('http://localhost:8080/test?x=1');
+			expect(
+				evaluate('={{ "IP URL: http://192.168.1.1:8000/path?q=value#frag".extractUrl() }}'),
+			).toEqual('http://192.168.1.1:8000/path?q=value#frag');
 		});
 
 		test('.extractDomain should work on a string', () => {
 			expect(evaluate('={{ "test@example.org".extractDomain() }}')).toEqual('example.org');
 			expect(evaluate('={{ "https://example.org/".extractDomain() }}')).toEqual('example.org');
+			expect(evaluate('={{ "https://www.google.com".extractDomain() }}')).toEqual('www.google.com');
+			expect(evaluate('={{ "http://example.org".extractDomain() }}')).toEqual('example.org');
+			expect(evaluate('={{ "ftp://ftp.example.com".extractDomain() }}')).toEqual('ftp.example.com');
+			expect(evaluate('={{ "google.com".extractDomain() }}')).toEqual('google.com');
+			expect(evaluate('={{ "www.example.net".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "//example.com".extractDomain() }}')).toEqual('example.com');
+			expect(evaluate('={{ "mailto:john.doe@example.com".extractDomain() }}')).toEqual(
+				'example.com',
+			);
+			expect(evaluate('={{ "tel:+1-555-123-4567".extractDomain() }}')).toEqual(undefined);
+			expect(evaluate('={{ "jane.doe@example.org".extractDomain() }}')).toEqual('example.org');
+			expect(evaluate('={{ "name+tag@example.com".extractDomain() }}')).toEqual('example.com');
+			expect(evaluate('={{ "first.last@example.co.uk".extractDomain() }}')).toEqual(
+				'example.co.uk',
+			);
+			expect(evaluate('={{ "user@subdomain.example.com".extractDomain() }}')).toEqual(
+				'subdomain.example.com',
+			);
+			expect(evaluate('={{ "www.example.net?test=1213".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "www.example.net?test".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "www.example.net#tesdt123".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://www.example.net?test=1213".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://www.example.net?test".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://www.example.net#tesdt123".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://192.168.1.1".extractDomain() }}')).toEqual('192.168.1.1');
+			expect(evaluate('={{ "http://www.xn--80aswg.xn--j1amh".extractDomain() }}')).toEqual(
+				'www.xn--80aswg.xn--j1amh',
+			);
+			expect(evaluate('={{ "https://localhost".extractDomain() }}')).toEqual('localhost');
+			expect(evaluate('={{ "https://localhost?test=123".extractDomain() }}')).toEqual('localhost');
+			expect(evaluate('={{ "https://www.example_with_underscore.com".extractDomain() }}')).toEqual(
+				'www.example_with_underscore.com',
+			);
+			expect(evaluate('={{ "https://www.example.com:8080".extractDomain() }}')).toEqual(
+				'www.example.com',
+			);
+			expect(evaluate('={{ "https://example.space".extractDomain() }}')).toEqual('example.space');
 		});
 
 		test('.extractEmail should work on a string', () => {

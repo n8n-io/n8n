@@ -1,12 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import flow from 'lodash.flow';
+import sortBy from 'lodash.sortby';
 
-import { flow, sortBy } from 'lodash';
-
-import {
+import type {
 	AllFields,
 	CamelCaseResource,
 	DateType,
@@ -66,11 +72,11 @@ export async function zohoApiRequest(
 
 		if (responseData === undefined) return [];
 
-		throwOnErrorStatus.call(this, responseData);
+		throwOnErrorStatus.call(this, responseData as IDataObject);
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -93,7 +99,7 @@ export async function zohoApiRequestAllItems(
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 		qs.page++;
 	} while (responseData.info.more_records !== undefined && responseData.info.more_records === true);
 

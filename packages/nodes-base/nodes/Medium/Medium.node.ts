@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { mediumApiRequest } from './GenericFunctions';
 
@@ -354,7 +353,7 @@ export class Medium implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available publications to display them to user so that he can
+			// Get all the available publications to display them to user so that they can
 			// select them easily
 			async getPublications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

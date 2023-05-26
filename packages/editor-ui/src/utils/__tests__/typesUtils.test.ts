@@ -1,8 +1,8 @@
 import jp from 'jsonpath';
-import { isEmpty, intersection, mergeDeep, getSchema, isValidDate } from '@/utils';
-import { Schema } from '@/Interface';
+import { isEmpty, intersection, getSchema, isValidDate } from '@/utils';
+import type { Schema } from '@/Interface';
 
-describe('Utils', () => {
+describe('Types Utils', () => {
 	describe('isEmpty', () => {
 		test.each([
 			[undefined, true],
@@ -40,180 +40,6 @@ describe('Utils', () => {
 			expect(
 				intersection([1, 2, 2, 3, 4], [2, 3, 3, 4], [2, 1, 5, 4, 4, 1], [2, 4, 5, 5, 6, 7]),
 			).toEqual([2, 4]);
-		});
-	});
-
-	describe('mergeDeep', () => {
-		test.each([
-			[
-				[
-					[1, 2],
-					[3, 4],
-				],
-				{},
-				[3, 4],
-			],
-			[
-				[
-					[1, 2],
-					[3, 4],
-				],
-				{ concatArrays: true },
-				[1, 2, 3, 4],
-			],
-			[
-				[
-					[1, 2],
-					[3, 4],
-				],
-				{ overwriteArrays: true },
-				[3, 4],
-			],
-			[
-				[
-					[1, 2, 3],
-					[4, 5],
-				],
-				{},
-				[4, 5, 3],
-			],
-			[
-				[
-					[1, 2, 3],
-					[4, 5],
-				],
-				{ concatArrays: true },
-				[1, 2, 3, 4, 5],
-			],
-			[
-				[
-					[1, 2, 3],
-					[4, 5],
-				],
-				{ overwriteArrays: true },
-				[4, 5],
-			],
-			[
-				[
-					[1, 2],
-					[3, 4, 5],
-				],
-				{},
-				[3, 4, 5],
-			],
-			[
-				[
-					[1, 2],
-					[3, 4, 5],
-				],
-				{ concatArrays: true },
-				[1, 2, 3, 4, 5],
-			],
-			[
-				[
-					[1, 2],
-					[3, 4, 5],
-				],
-				{ overwriteArrays: true },
-				[3, 4, 5],
-			],
-			[[{ a: 1, b: [1, 2, { d: 2 }] }, {}], {}, { a: 1, b: [1, 2, { d: 2 }] }],
-			[[{ a: 1, b: [1, 2, { d: 2 }] }, {}], { concatArrays: true }, { a: 1, b: [1, 2, { d: 2 }] }],
-			[
-				[{ a: 1, b: [1, 2, { d: 2 }] }, {}],
-				{ overwriteArrays: true },
-				{ a: 1, b: [1, 2, { d: 2 }] },
-			],
-			[[[{ a: 1, b: [1, 2, { d: 2 }] }], []], {}, [{ a: 1, b: [1, 2, { d: 2 }] }]],
-			[
-				[[{ a: 1, b: [1, 2, { d: 2 }] }], []],
-				{ concatArrays: true },
-				[{ a: 1, b: [1, 2, { d: 2 }] }],
-			],
-			[[[{ a: 1, b: [1, 2, { d: 2 }] }], []], { overwriteArrays: true }, []],
-			[
-				[
-					{ a: 1, b: [1, 2, 3] },
-					{ a: 2, b: [4, 5, 6, 7], c: '2' },
-					{ a: 3, b: [8, 9], d: '3' },
-				],
-				{},
-				{ a: 3, b: [8, 9, 6, 7], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [1, 2, 3] },
-					{ a: 2, b: [4, 5, 6, 7], c: '2' },
-					{ a: 3, b: [8, 9], d: '3' },
-				],
-				{ concatArrays: true },
-				{ a: 3, b: [1, 2, 3, 4, 5, 6, 7, 8, 9], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [1, 2, 3] },
-					{ a: 2, b: [4, 5, 6, 7], c: '2' },
-					{ a: 3, b: [8, 9], d: '3' },
-				],
-				{ overwriteArrays: true },
-				{ a: 3, b: [8, 9], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [{ x: 'a' }] },
-					{ a: 2, b: [{ y: 'b' }], c: '2' },
-					{ a: 3, b: [{ z: 'c' }], d: '3' },
-				],
-				{},
-				{ a: 3, b: [{ x: 'a', y: 'b', z: 'c' }], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [{ x: 'a' }] },
-					{ a: 2, b: [{ y: 'b' }], c: '2' },
-					{ a: 3, b: [{ z: 'c' }], d: '3' },
-				],
-				{ concatArrays: true },
-				{ a: 3, b: [{ x: 'a' }, { y: 'b' }, { z: 'c' }], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [{ x: 'a' }] },
-					{ a: 2, b: [{ y: 'b' }], c: '2' },
-					{ a: 3, b: [{ z: 'c' }], d: '3' },
-				],
-				{ overwriteArrays: true },
-				{ a: 3, b: [{ z: 'c' }], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [{ x: 'a' }, { w: 'd' }] },
-					{ a: 2, b: [{ y: 'b' }], c: '2' },
-					{ a: 3, b: [{ z: 'c' }], d: '3' },
-				],
-				{},
-				{ a: 3, b: [{ z: 'c' }, { w: 'd' }], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [{ x: 'a' }, { w: 'd' }] },
-					{ a: 2, b: [{ y: 'b' }], c: '2' },
-					{ a: 3, b: [{ z: 'c' }], d: '3' },
-				],
-				{ concatArrays: true },
-				{ a: 3, b: [{ x: 'a' }, { w: 'd' }, { y: 'b' }, { z: 'c' }], c: '2', d: '3' },
-			],
-			[
-				[
-					{ a: 1, b: [{ x: 'a' }, { w: 'd' }] },
-					{ a: 2, b: [{ y: 'b' }], c: '2' },
-					{ a: 3, b: [{ z: 'c' }], d: '3' },
-				],
-				{ overwriteArrays: true },
-				{ a: 3, b: [{ z: 'c' }], c: '2', d: '3' },
-			],
-		])('case %#. input %j, options %j should return %j', (sources, options, expected) => {
-			expect(mergeDeep([...sources], options)).toEqual(expected);
 		});
 	});
 
@@ -257,10 +83,31 @@ describe('Utils', () => {
 							type: 'array',
 							key: 'people',
 							value: [
-								{ type: 'string', value: 'Joe', key: '0', path: '["people"][0]' },
-								{ type: 'string', value: 'John', key: '1', path: '["people"][1]' },
+								{ type: 'string', value: 'Joe', key: '0', path: '.people[0]' },
+								{ type: 'string', value: 'John', key: '1', path: '.people[1]' },
 							],
-							path: '["people"]',
+							path: '.people',
+						},
+					],
+					path: '',
+				},
+			],
+			[
+				{ 'with space': [], 'with.dot': 'test' },
+				{
+					type: 'object',
+					value: [
+						{
+							type: 'array',
+							key: 'with space',
+							value: [],
+							path: "['with space']",
+						},
+						{
+							type: 'string',
+							key: 'with.dot',
+							value: 'test',
+							path: "['with.dot']",
 						},
 					],
 					path: '',
@@ -278,8 +125,8 @@ describe('Utils', () => {
 							type: 'object',
 							key: '0',
 							value: [
-								{ type: 'string', key: 'name', value: 'John', path: '[0]["name"]' },
-								{ type: 'number', key: 'age', value: '22', path: '[0]["age"]' },
+								{ type: 'string', key: 'name', value: 'John', path: '[0].name' },
+								{ type: 'number', key: 'age', value: '22', path: '[0].age' },
 							],
 							path: '[0]',
 						},
@@ -287,8 +134,8 @@ describe('Utils', () => {
 							type: 'object',
 							key: '1',
 							value: [
-								{ type: 'string', key: 'name', value: 'Joe', path: '[1]["name"]' },
-								{ type: 'number', key: 'age', value: '33', path: '[1]["age"]' },
+								{ type: 'string', key: 'name', value: 'Joe', path: '[1].name' },
+								{ type: 'number', key: 'age', value: '33', path: '[1].age' },
 							],
 							path: '[1]',
 						},
@@ -308,16 +155,16 @@ describe('Utils', () => {
 							type: 'object',
 							key: '0',
 							value: [
-								{ type: 'string', key: 'name', value: 'John', path: '[0]["name"]' },
-								{ type: 'number', key: 'age', value: '22', path: '[0]["age"]' },
+								{ type: 'string', key: 'name', value: 'John', path: '[0].name' },
+								{ type: 'number', key: 'age', value: '22', path: '[0].age' },
 								{
 									type: 'array',
 									key: 'hobbies',
 									value: [
-										{ type: 'string', key: '0', value: 'surfing', path: '[0]["hobbies"][0]' },
-										{ type: 'string', key: '1', value: 'traveling', path: '[0]["hobbies"][1]' },
+										{ type: 'string', key: '0', value: 'surfing', path: '[0].hobbies[0]' },
+										{ type: 'string', key: '1', value: 'traveling', path: '[0].hobbies[1]' },
 									],
-									path: '[0]["hobbies"]',
+									path: '[0].hobbies',
 								},
 							],
 							path: '[0]',
@@ -326,16 +173,16 @@ describe('Utils', () => {
 							type: 'object',
 							key: '1',
 							value: [
-								{ type: 'string', key: 'name', value: 'Joe', path: '[1]["name"]' },
-								{ type: 'number', key: 'age', value: '33', path: '[1]["age"]' },
+								{ type: 'string', key: 'name', value: 'Joe', path: '[1].name' },
+								{ type: 'number', key: 'age', value: '33', path: '[1].age' },
 								{
 									type: 'array',
 									key: 'hobbies',
 									value: [
-										{ type: 'string', key: '0', value: 'skateboarding', path: '[1]["hobbies"][0]' },
-										{ type: 'string', key: '1', value: 'gaming', path: '[1]["hobbies"][1]' },
+										{ type: 'string', key: '0', value: 'skateboarding', path: '[1].hobbies[0]' },
+										{ type: 'string', key: '1', value: 'gaming', path: '[1].hobbies[1]' },
 									],
-									path: '[1]["hobbies"]',
+									path: '[1].hobbies',
 								},
 							],
 							path: '[1]',
@@ -381,8 +228,8 @@ describe('Utils', () => {
 									type: 'object',
 									key: '0',
 									value: [
-										{ type: 'string', key: 'name', value: 'John', path: '[0][0]["name"]' },
-										{ type: 'number', key: 'age', value: '22', path: '[0][0]["age"]' },
+										{ type: 'string', key: 'name', value: 'John', path: '[0][0].name' },
+										{ type: 'number', key: 'age', value: '22', path: '[0][0].age' },
 									],
 									path: '[0][0]',
 								},
@@ -390,8 +237,8 @@ describe('Utils', () => {
 									type: 'object',
 									key: '1',
 									value: [
-										{ type: 'string', key: 'name', value: 'Joe', path: '[0][1]["name"]' },
-										{ type: 'number', key: 'age', value: '33', path: '[0][1]["age"]' },
+										{ type: 'string', key: 'name', value: 'Joe', path: '[0][1].name' },
+										{ type: 'number', key: 'age', value: '33', path: '[0][1].age' },
 									],
 									path: '[0][1]',
 								},
@@ -430,16 +277,16 @@ describe('Utils', () => {
 													type: 'string',
 													key: '0',
 													value: '2022-11-22T00:00:00.000Z',
-													path: '[0]["dates"][0][0]',
+													path: '[0].dates[0][0]',
 												},
 												{
 													type: 'string',
 													key: '1',
 													value: '2022-11-23T00:00:00.000Z',
-													path: '[0]["dates"][0][1]',
+													path: '[0].dates[0][1]',
 												},
 											],
-											path: '[0]["dates"][0]',
+											path: '[0].dates[0]',
 										},
 										{
 											type: 'array',
@@ -449,19 +296,19 @@ describe('Utils', () => {
 													type: 'string',
 													key: '0',
 													value: '2022-12-22T00:00:00.000Z',
-													path: '[0]["dates"][1][0]',
+													path: '[0].dates[1][0]',
 												},
 												{
 													type: 'string',
 													key: '1',
 													value: '2022-12-23T00:00:00.000Z',
-													path: '[0]["dates"][1][1]',
+													path: '[0].dates[1][1]',
 												},
 											],
-											path: '[0]["dates"][1]',
+											path: '[0].dates[1]',
 										},
 									],
-									path: '[0]["dates"]',
+									path: '[0].dates',
 								},
 							],
 							path: '[0]',

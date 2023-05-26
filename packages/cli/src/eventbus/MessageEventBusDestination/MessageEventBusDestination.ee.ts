@@ -1,20 +1,19 @@
 import { v4 as uuid } from 'uuid';
-import {
-	INodeCredentials,
-	LoggerProxy,
-	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationTypeNames,
-} from 'n8n-workflow';
+import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import * as Db from '@/Db';
-import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
-import { EventMessageTypes } from '../EventMessageClasses';
-import { eventBus } from '..';
+import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
+import type { EventMessageTypes } from '../EventMessageClasses';
 import type { DeleteResult, InsertResult } from 'typeorm';
+import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static abstract deserialize(): MessageEventBusDestination | null;
 	readonly id: string;
+
+	readonly eventBusInstance: MessageEventBus;
 
 	__type: MessageEventBusDestinationTypeNames;
 
@@ -28,7 +27,8 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	anonymizeAuditMessages: boolean;
 
-	constructor(options: MessageEventBusDestinationOptions) {
+	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationOptions) {
+		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
 		this.label = options.label ?? 'Log Destination';
@@ -41,15 +41,21 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	startListening() {
 		if (this.enabled) {
-			eventBus.on(this.getId(), async (msg: EventMessageTypes) => {
-				await this.receiveFromEventBus(msg);
-			});
+			this.eventBusInstance.on(
+				this.getId(),
+				async (
+					msg: EventMessageTypes,
+					confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void,
+				) => {
+					await this.receiveFromEventBus({ msg, confirmCallback });
+				},
+			);
 			LoggerProxy.debug(`${this.id} listener started`);
 		}
 	}
 
 	stopListening() {
-		eventBus.removeAllListeners(this.getId());
+		this.eventBusInstance.removeAllListeners(this.getId());
 	}
 
 	enable() {
@@ -85,7 +91,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			skipUpdateIfNoValuesChanged: true,
 			conflictPaths: ['id'],
 		});
-		Db.collections.EventDestinations.createQueryBuilder().insert().into('something').onConflict('');
 		return dbResult;
 	}
 
@@ -109,7 +114,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		};
 	}
 
-	abstract receiveFromEventBus(msg: AbstractEventMessage): Promise<boolean>;
+	abstract receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean>;
 
 	toString() {
 		return JSON.stringify(this.serialize());

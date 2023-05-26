@@ -24,13 +24,13 @@
 
 <script lang="ts">
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'executions-landing-page',
 	components: {
 		ExecutionsInfoAccordion,
@@ -48,7 +48,7 @@ export default Vue.extend({
 		onSetupFirstStep(event: MouseEvent): void {
 			this.uiStore.addFirstStepOnLoad = true;
 			const workflowRoute = this.getWorkflowRoute();
-			this.$router.push(workflowRoute);
+			void this.$router.push(workflowRoute);
 		},
 		getWorkflowRoute(): { name: string; params: {} } {
 			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;

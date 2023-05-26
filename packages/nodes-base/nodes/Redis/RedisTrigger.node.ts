@@ -1,12 +1,11 @@
-import { ITriggerFunctions } from 'n8n-core';
-
-import {
+import type {
+	ITriggerFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import redis from 'redis';
 

@@ -1,4 +1,4 @@
-import { AllEntities, Entity } from 'n8n-workflow';
+import type { AllEntities, Entity } from 'n8n-workflow';
 
 type GoogleAnalyticsMap = {
 	userActivity: 'search';

@@ -1,9 +1,7 @@
-import { set } from 'lodash';
+import set from 'lodash.set';
 
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
+import type {
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -11,15 +9,10 @@ import {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
-import {
-	BinaryToTextEncoding,
-	createHash,
-	createHmac,
-	createSign,
-	getHashes,
-	randomBytes,
-} from 'crypto';
+import type { BinaryToTextEncoding } from 'crypto';
+import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
 
 import { v4 as uuid } from 'uuid';
 
@@ -405,7 +398,7 @@ export class Crypto implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the hashes to display them to user so that he can
+			// Get all the hashes to display them to user so that they can
 			// select them easily
 			async getHashes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

@@ -1,7 +1,14 @@
-import { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 import { updateDisplayOptions } from '../../../utils/utilities';
 
@@ -95,7 +102,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
+					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src="cid:image_1"&gt;',
 			},
 			{
 				displayName: 'CC Email',
@@ -218,12 +225,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					});
 
 				for (const propertyName of attachmentProperties) {
-					if (!item.binary.hasOwnProperty(propertyName)) {
-						continue;
-					}
+					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 					attachments.push({
-						filename: item.binary[propertyName].fileName || 'unknown',
+						filename: binaryData.fileName || 'unknown',
 						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
+						cid: propertyName,
 					});
 				}
 
@@ -252,7 +258,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				});
 				continue;
 			}
-			throw error;
+			delete error.cert;
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 

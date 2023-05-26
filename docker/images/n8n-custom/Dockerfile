@@ -3,18 +3,19 @@ ARG NODE_VERSION=16
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
 
-COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
-COPY scripts ./scripts
-COPY packages ./packages
+COPY --chown=node:node turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml jest.config.js tsconfig.json ./
+COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node packages ./packages
+COPY --chown=node:node patches ./patches
 
 RUN apk add --update libc6-compat jq
 RUN corepack enable && corepack prepare --activate
-RUN chown -R node:node .
 USER node
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
+RUN jq 'del(.pnpm.patchedDependencies)' package.json > package.json.tmp; mv package.json.tmp package.json
 RUN jq '{name: .name, version: .version}' packages/editor-ui/package.json > editor-ui.tmp; mv editor-ui.tmp packages/editor-ui/package.json
 RUN jq '{name: .name, version: .version}' packages/design-system/package.json > design-system.tmp; mv design-system.tmp packages/design-system/package.json
 RUN NODE_ENV=production pnpm install --prod --no-optional

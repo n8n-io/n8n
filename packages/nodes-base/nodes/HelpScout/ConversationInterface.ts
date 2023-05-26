@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export interface IConversation {
 	assignTo?: number;
@@ -11,6 +11,7 @@ export interface IConversation {
 	mailboxId?: number;
 	status?: string;
 	subject?: string;
+	tag?: IDataObject[];
 	tags?: IDataObject[];
 	threads?: IDataObject[];
 	type?: string;

@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -10,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
-import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
@@ -32,12 +31,6 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		{
-			displayName: 'Version 1',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-		},
 		// TODO: Add choice for text as text or html  (maybe also from name)
 		{
 			displayName: 'From Email',
@@ -211,11 +204,9 @@ export class EmailSendV1 implements INodeType {
 						});
 
 					for (const propertyName of attachmentProperties) {
-						if (!item.binary.hasOwnProperty(propertyName)) {
-							continue;
-						}
+						const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
 						attachments.push({
-							filename: item.binary[propertyName].fileName || 'unknown',
+							filename: binaryData.fileName || 'unknown',
 							content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 						});
 					}

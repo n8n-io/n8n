@@ -1,14 +1,13 @@
-import { IPollFunctions } from 'n8n-core';
-
-import {
+import type {
+	IPollFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { extractId, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -403,7 +402,7 @@ export class GoogleDriveTrigger implements INodeType {
 			folderSearch,
 		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

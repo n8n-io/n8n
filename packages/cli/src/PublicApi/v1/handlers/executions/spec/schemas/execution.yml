@@ -1,8 +1,8 @@
 type: object
 properties:
   id:
-    type: string
-    example: '1000'
+    type: number
+    example: 1000
   data:
     type: object
   finished:
@@ -12,10 +12,10 @@ properties:
     type: string
     enum: ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook']
   retryOf:
-    type: string
+    type: number
     nullable: true
   retrySuccessId:
-    type: string
+    type: number
     nullable: true
     example: '2'
   startedAt:
@@ -25,7 +25,7 @@ properties:
     type: string
     format: date-time
   workflowId:
-    type: string
+    type: number
     example: '1000'
   waitTill:
     type: string

@@ -1,10 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	generateReturning,
@@ -13,7 +13,7 @@ import {
 	pgInsert,
 	pgQuery,
 	pgUpdate,
-} from '../Postgres/Postgres.node.functions';
+} from '../Postgres/v1/genericFunctions';
 
 import pgPromise from 'pg-promise';
 
@@ -73,6 +73,10 @@ export class CrateDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				typeOptions: {
+					editor: 'sqlEditor',
+					sqlDialect: 'postgres',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],

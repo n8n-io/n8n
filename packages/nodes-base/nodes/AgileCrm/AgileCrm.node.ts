@@ -1,13 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
@@ -15,7 +13,7 @@ import { companyFields, companyOperations } from './CompanyDescription';
 
 import { dealFields, dealOperations } from './DealDescription';
 
-import { IContact, IContactUpdate } from './ContactInterface';
+import type { IContact, IContactUpdate } from './ContactInterface';
 
 import {
 	agileCrmApiRequest,
@@ -26,9 +24,9 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import { IDeal } from './DealInterface';
+import type { IDeal } from './DealInterface';
 
-import { IFilter, ISearchConditions } from './FilterInterface';
+import type { IFilter, ISearchConditions } from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -192,6 +190,7 @@ export class AgileCrm implements INodeType {
 					}
 
 					if (simple) {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						responseData = simplifyResponse(responseData);
 					}
 				} else if (operation === 'create') {

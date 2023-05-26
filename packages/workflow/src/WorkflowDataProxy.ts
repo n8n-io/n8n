@@ -10,7 +10,7 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-import {
+import type {
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
@@ -24,11 +24,12 @@ import {
 	INodeParameterResourceLocator,
 	NodeParameterValueType,
 	WorkflowExecuteMode,
+	ProxyInput,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
-import { deepCopy } from './utils';
+import { augmentArray, augmentObject } from './AugmentObject';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -96,11 +97,13 @@ export class WorkflowDataProxy {
 		this.workflow = workflow;
 
 		this.runExecutionData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(runExecutionData)
+			? runExecutionData !== null
+				? augmentObject(runExecutionData)
+				: null
 			: runExecutionData;
 
 		this.connectionInputData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(connectionInputData)
+			? augmentArray(connectionInputData)
 			: connectionInputData;
 
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -109,7 +112,7 @@ export class WorkflowDataProxy {
 		this.siblingParameters = siblingParameters;
 		this.mode = mode;
 		this.defaultTimezone = defaultTimezone;
-		this.timezone = (this.workflow.settings.timezone as string) || this.defaultTimezone;
+		this.timezone = workflow.settings?.timezone ?? defaultTimezone;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
 		this.executeData = executeData;
@@ -126,7 +129,7 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 1) {
+		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 0) {
 			return {}; // incoming connection has pinned data, so stub context object
 		}
 
@@ -158,6 +161,7 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					// eslint-disable-next-line no-param-reassign
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
@@ -179,6 +183,7 @@ export class WorkflowDataProxy {
 				},
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					name = name.toString();
 					return that.selfData[name];
 				},
@@ -207,6 +212,7 @@ export class WorkflowDataProxy {
 				};
 			},
 			get(target, name, receiver) {
+				if (name === 'isProxy') return true;
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -379,6 +385,7 @@ export class WorkflowDataProxy {
 			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					name = name.toString();
 
 					if (!node) {
@@ -455,10 +462,16 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					if (
-						typeof process === 'undefined' || // env vars are inaccessible to frontend
-						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
-					) {
+					if (name === 'isProxy') return true;
+
+					if (typeof process === 'undefined') {
+						throw new ExpressionError('not accessible via UI, please run node', {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
+					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
 						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
@@ -490,6 +503,8 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (!that.executeData?.source) {
 						// Means the previous node did not get executed yet
 						return undefined;
@@ -535,6 +550,8 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (allowedValues.includes(name.toString())) {
 						const value = that.workflow[name as keyof typeof target];
 
@@ -567,6 +584,8 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					const nodeName = name.toString();
 
 					if (that.workflow.getNode(nodeName) === null) {
@@ -607,6 +626,14 @@ export class WorkflowDataProxy {
 
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
+			if (typeof data !== 'object' || typeof query !== 'string') {
+				throw new ExpressionError('expected two arguments (Object, string) for this function', {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+					clientOnly: true,
+				});
+			}
+
 			if (!Array.isArray(data) && typeof data === 'object') {
 				return jmespath.search({ ...data }, query);
 			}
@@ -693,18 +720,11 @@ export class WorkflowDataProxy {
 				};
 			}
 
-			const previousNodeHasPinData =
-				sourceData && this.workflow.getPinDataOfNode(sourceData.previousNode) !== undefined;
-
 			let currentPairedItem = pairedItem;
 
 			let nodeBeforeLast: string | undefined;
 
-			while (
-				!previousNodeHasPinData &&
-				sourceData !== null &&
-				destinationNodeName !== sourceData.previousNode
-			) {
+			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
 				taskData =
 					that.runExecutionData!.resultData.runData[sourceData.previousNode][
 						sourceData?.previousNodeRun || 0
@@ -939,6 +959,8 @@ export class WorkflowDataProxy {
 							];
 						},
 						get(target, property, receiver) {
+							if (property === 'isProxy') return true;
+
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
@@ -1046,88 +1068,87 @@ export class WorkflowDataProxy {
 				);
 			},
 
-			$input: new Proxy(
-				{},
-				{
-					ownKeys(target) {
-						return ['all', 'context', 'first', 'item', 'last', 'params'];
-					},
-					getOwnPropertyDescriptor(k) {
-						return {
-							enumerable: true,
-							configurable: true,
-						};
-					},
-					get(target, property, receiver) {
-						if (property === 'item') {
-							return that.connectionInputData[that.itemIndex];
-						}
-						if (property === 'first') {
-							return (...args: unknown[]) => {
-								if (args.length) {
-									throw createExpressionError('$input.first() should have no arguments');
-								}
-
-								const result = that.connectionInputData;
-								if (result[0]) {
-									return result[0];
-								}
-								return undefined;
-							};
-						}
-						if (property === 'last') {
-							return (...args: unknown[]) => {
-								if (args.length) {
-									throw createExpressionError('$input.last() should have no arguments');
-								}
-
-								const result = that.connectionInputData;
-								if (result.length && result[result.length - 1]) {
-									return result[result.length - 1];
-								}
-								return undefined;
-							};
-						}
-						if (property === 'all') {
-							return () => {
-								const result = that.connectionInputData;
-								if (result.length) {
-									return result;
-								}
-								return [];
-							};
-						}
-
-						if (['context', 'params'].includes(property as string)) {
-							// For the following properties we need the source data so fail in case it is missing
-							// for some reason (even though that should actually never happen)
-							if (!that.executeData?.source) {
-								throw createExpressionError('Can’t get data for expression', {
-									messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-									functionOverrides: {
-										message: 'Can’t get data',
-									},
-									description:
-										'Apologies, this is an internal error. See details for more information',
-									causeDetailed: 'Missing sourceData (probably an internal error)',
-									runIndex: that.runIndex,
-								});
-							}
-
-							const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
-
-							if (property === 'context') {
-								return that.nodeContextGetter(sourceData.previousNode);
-							}
-							if (property === 'params') {
-								return that.workflow.getNode(sourceData.previousNode)?.parameters;
-							}
-						}
-
-						return Reflect.get(target, property, receiver);
-					},
+			$input: new Proxy({} as ProxyInput, {
+				ownKeys(target) {
+					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
-			),
+				getOwnPropertyDescriptor(k) {
+					return {
+						enumerable: true,
+						configurable: true,
+					};
+				},
+				get(target, property, receiver) {
+					if (property === 'isProxy') return true;
+
+					if (property === 'item') {
+						return that.connectionInputData[that.itemIndex];
+					}
+					if (property === 'first') {
+						return (...args: unknown[]) => {
+							if (args.length) {
+								throw createExpressionError('$input.first() should have no arguments');
+							}
+
+							const result = that.connectionInputData;
+							if (result[0]) {
+								return result[0];
+							}
+							return undefined;
+						};
+					}
+					if (property === 'last') {
+						return (...args: unknown[]) => {
+							if (args.length) {
+								throw createExpressionError('$input.last() should have no arguments');
+							}
+
+							const result = that.connectionInputData;
+							if (result.length && result[result.length - 1]) {
+								return result[result.length - 1];
+							}
+							return undefined;
+						};
+					}
+					if (property === 'all') {
+						return () => {
+							const result = that.connectionInputData;
+							if (result.length) {
+								return result;
+							}
+							return [];
+						};
+					}
+
+					if (['context', 'params'].includes(property as string)) {
+						// For the following properties we need the source data so fail in case it is missing
+						// for some reason (even though that should actually never happen)
+						if (!that.executeData?.source) {
+							throw createExpressionError('Can’t get data for expression', {
+								messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+								functionOverrides: {
+									message: 'Can’t get data',
+								},
+								description:
+									'Apologies, this is an internal error. See details for more information',
+								causeDetailed: 'Missing sourceData (probably an internal error)',
+								runIndex: that.runIndex,
+							});
+						}
+
+						const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
+
+						if (property === 'context') {
+							return that.nodeContextGetter(sourceData.previousNode);
+						}
+						if (property === 'params') {
+							return that.workflow.getNode(sourceData.previousNode)?.parameters;
+						}
+					}
+
+					return Reflect.get(target, property, receiver);
+				},
+			}),
 
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
@@ -1214,6 +1235,8 @@ export class WorkflowDataProxy {
 
 		return new Proxy(base, {
 			get(target, name, receiver) {
+				if (name === 'isProxy') return true;
+
 				if (['$data', '$json'].includes(name as string)) {
 					return that.nodeDataGetter(that.activeNodeName, true)?.json;
 				}

@@ -1,32 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-/* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable @typescript-eslint/await-thenable */
-/* eslint-disable new-cap */
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-/* eslint-disable no-return-assign */
-/* eslint-disable no-param-reassign */
-/* eslint-disable consistent-return */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable id-denylist */
-/* eslint-disable no-console */
-/* eslint-disable global-require */
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-continue */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable import/no-dynamic-require */
-/* eslint-disable no-await-in-loop */
-
+import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
@@ -35,12 +19,14 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { FindManyOptions, In } from 'typeorm';
-import axios, { AxiosRequestConfig } from 'axios';
-import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-// IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
-// tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
-import { compare } from 'bcryptjs';
+import { engine as expressHandlebars } from 'express-handlebars';
+import type { ServeStaticOptions } from 'serve-static';
+import type { FindManyOptions } from 'typeorm';
+import { Not, In } from 'typeorm';
+import type { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 
 import {
 	BinaryDataManager,
@@ -48,9 +34,10 @@ import {
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
+	FileNotFoundError,
 } from 'n8n-core';
 
-import {
+import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
@@ -58,43 +45,35 @@ import {
 	INodePropertyOptions,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	LoggerProxy,
-	jsonParse,
 	WorkflowExecuteMode,
-	INodeTypes,
 	ICredentialTypes,
-	INode,
-	IWorkflowBase,
-	IRun,
+	ExecutionStatus,
+	IExecutionsSummary,
+	IN8nUISettings,
 } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-import jwt from 'jsonwebtoken';
-import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
 import history from 'connect-history-api-fallback';
 
 import config from '@/config';
-import * as Queue from '@/Queue';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { getCredentialTranslationPath } from '@/TranslationHelpers';
+import { Queue } from '@/Queue';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
-import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
-	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	inDevelopment,
 	N8N_VERSION,
-	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
+	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -102,14 +81,23 @@ import type {
 	OAuthRequest,
 	WorkflowRequest,
 } from '@/requests';
-import { userManagementRouter } from '@/UserManagement';
-import { resolveJwt } from '@/UserManagement/auth/jwt';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	LdapController,
+	MeController,
+	NodesController,
+	NodeTypesController,
+	OwnerController,
+	PasswordResetController,
+	TagsController,
+	TranslationController,
+	UsersController,
+} from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
-import { nodeTypesController } from '@/api/nodeTypes.api';
-import { tagsController } from '@/api/tags.api';
 import { workflowStatsController } from '@/api/workflowStats.api';
-import { loadPublicApiVersions } from '@/PublicApi';
+import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -117,18 +105,16 @@ import {
 	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
+import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
-import {
-	DatabaseType,
+import type {
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IExecutionsSummary,
-	IN8nUISettings,
 } from '@/Interfaces';
-import * as ActiveExecutions from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
@@ -136,59 +122,81 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import * as GenericHelpers from '@/GenericHelpers';
-import { NodeTypes } from '@/NodeTypes';
-import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
-import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
+import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { eventBus } from '@/eventbus';
-import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { EventBusController } from '@/eventbus/eventBus.controller';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
-import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
-import { corsMiddleware } from './middlewares/cors';
+import { Push, setupPushServer, setupPushHandler } from '@/push';
+import { setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
-import { ldapController } from './Ldap/routes/ldap.controller.ee';
-import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
+import {
+	getLdapLoginLabel,
+	handleLdapInit,
+	isLdapEnabled,
+	isLdapLoginEnabled,
+} from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
+import { setupBasicAuth } from './middlewares/basicAuth';
+import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
+import { PostHogClient } from './posthog';
+import { eventBus } from './eventbus';
+import { Container } from 'typedi';
+import { InternalHooks } from './InternalHooks';
+import {
+	getStatusUsingPreviousExecutionStatusMethod,
+	isAdvancedExecutionFiltersEnabled,
+} from './executions/executionHelpers';
+import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
+import { SamlController } from './sso/saml/routes/saml.controller.ee';
+import { SamlService } from './sso/saml/saml.service.ee';
+import { variablesController } from './environments/variables/variables.controller';
+import { LdapManager } from './Ldap/LdapManager.ee';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from './sso/ssoHelpers';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 
 const exec = promisify(callbackExec);
 
-class Server extends AbstractServer {
+export class Server extends AbstractServer {
 	endpointPresetCredentials: string;
 
-	waitTracker: WaitTrackerClass;
+	waitTracker: WaitTracker;
 
-	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
+	activeExecutionsInstance: ActiveExecutions;
 
 	frontendSettings: IN8nUISettings;
 
 	presetCredentialsLoaded: boolean;
 
-	nodeTypes: INodeTypes;
+	loadNodesAndCredentials: LoadNodesAndCredentials;
+
+	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
+
+	postHog: PostHogClient;
+
+	push: Push;
 
 	constructor() {
 		super();
 
-		this.nodeTypes = NodeTypes();
-		this.credentialTypes = CredentialTypes();
-
-		this.activeExecutionsInstance = ActiveExecutions.getInstance();
-		this.waitTracker = WaitTracker();
-
-		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
-
-		if (process.env.E2E_TESTS === 'true') {
-			this.app.use('/e2e', require('./api/e2e.api').e2eController);
-		}
+		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.set('view engine', 'handlebars');
+		this.app.set('views', TEMPLATES_DIR);
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -234,8 +242,20 @@ class Server extends AbstractServer {
 			},
 			instanceId: '',
 			telemetry: telemetrySettings,
+			posthog: {
+				enabled: config.getEnv('diagnostics.enabled'),
+				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				autocapture: false,
+				disableSessionRecording: config.getEnv(
+					'diagnostics.config.posthog.disableSessionRecording',
+				),
+				debug: config.getEnv('logs.level') === 'debug',
+			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
+			userActivationSurveyEnabled:
+				config.getEnv('userActivationSurvey.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				enabled: isUserManagementEnabled(),
@@ -244,13 +264,20 @@ class Server extends AbstractServer {
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
+				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
-			ldap: {
-				loginEnabled: false,
-				loginLabel: '',
+			sso: {
+				saml: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+				ldap: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
 			},
 			publicApi: {
-				enabled: !config.getEnv('publicApi.disabled'),
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {
@@ -266,25 +293,115 @@ class Server extends AbstractServer {
 			},
 			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
 			executionMode: config.getEnv('executions.mode'),
+			pushBackend: config.getEnv('push.backend'),
 			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
 			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
-				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
 				sharing: false,
 				ldap: false,
-				logStreaming: config.getEnv('enterprise.features.logStreaming'),
+				saml: false,
+				logStreaming: false,
+				advancedExecutionFilters: false,
+				variables: false,
+				versionControl: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 			},
+			variables: {
+				limit: 0,
+			},
 		};
+	}
+
+	async start() {
+		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		this.credentialTypes = Container.get(CredentialTypes);
+		this.nodeTypes = Container.get(NodeTypes);
+
+		this.activeExecutionsInstance = Container.get(ActiveExecutions);
+		this.waitTracker = Container.get(WaitTracker);
+		this.postHog = Container.get(PostHogClient);
+
+		this.presetCredentialsLoaded = false;
+		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		this.push = Container.get(Push);
+
+		if (process.env.E2E_TESTS === 'true') {
+			this.app.use('/e2e', require('./api/e2e.api').e2eController);
+		}
+
+		await super.start();
+
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+		const diagnosticInfo: IDiagnosticInfo = {
+			basicAuthActive: config.getEnv('security.basicAuth.active'),
+			databaseType: config.getEnv('database.type'),
+			disableProductionWebhooksOnMainProcess: config.getEnv(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
+			versionCli: N8N_VERSION,
+			systemInfo: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			executionVariables: {
+				executions_process: config.getEnv('executions.process'),
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
+			},
+			deploymentType: config.getEnv('deployment.type'),
+			binaryDataMode: binaryDataConfig.mode,
+			n8n_multi_user_allowed: isUserManagementEnabled(),
+			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			ldap_allowed: isLdapCurrentAuthenticationMethod(),
+			saml_enabled: isSamlCurrentAuthenticationMethod(),
+		};
+
+		// Set up event handling
+		initEvents();
+
+		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+		}
+
+		void Db.collections.Workflow.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		}).then(async (workflow) =>
+			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
+		);
 	}
 
 	/**
@@ -294,10 +411,12 @@ class Server extends AbstractServer {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			enabled: isUserManagementEnabled(),
+			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.disabled') === false &&
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				config.getEnv('userManagement.skipInstanceOwnerSetup') === false &&
+				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
 		// refresh enterprise status
@@ -305,38 +424,96 @@ class Server extends AbstractServer {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
 			ldap: isLdapEnabled(),
+			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			versionControl: isVersionControlLicensed(),
 		});
 
 		if (isLdapEnabled()) {
-			Object.assign(this.frontendSettings.ldap, {
+			Object.assign(this.frontendSettings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
 				loginEnabled: isLdapLoginEnabled(),
 			});
 		}
 
+		if (isSamlLicensed()) {
+			Object.assign(this.frontendSettings.sso.saml, {
+				loginLabel: getSamlLoginLabel(),
+				loginEnabled: isSamlLoginEnabled(),
+			});
+		}
+
+		if (isVariablesEnabled()) {
+			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
+
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
 		}
-
 		return this.frontendSettings;
 	}
 
-	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId);
+	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
+		const repositories = Db.collections;
+		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
 
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			try {
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e);
-			}
+		const logger = LoggerProxy;
+		const internalHooks = Container.get(InternalHooks);
+		const mailer = Container.get(UserManagementMailer);
+		const postHog = this.postHog;
+		const samlService = Container.get(SamlService);
+		const versionControlService = Container.get(VersionControlService);
+
+		const controllers: object[] = [
+			new EventBusController(),
+			new AuthController({ config, internalHooks, repositories, logger, postHog }),
+			new OwnerController({ config, internalHooks, repositories, logger }),
+			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new NodeTypesController({ config, nodeTypes }),
+			new PasswordResetController({
+				config,
+				externalHooks,
+				internalHooks,
+				mailer,
+				repositories,
+				logger,
+			}),
+			new TagsController({ config, repositories, externalHooks }),
+			new TranslationController(config, this.credentialTypes),
+			new UsersController({
+				config,
+				mailer,
+				externalHooks,
+				internalHooks,
+				repositories,
+				activeWorkflowRunner,
+				logger,
+				postHog,
+			}),
+			new SamlController(samlService),
+			new VersionControlController(versionControlService),
+		];
+
+		if (isLdapEnabled()) {
+			const { service, sync } = LdapManager.getInstance();
+			controllers.push(new LdapController(service, sync, internalHooks));
 		}
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			controllers.push(
+				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			);
+		}
+
+		controllers.forEach((controller) => registerController(app, config, controller));
 	}
 
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
+
+		this.instanceId = await UserSettings.getInstanceId();
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
@@ -344,202 +521,50 @@ class Server extends AbstractServer {
 
 		this.frontendSettings.versionCli = N8N_VERSION;
 
-		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
+		this.frontendSettings.instanceId = this.instanceId;
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
-		await this.initLicense();
+		await this.postHog.init(this.frontendSettings.instanceId);
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
-		const ignoredEndpoints = [
+		const ignoredEndpoints: Readonly<string[]> = [
 			'assets',
 			'healthz',
 			'metrics',
-			'icons',
-			'types',
 			'e2e',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-			config.getEnv('publicApi.disabled') ? publicApiEndpoint : '',
+			isApiEnabled() ? '' : publicApiEndpoint,
 			...excludeEndpoints.split(':'),
 		].filter((u) => !!u);
+
+		assert(
+			!ignoredEndpoints.includes(this.restEndpoint),
+			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
+		);
 
 		// eslint-disable-next-line no-useless-escape
 		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive = config.getEnv('security.basicAuth.active');
-		if (basicAuthActive) {
-			const basicAuthUser = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.user',
-			)) as string;
-			if (basicAuthUser === '') {
-				throw new Error('Basic auth is activated but no user got defined. Please set one!');
-			}
-
-			const basicAuthPassword = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.password',
-			)) as string;
-			if (basicAuthPassword === '') {
-				throw new Error('Basic auth is activated but no password got defined. Please set one!');
-			}
-
-			const basicAuthHashEnabled = (await GenericHelpers.getConfigValue(
-				'security.basicAuth.hash',
-			)) as boolean;
-
-			let validPassword: null | string = null;
-
-			this.app.use(
-				async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-					// Skip basic auth for a few listed endpoints or when instance owner has been setup
-					if (
-						authIgnoreRegex.exec(req.url) ||
-						config.getEnv('userManagement.isInstanceOwnerSetUp')
-					) {
-						return next();
-					}
-					const realm = 'n8n - Editor UI';
-					const basicAuthData = basicAuth(req);
-
-					if (basicAuthData === undefined) {
-						// Authorization data is missing
-						return ResponseHelper.basicAuthAuthorizationError(
-							res,
-							realm,
-							'Authorization is required!',
-						);
-					}
-
-					if (basicAuthData.name === basicAuthUser) {
-						if (basicAuthHashEnabled) {
-							if (
-								validPassword === null &&
-								(await compare(basicAuthData.pass, basicAuthPassword))
-							) {
-								// Password is valid so save for future requests
-								validPassword = basicAuthData.pass;
-							}
-
-							if (validPassword === basicAuthData.pass && validPassword !== null) {
-								// Provided hash is correct
-								return next();
-							}
-						} else if (basicAuthData.pass === basicAuthPassword) {
-							// Provided password is correct
-							return next();
-						}
-					}
-
-					// Provided authentication data is wrong
-					return ResponseHelper.basicAuthAuthorizationError(
-						res,
-						realm,
-						'Authorization data is wrong!',
-					);
-				},
-			);
+		if (config.getEnv('security.basicAuth.active')) {
+			setupBasicAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive = config.getEnv('security.jwtAuth.active');
-		if (jwtAuthActive) {
-			const jwtAuthHeader = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtHeader',
-			)) as string;
-			if (jwtAuthHeader === '') {
-				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
-			}
-			const jwksUri = (await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri')) as string;
-			if (jwksUri === '') {
-				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
-			}
-			const jwtHeaderValuePrefix = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtHeaderValuePrefix',
-			)) as string;
-			const jwtIssuer = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtIssuer',
-			)) as string;
-			const jwtNamespace = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtNamespace',
-			)) as string;
-			const jwtAllowedTenantKey = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtAllowedTenantKey',
-			)) as string;
-			const jwtAllowedTenant = (await GenericHelpers.getConfigValue(
-				'security.jwtAuth.jwtAllowedTenant',
-			)) as string;
-
-			// eslint-disable-next-line no-inner-declarations
-			function isTenantAllowed(decodedToken: object): boolean {
-				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') {
-					return true;
-				}
-
-				for (const [k, v] of Object.entries(decodedToken)) {
-					if (k === jwtNamespace) {
-						for (const [kn, kv] of Object.entries(v)) {
-							if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
-								return true;
-							}
-						}
-					}
-				}
-
-				return false;
-			}
-
-			// eslint-disable-next-line consistent-return
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (authIgnoreRegex.exec(req.url)) {
-					return next();
-				}
-
-				let token = req.header(jwtAuthHeader) as string;
-				if (token === undefined || token === '') {
-					return ResponseHelper.jwtAuthAuthorizationError(res, 'Missing token');
-				}
-				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
-					token = token.replace(`${jwtHeaderValuePrefix} `, '').trimLeft();
-				}
-
-				const jwkClient = jwks({ cache: true, jwksUri });
-				// eslint-disable-next-line @typescript-eslint/ban-types
-				function getKey(header: any, callback: Function) {
-					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
-						// eslint-disable-next-line @typescript-eslint/no-throw-literal
-						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
-
-						const signingKey = key.publicKey || key.rsaPublicKey;
-						callback(null, signingKey);
-					});
-				}
-
-				const jwtVerifyOptions: jwt.VerifyOptions = {
-					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false,
-				};
-
-				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-					} else if (!isTenantAllowed(decoded)) {
-						ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-					} else {
-						next();
-					}
-				});
-			});
+		if (config.getEnv('security.jwtAuth.active')) {
+			setupExternalJWTAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
 
-		if (!config.getEnv('publicApi.disabled')) {
+		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
@@ -547,27 +572,8 @@ class Server extends AbstractServer {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
-		// Get push connections
-		const push = Push.getInstance();
-		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
-			const { sessionId } = req.query;
-			if (sessionId === undefined) {
-				next(new Error('The query parameter "sessionId" is missing!'));
-				return;
-			}
-
-			if (isUserManagementEnabled()) {
-				try {
-					const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-					await resolveJwt(authCookie);
-				} catch (error) {
-					res.status(401).send('Unauthorized');
-					return;
-				}
-			}
-
-			push.add(sessionId as string, req, res);
-		});
+		const { restEndpoint, app } = this;
+		setupPushHandler(restEndpoint, app, isUserManagementEnabled());
 
 		// Make sure that Vue history mode works properly
 		this.app.use(
@@ -583,19 +589,15 @@ class Server extends AbstractServer {
 			}),
 		);
 
-		// ----------------------------------------
-		// User Management
-		// ----------------------------------------
-		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(Queue).init();
+		}
+
+		await handleLdapInit();
+
+		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
-		// ----------------------------------------
-		// Packages and nodes management
-		// ----------------------------------------
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
 
 		// ----------------------------------------
 		// Workflow
@@ -613,16 +615,36 @@ class Server extends AbstractServer {
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
-		// Tags
+		// SAML
 		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			await Container.get(SamlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
+		}
 
 		// ----------------------------------------
-		// LDAP
+		// Variables
 		// ----------------------------------------
-		if (isLdapEnabled()) {
-			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
+
+		this.app.use(`/${this.restEndpoint}/variables`, variablesController);
+
+		// ----------------------------------------
+		// Version Control
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			await Container.get(VersionControlService).init();
+		} catch (error) {
+			LoggerProxy.warn(`Version Control initialization failed: ${error.message}`);
 		}
+
+		// ----------------------------------------
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -734,54 +756,6 @@ class Server extends AbstractServer {
 			),
 		);
 
-		this.app.get(
-			`/${this.restEndpoint}/credential-translation`,
-			ResponseHelper.send(
-				async (
-					req: express.Request & { query: { credentialType: string } },
-					res: express.Response,
-				): Promise<object | null> => {
-					const translationPath = getCredentialTranslationPath({
-						locale: this.frontendSettings.defaultLocale,
-						credentialType: req.query.credentialType,
-					});
-
-					try {
-						return require(translationPath);
-					} catch (error) {
-						return null;
-					}
-				},
-			),
-		);
-
-		// Returns node information based on node names and versions
-		const headersPath = pathJoin(NODES_BASE_DIR, 'dist', 'nodes', 'headers');
-		this.app.get(
-			`/${this.restEndpoint}/node-translation-headers`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<object | void> => {
-					try {
-						await fsAccess(`${headersPath}.js`);
-					} catch (_) {
-						return; // no headers available
-					}
-
-					try {
-						return require(headersPath);
-					} catch (error) {
-						res.status(500).send('Failed to load headers file');
-					}
-				},
-			),
-		);
-
-		// ----------------------------------------
-		// Node-Types
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
-
 		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
@@ -790,8 +764,7 @@ class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-				return activeWorkflows.map(({ id }) => id);
+				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
 			}),
 		);
 
@@ -1109,7 +1082,7 @@ class Server extends AbstractServer {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const queue = await Queue.getInstance();
+						const queue = Container.get(Queue);
 						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
@@ -1126,10 +1099,11 @@ class Server extends AbstractServer {
 						if (!currentlyRunningExecutionIds.length) return [];
 
 						const findOptions: FindManyOptions<IExecutionFlattedDb> = {
-							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt'],
+							select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
 							order: { id: 'DESC' },
 							where: {
 								id: In(currentlyRunningExecutionIds),
+								status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
 							},
 						};
 
@@ -1138,9 +1112,15 @@ class Server extends AbstractServer {
 						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const { workflowId } = jsonParse<any>(req.query.filter);
+							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
 								Object.assign(findOptions.where!, { workflowId });
+							}
+							if (status) {
+								Object.assign(findOptions.where!, { status: In(status) });
+							}
+							if (finished) {
+								Object.assign(findOptions.where!, { finished });
 							}
 						} else {
 							Object.assign(findOptions.where!, { workflowId: In(sharedWorkflowIds) });
@@ -1151,12 +1131,17 @@ class Server extends AbstractServer {
 						if (!executions.length) return [];
 
 						return executions.map((execution) => {
+							if (!execution.status) {
+								execution.status = getStatusUsingPreviousExecutionStatusMethod(execution);
+							}
 							return {
 								id: execution.id,
 								workflowId: execution.workflowId,
 								mode: execution.mode,
 								retryOf: execution.retryOf !== null ? execution.retryOf : undefined,
 								startedAt: new Date(execution.startedAt),
+								status: execution.status ?? null,
+								stoppedAt: execution.stoppedAt ?? null,
 							} as IExecutionsSummary;
 						});
 					}
@@ -1183,6 +1168,7 @@ class Server extends AbstractServer {
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
+							status: data.status,
 						});
 					}
 
@@ -1235,10 +1221,11 @@ class Server extends AbstractServer {
 							startedAt: new Date(result.startedAt),
 							stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 							finished: result.finished,
+							status: result.status,
 						} as IExecutionsStopData;
 					}
 
-					const queue = await Queue.getInstance();
+					const queue = Container.get(Queue);
 					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
@@ -1261,6 +1248,7 @@ class Server extends AbstractServer {
 							? new Date(fullExecutionData.stoppedAt)
 							: undefined,
 						finished: fullExecutionData.finished,
+						status: fullExecutionData.status,
 					};
 
 					return returnData;
@@ -1279,6 +1267,7 @@ class Server extends AbstractServer {
 						startedAt: new Date(result.startedAt),
 						stoppedAt: result.stoppedAt ? new Date(result.stoppedAt) : undefined,
 						finished: result.finished,
+						status: result.status,
 					};
 				}
 
@@ -1305,20 +1294,30 @@ class Server extends AbstractServer {
 		// Download binary
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
+			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				const binaryDataManager = BinaryDataManager.getInstance();
-				const binaryPath = binaryDataManager.getBinaryPath(identifier);
-				const { mimeType, fileName, fileSize } = await binaryDataManager.getBinaryMetadata(
-					identifier,
-				);
-				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (req.query.mode === 'download' && fileName) {
-					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				try {
+					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					let { mode, fileName, mimeType } = req.query;
+					if (!fileName || !mimeType) {
+						try {
+							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							fileName = metadata.fileName;
+							mimeType = metadata.mimeType;
+							res.setHeader('Content-Length', metadata.fileSize);
+						} catch {}
+					}
+					if (mimeType) res.setHeader('Content-Type', mimeType);
+					if (mode === 'download') {
+						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+					}
+					res.sendFile(binaryPath);
+				} catch (error) {
+					if (error instanceof FileNotFoundError) res.writeHead(404).end();
+					else throw error;
 				}
-				res.setHeader('Content-Length', fileSize);
-				res.sendFile(binaryPath);
 			},
 		);
 
@@ -1331,9 +1330,7 @@ class Server extends AbstractServer {
 			`/${this.restEndpoint}/settings`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
-						req.headers.sessionid as string,
-					);
+					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
 
 					return this.getSettingsForFrontend();
 				},
@@ -1347,8 +1344,6 @@ class Server extends AbstractServer {
 		if (!eventBus.isInitialized) {
 			await eventBus.initialize();
 		}
-		// add Event Bus REST endpoints
-		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 		// ----------------------------------------
 		// Webhooks
@@ -1381,7 +1376,7 @@ class Server extends AbstractServer {
 
 						CredentialsOverwrites().setData(body);
 
-						await LoadNodesAndCredentials().generateTypesForFrontend();
+						await this.loadNodesAndCredentials.generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1394,7 +1389,44 @@ class Server extends AbstractServer {
 		}
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(EDITOR_UI_DIST_DIR));
+			const staticOptions: ServeStaticOptions = {
+				cacheControl: false,
+				setHeaders: (res: express.Response, path: string) => {
+					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const cacheControl = isIndex
+						? 'no-cache, no-store, must-revalidate'
+						: 'max-age=86400, immutable';
+					res.header('Cache-Control', cacheControl);
+				},
+			};
+
+			const serveIcons: express.RequestHandler = async (req, res) => {
+				let { scope, packageName } = req.params;
+				if (scope) packageName = `@${scope}/${packageName}`;
+				const loader = this.loadNodesAndCredentials.loaders[packageName];
+				if (loader) {
+					const pathPrefix = `/icons/${packageName}/`;
+					const filePath = pathResolve(
+						loader.directory,
+						req.originalUrl.substring(pathPrefix.length),
+					);
+					try {
+						await fsAccess(filePath);
+						return res.sendFile(filePath);
+					} catch {}
+				}
+
+				res.sendStatus(404);
+			};
+
+			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
+			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
+
+			this.app.use(
+				'/',
+				express.static(GENERATED_STATIC_DIR),
+				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+			);
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
@@ -1405,61 +1437,9 @@ class Server extends AbstractServer {
 			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
-}
 
-export async function start(): Promise<void> {
-	const app = new Server();
-	await app.start();
-
-	const cpus = os.cpus();
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	const diagnosticInfo: IDiagnosticInfo = {
-		basicAuthActive: config.getEnv('security.basicAuth.active'),
-		databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
-		disableProductionWebhooksOnMainProcess: config.getEnv(
-			'endpoints.disableProductionWebhooksOnMainProcess',
-		),
-		notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-		versionCli: N8N_VERSION,
-		systemInfo: {
-			os: {
-				type: os.type(),
-				version: os.version(),
-			},
-			memory: os.totalmem() / 1024,
-			cpus: {
-				count: cpus.length,
-				model: cpus[0].model,
-				speed: cpus[0].speed,
-			},
-		},
-		executionVariables: {
-			executions_process: config.getEnv('executions.process'),
-			executions_mode: config.getEnv('executions.mode'),
-			executions_timeout: config.getEnv('executions.timeout'),
-			executions_timeout_max: config.getEnv('executions.maxTimeout'),
-			executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-			executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-			executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-			executions_data_save_manual_executions: config.getEnv('executions.saveDataManualExecutions'),
-			executions_data_prune: config.getEnv('executions.pruneData'),
-			executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
-		},
-		deploymentType: config.getEnv('deployment.type'),
-		binaryDataMode: binaryDataConfig.mode,
-		n8n_multi_user_allowed: isUserManagementEnabled(),
-		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-		ldap_allowed: isLdapEnabled(),
-	};
-
-	// Set up event handling
-	initEvents();
-
-	const workflow = await Db.collections.Workflow.findOne({
-		select: ['createdAt'],
-		order: { createdAt: 'ASC' },
-		where: {},
-	});
-	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
+	protected setupPushServer(): void {
+		const { restEndpoint, server, app } = this;
+		setupPushServer(restEndpoint, server, app);
+	}
 }

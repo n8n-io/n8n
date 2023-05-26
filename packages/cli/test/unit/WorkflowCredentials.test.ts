@@ -12,16 +12,16 @@ async function mockFind({
 	type: string;
 }): Promise<IWorkflowCredentials | null> {
 	// Simple statement that maps a return value based on the `id` parameter
-	if (id === notFoundNode.credentials!!.test.id) {
+	if (id === notFoundNode.credentials!.test.id) {
 		return null;
 	}
 	// Otherwise just build some kind of credential object and return it
 	return {
 		[type]: {
 			[id]: {
-				id: id,
+				id,
 				name: type,
-				type: type,
+				type,
 				nodesAccess: [],
 				data: '',
 			},
@@ -48,21 +48,21 @@ describe('WorkflowCredentials', () => {
 		jest.clearAllMocks();
 	});
 
-	test('Should return an error if any node has no credential ID', () => {
-		const credentials = noIdNode.credentials!!.test;
+	test('Should return an error if any node has no credential ID', async () => {
+		const credentials = noIdNode.credentials!.test;
 		const expectedError = new Error(
 			`Credentials with name "${credentials.name}" for type "test" miss an ID.`,
 		);
-		expect(WorkflowCredentials([noIdNode])).rejects.toEqual(expectedError);
+		await expect(WorkflowCredentials([noIdNode])).rejects.toEqual(expectedError);
 		expect(mocked(Db.collections.Credentials.findOneBy)).toHaveBeenCalledTimes(0);
 	});
 
-	test('Should return an error if credentials cannot be found in the DB', () => {
-		const credentials = notFoundNode.credentials!!.test;
+	test('Should return an error if credentials cannot be found in the DB', async () => {
+		const credentials = notFoundNode.credentials!.test;
 		const expectedError = new Error(
 			`Could not find credentials for type "test" with ID "${credentials.id}".`,
 		);
-		expect(WorkflowCredentials([notFoundNode])).rejects.toEqual(expectedError);
+		await expect(WorkflowCredentials([notFoundNode])).rejects.toEqual(expectedError);
 		expect(mocked(Db.collections.Credentials.findOneBy)).toHaveBeenCalledTimes(1);
 	});
 

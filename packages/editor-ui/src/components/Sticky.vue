@@ -1,5 +1,12 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
+	<div
+		class="sticky-wrapper"
+		:id="nodeId"
+		:ref="data.name"
+		:style="stickyPosition"
+		:data-name="data.name"
+		data-test-id="sticky"
+	>
 		<div
 			:class="{
 				'sticky-default': true,
@@ -11,8 +18,6 @@
 			<div class="select-sticky-background" v-show="isSelected" />
 			<div
 				class="sticky-box"
-				:data-name="data.name"
-				:ref="data.name"
 				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -37,7 +42,12 @@
 			</div>
 
 			<div v-show="showActions" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					data-test-id="delete-sticky"
+					:title="$locale.baseText('node.deleteNode')"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
 			</div>
@@ -46,31 +56,32 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
-import mixins from 'vue-typed-mixins';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { getStyleTokenValue, isNumber, isString } from '@/utils';
-import {
+import { isNumber, isString } from '@/utils';
+import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
 	XYPosition,
 } from '@/Interface';
 
-import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
+export default defineComponent({
 	name: 'Sticky',
+	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
+
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -186,9 +197,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			if (this.node) {
-				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
-			}
 		},
 		onResize({ height, width, dX, dY }: { width: number; height: number; dX: number; dY: number }) {
 			if (!this.node) {
@@ -202,7 +210,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			this.__makeInstanceDraggable(this.data);
 		},
 		setParameters(params: { content?: string; height?: number; width?: number }) {
 			if (this.node) {
@@ -252,8 +259,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 
 	.sticky-default {
-		position: absolute;
-
 		.sticky-box {
 			width: 100%;
 			height: 100%;

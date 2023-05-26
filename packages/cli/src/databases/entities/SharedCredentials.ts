@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
-import type { CredentialsEntity } from './CredentialsEntity';
-import type { User } from './User';
-import type { Role } from './Role';
+import { CredentialsEntity } from './CredentialsEntity';
+import { User } from './User';
+import { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 

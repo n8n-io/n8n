@@ -90,12 +90,14 @@
 							:title="$locale.baseText('tagsTable.editTag')"
 							@click.stop="enableUpdate(scope.row)"
 							icon="pen"
+							data-test-id="edit-tag-button"
 						/>
 						<n8n-icon-button
 							v-if="scope.row.canDelete"
 							:title="$locale.baseText('tagsTable.deleteTag')"
 							@click.stop="enableDelete(scope.row)"
 							icon="trash"
+							data-test-id="delete-tag-button"
 						/>
 					</div>
 				</transition>
@@ -105,14 +107,19 @@
 </template>
 
 <script lang="ts">
+import type { Table as ElTable } from 'element-ui';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { ITagRow } from '@/Interface';
-import Vue from 'vue';
+import type { ITagRow } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { N8nInput } from 'n8n-design-system';
+
+type TableRef = InstanceType<typeof ElTable>;
+type N8nInputRef = InstanceType<typeof N8nInput>;
 
 const INPUT_TRANSITION_TIMEOUT = 350;
 const DELETE_TRANSITION_TIMEOUT = 100;
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TagsTable',
 	props: ['rows', 'isLoading', 'newName', 'isSaving'],
 	data() {
@@ -121,7 +128,7 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		if (this.$props.rows.length === 1 && this.$props.rows[0].create) {
+		if (this.rows.length === 1 && this.rows[0].create) {
 			this.focusOnInput();
 		}
 	},
@@ -171,26 +178,28 @@ export default Vue.extend({
 
 		focusOnInput(): void {
 			setTimeout(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const input = this.$refs.nameInput as any;
-				if (input && input.focus) {
-					input.focus();
+				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
+				if (inputRef && inputRef.focus) {
+					inputRef.focus();
 				}
 			}, INPUT_TRANSITION_TIMEOUT);
 		},
 
 		focusOnDelete(): void {
 			setTimeout(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const input = this.$refs.deleteHiddenInput as any;
-				if (input && input.focus) {
-					input.focus();
+				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
+				if (inputRef && inputRef.focus) {
+					inputRef.focus();
 				}
 			}, DELETE_TRANSITION_TIMEOUT);
 		},
 
 		focusOnCreate(): void {
-			((this.$refs.table as Vue).$refs.bodyWrapper as Element).scrollTop = 0;
+			const bodyWrapperRef = (this.$refs.table as TableRef).$refs.bodyWrapper as HTMLElement;
+			if (bodyWrapperRef) {
+				bodyWrapperRef.scrollTop = 0;
+			}
+
 			this.focusOnInput();
 		},
 	},

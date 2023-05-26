@@ -25,11 +25,12 @@
 </template>
 
 <script lang="ts">
-import { NodeParameterValueType } from 'n8n-workflow';
-import Vue, { PropType } from 'vue';
+import type { NodeParameterValueType } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'parameter-options',
 	props: {
 		parameter: {
@@ -39,7 +40,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		value: {
-			type: [Object, String, Number, Boolean] as PropType<NodeParameterValueType>,
+			type: [Object, String, Number, Boolean, Array] as PropType<NodeParameterValueType>,
 		},
 		showOptions: {
 			type: Boolean,
@@ -57,6 +58,9 @@ export default Vue.extend({
 		isValueExpression(): boolean {
 			return isValueExpression(this.parameter, this.value);
 		},
+		isHtmlEditor(): boolean {
+			return this.getArgument('editor') === 'htmlEditor';
+		},
 		shouldShowOptions(): boolean {
 			if (this.isReadOnly === true) {
 				return false;
@@ -66,11 +70,7 @@ export default Vue.extend({
 				return false;
 			}
 
-			if (
-				this.parameter.typeOptions &&
-				this.parameter.typeOptions.editor &&
-				this.parameter.typeOptions.editor === 'codeNodeEditor'
-			) {
+			if (this.parameter.typeOptions?.editor === 'codeNodeEditor') {
 				return false;
 			}
 
@@ -91,6 +91,15 @@ export default Vue.extend({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
+			if (this.isHtmlEditor && !this.isValueExpression) {
+				return [
+					{
+						label: this.$locale.baseText('parameterInput.formatHtml'),
+						value: 'formatHtml',
+					},
+				];
+			}
+
 			const actions = [
 				{
 					label: this.$locale.baseText('parameterInput.resetValue'),

@@ -1,5 +1,5 @@
 /* eslint-disable no-prototype-builtins */
-import { INode, IWorkflowCredentials } from 'n8n-workflow';
+import type { INode, IWorkflowCredentials } from 'n8n-workflow';
 import * as Db from '@/Db';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

@@ -1,10 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
-
-import { Connector, ElasticSecurityApiCredentials } from './types';
+import type { Connector, ElasticSecurityApiCredentials } from './types';
 
 export function tolerateTrailingSlash(baseUrl: string) {
 	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
@@ -54,7 +58,7 @@ export async function elasticSecurityApiRequest(
 			error.error.error = `${error.error.error}: ${error.error.message}`;
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -77,7 +81,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 	} while (returnData.length < responseData.total);
 
 	return returnData;

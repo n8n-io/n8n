@@ -1,4 +1,5 @@
-import { IDataObject, IExecuteFunctions, ITriggerFunctions, sleep } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 
 import * as amqplib from 'amqplib';
 

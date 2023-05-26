@@ -1,15 +1,16 @@
+import { ExpressionExtensionError } from './../ExpressionError';
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import {
-	DateTime,
-	DateTimeFormatOptions,
+import { DateTime } from 'luxon';
+import type {
 	DateTimeUnit,
-	Duration,
 	DurationLike,
 	DurationObjectUnits,
 	LocaleOptions,
+	WeekdayNumbers,
 } from 'luxon';
 import type { ExtensionMap } from './Extensions';
+import { convertToDateTime } from './utils';
 
 type DurationUnit =
 	| 'milliseconds'
@@ -23,6 +24,7 @@ type DurationUnit =
 	| 'years';
 type DatePart =
 	| 'day'
+	| 'week'
 	| 'month'
 	| 'year'
 	| 'hour'
@@ -88,11 +90,8 @@ function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
 	if (isDateTime(date)) {
 		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 	}
-	let datetime = DateTime.fromJSDate(date);
-	if (date.getTimezoneOffset() === 0) {
-		datetime = datetime.setZone('UTC');
-	}
-	return datetime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
+	const dateTime = DateTime.fromJSDate(date);
+	return dateTime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 }
 
 function endOfMonth(date: Date | DateTime): Date {
@@ -103,7 +102,7 @@ function endOfMonth(date: Date | DateTime): Date {
 }
 
 function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
-	const [part] = extraArgs;
+	let [part = 'week'] = extraArgs;
 	let date = inputDate;
 	if (isDateTime(date)) {
 		date = date.toJSDate();
@@ -117,6 +116,10 @@ function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Da
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
 	}
 
+	if (part === 'week') {
+		part = 'weekNumber';
+	}
+
 	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
 }
 
@@ -128,10 +131,22 @@ function format(date: Date | DateTime, extraArgs: unknown[]): string {
 	return DateTime.fromJSDate(date).toFormat(dateFormat, { ...localeOpts });
 }
 
-function isBetween(date: Date | DateTime, extraArgs: unknown[]): boolean {
-	const [first, second] = extraArgs as string[];
-	const firstDate = new Date(first);
-	const secondDate = new Date(second);
+function isBetween(
+	date: Date | DateTime,
+	extraArgs: Array<string | Date | DateTime>,
+): boolean | undefined {
+	if (extraArgs.length !== 2) {
+		throw new ExpressionExtensionError('isBetween(): expected exactly two args');
+	}
+
+	const [first, second] = extraArgs;
+
+	const firstDate = convertToDateTime(first);
+	const secondDate = convertToDateTime(second);
+
+	if (!firstDate || !secondDate) {
+		return;
+	}
 
 	if (firstDate > secondDate) {
 		return secondDate < date && date < firstDate;
@@ -157,15 +172,10 @@ function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	return dateInThePast <= thisDate && thisDate <= DateTime.now();
 }
 
+const WEEKEND_DAYS: WeekdayNumbers[] = [6, 7];
 function isWeekend(date: Date | DateTime): boolean {
-	enum DAYS {
-		saturday = 6,
-		sunday = 7,
-	}
-	if (isDateTime(date)) {
-		return [DAYS.saturday, DAYS.sunday].includes(date.weekday);
-	}
-	return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
+	const { weekday } = isDateTime(date) ? date : DateTime.fromJSDate(date);
+	return WEEKEND_DAYS.includes(weekday);
 }
 
 function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
@@ -194,73 +204,104 @@ function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
 	return DateTime.fromJSDate(date).plus(generateDurationObject(durationValue, unit)).toJSDate();
 }
 
-function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
-	const [locale, dateFormat = { timeStyle: 'short', dateStyle: 'short' }] = extraArgs as [
-		string | undefined,
-		DateTimeFormatOptions,
-	];
+endOfMonth.doc = {
+	name: 'endOfMonth',
+	returnType: 'Date',
+	description: 'Transforms a date to the last possible moment that lies within the month.',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-endOfMonth',
+};
 
-	if (isDateTime(date)) {
-		return date.toLocaleString(dateFormat, { locale });
-	}
-	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
-}
+isDst.doc = {
+	name: 'isDst',
+	returnType: 'boolean',
+	description: 'Checks if a Date is within Daylight Savings Time.',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isDst',
+};
 
-function toTimeFromNow(date: Date | DateTime): string {
-	let diffObj: Duration;
-	if (isDateTime(date)) {
-		diffObj = date.diffNow();
-	} else {
-		diffObj = DateTime.fromJSDate(date).diffNow();
-	}
+isWeekend.doc = {
+	name: 'isWeekend',
+	returnType: 'boolean',
+	description: 'Checks if the Date falls on a Saturday or Sunday.',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isWeekend',
+};
 
-	const as = (unit: DurationUnit) => {
-		return Math.round(Math.abs(diffObj.as(unit)));
-	};
+beginningOf.doc = {
+	name: 'beginningOf',
+	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
+	returnType: 'Date',
+	args: [{ name: 'unit?', type: 'DurationUnit' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-beginningOf',
+};
 
-	if (as('years')) {
-		return `${as('years')} years ago`;
-	}
-	if (as('months')) {
-		return `${as('months')} months ago`;
-	}
-	if (as('weeks')) {
-		return `${as('weeks')} weeks ago`;
-	}
-	if (as('days')) {
-		return `${as('days')} days ago`;
-	}
-	if (as('hours')) {
-		return `${as('hours')} hours ago`;
-	}
-	if (as('minutes')) {
-		return `${as('minutes')} minutes ago`;
-	}
-	if (as('seconds') && as('seconds') > 10) {
-		return `${as('seconds')} seconds ago`;
-	}
-	return 'just now';
-}
+extract.doc = {
+	name: 'extract',
+	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
+	returnType: 'number',
+	args: [{ name: 'datePart?', type: 'DurationUnit' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-extract',
+};
 
-function timeTo(date: Date | DateTime, extraArgs: unknown[]): Duration {
-	const [diff = new Date().toISOString(), unit = 'seconds'] = extraArgs as [string, DurationUnit];
-	const diffDate = new Date(diff);
-	if (isDateTime(date)) {
-		return date.diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
-	}
-	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
-}
+format.doc = {
+	name: 'format',
+	description: 'Formats a Date in the given structure.',
+	returnType: 'string',
+	args: [{ name: 'fmt', type: 'TimeFormat' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-format',
+};
 
-function toDate(date: Date | DateTime) {
-	if (isDateTime(date)) {
-		return date.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-	}
-	let datetime = DateTime.fromJSDate(date);
-	if (date.getTimezoneOffset() === 0) {
-		datetime = datetime.setZone('UTC');
-	}
-	return datetime.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-}
+isBetween.doc = {
+	name: 'isBetween',
+	description: 'Checks if a Date is between two given dates.',
+	returnType: 'boolean',
+	args: [
+		{ name: 'date1', type: 'Date|string' },
+		{ name: 'date2', type: 'Date|string' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isBetween',
+};
+
+isInLast.doc = {
+	name: 'isInLast',
+	description: 'Checks if a Date is within a given time period. Default unit is `minute`.',
+	returnType: 'boolean',
+	args: [
+		{ name: 'n', type: 'number' },
+		{ name: 'unit?', type: 'DurationUnit' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-isInLast',
+};
+
+minus.doc = {
+	name: 'minus',
+	description: 'Subtracts a given time period from a Date. Default unit is `minute`.',
+	returnType: 'Date',
+	args: [
+		{ name: 'n', type: 'number' },
+		{ name: 'unit?', type: 'DurationUnit' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-minus',
+};
+
+plus.doc = {
+	name: 'plus',
+	description: 'Adds a given time period to a Date. Default unit is `minute`.',
+	returnType: 'Date',
+	args: [
+		{ name: 'n', type: 'number' },
+		{ name: 'unit?', type: 'DurationUnit' },
+	],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/dates/#date-plus',
+};
 
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
@@ -274,10 +315,6 @@ export const dateExtensions: ExtensionMap = {
 		isWeekend,
 		minus,
 		plus,
-		toTimeFromNow,
-		timeTo,
 		format,
-		toLocaleString,
-		toDate,
 	},
 };

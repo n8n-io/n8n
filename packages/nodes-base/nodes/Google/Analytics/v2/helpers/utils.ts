@@ -1,10 +1,11 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeListSearchItems,
 	INodePropertyOptions,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 
 // tslint:disable-next-line:no-any
@@ -51,7 +52,7 @@ export function merge(responseData: [any]) {
 	for (const {
 		data: { rows },
 	} of responseData) {
-		allRows.push(...rows);
+		allRows.push(...(rows as IDataObject[]));
 	}
 	response.data.rows = allRows as [];
 	return [response];

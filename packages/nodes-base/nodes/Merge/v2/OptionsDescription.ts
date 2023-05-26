@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 const clashHandlingProperties: INodeProperties = {
 	displayName: 'Clash Handling',

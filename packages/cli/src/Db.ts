@@ -3,18 +3,13 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	EntityManager,
-	EntityTarget,
-	LoggerOptions,
-	ObjectLiteral,
-	Repository,
-} from 'typeorm';
-import { TlsOptions } from 'tls';
-import { DatabaseType, IDatabaseCollections } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
+import { Container } from 'typedi';
+import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
+import type { TlsOptions } from 'tls';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
+import type { IDatabaseCollections } from '@/Interfaces';
 
 import config from '@/config';
 
@@ -26,35 +21,78 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
+import { inTest } from '@/constants';
+import { wrapMigration } from '@db/utils/migrationHelpers';
+import type { DatabaseType, Migration } from '@db/types';
+import {
+	AuthIdentityRepository,
+	AuthProviderSyncHistoryRepository,
+	CredentialsRepository,
+	EventDestinationsRepository,
+	ExecutionMetadataRepository,
+	ExecutionRepository,
+	InstalledNodesRepository,
+	InstalledPackagesRepository,
+	RoleRepository,
+	SettingsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	UserRepository,
+	VariablesRepository,
+	WebhookRepository,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+	WorkflowTagMappingRepository,
+} from '@db/repositories';
 
-export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-export let connection: Connection;
+let connection: Connection;
 
 export const getConnection = () => connection!;
+
+type ConnectionState = {
+	connected: boolean;
+	migrated: boolean;
+};
+
+export const connectionState: ConnectionState = {
+	connected: false,
+	migrated: false,
+};
+
+// Ping DB connection every 2 seconds
+let pingTimer: NodeJS.Timer | undefined;
+if (!inTest) {
+	const pingDBFn = async () => {
+		if (connection?.isInitialized) {
+			try {
+				await connection.query('SELECT 1');
+				connectionState.connected = true;
+				return;
+			} catch (error) {
+				ErrorReporter.error(error);
+			} finally {
+				pingTimer = setTimeout(pingDBFn, 2000);
+			}
+		}
+		connectionState.connected = false;
+	};
+	pingTimer = setTimeout(pingDBFn, 2000);
+}
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
 }
 
-export function linkRepository<Entity extends ObjectLiteral>(
-	entityClass: EntityTarget<Entity>,
-): Repository<Entity> {
-	return connection.getRepository(entityClass);
-}
-
-export async function getConnectionOptions(dbType: DatabaseType): Promise<ConnectionOptions> {
+export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	switch (dbType) {
 		case 'postgresdb':
-			const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
-			const sslCert = (await GenericHelpers.getConfigValue(
-				'database.postgresdb.ssl.cert',
-			)) as string;
-			const sslKey = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.key')) as string;
-			const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
-				'database.postgresdb.ssl.rejectUnauthorized',
-			)) as boolean;
+			const sslCa = config.getEnv('database.postgresdb.ssl.ca');
+			const sslCert = config.getEnv('database.postgresdb.ssl.cert');
+			const sslKey = config.getEnv('database.postgresdb.ssl.key');
+			const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
 
 			let ssl: TlsOptions | undefined;
 			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
@@ -68,7 +106,7 @@ export async function getConnectionOptions(dbType: DatabaseType): Promise<Connec
 
 			return {
 				...getPostgresConnectionOptions(),
-				...(await getOptionOverrides('postgresdb')),
+				...getOptionOverrides('postgresdb'),
 				ssl,
 			};
 
@@ -76,7 +114,7 @@ export async function getConnectionOptions(dbType: DatabaseType): Promise<Connec
 		case 'mysqldb':
 			return {
 				...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
-				...(await getOptionOverrides('mysqldb')),
+				...getOptionOverrides('mysqldb'),
 				timezone: 'Z', // set UTC as default
 			};
 
@@ -88,22 +126,16 @@ export async function getConnectionOptions(dbType: DatabaseType): Promise<Connec
 	}
 }
 
-export async function init(
-	testConnectionOptions?: ConnectionOptions,
-): Promise<IDatabaseCollections> {
-	if (isInitialized) return collections;
+export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
+	if (connectionState.connected) return;
 
-	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-	const connectionOptions = testConnectionOptions ?? (await getConnectionOptions(dbType));
+	const dbType = config.getEnv('database.type');
+	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
 
-	let loggingOption: LoggerOptions = (await GenericHelpers.getConfigValue(
-		'database.logging.enabled',
-	)) as boolean;
+	let loggingOption: LoggerOptions = config.getEnv('database.logging.enabled');
 
 	if (loggingOption) {
-		const optionsString = (
-			(await GenericHelpers.getConfigValue('database.logging.options')) as string
-		).replace(/\s+/g, '');
+		const optionsString = config.getEnv('database.logging.options').replace(/\s+/g, '');
 
 		if (optionsString === 'all') {
 			loggingOption = optionsString;
@@ -112,19 +144,18 @@ export async function init(
 		}
 	}
 
-	const maxQueryExecutionTime = (await GenericHelpers.getConfigValue(
-		'database.logging.maxQueryExecutionTime',
-	)) as string;
+	const maxQueryExecutionTime = config.getEnv('database.logging.maxQueryExecutionTime');
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: loggingOption,
 		maxQueryExecutionTime,
-		migrationsTransactionMode: 'each',
+		migrationsRun: false,
 	});
 
 	connection = new Connection(connectionOptions);
+	Container.set(Connection, connection);
 	await connection.initialize();
 
 	if (dbType === 'postgresdb') {
@@ -137,52 +168,40 @@ export async function init(
 		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
 	}
 
-	if (!testConnectionOptions && dbType === 'sqlite') {
-		// This specific migration changes database metadata.
-		// A field is now nullable. We need to reconnect so that
-		// n8n knows it has changed. Happens only on sqlite.
-		let migrations = [];
-		try {
-			const entityPrefix = config.getEnv('database.tablePrefix');
-			migrations = await connection.query(
-				`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
-			);
-		} catch (error) {
-			// Migration table does not exist yet - it will be created after migrations run for the first time.
-		}
+	connectionState.connected = true;
 
-		// If you remove this call, remember to turn back on the
-		// setting to run migrations automatically above.
-		await connection.runMigrations({ transaction: 'each' });
+	collections.AuthIdentity = Container.get(AuthIdentityRepository);
+	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
+	collections.Credentials = Container.get(CredentialsRepository);
+	collections.EventDestinations = Container.get(EventDestinationsRepository);
+	collections.Execution = Container.get(ExecutionRepository);
+	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
+	collections.InstalledNodes = Container.get(InstalledNodesRepository);
+	collections.InstalledPackages = Container.get(InstalledPackagesRepository);
+	collections.Role = Container.get(RoleRepository);
+	collections.Settings = Container.get(SettingsRepository);
+	collections.SharedCredentials = Container.get(SharedCredentialsRepository);
+	collections.SharedWorkflow = Container.get(SharedWorkflowRepository);
+	collections.Tag = Container.get(TagRepository);
+	collections.User = Container.get(UserRepository);
+	collections.Variables = Container.get(VariablesRepository);
+	collections.Webhook = Container.get(WebhookRepository);
+	collections.Workflow = Container.get(WorkflowRepository);
+	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
+	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (migrations.length === 0) {
-			await connection.destroy();
-			connection = new Connection(connectionOptions);
-			await connection.initialize();
-		}
-	} else {
-		await connection.runMigrations({ transaction: 'each' });
+export async function migrate() {
+	(connection.options.migrations as Migration[]).forEach(wrapMigration);
+	await connection.runMigrations({ transaction: 'each' });
+	connectionState.migrated = true;
+}
+
+export const close = async () => {
+	if (pingTimer) {
+		clearTimeout(pingTimer);
+		pingTimer = undefined;
 	}
 
-	collections.Credentials = linkRepository(entities.CredentialsEntity);
-	collections.Execution = linkRepository(entities.ExecutionEntity);
-	collections.Workflow = linkRepository(entities.WorkflowEntity);
-	collections.Webhook = linkRepository(entities.WebhookEntity);
-	collections.Tag = linkRepository(entities.TagEntity);
-	collections.Role = linkRepository(entities.Role);
-	collections.User = linkRepository(entities.User);
-	collections.AuthIdentity = linkRepository(entities.AuthIdentity);
-	collections.AuthProviderSyncHistory = linkRepository(entities.AuthProviderSyncHistory);
-	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
-	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
-	collections.Settings = linkRepository(entities.Settings);
-	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
-	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
-	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
-	collections.EventDestinations = linkRepository(entities.EventDestinations);
-
-	isInitialized = true;
-
-	return collections;
-}
+	if (connection.isInitialized) await connection.destroy();
+};

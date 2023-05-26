@@ -1,11 +1,11 @@
+import type { INode, Workflow } from 'n8n-workflow';
 import {
-	INode,
 	NodeOperationError,
 	SubworkflowOperationError,
-	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindOptionsWhere, In } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -44,6 +44,7 @@ export class PermissionChecker {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
+				select: ['userId'],
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
@@ -71,6 +72,7 @@ export class PermissionChecker {
 
 		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
 			description: 'Please recreate the credential or ask its owner to share it with you.',
+			severity: 'warning',
 		});
 	}
 
@@ -116,7 +118,7 @@ export class PermissionChecker {
 			if (parentWorkflowId === undefined) {
 				throw errorToThrow;
 			}
-			const allowedCallerIds = (subworkflow.settings.callerIds as string | undefined)
+			const allowedCallerIds = subworkflow.settings.callerIds
 				?.split(',')
 				.map((id) => id.trim())
 				.filter((id) => id !== '');

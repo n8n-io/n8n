@@ -2,7 +2,7 @@
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import * as ResponseHelper from '@/ResponseHelper';
-import express from 'express';
+import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import promClient from 'prom-client';
 import semverParse from 'semver/functions/parse';
