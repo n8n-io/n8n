@@ -43,9 +43,10 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. My New File',
 		description: 'If not specified, the file name will not be changed',
 	},
+
 	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -72,22 +73,6 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'A language hint for OCR processing during image import (ISO 639-1 code)',
 			},
-			{
-				displayName: 'Use Content As Indexable Text',
-				name: 'useContentAsIndexableText',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to use the uploaded content as indexable text',
-			},
-		],
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [
 			{
 				displayName: 'Return Fields',
 				name: 'fields',
@@ -166,6 +151,13 @@ const properties: INodeProperties[] = [
 				default: [],
 				description: 'The fields to return',
 			},
+			{
+				displayName: 'Use Content As Indexable Text',
+				name: 'useContentAsIndexableText',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use the uploaded content as indexable text',
+			},
 		],
 	},
 ];
@@ -179,11 +171,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	options: IDataObject,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const fileId = this.getNodeParameter('fileId', i, undefined, {
 		extractValue: true,
 	}) as string;
@@ -255,27 +243,25 @@ export async function execute(
 		}
 	}
 
-	const updateFields = this.getNodeParameter('updateFields', i, {});
-
 	const qs: IDataObject = {
 		supportsAllDrives: true,
 	};
 
+	const options = this.getNodeParameter('options', i, {});
+
+	if (options.fields) {
+		const queryFields = prepareQueryString(options.fields as string[]);
+		qs.fields = queryFields;
+		delete options.fields;
+	}
+
 	Object.assign(qs, options);
-
-	const queryFields = prepareQueryString(options.fields as string[]);
-
-	qs.fields = queryFields;
 
 	const body: IDataObject = {};
 
 	const newUpdatedFileName = this.getNodeParameter('newUpdatedFileName', i, '') as string;
 	if (newUpdatedFileName) {
 		body.name = newUpdatedFileName;
-	}
-
-	if (updateFields.hasOwnProperty('trashed')) {
-		body.trashed = updateFields.trashed;
 	}
 
 	if (mimeType) {

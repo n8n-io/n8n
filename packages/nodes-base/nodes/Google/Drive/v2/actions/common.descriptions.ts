@@ -262,13 +262,6 @@ export const shareOptions: INodeProperties = {
 			description: 'Whether to send a notification email when sharing to users or groups',
 		},
 		{
-			displayName: 'Supports All Drives',
-			name: 'supportsAllDrives',
-			type: 'boolean',
-			default: false,
-			description: 'Whether the requesting application supports both My Drives and shared drives',
-		},
-		{
 			displayName: 'Transfer Ownership',
 			name: 'transferOwnership',
 			type: 'boolean',

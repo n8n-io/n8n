@@ -5,7 +5,26 @@ import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { folderRLC } from '../common.descriptions';
 
-const properties: INodeProperties[] = [folderRLC];
+const properties: INodeProperties[] = [
+	folderRLC,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Delete Permanently',
+				name: 'deletePermanently',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to delete the folder immediately. If false, the folder will be moved to the trash.',
+			},
+		],
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -23,15 +42,24 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		extractValue: true,
 	}) as string;
 
-	await googleApiRequest.call(
-		this,
-		'DELETE',
-		`/drive/v3/files/${folderId}`,
-		{},
-		{ supportsTeamDrives: true },
-	);
+	const deletePermanently = this.getNodeParameter('options.deletePermanently', i, false) as boolean;
 
-	// If we are still here it did succeed
+	const qs = {
+		supportsAllDrives: true,
+	};
+
+	if (deletePermanently) {
+		await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${folderId}`, undefined, qs);
+	} else {
+		await googleApiRequest.call(
+			this,
+			'PATCH',
+			`/drive/v3/files/${folderId}`,
+			{ trashed: true },
+			qs,
+		);
+	}
+
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({
 			fileId: folderId,

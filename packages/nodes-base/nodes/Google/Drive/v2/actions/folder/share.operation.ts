@@ -37,7 +37,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body: IDataObject = {};
 
 	const qs: IDataObject = {
-		supportsTeamDrives: true,
+		supportsAllDrives: true,
 	};
 
 	if (permissions.permissionsValues) {

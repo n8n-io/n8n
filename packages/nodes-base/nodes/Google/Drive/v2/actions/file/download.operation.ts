@@ -46,30 +46,37 @@ const properties: INodeProperties[] = [
 								displayName: 'Google Docs',
 								name: 'docsToFormat',
 								type: 'options',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
-										name: 'To HTML',
+										name: 'HTML',
 										value: 'text/html',
 									},
 									{
-										name: 'To MS Word',
+										name: '“MS Word Document',
 										value:
 											'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 									},
 									{
-										name: 'To OpenOffice Doc',
+										name: 'Open Office Document',
 										value: 'application/vnd.oasis.opendocument.text',
 									},
 									{
-										name: 'To PDF',
+										name: 'PDF',
 										value: 'application/pdf',
 									},
 									{
-										name: 'To Rich Text',
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Rich Text (rtf)',
 										value: 'application/rtf',
 									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Text (txt)',
+										value: 'text/plain',
+									},
 								],
-								default: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+								default: 'text/html',
 								description: 'Format used to export when downloading Google Docs files',
 							},
 							{
@@ -78,20 +85,20 @@ const properties: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'To JPEG',
+										name: 'JPEG',
 										value: 'image/jpeg',
 									},
 									{
-										name: 'To PNG',
+										name: 'PDF',
+										value: 'application/pdf',
+									},
+									{
+										name: 'PNG',
 										value: 'image/png',
 									},
 									{
-										name: 'To SVG',
+										name: 'SVG',
 										value: 'image/svg+xml',
-									},
-									{
-										name: 'To PDF',
-										value: 'application/pdf',
 									},
 								],
 								default: 'image/jpeg',
@@ -103,21 +110,17 @@ const properties: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'To MS PowerPoint',
+										name: 'MS PowerPoint',
 										value:
 											'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 									},
 									{
-										name: 'To PDF',
-										value: 'application/pdf',
-									},
-									{
-										name: 'To OpenOffice Presentation',
+										name: 'OpenOffice Presentation',
 										value: 'application/vnd.oasis.opendocument.presentation',
 									},
 									{
-										name: 'To Plain Text',
-										value: 'text/plain',
+										name: 'PDF',
+										value: 'application/pdf',
 									},
 								],
 								default:
@@ -130,19 +133,23 @@ const properties: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'To MS Excel',
+										name: 'CSV',
+										value: 'text/csv',
+									},
+									{
+										name: 'MS Excel',
 										value: 'application/x-vnd.oasis.opendocument.spreadsheet',
 									},
 									{
-										name: 'To PDF',
-										value: 'application/pdf',
+										name: 'Open Office Sheet',
+										value: 'application/vnd.oasis.opendocument.spreadsheet',
 									},
 									{
-										name: 'To CSV',
-										value: 'text/csv',
+										name: 'PDF',
+										value: 'application/pdf',
 									},
 								],
-								default: 'application/x-vnd.oasis.opendocument.spreadsheet',
+								default: 'text/csv',
 								description: 'Format used to export when downloading Google Spreadsheets files',
 							},
 						],
