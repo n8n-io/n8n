@@ -1361,6 +1361,8 @@
 	"settings.versionControl.toast.connected.message": "Select the branch to complete the configuration",
 	"settings.versionControl.toast.disconnected.title": "Git repository disconnected",
 	"settings.versionControl.toast.disconnected.message": "You can no longer sync your instance with the remote repository",
+	"settings.versionControl.loading.pull": "Pulling from remote",
+	"settings.versionControl.loading.push": "Pushing to remote",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",
