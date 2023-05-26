@@ -167,7 +167,6 @@ oauth2CredentialController.get(
 			let { code_verifier, code_challenge } = pkceChallenge();
 			if (code_verifier.includes('~')) {
 				do {
-					console.log('Code verifier contains invalid characters');
 					({ code_verifier, code_challenge } = pkceChallenge());
 				} while (code_verifier.includes('~'));
 			}
