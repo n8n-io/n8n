@@ -23,7 +23,7 @@ export async function twitterApiRequest(
 		method,
 		body,
 		qs,
-		url: uri || `https://api.twitter.com/1.1${resource}`,
+		url: uri || `https://api.twitter.com/2${resource}`,
 		json: true,
 	};
 	try {
@@ -36,7 +36,7 @@ export async function twitterApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		return await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'twitterOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
