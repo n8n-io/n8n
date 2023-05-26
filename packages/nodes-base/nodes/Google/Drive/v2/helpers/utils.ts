@@ -1,4 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import type { Readable } from 'stream';
@@ -58,4 +58,43 @@ export async function getItemBinaryData(
 		originalFilename,
 		mimeType,
 	};
+}
+
+export function setFileProperties(body: IDataObject, options: IDataObject) {
+	if (options.propertiesUi) {
+		const values = ((options.propertiesUi as IDataObject).propertyValues as IDataObject[]) || [];
+
+		body.properties = values.reduce(
+			(acc, value) => Object.assign(acc, { [`${value.key}`]: value.value }),
+			{} as IDataObject,
+		);
+	}
+
+	if (options.appPropertiesUi) {
+		const values =
+			((options.appPropertiesUi as IDataObject).appPropertyValues as IDataObject[]) || [];
+
+		body.appProperties = values.reduce(
+			(acc, value) => Object.assign(acc, { [`${value.key}`]: value.value }),
+			{} as IDataObject,
+		);
+	}
+
+	return body;
+}
+
+export function setUpdateCommonParams(qs: IDataObject, options: IDataObject) {
+	if (options.keepRevisionForever) {
+		qs.keepRevisionForever = options.keepRevisionForever;
+	}
+
+	if (options.ocrLanguage) {
+		qs.ocrLanguage = options.ocrLanguage;
+	}
+
+	if (options.useContentAsIndexableText) {
+		qs.useContentAsIndexableText = options.useContentAsIndexableText;
+	}
+
+	return qs;
 }

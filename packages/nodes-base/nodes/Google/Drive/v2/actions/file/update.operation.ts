@@ -3,9 +3,14 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { getItemBinaryData, prepareQueryString } from '../../helpers/utils';
+import {
+	getItemBinaryData,
+	prepareQueryString,
+	setFileProperties,
+	setUpdateCommonParams,
+} from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
-import { fileRLC } from '../common.descriptions';
+import { fileRLC, updateCommonOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -51,27 +56,13 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			{
-				displayName: 'Keep Revision Forever',
-				name: 'keepRevisionForever',
-				type: 'boolean',
-				default: false,
-				description:
-					"Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.",
-			},
+			...updateCommonOptions,
 			{
 				displayName: 'Move to Trash',
 				name: 'trashed',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to move a file to the trash. Only the owner may trash a file.',
-			},
-			{
-				displayName: 'OCR Language',
-				name: 'ocrLanguage',
-				type: 'string',
-				default: '',
-				description: 'A language hint for OCR processing during image import (ISO 639-1 code)',
 			},
 			{
 				displayName: 'Return Fields',
@@ -150,13 +141,6 @@ const properties: INodeProperties[] = [
 				],
 				default: [],
 				description: 'The fields to return',
-			},
-			{
-				displayName: 'Use Content As Indexable Text',
-				name: 'useContentAsIndexableText',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to use the uploaded content as indexable text',
 			},
 		],
 	},
@@ -243,21 +227,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const qs: IDataObject = {
-		supportsAllDrives: true,
-	};
-
 	const options = this.getNodeParameter('options', i, {});
+
+	const qs: IDataObject = setUpdateCommonParams(
+		{
+			supportsAllDrives: true,
+		},
+		options,
+	);
 
 	if (options.fields) {
 		const queryFields = prepareQueryString(options.fields as string[]);
 		qs.fields = queryFields;
-		delete options.fields;
 	}
 
-	Object.assign(qs, options);
+	if (options.trashed) {
+		qs.trashed = options.trashed;
+	}
 
-	const body: IDataObject = {};
+	const body: IDataObject = setFileProperties({}, options);
 
 	const newUpdatedFileName = this.getNodeParameter('newUpdatedFileName', i, '') as string;
 	if (newUpdatedFileName) {

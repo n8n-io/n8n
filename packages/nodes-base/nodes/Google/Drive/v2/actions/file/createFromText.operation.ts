@@ -2,9 +2,10 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { folderRLC } from '../common.descriptions';
+import { folderRLC, updateCommonOptions } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { DRIVE } from '../../helpers/interfaces';
+import { setFileProperties, setUpdateCommonParams } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -41,6 +42,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
+			...updateCommonOptions,
 			{
 				displayName: 'Convert to Google Document',
 				name: 'convertToGoogleDocument',
@@ -74,17 +76,28 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			extractValue: true,
 		}) as string) || 'root';
 
-	const bodyParameters = {
-		name,
-		parents: [parentFolderId],
-		mimeType,
-	};
+	const bodyParameters = setFileProperties(
+		{
+			name,
+			parents: [parentFolderId],
+			mimeType,
+		},
+		options,
+	);
 
 	const boundary = 'XXXXXX';
 
+	const qs = setUpdateCommonParams({}, options);
+
 	let response;
 	if (convertToGoogleDocument) {
-		const document = await googleApiRequest.call(this, 'POST', '/drive/v3/files', bodyParameters);
+		const document = await googleApiRequest.call(
+			this,
+			'POST',
+			'/drive/v3/files',
+			bodyParameters,
+			qs,
+		);
 
 		const text = this.getNodeParameter('content', i, '') as string;
 
@@ -133,6 +146,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			{
 				uploadType: 'multipart',
 				supportsAllDrives: true,
+				...qs,
 			},
 			undefined,
 			{

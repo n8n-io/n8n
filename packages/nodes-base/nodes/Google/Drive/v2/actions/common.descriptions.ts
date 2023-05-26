@@ -398,3 +398,95 @@ export const permissionsOptions: INodeProperties = {
 		},
 	],
 };
+
+export const updateCommonOptions: INodeProperties[] = [
+	{
+		displayName: 'APP Properties',
+		name: 'appPropertiesUi',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		description:
+			'A collection of arbitrary key-value pairs which are private to the requesting app',
+		options: [
+			{
+				name: 'appPropertyValues',
+				displayName: 'APP Property',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+						description: 'Name of the key to add',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set for the key',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Properties',
+		name: 'propertiesUi',
+		placeholder: 'Add Property',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions: {
+			multipleValues: true,
+		},
+		description: 'A collection of arbitrary key-value pairs which are visible to all apps',
+		options: [
+			{
+				name: 'propertyValues',
+				displayName: 'Property',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+						description: 'Name of the key to add',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: 'Value to set for the key',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Keep Revision Forever',
+		name: 'keepRevisionForever',
+		type: 'boolean',
+		default: false,
+		description:
+			"Whether to set the 'keepForever' field in the new head revision. This is only applicable to files with binary content in Google Drive. Only 200 revisions for the file can be kept forever. If the limit is reached, try deleting pinned revisions.",
+	},
+	{
+		displayName: 'OCR Language',
+		name: 'ocrLanguage',
+		type: 'string',
+		default: '',
+		description: 'A language hint for OCR processing during image import (ISO 639-1 code)',
+	},
+	{
+		displayName: 'Use Content As Indexable Text',
+		name: 'useContentAsIndexableText',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to use the uploaded content as indexable text',
+	},
+];

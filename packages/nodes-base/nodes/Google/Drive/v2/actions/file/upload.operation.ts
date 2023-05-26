@@ -3,8 +3,8 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { folderRLC } from '../common.descriptions';
-import { getItemBinaryData } from '../../helpers/utils';
+import { folderRLC, updateCommonOptions } from '../common.descriptions';
+import { getItemBinaryData, setFileProperties, setUpdateCommonParams } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -39,73 +39,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			{
-				displayName: 'APP Properties',
-				name: 'appPropertiesUi',
-				placeholder: 'Add Property',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				description:
-					'A collection of arbitrary key-value pairs which are private to the requesting app',
-				options: [
-					{
-						name: 'appPropertyValues',
-						displayName: 'APP Property',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'key',
-								type: 'string',
-								default: '',
-								description: 'Name of the key to add',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value to set for the key',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Properties',
-				name: 'propertiesUi',
-				placeholder: 'Add Property',
-				type: 'fixedCollection',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
-				},
-				description: 'A collection of arbitrary key-value pairs which are visible to all apps',
-				options: [
-					{
-						name: 'propertyValues',
-						displayName: 'Property',
-						values: [
-							{
-								displayName: 'Key',
-								name: 'key',
-								type: 'string',
-								default: '',
-								description: 'Name of the key to add',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value to set for the key',
-							},
-						],
-					},
-				],
-			},
+			...updateCommonOptions,
 			{
 				displayName: 'Simplify Output',
 				name: 'simplifyOutput',
@@ -196,58 +130,35 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const requestBody = {
-		mimeType,
-		name,
-		originalFilename,
-	};
+	const options = this.getNodeParameter('options', i, {});
 
-	const propertiesUi = this.getNodeParameter(
-		'options.propertiesUi.propertyValues',
-		i,
-		[],
-	) as IDataObject[];
+	const qs = setUpdateCommonParams(
+		{
+			addParents: parentFolder,
+			supportsAllDrives: true,
+		},
+		options,
+	);
 
-	if (propertiesUi.length) {
-		Object.assign(requestBody, {
-			properties: propertiesUi.reduce(
-				(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
-				{},
-			),
-		});
+	if (!options.simplifyOutput) {
+		qs.fields = '*';
 	}
 
-	const appProperties = this.getNodeParameter(
-		'options.appPropertiesUi.appPropertyValues',
-		i,
-		[],
-	) as IDataObject[];
-
-	if (propertiesUi.length) {
-		Object.assign(requestBody, {
-			appProperties: appProperties.reduce(
-				(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
-				{},
-			),
-		});
-	}
-
-	const simplifyOutput = this.getNodeParameter('options.simplifyOutput', i, true) as boolean;
-	let fields;
-	if (!simplifyOutput) {
-		fields = '*';
-	}
+	const body = setFileProperties(
+		{
+			mimeType,
+			name,
+			originalFilename,
+		},
+		options,
+	);
 
 	const response = await googleApiRequest.call(
 		this,
 		'PATCH',
 		`/drive/v3/files/${uploadId}`,
-		requestBody,
-		{
-			addParents: parentFolder,
-			supportsAllDrives: true,
-			fields,
-		},
+		body,
+		qs,
 	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
