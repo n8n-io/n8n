@@ -49,6 +49,7 @@ import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
 import { useTelemetryStore } from './telemetry.store';
+import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 
@@ -479,7 +480,13 @@ export const useUIStore = defineStore(STORES.UI, {
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		goToUpgrade(source: string, utm_campaign: string): void {
-			useTelemetryStore().track('User clicked upgrade CTA', { source });
+			const cloudPlanStore = useCloudPlanStore();
+			useTelemetryStore().track('User clicked upgrade CTA', {
+				source,
+				deploymentType: useSettingsStore().deploymentType,
+				isTrial: cloudPlanStore.userIsTrialing,
+				trialDaysLeft:
+			});
 			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
 		},
 	},
