@@ -1,5 +1,5 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
-import { InstalledPackages } from './InstalledPackages';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, Relation } from 'typeorm';
+import type { InstalledPackages } from './InstalledPackages';
 
 @Entity()
 export class InstalledNodes {
@@ -14,5 +14,5 @@ export class InstalledNodes {
 
 	@ManyToOne('InstalledPackages', 'installedNodes')
 	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })
-	package: InstalledPackages;
+	package: Relation<InstalledPackages>;
 }

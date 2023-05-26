@@ -13,6 +13,7 @@ import {
 	ManyToMany,
 	OneToMany,
 	PrimaryColumn,
+	Relation,
 } from 'typeorm';
 
 import config from '@/config';
@@ -72,17 +73,17 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 			referencedColumnName: 'id',
 		},
 	})
-	tags?: TagEntity[];
+	tags?: Relation<TagEntity[]>;
 
 	@OneToMany('WorkflowTagMapping', 'workflows')
-	tagMappings: WorkflowTagMapping[];
+	tagMappings: Relation<WorkflowTagMapping[]>;
 
 	@OneToMany('SharedWorkflow', 'workflow')
-	shared: SharedWorkflow[];
+	shared: Relation<SharedWorkflow[]>;
 
 	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })
-	statistics: WorkflowStatistics[];
+	statistics: Relation<WorkflowStatistics[]>;
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',

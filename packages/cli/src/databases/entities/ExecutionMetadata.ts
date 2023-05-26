@@ -1,5 +1,5 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, RelationId } from 'typeorm';
-import { ExecutionEntity } from './ExecutionEntity';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, Relation, RelationId } from 'typeorm';
+import type { ExecutionEntity } from './ExecutionEntity';
 
 @Entity()
 export class ExecutionMetadata {
@@ -9,7 +9,7 @@ export class ExecutionMetadata {
 	@ManyToOne('ExecutionEntity', 'metadata', {
 		onDelete: 'CASCADE',
 	})
-	execution: ExecutionEntity;
+	execution: Relation<ExecutionEntity>;
 
 	@RelationId((executionMetadata: ExecutionMetadata) => executionMetadata.execution)
 	executionId: number;

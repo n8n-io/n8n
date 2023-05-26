@@ -1,4 +1,13 @@
-import { Column, Entity, Generated, Index, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
+import {
+	Column,
+	Entity,
+	Generated,
+	Index,
+	ManyToMany,
+	OneToMany,
+	PrimaryColumn,
+	Relation,
+} from 'typeorm';
 import { IsString, Length } from 'class-validator';
 
 import { idStringifier } from '../utils/transformers';
@@ -19,8 +28,8 @@ export class TagEntity extends AbstractEntity {
 	name: string;
 
 	@ManyToMany('WorkflowEntity', 'tags')
-	workflows: WorkflowEntity[];
+	workflows: Relation<WorkflowEntity[]>;
 
 	@OneToMany('WorkflowTagMapping', 'tags')
-	workflowMappings: WorkflowTagMapping[];
+	workflowMappings: Relation<WorkflowTagMapping[]>;
 }

@@ -2,8 +2,8 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { AuthProviderType } from './AuthIdentity';
 
-export type RunningMode = 'dry' | 'live';
-export type SyncStatus = 'success' | 'error';
+export type RunningMode = AuthProviderSyncHistory['runMode'];
+export type SyncStatus = AuthProviderSyncHistory['status'];
 
 @Entity()
 export class AuthProviderSyncHistory {
@@ -14,10 +14,10 @@ export class AuthProviderSyncHistory {
 	providerType: AuthProviderType;
 
 	@Column('text')
-	runMode: RunningMode;
+	runMode: 'dry' | 'live';
 
 	@Column('text')
-	status: SyncStatus;
+	status: 'success' | 'error';
 
 	@Column(datetimeColumnType)
 	startedAt: Date;

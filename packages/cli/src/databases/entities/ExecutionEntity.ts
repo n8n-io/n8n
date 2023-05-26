@@ -1,5 +1,5 @@
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn, Relation } from 'typeorm';
 import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
 import { IWorkflowDb } from '@/Interfaces';
 import type { IExecutionFlattedDb } from '@/Interfaces';
@@ -52,5 +52,5 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	waitTill: Date | null;
 
 	@OneToMany('ExecutionMetadata', 'execution')
-	metadata: ExecutionMetadata[];
+	metadata: Relation<ExecutionMetadata[]>;
 }

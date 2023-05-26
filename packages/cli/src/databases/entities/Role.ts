@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryColumn, Unique } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn, Relation, Unique } from 'typeorm';
 import { IsString, Length } from 'class-validator';
 
 import type { User } from './User';
@@ -7,8 +7,8 @@ import type { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 
-export type RoleNames = 'owner' | 'member' | 'user' | 'editor';
-export type RoleScopes = 'global' | 'workflow' | 'credential';
+export type RoleNames = Role['name'];
+export type RoleScopes = Role['scope'];
 
 @Entity()
 @Unique(['scope', 'name'])
@@ -19,17 +19,17 @@ export class Role extends AbstractEntity {
 	@Column({ length: 32 })
 	@IsString({ message: 'Role name must be of type string.' })
 	@Length(1, 32, { message: 'Role name must be 1 to 32 characters long.' })
-	name: RoleNames;
+	name: 'owner' | 'member' | 'user' | 'editor';
 
 	@Column()
-	scope: RoleScopes;
+	scope: 'global' | 'workflow' | 'credential';
 
 	@OneToMany('User', 'globalRole')
-	globalForUsers: User[];
+	globalForUsers: Relation<User[]>;
 
 	@OneToMany('SharedWorkflow', 'role')
-	sharedWorkflows: SharedWorkflow[];
+	sharedWorkflows: Relation<SharedWorkflow[]>;
 
 	@OneToMany('SharedCredentials', 'role')
-	sharedCredentials: SharedCredentials[];
+	sharedCredentials: Relation<SharedCredentials[]>;
 }

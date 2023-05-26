@@ -1,4 +1,4 @@
-import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Entity, JoinColumn, ManyToOne, PrimaryColumn, Relation } from 'typeorm';
 import { idStringifier } from '../utils/transformers';
 import type { TagEntity } from './TagEntity';
 import type { WorkflowEntity } from './WorkflowEntity';
@@ -10,12 +10,12 @@ export class WorkflowTagMapping {
 
 	@ManyToOne('WorkflowEntity', 'tagMappings')
 	@JoinColumn({ name: 'workflowId' })
-	workflows: WorkflowEntity[];
+	workflows: Relation<WorkflowEntity[]>;
 
 	@PrimaryColumn()
 	tagId: string;
 
 	@ManyToOne('TagEntity', 'workflowMappings')
 	@JoinColumn({ name: 'tagId' })
-	tags: TagEntity[];
+	tags: Relation<TagEntity[]>;
 }

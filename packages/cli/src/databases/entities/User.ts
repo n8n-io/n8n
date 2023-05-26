@@ -9,10 +9,11 @@ import {
 	ManyToOne,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
+	Relation,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser } from 'n8n-workflow';
-import { Role } from './Role';
+import type { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
@@ -76,19 +77,19 @@ export class User extends AbstractEntity implements IUser {
 	settings: IUserSettings | null;
 
 	@ManyToOne('Role', 'globalForUsers', { nullable: false })
-	globalRole: Role;
+	globalRole: Relation<Role>;
 
 	@Column()
 	globalRoleId: string;
 
 	@OneToMany('AuthIdentity', 'user')
-	authIdentities: AuthIdentity[];
+	authIdentities: Relation<AuthIdentity[]>;
 
 	@OneToMany('SharedWorkflow', 'user')
-	sharedWorkflows: SharedWorkflow[];
+	sharedWorkflows: Relation<SharedWorkflow[]>;
 
 	@OneToMany('SharedCredentials', 'user')
-	sharedCredentials: SharedCredentials[];
+	sharedCredentials: Relation<SharedCredentials[]>;
 
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
