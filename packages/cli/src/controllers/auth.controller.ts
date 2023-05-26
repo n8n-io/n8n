@@ -77,7 +77,7 @@ export class AuthController {
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
 			if (
-				preliminaryUser?.globalRole?.name === 'owner' &&
+				preliminaryUser?.globalRole?.name === 'owner' ||
 				preliminaryUser?.settings?.allowSSOManualLogin
 			) {
 				user = preliminaryUser;

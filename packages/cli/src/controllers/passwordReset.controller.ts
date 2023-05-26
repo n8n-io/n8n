@@ -1,5 +1,4 @@
 import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
-import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import {
@@ -25,6 +24,7 @@ import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } f
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
+import { UserService } from '../user/user.service';
 
 @RestController()
 export class PasswordResetController {
@@ -103,7 +103,10 @@ export class PasswordResetController {
 			relations: ['authIdentities', 'globalRole'],
 		});
 
-		if (isSamlCurrentAuthenticationMethod() && user?.globalRole.name !== 'owner') {
+		if (
+			isSamlCurrentAuthenticationMethod() &&
+			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
+		) {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',
 			);
@@ -126,18 +129,9 @@ export class PasswordResetController {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
-		user.resetPasswordToken = uuid();
-
-		const { id, firstName, lastName, resetPasswordToken } = user;
-
-		const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
-
-		await this.userRepository.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
-
 		const baseUrl = getInstanceBaseUrl();
-		const url = new URL(`${baseUrl}/change-password`);
-		url.searchParams.append('userId', id);
-		url.searchParams.append('token', resetPasswordToken);
+		const { id, firstName, lastName } = user;
+		const url = UserService.generatePasswordResetUrl(user);
 
 		try {
 			await this.mailer.passwordReset({
