@@ -15,6 +15,10 @@
 
 import './commands';
 
+before(() => {
+	cy.resetAll();
+});
+
 // Load custom nodes and credentials fixtures
 beforeEach(() => {
 	cy.intercept('GET', '/rest/settings').as('loadSettings');
@@ -25,6 +29,6 @@ beforeEach(() => {
 		statusCode: 200,
 		body: {
 			data: { status: 'success', message: 'Tested successfully' },
-		}
+		},
 	});
-})
+});
