@@ -157,8 +157,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					'Content-Type': mimeType,
 					'Content-Length': contentLength,
 				},
-				encoding: null,
-				json: false,
 			},
 		);
 

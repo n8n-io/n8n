@@ -153,6 +153,10 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+
+		if (responseData.nextPageToken) {
+			query.pageToken = responseData.nextPageToken as string;
+		}
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

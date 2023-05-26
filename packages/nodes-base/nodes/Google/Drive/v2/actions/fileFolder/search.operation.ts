@@ -315,11 +315,28 @@ export async function execute(
 
 	if (Object.keys(filter)?.length) {
 		if (filter.folderId && filter.folderId.value !== RLC_FOLDER_DEFAULT) {
-			query.push(`'${filter.folderId.value}' in parents`);
+			let value;
+			if (filter.folderId.mode === 'url') {
+				value = this.getNodeParameter('filter.folderId', i, undefined, {
+					extractValue: true,
+				}) as string;
+			} else {
+				value = filter.folderId.value;
+			}
+
+			query.push(`'${value}' in parents`);
 		}
 
 		if (filter.driveId && filter.driveId.value !== RLC_DRIVE_DEFAULT) {
-			driveId = filter.driveId.value;
+			let value;
+			if (filter.driveId.mode === 'url') {
+				value = this.getNodeParameter('filter.driveId', i, undefined, {
+					extractValue: true,
+				}) as string;
+			} else {
+				value = filter.driveId.value;
+			}
+			driveId = value;
 		}
 
 		const whatToSearch = filter.whatToSearch || 'all';
@@ -354,10 +371,12 @@ export async function execute(
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
 		spaces: 'appDataFolder, drive',
+		corpora: 'allDrives',
 	};
 
 	if (driveId) {
 		qs.driveId = driveId;
+		qs.corpora = 'drive';
 	}
 
 	const returnAll = this.getNodeParameter('returnAll', i, false);

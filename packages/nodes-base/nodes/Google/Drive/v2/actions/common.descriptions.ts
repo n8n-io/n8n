@@ -84,14 +84,15 @@ export const folderRLC: INodeProperties = {
 			placeholder: 'https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
 			extractValue: {
 				type: 'regex',
-				regex: 'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex:
+					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
 						regex:
-							'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 						errorMessage: 'Not a valid Google Drive Folder URL',
 					},
 				},
@@ -141,14 +142,15 @@ export const driveRLC: INodeProperties = {
 			placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
 			extractValue: {
 				type: 'regex',
-				regex: 'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex:
+					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
 						regex:
-							'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 						errorMessage: 'Not a valid Google Drive Drive URL',
 					},
 				},
@@ -198,14 +200,15 @@ export const sharedDriveRLC: INodeProperties = {
 			placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
 			extractValue: {
 				type: 'regex',
-				regex: 'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+				regex:
+					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 			},
 			validation: [
 				{
 					type: 'regex',
 					properties: {
 						regex:
-							'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
 						errorMessage: 'Not a valid Google Drive Drive URL',
 					},
 				},

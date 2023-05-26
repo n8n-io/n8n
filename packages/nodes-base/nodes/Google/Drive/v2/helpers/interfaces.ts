@@ -3,9 +3,11 @@ export const UPLOAD_CHUNK_SIZE = 256 * 1024;
 export type SearchFilter = {
 	driveId?: {
 		value: string;
+		mode: string;
 	};
 	folderId?: {
 		value: string;
+		mode: string;
 	};
 	whatToSearch?: 'all' | 'files' | 'folders';
 	fileTypes?: string[];
