@@ -317,8 +317,8 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
       ldapts:
-        specifier: ^4.2.2
-        version: 4.2.2
+        specifier: ^4.2.6
+        version: 4.2.6
       localtunnel:
         specifier: ^2.0.0
         version: 2.0.2
@@ -1152,6 +1152,9 @@ importers:
       kafkajs:
         specifier: ^1.14.0
         version: 1.16.0
+      ldapts:
+        specifier: ^4.2.6
+        version: 4.2.6
       lodash.assign:
         specifier: ^4
         version: 4.2.0
@@ -1366,8 +1369,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       vm2:
-        specifier: ~3.9.17
-        version: 3.9.17
+        specifier: ^3.9.19
+        version: 3.9.19
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz
         version: '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz'
@@ -11765,7 +11768,7 @@ packages:
       ast-types: 0.13.4
       escodegen: 1.14.3
       esprima: 4.0.1
-      vm2: 3.9.17
+      vm2: 3.9.19
     dev: false
 
   /del@6.1.1:
@@ -16234,8 +16237,8 @@ packages:
       invert-kv: 1.0.0
     dev: true
 
-  /ldapts@4.2.2:
-    resolution: {integrity: sha512-UHe7BtEhPUFHZZ6XHnRvLHWQrftTap3PgGU0nOLtrFeigZvfpXSsqJ8C9uXNouDV+iDHqoWwplS0eHoDu/GIEQ==}
+  /ldapts@4.2.6:
+    resolution: {integrity: sha512-r1eOj2PtTJi+9aZxLirktoHntuYXlbQD9ZXCjiZmJx0VBQtBcWc+rueqABuh/AxMcFHNPDSJLJAXxoj5VevTwQ==}
     engines: {node: '>=14'}
     dependencies:
       '@types/asn1': 0.2.0
@@ -22539,8 +22542,8 @@ packages:
       - terser
     dev: true
 
-  /vm2@3.9.17:
-    resolution: {integrity: sha512-AqwtCnZ/ERcX+AVj9vUsphY56YANXxRuqMb7GsDtAr0m0PcQX3u0Aj3KWiXM0YAHy7i6JEeHrwOnwXbGYgRpAw==}
+  /vm2@3.9.19:
+    resolution: {integrity: sha512-J637XF0DHDMV57R6JyVsTak7nIL8gy5KH4r1HiwWLf/4GBbb5MKL5y7LpmF4A8E2nR6XmzpmMFQ7V7ppPTmUQg==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:
