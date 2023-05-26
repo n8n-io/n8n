@@ -2204,6 +2204,7 @@ export default defineComponent({
 
 				if (
 					this.isReadOnly ||
+					this.readOnlyEnv ||
 					this.enterTimer ||
 					!connection ||
 					connection === this.activeConnection
