@@ -11,7 +11,6 @@ const ndv = new NDV();
 
 describe('Data pinning', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
