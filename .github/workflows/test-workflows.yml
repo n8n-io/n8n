@@ -9,7 +9,7 @@ jobs:
   run-test-workflows:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     strategy:
       matrix:
@@ -53,16 +53,16 @@ jobs:
         shell: bash
 
       - name: Import credentials
-        run: n8n/packages/cli/bin/n8n import:credentials --input=test-workflows/credentials.json
+        run: n8n/packages/cli/bin/n8n import:CREDENTIALS --input=test-workflows/CREDENTIALS.json
         shell: bash
         env:
-          N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+          N8N_CREDENTIALS: ${{secrets.CREDENTIALS}}
 
       - name: Import workflows
         run: n8n/packages/cli/bin/n8n import:workflow --separate --input=test-workflows/workflows
         shell: bash
         env:
-          N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+          N8N_ENCRYPTION_KEY: ${{secrets.CREDENTIALS}}
 
       - name: Copy static assets
         run: |
@@ -76,15 +76,15 @@ jobs:
         run: n8n/packages/cli/bin/n8n executeBatch --shallow --skipList=test-workflows/skipList.txt --shortOutput --concurrency=16 --compare=test-workflows/snapshots
         shell: bash
         env:
-          N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+          N8N_CREDENTIALS: ${{secrets.CREDENTIALS}}
           SKIP_STATISTICS_EVENTS: true
       # -
       #   name: Export credentials
       #   if: always()
-      #   run: n8n/packages/cli/bin/n8n export:credentials --output=test-workflows/credentials.json --all --pretty
+      #   run: n8n/packages/cli/bin/n8n export:CREDENTIALSs --output=test-workflows/CREDENTIALS.json --all --pretty
       #   shell: bash
       #   env:
-      #     N8N_ENCRYPTION_KEY: ${{secrets.ENCRYPTION_KEY}}
+      #     N8N_CREDENTIALS: ${{secrets.CREDENTIALS}}
       # -
       #   name: Commit and push credential changes
       #   if: always()
