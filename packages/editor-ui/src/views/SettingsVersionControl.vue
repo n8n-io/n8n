@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount } from 'vue';
+import { computed, reactive, onBeforeMount, ref } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
 import { useVersionControlStore } from '@/stores/versionControl.store';
@@ -14,11 +14,7 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
-const isConnected = computed(
-	() =>
-		versionControlStore.preferences.branches.length > 0 ||
-		versionControlStore.preferences.connected,
-);
+const isConnected = ref(false);
 
 const onConnect = async () => {
 	loadingService.startLoading();
@@ -29,6 +25,7 @@ const onConnect = async () => {
 			repositoryUrl: versionControlStore.preferences.repositoryUrl,
 		});
 		await versionControlStore.getBranches();
+		isConnected.value = true;
 		toast.showMessage({
 			title: locale.baseText('settings.versionControl.toast.connected.title'),
 			message: locale.baseText('settings.versionControl.toast.connected.message'),
@@ -54,6 +51,7 @@ const onDisconnect = async () => {
 		if (confirmation === MODAL_CONFIRM) {
 			loadingService.startLoading();
 			await versionControlStore.disconnect(true);
+			isConnected.value = false;
 			toast.showMessage({
 				title: locale.baseText('settings.versionControl.toast.disconnected.title'),
 				message: locale.baseText('settings.versionControl.toast.disconnected.message'),
@@ -96,6 +94,7 @@ const goToUpgrade = () => {
 
 onBeforeMount(async () => {
 	if (versionControlStore.preferences.connected) {
+		isConnected.value = true;
 		void versionControlStore.getBranches();
 	}
 });
