@@ -1,8 +1,16 @@
 diff --git a/cjs/container-instance.class.js b/cjs/container-instance.class.js
-index e473b1e652aa0b6e7462f7ba93fcef2812483b20..1e2ac7e5cb7943f5226a2bc25fa83bee0470f90c 100644
+index e473b1e652aa0b6e7462f7ba93fcef2812483b20..1e406113d68c401ee170c997afb53e5f71edeee2 100644
 --- a/cjs/container-instance.class.js
 +++ b/cjs/container-instance.class.js
-@@ -234,6 +234,7 @@ class ContainerInstance {
+@@ -209,6 +209,7 @@ class ContainerInstance {
+             // this allows us to support javascript where we don't have decorators and emitted metadata about dependencies
+             // need to be injected, and user can use provided container to get instances he needs
+             params.push(this);
++            if (process.env.NODE_ENV === 'production') Object.freeze(constructableTargetType.prototype);
+             value = new constructableTargetType(...params);
+             // TODO: Calling this here, leads to infinite loop, because @Inject decorator registerds a handler
+             // TODO: which calls Container.get, which will check if the requested type has a value set and if not
+@@ -234,6 +235,7 @@ class ContainerInstance {
       */
      initializeParams(target, paramTypes) {
          return paramTypes.map((paramType, index) => {
