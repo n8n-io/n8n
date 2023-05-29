@@ -45,8 +45,8 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 	const getOwnerCurrentPlan = async () => {
+		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
 		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
