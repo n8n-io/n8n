@@ -74,8 +74,7 @@ const onSave = async () => {
 			versionControlStore.setBranchReadonly(versionControlStore.preferences.branchReadOnly),
 		]);
 		toast.showMessage({
-			title: 'Success',
-			message: 'Settings saved successfully',
+			title: locale.baseText('settings.versionControl.saved.title'),
 			type: 'success',
 		});
 	} catch (error) {

@@ -1364,6 +1364,7 @@
 	"settings.versionControl.toast.disconnected.error": "Error disconnecting from Git",
 	"settings.versionControl.loading.pull": "Pulling from remote",
 	"settings.versionControl.loading.push": "Pushing to remote",
+	"settings.versionControl.saved.title": "Settings successfully saved",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",
