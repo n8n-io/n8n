@@ -135,6 +135,14 @@ export class Webhook implements INodeType {
 				description: 'The way to authenticate',
 			},
 			{
+				displayName: 'Roles (Optional)',
+				name: 'roles',
+				type: 'string',
+				default: '',
+				placeholder: 'Authorized roles (comma seperated values)',
+				description: 'Specifies the roles within which the bearer must belong',
+			},
+			{
 				displayName: 'HTTP Method',
 				name: 'httpMethod',
 				type: 'options',
@@ -498,7 +506,15 @@ export class Webhook implements INodeType {
 			}
 		} else if (authentication === 'zohoCRMAuth') {
 			try {
-				await verifyCrmToken(token, this.helpers.httpRequest);
+				const authData = await verifyCrmToken(token, this.helpers.httpRequest);
+				const roles = (this.getNodeParameter('roles', '') as string)?.trim()?.split(',');
+				if (
+					roles?.length &&
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					!roles.includes(authData?.zohoUser?.role || authData?.zohoUser?.profile)
+				) {
+					return authorizationError(resp, realm, 403, 'User role is not authorized');
+				}
 			} catch (error) {
 				return authorizationError(
 					resp,
