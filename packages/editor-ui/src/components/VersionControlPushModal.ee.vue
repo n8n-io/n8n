@@ -92,7 +92,7 @@ function close() {
 async function commitAndPush() {
 	const fileNames = files.value.filter((file) => staged.value[file.file]).map((file) => file.file);
 
-	loadingService.startLoading(i18n.baseText('settings.versionControl.modals.push.loading'));
+	loadingService.startLoading(i18n.baseText('settings.versionControl.loading.push'));
 	close();
 
 	try {

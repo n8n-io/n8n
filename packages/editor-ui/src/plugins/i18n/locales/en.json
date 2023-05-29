@@ -1344,7 +1344,6 @@
 	"settings.versionControl.modals.push.buttons.save": "Commit and Push",
 	"settings.versionControl.modals.push.success.title": "Pushed successfully",
 	"settings.versionControl.modals.push.success.description": "The files you selected were committed and pushed to the remote repository",
-	"settings.versionControl.modals.push.loading": "Pushing...",
 	"settings.versionControl.modals.pull.title": "Override local changes",
 	"settings.versionControl.modals.pull.description": "Some remote changes are going to override some of your local changes. Are you sure you want to continue?",
 	"settings.versionControl.modals.pull.buttons.cancel": "@:_reusableBaseText.cancel",

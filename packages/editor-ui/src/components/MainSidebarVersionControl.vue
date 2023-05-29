@@ -24,7 +24,6 @@ const currentBranch = computed(() => {
 });
 
 async function pushWorkfolder() {
-	loadingService.setLoadingText(i18n.baseText('settings.versionControl.loading.push'));
 	loadingService.startLoading();
 	try {
 		const status = await versionControlStore.getAggregatedStatus();
@@ -42,8 +41,8 @@ async function pushWorkfolder() {
 }
 
 async function pullWorkfolder() {
-	loadingService.setLoadingText(i18n.baseText('settings.versionControl.loading.pull'));
 	loadingService.startLoading();
+	loadingService.setLoadingText(i18n.baseText('settings.versionControl.loading.pull'));
 	try {
 		await versionControlStore.pullWorkfolder(false);
 	} catch (error) {
