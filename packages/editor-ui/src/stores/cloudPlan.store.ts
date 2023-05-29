@@ -45,7 +45,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-	const getOwnerCurrentPLan = async () => {
+	const getOwnerCurrentPlan = async () => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
@@ -72,7 +72,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 
 	return {
 		state,
-		getOwnerCurrentPLan,
+		getOwnerCurrentPlan,
 		getInstanceCurrentUsage,
 		userIsTrialing,
 		currentPlanData,
