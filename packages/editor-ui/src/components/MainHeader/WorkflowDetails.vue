@@ -60,11 +60,7 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<WorkflowActivator
-						:workflow-active="isWorkflowActive"
-						:workflow-id="currentWorkflowId"
-						:readOnly="readOnly"
-					/>
+					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-button

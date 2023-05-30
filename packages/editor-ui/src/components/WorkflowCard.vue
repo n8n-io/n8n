@@ -46,7 +46,6 @@
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
-					:readOnly="readOnly"
 					ref="activator"
 					data-test-id="workflow-card-activator"
 				/>

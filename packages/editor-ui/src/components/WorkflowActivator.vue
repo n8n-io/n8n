@@ -26,7 +26,7 @@
 						? $locale.baseText('workflowActivator.deactivateWorkflow')
 						: $locale.baseText('workflowActivator.activateWorkflow')
 				"
-				:disabled="disabled || updatingWorkflowActivation || readOnly"
+				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				element-loading-spinner="el-icon-loading"
@@ -60,7 +60,7 @@ import { getActivatableTriggerNodes } from '@/utils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
-	props: ['workflowActive', 'workflowId', 'readOnly'],
+	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
 	setup(props) {
 		return {
