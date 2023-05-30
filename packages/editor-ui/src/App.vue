@@ -193,7 +193,7 @@ export default defineComponent({
 		},
 		async checkForCloudPlanData(): Promise<void> {
 			try {
-				await this.cloudPlanStore.getOwnerCurrentPLan();
+				await this.cloudPlanStore.getOwnerCurrentPlan();
 				if (!this.cloudPlanStore.userIsTrialing) return;
 				await this.cloudPlanStore.getInstanceCurrentUsage();
 				this.startPollingInstanceUsageData();

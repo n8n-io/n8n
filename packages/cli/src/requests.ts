@@ -40,6 +40,10 @@ export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated: boolean;
+
+	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
+	@IsOptional()
+	allowSSOManualLogin?: boolean;
 }
 
 export type AuthlessRequest<
@@ -248,6 +252,14 @@ export declare namespace UserRequest {
 		{},
 		{},
 		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
+	>;
+
+	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+
+	export type UserSettingsUpdate = AuthenticatedRequest<
+		{ id: string },
+		{},
+		UserSettingsUpdatePayload
 	>;
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;

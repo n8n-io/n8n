@@ -48,10 +48,11 @@ import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
-import { useTelemetryStore } from './telemetry.store';
+import { useUsageStore } from './usage.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
+import { useTelemetryStore } from '@/stores/telemetry.store';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -479,15 +480,22 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(source: string, utm_campaign: string): void {
-			const cloudPlanStore = useCloudPlanStore();
+		goToUpgrade(source: string, utm_campaign: string, mode: 'open' | 'redirect' = 'open'): void {
+			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
+			const { executionsLeft, workflowsLeft } = usageLeft;
 			useTelemetryStore().track('User clicked upgrade CTA', {
 				source,
+				isTrial: userIsTrialing,
 				deploymentType: useSettingsStore().deploymentType,
-				isTrial: cloudPlanStore.userIsTrialing,
-				trialDaysLeft:
+				trialDaysLeft,
+				executionsLeft,
+				workflowsLeft,
 			});
-			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+			if (mode === 'open') {
+				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+			} else {
+				location.href = this.upgradeLinkUrl(source, utm_campaign);
+			}
 		},
 	},
 });

@@ -1961,6 +1961,14 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export interface IUserSettings {
+	isOnboarded?: boolean;
+	showUserActivationSurvey?: boolean;
+	firstSuccessfulWorkflowId?: string;
+	userActivated?: boolean;
+	allowSSOManualLogin?: boolean;
+}
+
 export interface IPublicApiSettings {
 	enabled: boolean;
 	latestVersion: number;
