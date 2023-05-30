@@ -31,7 +31,7 @@ import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import * as Db from '@/Db';
 import { NodeTypes } from './NodeTypes';
-import { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
+import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 function userToPayload(user: User): {
 	userId: string;

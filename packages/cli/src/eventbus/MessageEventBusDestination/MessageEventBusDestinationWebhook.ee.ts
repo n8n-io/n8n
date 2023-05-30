@@ -360,7 +360,9 @@ export class MessageEventBusDestinationWebhook
 			}
 		} catch (error) {
 			LoggerProxy.warn(
-				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${error.message}`,
+				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${
+					(error as Error).message
+				}`,
 			);
 		}
 
