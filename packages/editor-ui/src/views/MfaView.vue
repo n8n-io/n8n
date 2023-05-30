@@ -69,7 +69,6 @@
 </template>
 
 <script lang="ts">
-import AuthView from './AuthView.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
@@ -80,7 +79,7 @@ import {
 } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { mapStores } from 'pinia';
-import { createEventBus } from '@/event-bus';
+import { mfaEventBus } from '@/event-bus';
 import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
 
@@ -88,7 +87,6 @@ export default defineComponent({
 	name: 'MfaView',
 	mixins: [genericHelpers],
 	components: {
-		AuthView,
 		Logo,
 	},
 	async mounted() {
@@ -119,7 +117,7 @@ export default defineComponent({
 			email: '',
 			password: '',
 			hasAnyChanges: false,
-			formBus: createEventBus(),
+			formBus: mfaEventBus,
 			formInputs: null as null | IFormInputs,
 			showRecoveryCodeForm: false,
 			formError: '',
