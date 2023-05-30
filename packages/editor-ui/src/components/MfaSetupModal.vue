@@ -145,9 +145,8 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUsersStore } from '@/stores/users.store';
-import CopyInput from '@/components/CopyInput.vue';
 import { copyPaste } from '@/mixins/copyPaste';
-import { createEventBus } from '@/event-bus';
+import { mfaEventBus } from '@/event-bus';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -161,12 +160,12 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			modalBus: createEventBus(),
+			modalBus: mfaEventBus,
 			MFA_SETUP_MODAL_KEY,
 			secret: '',
 			qrCode: '',
 			readyToSubmit: false,
-			formBus: createEventBus(),
+			formBus: mfaEventBus,
 			showRecoveryCodes: false,
 			recoveryCodes: [] as string[],
 			recoveryCodesDownloaded: false,
