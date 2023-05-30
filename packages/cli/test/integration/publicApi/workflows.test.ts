@@ -40,6 +40,8 @@ beforeAll(async () => {
 		apiKey: randomApiKey(),
 	});
 
+	await utils.initConfigFile();
+  
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
@@ -75,7 +77,7 @@ afterAll(async () => {
 
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
+		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
 	};

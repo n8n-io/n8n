@@ -201,7 +201,7 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	window.open(upgradeLinkUrl.value, '_blank');
+	uiStore.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: EnvironmentVariable) {

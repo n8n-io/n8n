@@ -64,7 +64,7 @@ import { useToast } from '@/composables';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useTagsStore } from '@/stores/tags.store';
-import type { EventBus } from '@/event-bus';
+import type { EventBus } from 'n8n-design-system';
 import type { PropType } from 'vue';
 import type { N8nOption, N8nSelect } from 'n8n-design-system';
 

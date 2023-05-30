@@ -29,14 +29,14 @@ describe('MeController', () => {
 	describe('updateCurrentUser', () => {
 		it('should throw BadRequestError if email is missing in the payload', async () => {
 			const req = mock<MeRequest.UserUpdate>({});
-			expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
+			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
 				new BadRequestError('Email is mandatory'),
 			);
 		});
 
 		it('should throw BadRequestError if email is invalid', async () => {
 			const req = mock<MeRequest.UserUpdate>({ body: { email: 'invalid-email' } });
-			expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
+			await expect(controller.updateCurrentUser(req, mock())).rejects.toThrowError(
 				new BadRequestError('Invalid email address'),
 			);
 		});
@@ -106,7 +106,7 @@ describe('MeController', () => {
 				user: mock({ password: undefined }),
 				body: { currentPassword: '', newPassword: '' },
 			});
-			expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+			await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
 				new BadRequestError('Requesting user not set up.'),
 			);
 		});
@@ -116,7 +116,7 @@ describe('MeController', () => {
 				user: mock({ password: passwordHash }),
 				body: { currentPassword: 'not_old_password', newPassword: '' },
 			});
-			expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+			await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
 				new BadRequestError('Provided current password is incorrect.'),
 			);
 		});
@@ -128,7 +128,7 @@ describe('MeController', () => {
 						user: mock({ password: passwordHash }),
 						body: { currentPassword: 'old_password', newPassword },
 					});
-					expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+					await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
 						new BadRequestError(errorMessage),
 					);
 				});

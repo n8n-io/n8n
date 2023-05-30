@@ -467,6 +467,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .icon {
 	display: inline-flex;
 	justify-content: center;
+	align-items: center;
 
 	svg {
 		display: block;

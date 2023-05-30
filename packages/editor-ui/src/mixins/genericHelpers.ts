@@ -57,6 +57,7 @@ export const genericHelpers = defineComponent({
 					message: this.$locale.baseText('genericHelpers.showMessage.message'),
 					type: 'info',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 
 				return false;

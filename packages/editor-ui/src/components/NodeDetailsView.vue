@@ -125,6 +125,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
 import type {
 	INodeConnections,
 	INodeTypeDescription,
@@ -142,7 +145,6 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
 
-import { defineComponent } from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
@@ -156,8 +158,7 @@ import {
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
 import { pinData } from '@/mixins/pinData';
-import { createEventBus, dataPinningEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
+import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

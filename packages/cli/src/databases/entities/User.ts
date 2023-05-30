@@ -11,14 +11,14 @@ import {
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
-import type { IUser } from 'n8n-workflow';
+import type { IUser, IUserSettings } from 'n8n-workflow';
 import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
+import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
 
 export const MIN_PASSWORD_LENGTH = 8;

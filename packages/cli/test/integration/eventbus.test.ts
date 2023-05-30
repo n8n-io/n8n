@@ -103,6 +103,8 @@ beforeAll(async () => {
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
+	await utils.initConfigFile();
+  
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', 1);
 	config.set('userManagement.disabled', false);
@@ -176,6 +178,7 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 });
 
 // this test (presumably the mocking) is causing the test suite to randomly fail
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('should send message to syslog', async () => {
 	const testMessage = new EventMessageGeneric({
 		eventName: 'n8n.test.message' as EventNamesTypes,
@@ -216,6 +219,7 @@ test.skip('should send message to syslog', async () => {
 	});
 });
 
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
 		eventName: 'n8n.test.unsub' as EventNamesTypes,

@@ -500,7 +500,6 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import WarningTooltip from '@/components/WarningTooltip.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -530,7 +529,6 @@ export default defineComponent({
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
-		WarningTooltip,
 		CodeNodeEditor,
 		RunDataTable,
 		RunDataJson,

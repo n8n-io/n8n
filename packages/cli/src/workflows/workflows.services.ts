@@ -27,6 +27,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
+import type { RoleNames } from '../databases/entities/Role';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -111,7 +112,7 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
+	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 

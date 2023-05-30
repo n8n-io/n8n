@@ -37,7 +37,7 @@ import Modal from '@/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'ChangePasswordModal',

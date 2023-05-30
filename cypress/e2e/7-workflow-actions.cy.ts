@@ -15,7 +15,6 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
@@ -111,8 +110,6 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should update workflow settings', () => {
-		cy.resetAll();
-		cy.skipSetup();
 		WorkflowPage.actions.visit();
 		// Open settings dialog
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
@@ -121,7 +118,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
 		WorkflowPage.getters.workflowMenuItemSettings().click();
 		// Change all settings
-		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 2);
+		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 7);
 		WorkflowPage.getters
 			.workflowSettingsErrorWorkflowSelect()
 			.find('li')
@@ -229,6 +226,7 @@ describe('Workflow Actions', () => {
 		it('should duplicate unsaved workflow', () => {
 			duplicateWorkflow();
 		});
+
 		it('should duplicate saved workflow', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();

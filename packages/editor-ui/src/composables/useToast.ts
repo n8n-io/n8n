@@ -56,6 +56,7 @@ export function useToast() {
 		customClass?: string;
 		closeOnClick?: boolean;
 		type?: MessageType;
+		dangerouslyUseHTMLString?: boolean;
 	}) {
 		// eslint-disable-next-line prefer-const
 		let notification: ElNotificationComponent;
@@ -80,6 +81,7 @@ export function useToast() {
 			duration: config.duration,
 			customClass: config.customClass,
 			type: config.type,
+			dangerouslyUseHTMLString: config.dangerouslyUseHTMLString ?? true,
 		});
 
 		return notification;

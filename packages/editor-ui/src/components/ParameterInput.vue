@@ -91,6 +91,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -367,11 +368,7 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
-import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
-import ScopesNotice from '@/components/ScopesNotice.vue';
-import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
@@ -391,6 +388,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
 
@@ -405,14 +403,10 @@ export default defineComponent({
 		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
-		NodeCredentials,
 		CredentialsSelect,
-		ScopesNotice,
-		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
 		TextEdit,
-		ImportParameter,
 	},
 	props: {
 		isReadOnly: {
@@ -527,7 +521,13 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+			useSettingsStore,
+		),
 		expressionDisplayValue(): string {
 			if (this.forceShowExpression) {
 				return '';
@@ -1009,7 +1009,7 @@ export default defineComponent({
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 		},
 		valueChanged(value: NodeParameterValueType | {} | Date) {
 			if (this.parameter.name === 'nodeCredentialType') {

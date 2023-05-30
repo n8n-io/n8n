@@ -570,12 +570,12 @@ export class Server extends AbstractServer {
 
 		// Check for basic auth credentials if activated
 		if (config.getEnv('security.basicAuth.active')) {
-			await setupBasicAuth(this.app, config, authIgnoreRegex);
+			setupBasicAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// Check for and validate JWT if configured
 		if (config.getEnv('security.jwtAuth.active')) {
-			await setupExternalJWTAuth(this.app, config, authIgnoreRegex);
+			setupExternalJWTAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// ----------------------------------------
@@ -784,8 +784,7 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-				return activeWorkflows.map(({ id }) => id);
+				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
 			}),
 		);
 

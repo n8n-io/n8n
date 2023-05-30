@@ -32,6 +32,7 @@ import type {
 	ITelemetryTrackProperties,
 	IUserManagementSettings,
 	WorkflowSettings,
+	IUserSettings,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -560,12 +561,7 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
-	settings?: {
-		isOnboarded?: boolean;
-		showUserActivationSurvey?: boolean;
-		firstSuccessfulWorkflowId?: string;
-		userActivated?: boolean;
-	};
+	settings?: IUserSettings;
 }
 
 export interface CurrentUserResponse extends IUserResponse {

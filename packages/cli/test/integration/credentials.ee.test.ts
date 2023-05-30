@@ -25,6 +25,8 @@ let sharingSpy: jest.SpyInstance<boolean>;
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['credentials'] });
 
+	await utils.initConfigFile();
+
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 	const credentialOwnerRole = await testDb.getCredentialOwnerRole();

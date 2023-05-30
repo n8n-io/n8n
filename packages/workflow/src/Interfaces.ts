@@ -527,7 +527,7 @@ export interface IHttpRequestOptions {
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
-	body: IN8nHttpResponse;
+	body: IN8nHttpResponse | Readable;
 	headers: IDataObject;
 	statusCode: number;
 	statusMessage?: string;
@@ -1959,6 +1959,14 @@ export interface IUserManagementSettings {
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+}
+
+export interface IUserSettings {
+	isOnboarded?: boolean;
+	showUserActivationSurvey?: boolean;
+	firstSuccessfulWorkflowId?: string;
+	userActivated?: boolean;
+	allowSSOManualLogin?: boolean;
 }
 
 export interface IPublicApiSettings {

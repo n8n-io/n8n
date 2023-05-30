@@ -62,7 +62,7 @@ import type { IWorkflowDataUpdate } from '@/Interface';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 import { useCredentialsStore } from '@/stores';
 
 export default defineComponent({

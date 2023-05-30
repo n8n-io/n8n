@@ -82,11 +82,14 @@ export class AuthController {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
-			if (preliminaryUser?.globalRole?.name === 'owner') {
+			if (
+				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				throw new AuthError('SAML is enabled, please log in with SAML');
+				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			user = await handleLdapLogin(email, password);

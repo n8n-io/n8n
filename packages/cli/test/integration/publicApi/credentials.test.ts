@@ -25,6 +25,8 @@ beforeAll(async () => {
 		enablePublicAPI: true,
 	});
 
+	await utils.initConfigFile();
+
 	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
 		await testDb.getAllRoles();
 
@@ -49,7 +51,7 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-	utils.initCredentialsTypes();
+	await utils.initCredentialsTypes();
 });
 
 beforeEach(async () => {

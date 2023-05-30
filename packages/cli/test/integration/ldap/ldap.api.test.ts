@@ -58,6 +58,8 @@ beforeAll(async () => {
 		defaultLdapConfig.bindingAdminPassword,
 	);
 
+	await utils.initConfigFile();
+
 	await setCurrentAuthenticationMethod('email');
 });
 
