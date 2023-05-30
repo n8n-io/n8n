@@ -91,7 +91,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
-					:atCodeNode="true"
+					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -388,6 +388,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
 
@@ -520,7 +521,13 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+			useSettingsStore,
+		),
 		expressionDisplayValue(): string {
 			if (this.forceShowExpression) {
 				return '';

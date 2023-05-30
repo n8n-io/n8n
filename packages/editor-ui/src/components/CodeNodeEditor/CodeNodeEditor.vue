@@ -7,7 +7,7 @@
 	>
 		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
 		<n8n-button
-			v-if="atCodeNode && isCloud && (isEditorHovered || isEditorFocused)"
+			v-if="aiButtonEnabled && (isEditorHovered || isEditorFocused)"
 			size="small"
 			type="tertiary"
 			:class="$style['ask-ai-button']"
@@ -38,7 +38,6 @@ import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field co
 import { ASK_AI_MODAL_KEY, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useSettingsStore } from '@/stores/settings.store';
 
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { CODE_PLACEHOLDERS } from './constants';
@@ -50,7 +49,7 @@ export default defineComponent({
 	name: 'code-node-editor',
 	mixins: [linterExtension, completerExtension, workflowHelpers],
 	props: {
-		atCodeNode: {
+		aiButtonEnabled: {
 			type: Boolean,
 			default: false,
 		},
@@ -101,9 +100,6 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore),
-		isCloud() {
-			return useSettingsStore().deploymentType === 'cloud';
-		},
 		content(): string {
 			if (!this.editor) return '';
 
