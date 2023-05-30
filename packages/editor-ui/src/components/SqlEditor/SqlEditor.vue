@@ -46,7 +46,6 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import type { Segment } from '@/types/expressions';
 
 const SQL_DIALECTS = {
 	standard: StandardSQL,
