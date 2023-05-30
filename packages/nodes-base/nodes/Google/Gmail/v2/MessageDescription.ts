@@ -166,7 +166,7 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['reply', 'send'],
+				operation: ['send', 'reply'],
 			},
 		},
 		default: {},
@@ -226,7 +226,7 @@ export const messageFields: INodeProperties[] = [
 				description: "The name that will be shown in recipients' inboxes",
 			},
 			{
-				displayName: 'Reply To Email',
+				displayName: 'Send Replies To',
 				name: 'replyTo',
 				type: 'string',
 				placeholder: 'reply@example.com',
@@ -244,11 +244,6 @@ export const messageFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to reply to the sender only or to the entire list of recipients',
-				displayOptions: {
-					hide: {
-						'/operation': ['send'],
-					},
-				},
 			},
 		],
 	},

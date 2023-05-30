@@ -144,7 +144,7 @@ export const draftFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Reply To Email',
+				displayName: 'Send Replies To',
 				name: 'replyTo',
 				type: 'string',
 				placeholder: 'reply@example.com',
