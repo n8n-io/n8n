@@ -349,7 +349,7 @@ export class Start extends BaseCommand {
 			const webhookTunnel = await localtunnel(port, tunnelSettings);
 
 			// Change required here
-			config.set('endpoints.webhookUrl', webhookTunnel.url);
+			config.set('endpoints.webhookUrl', `${webhookTunnel.url}/`);
 			// process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 
 			this.log(`Tunnel URL: ${config.get('endpoints.webhookUrl')}\n`);
