@@ -1056,7 +1056,7 @@ export const schema = {
 		enabled: {
 			doc: 'Whether diagnostic mode is enabled.',
 			format: Boolean,
-			default: true,
+			default: false,
 			env: 'N8N_DIAGNOSTICS_ENABLED',
 		},
 		config: {
