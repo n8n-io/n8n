@@ -8,7 +8,12 @@ import type {
 } from 'typeorm';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
-import type { IExecutionDb, IExecutionFlattedDb, IExecutionResponse } from '@/Interfaces';
+import type {
+	IExecutionBase,
+	IExecutionDb,
+	IExecutionFlattedDb,
+	IExecutionResponse,
+} from '@/Interfaces';
 import { LoggerProxy } from 'n8n-workflow';
 import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { ExecutionDataRepository } from './executionData.repository';
@@ -71,27 +76,31 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
 			unflattenData: true;
-			includeWorkflowData?: boolean;
-			includeData?: boolean;
+			includeData?: true;
 		},
 	): Promise<IExecutionResponse[]>;
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
-			unflattenData?: false;
-			includeWorkflowData?: boolean;
-			includeData?: boolean;
+			unflattenData?: false | undefined;
+			includeData?: true;
 		},
 	): Promise<IExecutionFlattedDb[]>;
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
 			unflattenData?: boolean;
-			includeWorkflowData?: boolean;
 			includeData?: boolean;
 		},
-	) {
-		if (options?.includeData || options?.includeWorkflowData) {
+	): Promise<IExecutionBase[]>;
+	async findMultipleExecutions(
+		queryParams: FindManyOptions<ExecutionEntity>,
+		options?: {
+			unflattenData?: boolean;
+			includeData?: boolean;
+		},
+	): Promise<IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[]> {
+		if (options?.includeData) {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
@@ -105,9 +114,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, ...rest } = execution;
 				return {
 					...rest,
-					data: parse(execution.executionData.data) as IRunExecutionData,
-					workflowData: execution.executionData.workflowData,
+					data: parse(executionData.data) as IRunExecutionData,
+					workflowData: executionData.workflowData,
 				} as IExecutionResponse;
+			});
+		} else if (options?.includeData) {
+			return executions.map((execution) => {
+				const { executionData, ...rest } = execution;
+				return {
+					...rest,
+					data: execution.executionData.data,
+					workflowData: execution.executionData.workflowData,
+				} as IExecutionFlattedDb;
 			});
 		}
 
@@ -115,27 +133,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			const { executionData, ...rest } = execution;
 			return {
 				...rest,
-				data: execution.executionData.data,
-				workflowData: execution.executionData.workflowData,
-			} as IExecutionFlattedDb;
+			} as IExecutionBase;
 		});
 	}
 
 	async findSingleExecution(
 		id: string,
 		options?: {
-			includeData?: boolean;
-			includeWorkflowData?: boolean;
-			unflattenData?: true;
+			includeData: true;
+			unflattenData: true;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
 	): Promise<IExecutionResponse | undefined>;
 	async findSingleExecution(
 		id: string,
 		options?: {
-			includeData?: boolean;
-			includeWorkflowData?: boolean;
-			unflattenData?: false;
+			includeData: true;
+			unflattenData?: false | undefined;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
 	): Promise<IExecutionFlattedDb | undefined>;
@@ -143,18 +157,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData?: boolean;
-			includeWorkflowData?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
-	): Promise<IExecutionFlattedDb | IExecutionResponse | undefined> {
+	): Promise<IExecutionBase | undefined>;
+	async findSingleExecution(
+		id: string,
+		options?: {
+			includeData?: boolean;
+			unflattenData?: boolean;
+			where?: FindOptionsWhere<ExecutionEntity>;
+		},
+	): Promise<IExecutionFlattedDb | IExecutionResponse | IExecutionBase | undefined> {
 		const whereClause: FindOneOptions<ExecutionEntity> = {
 			where: {
 				id,
 				...options?.where,
 			},
 		};
-		if (options?.includeData || options?.includeWorkflowData) {
+		if (options?.includeData) {
 			whereClause.relations = ['executionData'];
 		}
 
@@ -172,13 +193,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				data: parse(execution.executionData.data) as IRunExecutionData,
 				workflowData: execution.executionData.workflowData,
 			} as IExecutionResponse;
+		} else if (options?.includeData) {
+			return {
+				...rest,
+				data: execution.executionData.data,
+				workflowData: execution.executionData.workflowData,
+			} as IExecutionFlattedDb;
 		}
 
 		return {
 			...rest,
-			data: execution.executionData.data,
-			workflowData: execution.executionData.workflowData,
-		} as IExecutionFlattedDb;
+		} as IExecutionBase;
 	}
 
 	async createNewExecution(execution: IExecutionDb) {

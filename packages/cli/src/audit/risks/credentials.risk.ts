@@ -52,7 +52,7 @@ async function getExecutionsInPastDays(days: number) {
 				startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
 			},
 		},
-		{ includeWorkflowData: true },
+		{ includeData: true },
 	);
 
 	return executions;

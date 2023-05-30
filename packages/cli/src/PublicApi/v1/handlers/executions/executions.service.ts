@@ -2,7 +2,7 @@ import type { DeleteResult, FindOptionsWhere } from 'typeorm';
 import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
 
 import * as Db from '@/Db';
-import type { IExecutionFlattedDb, IExecutionResponse } from '@/Interfaces';
+import type { IExecutionBase, IExecutionFlattedDb } from '@/Interfaces';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 import { ExecutionRepository } from '@/databases/repositories';
@@ -47,7 +47,7 @@ export async function getExecutions(params: {
 	workflowIds?: string[];
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: string[];
-}): Promise<IExecutionResponse[]> {
+}): Promise<IExecutionBase[]> {
 	let where: FindOptionsWhere<IExecutionFlattedDb> = {};
 
 	if (params.lastId && params.excludedExecutionsIds?.length) {
@@ -110,7 +110,7 @@ export async function getExecutionInWorkflows(
 	id: string,
 	workflowIds: string[],
 	includeData?: boolean,
-): Promise<IExecutionResponse | undefined> {
+): Promise<IExecutionBase | undefined> {
 	return Container.get(ExecutionRepository).findSingleExecution(id, {
 		where: {
 			workflowId: In(workflowIds),
@@ -120,6 +120,6 @@ export async function getExecutionInWorkflows(
 	});
 }
 
-export async function deleteExecution(execution: IExecutionResponse): Promise<DeleteResult> {
-	return Container.get(ExecutionRepository).deleteExecution(execution.id);
+export async function deleteExecution(execution: IExecutionBase): Promise<DeleteResult> {
+	return Container.get(ExecutionRepository).deleteExecution(execution.id as string);
 }

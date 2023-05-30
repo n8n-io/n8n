@@ -109,7 +109,6 @@ export class WaitTracker {
 		// Also check in database
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
-			includeWorkflowData: true,
 		});
 
 		if (!execution) {
@@ -123,45 +122,47 @@ export class WaitTracker {
 		}
 		let fullExecutionData: IExecutionResponse;
 		try {
-			fullExecutionData = ResponseHelper.unflattenExecutionData(
-				execution as unknown as IExecutionFlattedDb,
-			);
+			fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 		} catch (error) {
 			// if the execution ended in an unforseen, non-cancelable state, try to recover it
 			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
 			// find recovered data
-			const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
 				executionId,
 				{
 					includeData: true,
 					unflattenData: true,
 				},
 			);
-			if (!fullExecutionData) {
+			if (!restoredExecution) {
 				throw new Error(`Execution ${executionId} could not be recovered or canceled.`);
 			}
+			fullExecutionData = restoredExecution;
 		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
 
-		execution.data.resultData.error = {
+		fullExecutionData.data.resultData.error = {
 			...error,
 			message: error.message,
 			stack: error.stack,
 		};
 
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-		execution.status = 'canceled';
+		fullExecutionData.stoppedAt = new Date();
+		fullExecutionData.waitTill = null;
+		fullExecutionData.status = 'canceled';
 
-		await Container.get(ExecutionRepository).updateExistingExecution(executionId, execution);
+		await Container.get(ExecutionRepository).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
 
 		return {
-			mode: execution.mode,
-			startedAt: new Date(execution.startedAt),
-			stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt) : undefined,
-			finished: execution.finished,
-			status: execution.status,
+			mode: fullExecutionData.mode,
+			startedAt: new Date(fullExecutionData.startedAt),
+			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
+			finished: fullExecutionData.finished,
+			status: fullExecutionData.status,
 		};
 	}
 
@@ -173,7 +174,6 @@ export class WaitTracker {
 			// Get the data to execute
 			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
 				includeData: true,
-				includeWorkflowData: true,
 				unflattenData: true,
 			});
 

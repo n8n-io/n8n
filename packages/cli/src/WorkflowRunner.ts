@@ -128,7 +128,7 @@ export class WorkflowRunner {
 			const executionFlattedData = await Container.get(ExecutionRepository).findSingleExecution(
 				executionId,
 				{
-					includeWorkflowData: true,
+					includeData: true,
 				},
 			);
 
@@ -574,7 +574,6 @@ export class WorkflowRunner {
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
 					executionId,
 					{
-						includeWorkflowData: true,
 						includeData: true,
 						unflattenData: true,
 					},

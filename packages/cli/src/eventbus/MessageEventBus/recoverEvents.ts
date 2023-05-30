@@ -21,7 +21,6 @@ export async function recoverExecutionDataFromEventLogMessages(
 		{
 			includeData: true,
 			unflattenData: true,
-			includeWorkflowData: true,
 		},
 	)) as IExecutionResponse;
 

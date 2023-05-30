@@ -32,6 +32,7 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { ExecutionData } from '@/databases/entities/ExecutionData';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -332,17 +333,25 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(attributes: Partial<ExecutionEntity>, workflow: WorkflowEntity) {
+async function createExecution(
+	attributes: Partial<ExecutionEntity & ExecutionData>,
+	workflow: WorkflowEntity,
+) {
 	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
 
 	const execution = await Db.collections.Execution.save({
-		data: data ?? '[]',
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
+		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
+	});
+
+	await Db.collections.ExecutionData.save({
+		data: data ?? '[]',
+		workflowData: workflow ?? {},
+		executionId: execution.id,
 	});
 
 	return execution;

@@ -91,7 +91,6 @@ export class Worker extends BaseCommand {
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
 		const executionDb = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
-			includeWorkflowData: true,
 			includeData: true,
 			unflattenData: true,
 		});

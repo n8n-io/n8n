@@ -436,7 +436,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						this.executionId,
 						{
 							includeData: true,
-							includeWorkflowData: true,
 							unflattenData: true,
 						},
 					);

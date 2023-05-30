@@ -302,7 +302,6 @@ export class ExecutionsService {
 				workflowId: In(sharedWorkflowIds),
 			},
 			includeData: true,
-			includeWorkflowData: true,
 			unflattenData: false,
 		});
 

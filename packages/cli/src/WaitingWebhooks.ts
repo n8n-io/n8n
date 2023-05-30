@@ -41,7 +41,6 @@ export class WaitingWebhooks {
 
 		const execution = await this.executionRepository.findSingleExecution(executionId as string, {
 			includeData: true,
-			includeWorkflowData: true,
 			unflattenData: true,
 		});
 
