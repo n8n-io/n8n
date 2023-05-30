@@ -14,9 +14,9 @@ import type { ImportResult } from './types/importResult';
 import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 import type { VersionControlledFile } from './types/versionControlledFile';
-import { VERSION_CONTROL_DEFAULT_BRANCH } from './constants';
+import { VERSION_CONTROL_API_ROOT, VERSION_CONTROL_DEFAULT_BRANCH } from './constants';
 
-@RestController('/version-control')
+@RestController(`/${VERSION_CONTROL_API_ROOT}`)
 export class VersionControlController {
 	constructor(
 		private versionControlService: VersionControlService,
@@ -27,7 +27,7 @@ export class VersionControlController {
 	@Get('/preferences', { middlewares: [versionControlLicensedMiddleware] })
 	async getPreferences(): Promise<VersionControlPreferences> {
 		// returns the settings with the privateKey property redacted
-		return this.versionControlPreferencesService.versionControlPreferences;
+		return this.versionControlPreferencesService.getPreferences();
 	}
 
 	@Authorized(['global', 'owner'])

@@ -81,6 +81,7 @@ import { EventBusController } from '@/eventbus/eventBus.controller';
 import { License } from '@/License';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
+import { VersionControlPreferencesService } from '@/environments/versionControl/versionControlPreferences.service.ee';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -203,10 +204,11 @@ export async function initTestServer({
 					break;
 				case 'versionControl':
 					const versionControlService = Container.get(VersionControlService);
+					const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
 					registerController(
 						testServer.app,
 						config,
-						new VersionControlController(versionControlService),
+						new VersionControlController(versionControlService, versionControlPreferencesService),
 					);
 					break;
 				case 'nodes':
