@@ -51,18 +51,23 @@ export class VersionControlController {
 			await this.versionControlPreferencesService.validateVersionControlPreferences(
 				sanitizedPreferences,
 			);
-			const newPreferences = await this.versionControlPreferencesService.setPreferences(
+			const updatedPreferences = await this.versionControlPreferencesService.setPreferences(
 				sanitizedPreferences,
 			);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
 					await this.versionControlService.initializeRepository({
-						...newPreferences,
-						branchName: newPreferences.branchName ?? VERSION_CONTROL_DEFAULT_BRANCH,
+						...updatedPreferences,
+						branchName:
+							updatedPreferences.branchName === ''
+								? VERSION_CONTROL_DEFAULT_BRANCH
+								: updatedPreferences.branchName,
 						initRepo: true,
 					});
 					if (this.versionControlPreferencesService.getPreferences().branchName !== '') {
-						await this.versionControlPreferencesService.setPreferences({ connected: true });
+						await this.versionControlPreferencesService.setPreferences({
+							connected: true,
+						});
 					}
 				} catch (error) {
 					// if initialization fails, run cleanup to remove any intermediate state and throw the error
@@ -71,7 +76,7 @@ export class VersionControlController {
 				}
 			}
 			await this.versionControlService.init();
-			return newPreferences;
+			return this.versionControlPreferencesService.getPreferences();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

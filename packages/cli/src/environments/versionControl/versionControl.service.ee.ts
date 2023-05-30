@@ -123,7 +123,7 @@ export class VersionControlService {
 			} else {
 				await this.versionControlPreferencesService.setPreferences({
 					branchName: '',
-					connected: false,
+					connected: true,
 				});
 			}
 		}
