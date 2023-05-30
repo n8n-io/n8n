@@ -168,7 +168,7 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['reply','send'],
+				operation: ['send', 'reply'],
 			},
 		},
 		default: {},
