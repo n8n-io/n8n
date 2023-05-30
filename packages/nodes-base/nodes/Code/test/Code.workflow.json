@@ -1,56 +1,64 @@
 {
-	"name": "My workflow 24",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "3691826c-caf3-4773-b0af-f5fe2eda42bc",
+			"id": "33eede8d-2ab0-42ab-b79a-a069d8549ab0",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-960,
-				600
-			]
+			"position": [-40, 580]
 		},
 		{
 			"parameters": {
 				"jsCode": "return[\n  { value: 1 },\n  { value: 2 },\n]"
 			},
-			"id": "149e8223-20e2-480e-b675-2aeb6a9f9095",
+			"id": "a5913b52-24dc-4f81-bb7f-f90e61dad978",
 			"name": "Sample Data",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-720,
-				600
-			]
+			"position": [200, 580]
 		},
 		{
 			"parameters": {
 				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nlet sum = 0;\nfor (const item of $input.all()) {\n  sum += item.json.value;\n}\n\nreturn [ {sum} ];"
 			},
-			"id": "2002ec71-fd88-4a5b-b2fe-0071fc5397e4",
+			"id": "c4ad4913-5af3-42bc-a784-69182f1facdd",
 			"name": "Run Once for All Items",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-460,
-				480
-			]
+			"position": [460, 320]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nlet sum = 0;\nfor (const item of items) {\n  sum += item.json.value;\n}\n\nreturn [ {sum} ];"
+			},
+			"id": "34cbd204-4335-4790-92cd-c3df617eee21",
+			"name": "Run Once for All Items (Legacy Syntax)",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [460, 500]
 		},
 		{
 			"parameters": {
 				"mode": "runOnceForEachItem",
 				"jsCode": "// Add a new field called 'myNewField' to the\n// JSON of the item\n$input.item.json.myNewField = $input.item.json.value;\n\nreturn $input.item;"
 			},
-			"id": "9adbeb7a-c711-4ff6-881e-96d5e122c2bc",
+			"id": "f67d29bf-554a-4572-8867-4456182dec24",
 			"name": "Run Once for Each Item",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [
-				-460,
-				720
-			]
+			"position": [460, 680]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the\n// JSON of the item\nitem.json.myNewField = item.json.value;\n\nreturn item;"
+			},
+			"id": "6f4bf149-e84e-4e0d-802a-7eaf7a42b18c",
+			"name": "Run Once for Each Item  (Legacy Syntax)",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [460, 860]
 		}
 	],
 	"pinData": {
@@ -62,6 +70,27 @@
 			}
 		],
 		"Run Once for Each Item": [
+			{
+				"json": {
+					"value": 1,
+					"myNewField": 1
+				}
+			},
+			{
+				"json": {
+					"value": 2,
+					"myNewField": 2
+				}
+			}
+		],
+		"Run Once for All Items (Legacy Syntax)": [
+			{
+				"json": {
+					"sum": 3
+				}
+			}
+		],
+		"Run Once for Each Item  (Legacy Syntax)": [
 			{
 				"json": {
 					"value": 1,
@@ -100,17 +129,19 @@
 						"node": "Run Once for Each Item",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Run Once for All Items (Legacy Syntax)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Run Once for Each Item  (Legacy Syntax)",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
 		}
-	},
-	"active": false,
-	"settings": {},
-	"versionId": "b0d8ec77-92ab-4fa7-93b1-8a2e3543059d",
-	"id": "181",
-	"meta": {
-		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
-	},
-	"tags": []
+	}
 }
