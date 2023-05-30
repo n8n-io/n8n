@@ -50,9 +50,13 @@
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
 				:currentUserId="usersStore.currentUserId"
+				:isSamlLoginEnabled="ssoStore.isSamlLoginEnabled"
 				@delete="onDelete"
 				@reinvite="onReinvite"
 				@copyInviteLink="onCopyInviteLink"
+				@copyPasswordResetLink="onCopyPasswordResetLink"
+				@allowSSOManualLogin="onAllowSSOManualLogin"
+				@disallowSSOManualLogin="onDisallowSSOManualLogin"
 			/>
 		</div>
 	</div>
@@ -106,6 +110,22 @@ export default defineComponent({
 					label: this.$locale.baseText('settings.users.actions.delete'),
 					value: 'delete',
 				},
+				{
+					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
+					value: 'copyPasswordResetLink',
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),
+					value: 'allowSSOManualLogin',
+					guard: (user) =>
+						this.settingsStore.isSamlLoginEnabled && !user.settings?.allowSSOManualLogin,
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.disallowSSOManualLogin'),
+					value: 'disallowSSOManualLogin',
+					guard: (user) =>
+						this.settingsStore.isSamlLoginEnabled && user.settings?.allowSSOManualLogin === true,
+				},
 			];
 		},
 	},
@@ -149,6 +169,44 @@ export default defineComponent({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.inviteUrlCreated'),
 					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
+				});
+			}
+		},
+		async onCopyPasswordResetLink(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user) {
+				const url = await this.usersStore.getUserPasswordResetLink(user);
+				this.copyToClipboard(url.link);
+
+				this.showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.passwordResetUrlCreated'),
+					message: this.$locale.baseText('settings.users.passwordResetUrlCreated.message'),
+				});
+			}
+		},
+		async onAllowSSOManualLogin(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user?.settings) {
+				user.settings.allowSSOManualLogin = true;
+				await this.usersStore.updateOtherUserSettings(userId, user.settings);
+
+				this.showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.allowSSOManualLogin'),
+					message: this.$locale.baseText('settings.users.allowSSOManualLogin.message'),
+				});
+			}
+		},
+		async onDisallowSSOManualLogin(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user?.settings) {
+				user.settings.allowSSOManualLogin = false;
+				await this.usersStore.updateOtherUserSettings(userId, user.settings);
+				this.showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.disallowSSOManualLogin'),
+					message: this.$locale.baseText('settings.users.disallowSSOManualLogin.message'),
 				});
 			}
 		},
