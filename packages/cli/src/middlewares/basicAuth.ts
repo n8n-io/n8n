@@ -6,7 +6,7 @@ import { compare } from 'bcryptjs';
 import type { Config } from '@/config';
 import { basicAuthAuthorizationError } from '@/ResponseHelper';
 
-export const setupBasicAuth = async (app: Application, config: Config, authIgnoreRegex: RegExp) => {
+export const setupBasicAuth = (app: Application, config: Config, authIgnoreRegex: RegExp) => {
 	const basicAuthUser = config.getEnv('security.basicAuth.user');
 	if (basicAuthUser === '') {
 		throw new Error('Basic auth is activated but no user got defined. Please set one!');

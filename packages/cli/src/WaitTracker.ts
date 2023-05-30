@@ -3,8 +3,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-floating-promises */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
@@ -40,10 +38,10 @@ export class WaitTracker {
 	constructor() {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
-			this.getWaitingExecutions();
+			void this.getWaitingExecutions();
 		}, 60000);
 
-		this.getWaitingExecutions();
+		void this.getWaitingExecutions();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

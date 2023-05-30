@@ -5,7 +5,6 @@ const ndv = new NDV();
 
 describe('HTTP Request node', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

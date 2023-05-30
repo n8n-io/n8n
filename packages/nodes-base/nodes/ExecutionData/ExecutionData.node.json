@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.executionData",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Core Nodes"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	},
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/executionData"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executionData/"
+			}
+		]
+	},
+	"alias": ["Filter", "Set", "Data"]
+}

@@ -343,6 +343,7 @@ export default defineComponent({
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
 		await this.loadWorkflows();
@@ -354,10 +355,8 @@ export default defineComponent({
 		});
 	},
 	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
@@ -412,15 +411,8 @@ export default defineComponent({
 			window.open(route.href, '_blank');
 		},
 		handleAutoRefreshToggle() {
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			this.startAutoRefreshInterval();
 		},
 		handleCheckAllExistingChange() {
 			this.allExistingSelected = !this.allExistingSelected;
@@ -925,6 +917,24 @@ export default defineComponent({
 			if (this.allExistingSelected) {
 				this.allVisibleSelected = true;
 				this.selectAllVisibleExecutions();
+			}
+		},
+		startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshInterval) {
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				this.stopAutoRefreshInterval();
+			} else {
+				this.startAutoRefreshInterval();
 			}
 		},
 	},

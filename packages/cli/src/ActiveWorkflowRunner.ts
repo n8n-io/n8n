@@ -3,7 +3,6 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -306,8 +305,7 @@ export class ActiveWorkflowRunner {
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
-			// @ts-ignore
-			WebhookHelpers.executeWebhook(
+			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData,
@@ -627,7 +625,7 @@ export class ActiveWorkflowRunner {
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				WorkflowHelpers.saveStaticData(workflow);
+				void WorkflowHelpers.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -638,14 +636,14 @@ export class ActiveWorkflowRunner {
 				);
 
 				if (donePromise) {
-					executePromise.then((executionId) => {
+					void executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)
 							.catch(donePromise.reject);
 					});
 				} else {
-					executePromise.catch(Logger.error);
+					void executePromise.catch(Logger.error);
 				}
 			};
 
@@ -684,7 +682,7 @@ export class ActiveWorkflowRunner {
 			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				WorkflowHelpers.saveStaticData(workflow);
+				void WorkflowHelpers.saveStaticData(workflow);
 				// eslint-disable-next-line id-denylist
 				const executePromise = this.runWorkflow(
 					workflowData,
@@ -696,7 +694,7 @@ export class ActiveWorkflowRunner {
 				);
 
 				if (donePromise) {
-					executePromise.then((executionId) => {
+					void executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
 							.then(donePromise.resolve)

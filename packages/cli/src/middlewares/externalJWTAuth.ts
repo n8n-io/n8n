@@ -4,11 +4,7 @@ import jwks from 'jwks-rsa';
 import type { Config } from '@/config';
 import { jwtAuthAuthorizationError } from '@/ResponseHelper';
 
-export const setupExternalJWTAuth = async (
-	app: Application,
-	config: Config,
-	authIgnoreRegex: RegExp,
-) => {
+export const setupExternalJWTAuth = (app: Application, config: Config, authIgnoreRegex: RegExp) => {
 	const jwtAuthHeader = config.getEnv('security.jwtAuth.jwtHeader');
 	if (jwtAuthHeader === '') {
 		throw new Error('JWT auth is activated but no request header was defined. Please set one!');
