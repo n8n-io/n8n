@@ -35,7 +35,6 @@ const lastName = randLastName();
 
 describe('Default owner', () => {
 	it('should be able to create workflows', () => {
-		cy.resetAll();
 		cy.skipSetup();
 		cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
 

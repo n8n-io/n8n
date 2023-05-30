@@ -162,6 +162,7 @@ import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { createEventBus } from 'n8n-design-system';
+import { useCloudPlanStore } from '@/stores';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -212,6 +213,7 @@ export default defineComponent({
 			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
+			useCloudPlanStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
