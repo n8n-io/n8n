@@ -1,3 +1,15 @@
+## [0.230.2](https://github.com/n8n-io/n8n/compare/n8n@0.230.1...n8n@0.230.2) (2023-05-30)
+
+
+### Bug Fixes
+
+* **Code Node:** Update vm2 to address CVE-2023-32313 ([#6318](https://github.com/n8n-io/n8n/issues/6318)) ([4301127](https://github.com/n8n-io/n8n/commit/43011270865de044f6e0c8e0ab6f220f52a0f827))
+* **core:** Optimize getSharedWorkflowIds query ([#6314](https://github.com/n8n-io/n8n/issues/6314)) ([4269d3f](https://github.com/n8n-io/n8n/commit/4269d3f1b2d888a909861e3236bffb07e9255222))
+* **core:** Prevent prototype pollution on injectable services ([#6309](https://github.com/n8n-io/n8n/issues/6309)) ([a4bff84](https://github.com/n8n-io/n8n/commit/a4bff84834a536944d4ca6bffe3eed6f0a4bd3be))
+* **editor:** Fix Luxon date parsing of ExecutionsUsage component ([#6333](https://github.com/n8n-io/n8n/issues/6333)) ([4045aee](https://github.com/n8n-io/n8n/commit/4045aee9cb5587a456318934700b59ba422f7422))
+
+
+
 ## [0.230.1](https://github.com/n8n-io/n8n/compare/n8n@0.230.0...n8n@0.230.1) (2023-05-25)
 
 
