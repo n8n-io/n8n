@@ -256,6 +256,15 @@ export class InternalHooks implements IInternalHooksClass {
 		workflowData?: IWorkflowBase,
 		executionMetadata?: ExecutionMetadata[],
 	): Promise<void> {
+		let metaData;
+		try {
+			if (executionMetadata) {
+				metaData = executionMetadata.reduce((acc, meta) => {
+					return { ...acc, [meta.key]: meta.value };
+				}, {});
+			}
+		} catch {}
+
 		void Promise.all([
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.crashed',
@@ -264,9 +273,7 @@ export class InternalHooks implements IInternalHooksClass {
 					isManual: executionMode === 'manual',
 					workflowId: workflowData?.id?.toString(),
 					workflowName: workflowData?.name,
-					metaData: executionMetadata?.map((metadata) => ({
-						[metadata.key]: metadata.value,
-					})),
+					metaData,
 				},
 			}),
 		]);
