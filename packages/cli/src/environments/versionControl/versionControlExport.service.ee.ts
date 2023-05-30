@@ -565,6 +565,18 @@ export class VersionControlExportService {
 		const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 		let importWorkflowsResult = new Array<{ id: string; name: string }>();
+		// TODO: once IDs are unique and we removed autoincrement, remove this
+		if (config.getEnv('database.type') === 'postgresdb') {
+			await Db.transaction(async (transactionManager) => {
+				await transactionManager.query(
+					'ALTER SEQUENCE IF EXISTS "workflow_entity_id_seq" RESTART;',
+				);
+				await transactionManager.query(
+					"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity) );",
+					// "SELECT setval('workflow_entity_id_seq', (SELECT MAX(v) FROM (VALUES (1), ((SELECT MAX(id) from workflow_entity))) as value(v)));",
+				);
+			});
+		}
 		await Db.transaction(async (transactionManager) => {
 			importWorkflowsResult = await Promise.all(
 				workflowFiles.map(async (file) => {
@@ -587,22 +599,26 @@ export class VersionControlExportService {
 					LoggerProxy.debug(`Importing workflow ${importedWorkflow.id ?? 'n/a'}`);
 					importedWorkflow.active = existingWorkflow?.active ?? false;
 					LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-					await transactionManager.upsert(WorkflowEntity, { ...importedWorkflow }, ['id']);
+					const upsertResult = await transactionManager.upsert(
+						WorkflowEntity,
+						{ ...importedWorkflow },
+						['id'],
+					);
+					if (upsertResult?.identifiers?.length !== 1) {
+						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
+					}
+					// due to sequential Ids, this may have changed during the insert
+					// TODO: once IDs are unique and we removed autoincrement, remove this
+					const upsertedWorkflowId = upsertResult.identifiers[0].id as string;
 					await transactionManager.upsert(
 						SharedWorkflow,
 						{
-							workflowId: importedWorkflow.id,
+							workflowId: upsertedWorkflowId,
 							userId,
 							roleId: ownerWorkflowRole.id,
 						},
 						['workflowId', 'userId'],
 					);
-					// TODO: once IDs are unique and we removed autoincrement, remove this
-					if (config.getEnv('database.type') === 'postgresdb') {
-						await transactionManager.query(
-							"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
-						);
-					}
 
 					if (existingWorkflow?.active) {
 						try {
