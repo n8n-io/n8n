@@ -2,7 +2,7 @@
 	<div>
 		<div ref="sqlEditor" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
-			:segments="previewSegments"
+			:segments="segments"
 			:value="query"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
@@ -89,14 +89,12 @@ export default defineComponent({
 			editor: {} as EditorView,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
+			skipSegments: ['Statement'],
 		};
 	},
 	computed: {
 		doc(): string {
 			return this.editor.state.doc.toString();
-		},
-		previewSegments(): Segment[] {
-			return this.segments.length > 1 ? this.segments.slice(1) : this.segments;
 		},
 	},
 

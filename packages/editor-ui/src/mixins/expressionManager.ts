@@ -85,8 +85,11 @@ export const expressionManager = defineComponent({
 				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
 			}
 
+			const customSkipSegments = this.skipSegments || [];
+
 			fullTree.cursor().iterate((node) => {
-				if (['Program', 'Script', 'Document'].includes(node.type.name)) return;
+				if (['Program', 'Script', 'Document'].concat(customSkipSegments).includes(node.type.name))
+					return;
 
 				rawSegments.push({
 					from: node.from,
