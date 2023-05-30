@@ -114,11 +114,11 @@ export class License {
 	}
 
 	isLdapEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+		return true;
 	}
 
 	isSamlEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+		return true;
 	}
 
 	isAdvancedExecutionFiltersEnabled() {

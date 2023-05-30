@@ -8,6 +8,7 @@ import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
+import { parseRedisUrl } from '@/ParserHelper'
 
 import type { WebhookHttpMethod } from 'n8n-workflow';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -188,14 +189,15 @@ export abstract class AbstractServer {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+		let tlsConfig = {};
+		const { host, port, password, db}: RedisOptions = parseRedisUrl() || config.getEnv('queue.bull.redis');
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
+		Logger.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
 
-		const redis = new Redis({
+		let redisConfig: RedisOptions = {
 			host,
 			port,
 			db,
-			username,
 			password,
 			retryStrategy: (): number | null => {
 				const now = Date.now();
@@ -215,7 +217,13 @@ export abstract class AbstractServer {
 				}
 				return 500;
 			},
-		});
+		}
+
+		if ( host !== 'localhost' && '127.0.0.1' ) {
+			// If redis is in localhost mode then there is no need to configre any ssl options
+			redisConfig['tls'] = { rejectUnauthorized: false }
+		}
+		const redis = new Redis(redisConfig);
 
 		redis.on('close', () => {
 			Logger.warn('Redis unavailable - trying to reconnect...');

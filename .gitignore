@@ -20,3 +20,5 @@ packages/**/.turbo
 cypress/videos/*
 cypress/screenshots/*
 *.swp
+.env
+.env.local

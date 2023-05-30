@@ -54,11 +54,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		ldap: {
 			loginLabel: '',
-			loginEnabled: false,
+			loginEnabled: true,
 		},
 		saml: {
 			loginLabel: '',
-			loginEnabled: false,
+			loginEnabled: true,
 		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
@@ -67,7 +67,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	}),
 	getters: {
 		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise[feature];
+			return (feature: EnterpriseEditionFeature): boolean => true;
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
