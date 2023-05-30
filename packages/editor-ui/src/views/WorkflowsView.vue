@@ -9,6 +9,7 @@
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
+		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -22,7 +23,7 @@
 				:readOnly="readOnlyEnv"
 			/>
 		</template>
-		<template #empty>
+		<template v-if="!readOnlyEnv" #empty>
 			<div class="text-center mt-s">
 				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
 					{{
