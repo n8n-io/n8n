@@ -31,6 +31,7 @@ import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
 import * as Db from '@/Db';
 import { NodeTypes } from './NodeTypes';
+import { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -253,6 +254,7 @@ export class InternalHooks implements IInternalHooksClass {
 		executionId: string,
 		executionMode: WorkflowExecuteMode,
 		workflowData?: IWorkflowBase,
+		executionMetadata?: ExecutionMetadata[],
 	): Promise<void> {
 		void Promise.all([
 			eventBus.sendWorkflowEvent({
@@ -262,6 +264,9 @@ export class InternalHooks implements IInternalHooksClass {
 					isManual: executionMode === 'manual',
 					workflowId: workflowData?.id?.toString(),
 					workflowName: workflowData?.name,
+					metaData: executionMetadata?.map((metadata) => ({
+						[metadata.key]: metadata.value,
+					})),
 				},
 			}),
 		]);
@@ -430,6 +435,7 @@ export class InternalHooks implements IInternalHooksClass {
 							workflowId: properties.workflow_id,
 							isManual: properties.is_manual,
 							workflowName: workflow.name,
+							metaData: runData?.data?.resultData?.metadata,
 						},
 				  })
 				: eventBus.sendWorkflowEvent({
@@ -445,6 +451,7 @@ export class InternalHooks implements IInternalHooksClass {
 							errorMessage: properties.error_message?.toString(),
 							isManual: properties.is_manual,
 							workflowName: workflow.name,
+							metaData: runData?.data?.resultData?.metadata,
 						},
 				  }),
 		);

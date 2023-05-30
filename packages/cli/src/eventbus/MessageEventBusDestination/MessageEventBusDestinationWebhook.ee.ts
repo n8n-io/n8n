@@ -359,7 +359,9 @@ export class MessageEventBusDestinationWebhook
 				}
 			}
 		} catch (error) {
-			console.error(error);
+			LoggerProxy.warn(
+				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${error.message}`,
+			);
 		}
 
 		return sendResult;
