@@ -6,7 +6,7 @@
 			:value="query"
 			:isReadOnly="isReadOnly"
 			:visible="isFocused"
-			:hoveringItemNumber="1"
+			:hoveringItemNumber="hoveringItemNumber"
 		/>
 	</div>
 </template>
@@ -46,6 +46,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import type { TargetItem } from '@/Interface';
 
 const SQL_DIALECTS = {
 	standard: StandardSQL,
@@ -94,6 +95,16 @@ export default defineComponent({
 	computed: {
 		doc(): string {
 			return this.editor.state.doc.toString();
+		},
+		hoveringItemNumber(): number {
+			return (this.hoveringItem?.itemIndex ?? 0) + 1;
+		},
+		hoveringItem(): TargetItem | null {
+			if (this.ndvStore.isInputParentOfActiveNode) {
+				return this.ndvStore.hoveringItem;
+			}
+
+			return null;
 		},
 	},
 
