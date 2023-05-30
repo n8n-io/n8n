@@ -17,7 +17,6 @@
 <script lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { PropType } from 'vue';
-import client from '@sendgrid/client';
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
@@ -49,21 +48,24 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	methods: {
+		getApiKey() {
+			const selectedApp = this.getParameterValue(this.nodeValues, 'esaApp', 'parameters');
+			const esaApp = this.parameter.options?.find((app) => (app as any).appKey === selectedApp);
+			return (esaApp as any)?.sendgridApiKey;
+		},
 		async getTemplate(templateId: string) {
-			const request = {
-				url: `/v3/templates/${templateId}`,
-				method: 'GET',
-			};
-
 			try {
-				const selectedApp = this.getParameterValue(this.nodeValues, 'esaApp', 'parameters');
-				const esaApp = this.parameter.options?.find((app) => (app as any).appKey === selectedApp);
+				const apiKey = this.getApiKey();
 
-				if (!esaApp) throw new Error('Selected app not configured.');
+				if (!apiKey) throw new Error('Selected app not configured.');
 
-				client.setApiKey((esaApp as any).sendgridApiKey);
+				const response = await fetch(`https://api.sendgrid.com/v3/templates/${templateId}`, {
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+					},
+				});
 
-				const [, body] = await client.request(request);
+				const body = await response.json();
 				const [latest] = body.versions;
 				this.srcdoc = latest.html_content;
 				this.testData = latest.test_data;

@@ -901,12 +901,9 @@ importers:
       '@jsplumb/util':
         specifier: ^5.13.2
         version: 5.13.2
-      '@sendgrid/client':
-        specifier: ^7.7.0
-        version: registry.npmjs.org/@sendgrid/client@7.7.0
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       canvas-confetti:
         specifier: ^1.6.0
         version: 1.6.0
@@ -2139,7 +2136,7 @@ packages:
       '@babel/traverse': 7.21.5
       '@babel/types': 7.21.5
       convert-source-map: 1.9.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.0
@@ -4419,7 +4416,7 @@ packages:
       '@babel/helper-split-export-declaration': 7.18.6
       '@babel/parser': 7.21.5
       '@babel/types': 7.21.5
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -8789,7 +8786,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -9401,6 +9398,14 @@ packages:
     dependencies:
       '@babel/runtime': 7.19.4
       is-retry-allowed: 2.2.0
+    dev: false
+
+  /axios@0.21.4:
+    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
+    dependencies:
+      follow-redirects: 1.15.2
+    transitivePeerDependencies:
+      - debug
     dev: false
 
   /axios@0.21.4(debug@4.3.2):
@@ -11427,6 +11432,17 @@ packages:
     dependencies:
       ms: 2.1.2
 
+  /debug@4.3.4:
+    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+    dependencies:
+      ms: 2.1.2
+
   /debug@4.3.4(supports-color@8.1.1):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
@@ -13254,6 +13270,16 @@ packages:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
     dev: false
 
+  /follow-redirects@1.15.2:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+    dev: false
+
   /follow-redirects@1.15.2(debug@3.2.7):
     resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
     engines: {node: '>=4.0'}
@@ -14249,7 +14275,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -20093,7 +20119,7 @@ packages:
       sass: 1.55.0
       schema-utils: 3.1.1
       semver: 7.3.8
-      webpack: registry.npmjs.org/webpack@5.75.0(esbuild@0.16.17)
+      webpack: registry.npmjs.org/webpack@5.75.0
     dev: true
 
   /sass-loader@13.2.0(sass@1.58.0)(webpack@5.75.0):
@@ -22142,7 +22168,6 @@ packages:
     resolution: {integrity: sha512-xv8mOEDnigb/tN9PSMTwSEqAnUvkoXMQlicOb0IUVDBSQCgBSaAAROUZYy2IcUy5qU6XajK5jjjO7TMWqBTKZA==}
     engines: {node: '>=12.20'}
     hasBin: true
-    dev: true
 
   /uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
@@ -22667,7 +22692,7 @@ packages:
     hasBin: true
     dependencies:
       cac: 6.7.14
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       mlly: 1.1.0
       pathe: 1.1.0
       picocolors: 1.0.0
@@ -22817,7 +22842,7 @@ packages:
       acorn-walk: 8.2.0
       cac: 6.7.14
       chai: 4.3.7
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       local-pkg: 0.4.2
       pathe: 1.1.0
       picocolors: 1.0.0
@@ -25722,27 +25747,6 @@ packages:
       fastq: registry.npmjs.org/fastq@1.15.0
     dev: true
 
-  registry.npmjs.org/@sendgrid/client@7.7.0:
-    resolution: {integrity: sha512-SxH+y8jeAQSnDavrTD0uGDXYIIkFylCo+eDofVmZLQ0f862nnqbC3Vd1ej6b7Le7lboyzQF6F7Fodv02rYspuA==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/@sendgrid/client/-/client-7.7.0.tgz}
-    name: '@sendgrid/client'
-    version: 7.7.0
-    engines: {node: 6.* || 8.* || >=10.*}
-    dependencies:
-      '@sendgrid/helpers': registry.npmjs.org/@sendgrid/helpers@7.7.0
-      axios: registry.npmjs.org/axios@0.26.1
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
-  registry.npmjs.org/@sendgrid/helpers@7.7.0:
-    resolution: {integrity: sha512-3AsAxfN3GDBcXoZ/y1mzAAbKzTtUZ5+ZrHOmWQ279AuaFXUNCh9bPnRpN504bgveTqoW+11IzPg3I0WVgDINpw==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/@sendgrid/helpers/-/helpers-7.7.0.tgz}
-    name: '@sendgrid/helpers'
-    version: 7.7.0
-    engines: {node: '>= 6.0.0'}
-    dependencies:
-      deepmerge: registry.npmjs.org/deepmerge@4.2.2
-    dev: false
-
   registry.npmjs.org/@storybook/csf@0.0.2-next.11:
     resolution: {integrity: sha512-xGt0YSVxZb43sKmEf1GIQD8xEbo+c+S6khDEL7Qu/pYA0gh5z3WUuhOlovnelYj/YJod+XRsfVvk23AaRfUJ4Q==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/@storybook/csf/-/csf-0.0.2-next.11.tgz}
     name: '@storybook/csf'
@@ -26248,16 +26252,6 @@ packages:
       safer-buffer: registry.npmjs.org/safer-buffer@2.1.2
     dev: false
 
-  registry.npmjs.org/axios@0.26.1:
-    resolution: {integrity: sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/axios/-/axios-0.26.1.tgz}
-    name: axios
-    version: 0.26.1
-    dependencies:
-      follow-redirects: registry.npmjs.org/follow-redirects@1.15.2
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
   registry.npmjs.org/babel-loader@9.1.2(@babel/core@7.21.5)(webpack@5.75.0):
     resolution: {integrity: sha512-mN14niXW43tddohGl8HPu5yfQq70iUThvFL/4QzESA7GcZoC0eVOhvWdQ8+3UlSjaDE9MVtsW9mxDY07W7VpVA==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/babel-loader/-/babel-loader-9.1.2.tgz}
     id: registry.npmjs.org/babel-loader/9.1.2
@@ -26572,6 +26566,7 @@ packages:
     name: deepmerge
     version: 4.2.2
     engines: {node: '>=0.10.0'}
+    dev: true
 
   registry.npmjs.org/dir-glob@3.0.1:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/dir-glob/-/dir-glob-3.0.1.tgz}
@@ -26948,18 +26943,6 @@ packages:
     name: flatted
     version: 3.2.7
     dev: true
-
-  registry.npmjs.org/follow-redirects@1.15.2:
-    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.2.tgz}
-    name: follow-redirects
-    version: 1.15.2
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-    dev: false
 
   registry.npmjs.org/fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz}
@@ -28200,6 +28183,33 @@ packages:
       webpack: registry.npmjs.org/webpack@5.75.0(esbuild@0.16.17)
     dev: true
 
+  registry.npmjs.org/terser-webpack-plugin@5.3.6(webpack@5.75.0):
+    resolution: {integrity: sha512-kfLFk+PoLUQIbLmB1+PZDMRSZS99Mp+/MHqDNmMA6tOItzRt+Npe3E+fsMs5mfcM0wCtrrdU387UnV+vnSffXQ==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/terser-webpack-plugin/-/terser-webpack-plugin-5.3.6.tgz}
+    id: registry.npmjs.org/terser-webpack-plugin/5.3.6
+    name: terser-webpack-plugin
+    version: 5.3.6
+    engines: {node: '>= 10.13.0'}
+    peerDependencies:
+      '@swc/core': '*'
+      esbuild: '*'
+      uglify-js: '*'
+      webpack: ^5.1.0
+    peerDependenciesMeta:
+      '@swc/core':
+        optional: true
+      esbuild:
+        optional: true
+      uglify-js:
+        optional: true
+    dependencies:
+      '@jridgewell/trace-mapping': registry.npmjs.org/@jridgewell/trace-mapping@0.3.17
+      jest-worker: registry.npmjs.org/jest-worker@27.5.1
+      schema-utils: registry.npmjs.org/schema-utils@3.1.1
+      serialize-javascript: registry.npmjs.org/serialize-javascript@6.0.1
+      terser: registry.npmjs.org/terser@5.16.1
+      webpack: registry.npmjs.org/webpack@5.75.0
+    dev: true
+
   registry.npmjs.org/terser@5.16.1:
     resolution: {integrity: sha512-xvQfyfA1ayT0qdK47zskQgRZeWLoOQ8JQ6mIgRGVNwZKdQMU+5FkCBjmv4QjcrTzyZquRw2FVtlJSRUmMKQslw==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/terser/-/terser-5.16.1.tgz}
     name: terser
@@ -28436,6 +28446,48 @@ packages:
     name: webpack-sources
     version: 3.2.3
     engines: {node: '>=10.13.0'}
+    dev: true
+
+  registry.npmjs.org/webpack@5.75.0:
+    resolution: {integrity: sha512-piaIaoVJlqMsPtX/+3KTTO6jfvrSYgauFVdt8cr9LTHKmcq/AMd4mhzsiP7ZF/PGRNPGA8336jldh9l2Kt2ogQ==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/webpack/-/webpack-5.75.0.tgz}
+    name: webpack
+    version: 5.75.0
+    engines: {node: '>=10.13.0'}
+    hasBin: true
+    peerDependencies:
+      webpack-cli: '*'
+    peerDependenciesMeta:
+      webpack-cli:
+        optional: true
+    dependencies:
+      '@types/eslint-scope': registry.npmjs.org/@types/eslint-scope@3.7.4
+      '@types/estree': registry.npmjs.org/@types/estree@0.0.51
+      '@webassemblyjs/ast': registry.npmjs.org/@webassemblyjs/ast@1.11.1
+      '@webassemblyjs/wasm-edit': registry.npmjs.org/@webassemblyjs/wasm-edit@1.11.1
+      '@webassemblyjs/wasm-parser': registry.npmjs.org/@webassemblyjs/wasm-parser@1.11.1
+      acorn: registry.npmjs.org/acorn@8.8.1
+      acorn-import-assertions: registry.npmjs.org/acorn-import-assertions@1.8.0(acorn@8.8.1)
+      browserslist: registry.npmjs.org/browserslist@4.21.4
+      chrome-trace-event: registry.npmjs.org/chrome-trace-event@1.0.3
+      enhanced-resolve: registry.npmjs.org/enhanced-resolve@5.13.0
+      es-module-lexer: registry.npmjs.org/es-module-lexer@0.9.3
+      eslint-scope: registry.npmjs.org/eslint-scope@5.1.1
+      events: registry.npmjs.org/events@3.3.0
+      glob-to-regexp: registry.npmjs.org/glob-to-regexp@0.4.1
+      graceful-fs: registry.npmjs.org/graceful-fs@4.2.10
+      json-parse-even-better-errors: registry.npmjs.org/json-parse-even-better-errors@2.3.1
+      loader-runner: registry.npmjs.org/loader-runner@4.3.0
+      mime-types: registry.npmjs.org/mime-types@2.1.35
+      neo-async: registry.npmjs.org/neo-async@2.6.2
+      schema-utils: registry.npmjs.org/schema-utils@3.1.1
+      tapable: registry.npmjs.org/tapable@2.2.1
+      terser-webpack-plugin: registry.npmjs.org/terser-webpack-plugin@5.3.6(webpack@5.75.0)
+      watchpack: registry.npmjs.org/watchpack@2.4.0
+      webpack-sources: registry.npmjs.org/webpack-sources@3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
     dev: true
 
   registry.npmjs.org/webpack@5.75.0(esbuild@0.16.17):
