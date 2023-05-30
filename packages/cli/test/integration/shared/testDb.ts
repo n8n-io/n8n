@@ -32,7 +32,7 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
-import { ExecutionData } from '@/databases/entities/ExecutionData';
+import type { ExecutionData } from '@/databases/entities/ExecutionData';
 
 export type TestDBType = 'postgres' | 'mysql';
 

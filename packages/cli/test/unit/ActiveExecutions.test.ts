@@ -12,7 +12,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 
 const updateExistingExecution = jest.fn();
 const createNewExecution = jest.fn(async () => {
-	return Promise.resolve({ id: FAKE_EXECUTION_ID });
+	return { id: FAKE_EXECUTION_ID };
 });
 
 Container.set(ExecutionRepository, {
