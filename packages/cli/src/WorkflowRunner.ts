@@ -133,6 +133,7 @@ export class WorkflowRunner {
 				executionId,
 				executionMode,
 				executionFlattedData?.workflowData,
+				executionFlattedData?.metadata,
 			);
 		} catch {
 			// Ignore errors
