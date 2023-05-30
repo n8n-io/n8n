@@ -2,51 +2,52 @@ import { WorkflowPage } from '../pages';
 
 const wf = new WorkflowPage();
 
-const TEST_TAGS = ['Tag 1', 'Tag 2', 'Tag 3'];
+const TEST_TAGS = ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4', 'Tag 5'];
 
 describe('Workflow tags', () => {
-	beforeEach(() => {
-		cy.resetAll();
+	before(() => {
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
+		wf.actions.visit();
 	});
 
 	it('should create and attach tags inline', () => {
 		wf.getters.createTagButton().click();
-		wf.actions.addTags(TEST_TAGS);
-		wf.getters.tagPills().should('have.length', TEST_TAGS.length);
+		wf.actions.addTags(TEST_TAGS.slice(0, 2));
+		wf.getters.tagPills().should('have.length', 2);
 		wf.getters.nthTagPill(1).click();
-		wf.actions.addTags('Tag 4');
-		wf.getters.tagPills().should('have.length', TEST_TAGS.length + 1);
+		wf.actions.addTags(TEST_TAGS[2]);
+		wf.getters.tagPills().should('have.length', 3);
 		wf.getters.isWorkflowSaved();
 	});
 
 	it('should create tags via modal', () => {
 		wf.actions.openTagManagerModal();
 
-		const [first, second] = TEST_TAGS;
-
-		cy.contains('Create a tag').click();
-		cy.getByTestId('tags-table').find('input').type(first).type('{enter}');
-		cy.contains('Add new').click();
-		cy.wait(300);
-		cy.getByTestId('tags-table').find('input').type(second).type('{enter}');
+		const tags = TEST_TAGS.slice(3);
+		for (const tag of tags) {
+			cy.contains('Add new').click();
+			cy.getByTestId('tags-table').find('input').type(tag).type('{enter}');
+			cy.wait(300);
+		}
 		cy.contains('Done').click();
 
 		wf.getters.createTagButton().click();
-		wf.getters.tagsInDropdown().should('have.length', 2); // two stored
+		wf.getters.tagsInDropdown().should('have.length', 5);
 		wf.getters.tagPills().should('have.length', 0); // none attached
 	});
 
-	it('should delete a tag via modal', () => {
+	it('should delete all tags via modal', () => {
 		wf.actions.openTagManagerModal();
 
-		const [first] = TEST_TAGS;
+		TEST_TAGS.forEach(() => {
+			cy.getByTestId('delete-tag-button').first().click({ force: true });
+			cy.contains('Delete tag').click();
+			cy.wait(300);
+		});
 
-		cy.contains('Create a tag').click();
-		cy.getByTestId('tags-table').find('input').type(first).type('{enter}');
-		cy.getByTestId('delete-tag-button').click({ force: true });
-		cy.wait(300);
-		cy.contains('Delete tag').click();
 		cy.contains('Done').click();
 		wf.getters.createTagButton().click();
 		wf.getters.tagsInDropdown().should('have.length', 0); // none stored

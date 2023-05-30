@@ -6,7 +6,6 @@ const ndv = new NDV();
 
 describe('Code node', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

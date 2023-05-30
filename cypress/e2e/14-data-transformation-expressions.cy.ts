@@ -5,7 +5,6 @@ const ndv = new NDV();
 
 describe('Data transformation expressions', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

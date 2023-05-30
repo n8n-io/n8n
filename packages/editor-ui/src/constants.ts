@@ -530,7 +530,17 @@ export const TEMPLATE_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
+export const ONBOARDING_EXPERIMENT = {
+	name: '004_checklist',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	TEMPLATE_EXPERIMENT.name,
+	AUTO_INSERT_ACTION_EXPERIMENT.name,
+	ONBOARDING_EXPERIMENT.name,
+];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 

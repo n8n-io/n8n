@@ -36,6 +36,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
 
 import Modal from '@/components/Modal.vue';
 import {
@@ -45,11 +47,9 @@ import {
 	VIEWS,
 } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { createEventBus } from '@/event-bus';
 
 export default defineComponent({
 	name: 'ActivationModal',

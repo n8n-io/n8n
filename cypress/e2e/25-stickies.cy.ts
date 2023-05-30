@@ -15,9 +15,11 @@ function checkStickiesStyle( top: number, left: number, height: number, width: n
 }
 
 describe('Canvas Actions', () => {
-	beforeEach(() => {
-		cy.resetAll();
+	before(() => {
 		cy.skipSetup();
+	});
+
+	beforeEach(() => {
 		workflowPage.actions.visit();
 
 		cy.window().then(

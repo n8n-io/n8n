@@ -16,7 +16,7 @@
 					<n8n-text size="small" :bold="true" color="warning">
 						{{
 							locale.baseText('executionUsage.currentUsage.count', {
-								adjustToNumber: daysLeftOnTrial,
+								adjustToNumber: daysLeftOnTrial || 0,
 							})
 						}}
 					</n8n-text>
