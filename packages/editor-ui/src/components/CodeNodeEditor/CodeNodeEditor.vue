@@ -7,7 +7,7 @@
 	>
 		<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture"></div>
 		<n8n-button
-			v-if="isCloud && (isEditorHovered || isEditorFocused)"
+			v-if="atCodeNode && isCloud && (isEditorHovered || isEditorFocused)"
 			size="small"
 			type="tertiary"
 			:class="$style['ask-ai-button']"
@@ -50,6 +50,10 @@ export default defineComponent({
 	name: 'code-node-editor',
 	mixins: [linterExtension, completerExtension, workflowHelpers],
 	props: {
+		atCodeNode: {
+			type: Boolean,
+			default: false,
+		},
 		mode: {
 			type: String as PropType<CodeExecutionMode>,
 			validator: (value: CodeExecutionMode): boolean => CODE_EXECUTION_MODES.includes(value),

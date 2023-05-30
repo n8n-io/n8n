@@ -91,6 +91,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:atCodeNode="true"
 					@valueChanged="valueChangedDebounced"
 				/>
 
