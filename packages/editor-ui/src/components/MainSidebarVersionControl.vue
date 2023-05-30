@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useVersionControlStore } from '@/stores/versionControl.store';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
 import { useUIStore } from '@/stores';
 import { VERSION_CONTROL_PUSH_MODAL_KEY } from '@/constants';
@@ -18,6 +18,7 @@ const toast = useToast();
 const { i18n } = useI18n();
 
 const eventBus = createEventBus();
+const tooltipOpenDelay = ref(300);
 
 const currentBranch = computed(() => {
 	return versionControlStore.preferences.branchName;
@@ -76,7 +77,7 @@ async function pullWorkfolder() {
 			{{ currentBranch }}
 		</span>
 		<div :class="{ 'pt-xs': !isCollapsed }">
-			<n8n-tooltip :disabled="!isCollapsed" placement="top">
+			<n8n-tooltip :disabled="!isCollapsed" :open-delay="tooltipOpenDelay" placement="right">
 				<template #content>
 					<div>
 						{{ i18n.baseText('settings.versionControl.button.pull') }}
@@ -101,7 +102,8 @@ async function pullWorkfolder() {
 			<n8n-tooltip
 				v-if="!versionControlStore.preferences.branchReadOnly"
 				:disabled="!isCollapsed"
-				placement="top"
+				:open-delay="tooltipOpenDelay"
+				placement="right"
 			>
 				<template #content>
 					<div>
