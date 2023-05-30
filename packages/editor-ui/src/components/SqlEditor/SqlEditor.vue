@@ -89,7 +89,7 @@ export default defineComponent({
 			editor: {} as EditorView,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
-			skipSegments: ['Statement'],
+			skipSegments: ['Statement', 'CompositeIdentifier'],
 		};
 	},
 	computed: {

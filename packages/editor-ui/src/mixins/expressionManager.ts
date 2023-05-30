@@ -85,11 +85,13 @@ export const expressionManager = defineComponent({
 				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
 			}
 
-			const customSkipSegments = this.skipSegments || [];
+			const customSkipSegments = 'skipSegments' in this ? (this.skipSegments as string[]) : [];
+			const skipSegments = ['Program', 'Script', 'Document'].concat(customSkipSegments);
 
 			fullTree.cursor().iterate((node) => {
-				if (['Program', 'Script', 'Document'].concat(customSkipSegments).includes(node.type.name))
-					return;
+				const text = this.editor.state.sliceDoc(node.from, node.to);
+
+				if (skipSegments.includes(node.type.name) || text === '') return;
 
 				rawSegments.push({
 					from: node.from,
@@ -105,7 +107,15 @@ export const expressionManager = defineComponent({
 				if (token === 'Resolvable') {
 					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+					acc.push({
+						kind: 'resolvable',
+						from,
+						to,
+						resolvable: text,
+						resolved: String(resolved),
+						error,
+						fullError,
+					});
 
 					return acc;
 				}
