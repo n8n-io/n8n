@@ -22,11 +22,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const options = this.getNodeParameter('options', i, {});
-
 			switch (googleDrive.resource) {
 				case 'drive':
-					returnData.push(...(await drive[googleDrive.operation].execute.call(this, i, options)));
+					returnData.push(...(await drive[googleDrive.operation].execute.call(this, i)));
 					break;
 				case 'file':
 					returnData.push(...(await file[googleDrive.operation].execute.call(this, i, items[i])));

@@ -86,12 +86,9 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-	options: IDataObject,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const options = this.getNodeParameter('options', i, {});
 
 	const driveId = this.getNodeParameter('driveId', i, undefined, {
 		extractValue: true,
