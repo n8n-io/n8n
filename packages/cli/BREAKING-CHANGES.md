@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.231.0
+
+### What changed?
+
+The `LoneScale List` node has been renamed to `LoneScale`.
+
+### When is action necessary?
+
+If you have used the `LoneScale List` node in any of your workflows.
+
+### How to upgrade:
+
+Update any workflows using `LoneScale List` to use the updated node.
+
 ## 0.226.0
 
 ### What changed?

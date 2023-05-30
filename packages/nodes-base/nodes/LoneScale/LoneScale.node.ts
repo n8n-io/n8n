@@ -10,17 +10,17 @@ import type {
 
 import { lonescaleApiRequest } from './GenericFunctions';
 
-export class LoneScaleList implements INodeType {
+export class LoneScale implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LoneScale List',
-		name: 'loneScaleList',
+		displayName: 'LoneScale',
+		name: 'loneScale',
 		group: ['transform'],
 		icon: 'file:lonescale-logo.svg',
 		version: 1,
 		description: 'Create List, add / delete items',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		defaults: {
-			name: 'LoneScale List',
+			name: 'LoneScale',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
