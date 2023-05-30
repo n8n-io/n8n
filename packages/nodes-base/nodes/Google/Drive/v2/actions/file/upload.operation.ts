@@ -122,7 +122,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					},
 					body: chunk,
 				});
-				uploadId = response.id;
+				uploadId = response?.id;
 			} catch (error) {
 				if (error.response?.status !== 308) throw error;
 			}

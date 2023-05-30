@@ -179,7 +179,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	i: number,
-	options: IDataObject,
 	item: INodeExecutionData,
 ): Promise<INodeExecutionData[]> {
 	const fileId = this.getNodeParameter('fileId', i, undefined, {
@@ -204,7 +203,7 @@ export async function execute(
 	);
 	let response;
 
-	if (file.mimeType.includes('vnd.google-apps')) {
+	if (file.mimeType?.includes('vnd.google-apps')) {
 		const parameterKey = 'options.googleFileConversion.conversion';
 		const type = file.mimeType.split('.')[2];
 		let mime;
@@ -250,7 +249,8 @@ export async function execute(
 		);
 	}
 
-	const mimeType = response.headers['content-type'] ?? file.mimeType ?? undefined;
+	const mimeType =
+		(response.headers as IDataObject)?.['content-type'] ?? file.mimeType ?? undefined;
 	const fileName = downloadOptions.fileName ?? file.name ?? undefined;
 
 	const newItem: INodeExecutionData = {

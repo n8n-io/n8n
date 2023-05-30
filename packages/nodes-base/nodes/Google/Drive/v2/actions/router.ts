@@ -29,14 +29,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					returnData.push(...(await drive[googleDrive.operation].execute.call(this, i, options)));
 					break;
 				case 'file':
-					returnData.push(
-						...(await file[googleDrive.operation].execute.call(this, i, options, items[i])),
-					);
+					returnData.push(...(await file[googleDrive.operation].execute.call(this, i, items[i])));
 					break;
 				case 'fileFolder':
-					returnData.push(
-						...(await fileFolder[googleDrive.operation].execute.call(this, i, options)),
-					);
+					returnData.push(...(await fileFolder[googleDrive.operation].execute.call(this, i)));
 					break;
 				case 'folder':
 					returnData.push(...(await folder[googleDrive.operation].execute.call(this, i)));
