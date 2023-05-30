@@ -66,8 +66,8 @@
 import { i18n as locale } from '@/plugins/i18n';
 import { DateTime } from 'luxon';
 import type { CloudPlanAndUsageData } from '@/Interface';
-import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 import { computed } from 'vue';
+import { useUIStore } from '@/stores';
 
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
@@ -114,7 +114,7 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
-	location.href = CLOUD_CHANGE_PLAN_PAGE;
+	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 };
 </script>
 

@@ -70,10 +70,31 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		return usage;
 	};
 
+	const usageLeft = computed(() => {
+		if (!state.data || !state.usage) return { workflowsLeft: -1, executionsLeft: -1 };
+
+		return {
+			workflowsLeft: state.data.activeWorkflowsLimit - state.usage.activeWorkflows,
+			executionsLeft: state.data.monthlyExecutionsLimit - state.usage.executions,
+		};
+	});
+
+	const trialDaysLeft = computed(() => {
+		if (!state.data?.expirationDate) return -1;
+
+		const differenceInMs = new Date().valueOf() - new Date(state.data.expirationDate).valueOf();
+
+		const differenceInDays = Math.floor(differenceInMs / (1000 * 60 * 60 * 24));
+
+		return Math.ceil(differenceInDays);
+	});
+
 	return {
 		state,
 		getOwnerCurrentPlan,
 		getInstanceCurrentUsage,
+		usageLeft,
+		trialDaysLeft,
 		userIsTrialing,
 		currentPlanData,
 		currentUsageData,
