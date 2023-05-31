@@ -10,6 +10,7 @@
 	>
 		<template #options>
 			<parameter-options
+				v-if="displayOptions"
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
@@ -54,6 +55,7 @@
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
 							:hide-issues="hideIssues"
+							:label="label"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
