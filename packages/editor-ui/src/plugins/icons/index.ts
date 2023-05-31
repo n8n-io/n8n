@@ -39,6 +39,7 @@ import {
 	faCut,
 	faDotCircle,
 	faEdit,
+	faEllipsisH,
 	faEllipsisV,
 	faEnvelope,
 	faEye,
@@ -176,6 +177,7 @@ addIcon(faCut);
 addIcon(faDotCircle);
 addIcon(faGripVertical);
 addIcon(faEdit);
+addIcon(faEllipsisH);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
 addIcon(faEye);

@@ -195,12 +195,24 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 	const returnData: IDataObject[] = [];
 
 	for (let i = 0; i < inputSize; i++) {
-		const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-		let dataToSend: IDataObject = {};
-		for (const field of fields) {
-			dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion < 4) {
+			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+			let dataToSend: IDataObject = {};
+			for (const field of fields) {
+				dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+			}
+			returnData.push(dataToSend);
+		} else {
+			const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
+			if (Object.keys(mappingValues).length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"At least one value has to be added under 'Values to Send'",
+				);
+			}
+			returnData.push(mappingValues);
 		}
-		returnData.push(dataToSend);
 	}
 
 	return returnData;
