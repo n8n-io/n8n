@@ -123,16 +123,34 @@ describe('Type Validation', () => {
 
 	it('should validate and cast JSON properly', () => {
 		expect(validateFieldType('json', '{"a": 1}', 'object').newValue).toEqual({ a: 1 });
-		expect(validateFieldType('json', '{"a": 1, "b": { "c": 10, "d": "test"}}', 'object').valid).toEqual(true);
-		expect(validateFieldType('json', '{a: 1}', 'object').valid).toEqual(false);
-		expect(validateFieldType('json', '["apples", "oranges"]', 'object').valid).toEqual(true);
+		expect(
+			validateFieldType('json', '{"a": 1, "b": { "c": 10, "d": "test"}}', 'object').valid,
+		).toEqual(true);
 		expect(validateFieldType('json', { name: 'John' }, 'object').valid).toEqual(true);
-		expect(validateFieldType('json', { name: 'John', address: { street: 'Via Roma', city: 'Milano'} }, 'object').valid).toEqual(true);
-		expect(validateFieldType('json', ['one', 'two'], 'object').valid).toEqual(true);
-		expect(validateFieldType('json', ["one", "two"], 'object').valid).toEqual(true);
-		expect(validateFieldType('json', '1.1', 'object').valid).toEqual(true);
-		expect(validateFieldType('json', 1.1, 'object').valid).toEqual(true);
-		expect(validateFieldType('json', '"a"', 'object').valid).toEqual(true);
+		expect(
+			validateFieldType(
+				'json',
+				{ name: 'John', address: { street: 'Via Roma', city: 'Milano' } },
+				'object',
+			).valid,
+		).toEqual(true);
+		// Invalid value:
+		expect(validateFieldType('json', ['one', 'two'], 'object').valid).toEqual(false);
+		// eslint-disable-next-line prettier/prettier
+		expect(validateFieldType('json', ["one", "two"], 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '1', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '[1]', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '1.1', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', 1.1, 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '"a"', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '{a: 1}', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', '["apples", "oranges"]', 'object').valid).toEqual(false);
+		expect(validateFieldType('json', [{ name: 'john' }, { name: 'bob' }], 'object').valid).toEqual(
+			false,
+		);
+		expect(
+			validateFieldType('json', '[ { name: "john" }, { name: "bob" } ]', 'object').valid,
+		).toEqual(false);
 	});
 
 	it('should validate and cast arrays properly', () => {
@@ -140,29 +158,18 @@ describe('Type Validation', () => {
 			'apples',
 			'oranges',
 		]);
-		expect(validateFieldType('array', '"apples", "oranges"', 'array').newValue).toEqual([
-			'apples',
-			'oranges',
-		]);
+		expect(validateFieldType('array', '[1]', 'array').newValue).toEqual([1]);
 		expect(validateFieldType('array', '[1, 2]', 'array').newValue).toEqual([1, 2]);
-		expect(validateFieldType('array', '1, 2', 'array').newValue).toEqual([1, 2]);
-		expect(validateFieldType('array', '{1, 2, {3, 4}, 5}', 'array').newValue).toEqual([
-			1,
-			2,
-			[3, 4],
-			5,
-		]);
-		expect(validateFieldType('array', '1, 2, {3, 4}, 5', 'array').newValue).toEqual([
-			1,
-			2,
-			[3, 4],
-			5,
-		]);
+		// Invalid values:
+		expect(validateFieldType('array', '"apples", "oranges"', 'array').valid).toEqual(false);
+		expect(validateFieldType('array', '1', 'array').valid).toEqual(false);
+		expect(validateFieldType('array', '1.1', 'array').valid).toEqual(false);
+		expect(validateFieldType('array', '1, 2', 'array').valid).toEqual(false);
+		expect(validateFieldType('array', '1. 2. 3', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', '[1, 2, 3', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', '1, 2, 3]', 'array').valid).toEqual(false);
-		expect(validateFieldType('array', '1. 2. 3', 'array').valid).toEqual(false);
-		expect(validateFieldType('array', '1', 'array').valid).toEqual(true);
-		expect(validateFieldType('array', '1.1', 'array').valid).toEqual(true);
+		expect(validateFieldType('array', '{1, 2, {3, 4}, 5}', 'array').valid).toEqual(false);
+		expect(validateFieldType('array', '1, 2, {3, 4}, 5', 'array').valid).toEqual(false);
 		expect(validateFieldType('array', { name: 'John' }, 'array').valid).toEqual(false);
 	});
 

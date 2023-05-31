@@ -1243,35 +1243,27 @@ export const tryToParseTime = (value: unknown): string => {
 
 export const tryToParseArray = (value: unknown): unknown[] => {
 	try {
-		let stringValue = String(value);
-		// SQL uses curly brackets for arrays, so we replace them with square brackets
-		stringValue = stringValue.replace(/{/g, '[').replace(/}/g, ']');
-		if (!stringValue.startsWith('[') && !stringValue.endsWith(']')) {
-			if (!stringValue.startsWith('[')) {
-				stringValue = `[${stringValue}`;
-			}
-			if (!stringValue.endsWith(']')) {
-				stringValue = `${stringValue}]`;
-			}
+		const parsed = JSON.parse(String(value));
+		if (!Array.isArray(parsed)) {
+			throw new Error(`The value "${String(value)}" is not a valid array.`);
 		}
-		const isValidArray = Array.isArray(JSON.parse(stringValue));
-		if (!isValidArray) {
-			throw new Error('Not a valid array');
-		}
-		return JSON.parse(stringValue);
+		return parsed;
 	} catch (e) {
 		throw new Error(`The value "${String(value)}" is not a valid array.`);
 	}
 };
 
 export const tryToParseObject = (value: unknown): object => {
-	if (value && typeof value === 'object') {
-		return Array.isArray(value) ? { ...value } : value;
+	if (value && typeof value === 'object' && !Array.isArray(value)) {
+		return value;
 	}
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const o = JSON.parse(String(value));
-		return Array.isArray(o) ? { ...o } : o;
+		if (typeof o !== 'object' || Array.isArray(o)) {
+			throw new Error(`The value "${String(value)}" is not a valid object.`);
+		}
+		return o;
 	} catch (e) {
 		throw new Error(`The value "${String(value)}" is not a valid object.`);
 	}
