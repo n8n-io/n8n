@@ -1,15 +1,20 @@
-import { Column, Entity, Generated, Index, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
+import { BeforeInsert, Column, Entity, Index, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
 import { IsString, Length } from 'class-validator';
-
-import { idStringifier } from '../utils/transformers';
 import type { WorkflowEntity } from './WorkflowEntity';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';
 import { AbstractEntity } from './AbstractEntity';
+import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class TagEntity extends AbstractEntity {
-	@Generated()
-	@PrimaryColumn({ transformer: idStringifier })
+	@BeforeInsert()
+	nanoId() {
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
+	@PrimaryColumn('varchar', { default: () => generateNanoId })
 	id: string;
 
 	@Column({ length: 24 })

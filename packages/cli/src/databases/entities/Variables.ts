@@ -1,9 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class Variables {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@PrimaryColumn('varchar', { default: () => generateNanoId })
+	id: string;
 
 	@Column('text')
 	key: string;

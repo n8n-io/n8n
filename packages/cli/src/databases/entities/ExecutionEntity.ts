@@ -45,7 +45,7 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column(jsonColumnType)
 	workflowData: IWorkflowDb;
 
-	@Column({ nullable: true, transformer: idStringifier })
+	@Column({ nullable: true })
 	workflowId: string;
 
 	@Column({ type: datetimeColumnType, nullable: true })

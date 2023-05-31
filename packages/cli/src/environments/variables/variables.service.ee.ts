@@ -4,6 +4,7 @@ import { InternalHooks } from '@/InternalHooks';
 import Container from 'typedi';
 import { canCreateNewVariable } from './enviromentHelpers';
 import { VariablesService } from './variables.service';
+import { generateNanoId } from '../../databases/utils/generators';
 
 export class VariablesLicenseError extends Error {}
 export class VariablesValidationError extends Error {}
@@ -32,10 +33,13 @@ export class EEVariablesService extends VariablesService {
 		this.validateVariable(variable);
 
 		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
-		return collections.Variables.save(variable);
+		return collections.Variables.save({
+			...variable,
+			id: generateNanoId(),
+		});
 	}
 
-	static async update(id: number, variable: Omit<Variables, 'id'>): Promise<Variables> {
+	static async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
 
 		await collections.Variables.update(id, variable);
