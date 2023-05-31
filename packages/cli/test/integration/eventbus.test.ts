@@ -104,7 +104,7 @@ beforeAll(async () => {
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
 	await utils.initConfigFile();
-  
+
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', 1);
 	config.set('userManagement.disabled', false);

@@ -41,7 +41,7 @@ beforeAll(async () => {
 	});
 
 	await utils.initConfigFile();
-  
+
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
