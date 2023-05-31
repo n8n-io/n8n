@@ -254,6 +254,14 @@ export class VersionControlExportService {
 		try {
 			versionControlFoldersExistCheck([this.gitFolder]);
 			const variables = await Db.collections.Variables.find();
+			// do not export empty variables
+			if (variables.length === 0) {
+				return {
+					count: 0,
+					folder: this.gitFolder,
+					files: [],
+				};
+			}
 			const fileName = this.getVariablesPath();
 			const sanitizedVariables = variables.map((e) => ({ ...e, value: '' }));
 			await fsWriteFile(fileName, JSON.stringify(sanitizedVariables, null, 2));
