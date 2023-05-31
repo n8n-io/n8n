@@ -362,6 +362,7 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
@@ -380,7 +381,6 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-
 import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -456,6 +456,12 @@ export default defineComponent({
 		},
 		expressionEvaluated: {
 			type: String as PropType<string | undefined>,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	data() {
