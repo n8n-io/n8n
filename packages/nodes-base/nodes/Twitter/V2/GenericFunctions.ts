@@ -6,6 +6,7 @@ import type {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	INodeParameterResourceLocator,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
@@ -64,6 +65,21 @@ export async function twitterApiRequestAllItems(
 	} while (responseData.search_metadata?.next_results);
 
 	return returnData;
+}
+
+export function returnId(tweetId: INodeParameterResourceLocator) {
+	if (tweetId.mode === 'id') {
+		return tweetId.value as string;
+	} else if (tweetId.mode === 'url') {
+		const value = tweetId.value as string;
+		const tweetIdMatch = value.match(
+			/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)$/,
+		);
+		console.log(tweetIdMatch);
+		return tweetIdMatch?.[3] as string;
+	} else {
+		throw new Error(`The tweetId mode ${tweetId.mode} is not valid!`);
+	}
 }
 
 export function chunks(buffer: Buffer, chunkSize: number) {
