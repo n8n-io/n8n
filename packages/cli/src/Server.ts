@@ -31,6 +31,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import {
 	BinaryDataManager,
 	Credentials,
+	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
@@ -49,6 +50,7 @@ import type {
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
+	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
@@ -79,6 +81,7 @@ import type {
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
+	ResourceMapperRequest,
 	WorkflowRequest,
 } from '@/requests';
 import { registerController } from '@/decorators';
@@ -752,6 +755,58 @@ export class Server extends AbstractServer {
 					}
 
 					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
+				},
+			),
+		);
+
+		this.app.get(
+			`/${this.restEndpoint}/get-mapping-fields`,
+			ResponseHelper.send(
+				async (
+					req: ResourceMapperRequest,
+					res: express.Response,
+				): Promise<ResourceMapperFields | undefined> => {
+					const nodeTypeAndVersion = jsonParse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
+
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
+					}
+
+					const currentNodeParameters = jsonParse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = jsonParse(req.query.credentials);
+					}
+
+					const loadMappingOptionsInstance = new LoadMappingOptions(
+						nodeTypeAndVersion,
+						this.nodeTypes,
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
+						methodName,
+						additionalData,
+					);
+
+					return fields;
 				},
 			),
 		);

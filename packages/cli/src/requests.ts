@@ -349,6 +349,23 @@ export type NodeListSearchRequest = AuthenticatedRequest<
 >;
 
 // ----------------------------------
+//        /get-mapping-fields
+// ----------------------------------
+
+export type ResourceMapperRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
+	}
+>;
+
+// ----------------------------------
 //             /tags
 // ----------------------------------
 

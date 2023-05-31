@@ -1361,6 +1361,13 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
+export interface ResourceMapperReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+}
 export interface EnvironmentVariable {
 	id: number;
 	key: string;

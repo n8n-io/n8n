@@ -61,10 +61,12 @@ import type {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
+	INodeType,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
 	isObjectEmpty,
+	isResourceMapperValue,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -74,6 +76,7 @@ import {
 	deepCopy,
 	fileTypeFromMimeType,
 	ExpressionError,
+	validateFieldType,
 } from 'n8n-workflow';
 
 import pick from 'lodash.pick';
@@ -114,7 +117,7 @@ import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { IResponseError, IWorkflowSettings } from './Interfaces';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
@@ -1867,7 +1870,7 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (Array.isArray(inputData)) {
-		inputData.forEach((value) => cleanupParameterData(value));
+		inputData.forEach((value) => cleanupParameterData(value as NodeParameterValueType));
 		return;
 	}
 
@@ -1885,6 +1888,103 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 		});
 	}
 }
+
+const validateResourceMapperValue = (
+	parameterName: string,
+	paramValues: { [key: string]: unknown },
+	node: INode,
+	skipRequiredCheck = false,
+): ExtendedValidationResult => {
+	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
+	const paramNameParts = parameterName.split('.');
+	if (paramNameParts.length !== 2) {
+		return result;
+	}
+	const resourceMapperParamName = paramNameParts[0];
+	const resourceMapperField = node.parameters[resourceMapperParamName];
+	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
+		return result;
+	}
+	const schema = resourceMapperField.schema;
+	const paramValueNames = Object.keys(paramValues);
+	for (let i = 0; i < paramValueNames.length; i++) {
+		const key = paramValueNames[i];
+		const resolvedValue = paramValues[key];
+		const schemaEntry = schema.find((s) => s.id === key);
+
+		if (
+			!skipRequiredCheck &&
+			schemaEntry?.required === true &&
+			schemaEntry.type !== 'boolean' &&
+			!resolvedValue
+		) {
+			return {
+				valid: false,
+				errorMessage: `The value "${String(key)}" is required but not set`,
+				fieldName: key,
+			};
+		}
+
+		if (schemaEntry?.type) {
+			const validationResult = validateFieldType(
+				key,
+				resolvedValue,
+				schemaEntry.type,
+				schemaEntry.options,
+			);
+			if (!validationResult.valid) {
+				return { ...validationResult, fieldName: key };
+			} else {
+				// If it's valid, set the casted value
+				paramValues[key] = validationResult.newValue;
+			}
+		}
+	}
+	return result;
+};
+
+const validateValueAgainstSchema = (
+	node: INode,
+	nodeType: INodeType,
+	inputValues: string | number | boolean | object | null | undefined,
+	parameterName: string,
+	runIndex: number,
+	itemIndex: number,
+) => {
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
+	// Currently only validate resource mapper values
+	const resourceMapperField = nodeType.description.properties.find(
+		(prop) =>
+			NodeHelpers.displayParameter(node.parameters, prop, node) &&
+			prop.type === 'resourceMapper' &&
+			parameterName === `${prop.name}.value`,
+	);
+
+	if (resourceMapperField && typeof inputValues === 'object') {
+		validationResult = validateResourceMapperValue(
+			parameterName,
+			inputValues as { [key: string]: unknown },
+			node,
+			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+		);
+	}
+
+	if (!validationResult.valid) {
+		throw new ExpressionError(
+			`Invalid input for '${
+				String(validationResult.fieldName) || parameterName
+			}' [item ${itemIndex}]`,
+			{
+				description: validationResult.errorMessage,
+				failExecution: true,
+				runIndex,
+				itemIndex,
+				nodeCause: node.name,
+			},
+		);
+	}
+	return validationResult.newValue;
+};
 
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
@@ -1946,6 +2046,16 @@ export function getNodeParameter(
 	if (options?.extractValue) {
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
+
+	// Validate parameter value if it has a schema defined
+	returnData = validateValueAgainstSchema(
+		node,
+		nodeType,
+		returnData,
+		parameterName,
+		runIndex,
+		itemIndex,
+	);
 
 	return returnData;
 }
