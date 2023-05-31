@@ -11,8 +11,8 @@
 		:center="true"
 		:loading="loadingQrCode"
 	>
-		<template #content :class="$style.modalContent">
-			<div v-if="!showRecoveryCodes" :class="$style.container">
+		<template #content>
+			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{
 						$locale.baseText('mfa.setup.step1.instruction1.title')
