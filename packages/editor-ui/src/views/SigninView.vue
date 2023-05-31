@@ -97,14 +97,14 @@ export default defineComponent({
 
 				if (this.isRedirectSafe()) {
 					const redirect = this.getRedirectQueryParameter();
-					this.$router.push(redirect);
+					void this.$router.push(redirect);
 					return;
 				}
 
 				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
 				if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
-					this.$router.push({
+					void this.$router.push({
 						name: VIEWS.MFA_VIEW,
 						params: { email: values.email, password: values.password },
 					});

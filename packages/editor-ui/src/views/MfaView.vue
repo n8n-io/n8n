@@ -148,7 +148,7 @@ export default defineComponent({
 		},
 		onBackClick() {
 			if (!this.showRecoveryCodeForm) {
-				this.$router.push({ name: VIEWS.SIGNIN });
+				void this.$router.push({ name: VIEWS.SIGNIN });
 				return;
 			}
 
@@ -203,6 +203,7 @@ export default defineComponent({
 							message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
 							type: 'info',
 							duration: 0,
+							dangerouslyUseHTMLString: true,
 						});
 					}
 				}
@@ -220,7 +221,7 @@ export default defineComponent({
 
 			if (this.isRedirectSafe()) {
 				const redirect = this.getRedirectQueryParameter();
-				this.$router.push(redirect);
+				void this.$router.push(redirect);
 				return;
 			}
 
@@ -228,7 +229,7 @@ export default defineComponent({
 				result: 'mfa_success',
 			});
 
-			this.$router.push({ name: VIEWS.HOMEPAGE });
+			void this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
 		onSaveClick() {
 			this.formBus.emit('submit');

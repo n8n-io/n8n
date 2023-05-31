@@ -354,11 +354,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();
-			return await getMfaQR(rootStore.getRestApiContext);
+			return getMfaQR(rootStore.getRestApiContext);
 		},
 		async verifyMfaToken(data: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
-			return await verifyMfaToken(rootStore.getRestApiContext, data);
+			return verifyMfaToken(rootStore.getRestApiContext, data);
 		},
 		async enableMfa(data: { token: string }) {
 			const rootStore = useRootStore();
