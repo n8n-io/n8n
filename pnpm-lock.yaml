@@ -322,6 +322,9 @@ importers:
       localtunnel:
         specifier: ^2.0.0
         version: 2.0.2
+      lodash.difference:
+        specifier: ^4
+        version: 4.5.0
       lodash.get:
         specifier: ^4.4.2
         version: 4.4.2
@@ -361,6 +364,9 @@ importers:
       lodash.unset:
         specifier: ^4.5.2
         version: 4.5.2
+      lodash.without:
+        specifier: ^4.4.0
+        version: 4.4.0
       luxon:
         specifier: ^3.3.0
         version: 3.3.0
@@ -436,6 +442,9 @@ importers:
       shelljs:
         specifier: ^0.8.5
         version: 0.8.5
+      simple-git:
+        specifier: ^3.17.0
+        version: 3.17.0
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21
@@ -521,6 +530,9 @@ importers:
       '@types/lodash.debounce':
         specifier: ^4.0.7
         version: 4.0.7
+      '@types/lodash.difference':
+        specifier: ^4
+        version: 4.5.7
       '@types/lodash.get':
         specifier: ^4.4.6
         version: 4.4.7
@@ -560,6 +572,9 @@ importers:
       '@types/lodash.unset':
         specifier: ^4.5.7
         version: 4.5.7
+      '@types/lodash.without':
+        specifier: ^4.4.7
+        version: 4.4.7
       '@types/parseurl':
         specifier: ^1.3.1
         version: 1.3.1
@@ -7820,6 +7835,12 @@ packages:
 
   /@types/lodash.upperfirst@4.3.7:
     resolution: {integrity: sha512-CrBjoB4lO6h7tXNMBUl1eh/w0KdMosiEOXOoD5DMECsA/kDWo/WQfOt1KyGKVvgwK3I6cKAY6z8LymKiMazLFg==}
+    dependencies:
+      '@types/lodash': 4.14.191
+    dev: true
+
+  /@types/lodash.without@4.4.7:
+    resolution: {integrity: sha512-T5Tfz45ZNn5YyFz8lFdsEN8os5T7BEXGuMCRSzmDavxUGwSOX2ijaOkjicnNlL/l6Hrs6UJPIsHebch3gLnpJg==}
     dependencies:
       '@types/lodash': 4.14.191
     dev: true
@@ -16700,6 +16721,10 @@ packages:
   /lodash.values@4.3.0:
     resolution: {integrity: sha512-r0RwvdCv8id9TUblb/O7rYPwVy6lerCbcawrfdo9iC/1t1wsNMJknO79WNBgwkH0hIeJ08jmvvESbFpNb4jH0Q==}
     dev: true
+
+  /lodash.without@4.4.0:
+    resolution: {integrity: sha512-M3MefBwfDhgKgINVuBJCO1YR3+gf6s9HNJsIiZ/Ru77Ws6uTb9eBuvrkpzO+9iLoAaRodGuq7tyrPCx+74QYGQ==}
+    dev: false
 
   /lodash.zip@4.2.0:
     resolution: {integrity: sha512-C7IOaBBK/0gMORRBd8OETNx3kmOkgIWIPvyDpZSCTwUrpYmgZwJkjZeOD8ww4xbOUOs4/attY+pciKvadNfFbg==}

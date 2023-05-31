@@ -1,6 +1,12 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { useEnvironmentsStore, useUIStore, useSettingsStore, useUsersStore } from '@/stores';
+import { computed, ref, onBeforeMount, onBeforeUnmount } from 'vue';
+import {
+	useEnvironmentsStore,
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useVersionControlStore,
+} from '@/stores';
 import { useI18n, useTelemetry, useToast, useUpgradeLink, useMessage } from '@/composables';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
@@ -22,6 +28,8 @@ const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const { i18n } = useI18n();
 const message = useMessage();
+const versionControlStore = useVersionControlStore();
+let versionControlStoreUnsubscribe = () => {};
 
 const layoutRef = ref<InstanceType<typeof ResourcesListLayout> | null>(null);
 
@@ -207,6 +215,20 @@ function goToUpgrade() {
 function displayName(resource: EnvironmentVariable) {
 	return resource.key;
 }
+
+onBeforeMount(() => {
+	versionControlStoreUnsubscribe = versionControlStore.$onAction(({ name, after }) => {
+		if (name === 'pullWorkfolder' && after) {
+			after(() => {
+				void initialize();
+			});
+		}
+	});
+});
+
+onBeforeUnmount(() => {
+	versionControlStoreUnsubscribe();
+});
 </script>
 
 <template>
