@@ -434,7 +434,8 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView
+				!isSchemaView &&
+				!pinData
 			"
 			v-show="!editMode.enabled"
 		>
@@ -809,8 +810,8 @@ export default defineComponent({
 					  ];
 			}
 
-			// We don't want to paginate the schema view
-			if (this.isSchemaView) {
+			// We don't want to paginate the schema view and pinned data
+			if (this.isSchemaView || this.pinData) {
 				return inputData;
 			}
 
@@ -1066,14 +1067,14 @@ export default defineComponent({
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.inputData)) {
+			if (!this.isValidPinDataSize(this.rawInputData)) {
 				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 				return;
 			}
 
 			this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
+			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({
