@@ -17,9 +17,8 @@ import { tweetFields, tweetOperations } from './TweetDescription';
 import { userOperations, userFields } from './UserDescription';
 
 import ISO6391 from 'iso-639-1';
-import { twitterApiRequest } from './GenericFunctions';
+import { returnId, twitterApiRequest } from './GenericFunctions';
 import { DateTime } from 'luxon';
-import { addAdditionalFields } from '../../Telegram/GenericFunctions';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -223,6 +222,48 @@ export class TwitterV2 implements INodeType {
 							body.reply = { ...inReplyToStatusIdValue.reply };
 						}
 						responseData = await twitterApiRequest.call(this, 'POST', '/tweets', body);
+					}
+					if (operation === 'like') {
+						const tweetRLC = this.getNodeParameter(
+							'tweetId',
+							i,
+							'',
+							{},
+						) as INodeParameterResourceLocator;
+						const tweetId = returnId(tweetRLC);
+						const body: IDataObject = {
+							tweet_id: tweetId,
+						};
+						const user = await twitterApiRequest.call(this, 'GET', '/users/me', {});
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							`/users/${user}/liked_tweets`,
+							body,
+						);
+					}
+					if (operation === 'retweet') {
+						const { trimUser } = this.getNodeParameter('additionalFields', i, '', {}) as {
+							trimUser: boolean;
+						};
+						const tweetRLC = this.getNodeParameter(
+							'tweetId',
+							i,
+							'',
+							{},
+						) as INodeParameterResourceLocator;
+						const tweetId = returnId(tweetRLC);
+						const body: IDataObject = {
+							tweet_id: tweetId,
+							trim_user: trimUser,
+						};
+						const user = await twitterApiRequest.call(this, 'GET', '/users/me', {});
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							`/tweets/${user}/retweet`,
+							body,
+						);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
