@@ -14,6 +14,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getToken,
+	removeTrailingSlash,
 	strapiApiRequest,
 	strapiApiRequestAllItems,
 	validateJSON,
@@ -70,6 +71,8 @@ export class Strapi implements INodeType {
 				const credentials = credential.data as IDataObject;
 				let options = {} as OptionsWithUri;
 
+				const url = removeTrailingSlash(credentials.url as string);
+
 				options = {
 					headers: {
 						'content-type': 'application/json',
@@ -79,12 +82,10 @@ export class Strapi implements INodeType {
 						identifier: credentials.email,
 						password: credentials.password,
 					},
-					uri:
-						credentials.apiVersion === 'v4'
-							? `${credentials.url}/api/auth/local`
-							: `${credentials.url}/auth/local`,
+					uri: credentials.apiVersion === 'v4' ? `${url}/api/auth/local` : `${url}/auth/local`,
 					json: true,
 				};
+
 				try {
 					await this.helpers.request(options);
 					return {

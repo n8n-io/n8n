@@ -20,6 +20,7 @@ import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { getProcessedDataManagers } from '@/ProcessedDataManagers';
+import { License } from '@/License';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -127,6 +128,28 @@ export abstract class BaseCommand extends Command {
 	protected async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
+	}
+
+	async initLicense(): Promise<void> {
+		const license = Container.get(License);
+		await license.init(this.instanceId);
+
+		const activationKey = config.getEnv('license.activationKey');
+
+		if (activationKey) {
+			const hasCert = (await license.loadCertStr()).length > 0;
+
+			if (hasCert) {
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
+			try {
+				LoggerProxy.debug('Attempting license activation');
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
+			}
+		}
 	}
 
 	async finally(error: Error | undefined) {

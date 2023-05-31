@@ -16,6 +16,7 @@ import type {
 	ProcessedDataItemTypes,
 	ICheckProcessedOutput,
 	ICheckProcessedOptions,
+	ValidationResult,
 } from 'n8n-workflow';
 
 // TODO: remove these after removing `n8n-core` dependency from `nodes-bases`
@@ -135,3 +136,5 @@ export namespace n8n {
 		};
 	}
 }
+
+export type ExtendedValidationResult = Partial<ValidationResult> & { fieldName?: string };

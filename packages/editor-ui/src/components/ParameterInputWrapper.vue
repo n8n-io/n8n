@@ -16,6 +16,7 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
 			@blur="onBlur"
@@ -42,15 +43,16 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import InputHint from './ParameterInputHint.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import InputHint from '@/components/ParameterInputHint.vue';
 import type {
 	INodeProperties,
 	INodePropertyMode,
+	IParameterLabel,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -58,13 +60,13 @@ import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default defineComponent({
 	name: 'parameter-input-wrapper',
+	mixins: [workflowHelpers],
 	components: {
 		ParameterInput,
 		InputHint,
@@ -115,6 +117,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 		eventSource: {
 			type: String,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	computed: {

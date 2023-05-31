@@ -5,9 +5,11 @@
 		:resources="allWorkflows"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 80 }"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
+		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -18,9 +20,10 @@
 				:data="data"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
+				:readOnly="readOnlyEnv"
 			/>
 		</template>
-		<template #empty>
+		<template v-if="!readOnlyEnv" #empty>
 			<div class="text-center mt-s">
 				<n8n-heading tag="h2" size="xlarge" class="mb-2xs">
 					{{
@@ -89,17 +92,10 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-
-import SettingsView from './SettingsView.vue';
+import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import type Vue from 'vue';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
@@ -109,6 +105,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -118,14 +115,10 @@ const StatusFilter = {
 	ALL: '',
 };
 
-const WorkflowsView = mixins(showMessage, debounceHelper).extend({
+const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		WorkflowCard,
 		TagsDropdown,
 	},
@@ -138,6 +131,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
+			versionControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -147,6 +141,7 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 			useUsersStore,
 			useWorkflowsStore,
 			useCredentialsStore,
+			useVersionControlStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
@@ -156,9 +151,6 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
-		},
-		hasActiveWorkflows(): boolean {
-			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
@@ -175,6 +167,9 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 					value: StatusFilter.DEACTIVATED,
 				},
 			];
+		},
+		readOnlyEnv(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},
 	methods: {
@@ -233,6 +228,17 @@ const WorkflowsView = mixins(showMessage, debounceHelper).extend({
 	},
 	mounted() {
 		void this.usersStore.showPersonalizationSurvey();
+
+		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.versionControlStoreUnsubscribe();
 	},
 });
 

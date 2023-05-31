@@ -31,6 +31,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import {
 	BinaryDataManager,
 	Credentials,
+	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
@@ -49,6 +50,7 @@ import type {
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
+	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
@@ -79,6 +81,7 @@ import type {
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
+	ResourceMapperRequest,
 	WorkflowRequest,
 } from '@/requests';
 import { registerController } from '@/decorators';
@@ -97,7 +100,7 @@ import {
 
 import { executionsController } from '@/executions/executions.controller';
 import { workflowStatsController } from '@/api/workflowStats.api';
-import { loadPublicApiVersions } from '@/PublicApi';
+import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -164,9 +167,10 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper.ee';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
+import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
 
 const exec = promisify(callbackExec);
 
@@ -277,7 +281,7 @@ export class Server extends AbstractServer {
 				},
 			},
 			publicApi: {
-				enabled: !config.getEnv('publicApi.disabled'),
+				enabled: isApiEnabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {
@@ -465,6 +469,7 @@ export class Server extends AbstractServer {
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
 		const versionControlService = Container.get(VersionControlService);
+		const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -493,7 +498,7 @@ export class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
-			new VersionControlController(versionControlService),
+			new VersionControlController(versionControlService, versionControlPreferencesService),
 		];
 
 		if (isLdapEnabled()) {
@@ -538,7 +543,7 @@ export class Server extends AbstractServer {
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-			config.getEnv('publicApi.disabled') ? publicApiEndpoint : '',
+			isApiEnabled() ? '' : publicApiEndpoint,
 			...excludeEndpoints.split(':'),
 		].filter((u) => !!u);
 
@@ -552,19 +557,19 @@ export class Server extends AbstractServer {
 
 		// Check for basic auth credentials if activated
 		if (config.getEnv('security.basicAuth.active')) {
-			await setupBasicAuth(this.app, config, authIgnoreRegex);
+			setupBasicAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// Check for and validate JWT if configured
 		if (config.getEnv('security.jwtAuth.active')) {
-			await setupExternalJWTAuth(this.app, config, authIgnoreRegex);
+			setupExternalJWTAuth(this.app, config, authIgnoreRegex);
 		}
 
 		// ----------------------------------------
 		// Public API
 		// ----------------------------------------
 
-		if (!config.getEnv('publicApi.disabled')) {
+		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
@@ -756,6 +761,58 @@ export class Server extends AbstractServer {
 			),
 		);
 
+		this.app.get(
+			`/${this.restEndpoint}/get-mapping-fields`,
+			ResponseHelper.send(
+				async (
+					req: ResourceMapperRequest,
+					res: express.Response,
+				): Promise<ResourceMapperFields | undefined> => {
+					const nodeTypeAndVersion = jsonParse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
+
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
+					}
+
+					const currentNodeParameters = jsonParse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = jsonParse(req.query.credentials);
+					}
+
+					const loadMappingOptionsInstance = new LoadMappingOptions(
+						nodeTypeAndVersion,
+						this.nodeTypes,
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
+						methodName,
+						additionalData,
+					);
+
+					return fields;
+				},
+			),
+		);
+
 		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
@@ -764,8 +821,7 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
-				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-				return activeWorkflows.map(({ id }) => id);
+				return this.activeWorkflowRunner.getActiveWorkflows(req.user);
 			}),
 		);
 

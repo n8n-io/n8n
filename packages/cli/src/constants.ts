@@ -78,6 +78,7 @@ export const enum LICENSE_FEATURES {
 	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
 	VARIABLES = 'feat:variables',
 	VERSION_CONTROL = 'feat:versionControl',
+	API_DISABLED = 'feat:apiDisabled',
 }
 
 export const enum LICENSE_QUOTAS {

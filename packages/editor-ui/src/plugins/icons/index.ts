@@ -10,6 +10,8 @@ import {
 	faAngleUp,
 	faArrowLeft,
 	faArrowRight,
+	faArrowUp,
+	faArrowDown,
 	faAt,
 	faBan,
 	faBolt,
@@ -39,6 +41,7 @@ import {
 	faCut,
 	faDotCircle,
 	faEdit,
+	faEllipsisH,
 	faEllipsisV,
 	faEnvelope,
 	faEye,
@@ -129,6 +132,7 @@ import {
 	faTree,
 	faStickyNote as faSolidStickyNote,
 	faUserLock,
+	faGem,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -145,6 +149,8 @@ addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
+addIcon(faArrowUp);
+addIcon(faArrowDown);
 addIcon(faAt);
 addIcon(faBan);
 addIcon(faBolt);
@@ -175,6 +181,7 @@ addIcon(faCut);
 addIcon(faDotCircle);
 addIcon(faGripVertical);
 addIcon(faEdit);
+addIcon(faEllipsisH);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
 addIcon(faEye);
@@ -266,5 +273,6 @@ addIcon(faVariable);
 addIcon(faVideo);
 addIcon(faTree);
 addIcon(faUserLock);
+addIcon(faGem);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);

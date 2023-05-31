@@ -13,6 +13,7 @@ import {
 import { getN8nPackageJson, inDevelopment } from '@/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk, n8n } from '@/audit/types';
+import { isApiEnabled } from '@/PublicApi';
 
 function getSecuritySettings() {
 	if (config.getEnv('deployment.type') === 'cloud') return null;
@@ -34,7 +35,7 @@ function getSecuritySettings() {
 		communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
 		templatesEnabled: config.getEnv('templates.enabled'),
-		publicApiEnabled: !config.getEnv('publicApi.disabled'),
+		publicApiEnabled: isApiEnabled(),
 		userManagementEnabled,
 	};
 

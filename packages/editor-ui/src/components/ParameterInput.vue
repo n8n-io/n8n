@@ -91,6 +91,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -347,6 +348,8 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import { get } from 'lodash-es';
 
@@ -359,17 +362,14 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
-import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
-import ScopesNotice from '@/components/ScopesNotice.vue';
-import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
@@ -379,46 +379,34 @@ import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-
-import mixins from 'vue-typed-mixins';
 import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
 import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'parameter-input',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, debounceHelper],
 	components: {
 		CodeNodeEditor,
 		HtmlEditor,
 		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
-		NodeCredentials,
 		CredentialsSelect,
-		ScopesNotice,
-		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
 		TextEdit,
-		ImportParameter,
 	},
 	props: {
 		isReadOnly: {
@@ -468,6 +456,12 @@ export default mixins(
 		},
 		expressionEvaluated: {
 			type: String as PropType<string | undefined>,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	data() {
@@ -533,7 +527,13 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+			useSettingsStore,
+		),
 		expressionDisplayValue(): string {
 			if (this.forceShowExpression) {
 				return '';
@@ -836,7 +836,7 @@ export default mixins(
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		/**
 		 * Check whether a param value must be skipped when collecting node param issues for validation.
@@ -1015,7 +1015,7 @@ export default mixins(
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 		},
 		valueChanged(value: NodeParameterValueType | {} | Date) {
 			if (this.parameter.name === 'nodeCredentialType') {
@@ -1132,7 +1132,7 @@ export default mixins(
 					had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
 				};
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
-				this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
+				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
 		},
 	},
@@ -1141,7 +1141,7 @@ export default mixins(
 			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 			if (remoteParameterOptions.length > 0) {
-				this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
 			}
 		});
 	},
@@ -1181,7 +1181,7 @@ export default mixins(
 			);
 		}
 
-		this.$externalHooks().run('parameterInput.mount', {
+		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});

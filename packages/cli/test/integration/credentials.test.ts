@@ -31,7 +31,7 @@ let authAgent: AuthAgent;
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['credentials'] });
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();

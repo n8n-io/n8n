@@ -44,20 +44,12 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-import SettingsView from './SettingsView.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
-import TemplateCard from '@/components/TemplateCard.vue';
-import { debounceHelper } from '@/mixins/debounce';
-import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
-import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
 import type Vue from 'vue';
 import { mapStores } from 'pinia';
@@ -65,20 +57,15 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
-export default mixins(showMessage, debounceHelper).extend({
-	name: 'SettingsPersonalView',
+export default defineComponent({
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		CredentialCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
 	},
 	data() {
 		return {
@@ -88,10 +75,17 @@ export default mixins(showMessage, debounceHelper).extend({
 				sharedWith: '',
 				type: '',
 			},
+			versionControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useUIStore, useUsersStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useUIStore,
+			useUsersStore,
+			useVersionControlStore,
+		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
 		},
@@ -154,6 +148,18 @@ export default mixins(showMessage, debounceHelper).extend({
 		'filters.type'() {
 			this.sendFiltersTelemetry('type');
 		},
+	},
+	mounted() {
+		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.versionControlStoreUnsubscribe();
 	},
 });
 </script>

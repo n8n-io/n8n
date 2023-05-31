@@ -11,7 +11,6 @@ const lastName = randLastName();
 
 describe('Variables', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 
