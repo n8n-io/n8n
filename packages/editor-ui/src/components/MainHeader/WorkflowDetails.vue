@@ -201,8 +201,19 @@ export default defineComponent({
 			tagsEditBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			interval: null as NodeJS.Timer | null,
 			EnterpriseEditionFeature,
 		};
+	},
+	mounted() {
+		this.interval = setInterval(() => {
+			if (this.isDirty && !this.isNewWorkflow && !this.isWorkflowSaving && !this.isWorkflowActive) {
+				this.onSaveButtonClick();
+			}
+		}, 2000);
+	},
+	beforeDestroy() {
+		clearInterval(this.interval!);
 	},
 	computed: {
 		...mapStores(
