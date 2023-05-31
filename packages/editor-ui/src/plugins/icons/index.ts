@@ -10,6 +10,8 @@ import {
 	faAngleUp,
 	faArrowLeft,
 	faArrowRight,
+	faArrowUp,
+	faArrowDown,
 	faAt,
 	faBan,
 	faBolt,
@@ -147,6 +149,8 @@ addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
+addIcon(faArrowUp);
+addIcon(faArrowDown);
 addIcon(faAt);
 addIcon(faBan);
 addIcon(faBolt);

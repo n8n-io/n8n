@@ -1,11 +1,14 @@
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import normalizeWheel from 'normalize-wheel';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useHistoryStore } from '@/stores/history.store';
+import {
+	useWorkflowsStore,
+	useNodeTypesStore,
+	useUIStore,
+	useHistoryStore,
+	useVersionControlStore,
+} from '@/stores';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
@@ -40,6 +43,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
+	const versionControlStore = useVersionControlStore();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
@@ -55,6 +59,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
+	const readOnlyEnv = computed(() => versionControlStore.preferences.branchReadOnly);
+
+	watch(readOnlyEnv, (readOnly) => {
+		if (jsPlumbInstanceRef.value) {
+			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
+		}
+	});
 
 	Connectors.register(N8nConnector.type, N8nConnector);
 	N8nPlusEndpointRenderer.register();
@@ -166,6 +177,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			paintStyle: CONNECTOR_PAINT_STYLE_DEFAULT,
 			hoverPaintStyle: CONNECTOR_PAINT_STYLE_PRIMARY,
 			connectionOverlays: CONNECTOR_ARROW_OVERLAYS,
+			elementsDraggable: !readOnlyEnv.value,
 			dragOptions: {
 				cursor: 'pointer',
 				grid: { w: GRID_SIZE, h: GRID_SIZE },
