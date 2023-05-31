@@ -29,7 +29,7 @@ patchedDependencies:
     hash: prckukfdop5sl2her6de25cod4
     path: patches/element-ui@2.15.12.patch
   typedi@0.10.0:
-    hash: syy565ld7euwcedfbmx53j2qc4
+    hash: 62r6bc2crgimafeyruodhqlgo4
     path: patches/typedi@0.10.0.patch
 
 importers:
@@ -322,6 +322,9 @@ importers:
       localtunnel:
         specifier: ^2.0.0
         version: 2.0.2
+      lodash.difference:
+        specifier: ^4
+        version: 4.5.0
       lodash.get:
         specifier: ^4.4.2
         version: 4.4.2
@@ -361,6 +364,9 @@ importers:
       lodash.unset:
         specifier: ^4.5.2
         version: 4.5.2
+      lodash.without:
+        specifier: ^4.4.0
+        version: 4.4.0
       luxon:
         specifier: ^3.3.0
         version: 3.3.0
@@ -436,6 +442,9 @@ importers:
       shelljs:
         specifier: ^0.8.5
         version: 0.8.5
+      simple-git:
+        specifier: ^3.17.0
+        version: 3.17.0
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21
@@ -456,7 +465,7 @@ importers:
         version: 1.1.1
       typedi:
         specifier: ^0.10.0
-        version: 0.10.0(patch_hash=syy565ld7euwcedfbmx53j2qc4)
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
         specifier: ^0.3.12
         version: 0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
@@ -521,6 +530,9 @@ importers:
       '@types/lodash.debounce':
         specifier: ^4.0.7
         version: 4.0.7
+      '@types/lodash.difference':
+        specifier: ^4
+        version: 4.5.7
       '@types/lodash.get':
         specifier: ^4.4.6
         version: 4.4.7
@@ -560,6 +572,9 @@ importers:
       '@types/lodash.unset':
         specifier: ^4.5.7
         version: 4.5.7
+      '@types/lodash.without':
+        specifier: ^4.4.7
+        version: 4.4.7
       '@types/parseurl':
         specifier: ^1.3.1
         version: 1.3.1
@@ -7820,6 +7835,12 @@ packages:
 
   /@types/lodash.upperfirst@4.3.7:
     resolution: {integrity: sha512-CrBjoB4lO6h7tXNMBUl1eh/w0KdMosiEOXOoD5DMECsA/kDWo/WQfOt1KyGKVvgwK3I6cKAY6z8LymKiMazLFg==}
+    dependencies:
+      '@types/lodash': 4.14.191
+    dev: true
+
+  /@types/lodash.without@4.4.7:
+    resolution: {integrity: sha512-T5Tfz45ZNn5YyFz8lFdsEN8os5T7BEXGuMCRSzmDavxUGwSOX2ijaOkjicnNlL/l6Hrs6UJPIsHebch3gLnpJg==}
     dependencies:
       '@types/lodash': 4.14.191
     dev: true
@@ -16701,6 +16722,10 @@ packages:
     resolution: {integrity: sha512-r0RwvdCv8id9TUblb/O7rYPwVy6lerCbcawrfdo9iC/1t1wsNMJknO79WNBgwkH0hIeJ08jmvvESbFpNb4jH0Q==}
     dev: true
 
+  /lodash.without@4.4.0:
+    resolution: {integrity: sha512-M3MefBwfDhgKgINVuBJCO1YR3+gf6s9HNJsIiZ/Ru77Ws6uTb9eBuvrkpzO+9iLoAaRodGuq7tyrPCx+74QYGQ==}
+    dev: false
+
   /lodash.zip@4.2.0:
     resolution: {integrity: sha512-C7IOaBBK/0gMORRBd8OETNx3kmOkgIWIPvyDpZSCTwUrpYmgZwJkjZeOD8ww4xbOUOs4/attY+pciKvadNfFbg==}
     dev: false
@@ -21852,7 +21877,7 @@ packages:
   /typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  /typedi@0.10.0(patch_hash=syy565ld7euwcedfbmx53j2qc4):
+  /typedi@0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4):
     resolution: {integrity: sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==}
     dev: false
     patched: true
