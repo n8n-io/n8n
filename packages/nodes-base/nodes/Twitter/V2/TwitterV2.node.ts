@@ -223,6 +223,16 @@ export class TwitterV2 implements INodeType {
 						}
 						responseData = await twitterApiRequest.call(this, 'POST', '/tweets', body);
 					}
+					if (operation === 'delete') {
+						const tweetRLC = this.getNodeParameter(
+							'tweetDeleteId',
+							i,
+							'',
+							{},
+						) as INodeParameterResourceLocator;
+						const tweetId = returnId(tweetRLC);
+						responseData = await twitterApiRequest.call(this, 'DELETE', `/tweets/${tweetId}`, {});
+					}
 					if (operation === 'like') {
 						const tweetRLC = this.getNodeParameter(
 							'tweetId',
@@ -234,11 +244,13 @@ export class TwitterV2 implements INodeType {
 						const body: IDataObject = {
 							tweet_id: tweetId,
 						};
-						const user = await twitterApiRequest.call(this, 'GET', '/users/me', {});
+						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
+							data: { id: string };
+						};
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/users/${user}/liked_tweets`,
+							`/users/${user.data.id}/liked_tweets`,
 							body,
 						);
 					}
@@ -257,11 +269,13 @@ export class TwitterV2 implements INodeType {
 							tweet_id: tweetId,
 							trim_user: trimUser,
 						};
-						const user = await twitterApiRequest.call(this, 'GET', '/users/me', {});
+						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
+							data: { id: string };
+						};
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/tweets/${user}/retweet`,
+							`/users/${user.data.id}/retweets`,
 							body,
 						);
 					}

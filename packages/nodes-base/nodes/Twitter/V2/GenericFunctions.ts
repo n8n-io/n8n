@@ -75,7 +75,6 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 		const tweetIdMatch = value.match(
 			/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)$/,
 		);
-		console.log(tweetIdMatch);
 		return tweetIdMatch?.[3] as string;
 	} else {
 		throw new Error(`The tweetId mode ${tweetId.mode} is not valid!`);
