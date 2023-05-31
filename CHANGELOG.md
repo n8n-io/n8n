@@ -1,3 +1,31 @@
+# [0.231.0](https://github.com/n8n-io/n8n/compare/n8n@0.230.0...n8n@0.231.0) (2023-05-31)
+
+
+### Bug Fixes
+
+* Add ldapts to nodes-base package (no-changelog) ([#6315](https://github.com/n8n-io/n8n/issues/6315)) ([1eecb86](https://github.com/n8n-io/n8n/commit/1eecb86e060bc36c4f6fbc02cf422858c9317aff))
+* **Code Node:** Fix `item` and `items` alias regression ([#6331](https://github.com/n8n-io/n8n/issues/6331)) ([54e3838](https://github.com/n8n-io/n8n/commit/54e3838daed1f0931a04ba76cfd1ea7519c0e382))
+* **Code Node:** Update vm2 to address CVE-2023-32313 ([#6318](https://github.com/n8n-io/n8n/issues/6318)) ([bcbec52](https://github.com/n8n-io/n8n/commit/bcbec52552d52b0509659cab13112e1377a256b3))
+* **core:** Do not track errored workflow executions for automated executions (no-changelog) ([#6322](https://github.com/n8n-io/n8n/issues/6322)) ([0e4c615](https://github.com/n8n-io/n8n/commit/0e4c615d0d016de95bcb8a07879c2cade4344762))
+* **core:** Optimize getSharedWorkflowIds query ([#6314](https://github.com/n8n-io/n8n/issues/6314)) ([0631f69](https://github.com/n8n-io/n8n/commit/0631f69d98e5420faebba1a54d9ad47a2664d110))
+* **core:** Prevent prototype pollution on injectable services ([#6309](https://github.com/n8n-io/n8n/issues/6309)) ([d94c20a](https://github.com/n8n-io/n8n/commit/d94c20ada543767f700475b40ef7174c433c26c5))
+* **editor:** Fix locale plularisation if count is 0 ([#6312](https://github.com/n8n-io/n8n/issues/6312)) ([0d88bd7](https://github.com/n8n-io/n8n/commit/0d88bd7c1ae95cf077c2fa231d942204ff3b8f68))
+* **editor:** Fix Luxon date parsing of ExecutionsUsage component ([#6333](https://github.com/n8n-io/n8n/issues/6333)) ([8f0ff46](https://github.com/n8n-io/n8n/commit/8f0ff460b11999f4d78f8313910358aa87311713))
+* **editor:** Update SSO settings styles ([#6342](https://github.com/n8n-io/n8n/issues/6342)) ([5ae1124](https://github.com/n8n-io/n8n/commit/5ae1124106e7597d0943c371eae6aba6c105fd6b))
+* **Execute Command Node:** Block executions when `command` is empty ([#6308](https://github.com/n8n-io/n8n/issues/6308)) ([011d577](https://github.com/n8n-io/n8n/commit/011d5778b15232cff94a321dfee18c3d7489f93d))
+* Show `Ask AI` only on Code Node ([#6336](https://github.com/n8n-io/n8n/issues/6336)) ([da856d1](https://github.com/n8n-io/n8n/commit/da856d1c6593b43e1ce8d1becb1464c19c908e78))
+
+
+### Features
+
+* Add manual login option and password reset link for SSO ([#6328](https://github.com/n8n-io/n8n/issues/6328)) ([77e3f15](https://github.com/n8n-io/n8n/commit/77e3f1551dd7473a69f8833be5678d98964142e1))
+* Add tab visibility change detection when polling executions (no-changelog) ([#6311](https://github.com/n8n-io/n8n/issues/6311)) ([071955b](https://github.com/n8n-io/n8n/commit/071955ba68c5c1db3828f35ed925896d700194fe))
+* **core:** Add metadata (customdata) to event log ([#6334](https://github.com/n8n-io/n8n/issues/6334)) ([792b1c1](https://github.com/n8n-io/n8n/commit/792b1c1ffb0eb279bc3451787891ca3835f59d9f))
+* **editor:** Bring back checklist experiment (no-changelog) ([#6307](https://github.com/n8n-io/n8n/issues/6307)) ([b777f90](https://github.com/n8n-io/n8n/commit/b777f9031de428d801e43943e70a672167733470))
+* **editor:** Implement Resource Mapper component ([#6207](https://github.com/n8n-io/n8n/issues/6207)) ([04cfa54](https://github.com/n8n-io/n8n/commit/04cfa548af3c7a25f1f0a36ddfb1de6a9e3f2169)), closes [#5752](https://github.com/n8n-io/n8n/issues/5752) [#5814](https://github.com/n8n-io/n8n/issues/5814)
+
+
+
 # [0.230.0](https://github.com/n8n-io/n8n/compare/n8n@0.229.0...n8n@0.230.0) (2023-05-24)
 
 
