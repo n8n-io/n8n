@@ -27,6 +27,14 @@ import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
+	// constructor(data?: Partial<WorkflowEntity>) {
+	// 	super();
+	// 	Object.assign(this, data);
+	// 	if (!this.id) {
+	// 		this.id = generateNanoId();
+	// 	}
+	// }
+
 	@BeforeInsert()
 	nanoId() {
 		if (!this.id) {
@@ -34,7 +42,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 		}
 	}
 
-	@PrimaryColumn('varchar', { default: () => generateNanoId })
+	@PrimaryColumn('varchar')
 	id: string;
 
 	// TODO: Add XSS check

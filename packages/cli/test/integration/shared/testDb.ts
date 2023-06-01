@@ -32,6 +32,7 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { generateNanoId } from '@/databases/utils/generators';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -377,6 +378,7 @@ export async function createTag(attributes: Partial<TagEntity> = {}) {
 	const { name } = attributes;
 
 	return Db.collections.Tag.save({
+		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
 	});
@@ -404,6 +406,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 	const { active, name, nodes, connections } = attributes;
 
 	const workflow = await Db.collections.Workflow.save({
+		id: generateNanoId(),
 		active: active ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
@@ -505,6 +508,7 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 
 export async function createVariable(key: string, value: string) {
 	return Db.collections.Variables.save({
+		id: generateNanoId(),
 		key,
 		value,
 	});
@@ -518,7 +522,7 @@ export async function getVariableByKey(key: string) {
 	});
 }
 
-export async function getVariableById(id: number) {
+export async function getVariableById(id: string) {
 	return Db.collections.Variables.findOne({
 		where: {
 			id,

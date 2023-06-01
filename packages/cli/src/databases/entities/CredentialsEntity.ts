@@ -7,6 +7,14 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { generateNanoId } from '../utils/generators';
 @Entity()
 export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {
+	constructor(data?: Partial<CredentialsEntity>) {
+		super();
+		Object.assign(this, data);
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
 	@BeforeInsert()
 	nanoId(): void {
 		if (!this.id) {
@@ -14,7 +22,7 @@ export class CredentialsEntity extends AbstractEntity implements ICredentialsDb 
 		}
 	}
 
-	@PrimaryColumn('varchar', { default: () => generateNanoId })
+	@PrimaryColumn('varchar')
 	id: string;
 
 	@Column({ length: 128 })

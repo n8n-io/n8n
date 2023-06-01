@@ -10,6 +10,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import { generateNanoId } from '../../../src/databases/utils/generators';
 
 let app: Application;
 let workflowOwnerRole: Role;
@@ -177,7 +178,7 @@ describe('GET /workflows', () => {
 		}
 
 		// check that we really received a different result
-		expect(Number(response.body.data[0].id)).toBeLessThan(Number(response2.body.data[0].id));
+		expect(response.body.data[0].id).not.toEqual(response2.body.data[0].id);
 	});
 
 	test('should return all owned workflows filtered by tag', async () => {

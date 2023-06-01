@@ -15,7 +15,6 @@ CREATE TABLE "${tablePrefix}TMP_workflow_entity" ("id" varchar(36) PRIMARY KEY N
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}TMP_workflow_entity" RENAME TO "${tablePrefix}workflow_entity";
 `);
 
-		console.log('Tag entity');
 		await queryRunner.query(`
 CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(24) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')));`);
 		await queryRunner.query(
@@ -25,7 +24,7 @@ CREATE TABLE "${tablePrefix}TMP_tag_entity" ("id" varchar(36) PRIMARY KEY NOT NU
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_tag_entity" RENAME TO "${tablePrefix}tag_entity";`,
 		);
-		console.log('workflow tags');
+
 		await queryRunner.query(`
 CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NULL, "tagId" integer NOT NULL, CONSTRAINT "FK_workflows_tags_workflow_entity" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_workflows_tags_tag_entity" FOREIGN KEY ("tagId") REFERENCES "${tablePrefix}tag_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("workflowId", "tagId"));`);
 		await queryRunner.query(
@@ -41,7 +40,7 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		await queryRunner.query(
 			`CREATE INDEX "idx_workflows_tags_workflow_id" ON "${tablePrefix}workflows_tags" ("workflowId");`,
 		);
-		console.log('workflow statistics');
+
 		await queryRunner.query(`CREATE TABLE "${tablePrefix}TMP_workflow_statistics" (
 				"count" INTEGER DEFAULT 0,
 				"latestEvent" DATETIME,
@@ -57,7 +56,7 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_workflow_statistics" RENAME TO "${tablePrefix}workflow_statistics";`,
 		);
-		console.log('shared workflow');
+
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}TMP_shared_workflow" (
 				"createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
@@ -69,11 +68,11 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 				CONSTRAINT "FK_shared_workflow_workflow_entity" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
 				PRIMARY KEY ("userId", "workflowId"));`,
 		);
-		console.log('shared workflow INSERT');
+
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}TMP_shared_workflow" SELECT * FROM "${tablePrefix}shared_workflow";`,
 		);
-		console.log('shared workflow DROP');
+
 		await queryRunner.query(`DROP TABLE "${tablePrefix}shared_workflow";`);
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_shared_workflow" RENAME TO "${tablePrefix}shared_workflow";`,
@@ -81,7 +80,7 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		await queryRunner.query(
 			`CREATE INDEX "idx_shared_workflow_workflow_id" ON "${tablePrefix}shared_workflow" ("workflowId");`,
 		);
-		console.log('WebhookEntity');
+
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}TMP_webhook_entity" ("workflowId" varchar(36) NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, "webhookId" varchar, "pathLength" integer, PRIMARY KEY ("webhookPath", "method"));`,
 		);

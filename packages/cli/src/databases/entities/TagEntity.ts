@@ -7,6 +7,14 @@ import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class TagEntity extends AbstractEntity {
+	constructor(data?: Partial<TagEntity>) {
+		super();
+		Object.assign(this, data);
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
+
 	@BeforeInsert()
 	nanoId() {
 		if (!this.id) {
@@ -14,7 +22,7 @@ export class TagEntity extends AbstractEntity {
 		}
 	}
 
-	@PrimaryColumn('varchar', { default: () => generateNanoId })
+	@PrimaryColumn('varchar')
 	id: string;
 
 	@Column({ length: 24 })
