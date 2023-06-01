@@ -350,7 +350,7 @@ export default defineComponent({
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
 
-		this.handleAutoRefreshToggle();
+		void this.handleAutoRefreshToggle();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
@@ -417,9 +417,9 @@ export default defineComponent({
 			});
 			window.open(route.href, '_blank');
 		},
-		handleAutoRefreshToggle() {
+		async handleAutoRefreshToggle() {
 			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
-			this.startAutoRefreshInterval();
+			void this.startAutoRefreshInterval();
 		},
 		handleCheckAllExistingChange() {
 			this.allExistingSelected = !this.allExistingSelected;
@@ -495,7 +495,7 @@ export default defineComponent({
 			});
 
 			this.handleClearSelection();
-			this.refreshData();
+			await this.refreshData();
 		},
 		handleClearSelection(): void {
 			this.allVisibleSelected = false;
@@ -508,14 +508,14 @@ export default defineComponent({
 			this.handleClearSelection();
 			this.isMounting = false;
 		},
-		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
+		async handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 			if (['currentlySaved', 'original'].includes(commandData.command)) {
 				let loadWorkflow = false;
 				if (commandData.command === 'currentlySaved') {
 					loadWorkflow = true;
 				}
 
-				this.retryExecution(commandData.execution, loadWorkflow);
+				await this.retryExecution(commandData.execution, loadWorkflow);
 
 				this.$telemetry.track('User clicked retry execution button', {
 					workflow_id: this.workflowsStore.workflowId,
@@ -524,7 +524,7 @@ export default defineComponent({
 				});
 			}
 			if (commandData.command === 'delete') {
-				this.deleteExecution(commandData.execution);
+				await this.deleteExecution(commandData.execution);
 			}
 		},
 		getWorkflowName(workflowId: string): string | undefined {
@@ -874,7 +874,7 @@ export default defineComponent({
 					type: 'success',
 				});
 
-				this.refreshData();
+				await this.refreshData();
 			} catch (error) {
 				this.showError(
 					error,
@@ -932,7 +932,9 @@ export default defineComponent({
 		async startAutoRefreshInterval() {
 			if (this.autoRefresh) {
 				await this.loadAutoRefresh();
-				this.autoRefreshTimeout = setTimeout(() => this.startAutoRefreshInterval(), 4 * 1000); // refresh data every 4 secs
+				this.autoRefreshTimeout = setTimeout(() => {
+					void this.startAutoRefreshInterval();
+				}, 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		stopAutoRefreshInterval() {
@@ -945,7 +947,7 @@ export default defineComponent({
 			if (document.visibilityState === 'hidden') {
 				this.stopAutoRefreshInterval();
 			} else {
-				this.startAutoRefreshInterval();
+				void this.startAutoRefreshInterval();
 			}
 		},
 	},
