@@ -327,7 +327,7 @@ export default defineComponent({
 			allVisibleSelected: false,
 			allExistingSelected: false,
 			autoRefresh: true,
-			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
 
@@ -919,15 +919,16 @@ export default defineComponent({
 				this.selectAllVisibleExecutions();
 			}
 		},
-		startAutoRefreshInterval() {
+		async startAutoRefreshInterval() {
 			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
+				await this.loadAutoRefresh();
+				this.autoRefreshTimeout = setTimeout(this.startAutoRefreshInterval, 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		stopAutoRefreshInterval() {
-			if (this.autoRefreshInterval) {
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
+			if (this.autoRefreshTimeout) {
+				clearTimeout(this.autoRefreshTimeout);
+				this.autoRefreshTimeout = undefined;
 			}
 		},
 		onDocumentVisibilityChange() {
