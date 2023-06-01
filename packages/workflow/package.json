@@ -51,7 +51,7 @@
     "@types/xml2js": "^0.4.11"
   },
   "dependencies": {
-    "@n8n_io/riot-tmpl": "^3.0.0",
+    "@n8n_io/riot-tmpl": "^4.0.0",
     "ast-types": "0.15.2",
     "crypto-js": "^4.1.1",
     "deep-equal": "^2.2.0",
