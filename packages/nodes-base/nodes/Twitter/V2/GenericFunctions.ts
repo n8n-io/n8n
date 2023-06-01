@@ -77,8 +77,25 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 		);
 		return tweetIdMatch?.[3] as string;
 	} else {
-		throw new Error(`The tweetId mode ${tweetId.mode} is not valid!`);
+		throw new Error(`The mode ${tweetId.mode} is not valid!`);
 	}
+}
+
+export async function returnIdFromUsername(
+	this: IExecuteFunctions,
+	usernameRlc: INodeParameterResourceLocator,
+) {
+	if (usernameRlc.mode === 'username' || usernameRlc.mode === 'name') {
+		const user = (await twitterApiRequest.call(
+			this,
+			'GET',
+			`/users/by/username/${usernameRlc.value}`,
+			{},
+		)) as {
+			data: { id: string };
+		};
+		return user.data.id;
+	} else throw new Error(`The username mode ${usernameRlc.mode} is not valid!`);
 }
 
 export function chunks(buffer: Buffer, chunkSize: number) {

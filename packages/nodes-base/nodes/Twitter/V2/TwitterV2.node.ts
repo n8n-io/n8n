@@ -17,15 +17,15 @@ import { tweetFields, tweetOperations } from './TweetDescription';
 import { userOperations, userFields } from './UserDescription';
 
 import ISO6391 from 'iso-639-1';
-import { returnId, twitterApiRequest } from './GenericFunctions';
+import { returnId, returnIdFromUsername, twitterApiRequest } from './GenericFunctions';
 import { DateTime } from 'luxon';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
 
-	constructor(baseDecription: INodeTypeBaseDescription) {
+	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
-			...baseDecription,
+			...baseDescription,
 			version: 2,
 			description:
 				'Post, like, and search tweets, send messages, search users, and add users to lists',
@@ -191,36 +191,30 @@ export class TwitterV2 implements INodeType {
 					}
 					if (operation === 'create') {
 						const text = this.getNodeParameter('text', i, '', {});
-						const { location, media, inQuoteToStatusId, inReplyToStatusId } = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as {
-							location: IDataObject;
-							media: string;
-							inQuoteToStatusId: INodeParameterResourceLocator;
-							inReplyToStatusId: INodeParameterResourceLocator;
-						};
+						const { location, attachments, inQuoteToStatusId, inReplyToStatusId } =
+							this.getNodeParameter('additionalFields', i, {}) as {
+								location: string;
+								attachments: string;
+								inQuoteToStatusId: INodeParameterResourceLocator;
+								inReplyToStatusId: INodeParameterResourceLocator;
+							};
 						const body: IDataObject = {
 							text,
 						};
 						if (location) {
+							body.geo = { place_id: location };
 						}
-						if (media) {
+						if (attachments) {
+							body.media = { media_ids: [attachments] };
 						}
 						if (inQuoteToStatusId) {
+							body.quote_tweet_id = returnId(inQuoteToStatusId);
 						}
 						if (inReplyToStatusId) {
-							const inReplyToStatusIdValue = {
-								reply: { in_reply_to_tweet_id: '' },
-							};
-							if (inReplyToStatusId.mode === 'id') {
-								inReplyToStatusIdValue.reply.in_reply_to_tweet_id =
-									inReplyToStatusId.value as string;
-							} else if (inReplyToStatusId.mode === 'url') {
-							}
-							body.reply = { ...inReplyToStatusIdValue.reply };
+							const inReplyToStatusIdValue = { in_reply_to_tweet_id: returnId(inReplyToStatusId) };
+							body.reply = inReplyToStatusIdValue;
 						}
+						console.log(body);
 						responseData = await twitterApiRequest.call(this, 'POST', '/tweets', body);
 					}
 					if (operation === 'delete') {
@@ -278,6 +272,33 @@ export class TwitterV2 implements INodeType {
 							`/users/${user.data.id}/retweets`,
 							body,
 						);
+					}
+				}
+				if (resource === 'list') {
+					if (operation === 'add') {
+						const userRlc = this.getNodeParameter(
+							'user',
+							i,
+							'',
+							{},
+						) as INodeParameterResourceLocator;
+						const userId =
+							userRlc.mode !== 'username'
+								? returnId(userRlc)
+								: await returnIdFromUsername.call(this, userRlc);
+						const listRlc = this.getNodeParameter(
+							'list',
+							i,
+							'',
+							{},
+						) as INodeParameterResourceLocator;
+						const listId =
+							listRlc.mode !== 'name'
+								? returnId(listRlc)
+								: await returnIdFromUsername.call(this, listRlc);
+						responseData = await twitterApiRequest.call(this, 'POST', `/lists/${listId}/members`, {
+							user_id: userId,
+						});
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
