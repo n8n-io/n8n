@@ -61,7 +61,8 @@ const versionDescription: INodeTypeDescription = {
 			isNodeSetting: true,
 		},
 		{
-			displayName: 'Item duplication is set in node settings!',
+			displayName:
+				'Item duplication is set in node settings(this option would be ignored in prodaction)',
 			name: 'duplicateWarning',
 			type: 'notice',
 			default: '',
@@ -93,7 +94,21 @@ export class SetV2 implements INodeType {
 
 		const setNode = { raw, manual };
 
-		const returnData = await setNode[mode].execute.call(this, items, duplicate);
+		const returnData: INodeExecutionData[] = [];
+
+		for (let i = 0; i < items.length; i++) {
+			const includeOtherFields = this.getNodeParameter('includeOtherFields', i) as boolean;
+
+			const newItem = await setNode[mode].execute.call(this, items, i, includeOtherFields);
+
+			if (duplicate > 0 && this.getMode() === 'manual') {
+				for (let j = 0; j <= duplicate; j++) {
+					returnData.push(newItem);
+				}
+			} else {
+				returnData.push(newItem);
+			}
+		}
 
 		return this.prepareOutputData(returnData);
 	}

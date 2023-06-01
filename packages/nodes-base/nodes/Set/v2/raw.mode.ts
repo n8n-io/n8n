@@ -34,29 +34,18 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
-	duplicate: number,
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+	includeOtherFields: boolean,
+) {
+	try {
+		const json = this.getNodeParameter('json', i) as string;
+		const setData = parseJsonParameter(json, this.getNode(), i);
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const includeOtherFields = this.getNodeParameter('includeOtherFields', i) as boolean;
-			const json = this.getNodeParameter('json', i) as string;
-			const setData = parseJsonParameter(json, this.getNode(), i);
-
-			const newItem = prepareItem(items[i], setData, includeOtherFields);
-
-			for (let j = 0; j <= duplicate; j++) {
-				returnData.push(newItem);
-			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-				continue;
-			}
-			throw new NodeOperationError(this.getNode(), error as Error);
+		return prepareItem(items[i], setData, includeOtherFields);
+	} catch (error) {
+		if (this.continueOnFail()) {
+			return { json: { error: error.message } };
 		}
+		throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 	}
-
-	return returnData;
 }

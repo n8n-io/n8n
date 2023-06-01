@@ -188,48 +188,36 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
-	duplicate: number,
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	i: number,
+	includeOtherFields: boolean,
+) {
+	try {
+		const { dotNotation, ignoreConversionErrors } = this.getNodeParameter(
+			'options',
+			i,
+			{},
+		) as ManualModeOptions;
+		const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
 
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const { dotNotation, ignoreConversionErrors } = this.getNodeParameter(
-				'options',
-				i,
-				{},
-			) as ManualModeOptions;
-			const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
+		const setData: IDataObject = {};
 
-			const setData: IDataObject = {};
-
-			if (dotNotation === false) {
-				for (const entry of fields) {
-					const { name, value } = prepareEntry(entry, this.getNode(), i, ignoreConversionErrors);
-					setData[name] = value;
-				}
-			} else {
-				for (const entry of fields) {
-					const { name, value } = prepareEntry(entry, this.getNode(), i, ignoreConversionErrors);
-					set(setData, name, value);
-				}
+		if (dotNotation === false) {
+			for (const entry of fields) {
+				const { name, value } = prepareEntry(entry, this.getNode(), i, ignoreConversionErrors);
+				setData[name] = value;
 			}
-
-			const includeOtherFields = this.getNodeParameter('includeOtherFields', i) as boolean;
-
-			const newItem = prepareItem(items[i], setData, includeOtherFields);
-
-			for (let j = 0; j <= duplicate; j++) {
-				returnData.push(newItem);
+		} else {
+			for (const entry of fields) {
+				const { name, value } = prepareEntry(entry, this.getNode(), i, ignoreConversionErrors);
+				set(setData, name, value);
 			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.message } });
-				continue;
-			}
-			throw new NodeOperationError(this.getNode(), error as Error);
 		}
-	}
 
-	return returnData;
+		return prepareItem(items[i], setData, includeOtherFields);
+	} catch (error) {
+		if (this.continueOnFail()) {
+			return { json: { error: error.message } };
+		}
+		throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+	}
 }
