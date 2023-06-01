@@ -175,16 +175,16 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Test',
-		name: 'test',
-		type: 'string',
-		default: '',
-		typeOptions: {
-			validate: true,
-			expectedType: 'number',
-		},
-	},
+	// {
+	// 	displayName: 'Test',
+	// 	name: 'test',
+	// 	type: 'string',
+	// 	default: '',
+	// 	typeOptions: {
+	// 		validate: true,
+	// 		expectedType: 'number',
+	// 	},
+	// },
 ];
 
 const displayOptions = {
@@ -209,7 +209,7 @@ export async function execute(
 		) as ManualModeOptions;
 		const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
 
-		console.log(this.getNodeParameter('test', i));
+		// console.log(this.getNodeParameter('test', i));
 
 		const setData: IDataObject = {};
 
