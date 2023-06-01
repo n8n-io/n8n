@@ -3060,6 +3060,8 @@ export default defineComponent({
 
 				const promptResponse = (await promptResponsePromise) as MessageBoxInputData;
 
+				if (promptResponse?.action !== 'confirm') return;
+
 				await this.renameNode(currentName, promptResponse.value, true);
 			} catch (e) {}
 		},
