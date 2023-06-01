@@ -434,8 +434,7 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView &&
-				!pinData
+				!isSchemaView
 			"
 			v-show="!editMode.enabled"
 		>
@@ -810,8 +809,8 @@ export default defineComponent({
 					  ];
 			}
 
-			// We don't want to paginate the schema view and pinned data
-			if (this.isSchemaView || this.pinData) {
+			// We don't want to paginate the schema view
+			if (this.isSchemaView) {
 				return inputData;
 			}
 
