@@ -54,7 +54,7 @@
 							@run="onNodeRun"
 							:key="`${nodeData.id}_node`"
 							:name="nodeData.name"
-							:isReadOnly="isReadOnly"
+							:isReadOnly="isReadOnly || readOnlyEnv"
 							:instance="instance"
 							:isActive="!!activeNode && activeNode.name === nodeData.name"
 							:hideActions="pullConnActive"
@@ -76,7 +76,7 @@
 							@removeNode="(name) => removeNode(name, true)"
 							:key="`${nodeData.id}_sticky`"
 							:name="nodeData.name"
-							:isReadOnly="isReadOnly"
+							:isReadOnly="isReadOnly || readOnlyEnv"
 							:instance="instance"
 							:isActive="!!activeNode && activeNode.name === nodeData.name"
 							:nodeViewScale="nodeViewScale"
@@ -87,7 +87,7 @@
 				</div>
 			</div>
 			<node-details-view
-				:readOnly="isReadOnly"
+				:readOnly="isReadOnly || readOnlyEnv"
 				:renaming="renamingActive"
 				:isProductionExecutionPreview="isProductionExecutionPreview"
 				@valueChanged="valueChanged"
@@ -95,7 +95,7 @@
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
 			/>
 			<node-creation
-				v-if="!isReadOnly"
+				v-if="!isReadOnly && !readOnlyEnv"
 				:create-node-active="createNodeActive"
 				:node-view-scale="nodeViewScale"
 				@toggleNodeCreator="onToggleNodeCreator"
@@ -262,26 +262,29 @@ import type {
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
 import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useSegment } from '@/stores/segment.store';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useTagsStore } from '@/stores/tags.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useEnvironmentsStore } from '@/stores';
+import {
+	useEnvironmentsStore,
+	useWorkflowsEEStore,
+	useCanvasStore,
+	useNodeCreatorStore,
+	useTagsStore,
+	useCredentialsStore,
+	useNodeTypesStore,
+	useTemplatesStore,
+	useSegment,
+	useNDVStore,
+	useRootStore,
+	useWorkflowsStore,
+	useUsersStore,
+	useSettingsStore,
+	useUIStore,
+	useHistoryStore,
+	useVersionControlStore,
+} from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
-import { useHistoryStore } from '@/stores/history.store';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -480,7 +483,11 @@ export default defineComponent({
 			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
+			useVersionControlStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
+		},
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.rootStore.nativelyNumberSuffixedDefaults;
 		},
@@ -497,7 +504,9 @@ export default defineComponent({
 			return this.$route.name === VIEWS.DEMO;
 		},
 		showCanvasAddButton(): boolean {
-			return this.loadingService === null && !this.containsTrigger && !this.isDemo;
+			return (
+				this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv
+			);
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -2195,6 +2204,7 @@ export default defineComponent({
 
 				if (
 					this.isReadOnly ||
+					this.readOnlyEnv ||
 					this.enterTimer ||
 					!connection ||
 					connection === this.activeConnection
@@ -2223,7 +2233,13 @@ export default defineComponent({
 					this.enterTimer = undefined;
 				}
 
-				if (this.isReadOnly || !connection || this.activeConnection?.id !== connection.id) return;
+				if (
+					this.isReadOnly ||
+					this.readOnlyEnv ||
+					!connection ||
+					this.activeConnection?.id !== connection.id
+				)
+					return;
 
 				this.exitTimer = setTimeout(() => {
 					this.exitTimer = undefined;
