@@ -11,6 +11,10 @@ const scopes = [
 	'offline.access',
 	'like.read',
 	'like.write',
+	'dm.write',
+	'dm.read',
+	'list.read',
+	'list.write',
 ];
 export class TwitterOAuth2Api implements ICredentialType {
 	name = 'twitterOAuth2Api';
