@@ -84,37 +84,11 @@ export const tweetFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Location',
-				name: 'locationFieldsUi',
-				type: 'fixedCollection',
-				placeholder: 'Add Location',
-				default: {},
+				name: 'location',
+				type: 'string',
+				placeholder: '4e696bef7e24d378',
+				default: '',
 				description: 'Location information for the Tweet',
-				options: [
-					{
-						name: 'locationFieldsValues',
-						displayName: 'Location',
-						values: [
-							{
-								displayName: 'Latitude',
-								name: 'latitude',
-								type: 'string',
-								// required: true,
-								description: 'The location latitude',
-								placeholder: 'e.g. 52.516278',
-								default: '',
-							},
-							{
-								displayName: 'Longitude',
-								name: 'longitude',
-								type: 'string',
-								// required: true,
-								description: 'The location longitude',
-								placeholder: 'e.g. 13.377926',
-								default: '',
-							},
-						],
-					},
-				],
 			},
 			{
 				displayName: 'Media',
@@ -122,8 +96,6 @@ export const tweetFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				hint: 'The name of the input field containing the binary file data to be attached',
-				// required: true,
-				// default: 'data',
 				placeholder: 'e.g. data',
 				description:
 					'Name of the binary properties which contain data that should be added to the tweet as an attachment. Multiple attachments should be comma-separated. You may include up to 4 photos or 1 animated GIF or 1 video in a Tweet',
