@@ -1055,6 +1055,8 @@ export interface INodePropertyTypeOptions {
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
+	validate?: boolean; // Supported by: <All>
+	expectedType?: FieldType; // when validate trye, specify the expected type, otherwise it will be validated against the type of the property
 	[key: string]: any;
 }
 

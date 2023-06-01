@@ -175,6 +175,16 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Test',
+		name: 'test',
+		type: 'string',
+		default: '',
+		typeOptions: {
+			validate: true,
+			expectedType: 'number',
+		},
+	},
 ];
 
 const displayOptions = {
@@ -199,6 +209,8 @@ export async function execute(
 		) as ManualModeOptions;
 		const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
 
+		console.log(this.getNodeParameter('test', i));
+
 		const setData: IDataObject = {};
 
 		if (dotNotation === false) {
@@ -213,7 +225,7 @@ export async function execute(
 			}
 		}
 
-		return prepareItem(items[i], setData, includeOtherFields);
+		return prepareItem(items[i], setData, includeOtherFields, dotNotation);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: error.message } };

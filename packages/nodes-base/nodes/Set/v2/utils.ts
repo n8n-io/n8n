@@ -1,10 +1,13 @@
 import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import set from 'lodash.set';
+
 export const prepareItem = (
 	inputItem: INodeExecutionData,
 	setData: IDataObject,
 	includeOtherFields: boolean,
+	dotNotation = true,
 ) => {
 	const newItem: INodeExecutionData = {
 		json: {},
@@ -22,9 +25,15 @@ export const prepareItem = (
 
 		newItem.json = deepCopy(inputItem.json);
 
-		Object.keys(setData).forEach((key) => {
-			newItem.json[key] = setData[key];
-		});
+		if (dotNotation) {
+			Object.keys(setData).forEach((key) => {
+				set(newItem.json, key, setData[key]);
+			});
+		} else {
+			Object.keys(setData).forEach((key) => {
+				newItem.json[key] = setData[key];
+			});
+		}
 	} else {
 		newItem.json = setData;
 	}
