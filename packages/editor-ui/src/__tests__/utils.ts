@@ -3,7 +3,7 @@ import { UserManagementAuthenticationMethod } from '@/Interface';
 import { render } from '@testing-library/vue';
 import { PiniaVuePlugin } from 'pinia';
 
-export const retry = async (assertion: () => any, { interval = 20, timeout = 200 } = {}) => {
+export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
 	return new Promise((resolve, reject) => {
 		const startTime = Date.now();
 

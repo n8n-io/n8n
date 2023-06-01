@@ -57,12 +57,17 @@ export const genericHelpers = defineComponent({
 					message: this.$locale.baseText('genericHelpers.showMessage.message'),
 					type: 'info',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 
 				return false;
 			}
 			return true;
 		},
+
+		/**
+		 * @note Loading helpers extracted as composable in useLoadingService
+		 */
 
 		startLoading(text?: string) {
 			if (this.loadingService !== null) {

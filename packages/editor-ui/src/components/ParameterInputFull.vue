@@ -10,6 +10,7 @@
 	>
 		<template #options>
 			<parameter-options
+				v-if="displayOptions"
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
@@ -54,6 +55,7 @@
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
 							:hide-issues="hideIssues"
+							:label="label"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
@@ -302,6 +304,7 @@ export default defineComponent({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
+							dangerouslyUseHTMLString: true,
 						});
 
 						this.ndvStore.disableMappingHint();

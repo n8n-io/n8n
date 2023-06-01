@@ -2,6 +2,7 @@ import {
 	changePassword,
 	deleteUser,
 	getInviteLink,
+	getPasswordResetLink,
 	getUsers,
 	inviteUsers,
 	login,
@@ -17,6 +18,7 @@ import {
 	updateCurrentUser,
 	updateCurrentUserPassword,
 	updateCurrentUserSettings,
+	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
@@ -251,6 +253,19 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([this.currentUser]);
 			}
 		},
+		async updateOtherUserSettings(
+			userId: string,
+			settings: IUserResponse['settings'],
+		): Promise<void> {
+			const rootStore = useRootStore();
+			const updatedSettings = await updateOtherUserSettings(
+				rootStore.getRestApiContext,
+				userId,
+				settings,
+			);
+			this.users[userId].settings = updatedSettings;
+			this.addUsers([this.users[userId]]);
+		},
 		async updateCurrentUserPassword({
 			password,
 			currentPassword,
@@ -287,6 +302,10 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
 			return getInviteLink(rootStore.getRestApiContext, params);
+		},
+		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
+			const rootStore = useRootStore();
+			return getPasswordResetLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();

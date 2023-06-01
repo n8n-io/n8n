@@ -61,10 +61,12 @@ import type {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
+	INodeType,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
 	isObjectEmpty,
+	isResourceMapperValue,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
@@ -74,6 +76,7 @@ import {
 	deepCopy,
 	fileTypeFromMimeType,
 	ExpressionError,
+	validateFieldType,
 } from 'n8n-workflow';
 
 import pick from 'lodash.pick';
@@ -82,7 +85,12 @@ import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
-import clientOAuth2 from 'client-oauth2';
+import type {
+	ClientOAuth2Options,
+	ClientOAuth2RequestObject,
+	ClientOAuth2TokenData,
+} from '@n8n/client-oauth2';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
@@ -109,7 +117,7 @@ import { access as fsAccess } from 'fs/promises';
 import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { IResponseError, IWorkflowSettings } from './Interfaces';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
@@ -1081,14 +1089,14 @@ export async function requestOAuth2(
 		throw new Error('OAuth credentials not connected!');
 	}
 
-	const oAuthClient = new clientOAuth2({
+	const oAuthClient = new ClientOAuth2({
 		clientId: credentials.clientId as string,
 		clientSecret: credentials.clientSecret as string,
 		accessTokenUri: credentials.accessTokenUrl as string,
 		scopes: (credentials.scope as string).split(' '),
 	});
 
-	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
@@ -1116,15 +1124,20 @@ export async function requestOAuth2(
 		oauthTokenData = data;
 	}
 
+	const accessToken =
+		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
+	const refreshToken = oauthTokenData.refreshToken;
 	const token = oAuthClient.createToken(
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
-		oauthTokenData.refreshToken,
+		{
+			...oauthTokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
-		oauthTokenData,
 	);
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
-	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
+	const newRequestOptions = token.sign(requestOptions as ClientOAuth2RequestObject);
 	const newRequestHeaders = (newRequestOptions.headers = newRequestOptions.headers ?? {});
 	// If keep bearer is false remove the it from the authorization header
 	if (oAuth2Options?.keepBearer === false && typeof newRequestHeaders.Authorization === 'string') {
@@ -1164,7 +1177,7 @@ export async function requestOAuth2(
 				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
 					newToken = await getClientCredentialsToken(token.client, credentials);
 				} else {
-					newToken = await token.refresh(tokenRefreshOptions);
+					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
 
 				Logger.debug(
@@ -1184,7 +1197,7 @@ export async function requestOAuth2(
 					credentialsType,
 					credentials,
 				);
-				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
 					Object.assign(newRequestHeaders, {
@@ -1197,6 +1210,11 @@ export async function requestOAuth2(
 			throw error;
 		});
 	}
+	const tokenExpiredStatusCode =
+		oAuth2Options?.tokenExpiredStatusCode === undefined
+			? 401
+			: oAuth2Options?.tokenExpiredStatusCode;
+
 	return this.helpers
 		.request(newRequestOptions)
 		.then((response) => {
@@ -1204,21 +1222,14 @@ export async function requestOAuth2(
 			if (
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
-				response.statusCode ===
-					(oAuth2Options?.tokenExpiredStatusCode === undefined
-						? 401
-						: oAuth2Options?.tokenExpiredStatusCode)
+				response.statusCode === tokenExpiredStatusCode
 			) {
 				throw response;
 			}
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			const statusCodeReturned =
-				oAuth2Options?.tokenExpiredStatusCode === undefined
-					? 401
-					: oAuth2Options?.tokenExpiredStatusCode;
-			if (error.statusCode === statusCodeReturned) {
+			if (error.statusCode === tokenExpiredStatusCode) {
 				// Token is probably not valid anymore. So try refresh it.
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
@@ -1243,7 +1254,7 @@ export async function requestOAuth2(
 				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
 					newToken = await getClientCredentialsToken(token.client, credentials);
 				} else {
-					newToken = await token.refresh(tokenRefreshOptions);
+					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
 				Logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
@@ -1271,7 +1282,7 @@ export async function requestOAuth2(
 				);
 
 				// Make the request again with the new token
-				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+				const newRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 				newRequestOptions.headers = newRequestOptions.headers ?? {};
 
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
@@ -1859,7 +1870,7 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (Array.isArray(inputData)) {
-		inputData.forEach((value) => cleanupParameterData(value));
+		inputData.forEach((value) => cleanupParameterData(value as NodeParameterValueType));
 		return;
 	}
 
@@ -1877,6 +1888,103 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 		});
 	}
 }
+
+const validateResourceMapperValue = (
+	parameterName: string,
+	paramValues: { [key: string]: unknown },
+	node: INode,
+	skipRequiredCheck = false,
+): ExtendedValidationResult => {
+	const result: ExtendedValidationResult = { valid: true, newValue: paramValues };
+	const paramNameParts = parameterName.split('.');
+	if (paramNameParts.length !== 2) {
+		return result;
+	}
+	const resourceMapperParamName = paramNameParts[0];
+	const resourceMapperField = node.parameters[resourceMapperParamName];
+	if (!resourceMapperField || !isResourceMapperValue(resourceMapperField)) {
+		return result;
+	}
+	const schema = resourceMapperField.schema;
+	const paramValueNames = Object.keys(paramValues);
+	for (let i = 0; i < paramValueNames.length; i++) {
+		const key = paramValueNames[i];
+		const resolvedValue = paramValues[key];
+		const schemaEntry = schema.find((s) => s.id === key);
+
+		if (
+			!skipRequiredCheck &&
+			schemaEntry?.required === true &&
+			schemaEntry.type !== 'boolean' &&
+			!resolvedValue
+		) {
+			return {
+				valid: false,
+				errorMessage: `The value "${String(key)}" is required but not set`,
+				fieldName: key,
+			};
+		}
+
+		if (schemaEntry?.type) {
+			const validationResult = validateFieldType(
+				key,
+				resolvedValue,
+				schemaEntry.type,
+				schemaEntry.options,
+			);
+			if (!validationResult.valid) {
+				return { ...validationResult, fieldName: key };
+			} else {
+				// If it's valid, set the casted value
+				paramValues[key] = validationResult.newValue;
+			}
+		}
+	}
+	return result;
+};
+
+const validateValueAgainstSchema = (
+	node: INode,
+	nodeType: INodeType,
+	inputValues: string | number | boolean | object | null | undefined,
+	parameterName: string,
+	runIndex: number,
+	itemIndex: number,
+) => {
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
+	// Currently only validate resource mapper values
+	const resourceMapperField = nodeType.description.properties.find(
+		(prop) =>
+			NodeHelpers.displayParameter(node.parameters, prop, node) &&
+			prop.type === 'resourceMapper' &&
+			parameterName === `${prop.name}.value`,
+	);
+
+	if (resourceMapperField && typeof inputValues === 'object') {
+		validationResult = validateResourceMapperValue(
+			parameterName,
+			inputValues as { [key: string]: unknown },
+			node,
+			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+		);
+	}
+
+	if (!validationResult.valid) {
+		throw new ExpressionError(
+			`Invalid input for '${
+				String(validationResult.fieldName) || parameterName
+			}' [item ${itemIndex}]`,
+			{
+				description: validationResult.errorMessage,
+				failExecution: true,
+				runIndex,
+				itemIndex,
+				nodeCause: node.name,
+			},
+		);
+	}
+	return validationResult.newValue;
+};
 
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
@@ -1938,6 +2046,16 @@ export function getNodeParameter(
 	if (options?.extractValue) {
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
+
+	// Validate parameter value if it has a schema defined
+	returnData = validateValueAgainstSchema(
+		node,
+		nodeType,
+		returnData,
+		parameterName,
+		runIndex,
+		itemIndex,
+	);
 
 	return returnData;
 }

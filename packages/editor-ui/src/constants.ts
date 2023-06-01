@@ -49,6 +49,8 @@ export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const USER_ACTIVATION_SURVEY_MODAL = 'userActivationSurvey';
 
+export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
+
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
 	UPDATE: 'update',
@@ -530,7 +532,17 @@ export const TEMPLATE_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
+export const ONBOARDING_EXPERIMENT = {
+	name: '004_checklist',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	TEMPLATE_EXPERIMENT.name,
+	AUTO_INSERT_ACTION_EXPERIMENT.name,
+	ONBOARDING_EXPERIMENT.name,
+];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 

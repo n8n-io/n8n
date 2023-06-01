@@ -438,6 +438,7 @@ export const pushConnection = defineComponent({
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
+							dangerouslyUseHTMLString: true,
 						});
 					}
 				} else {

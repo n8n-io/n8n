@@ -54,7 +54,7 @@ beforeAll(async () => {
 	ownerShell = await testDb.createUserShell(globalOwnerRole);
 	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 });
 
 beforeEach(async () => {

@@ -78,7 +78,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { Notification } from 'element-ui';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 const FEEDBACK_MAX_LENGTH = 300;
 
