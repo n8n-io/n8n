@@ -108,12 +108,6 @@ export default defineComponent({
 					value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 				},
 			];
-			if (this.isInstanceOwner) {
-				actions.push({
-					label: this.$locale.baseText('workflows.item.delete'),
-					value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
-				});
-			}
 			return actions;
 		},
 		typeLabelName(): BaseTextKey {
