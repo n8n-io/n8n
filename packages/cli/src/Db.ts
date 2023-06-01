@@ -4,8 +4,13 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Container } from 'typedi';
-import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type {
+	DataSourceOptions as ConnectionOptions,
+	EntityManager,
+	LoggerOptions,
+	QueryRunner,
+} from 'typeorm';
+import { DataSource as Connection, AdvancedConsoleLogger } from 'typeorm';
 import type { TlsOptions } from 'tls';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
@@ -61,6 +66,29 @@ export const connectionState: ConnectionState = {
 	connected: false,
 	migrated: false,
 };
+
+const ignoredQueries = ['START TRANSACTION', 'COMMIT'];
+
+class QueryLogger extends AdvancedConsoleLogger {
+	private counts: Map<string, number> = new Map();
+
+	constructor() {
+		super();
+		setInterval(() => {
+			const queries = [...this.counts.entries()]
+				.filter(([query, count]) => !ignoredQueries.includes(query) && count > 10)
+				.sort((a, b) => b[1] - a[1])
+				.map(([query, count]) => [count, query]);
+			if (queries.length) ErrorReporter.warn('Frequent queries', { extra: { queries } });
+			this.counts = new Map();
+		}, 30 * 60 * 1000);
+	}
+
+	logQuery(query: string, parameters?: any[], queryRunner?: QueryRunner): void {
+		this.counts.set(query, (this.counts.get(query) ?? 0) + 1);
+		return super.logQuery(query, parameters, queryRunner);
+	}
+}
 
 // Ping DB connection every 2 seconds
 let pingTimer: NodeJS.Timer | undefined;
@@ -152,6 +180,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 		logging: loggingOption,
 		maxQueryExecutionTime,
 		migrationsRun: false,
+		logger: new QueryLogger(),
 	});
 
 	connection = new Connection(connectionOptions);
