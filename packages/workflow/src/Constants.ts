@@ -1,4 +1,5 @@
-import { version } from '../package.json';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version } = require('../package.json') as { version: string };
 import { major } from 'semver';
 
 export const BINARY_ENCODING = 'base64';
