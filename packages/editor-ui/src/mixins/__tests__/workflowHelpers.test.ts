@@ -20,14 +20,14 @@ describe('workflowHelpers', () => {
 			expect(result).toBe(true);
 		});
 
-		it('should return true if active execution is set and mode is manual', async () => {
+		it('should return true if active execution is set and mode is manual', () => {
 			pinia.state.value.workflows.activeWorkflowExecution = { mode: 'manual' };
 
 			const result = shouldReplaceInputDataWithPinData();
 			expect(result).toBe(true);
 		});
 
-		it('should return false if active execution is set and mode is not manual', async () => {
+		it('should return false if active execution is set and mode is not manual', () => {
 			pinia.state.value.workflows.activeWorkflowExecution = { mode: 'webhook' };
 
 			const result = shouldReplaceInputDataWithPinData();

@@ -3604,7 +3604,7 @@ export default defineComponent({
 							type: 'error',
 						});
 					}
-				} else if (json && json.command === 'setActiveExecution') {
+				} else if (json?.command === 'setActiveExecution') {
 					this.workflowsStore.activeWorkflowExecution = json.execution;
 				}
 			} catch (e) {}

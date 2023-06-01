@@ -189,15 +189,6 @@ function getNodeTypes(): INodeTypes {
 	return useWorkflowsStore().getNodeTypes();
 }
 
-export function shouldReplaceInputDataWithPinData() {
-	const workflowsStore = useWorkflowsStore();
-	return (
-		!workflowsStore.activeWorkflowExecution ||
-		(workflowsStore.activeWorkflowExecution &&
-			workflowsStore.activeWorkflowExecution.mode === 'manual')
-	);
-}
-
 // Returns connectionInputData to be able to execute an expression.
 function connectionInputData(
 	parentNode: string[],
@@ -234,8 +225,8 @@ function connectionInputData(
 
 	const workflowsStore = useWorkflowsStore();
 
-	if (shouldReplaceInputDataWithPinData()) {
-		const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
+	if (workflowsStore.shouldReplaceInputDataWithPinData) {
+		const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
 			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
 
 			if (pinData) {
@@ -286,7 +277,7 @@ function executeData(
 		const parentNodeName = parentNode[0];
 		const workflowsStore = useWorkflowsStore();
 
-		if (shouldReplaceInputDataWithPinData()) {
+		if (workflowsStore.shouldReplaceInputDataWithPinData) {
 			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
 			// populate `executeData` from `pinData`
