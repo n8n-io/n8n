@@ -112,6 +112,15 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<code-node-editor
+					v-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
+					:value="value"
+					:defaultValue="parameter.default"
+					:language="'json'"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<div
 					v-else-if="editorType"
 					class="readonly-code clickable ph-no-capture"
@@ -380,7 +389,12 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
-import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+import {
+	CODE_NODE_TYPE,
+	CUSTOM_API_CALL_KEY,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	HTML_NODE_TYPE,
+} from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -974,6 +988,9 @@ export default defineComponent({
 		},
 		isHtmlNode(node: INodeUi): boolean {
 			return node.type === HTML_NODE_TYPE;
+		},
+		isExecuteWorkflowNode(node: INodeUi): boolean {
+			return node.type === EXECUTE_WORKFLOW_NODE_TYPE;
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
