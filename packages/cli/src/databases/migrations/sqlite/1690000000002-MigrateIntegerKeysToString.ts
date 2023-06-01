@@ -1,6 +1,8 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class MigrateIntegerKeysToString1690000000002 implements ReversibleMigration {
+	transaction = false as const;
+
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query('PRAGMA foreign_keys=OFF');
 		await queryRunner.startTransaction();
