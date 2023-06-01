@@ -349,7 +349,7 @@ export default defineComponent({
 		async startAutoRefreshInterval() {
 			if (this.autoRefresh) {
 				await this.loadAutoRefresh();
-				this.autoRefreshTimeout = setTimeout(this.startAutoRefreshInterval, 4000);
+				this.autoRefreshTimeout = setTimeout(() => this.startAutoRefreshInterval(), 4000);
 			}
 		},
 		stopAutoRefreshInterval() {
