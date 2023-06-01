@@ -223,32 +223,36 @@ function connectionInputData(
 		}
 	}
 
-	const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
-		const pinData = useWorkflowsStore().pinDataByNodeName(parentNodeName);
+	const workflowsStore = useWorkflowsStore();
 
-		if (pinData) {
-			acc.push({
-				json: pinData[0],
-				pairedItem: {
-					item: index,
-					input: 1,
-				},
-			});
-		}
+	if (workflowsStore.shouldReplaceInputDataWithPinData) {
+		const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
+			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
 
-		return acc;
-	}, []);
+			if (pinData) {
+				acc.push({
+					json: pinData[0],
+					pairedItem: {
+						item: index,
+						input: 1,
+					},
+				});
+			}
 
-	if (parentPinData.length > 0) {
-		if (connectionInputData && connectionInputData.length > 0) {
-			parentPinData.forEach((parentPinDataEntry) => {
-				connectionInputData![0].json = {
-					...connectionInputData![0].json,
-					...parentPinDataEntry.json,
-				};
-			});
-		} else {
-			connectionInputData = parentPinData;
+			return acc;
+		}, []);
+
+		if (parentPinData.length > 0) {
+			if (connectionInputData && connectionInputData.length > 0) {
+				parentPinData.forEach((parentPinDataEntry) => {
+					connectionInputData![0].json = {
+						...connectionInputData![0].json,
+						...parentPinDataEntry.json,
+					};
+				});
+			} else {
+				connectionInputData = parentPinData;
+			}
 		}
 	}
 
@@ -271,21 +275,24 @@ function executeData(
 		// Add the input data to be able to also resolve the short expression format
 		// which does not use the node name
 		const parentNodeName = parentNode[0];
+		const workflowsStore = useWorkflowsStore();
 
-		const parentPinData = useWorkflowsStore().getPinData![parentNodeName];
+		if (workflowsStore.shouldReplaceInputDataWithPinData) {
+			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
-		// populate `executeData` from `pinData`
+			// populate `executeData` from `pinData`
 
-		if (parentPinData) {
-			executeData.data = { main: [parentPinData] };
-			executeData.source = { main: [{ previousNode: parentNodeName }] };
+			if (parentPinData) {
+				executeData.data = { main: [parentPinData] };
+				executeData.source = { main: [{ previousNode: parentNodeName }] };
 
-			return executeData;
+				return executeData;
+			}
 		}
 
 		// populate `executeData` from `runData`
 
-		const workflowRunData = useWorkflowsStore().getWorkflowRunData;
+		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
 		}

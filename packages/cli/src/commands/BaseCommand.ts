@@ -9,7 +9,7 @@ import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { inTest } from '@/constants';
+import { USER_MANAGEMENT_DOCS_URL, inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
@@ -80,6 +80,18 @@ export abstract class BaseCommand extends Command {
 		if (process.env.EXECUTIONS_PROCESS === 'own') {
 			LoggerProxy.warn(
 				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
+			);
+		}
+
+		if (process.env.N8N_BASIC_AUTH_ACTIVE === 'true') {
+			LoggerProxy.warn(
+				`Basic auth has been deprecated and will be removed in a future version of n8n. For authentication, please consider User Management. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,
+			);
+		}
+
+		if (process.env.N8N_JWT_AUTH_ACTIVE === 'true') {
+			LoggerProxy.warn(
+				`JWT auth has been deprecated and will be removed in a future version of n8n. For authentication, please consider User Management. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,
 			);
 		}
 

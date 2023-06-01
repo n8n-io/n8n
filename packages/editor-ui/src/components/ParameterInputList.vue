@@ -81,7 +81,16 @@
 					@valueChanged="valueChanged"
 				/>
 			</div>
-
+			<resource-mapper
+				v-else-if="parameter.type === 'resourceMapper'"
+				:parameter="parameter"
+				:node="node"
+				:path="getPath(parameter.name)"
+				:dependentParametersValues="getDependentParametersValues(parameter)"
+				inputSize="small"
+				labelSize="small"
+				@valueChanged="valueChanged"
+			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
 				<div
 					class="delete-option clickable"
@@ -100,9 +109,11 @@
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="getParameterValue(nodeValues, parameter.name, path)"
-					:displayOptions="true"
+					:displayOptions="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
+					:hideLabel="false"
+					:nodeValues="nodeValues"
 					@valueChanged="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
@@ -127,7 +138,7 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
-
+import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { get, set } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -143,6 +154,7 @@ export default defineComponent({
 		FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue'),
 		CollectionParameter: async () => import('./CollectionParameter.vue'),
 		ImportParameter,
+		ResourceMapper,
 	},
 	props: {
 		nodeValues: {
@@ -397,6 +409,33 @@ export default defineComponent({
 			// Ideally, we should check if any non-auth field depends on it before hiding it but
 			// since there is no such case, omitting it to avoid additional computation
 			return isAuthRelatedParameter(this.nodeAuthFields, parameter);
+		},
+		shouldShowOptions(parameter: INodeProperties): boolean {
+			return parameter.type !== 'resourceMapper';
+		},
+		getDependentParametersValues(parameter: INodeProperties): string | null {
+			const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn', parameter) as
+				| string[]
+				| undefined;
+
+			if (loadOptionsDependsOn === undefined) {
+				return null;
+			}
+
+			// Get the resolved parameter values of the current node
+			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
+			try {
+				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+
+				const returnValues: string[] = [];
+				for (const parameterPath of loadOptionsDependsOn) {
+					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+				}
+
+				return returnValues.join('|');
+			} catch (error) {
+				return null;
+			}
 		},
 	},
 	watch: {

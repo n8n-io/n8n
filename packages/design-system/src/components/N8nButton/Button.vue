@@ -98,7 +98,7 @@ export default defineComponent({
 				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
 				`${this.block ? ` ${this.$style.block}` : ''}` +
 				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style.withIcon}` : ''}` +
 				`${this.square ? ` ${this.$style.square}` : ''}`
 			);
 		},
@@ -462,6 +462,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 .transparent {
 	--button-background-color: transparent;
 	--button-active-background-color: transparent;
+}
+
+.withIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .icon {
