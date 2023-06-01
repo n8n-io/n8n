@@ -96,13 +96,15 @@ export const prepareEntry = (entry: SetField, node: INode, i: number, ignoreErro
 		throw new NodeOperationError(node, error as Error);
 	}
 
-	if (value === 'undefined' || isNaN(value as number)) {
+	if (value === 'undefined' || (entry.type === 'number' && isNaN(value as number))) {
 		if (ignoreErrors) {
 			return { name: entry.name, value: null };
 		} else {
 			throw new NodeOperationError(
 				node,
-				`The value "${value}" for the field "${entry.name}" could not be converted to a ${entry.type}`,
+				`The value "${entry[entry.type]}" for the field "${
+					entry.name
+				}" could not be converted to a ${entry.type}`,
 				{ itemIndex: i },
 			);
 		}
