@@ -9,7 +9,8 @@
 			@filterUpdated="onFilterUpdated"
 			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
-			@refresh="loadAutoRefresh"
+			:auto-refresh="autoRefresh"
+			@update:autoRefresh="onAutoRefreshToggle"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
 			<router-view
@@ -83,6 +84,8 @@ export default defineComponent({
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
 			temporaryExecution: null as IExecutionsSummary | null,
+			autoRefresh: false,
+			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 		};
 	},
 	setup() {
@@ -187,7 +190,16 @@ export default defineComponent({
 				await this.setExecutions();
 			}
 		}
+
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
+		this.startAutoRefreshInterval();
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
+
 		this.loading = false;
+	},
+	beforeDestroy() {
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	methods: {
 		async initView(loadWorkflow: boolean): Promise<void> {
@@ -332,6 +344,35 @@ export default defineComponent({
 		async setExecutions(): Promise<void> {
 			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
 			await this.setActiveExecution();
+		},
+
+		startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(() => this.debouncedLoadAutoRefresh(), 4000);
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshInterval) {
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+		},
+		onAutoRefreshToggle(value: boolean): void {
+			this.autoRefresh = value;
+			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
+
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			this.startAutoRefreshInterval();
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				this.stopAutoRefreshInterval();
+			} else {
+				this.startAutoRefreshInterval();
+			}
+		},
+		async debouncedLoadAutoRefresh(): Promise<void> {
+			await this.callDebounced('loadAutoRefresh', { debounceTime: 3900 });
 		},
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
