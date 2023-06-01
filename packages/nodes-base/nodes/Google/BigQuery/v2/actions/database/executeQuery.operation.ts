@@ -3,7 +3,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { NodeOperationError, sleep } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { getResolvables, updateDisplayOptions } from '../../../../../../utils/utilities';
 import type { JobInsertResponse } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
@@ -162,11 +162,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < length; i++) {
 		try {
-			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
+			let sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
 			const options = this.getNodeParameter('options', i);
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			});
+
+			for (const resolvable of getResolvables(sqlQuery)) {
+				sqlQuery = sqlQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			}
 
 			let rawOutput = false;
 			let includeSchema = false;

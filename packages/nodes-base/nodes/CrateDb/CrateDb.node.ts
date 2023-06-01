@@ -11,7 +11,7 @@ import {
 	getItemCopy,
 	getItemsCopy,
 	pgInsert,
-	pgQuery,
+	pgQueryV2,
 	pgUpdate,
 } from '../Postgres/v1/genericFunctions';
 
@@ -284,12 +284,14 @@ export class CrateDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
+			const queryResult = await pgQueryV2.call(
+				this,
 				pgp,
 				db,
 				items,
 				this.continueOnFail(),
+				undefined,
+				true,
 			);
 
 			returnItems = this.helpers.returnJsonArray(queryResult);

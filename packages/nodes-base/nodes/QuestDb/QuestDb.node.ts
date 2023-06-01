@@ -8,7 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
-import { pgInsert, pgQuery } from '../Postgres/v1/genericFunctions';
+import { pgInsert, pgQuery, pgQueryV2 } from '../Postgres/v1/genericFunctions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -226,13 +226,14 @@ export class QuestDb implements INodeType {
 			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = (additionalFields.mode || 'independently') as string;
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
+			const queryResult = await pgQueryV2.call(
+				this,
 				pgp,
 				db,
 				items,
 				this.continueOnFail(),
 				mode,
+				true,
 			);
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
