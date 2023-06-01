@@ -5,8 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class CrowdApi implements ICredentialType {
-	name = 'crowdApi';
+export class CrowdDevApi implements ICredentialType {
+	name = 'crowdDevApi';
 
 	displayName = 'crowd.dev API';
 

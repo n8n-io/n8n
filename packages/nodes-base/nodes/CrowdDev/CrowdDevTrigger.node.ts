@@ -7,19 +7,19 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
-interface ICrowdCreds {
+interface ICrowdDevCreds {
 	domain: string;
 	tenantId: string;
 	token: string;
 }
 
-const credsName = 'crowdApi';
+const credsName = 'crowdDevApi';
 
 const getCreds = async (hookFns: IHookFunctions) =>
-	hookFns.getCredentials(credsName) as unknown as ICrowdCreds;
+	hookFns.getCredentials(credsName) as unknown as ICrowdDevCreds;
 
 const createRequest = (
-	creds: ICrowdCreds,
+	creds: ICrowdDevCreds,
 	opts: Partial<IHttpRequestOptions>,
 ): IHttpRequestOptions => {
 	const defaults: IHttpRequestOptions = {
@@ -30,11 +30,11 @@ const createRequest = (
 	return Object.assign(defaults, opts);
 };
 
-export class CrowdTrigger implements INodeType {
+export class CrowdDevTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'crowd.dev Trigger',
-		name: 'crowdTrigger',
-		icon: 'file:crowd.svg',
+		name: 'crowdDevTrigger',
+		icon: 'file:crowdDev.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when crowd.dev events occur.',
@@ -45,7 +45,7 @@ export class CrowdTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'crowdApi',
+				name: 'crowdDevApi',
 				required: true,
 			},
 		],
@@ -133,7 +133,7 @@ export class CrowdTrigger implements INodeType {
 
 				const responseData = await this.helpers.requestWithAuthentication.call(
 					this,
-					'crowdApi',
+					'crowdDevApi',
 					options,
 				);
 				if (responseData === undefined || responseData.id === undefined) {
