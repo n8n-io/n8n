@@ -64,7 +64,7 @@
     "tsc-watch": "^6.0.0",
     "turbo": "1.8.8",
     "typescript": "*",
-    "vite": "^4.3.8",
+    "vite": "^4.0.4",
     "vitest": "^0.28.5",
     "vue-template-compiler": "^2.7.14",
     "vue-tsc": "^1.0.24"

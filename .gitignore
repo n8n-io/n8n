@@ -21,3 +21,4 @@ cypress/videos/*
 cypress/screenshots/*
 *.swp
 .env
+dump.rdb
