@@ -135,7 +135,7 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div>
+	<div class="pb-3xl">
 		<n8n-heading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</n8n-heading>
 		<div :class="$style.top">
 			<n8n-heading size="xlarge">{{ i18n.baseText('settings.sso.subtitle') }}</n8n-heading>
@@ -202,11 +202,12 @@ onMounted(async () => {
 				</div>
 			</div>
 			<div :class="$style.buttons">
-				<n8n-button :disabled="!isSaveEnabled" @click="onSave" data-test-id="sso-save">
+				<n8n-button :disabled="!isSaveEnabled" @click="onSave" size="large" data-test-id="sso-save">
 					{{ i18n.baseText('settings.sso.settings.save') }}
 				</n8n-button>
 				<n8n-button
 					:disabled="!isTestEnabled"
+					size="large"
 					type="tertiary"
 					@click="onTest"
 					data-test-id="sso-test"
