@@ -92,7 +92,7 @@ export class CrowdDevTrigger implements INodeType {
 							url: `/automation/${webhookData.webhookId}`,
 							method: 'GET',
 						});
-						const data = await this.helpers.requestWithAuthentication.call(
+						const data = await this.helpers.httpRequestWithAuthentication.call(
 							this,
 							credsName,
 							options,
@@ -131,7 +131,7 @@ export class CrowdDevTrigger implements INodeType {
 					},
 				});
 
-				const responseData = await this.helpers.requestWithAuthentication.call(
+				const responseData = await this.helpers.httpRequestWithAuthentication.call(
 					this,
 					'crowdDevApi',
 					options,
@@ -156,7 +156,7 @@ export class CrowdDevTrigger implements INodeType {
 							url: `/automation/${webhookData.webhookId}`,
 							method: 'DELETE',
 						});
-						await this.helpers.requestWithAuthentication.call(this, credsName, options);
+						await this.helpers.httpRequestWithAuthentication.call(this, credsName, options);
 					} catch (error) {
 						return false;
 					}
