@@ -92,12 +92,11 @@ export const directMessageFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Attachment',
-				name: 'attachment',
+				name: 'attachments',
 				type: 'string',
-				default: 'data',
-				hint: 'The name of the input field containing the binary file data to be attached',
-				description:
-					'The name of the input field containing the binary data to upload can be found in the Input panel on the left (Binary tab)',
+				default: '',
+				placeholder: '1664279886239010824',
+				description: 'The attachment ID to associate with the message',
 			},
 		],
 	},

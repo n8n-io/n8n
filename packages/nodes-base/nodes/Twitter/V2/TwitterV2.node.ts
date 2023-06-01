@@ -301,6 +301,35 @@ export class TwitterV2 implements INodeType {
 						});
 					}
 				}
+				if (resource === 'directMessage') {
+					if (operation === 'create') {
+						const userRlc = this.getNodeParameter(
+							'user',
+							i,
+							'',
+							{},
+						) as INodeParameterResourceLocator;
+						const user = await returnIdFromUsername.call(this, userRlc);
+						const text = this.getNodeParameter('text', i, '', {});
+						const { attachments } = this.getNodeParameter('additionalFields', i, {}, {}) as {
+							attachments: number;
+						};
+						const body: IDataObject = {
+							text,
+						};
+
+						if (attachments) {
+							body.attachments = [{ media_id: attachments }];
+						}
+
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							`/dm_conversations/with/${user}/messages`,
+							body,
+						);
+					}
+				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },

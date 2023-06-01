@@ -95,17 +95,14 @@ export const tweetFields: INodeProperties[] = [
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				hint: 'The name of the input field containing the binary file data to be attached',
-				placeholder: 'e.g. data',
-				description:
-					'Name of the binary properties which contain data that should be added to the tweet as an attachment. Multiple attachments should be comma-separated. You may include up to 4 photos or 1 animated GIF or 1 video in a Tweet',
+				placeholder: '1664279886239010824',
+				description: 'The attachment ID to associate with the message',
 			},
 			{
 				displayName: 'Quote a Tweet',
 				name: 'inQuoteToStatusId',
 				type: 'resourceLocator',
 				default: { mode: 'id', value: '' },
-				// required: true,
 				description: 'The Tweet being quoted',
 				modes: [
 					{
