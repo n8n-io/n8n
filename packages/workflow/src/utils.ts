@@ -129,7 +129,7 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 	}
 }
 
-export const isFrontend = () => typeof process === 'undefined';
+export const IS_FRONTEND = typeof process === 'undefined';
 
 export const isSyntaxError = (error: unknown): error is SyntaxError =>
 	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');

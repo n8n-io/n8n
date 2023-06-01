@@ -23,7 +23,7 @@ import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
 import { IS_V1_RELEASE } from './Constants';
-import { isExpressionError, isFrontend, isSyntaxError, isTypeError } from './utils';
+import { isExpressionError, IS_FRONTEND, isSyntaxError, isTypeError } from './utils';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -32,7 +32,7 @@ tmpl.brackets.set('{{ }}');
 tmpl.tmpl.errorHandler = (error: Error) => {
 	if (isExpressionError(error)) {
 		if (error.context.failExecution) throw error;
-		if (isFrontend() && error.clientOnly) throw error;
+		if (IS_FRONTEND && error.clientOnly) throw error;
 	}
 };
 
@@ -316,15 +316,15 @@ export class Expression {
 		} catch (error) {
 			if (isExpressionError(error)) {
 				if (error.context.failExecution) throw error;
-				if (isFrontend() && error.clientOnly) throw error;
+				if (IS_FRONTEND && error.clientOnly) throw error;
 			}
 
 			if (isSyntaxError(error)) {
-				if (!IS_V1_RELEASE && isFrontend()) throw new Error('invalid syntax');
+				if (!IS_V1_RELEASE && IS_FRONTEND) throw new Error('invalid syntax');
 				if (IS_V1_RELEASE) throw new Error('invalid syntax');
 			}
 
-			if (isTypeError(error) && isFrontend() && error.message.endsWith('is not a function')) {
+			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
