@@ -1,6 +1,6 @@
 <template>
 	<span @keydown.stop class="inline-edit">
-		<span v-if="isEditEnabled">
+		<span v-if="isEditEnabled && !disabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
 				:value="newValue"
@@ -29,12 +29,36 @@ import { createEventBus } from 'n8n-design-system';
 export default defineComponent({
 	name: 'InlineTextEdit',
 	components: { ExpandableInputEdit, ExpandableInputPreview },
-	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
+	props: {
+		isEditEnabled: {
+			type: Boolean,
+			default: false,
+		},
+		value: {
+			type: String,
+			default: '',
+		},
+		placeholder: {
+			type: String,
+			default: '',
+		},
+		maxLength: {
+			type: Number,
+			default: 0,
+		},
+		previewValue: {
+			type: String,
+			default: '',
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	data() {
 		return {
 			newValue: '',
 			escPressed: false,
-			disabled: false,
 			inputBus: createEventBus(),
 		};
 	},

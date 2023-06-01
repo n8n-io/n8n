@@ -6,7 +6,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
-import { EditorState, Prec } from '@codemirror/state';
+import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { history, redo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
@@ -18,6 +18,8 @@ import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expre
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
+
+const editableConf = new Compartment();
 
 export default defineComponent({
 	name: 'InlineExpressionEditorInput',
@@ -39,6 +41,11 @@ export default defineComponent({
 		},
 	},
 	watch: {
+		isReadOnly(newValue: boolean) {
+			this.editor?.dispatch({
+				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
+			});
+		},
 		value(newValue) {
 			const isInternalChange = newValue === this.editor?.state.doc.toString();
 
@@ -97,7 +104,7 @@ export default defineComponent({
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,
-			EditorView.editable.of(!this.isReadOnly),
+			editableConf.of(EditorView.editable.of(!this.isReadOnly)),
 			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({
 				focus: () => {

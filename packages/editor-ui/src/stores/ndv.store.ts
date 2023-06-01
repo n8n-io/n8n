@@ -6,7 +6,7 @@ import type {
 	NodePanelType,
 	XYPosition,
 } from '@/Interface';
-import type { IRunData } from 'n8n-workflow';
+import type { INodeIssues, IRunData } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 import { useWorkflowsStore } from './workflows.store';
@@ -204,6 +204,15 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			this.isMappingOnboarded = true;
 			if (store) {
 				window.localStorage.setItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+			}
+		},
+		updateNodeParameterIssues(issues: INodeIssues): void {
+			const activeNode = this.activeNode;
+			if (activeNode) {
+				Vue.set(activeNode, 'issues', {
+					...activeNode.issues,
+					...issues,
+				});
 			}
 		},
 	},
