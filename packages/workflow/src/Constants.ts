@@ -1,4 +1,6 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+import { version } from '../package.json';
+import { major } from 'semver';
+
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
@@ -14,3 +16,5 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	'n8n-nodes-base.function',
 	'n8n-nodes-base.functionItem',
 ]);
+
+export const IS_V1_RELEASE = major(version) === 1;

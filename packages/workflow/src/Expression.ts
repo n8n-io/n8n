@@ -22,20 +22,17 @@ import type { Workflow } from './Workflow';
 import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
+import { IS_V1_RELEASE } from './Constants';
+import { isExpressionError, isFrontend, isSyntaxError, isTypeError } from './utils';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
 
 // Make sure that error get forwarded
 tmpl.tmpl.errorHandler = (error: Error) => {
-	if (error instanceof ExpressionError) {
-		if (error.context.failExecution) {
-			throw error;
-		}
-
-		if (typeof process === 'undefined' && error.clientOnly) {
-			throw error;
-		}
+	if (isExpressionError(error)) {
+		if (error.context.failExecution) throw error;
+		if (isFrontend() && error.clientOnly) throw error;
 	}
 };
 
@@ -317,35 +314,17 @@ export class Expression {
 		try {
 			return tmpl.tmpl(expression, data);
 		} catch (error) {
-			if (error instanceof ExpressionError) {
-				// Ignore all errors except if they are ExpressionErrors and they are supposed
-				// to fail the execution
-				if (error.context.failExecution) {
-					throw error;
-				}
-
-				if (typeof process === 'undefined' && error.clientOnly) {
-					throw error;
-				}
+			if (isExpressionError(error)) {
+				if (error.context.failExecution) throw error;
+				if (isFrontend() && error.clientOnly) throw error;
 			}
 
-			// Syntax errors resolve to `Error` on the frontend and `null` on the backend.
-			// This is a temporary divergence in evaluation behavior until we make the
-			// breaking change to allow syntax errors to fail executions.
-			if (
-				typeof process === 'undefined' &&
-				error instanceof Error &&
-				error.name === 'SyntaxError'
-			) {
-				throw new Error('invalid syntax');
+			if (isSyntaxError(error)) {
+				if (!IS_V1_RELEASE && isFrontend()) throw new Error('invalid syntax');
+				if (IS_V1_RELEASE) throw new Error('invalid syntax');
 			}
 
-			if (
-				typeof process === 'undefined' &&
-				error instanceof Error &&
-				error.name === 'TypeError' &&
-				error.message.endsWith('is not a function')
-			) {
+			if (isTypeError(error) && isFrontend() && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;

@@ -1,3 +1,4 @@
+import { ExpressionError } from './ExpressionError';
 import type { BinaryFileType } from './Interfaces';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
@@ -127,3 +128,14 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 		throw error;
 	}
 }
+
+export const isFrontend = () => typeof process === 'undefined';
+
+export const isSyntaxError = (error: unknown): error is SyntaxError =>
+	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
+
+export const isExpressionError = (error: unknown): error is ExpressionError =>
+	error instanceof ExpressionError;
+
+export const isTypeError = (error: unknown): error is TypeError =>
+	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');

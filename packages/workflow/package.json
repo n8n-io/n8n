@@ -48,6 +48,7 @@
     "@types/lodash.merge": "^4.6.6",
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^3.2.0",
+    "@types/semver": "^7.5.0",
     "@types/xml2js": "^0.4.11"
   },
   "dependencies": {
@@ -64,6 +65,7 @@
     "lodash.set": "^4.3.2",
     "luxon": "^3.3.0",
     "recast": "^0.21.5",
+    "semver": "^7.3.8",
     "title-case": "^3.0.3",
     "transliteration": "^2.3.5",
     "xml2js": "^0.5.0"
