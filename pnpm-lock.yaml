@@ -1613,8 +1613,8 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n_io/riot-tmpl':
-        specifier: ^3.0.0
-        version: 3.0.0
+        specifier: ^4.0.0
+        version: 4.0.0
       ast-types:
         specifier: 0.15.2
         version: 0.15.2
@@ -5573,8 +5573,8 @@ packages:
       undici: 5.21.0
     dev: false
 
-  /@n8n_io/riot-tmpl@3.0.0:
-    resolution: {integrity: sha512-bExAbGAp+LE4EXUcXl/kcZofKefrLIVZl8Kg36fim6KZATrWF8Nh7cdp/dOWzgZT6h8/ScqKxjv23W3KoeR40Q==}
+  /@n8n_io/riot-tmpl@4.0.0:
+    resolution: {integrity: sha512-/xw8HQgYQlBCrt3IKpNSSB1CgpP7XArw1QTRjP+KEw+OHT8XGvHxXrW9VGdUu9RwDnzm/LFu+dNLeDmwJMeOwQ==}
     dependencies:
       eslint-config-riot: 1.0.0
     dev: false
