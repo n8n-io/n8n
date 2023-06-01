@@ -311,6 +311,12 @@ export default defineComponent({
 		ExecutionTime,
 		ExecutionFilter,
 	},
+	props: {
+		autoRefreshEnabled: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	setup() {
 		return {
 			...useToast(),
@@ -326,7 +332,7 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: true,
+			autoRefresh: this.autoRefreshEnabled,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
@@ -343,11 +349,12 @@ export default defineComponent({
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
+
+		this.handleAutoRefreshToggle();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
 		await this.loadWorkflows();
-		this.handleAutoRefreshToggle();
 
 		void this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', {
@@ -568,8 +575,11 @@ export default defineComponent({
 			);
 			let lastId = 0;
 			const gaps = [] as number[];
-			for (let i = results[0].results.length - 1; i >= 0; i--) {
-				const currentItem = results[0].results[i];
+
+			const pastExecutions = results[0] || { results: [], count: 0, estimated: false };
+
+			for (let i = pastExecutions.results.length - 1; i >= 0; i--) {
+				const currentItem = pastExecutions.results[i];
 				const currentId = parseInt(currentItem.id, 10);
 				if (lastId !== 0 && !isNaN(currentId)) {
 					// We are doing this iteration to detect possible gaps.
@@ -620,8 +630,8 @@ export default defineComponent({
 				(execution) =>
 					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
 			);
-			this.finishedExecutionsCount = results[0].count;
-			this.finishedExecutionsCountEstimated = results[0].estimated;
+			this.finishedExecutionsCount = pastExecutions.count;
+			this.finishedExecutionsCountEstimated = pastExecutions.estimated;
 
 			Vue.set(this, 'finishedExecutions', alreadyPresentExecutionsFiltered);
 			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
