@@ -1,18 +1,20 @@
 <script lang="ts" setup>
-import { useVersionControlStore } from '@/stores/versionControl.store';
 import { computed, ref } from 'vue';
-import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
-import { useUIStore } from '@/stores';
-import { VERSION_CONTROL_PUSH_MODAL_KEY } from '@/constants';
+import { useRouter } from 'vue-router/composables';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useI18n, useLoadingService, useMessage, useToast } from '@/composables';
+import { useUIStore, useUsersStore, useVersionControlStore } from '@/stores';
+import { VERSION_CONTROL_PUSH_MODAL_KEY, VIEWS } from '@/constants';
 
 const props = defineProps<{
 	isCollapsed: boolean;
 }>();
 
+const router = useRouter();
 const loadingService = useLoadingService();
 const uiStore = useUIStore();
 const versionControlStore = useVersionControlStore();
+const usersStore = useUsersStore();
 const message = useMessage();
 const toast = useToast();
 const { i18n } = useI18n();
@@ -23,6 +25,8 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return versionControlStore.preferences.branchName;
 });
+
+const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
 async function pushWorkfolder() {
 	loadingService.startLoading();
@@ -68,61 +72,91 @@ async function pullWorkfolder() {
 		loadingService.setLoadingText(i18n.baseText('genericHelpers.loading'));
 	}
 }
+
+const goToVersionControlSetup = async () => {
+	await router.push({ name: VIEWS.VERSION_CONTROL });
+};
 </script>
 
 <template>
 	<div :class="{ [$style.sync]: true, [$style.collapsed]: isCollapsed }">
-		<span>
-			<n8n-icon icon="code-branch" />
-			{{ currentBranch }}
-		</span>
-		<div :class="{ 'pt-xs': !isCollapsed }">
-			<n8n-tooltip :disabled="!isCollapsed" :open-delay="tooltipOpenDelay" placement="right">
-				<template #content>
-					<div>
-						{{ i18n.baseText('settings.versionControl.button.pull') }}
-					</div>
-				</template>
-				<n8n-button
-					:class="{
-						'mr-2xs': !isCollapsed,
-						'mb-2xs': isCollapsed && !versionControlStore.preferences.branchReadOnly,
-					}"
-					icon="arrow-down"
-					type="tertiary"
-					size="mini"
-					:square="isCollapsed"
-					@click="pullWorkfolder"
+		<div
+			v-if="versionControlStore.preferences.connected && versionControlStore.preferences.branchName"
+		>
+			<span>
+				<n8n-icon icon="code-branch" />
+				{{ currentBranch }}
+			</span>
+			<div :class="{ 'pt-xs': !isCollapsed }">
+				<n8n-tooltip :disabled="!isCollapsed" :open-delay="tooltipOpenDelay" placement="right">
+					<template #content>
+						<div>
+							{{ i18n.baseText('settings.versionControl.button.pull') }}
+						</div>
+					</template>
+					<n8n-button
+						:class="{
+							'mr-2xs': !isCollapsed,
+							'mb-2xs': isCollapsed && !versionControlStore.preferences.branchReadOnly,
+						}"
+						icon="arrow-down"
+						type="tertiary"
+						size="mini"
+						:square="isCollapsed"
+						@click="pullWorkfolder"
+					>
+						<span v-if="!isCollapsed">{{
+							i18n.baseText('settings.versionControl.button.pull')
+						}}</span>
+					</n8n-button>
+				</n8n-tooltip>
+				<n8n-tooltip
+					v-if="!versionControlStore.preferences.branchReadOnly"
+					:disabled="!isCollapsed"
+					:open-delay="tooltipOpenDelay"
+					placement="right"
 				>
-					<span v-if="!isCollapsed">{{
-						i18n.baseText('settings.versionControl.button.pull')
-					}}</span>
-				</n8n-button>
-			</n8n-tooltip>
-			<n8n-tooltip
-				v-if="!versionControlStore.preferences.branchReadOnly"
-				:disabled="!isCollapsed"
-				:open-delay="tooltipOpenDelay"
-				placement="right"
-			>
-				<template #content>
-					<div>
-						{{ i18n.baseText('settings.versionControl.button.push') }}
-					</div>
-				</template>
-				<n8n-button
-					:square="isCollapsed"
-					icon="arrow-up"
-					type="tertiary"
-					size="mini"
-					@click="pushWorkfolder"
-				>
-					<span v-if="!isCollapsed">{{
-						i18n.baseText('settings.versionControl.button.push')
-					}}</span>
-				</n8n-button>
-			</n8n-tooltip>
+					<template #content>
+						<div>
+							{{ i18n.baseText('settings.versionControl.button.push') }}
+						</div>
+					</template>
+					<n8n-button
+						:square="isCollapsed"
+						icon="arrow-up"
+						type="tertiary"
+						size="mini"
+						@click="pushWorkfolder"
+					>
+						<span v-if="!isCollapsed">{{
+							i18n.baseText('settings.versionControl.button.push')
+						}}</span>
+					</n8n-button>
+				</n8n-tooltip>
+			</div>
 		</div>
+		<n8n-tooltip
+			v-else-if="
+				versionControlStore.isEnterpriseVersionControlEnabled && usersStore.isInstanceOwner
+			"
+			:open-delay="tooltipOpenDelay"
+			:placement="setupButtonTooltipPlacement"
+		>
+			<template #content>
+				<div>
+					{{ i18n.baseText('settings.versionControl.button.setup.tooltip') }}
+				</div>
+			</template>
+			<n8n-button
+				icon="code-branch"
+				type="tertiary"
+				size="mini"
+				:square="isCollapsed"
+				@click="goToVersionControlSetup"
+			>
+				<span v-if="!isCollapsed">{{ i18n.baseText('settings.versionControl.button.setup') }}</span>
+			</n8n-button>
+		</n8n-tooltip>
 	</div>
 </template>
 

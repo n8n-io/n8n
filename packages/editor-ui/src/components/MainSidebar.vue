@@ -32,7 +32,7 @@
 					v-if="!isCollapsed && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
-				<div v-if="hasVersionUpdates || versionControlStore.preferences.connected">
+				<div>
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
@@ -46,10 +46,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<MainSidebarVersionControl
-						v-if="versionControlStore.preferences.connected"
-						:is-collapsed="isCollapsed"
-					/>
+					<MainSidebarVersionControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -122,7 +119,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { isNavigationFailure } from 'vue-router';
-import { useVersionControlStore } from '@/stores/versionControl.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
@@ -155,7 +151,6 @@ export default defineComponent({
 			useUsersStore,
 			useVersionsStore,
 			useWorkflowsStore,
-			useVersionControlStore,
 			useCloudPlanStore,
 		),
 		hasVersionUpdates(): boolean {
