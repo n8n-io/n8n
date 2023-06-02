@@ -1,4 +1,4 @@
-ARG NODE_VERSION=16
+ARG NODE_VERSION=18
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
