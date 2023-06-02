@@ -1104,7 +1104,7 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
-				requestOptions = { ...requestOptions, followAllRedirects: false };
+				requestOptions = { ...requestOptions, disableFollowRedirect: true };
 			}
 
 			const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
