@@ -216,6 +216,9 @@ export default defineComponent({
 				{
 					id: 'workflows',
 					icon: 'network-wired',
+					secondaryIcon: this.versionControlStore.preferences.branchReadOnly
+						? { name: 'lock' }
+						: undefined,
 					label: this.$locale.baseText('mainSidebar.workflows'),
 					position: 'top',
 					activateOnRouteNames: [VIEWS.WORKFLOWS],
