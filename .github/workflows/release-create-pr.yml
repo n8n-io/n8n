@@ -16,6 +16,7 @@ on:
         options:
           - patch
           - minor
+          - major
 
 jobs:
   create-release-pr:
