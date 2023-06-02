@@ -1523,3 +1523,16 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export interface ExternalSecretsProviderSecret {
+	key: string;
+}
+
+export interface ExternalSecretsProvider {
+	id: string;
+	name: string;
+	image: string;
+	secrets: ExternalSecretsProviderSecret[];
+	connected: boolean;
+	connectedAt?: string;
+}

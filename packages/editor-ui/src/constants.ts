@@ -374,6 +374,8 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
+	EXTERNAL_SECRETS_PROVIDER_SETTINGS = 'ExternalSecretsProviderSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	VERSION_CONTROL = 'VersionControl',
 }
@@ -443,6 +445,7 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	VersionControl = 'versionControl',
+	ExternalSecrets = 'externalSecrets',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
