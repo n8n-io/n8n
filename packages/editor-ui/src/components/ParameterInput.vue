@@ -85,13 +85,9 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="
-						editorType === 'codeNodeEditor' &&
-						isCodeNode(node) &&
-						getEditorContent('codeNodeEditor') !== null
-					"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node) && editorContent"
 					:mode="node.parameters.mode"
-					:value="getEditorContent('codeNodeEditor') || undefined"
+					:value="editorContent"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -100,8 +96,8 @@
 				/>
 
 				<html-editor
-					v-else-if="editorType === 'htmlEditor' && getEditorContent('htmlEditor') !== null"
-					:html="getEditorContent('htmlEditor')"
+					v-else-if="editorType === 'htmlEditor' && editorContent"
+					:html="editorContent"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -110,8 +106,8 @@
 				/>
 
 				<sql-editor
-					v-else-if="editorType === 'sqlEditor' && getEditorContent('sqlEditor') !== null"
-					:query="getEditorContent('sqlEditor')"
+					v-else-if="editorType === 'sqlEditor' && editorContent"
+					:query="editorContent"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -369,6 +365,7 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -827,6 +824,9 @@ export default defineComponent({
 		nodeType(): INodeTypeDescription | null {
 			if (!this.node) return null;
 			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+		},
+		editorContent(): string | undefined {
+			return this.getEditorContent(this.editorType) ?? undefined;
 		},
 	},
 	methods: {
