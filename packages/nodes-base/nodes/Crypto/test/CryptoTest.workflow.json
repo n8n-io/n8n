@@ -33,12 +33,12 @@
 			"parameters": {
 				"action": "sign",
 				"value": "test",
-				"algorithm": "RSA-MD4",
+				"algorithm": "RSA-MD5",
 				"encoding": "base64",
 				"privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu\nKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEm\no3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2k\nTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBCUEaRQnMnbp7\n9mxDXDf6AU0cN/RPBjb9qSHDcWZHGzUCIG2Es59z8ugGrDY+pxLQnwfotadxd+Uy\nv/Ow5T0q5gIJAiEAyS4RaI9YG8EWx/2w0T67ZUVAw8eOMB6BIUg0Xcu+3okCIBOs\n/5OiPgoTdSy7bcF9IGpSE8ZgGKzgYQVZeN97YE00\n-----END RSA PRIVATE KEY-----"
 			},
 			"id": "4ec3781a-433d-4b68-bc94-3fbe6ed55a0e",
-			"name": "Crypto Sign data with RSA-MDA4",
+			"name": "Crypto Sign data with RSA-MD5",
 			"type": "n8n-nodes-base.crypto",
 			"typeVersion": 1,
 			"position": [80, 860]
@@ -137,10 +137,10 @@
 		}
 	],
 	"pinData": {
-		"Crypto Sign data with RSA-MDA4": [
+		"Crypto Sign data with RSA-MD5": [
 			{
 				"json": {
-					"data": "SmzCKZlC8g0EnB8cXbRJIdwsN8sDWIxtUEeMvwEJNfrrJynahyNkdIbdcTO/ciwH7aBFN+roa47J8QEYWDc6Dg=="
+					"data": "MVr+iZiOFtHVwO0iKC+CF+QlrZZKcGk7zBvUrWHC1fHBeS6IoWa8B/wrMvazV5H1YR8tbK8baZHD/vUNdfvjiA=="
 				}
 			}
 		],
@@ -195,7 +195,7 @@
 						"index": 0
 					},
 					{
-						"node": "Crypto Sign data with RSA-MDA4",
+						"node": "Crypto Sign data with RSA-MD5",
 						"type": "main",
 						"index": 0
 					},

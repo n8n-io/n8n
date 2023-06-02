@@ -2,9 +2,7 @@ import set from 'lodash.set';
 
 import type {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
@@ -19,6 +17,19 @@ import { promisify } from 'util';
 import { v4 as uuid } from 'uuid';
 
 const pipeline = promisify(stream.pipeline);
+
+const unsupportedAlgorithms = [
+	'RSA-MD4',
+	'RSA-MDC2',
+	'md4',
+	'md4WithRSAEncryption',
+	'mdc2',
+	'mdc2WithRSA',
+];
+
+const supportedAlgorithms = getHashes()
+	.filter((algorithm) => !unsupportedAlgorithms.includes(algorithm))
+	.map((algorithm) => ({ name: algorithm, value: algorithm }));
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -329,9 +340,7 @@ export class Crypto implements INodeType {
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getHashes',
-				},
+				options: supportedAlgorithms,
 				default: '',
 				required: true,
 			},
@@ -428,26 +437,6 @@ export class Crypto implements INodeType {
 				},
 			},
 		],
-	};
-
-	methods = {
-		loadOptions: {
-			// Get all the hashes to display them to user so that they can
-			// select them easily
-			async getHashes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const hashes = getHashes();
-				for (const hash of hashes) {
-					const hashName = hash;
-					const hashId = hash;
-					returnData.push({
-						name: hashName,
-						value: hashId,
-					});
-				}
-				return returnData;
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
