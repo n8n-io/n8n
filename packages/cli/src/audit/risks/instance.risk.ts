@@ -18,23 +18,13 @@ import { isApiEnabled } from '@/PublicApi';
 function getSecuritySettings() {
 	if (config.getEnv('deployment.type') === 'cloud') return null;
 
-	const userManagementEnabled = !config.getEnv('userManagement.disabled');
-
-	const isInstancePubliclyAccessible = !userManagementEnabled;
-
 	const settings: Record<string, unknown> = {};
-
-	if (isInstancePubliclyAccessible) {
-		settings.publiclyAccessibleInstance =
-			'Important! Your n8n instance is publicly accessible. Any third party who knows your instance URL can access your data.'.toUpperCase();
-	}
 
 	settings.features = {
 		communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
 		templatesEnabled: config.getEnv('templates.enabled'),
 		publicApiEnabled: isApiEnabled(),
-		userManagementEnabled,
 	};
 
 	settings.auth = {

@@ -415,12 +415,6 @@ export const routes = [
 				allow: {
 					role: [ROLE.Default],
 				},
-				deny: {
-					shouldDeny: () => {
-						const settingsStore = useSettingsStore();
-						return settingsStore.isUserManagementEnabled === false;
-					},
-				},
 			},
 		},
 	},
@@ -542,10 +536,7 @@ export const routes = [
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
 
-								return (
-									settingsStore.isUserManagementEnabled === false &&
-									!(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment)
-								);
+								return !(settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment);
 							},
 						},
 					},

@@ -652,12 +652,6 @@ export const schema = {
 	},
 
 	userManagement: {
-		disabled: {
-			doc: 'Disable user management and hide it completely.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_USER_MANAGEMENT_DISABLED',
-		},
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
 			format: String,

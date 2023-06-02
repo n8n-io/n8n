@@ -240,7 +240,6 @@ test('should report security settings', async () => {
 			versionNotificationsEnabled: true,
 			templatesEnabled: true,
 			publicApiEnabled: false,
-			userManagementEnabled: true,
 		},
 		auth: {
 			authExcludeEndpoints: 'none',
