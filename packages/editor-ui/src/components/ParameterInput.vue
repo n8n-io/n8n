@@ -85,7 +85,7 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="editorType === 'codeNodeEditor' && isCodeNode(node) && editorContent"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
 					:value="editorContent"
 					:defaultValue="parameter.default"
@@ -96,7 +96,7 @@
 				/>
 
 				<html-editor
-					v-else-if="editorType === 'htmlEditor' && editorContent"
+					v-else-if="editorType === 'htmlEditor'"
 					:html="editorContent"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
@@ -106,7 +106,7 @@
 				/>
 
 				<sql-editor
-					v-else-if="editorType === 'sqlEditor' && editorContent"
+					v-else-if="editorType === 'sqlEditor'"
 					:query="editorContent"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
@@ -826,7 +826,16 @@ export default defineComponent({
 			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 		},
 		editorContent(): string | undefined {
-			return this.getEditorContent(this.editorType) ?? undefined;
+			if (!this.nodeType) {
+				return;
+			}
+			const editorProp = this.nodeType.properties.find(
+				(p) => p.typeOptions?.editor === (this.editorType as string),
+			);
+			if (!editorProp) {
+				return;
+			}
+			return this.node.parameters[editorProp.name] as string;
 		},
 	},
 	methods: {
@@ -1142,18 +1151,6 @@ export default defineComponent({
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
 				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
-		},
-		getEditorContent(editorType: string): string | null {
-			if (!this.nodeType) {
-				return null;
-			}
-			const sqlEditorProp = this.nodeType.properties.find(
-				(p) => p.typeOptions?.editor === editorType,
-			);
-			if (!sqlEditorProp) {
-				return null;
-			}
-			return this.node.parameters[sqlEditorProp.name] as string;
 		},
 	},
 	updated() {
