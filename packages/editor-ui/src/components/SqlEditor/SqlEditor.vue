@@ -84,7 +84,7 @@ export default defineComponent({
 			required: true,
 		},
 		dialect: {
-			type: String as PropType<SQLDialect>,
+			type: String,
 			default: 'StandardSQL',
 		},
 		isReadOnly: {
