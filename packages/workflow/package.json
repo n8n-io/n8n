@@ -27,7 +27,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "cp package.json src/package.copy.json && tsc -p tsconfig.build.json",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint --quiet .",
     "lintfix": "eslint . --fix",
