@@ -1,5 +1,5 @@
 {
-	"name": "review node unit tests",
+	"name": "Crypto Test",
 	"nodes": [
 		{
 			"parameters": {},
@@ -7,41 +7,32 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-2640,
-				4140
-			]
+			"position": [-480, 460]
 		},
 		{
 			"parameters": {
-				"value": "=test"
+				"value": "test"
 			},
 			"id": "90831322-8a73-40ac-ae52-84a6504d3d95",
 			"name": "Crypto Hash into Hex",
 			"type": "n8n-nodes-base.crypto",
 			"typeVersion": 1,
-			"position": [
-				-2120,
-				4140
-			]
+			"position": [360, 660]
 		},
 		{
 			"parameters": {
-				"value": "=test"
+				"value": "test"
 			},
 			"id": "9836f128-6798-498e-8752-ba447218ce21",
 			"name": "Crypto Hash into MD5",
 			"type": "n8n-nodes-base.crypto",
 			"typeVersion": 1,
-			"position": [
-				-2120,
-				3980
-			]
+			"position": [360, 500]
 		},
 		{
 			"parameters": {
 				"action": "sign",
-				"value": "=test",
+				"value": "test",
 				"algorithm": "RSA-MD4",
 				"encoding": "base64",
 				"privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu\nKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEm\no3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2k\nTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBCUEaRQnMnbp7\n9mxDXDf6AU0cN/RPBjb9qSHDcWZHGzUCIG2Es59z8ugGrDY+pxLQnwfotadxd+Uy\nv/Ow5T0q5gIJAiEAyS4RaI9YG8EWx/2w0T67ZUVAw8eOMB6BIUg0Xcu+3okCIBOs\n/5OiPgoTdSy7bcF9IGpSE8ZgGKzgYQVZeN97YE00\n-----END RSA PRIVATE KEY-----"
@@ -50,15 +41,12 @@
 			"name": "Crypto Sign data with RSA-MDA4",
 			"type": "n8n-nodes-base.crypto",
 			"typeVersion": 1,
-			"position": [
-				-2120,
-				3800
-			]
+			"position": [80, 860]
 		},
 		{
 			"parameters": {
 				"action": "hmac",
-				"value": "=test",
+				"value": "test",
 				"secret": "-----BEGIN RSA PRIVATE KEY-----|MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8QuKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEmo3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2kTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBCUEaRQnMnbp79mxDXDf6AU0cN/RPBjb9qSHDcWZHGzUCIG2Es59z8ugGrDY+pxLQnwfotadxd+Uyv/Ow5T0q5gIJAiEAyS4RaI9YG8EWx/2w0T67ZUVAw8eOMB6BIUg0Xcu+3okCIBOs/5OiPgoTdSy7bcF9IGpSE8ZgGKzgYQVZeN97YE00-----END RSA PRIVATE KEY-----",
 				"encoding": "base64"
 			},
@@ -66,10 +54,7 @@
 			"name": "Crypto Hmac data with MD5",
 			"type": "n8n-nodes-base.crypto",
 			"typeVersion": 1,
-			"position": [
-				-2120,
-				3620
-			]
+			"position": [360, 320]
 		},
 		{
 			"parameters": {
@@ -79,10 +64,7 @@
 			"name": "Crypto Generate UUID",
 			"type": "n8n-nodes-base.crypto",
 			"typeVersion": 1,
-			"position": [
-				-2120,
-				4320
-			]
+			"position": [-160, 1060]
 		},
 		{
 			"parameters": {
@@ -100,10 +82,7 @@
 			"name": "IF",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-1900,
-				4320
-			]
+			"position": [80, 1060]
 		},
 		{
 			"parameters": {},
@@ -111,10 +90,7 @@
 			"name": "No Operation, do nothing",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-1680,
-				4300
-			]
+			"position": [420, 1040]
 		},
 		{
 			"parameters": {
@@ -124,10 +100,40 @@
 			"name": "Stop and Error",
 			"type": "n8n-nodes-base.stopAndError",
 			"typeVersion": 1,
-			"position": [
-				-1680,
-				4500
-			]
+			"position": [260, 1180]
+		},
+		{
+			"parameters": {
+				"fileSelector": "/test/binary.data"
+			},
+			"id": "09bbc611-c2ca-4750-94a7-d1bb4fc53a57",
+			"name": "Read Binary Files",
+			"type": "n8n-nodes-base.readBinaryFiles",
+			"typeVersion": 1,
+			"position": [-160, 40]
+		},
+		{
+			"parameters": {
+				"binaryData": true
+			},
+			"id": "9f23080a-402d-4a82-821c-b74388cc9a26",
+			"name": "Crypto Hash Binary Data",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [200, -80]
+		},
+		{
+			"parameters": {
+				"action": "hmac",
+				"binaryData": true,
+				"secret": "-----BEGIN RSA PRIVATE KEY-----|MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8QuKUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQJAIJLixBy2qpFoS4DSmoEmo3qGy0t6z09AIJtH+5OeRV1be+N4cDYJKffGzDa88vQENZiRm0GRq6a+HPGQMd2kTQIhAKMSvzIBnni7ot/OSie2TmJLY4SwTQAevXysE2RbFDYdAiEBCUEaRQnMnbp79mxDXDf6AU0cN/RPBjb9qSHDcWZHGzUCIG2Es59z8ugGrDY+pxLQnwfotadxd+Uyv/Ow5T0q5gIJAiEAyS4RaI9YG8EWx/2w0T67ZUVAw8eOMB6BIUg0Xcu+3okCIBOs/5OiPgoTdSy7bcF9IGpSE8ZgGKzgYQVZeN97YE00-----END RSA PRIVATE KEY-----",
+				"encoding": "base64"
+			},
+			"id": "43d5ffa2-9c95-4287-b582-b912071a05c1",
+			"name": "Crypto Hmac Binary Data",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [200, 100]
 		}
 	],
 	"pinData": {
@@ -153,6 +159,20 @@
 			}
 		],
 		"Crypto Hmac data with MD5": [
+			{
+				"json": {
+					"data": "BBXLTeT2o/R6oy5H69Yh7w=="
+				}
+			}
+		],
+		"Crypto Hash Binary Data": [
+			{
+				"json": {
+					"data": "098f6bcd4621d373cade4e832627b4f6"
+				}
+			}
+		],
+		"Crypto Hmac Binary Data": [
 			{
 				"json": {
 					"data": "BBXLTeT2o/R6oy5H69Yh7w=="
@@ -186,6 +206,11 @@
 					},
 					{
 						"node": "Crypto Generate UUID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Binary Files",
 						"type": "main",
 						"index": 0
 					}
@@ -224,6 +249,22 @@
 		"No Operation, do nothing": {
 			"main": [
 				[]
+			]
+		},
+		"Read Binary Files": {
+			"main": [
+				[
+					{
+						"node": "Crypto Hash Binary Data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crypto Hmac Binary Data",
+						"type": "main",
+						"index": 0
+					}
+				]
 			]
 		}
 	},

@@ -4,7 +4,6 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Expression editor modal', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

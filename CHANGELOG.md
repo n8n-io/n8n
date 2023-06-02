@@ -1,3 +1,40 @@
+# [0.230.0](https://github.com/n8n-io/n8n/compare/n8n@0.229.0...n8n@0.230.0) (2023-05-24)
+
+
+### Bug Fixes
+
+* **core:** Optimize SharedWorkflow queries ([#6297](https://github.com/n8n-io/n8n/issues/6297)) ([ed7f3b8](https://github.com/n8n-io/n8n/commit/ed7f3b845fe9a7aa0f6e1ff57ae9197057cd8aa1))
+* **core:** Prevent app crashes because of unhandled promises in poll and trigger nodes ([#6278](https://github.com/n8n-io/n8n/issues/6278)) ([3750605](https://github.com/n8n-io/n8n/commit/37506050c3f49cececa9da3cf7d420b367f2e055))
+* **editor:** Fix canvas loading when page gets restored from bfcache ([#6304](https://github.com/n8n-io/n8n/issues/6304)) ([11477f0](https://github.com/n8n-io/n8n/commit/11477f0a20f82b02d763dbf53e29083dd1e95e87))
+* **editor:** Fix design system button with icon vertical alignment ([#6284](https://github.com/n8n-io/n8n/issues/6284)) ([fc580f7](https://github.com/n8n-io/n8n/commit/fc580f7ee80b48a62fc2bebaec9902cd15944ad7))
+* **editor:** Fix inverted checks on modal confirmation results ([#6285](https://github.com/n8n-io/n8n/issues/6285)) ([5d2f474](https://github.com/n8n-io/n8n/commit/5d2f4746ea5da977a6532db90c624ded1520ec3e))
+* **ERPNext Node:** Fix issue with credential test and add frappe cloud url ([#6283](https://github.com/n8n-io/n8n/issues/6283)) ([2a2b645](https://github.com/n8n-io/n8n/commit/2a2b6452dc326d8979bed0cf47fc54becd746619))
+* **Google Calendar Node:** All day option fix ([#6274](https://github.com/n8n-io/n8n/issues/6274)) ([5bef91e](https://github.com/n8n-io/n8n/commit/5bef91e3c84a15a30a893ce3b321b7a8ea926963))
+* Initialize license in queue mode correctly ([#6301](https://github.com/n8n-io/n8n/issues/6301)) ([42c79cd](https://github.com/n8n-io/n8n/commit/42c79cd6f1e495e60a9f038403d9a8a761318f52))
+* **OpenAI Node:** Descriptive errors ([#6270](https://github.com/n8n-io/n8n/issues/6270)) ([8fdfa3b](https://github.com/n8n-io/n8n/commit/8fdfa3b6b83c6a008d1be778dadcc2172e8a708d))
+* Prevent removing manual executions when setting says to save ([#6300](https://github.com/n8n-io/n8n/issues/6300)) ([55b755c](https://github.com/n8n-io/n8n/commit/55b755cb44a3bf9fc9d41af37b7818d3626baf0d))
+* **SSH Node:** Private key field as password and credential test ([#6298](https://github.com/n8n-io/n8n/issues/6298)) ([d5c7e6f](https://github.com/n8n-io/n8n/commit/d5c7e6f2cff63337948122a11c3707316c937b9f))
+* **SSH Node:** Replace ~ with /home/username ([#6269](https://github.com/n8n-io/n8n/issues/6269)) ([4219490](https://github.com/n8n-io/n8n/commit/421949067b47a25e859fbd45364ba657e7286599))
+* **Strapi Node:** Strapi credentials notice ([#6289](https://github.com/n8n-io/n8n/issues/6289)) ([bbe6d4c](https://github.com/n8n-io/n8n/commit/bbe6d4c4dbda0b2cba447cf1b0aa4a7f808096fb))
+* **Strava Trigger Node:** Fix issue with delete events failing to display data ([#6277](https://github.com/n8n-io/n8n/issues/6277)) ([8a8fed0](https://github.com/n8n-io/n8n/commit/8a8fed08407f20791ae01ab83e1ce3d99715dc5c))
+* **Wekan Node:** Handle response correctly ([#6296](https://github.com/n8n-io/n8n/issues/6296)) ([4d9c8b0](https://github.com/n8n-io/n8n/commit/4d9c8b07a93ea4f2e5ad913358bafb682f6f5506))
+
+
+### Features
+
+* Add SSO SAML metadataUrl support and various improvements ([#6139](https://github.com/n8n-io/n8n/issues/6139)) ([e3a53fd](https://github.com/n8n-io/n8n/commit/e3a53fd19d8c258a08baab9c090968104327a13b))
+* **core:** Remove all floating promises. Enforce `@typescript-eslint/no-floating-promises` ([#6281](https://github.com/n8n-io/n8n/issues/6281)) ([e046f65](https://github.com/n8n-io/n8n/commit/e046f656fefe951af71ab031a440729a5eb1c7cb))
+* **core:** Replace client-oauth2 with an in-repo package ([#6266](https://github.com/n8n-io/n8n/issues/6266)) ([a1b1f24](https://github.com/n8n-io/n8n/commit/a1b1f24ddfd4da36f8dd04e34e2675a3993755ca))
+* **Execution Data Node:** New node ([#6247](https://github.com/n8n-io/n8n/issues/6247)) ([3f7c4f0](https://github.com/n8n-io/n8n/commit/3f7c4f0ad485a0a4049f371723b01847077f7ccd))
+* **Gotify Node:** Add support for self signed certificates ([#6053](https://github.com/n8n-io/n8n/issues/6053)) ([401cffd](https://github.com/n8n-io/n8n/commit/401cffde57aa153bc2d1589bc8d11d7951f2ade1))
+* **Ldap Node:** Add LDAP node ([#4783](https://github.com/n8n-io/n8n/issues/4783)) ([ec393bc](https://github.com/n8n-io/n8n/commit/ec393bc041e9e7590e7b0a2821976f104f5c23bb))
+* **LoneScale Node:** Add LoneScale node and Trigger node ([#5146](https://github.com/n8n-io/n8n/issues/5146)) ([4b85433](https://github.com/n8n-io/n8n/commit/4b854333d49c661fe11f19a176a147dbf28e697f))
+* **RabbitMQ Node:** Add mode for acknowledging and deleting from queue later in workflow ([#6225](https://github.com/n8n-io/n8n/issues/6225)) ([f5950b2](https://github.com/n8n-io/n8n/commit/f5950b201c6ff412b9a304052f05eb2c3b8a7c51))
+* **Send Email Node:** Add content-id for email attachments ([#3632](https://github.com/n8n-io/n8n/issues/3632)) ([8fe8aad](https://github.com/n8n-io/n8n/commit/8fe8aad6a77bbec7a26c87f8bad9593852e8d464))
+* **SSH Node:** Credentials test ([#6279](https://github.com/n8n-io/n8n/issues/6279)) ([3569d53](https://github.com/n8n-io/n8n/commit/3569d53917b41b758a96293a2b33a06cbf2c0a70))
+
+
+
 # [0.229.0](https://github.com/n8n-io/n8n/compare/n8n@0.228.0...n8n@0.229.0) (2023-05-17)
 
 

@@ -1,12 +1,12 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import type { ConnectionsData } from '../helpers/interfaces';
-import { Connections } from '../transport';
+
+import { configurePostgres } from '../transport';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db } = (await Connections.getInstance(credentials, options)) as ConnectionsData;
+	const { db, pgp, sshClient } = await configurePostgres(credentials, options);
 
 	try {
 		const response = await db.any('SELECT schema_name FROM information_schema.schemata');
@@ -19,13 +19,18 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 		};
 	} catch (error) {
 		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		pgp.end();
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
-	const { db } = (await Connections.getInstance(credentials, options)) as ConnectionsData;
+	const { db, pgp, sshClient } = await configurePostgres(credentials, options);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -45,5 +50,10 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 		};
 	} catch (error) {
 		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		pgp.end();
 	}
 }

@@ -9,7 +9,7 @@ import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { inTest } from '@/constants';
+import { USER_MANAGEMENT_DOCS_URL, inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
@@ -19,6 +19,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { License } from '@/License';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -82,6 +83,18 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
+		if (process.env.N8N_BASIC_AUTH_ACTIVE === 'true') {
+			LoggerProxy.warn(
+				`Basic auth has been deprecated and will be removed in a future version of n8n. For authentication, please consider User Management. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,
+			);
+		}
+
+		if (process.env.N8N_JWT_AUTH_ACTIVE === 'true') {
+			LoggerProxy.warn(
+				`JWT auth has been deprecated and will be removed in a future version of n8n. For authentication, please consider User Management. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,
+			);
+		}
+
 		this.instanceId = this.userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(this.instanceId);
 		await Container.get(InternalHooks).init(this.instanceId);
@@ -117,6 +130,28 @@ export abstract class BaseCommand extends Command {
 	protected async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
+	}
+
+	async initLicense(): Promise<void> {
+		const license = Container.get(License);
+		await license.init(this.instanceId);
+
+		const activationKey = config.getEnv('license.activationKey');
+
+		if (activationKey) {
+			const hasCert = (await license.loadCertStr()).length > 0;
+
+			if (hasCert) {
+				return LoggerProxy.debug('Skipping license activation');
+			}
+
+			try {
+				LoggerProxy.debug('Attempting license activation');
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e as Error);
+			}
+		}
 	}
 
 	async finally(error: Error | undefined) {

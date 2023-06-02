@@ -9,7 +9,6 @@ const INVALID_CREDENTIALS_MESSAGE = 'Please check your credential';
 
 describe('Resource Locator', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

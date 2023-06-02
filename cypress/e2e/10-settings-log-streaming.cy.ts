@@ -10,7 +10,6 @@ const settingsLogStreamingPage = new SettingsLogStreamingPage();
 
 describe('Log Streaming Settings', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 
