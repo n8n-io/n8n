@@ -37,7 +37,8 @@ export async function twitterApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		return await this.helpers.requestOAuth2.call(this, 'twitterOAuth2Api', options);
+		const { data } = await this.helpers.requestOAuth2.call(this, 'twitterOAuth2Api', options);
+		return data;
 	} catch (error) {
 		console.log(error);
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -85,16 +86,25 @@ export async function returnIdFromUsername(
 	this: IExecuteFunctions,
 	usernameRlc: INodeParameterResourceLocator,
 ) {
-	if (usernameRlc.mode === 'username' || usernameRlc.mode === 'name') {
+	if (
+		usernameRlc.mode === 'username' ||
+		(usernameRlc.mode === 'name' && this.getNode().parameters.list !== undefined)
+	) {
 		const user = (await twitterApiRequest.call(
 			this,
 			'GET',
 			`/users/by/username/${usernameRlc.value}`,
 			{},
-		)) as {
-			data: { id: string };
-		};
-		return user.data.id;
+		)) as { id: string };
+		return user.id;
+	} else if (this.getNode().parameters.list === undefined) {
+		const list = (await twitterApiRequest.call(
+			this,
+			'GET',
+			`/list/by/name/${usernameRlc.value}`,
+			{},
+		)) as { id: string };
+		return list.id;
 	} else throw new Error(`The username mode ${usernameRlc.mode} is not valid!`);
 }
 

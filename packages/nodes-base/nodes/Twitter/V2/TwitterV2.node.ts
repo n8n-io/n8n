@@ -239,12 +239,12 @@ export class TwitterV2 implements INodeType {
 							tweet_id: tweetId,
 						};
 						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
-							data: { id: string };
+							id: string;
 						};
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/users/${user.data.id}/liked_tweets`,
+							`/users/${user.id}/liked_tweets`,
 							body,
 						);
 					}
@@ -321,6 +321,7 @@ export class TwitterV2 implements INodeType {
 						if (attachments) {
 							body.attachments = [{ media_id: attachments }];
 						}
+						console.log(body);
 
 						responseData = await twitterApiRequest.call(
 							this,
