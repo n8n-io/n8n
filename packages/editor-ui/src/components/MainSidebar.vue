@@ -537,6 +537,7 @@ export default defineComponent({
 	align-items: center;
 	height: 26px;
 	cursor: pointer;
+	padding: var(--spacing-xs) var(--spacing-l);
 
 	svg {
 		color: var(--color-text-base) !important;

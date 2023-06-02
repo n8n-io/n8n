@@ -85,6 +85,7 @@ const goToVersionControlSetup = async () => {
 	>
 		<div
 			v-if="versionControlStore.preferences.connected && versionControlStore.preferences.branchName"
+			:class="$style.connected"
 			data-test-id="main-sidebar-version-control-connected"
 		>
 			<span>
@@ -167,11 +168,15 @@ const goToVersionControlSetup = async () => {
 
 <style lang="scss" module>
 .sync {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
-	margin: 0 calc(var(--spacing-l) * -1) calc(var(--spacing-m) * -1);
+	padding: var(--spacing-s) var(--spacing-l) var(--spacing-l);
+	margin: var(--spacing-2xs) 0 calc(var(--spacing-s) * -1);
 	background: var(--color-background-light);
 	border-top: 1px solid var(--color-foreground-light);
 	font-size: var(--font-size-2xs);
+
+	&:empty {
+		display: none;
+	}
 
 	span {
 		color: var(--color-text-base);
@@ -184,10 +189,13 @@ const goToVersionControlSetup = async () => {
 
 .collapsed {
 	text-align: center;
-	margin-left: calc(var(--spacing-xl) * -1);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
 
-	> span {
-		display: none;
+	.connected {
+		> span {
+			display: none;
+		}
 	}
 }
 </style>
