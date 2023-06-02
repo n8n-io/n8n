@@ -79,9 +79,13 @@ const goToVersionControlSetup = async () => {
 </script>
 
 <template>
-	<div :class="{ [$style.sync]: true, [$style.collapsed]: isCollapsed }">
+	<div
+		:class="{ [$style.sync]: true, [$style.collapsed]: isCollapsed }"
+		data-test-id="main-sidebar-version-control"
+	>
 		<div
 			v-if="versionControlStore.preferences.connected && versionControlStore.preferences.branchName"
+			data-test-id="main-sidebar-version-control-connected"
 		>
 			<span>
 				<n8n-icon icon="code-branch" />
@@ -141,6 +145,7 @@ const goToVersionControlSetup = async () => {
 			"
 			:open-delay="tooltipOpenDelay"
 			:placement="setupButtonTooltipPlacement"
+			data-test-id="main-sidebar-version-control-setup"
 		>
 			<template #content>
 				<div>
