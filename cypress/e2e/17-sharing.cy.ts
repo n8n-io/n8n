@@ -52,7 +52,6 @@ const users = [
 
 describe('Sharing', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setupOwner(instanceOwner);
 	});
 

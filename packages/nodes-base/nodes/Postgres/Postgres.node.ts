@@ -11,7 +11,7 @@ export class Postgres extends VersionedNodeType {
 			name: 'postgres',
 			icon: 'file:postgres.svg',
 			group: ['input'],
-			defaultVersion: 2.1,
+			defaultVersion: 2.2,
 			description: 'Get, add and update data in Postgres',
 		};
 
@@ -19,6 +19,7 @@ export class Postgres extends VersionedNodeType {
 			1: new PostgresV1(baseDescription),
 			2: new PostgresV2(baseDescription),
 			2.1: new PostgresV2(baseDescription),
+			2.2: new PostgresV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

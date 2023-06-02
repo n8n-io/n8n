@@ -33,7 +33,6 @@ const NEW_CREDENTIAL_NAME = 'Something else';
 
 describe('Credentials', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

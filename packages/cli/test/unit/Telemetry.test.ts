@@ -211,7 +211,6 @@ describe('Telemetry', () => {
 			await telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
-
 			execBuffer = telemetry.getCountsBuffer();
 
 			expect(execBuffer['1'].manual_error).toBeUndefined();
@@ -254,19 +253,20 @@ describe('Telemetry', () => {
 			// failed execution n8n node
 			payload.success = false;
 			payload.error_node_type = 'n8n-nodes-base.merge';
+			payload.is_manual = true;
 			await telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 
 			execBuffer = telemetry.getCountsBuffer();
 
-			expect(execBuffer['1'].manual_error).toBeUndefined();
+			expect(execBuffer['1'].manual_error?.count).toBe(1);
 			expect(execBuffer['1'].manual_success).toBeUndefined();
 			expect(execBuffer['2'].manual_error).toBeUndefined();
 			expect(execBuffer['2'].manual_success).toBeUndefined();
 			expect(execBuffer['2'].prod_error).toBeUndefined();
 			expect(execBuffer['1'].prod_success?.count).toBe(2);
-			expect(execBuffer['1'].prod_error?.count).toBe(2);
+			expect(execBuffer['1'].prod_error?.count).toBe(1);
 			expect(execBuffer['2'].prod_success?.count).toBe(2);
 
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime2);

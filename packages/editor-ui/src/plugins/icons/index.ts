@@ -10,6 +10,8 @@ import {
 	faAngleUp,
 	faArrowLeft,
 	faArrowRight,
+	faArrowUp,
+	faArrowDown,
 	faAt,
 	faBan,
 	faBolt,
@@ -39,6 +41,7 @@ import {
 	faCut,
 	faDotCircle,
 	faEdit,
+	faEllipsisH,
 	faEllipsisV,
 	faEnvelope,
 	faEye,
@@ -105,7 +108,6 @@ import {
 	faSignOutAlt,
 	faSlidersH,
 	faSpinner,
-	faStar,
 	faStop,
 	faSun,
 	faSync,
@@ -146,6 +148,8 @@ addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
+addIcon(faArrowUp);
+addIcon(faArrowDown);
 addIcon(faAt);
 addIcon(faBan);
 addIcon(faBolt);
@@ -176,6 +180,7 @@ addIcon(faCut);
 addIcon(faDotCircle);
 addIcon(faGripVertical);
 addIcon(faEdit);
+addIcon(faEllipsisH);
 addIcon(faEllipsisV);
 addIcon(faEnvelope);
 addIcon(faEye);
@@ -243,7 +248,6 @@ addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);
 addIcon(faStickyNote as IconDefinition);
-addIcon(faStar);
 addIcon(faStop);
 addIcon(faSun);
 addIcon(faSync);
