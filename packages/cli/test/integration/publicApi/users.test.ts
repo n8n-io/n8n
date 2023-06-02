@@ -1,4 +1,4 @@
-import express = require('express');
+import type express from 'express';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -195,7 +195,7 @@ test('GET /users/:email with non-existing email should return 404', async () => 
 		user: owner,
 	});
 
-	const response = await authOwnerAgent.get(`/users/jhondoe@gmail.com`);
+	const response = await authOwnerAgent.get('/users/jhondoe@gmail.com');
 
 	expect(response.statusCode).toBe(404);
 });
