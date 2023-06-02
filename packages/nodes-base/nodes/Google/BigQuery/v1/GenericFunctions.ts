@@ -49,9 +49,8 @@ export async function googleApiRequest(
 			if (credentials === undefined) {
 				throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 			}
-			const scopes = ['https://www.googleapis.com/auth/bigquery'];
 
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'bigquery');
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request(options);

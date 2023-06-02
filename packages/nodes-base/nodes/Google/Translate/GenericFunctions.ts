@@ -47,12 +47,7 @@ export async function googleApiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const scopes = [
-				'https://www.googleapis.com/auth/cloud-translation',
-				'https://www.googleapis.com/auth/cloud-platform',
-			];
-
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'translate');
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 

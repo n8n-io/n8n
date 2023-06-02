@@ -45,12 +45,7 @@ export async function googleApiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const scopes = [
-				'https://www.googleapis.com/auth/drive.file',
-				'https://www.googleapis.com/auth/presentations',
-			];
-
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'slides');
 			options.headers.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request(options);
 		} else {

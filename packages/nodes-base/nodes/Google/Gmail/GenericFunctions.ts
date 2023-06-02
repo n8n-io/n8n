@@ -79,16 +79,7 @@ export async function googleApiRequest(
 			const credentials = await this.getCredentials('googleApi');
 			credentialType = 'googleApi';
 
-			const scopes = [
-				'https://www.googleapis.com/auth/gmail.labels',
-				'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
-				'https://www.googleapis.com/auth/gmail.addons.current.message.action',
-				'https://mail.google.com/',
-				'https://www.googleapis.com/auth/gmail.modify',
-				'https://www.googleapis.com/auth/gmail.compose',
-			];
-
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'gmail');
 
 			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
 		}

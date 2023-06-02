@@ -48,9 +48,7 @@ export async function googleApiRequest(
 				privateKey: string;
 			};
 
-			const scopes = ['https://www.googleapis.com/auth/books'];
-
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'books');
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 

@@ -71,13 +71,7 @@ export class GoogleSheetsV1 implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				try {
-					const scopes = [
-						'https://www.googleapis.com/auth/drive',
-						'https://www.googleapis.com/auth/drive.file',
-						'https://www.googleapis.com/auth/spreadsheets',
-					];
-
-					const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, scopes);
+					const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, 'sheetV1');
 
 					if (!tokenRequest.access_token) {
 						return {

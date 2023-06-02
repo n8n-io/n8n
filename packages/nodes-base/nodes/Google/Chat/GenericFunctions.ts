@@ -49,9 +49,7 @@ export async function googleApiRequest(
 		} else {
 			const credentials = await this.getCredentials('googleApi');
 
-			const scopes = ['https://www.googleapis.com/auth/chat.bot'];
-
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'chat');
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			responseData = await this.helpers.request(options);
 		}

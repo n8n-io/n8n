@@ -47,13 +47,7 @@ export async function apiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const scopes = [
-				'https://www.googleapis.com/auth/drive.file',
-				'https://www.googleapis.com/auth/spreadsheets',
-				'https://www.googleapis.com/auth/drive.metadata',
-			];
-
-			const { access_token } = await getGoogleAccessToken.call(this, credentials, scopes);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'sheetV2');
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 

@@ -11,13 +11,7 @@ export async function googleApiCredentialTest(
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	try {
-		const scopes = [
-			'https://www.googleapis.com/auth/drive.file',
-			'https://www.googleapis.com/auth/spreadsheets',
-			'https://www.googleapis.com/auth/drive.metadata',
-		];
-
-		const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, scopes);
+		const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, 'sheetV2');
 		if (!tokenRequest.access_token) {
 			return {
 				status: 'Error',
