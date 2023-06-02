@@ -51,8 +51,9 @@ describe('MainSidebarVersionControl', () => {
 		vi.spyOn(versionControlStore, 'isEnterpriseVersionControlEnabled', 'get').mockReturnValue(true);
 		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
 
-		const { getByTestId } = renderComponent({ props: { isCollapsed: false } });
+		const { getByTestId, queryByTestId } = renderComponent({ props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-version-control-setup')).toBeInTheDocument();
+		expect(queryByTestId('main-sidebar-version-control-connected')).not.toBeInTheDocument();
 	});
 
 	it('should render connected content', async () => {
@@ -68,7 +69,8 @@ describe('MainSidebarVersionControl', () => {
 			publicKey: '',
 		});
 
-		const { getByTestId } = renderComponent({ props: { isCollapsed: false } });
+		const { getByTestId, queryByTestId } = renderComponent({ props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-version-control-connected')).toBeInTheDocument();
+		expect(queryByTestId('main-sidebar-version-control-setup')).not.toBeInTheDocument();
 	});
 });
