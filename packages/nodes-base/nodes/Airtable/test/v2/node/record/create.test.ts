@@ -32,7 +32,41 @@ describe('Test AirtableV2, create operation', () => {
 	it('should create a record, autoMapInputData', async () => {
 		const nodeParameters = {
 			operation: 'create',
-			dataMode: 'autoMapInputData',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				value: {
+					bar: 'bar 1',
+					foo: 'foo 1',
+					spam: 'eggs',
+				},
+				matchingColumns: [],
+				schema: [
+					{
+						id: 'foo',
+						displayName: 'foo',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
+					},
+					{
+						id: 'bar',
+						displayName: 'bar',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
+					},
+					{
+						id: 'spam',
+						displayName: 'spam',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
+					},
+				],
+			},
 			options: {
 				typecast: true,
 				ignoreFields: 'spam',
@@ -83,16 +117,29 @@ describe('Test AirtableV2, create operation', () => {
 	it('should create a record, defineBelow', async () => {
 		const nodeParameters = {
 			operation: 'create',
-			dataMode: 'defineBelow',
-			valuesToSend: {
-				values: [
+			columns: {
+				mappingMode: 'defineBelow',
+				value: {
+					bar: 'bar 1',
+					foo: 'foo 1',
+				},
+				matchingColumns: [],
+				schema: [
 					{
-						column: 'foo',
-						value: 'foo 1',
+						id: 'foo',
+						displayName: 'foo',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
 					},
 					{
-						column: 'bar',
-						value: 'bar 1',
+						id: 'bar',
+						displayName: 'bar',
+						required: false,
+						defaultMatch: false,
+						display: true,
+						type: 'string',
 					},
 				],
 			},

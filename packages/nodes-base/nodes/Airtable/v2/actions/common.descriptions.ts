@@ -190,6 +190,19 @@ export const insertUpdateOptions: INodeProperties[] = [
 				description: 'Comma-separated list of fields in input to ignore when updating',
 			},
 			{
+				displayName: 'Ignore Fields From Input',
+				name: 'ignoreFields',
+				type: 'string',
+				requiresDataPath: 'multiple',
+				displayOptions: {
+					show: {
+						'/columns.mappingMode': ['autoMapInputData'],
+					},
+				},
+				default: '',
+				description: 'Comma-separated list of fields in input to ignore when updating',
+			},
+			{
 				displayName: 'Update All Matches',
 				name: 'updateAllMatches',
 				type: 'boolean',
