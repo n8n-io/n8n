@@ -33,10 +33,11 @@
 import N8nUserInfo from '../N8nUserInfo';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
-import { IUser } from '../../types';
+import type { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-user-select',

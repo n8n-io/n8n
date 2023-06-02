@@ -55,21 +55,21 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { defineComponent } from 'vue';
 import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import { IVersionNode } from '@/Interface';
+import type { IVersionNode } from '@/Interface';
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TimeAgo', TimeAgo);
 Vue.component('Badge', Badge);
 Vue.component('WarningTooltip', WarningTooltip);
 
-export default Vue.extend({
-	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
+export default defineComponent({
 	name: 'VersionCard',
+	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	props: ['version'],
 	// @ts-ignore
 	nodeName(node: IVersionNode): string {

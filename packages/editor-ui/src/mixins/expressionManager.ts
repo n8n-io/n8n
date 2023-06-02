@@ -1,18 +1,20 @@
-import mixins from 'vue-typed-mixins';
-import { Expression, ExpressionExtensions } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+
+import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
-import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 
-export const expressionManager = mixins(workflowHelpers).extend({
+export const expressionManager = defineComponent({
+	mixins: [workflowHelpers],
 	props: {
 		targetItem: {
 			type: Object as PropType<TargetItem | null>,
@@ -170,16 +172,21 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			};
 
 			try {
-				if (!useNDVStore().activeNode) {
+				const ndvStore = useNDVStore();
+				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable);
 				} else {
-					result.resolved = this.resolveExpression('=' + resolvable, undefined, {
-						targetItem: targetItem ?? undefined,
-						inputNodeName: this.ndvStore.ndvInputNodeName,
-						inputRunIndex: this.ndvStore.ndvInputRunIndex,
-						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
-					});
+					let opts;
+					if (ndvStore.isInputParentOfActiveNode) {
+						opts = {
+							targetItem: targetItem ?? undefined,
+							inputNodeName: this.ndvStore.ndvInputNodeName,
+							inputRunIndex: this.ndvStore.ndvInputRunIndex,
+							inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						};
+					}
+					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;

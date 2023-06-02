@@ -4,6 +4,7 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { IS_V1_RELEASE } from '@/constants';
 
 convict.addFormat({
 	name: 'nodes-list',
@@ -129,7 +130,7 @@ export const schema = {
 		},
 		mysqldb: {
 			database: {
-				doc: 'MySQL Database',
+				doc: '[DEPRECATED] MySQL Database',
 				format: String,
 				default: 'n8n',
 				env: 'DB_MYSQLDB_DATABASE',
@@ -228,9 +229,9 @@ export const schema = {
 		// If this option gets set to "main" it will run them in the
 		// main-process instead.
 		process: {
-			doc: 'In what process workflows should be executed',
+			doc: 'In what process workflows should be executed. Note: Own mode has been deprecated and will be removed in a future version as well as this setting.',
 			format: ['main', 'own'] as const,
-			default: 'own',
+			default: IS_V1_RELEASE ? 'main' : 'own',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -498,25 +499,25 @@ export const schema = {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_BASIC_AUTH_ACTIVE',
-				doc: 'If basic auth should be activated for editor and REST-API',
+				doc: '[DEPRECATED] If basic auth should be activated for editor and REST-API',
 			},
 			user: {
 				format: String,
 				default: '',
 				env: 'N8N_BASIC_AUTH_USER',
-				doc: 'The name of the basic auth user',
+				doc: '[DEPRECATED] The name of the basic auth user',
 			},
 			password: {
 				format: String,
 				default: '',
 				env: 'N8N_BASIC_AUTH_PASSWORD',
-				doc: 'The password of the basic auth user',
+				doc: '[DEPRECATED] The password of the basic auth user',
 			},
 			hash: {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_BASIC_AUTH_HASH',
-				doc: 'If password for basic auth is hashed',
+				doc: '[DEPRECATED] If password for basic auth is hashed',
 			},
 		},
 		jwtAuth: {
@@ -524,49 +525,49 @@ export const schema = {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_JWT_AUTH_ACTIVE',
-				doc: 'If JWT auth should be activated for editor and REST-API',
+				doc: '[DEPRECATED] If JWT auth should be activated for editor and REST-API',
 			},
 			jwtHeader: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER',
-				doc: 'The request header containing a signed JWT',
+				doc: '[DEPRECATED] The request header containing a signed JWT',
 			},
 			jwtHeaderValuePrefix: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
-				doc: 'The request header value prefix to strip (optional)',
+				doc: '[DEPRECATED] The request header value prefix to strip (optional)',
 			},
 			jwksUri: {
 				format: String,
 				default: '',
 				env: 'N8N_JWKS_URI',
-				doc: 'The URI to fetch JWK Set for JWT authentication',
+				doc: '[DEPRECATED] The URI to fetch JWK Set for JWT authentication',
 			},
 			jwtIssuer: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_ISSUER',
-				doc: 'JWT issuer to expect (optional)',
+				doc: '[DEPRECATED] JWT issuer to expect (optional)',
 			},
 			jwtNamespace: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_NAMESPACE',
-				doc: 'JWT namespace to expect (optional)',
+				doc: '[DEPRECATED] JWT namespace to expect (optional)',
 			},
 			jwtAllowedTenantKey: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
-				doc: 'JWT tenant key name to inspect within JWT namespace (optional)',
+				doc: '[DEPRECATED] JWT tenant key name to inspect within JWT namespace (optional)',
 			},
 			jwtAllowedTenant: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT',
-				doc: 'JWT tenant to allow (optional)',
+				doc: '[DEPRECATED] JWT tenant to allow (optional)',
 			},
 		},
 	},
@@ -943,7 +944,7 @@ export const schema = {
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
-			default: 'sse',
+			default: IS_V1_RELEASE ? 'websocket' : 'sse',
 			env: 'N8N_PUSH_BACKEND',
 			doc: 'Backend to use for push notifications',
 		},
@@ -1130,7 +1131,7 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
-			doc: 'Whether autorenew for licenses is enabled.',
+			doc: 'Whether auto renewal for licenses is enabled.',
 		},
 		autoRenewOffset: {
 			format: Number,

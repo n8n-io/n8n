@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
+import { major } from 'semver';
 import type { n8n } from 'n8n-core';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -29,6 +30,7 @@ export function getN8nPackageJson() {
 export const START_NODES = ['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
 
 export const N8N_VERSION = getN8nPackageJson().version;
+export const IS_V1_RELEASE = major(N8N_VERSION) > 0;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -68,7 +70,7 @@ export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
-export enum LICENSE_FEATURES {
+export const enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
 	LDAP = 'feat:ldap',
 	SAML = 'feat:saml',
@@ -76,11 +78,15 @@ export enum LICENSE_FEATURES {
 	ADVANCED_EXECUTION_FILTERS = 'feat:advancedExecutionFilters',
 	VARIABLES = 'feat:variables',
 	VERSION_CONTROL = 'feat:versionControl',
+	API_DISABLED = 'feat:apiDisabled',
 }
 
-export enum LICENSE_QUOTAS {
+export const enum LICENSE_QUOTAS {
 	TRIGGER_LIMIT = 'quota:activeWorkflows',
 	VARIABLES_LIMIT = 'quota:maxVariables',
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
+
+export const USER_MANAGEMENT_DOCS_URL =
+	'https://docs.n8n.io/hosting/authentication/user-management-self-hosted';

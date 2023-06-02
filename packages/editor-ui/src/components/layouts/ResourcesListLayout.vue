@@ -181,22 +181,21 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
+import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import TemplateCard from '@/components/TemplateCard.vue';
-import Vue, { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { DatatableColumn } from 'n8n-design-system';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import type { N8nInput } from 'n8n-design-system';
+import type { DatatableColumn } from 'n8n-design-system';
 
 export interface IResource {
 	id: string;
@@ -216,13 +215,12 @@ interface IFilters {
 }
 
 type IResourceKeyType = 'credentials' | 'workflows';
+type SearchRef = InstanceType<typeof N8nInput>;
 
-const filterKeys = ['ownedBy', 'sharedWith'];
-
-export default mixins(showMessage, debounceHelper).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [debounceHelper],
 	components: {
-		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceOwnershipSelect,
@@ -247,7 +245,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
-			default: () => () => Promise.resolve(),
+			default: () => async () => {},
 		},
 		filters: {
 			type: Object,
@@ -283,7 +281,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		typeProps: {
 			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
 			default: () => ({
-				itemSize: 0,
+				itemSize: 80,
 			}),
 		},
 	},
@@ -405,7 +403,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {
-				(this.$refs.search as Vue & { focus: () => void }).focus();
+				(this.$refs.search as SearchRef).focus();
 			}
 		},
 		setOwnerSubview(active: boolean) {
@@ -462,7 +460,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.onMounted();
+		void this.onMounted();
 	},
 	watch: {
 		isOwnerSubview() {
@@ -478,7 +476,11 @@ export default mixins(showMessage, debounceHelper).extend({
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
+			void this.callDebounced(
+				'sendFiltersTelemetry',
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
 		},
 		sortBy(newValue) {
 			this.$emit('sort', newValue);

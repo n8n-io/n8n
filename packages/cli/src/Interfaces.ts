@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Application } from 'express';
 import type {
 	ExecutionError,
@@ -13,7 +12,6 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	CredentialLoadingDetails,
@@ -23,8 +21,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
-	WorkflowSettings,
-	AuthenticationMethod,
+	IUserSettings,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -32,10 +29,11 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
+import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
+import type { DatabaseType } from '@db/types';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { Role } from '@db/entities/Role';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -85,7 +83,8 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
-export interface IDatabaseCollections {
+/* eslint-disable @typescript-eslint/naming-convention */
+export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	AuthIdentity: AuthIdentityRepository;
 	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
 	Credentials: CredentialsRepository;
@@ -106,6 +105,7 @@ export interface IDatabaseCollections {
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }
+/* eslint-enable @typescript-eslint/naming-convention */
 
 // ----------------------------------
 //               tags
@@ -162,7 +162,6 @@ export type ICredentialsDecryptedDb = ICredentialsBase & ICredentialsDecrypted;
 
 export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 
-export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
@@ -339,6 +338,7 @@ export interface IDiagnosticInfo {
 	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
+	saml_enabled: boolean;
 }
 
 export interface ITelemetryUserDeletionData {
@@ -469,90 +469,6 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface IN8nUISettings {
-	endpointWebhook: string;
-	endpointWebhookTest: string;
-	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
-	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
-	saveManualExecutions: boolean;
-	executionTimeout: number;
-	maxExecutionTimeout: number;
-	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
-	oauthCallbackUrls: {
-		oauth1: string;
-		oauth2: string;
-	};
-	timezone: string;
-	urlBaseWebhook: string;
-	urlBaseEditor: string;
-	versionCli: string;
-	n8nMetadata?: {
-		[key: string]: string | number | undefined;
-	};
-	versionNotifications: IVersionNotificationSettings;
-	instanceId: string;
-	telemetry: ITelemetrySettings;
-	posthog: {
-		enabled: boolean;
-		apiHost: string;
-		apiKey: string;
-		autocapture: boolean;
-		disableSessionRecording: boolean;
-		debug: boolean;
-	};
-	personalizationSurveyEnabled: boolean;
-	userActivationSurveyEnabled: boolean;
-	defaultLocale: string;
-	userManagement: IUserManagementSettings;
-	sso: {
-		saml: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-		ldap: {
-			loginLabel: string;
-			loginEnabled: boolean;
-		};
-	};
-	publicApi: IPublicApiSettings;
-	workflowTagsDisabled: boolean;
-	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
-	hiringBannerEnabled: boolean;
-	templates: {
-		enabled: boolean;
-		host: string;
-	};
-	onboardingCallPromptEnabled: boolean;
-	missingPackages?: boolean;
-	executionMode: 'regular' | 'queue';
-	pushBackend: 'sse' | 'websocket';
-	communityNodesEnabled: boolean;
-	deployment: {
-		type: string;
-	};
-	isNpmAvailable: boolean;
-	allowedModules: {
-		builtIn?: string;
-		external?: string;
-	};
-	enterprise: {
-		sharing: boolean;
-		ldap: boolean;
-		saml: boolean;
-		logStreaming: boolean;
-		advancedExecutionFilters: boolean;
-		variables: boolean;
-		versionControl: boolean;
-	};
-	hideUsagePage: boolean;
-	license: {
-		environment: 'production' | 'staging';
-	};
-	variables: {
-		limit: number;
-	};
-}
-
 export interface IPersonalizationSurveyAnswers {
 	email: string | null;
 	codingSkill: string | null;
@@ -563,29 +479,8 @@ export interface IPersonalizationSurveyAnswers {
 	workArea: string[] | string | null;
 }
 
-export interface IUserSettings {
-	isOnboarded?: boolean;
-	showUserActivationSurvey?: boolean;
-	firstSuccessfulWorkflowId?: string;
-	userActivated?: boolean;
-}
-
-export interface IUserManagementSettings {
-	enabled: boolean;
-	showSetupOnFirstLoad?: boolean;
-	smtpSetup: boolean;
-	authenticationMethod: AuthenticationMethod;
-}
 export interface IActiveDirectorySettings {
 	enabled: boolean;
-}
-export interface IPublicApiSettings {
-	enabled: boolean;
-	latestVersion: number;
-	path: string;
-	swaggerUi: {
-		enabled: boolean;
-	};
 }
 
 export interface IPackageVersions {
@@ -890,3 +785,5 @@ export interface N8nApp {
 	externalHooks: IExternalHooksClass;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
+
+export type UserSettings = Pick<User, 'id' | 'settings'>;

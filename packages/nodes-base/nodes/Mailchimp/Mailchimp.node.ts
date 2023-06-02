@@ -17,7 +17,7 @@ import {
 
 import moment from 'moment';
 
-enum Status {
+const enum Status {
 	subscribe = 'subscribe',
 	unsubscribed = 'unsubscribe',
 	cleaned = 'cleaned',

@@ -1,18 +1,12 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInterface {
-	name = 'DeleteExecutionsWithWorkflows1673268682475';
+export class DeleteExecutionsWithWorkflows1673268682475 implements ReversibleMigration {
+	transaction = false as const;
 
-	transaction = false;
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
-		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const workflowIds = (await queryRunner.query(`
 			SELECT id FROM "${tablePrefix}workflow_entity"
-		`);
+		`)) as Array<{ id: number }>;
 
 		await queryRunner.query(
 			`DELETE FROM "${tablePrefix}execution_entity"
@@ -61,13 +55,9 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		);
 
 		await queryRunner.query('PRAGMA foreign_keys=ON');
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE IF EXISTS "${tablePrefix}temporary_execution_entity"`);
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}temporary_execution_entity" (

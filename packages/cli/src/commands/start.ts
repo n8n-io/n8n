@@ -21,14 +21,13 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import * as Server from '@/Server';
+import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -61,6 +60,8 @@ export class Start extends BaseCommand {
 	};
 
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
+
+	protected server = new Server();
 
 	/**
 	 * Opens the UI in browser
@@ -184,22 +185,9 @@ export class Start extends BaseCommand {
 		await Promise.all(files.map(compileFile));
 	}
 
-	async initLicense(): Promise<void> {
-		const license = Container.get(License);
-		await license.init(this.instanceId);
-
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			try {
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e as Error);
-			}
-		}
-	}
-
 	async init() {
 		await this.initCrashJournal();
+
 		await super.init();
 		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
@@ -294,7 +282,6 @@ export class Start extends BaseCommand {
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 			if (shouldRunVacuum) {
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				await Db.collections.Execution.query('VACUUM;');
 			}
 		}
@@ -343,7 +330,7 @@ export class Start extends BaseCommand {
 			);
 		}
 
-		await Server.start();
+		await this.server.start();
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
@@ -372,8 +359,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					// eslint-disable-next-line @typescript-eslint/no-floating-promises
-					this.stopProcess();
+					void this.stopProcess();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 					// eslint-disable-next-line no-lonely-if

@@ -95,7 +95,7 @@ import N8nCheckbox from '../N8nCheckbox';
 import { Switch as ElSwitch } from 'element-ui';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
+import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
 
 import { t } from '../../locale';
 

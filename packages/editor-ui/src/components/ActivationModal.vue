@@ -35,7 +35,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
 
 import Modal from '@/components/Modal.vue';
 import {
@@ -45,13 +47,11 @@ import {
 	VIEWS,
 } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { createEventBus } from '@/event-bus';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ActivationModal',
 	components: {
 		Modal,

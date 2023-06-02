@@ -20,7 +20,8 @@ import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
-import Router, { Route } from 'vue-router';
+import type { Route } from 'vue-router';
+import Router from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
@@ -29,18 +30,19 @@ import CredentialsView from '@/views/CredentialsView.vue';
 import ExecutionsView from '@/views/ExecutionsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import VariablesView from '@/views/VariablesView.vue';
-import { IPermissions } from './Interface';
+import type { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
-import { RouteConfigSingleView } from 'vue-router/types/router';
-import { VIEWS } from './constants';
-import { useSettingsStore } from './stores/settings';
-import { useTemplatesStore } from './stores/templates';
-import { useSSOStore } from './stores/sso';
+import type { RouteConfigSingleView } from 'vue-router/types/router';
+import { TEMPLATE_EXPERIMENT, VIEWS } from './constants';
+import { useSettingsStore } from './stores/settings.store';
+import { useTemplatesStore } from './stores/templates.store';
+import { useSSOStore } from './stores/sso.store';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsVersionControl from './views/SettingsVersionControl.vue';
+import { usePostHog } from './stores/posthog.store';
 
 Vue.use(Router);
 
@@ -60,8 +62,12 @@ interface IRouteConfig extends RouteConfigSingleView {
 
 function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
+	const posthog = usePostHog();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
-	if (!isTemplatesEnabled) {
+	if (
+		!posthog.isVariantEnabled(TEMPLATE_EXPERIMENT.name, TEMPLATE_EXPERIMENT.variant) &&
+		!isTemplatesEnabled
+	) {
 		return { name: VIEWS.NOT_FOUND };
 	}
 
@@ -620,7 +626,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCloudDeployment || settingsStore.isDesktopDeployment;
+								return settingsStore.isDesktopDeployment;
 							},
 						},
 					},

@@ -1,17 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
-	name = 'AddAPIKeyColumn1652905585850';
+export class AddAPIKeyColumn1652905585850 implements ReversibleMigration {
+	transaction = false as const;
 
-	transaction = false;
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query('PRAGMA foreign_keys=OFF');
 
 		await queryRunner.query(
@@ -31,13 +23,9 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		);
 
 		await queryRunner.query('PRAGMA foreign_keys=ON');
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" RENAME TO "temporary_user"`);
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(255), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "resetPasswordTokenExpiration" integer DEFAULT NULL, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, "settings" text, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
@@ -45,7 +33,7 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}user"("id", "email", "firstName", "lastName", "password", "resetPasswordToken", "resetPasswordTokenExpiration", "personalizationAnswers", "createdAt", "updatedAt", "globalRoleId", "settings") SELECT "id", "email", "firstName", "lastName", "password", "resetPasswordToken", "resetPasswordTokenExpiration", "personalizationAnswers", "createdAt", "updatedAt", "globalRoleId", "settings" FROM "temporary_user"`,
 		);
-		await queryRunner.query(`DROP TABLE "temporary_user"`);
+		await queryRunner.query('DROP TABLE "temporary_user"');
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "UQ_${tablePrefix}e12875dfb3b1d92d7d7c5377e2" ON "${tablePrefix}user" ("email")`,
 		);

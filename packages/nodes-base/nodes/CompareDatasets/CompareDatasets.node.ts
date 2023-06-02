@@ -5,7 +5,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { checkInput, checkMatchFieldsInput, findMatches } from './GenericFunctions';
+import {
+	checkInput,
+	checkInputAndThrowError,
+	checkMatchFieldsInput,
+	findMatches,
+} from './GenericFunctions';
 
 export class CompareDatasets implements INodeType {
 	description: INodeTypeDescription = {
@@ -13,7 +18,7 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: [1, 2, 2.1],
+		version: [1, 2, 2.1, 2.2],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -254,19 +259,26 @@ export class CompareDatasets implements INodeType {
 			options.fuzzyCompare = this.getNodeParameter('fuzzyCompare', 0, false) as boolean;
 		}
 
-		const input1 = checkInput(
-			this.getInputData(0),
-			matchFields.map((pair) => pair.field1),
-			(options.disableDotNotation as boolean) || false,
-			'Input A',
-		);
+		let input1 = this.getInputData(0);
+		let input2 = this.getInputData(1);
+		if (options.nodeVersion < 2.2) {
+			input1 = checkInputAndThrowError(
+				input1,
+				matchFields.map((pair) => pair.field1),
+				(options.disableDotNotation as boolean) || false,
+				'Input A',
+			);
 
-		const input2 = checkInput(
-			this.getInputData(1),
-			matchFields.map((pair) => pair.field2),
-			(options.disableDotNotation as boolean) || false,
-			'Input B',
-		);
+			input2 = checkInputAndThrowError(
+				input2,
+				matchFields.map((pair) => pair.field2),
+				(options.disableDotNotation as boolean) || false,
+				'Input B',
+			);
+		} else {
+			input1 = checkInput(input1);
+			input2 = checkInput(input2);
+		}
 
 		const resolve = this.getNodeParameter('resolve', 0, '') as string;
 		options.resolve = resolve;

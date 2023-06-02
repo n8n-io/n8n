@@ -27,6 +27,8 @@
 import { Input as ElInput } from 'element-ui';
 import { defineComponent } from 'vue';
 
+type InputRef = InstanceType<typeof ElInput>;
+
 export default defineComponent({
 	name: 'n8n-input',
 	components: {
@@ -92,7 +94,7 @@ export default defineComponent({
 	},
 	methods: {
 		focus() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 
@@ -105,7 +107,7 @@ export default defineComponent({
 			inputElement.focus();
 		},
 		blur() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 
@@ -118,7 +120,7 @@ export default defineComponent({
 			inputElement.blur();
 		},
 		select() {
-			const innerInput = this.$refs.innerInput as Vue | undefined;
+			const innerInput = this.$refs.innerInput as InputRef | undefined;
 
 			if (!innerInput) return;
 

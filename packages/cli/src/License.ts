@@ -12,34 +12,6 @@ import {
 } from './constants';
 import { Service } from 'typedi';
 
-async function loadCertStr(): Promise<TLicenseBlock> {
-	// if we have an ephemeral license, we don't want to load it from the database
-	const ephemeralLicense = config.get('license.cert');
-	if (ephemeralLicense) {
-		return ephemeralLicense;
-	}
-	const databaseSettings = await Db.collections.Settings.findOne({
-		where: {
-			key: SETTINGS_LICENSE_CERT_KEY,
-		},
-	});
-
-	return databaseSettings?.value ?? '';
-}
-
-async function saveCertStr(value: TLicenseBlock): Promise<void> {
-	// if we have an ephemeral license, we don't want to save it to the database
-	if (config.get('license.cert')) return;
-	await Db.collections.Settings.upsert(
-		{
-			key: SETTINGS_LICENSE_CERT_KEY,
-			value,
-			loadOnStartup: false,
-		},
-		['key'],
-	);
-}
-
 @Service()
 export class License {
 	private logger: ILogger;
@@ -67,8 +39,8 @@ export class License {
 				autoRenewEnabled,
 				autoRenewOffset,
 				logger: this.logger,
-				loadCertStr,
-				saveCertStr,
+				loadCertStr: async () => this.loadCertStr(),
+				saveCertStr: async (value: TLicenseBlock) => this.saveCertStr(value),
 				deviceFingerprint: () => instanceId,
 			});
 
@@ -78,6 +50,34 @@ export class License {
 				this.logger.error('Could not initialize license manager sdk', e);
 			}
 		}
+	}
+
+	async loadCertStr(): Promise<TLicenseBlock> {
+		// if we have an ephemeral license, we don't want to load it from the database
+		const ephemeralLicense = config.get('license.cert');
+		if (ephemeralLicense) {
+			return ephemeralLicense;
+		}
+		const databaseSettings = await Db.collections.Settings.findOne({
+			where: {
+				key: SETTINGS_LICENSE_CERT_KEY,
+			},
+		});
+
+		return databaseSettings?.value ?? '';
+	}
+
+	async saveCertStr(value: TLicenseBlock): Promise<void> {
+		// if we have an ephemeral license, we don't want to save it to the database
+		if (config.get('license.cert')) return;
+		await Db.collections.Settings.upsert(
+			{
+				key: SETTINGS_LICENSE_CERT_KEY,
+				value,
+				loadOnStartup: false,
+			},
+			['key'],
+		);
 	}
 
 	async activate(activationKey: string): Promise<void> {
@@ -98,6 +98,7 @@ export class License {
 
 	isFeatureEnabled(feature: string): boolean {
 		if (!this.manager) {
+			getLogger().warn('License manager not initialized');
 			return false;
 		}
 
@@ -130,6 +131,10 @@ export class License {
 
 	isVersionControlLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	}
+
+	isAPIDisabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
 	}
 
 	getCurrentEntitlements() {
@@ -168,8 +173,7 @@ export class License {
 		}
 
 		return entitlements.find(
-			(entitlement) =>
-				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
+			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
 		);
 	}
 
@@ -184,5 +188,13 @@ export class License {
 
 	getPlanName(): string {
 		return (this.getFeatureValue('planName') ?? 'Community') as string;
+	}
+
+	getInfo(): string {
+		if (!this.manager) {
+			return 'n/a';
+		}
+
+		return this.manager.toString();
 	}
 }

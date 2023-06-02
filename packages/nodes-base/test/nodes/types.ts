@@ -1,4 +1,4 @@
-import { INode, IConnections } from 'n8n-workflow';
+import type { INode, IConnections } from 'n8n-workflow';
 
 export interface WorkflowTestData {
 	description: string;
@@ -6,6 +6,12 @@ export interface WorkflowTestData {
 		workflowData: {
 			nodes: INode[];
 			connections: IConnections;
+			settings?: {
+				saveManualExecutions: boolean;
+				callerPolicy: string;
+				timezone: string;
+				saveExecutionProgress: string;
+			};
 		};
 	};
 	output: {

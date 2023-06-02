@@ -16,13 +16,14 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import ExpandableInputBase from './ExpandableInputBase.vue';
-import { EventBus } from '@/event-bus';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system';
 
-export default Vue.extend({
-	components: { ExpandableInputBase },
+export default defineComponent({
 	name: 'ExpandableInputEdit',
+	components: { ExpandableInputBase },
 	props: {
 		value: {},
 		placeholder: {},

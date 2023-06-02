@@ -66,10 +66,10 @@
 
 <script lang="ts">
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { useNDVStore } from '@/stores/ndv';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
@@ -79,7 +79,9 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
-export default Vue.extend({
+type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
+
+export default defineComponent({
 	name: 'ExpressionParameterInput',
 	components: {
 		InlineExpressionEditorInput,
@@ -115,7 +117,11 @@ export default Vue.extend({
 			return (this.hoveringItem?.itemIndex ?? 0) + 1;
 		},
 		hoveringItem(): TargetItem | null {
-			return this.ndvStore.hoveringItem;
+			if (this.ndvStore.isInputParentOfActiveNode) {
+				return this.ndvStore.hoveringItem;
+			}
+
+			return null;
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
@@ -123,9 +129,10 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const inlineInput = this.$refs.inlineInput as (Vue & HTMLElement) | undefined;
-
-			if (inlineInput?.$el) inlineInput.focus();
+			const inlineInputRef = this.$refs.inlineInput as InlineExpressionEditorInputRef | undefined;
+			if (inlineInputRef?.$el) {
+				inlineInputRef.focus();
+			}
 		},
 		onFocus() {
 			this.isFocused = true;

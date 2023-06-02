@@ -29,7 +29,7 @@ const fakeConnection = {
 	format(query: string, values: any[]) {
 		return mysql2.format(query, values);
 	},
-	query: jest.fn(async (_query = ''): Promise<any> => Promise.resolve([{}])),
+	query: jest.fn(async (_query = '') => [{}]),
 	release: jest.fn(),
 	beginTransaction: jest.fn(),
 	commit: jest.fn(),
@@ -41,7 +41,7 @@ const createFakePool = (connection: IDataObject) => {
 		getConnection() {
 			return connection;
 		},
-		query: jest.fn(async () => Promise.resolve([{}])),
+		query: jest.fn(async () => [{}]),
 	} as unknown as Mysql2Pool;
 };
 
@@ -214,7 +214,7 @@ describe('Test MySql V2, operations', () => {
 			} else {
 				result.push({});
 			}
-			return Promise.resolve(result);
+			return result;
 		});
 		const pool = createFakePool(fakeConnectionCopy);
 

@@ -2,6 +2,17 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.226.0
+
+### What changed?
+
+The `extractDomain` and `isDomain` are now also matching localhost, domains without protocol and domains with query parameters.
+The `extractUrl` and `isUrl` are additionally also matching localhost and domains with query parameters.
+
+### When is action necessary?
+
+If you're using the `extractDomain` or `isDomain` functions and expect them to not match localhost, domains without protocol and domains with query parameters.
+
 ## 0.223.0
 
 ### What changed?

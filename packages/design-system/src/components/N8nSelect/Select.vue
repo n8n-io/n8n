@@ -35,6 +35,8 @@
 import { Select as ElSelect } from 'element-ui';
 import { defineComponent } from 'vue';
 
+type InnerSelectRef = InstanceType<typeof ElSelect>;
+
 export interface IProps {
 	size?: string;
 	limitPopperWidth?: string;
@@ -117,23 +119,23 @@ export default defineComponent({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.focus();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
 			}
 		},
 		blur() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.blur();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.blur();
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				const input = select.$refs.input as (Vue & HTMLElement) | undefined;
-				if (input) {
-					input.focus();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				const inputRef = selectRef.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}
 		},

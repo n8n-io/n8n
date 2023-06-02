@@ -21,7 +21,8 @@ const properties: INodeProperties[] = [
 		description:
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
-			rows: 3,
+			editor: 'sqlEditor',
+			sqlDialect: 'postgres',
 		},
 		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
 	},

@@ -42,10 +42,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import Draggable from './Draggable.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		Draggable,
 	},

@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
-import { Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
 import {
 	hashPassword,
@@ -20,6 +20,7 @@ import type {
 	WorkflowRepository,
 } from '@db/repositories';
 
+@Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
 	private readonly config: Config;

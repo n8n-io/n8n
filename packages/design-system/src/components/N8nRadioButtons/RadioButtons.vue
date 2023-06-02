@@ -18,7 +18,8 @@
 <script lang="ts">
 import RadioButton from './RadioButton.vue';
 
-import { defineComponent, PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 export interface RadioOption {
 	label: string;

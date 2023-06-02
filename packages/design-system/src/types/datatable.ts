@@ -1,4 +1,4 @@
-import { VNode } from 'vue';
+import type { VNode } from 'vue';
 
 export type DatatableRowDataType = string | number | boolean | null | undefined;
 

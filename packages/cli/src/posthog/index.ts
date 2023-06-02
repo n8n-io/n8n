@@ -44,7 +44,7 @@ export class PostHogClient {
 	}
 
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
-		if (!this.postHog) return Promise.resolve({});
+		if (!this.postHog) return {};
 
 		const fullId = [this.instanceId, user.id].join('#');
 

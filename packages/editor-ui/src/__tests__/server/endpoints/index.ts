@@ -1,9 +1,10 @@
-import { Server } from 'miragejs';
+import type { Server } from 'miragejs';
 import { routesForUsers } from './user';
 import { routesForCredentials } from './credential';
 import { routesForCredentialTypes } from './credentialType';
 import { routesForVariables } from './variable';
 import { routesForSettings } from './settings';
+import { routesForSSO } from './sso';
 
 const endpoints: Array<(server: Server) => void> = [
 	routesForCredentials,
@@ -11,6 +12,7 @@ const endpoints: Array<(server: Server) => void> = [
 	routesForUsers,
 	routesForVariables,
 	routesForSettings,
+	routesForSSO,
 ];
 
 export { endpoints };

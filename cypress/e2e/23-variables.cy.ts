@@ -11,11 +11,11 @@ const lastName = randLastName();
 
 describe('Variables', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 
 	it('should show the unlicensed action box when the feature is disabled', () => {
+		cy.disableFeature('feat:variables');
 		cy.signin({ email, password });
 		cy.visit(variablesPage.url);
 
@@ -30,7 +30,10 @@ describe('Variables', () => {
 
 		beforeEach(() => {
 			cy.signin({ email, password });
+			cy.intercept('GET', '/rest/variables').as('loadVariables');
+
 			cy.visit(variablesPage.url);
+			cy.wait(['@loadVariables', '@loadSettings']);
 		});
 
 		it('should show the licensed action box when the feature is enabled', () => {

@@ -1,5 +1,6 @@
 <script lang="ts">
-import { DefineComponent, defineComponent } from 'vue';
+import type { DefineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { Pagination as ElPagination } from 'element-ui';
 
 export default defineComponent({

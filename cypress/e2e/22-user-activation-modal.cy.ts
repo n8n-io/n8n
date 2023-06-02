@@ -9,11 +9,11 @@ const userActivationSurveyModal = new UserActivationSurveyModal();
 const BASE_WEBHOOK_URL = 'http://localhost:5678/webhook';
 
 describe('User activation survey', () => {
-	it('Should show activation survey', () => {
-		cy.resetAll();
-
+	before(() => {
 		cy.skipSetup();
+	});
 
+	it('Should show activation survey', () => {
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.reply(SettingsWithActivationModalEnabled);
 		});
@@ -57,6 +57,7 @@ describe('User activation survey', () => {
 			cy.wait(['@getWorkflows', '@getCredentials', '@getActive']);
 			userActivationSurveyModal.getters.modalContainer().should('be.visible');
 			userActivationSurveyModal.getters.feedbackInput().should('be.visible');
+			userActivationSurveyModal.getters.skipButton().should('be.visible');
 			userActivationSurveyModal.getters.feedbackInput().type('testing');
 			userActivationSurveyModal.getters.feedbackInput().should('have.value', 'testing');
 			userActivationSurveyModal.getters.sendFeedbackButton().click();

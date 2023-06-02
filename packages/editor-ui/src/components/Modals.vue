@@ -115,11 +115,17 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="VERSION_CONTROL_PUSH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<VersionControlPushModal :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -144,6 +150,7 @@ import {
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
 	USER_ACTIVATION_SURVEY_MODAL,
+	VERSION_CONTROL_PUSH_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -170,8 +177,9 @@ import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import WorkflowSuccessModal from './UserActivationSurveyModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import VersionControlPushModal from '@/components/VersionControlPushModal.ee.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
@@ -198,6 +206,7 @@ export default Vue.extend({
 		ImportCurlModal,
 		EventDestinationSettingsModal,
 		WorkflowSuccessModal,
+		VersionControlPushModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -223,6 +232,7 @@ export default Vue.extend({
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
 		USER_ACTIVATION_SURVEY_MODAL,
+		VERSION_CONTROL_PUSH_MODAL_KEY,
 	}),
 });
 </script>

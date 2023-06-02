@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="['run-data', $style.container]">
 		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
@@ -121,7 +121,12 @@
 			</div>
 		</div>
 
-		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
+		<div
+			:class="$style.runSelector"
+			v-if="maxRunIndex > 0"
+			v-show="!editMode.enabled"
+			data-test-id="run-selector"
+		>
 			<n8n-select
 				size="small"
 				:value="runIndex"
@@ -157,7 +162,11 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
+		<div
+			v-if="maxOutputIndex > 0 && branches.length > 1"
+			:class="$style.tabs"
+			data-test-id="branches"
+		>
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
@@ -181,11 +190,10 @@
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
-					<code-editor
+					<code-node-editor
 						:value="editMode.value"
-						:options="{ scrollBeyondLastLine: false }"
-						type="json"
-						@input="ndvStore.setOutputPanelEditModeValue($event)"
+						language="json"
+						@valueChanged="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -219,7 +227,7 @@
 			</div>
 
 			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
-				<slot name="recovered-artifical-output-data"></slot>
+				<slot name="recovered-artificial-output-data"></slot>
 			</div>
 
 			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
@@ -421,7 +429,13 @@
 		</div>
 		<div
 			:class="$style.pagination"
-			v-if="hasNodeRun && !hasRunError && dataCount > pageSize && !isSchemaView"
+			v-if="
+				hasNodeRun &&
+				!hasRunError &&
+				binaryData.length === 0 &&
+				dataCount > pageSize &&
+				!isSchemaView
+			"
 			v-show="!editMode.enabled"
 		>
 			<el-pagination
@@ -450,10 +464,11 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
-import {
+import type {
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -463,7 +478,7 @@ import {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
-import {
+import type {
 	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -485,38 +500,36 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import WarningTooltip from '@/components/WarningTooltip.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
-import { CodeEditor } from '@/components/forms';
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
-import { isEmpty } from '@/utils';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useToast } from '@/composables';
 
-const RunDataTable = () => import('@/components/RunDataTable.vue');
-const RunDataJson = () => import('@/components/RunDataJson.vue');
-const RunDataSchema = () => import('@/components/RunDataSchema.vue');
-const RunDataHtml = () => import('@/components/RunDataHtml.vue');
+const RunDataTable = async () => import('@/components/RunDataTable.vue');
+const RunDataJson = async () => import('@/components/RunDataJson.vue');
+const RunDataSchema = async () => import('@/components/RunDataSchema.vue');
+const RunDataHtml = async () => import('@/components/RunDataHtml.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
 };
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).extend({
+export default defineComponent({
 	name: 'RunData',
+	mixins: [externalHooks, genericHelpers, nodeHelpers, pinData],
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
-		WarningTooltip,
-		CodeEditor,
+		CodeNodeEditor,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
@@ -570,6 +583,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -1003,7 +1021,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				view: this.displayMode,
 				run_index: this.runIndex,
 			};
-			this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
 			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 		},
 		onDataPinningError({
@@ -1036,7 +1054,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 					view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
 				};
 
-				this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+				void this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
 				this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 			}
 
@@ -1048,19 +1066,17 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return;
 			}
 
-			const data = executionDataToJson(this.rawInputData) as INodeExecutionData[];
-
-			if (!this.isValidPinDataSize(data)) {
+			if (!this.isValidPinDataSize(this.inputData)) {
 				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 				return;
 			}
 
 			this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-			this.workflowsStore.pinData({ node: this.node, data });
+			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
 
 			if (this.maxRunIndex > 0) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('ndv.pinData.pin.multipleRuns.title', {
 						interpolate: {
 							index: `${this.runIndex}`,
@@ -1137,9 +1153,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const previous = this.displayMode;
 			this.ndvStore.setPanelDisplayMode({ pane: this.paneType, mode: displayMode });
 
-			const dataContainer = this.$refs.dataContainer;
-			if (dataContainer) {
-				const dataDisplay = (dataContainer as Element).children[0];
+			const dataContainerRef = this.$refs.dataContainer as Element | undefined;
+			if (dataContainerRef) {
+				const dataDisplay = dataContainerRef.children[0];
 
 				if (dataDisplay) {
 					dataDisplay.scrollTo(0, 0);
@@ -1147,7 +1163,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			}
 
 			this.closeBinaryDataDisplay();
-			this.$externalHooks().run('runData.displayModeChanged', {
+			void this.$externalHooks().run('runData.displayModeChanged', {
 				newValue: displayMode,
 				oldValue: previous,
 			});
@@ -1242,12 +1258,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 			if (id) {
-				const url = this.restApi().getBinaryUrl(id, 'download', fileName, mimeType);
+				const url = this.workflowsStore.getBinaryUrl(id, 'download', fileName, mimeType);
 				saveAs(url, [fileName, fileExtension].join('.'));
 				return;
 			} else {
 				const bufferString = 'data:' + mimeType + ';base64,' + data;
-				const blob = await fetch(bufferString).then((d) => d.blob());
+				const blob = await fetch(bufferString).then(async (d) => d.blob());
 				saveAs(blob, fileName);
 			}
 		},
@@ -1562,28 +1578,30 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 }
 
 .editMode {
-	height: calc(100% - var(--spacing-s));
+	height: 100%;
+	max-height: calc(100% - var(--spacing-3xl));
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-end;
-	align-items: flex-end;
+	justify-content: stretch;
 	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 }
 
 .editModeBody {
 	flex: 1 1 auto;
+	max-height: 100%;
 	width: 100%;
-	height: 100%;
-	overflow: hidden;
+	overflow: auto;
 }
 
 .editModeFooter {
+	flex: 0 1 auto;
 	display: flex;
 	width: 100%;
 	justify-content: space-between;
 	align-items: center;
 	padding-top: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .editModeFooterInfotip {
@@ -1606,5 +1624,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+</style>
+
+<style lang="scss" scoped>
+.run-data {
+	.code-node-editor {
+		height: 100%;
+	}
 }
 </style>

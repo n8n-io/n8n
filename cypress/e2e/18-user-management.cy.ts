@@ -51,7 +51,6 @@ const personalSettingsPage = new PersonalSettingsPage();
 
 describe('User Management', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setupOwner(instanceOwner);
 	});
 

@@ -1,4 +1,6 @@
 import Vue, { VNode } from 'vue';
+import type { Store } from 'pinia';
+import type { IDataObject } from 'n8n-workflow';
 
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';
@@ -17,6 +19,10 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
+		n8nExternalHooks?: Record<
+			string,
+			Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>
+		>;
 	}
 
 	namespace JSX {

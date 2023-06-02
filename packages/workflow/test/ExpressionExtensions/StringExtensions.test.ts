@@ -3,7 +3,6 @@
  */
 
 import { stringExtensions } from '@/Extensions/StringExtensions';
-import { dateExtensions } from '@/Extensions/DateExtensions';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
@@ -157,13 +156,29 @@ describe('Data Transformation Functions', () => {
 					'={{ "I am a test with a url: https://example.net/ and I am a test with an email: test@example.org".extractUrl() }}',
 				),
 			).toEqual('https://example.net/');
-			expect(evaluate('={{ "Check this out: https://subdomain.example.com:3000/path?q=1#hash".extractUrl() }}')).toEqual('https://subdomain.example.com:3000/path?q=1#hash');
+			expect(
+				evaluate(
+					'={{ "Check this out: https://subdomain.example.com:3000/path?q=1#hash".extractUrl() }}',
+				),
+			).toEqual('https://subdomain.example.com:3000/path?q=1#hash');
 			expect(evaluate('={{ "Invalid URL: http:///example.com".extractUrl() }}')).toEqual(undefined);
-			expect(evaluate('={{ "Mixed content: https://www.example.com and http://www.example.org".extractUrl() }}')).toEqual('https://www.example.com');
-			expect(evaluate('={{ "Text without URL: This is just a simple text".extractUrl() }}')).toEqual(undefined);
-			expect(evaluate('={{ "URL with Unicode: http://www.xn--80aswg.xn--j1amh".extractUrl() }}')).toEqual('http://www.xn--80aswg.xn--j1amh');
-			expect(evaluate('={{ "Localhost URL: http://localhost:8080/test?x=1".extractUrl() }}')).toEqual('http://localhost:8080/test?x=1');
-			expect(evaluate('={{ "IP URL: http://192.168.1.1:8000/path?q=value#frag".extractUrl() }}')).toEqual('http://192.168.1.1:8000/path?q=value#frag');
+			expect(
+				evaluate(
+					'={{ "Mixed content: https://www.example.com and http://www.example.org".extractUrl() }}',
+				),
+			).toEqual('https://www.example.com');
+			expect(
+				evaluate('={{ "Text without URL: This is just a simple text".extractUrl() }}'),
+			).toEqual(undefined);
+			expect(
+				evaluate('={{ "URL with Unicode: http://www.xn--80aswg.xn--j1amh".extractUrl() }}'),
+			).toEqual('http://www.xn--80aswg.xn--j1amh');
+			expect(
+				evaluate('={{ "Localhost URL: http://localhost:8080/test?x=1".extractUrl() }}'),
+			).toEqual('http://localhost:8080/test?x=1');
+			expect(
+				evaluate('={{ "IP URL: http://192.168.1.1:8000/path?q=value#frag".extractUrl() }}'),
+			).toEqual('http://192.168.1.1:8000/path?q=value#frag');
 		});
 
 		test('.extractDomain should work on a string', () => {
@@ -175,24 +190,46 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "google.com".extractDomain() }}')).toEqual('google.com');
 			expect(evaluate('={{ "www.example.net".extractDomain() }}')).toEqual('www.example.net');
 			expect(evaluate('={{ "//example.com".extractDomain() }}')).toEqual('example.com');
-			expect(evaluate('={{ "mailto:john.doe@example.com".extractDomain() }}')).toEqual('example.com');
+			expect(evaluate('={{ "mailto:john.doe@example.com".extractDomain() }}')).toEqual(
+				'example.com',
+			);
 			expect(evaluate('={{ "tel:+1-555-123-4567".extractDomain() }}')).toEqual(undefined);
 			expect(evaluate('={{ "jane.doe@example.org".extractDomain() }}')).toEqual('example.org');
 			expect(evaluate('={{ "name+tag@example.com".extractDomain() }}')).toEqual('example.com');
-			expect(evaluate('={{ "first.last@example.co.uk".extractDomain() }}')).toEqual('example.co.uk');
-			expect(evaluate('={{ "user@subdomain.example.com".extractDomain() }}')).toEqual('subdomain.example.com');
-			expect(evaluate('={{ "www.example.net?test=1213".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "first.last@example.co.uk".extractDomain() }}')).toEqual(
+				'example.co.uk',
+			);
+			expect(evaluate('={{ "user@subdomain.example.com".extractDomain() }}')).toEqual(
+				'subdomain.example.com',
+			);
+			expect(evaluate('={{ "www.example.net?test=1213".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
 			expect(evaluate('={{ "www.example.net?test".extractDomain() }}')).toEqual('www.example.net');
-			expect(evaluate('={{ "www.example.net#tesdt123".extractDomain() }}')).toEqual('www.example.net');
-			expect(evaluate('={{ "https://www.example.net?test=1213".extractDomain() }}')).toEqual('www.example.net');
-			expect(evaluate('={{ "https://www.example.net?test".extractDomain() }}')).toEqual('www.example.net');
-			expect(evaluate('={{ "https://www.example.net#tesdt123".extractDomain() }}')).toEqual('www.example.net');
+			expect(evaluate('={{ "www.example.net#tesdt123".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://www.example.net?test=1213".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://www.example.net?test".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
+			expect(evaluate('={{ "https://www.example.net#tesdt123".extractDomain() }}')).toEqual(
+				'www.example.net',
+			);
 			expect(evaluate('={{ "https://192.168.1.1".extractDomain() }}')).toEqual('192.168.1.1');
-			expect(evaluate('={{ "http://www.xn--80aswg.xn--j1amh".extractDomain() }}')).toEqual('www.xn--80aswg.xn--j1amh');
+			expect(evaluate('={{ "http://www.xn--80aswg.xn--j1amh".extractDomain() }}')).toEqual(
+				'www.xn--80aswg.xn--j1amh',
+			);
 			expect(evaluate('={{ "https://localhost".extractDomain() }}')).toEqual('localhost');
 			expect(evaluate('={{ "https://localhost?test=123".extractDomain() }}')).toEqual('localhost');
-			expect(evaluate('={{ "https://www.example_with_underscore.com".extractDomain() }}')).toEqual('www.example_with_underscore.com');
-			expect(evaluate('={{ "https://www.example.com:8080".extractDomain() }}')).toEqual('www.example.com');
+			expect(evaluate('={{ "https://www.example_with_underscore.com".extractDomain() }}')).toEqual(
+				'www.example_with_underscore.com',
+			);
+			expect(evaluate('={{ "https://www.example.com:8080".extractDomain() }}')).toEqual(
+				'www.example.com',
+			);
 			expect(evaluate('={{ "https://example.space".extractDomain() }}')).toEqual('example.space');
 		});
 

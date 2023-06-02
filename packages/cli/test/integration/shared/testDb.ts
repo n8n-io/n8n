@@ -1,9 +1,6 @@
 import { UserSettings } from 'n8n-core';
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	Repository,
-} from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
 
 import config from '@/config';
@@ -24,19 +21,32 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleRepository } from '@db/repositories';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { getPostgresSchemaSection } from './utils';
 import type {
 	CollectionName,
 	CredentialPayload,
 	InstalledNodePayload,
 	InstalledPackagePayload,
+	PostgresSchemaSection,
 } from './types';
 
 export type TestDBType = 'postgres' | 'mysql';
+
+export const testDbPrefix = 'n8n_test_';
+
+export function getPostgresSchemaSection(
+	schema = config.getSchema(),
+): PostgresSchemaSection | null {
+	for (const [key, value] of Object.entries(schema)) {
+		if (key === 'postgresdb') {
+			return value._cvtProperties;
+		}
+	}
+	return null;
+}
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -44,11 +54,11 @@ export type TestDBType = 'postgres' | 'mysql';
 export async function init() {
 	jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 	const dbType = config.getEnv('database.type');
-	const testDbName = `n8n_test_${randomString(6, 10)}_${Date.now()}`;
+	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
-		return Db.init(getSqliteOptions({ name: testDbName }));
+		await Db.init(getSqliteOptions({ name: testDbName }));
 	}
 
 	if (dbType === 'postgresdb') {
@@ -79,7 +89,7 @@ export async function init() {
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
 
-		return Db.init(getDBOptions('postgres', testDbName));
+		await Db.init(getDBOptions('postgres', testDbName));
 	}
 
 	if (dbType === 'mysqldb') {
@@ -87,18 +97,17 @@ export async function init() {
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapMysql.destroy();
 
-		return Db.init(getDBOptions('mysql', testDbName));
+		await Db.init(getDBOptions('mysql', testDbName));
 	}
 
-	throw new Error(`Unrecognized DB type: ${dbType}`);
+	await Db.migrate();
 }
 
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
-	const connection = Db.getConnection();
-	if (connection.isInitialized) await connection.destroy();
+	await Db.close();
 }
 
 /**
@@ -106,7 +115,7 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		await (Db.collections[collection] as Repository<any>).delete({});
+		await Db.collections[collection].delete({});
 	}
 }
 
@@ -211,6 +220,7 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
+	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();

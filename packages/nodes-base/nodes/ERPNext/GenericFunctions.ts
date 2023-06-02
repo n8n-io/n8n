@@ -13,7 +13,7 @@ import { NodeApiError } from 'n8n-workflow';
  * Return the base API URL based on the user's environment.
  */
 const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
-	environment === 'cloudHosted' ? `https://${subdomain}.erpnext.com` : domain;
+	environment === 'cloudHosted' ? `https://${subdomain}.${domain}` : domain;
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

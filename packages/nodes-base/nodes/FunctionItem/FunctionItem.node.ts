@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { NodeVMOptions, VMRequire } from 'vm2';
+import type { NodeVMOptions } from 'vm2';
 import { NodeVM } from 'vm2';
 import type {
 	IExecuteFunctions,
@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
@@ -158,23 +159,8 @@ return item;`,
 				const options: NodeVMOptions = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
 					sandbox,
-					require: {
-						external: false,
-						builtin: [],
-					},
+					require: vmResolver,
 				};
-
-				const vmRequire = options.require as VMRequire;
-				if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-					vmRequire.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-				}
-
-				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					vmRequire.external = {
-						modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
-						transitive: false,
-					};
-				}
 
 				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
@@ -208,14 +194,14 @@ return item;`,
 								const lineNumber = lineParts.splice(-2, 1);
 								if (!isNaN(lineNumber as number)) {
 									error.message = `${error.message} [Line ${lineNumber} | Item Index: ${itemIndex}]`;
-									return Promise.reject(error);
+									throw error;
 								}
 							}
 						}
 
 						error.message = `${error.message} [Item Index: ${itemIndex}]`;
 
-						return Promise.reject(error);
+						throw error;
 					}
 				}
 

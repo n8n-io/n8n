@@ -2,12 +2,12 @@ import { beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { merge } from 'lodash-es';
 import { isAuthorized } from '@/utils';
-import { useSettingsStore } from '@/stores/settings';
-import { useSSOStore } from '@/stores/sso';
-import { IN8nUISettings, IUser } from '@/Interface';
+import { useSettingsStore, useSSOStore } from '@/stores';
+import type { IUser } from '@/Interface';
 import { routes } from '@/router';
 import { VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import type { IN8nUISettings } from 'n8n-workflow';
 
 const DEFAULT_SETTINGS: IN8nUISettings = SETTINGS_STORE_DEFAULT_STATE.settings;
 

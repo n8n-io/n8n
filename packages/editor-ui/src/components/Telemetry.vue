@@ -3,16 +3,17 @@
 </template>
 
 <script lang="ts">
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { ITelemetrySettings } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import type { ITelemetrySettings } from 'n8n-workflow';
 import { externalHooks } from '@/mixins/externalHooks';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'Telemetry',
+	mixins: [externalHooks],
 	data() {
 		return {
 			isTelemetryInitialized: false,

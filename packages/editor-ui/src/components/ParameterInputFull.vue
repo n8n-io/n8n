@@ -10,6 +10,7 @@
 	>
 		<template #options>
 			<parameter-options
+				v-if="displayOptions"
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
@@ -54,6 +55,7 @@
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
 							:hide-issues="hideIssues"
+							:label="label"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
@@ -69,14 +71,15 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
-import { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -84,22 +87,34 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
-import { BaseTextKey } from '@/plugins/i18n';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useSegment } from '@/stores/segment';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+} from 'n8n-workflow';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
 import { externalHooks } from '@/mixins/externalHooks';
-import { getMappedResult } from '../utils/mappingUtils';
+import { getMappedResult } from '@/utils/mappingUtils';
+
+type ParameterInputWrapperRef = InstanceType<typeof ParameterInputWrapper>;
 
 const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
 
-export default mixins(showMessage, externalHooks).extend({
+export default defineComponent({
 	name: 'parameter-input-full',
+	mixins: [externalHooks],
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -219,18 +234,17 @@ export default mixins(showMessage, externalHooks).extend({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
+			paramRef?.$emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const param = this.$refs.param as Vue | undefined;
+			const paramRef = this.$refs.param as ParameterInputWrapperRef | undefined;
 
 			if (isValueExpression(this.parameter, parameterData.value)) {
-				param?.$emit('optionSelected', 'addExpression');
+				paramRef?.$emit('optionSelected', 'addExpression');
 			}
 		},
 		onDrop(newParamValue: string) {
@@ -286,10 +300,11 @@ export default mixins(showMessage, externalHooks).extend({
 					this.$emit('valueChanged', parameterData);
 
 					if (!this.ndvStore.isMappingOnboarded) {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('dataMapping.success.title'),
 							message: this.$locale.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
+							dangerouslyUseHTMLString: true,
 						});
 
 						this.ndvStore.disableMappingHint();

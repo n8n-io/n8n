@@ -29,16 +29,16 @@ type Aggregation = {
 
 type Aggregations = Aggregation[];
 
-enum AggregationDisplayNames {
-	append = 'appended_',
-	average = 'average_',
-	concatenate = 'concatenated_',
-	count = 'count_',
-	countUnique = 'unique_count_',
-	max = 'max_',
-	min = 'min_',
-	sum = 'sum_',
-}
+const AggregationDisplayNames = {
+	append: 'appended_',
+	average: 'average_',
+	concatenate: 'concatenated_',
+	count: 'count_',
+	countUnique: 'unique_count_',
+	max: 'max_',
+	min: 'min_',
+	sum: 'sum_',
+};
 
 const NUMERICAL_AGGREGATIONS = ['average', 'max', 'min', 'sum'];
 

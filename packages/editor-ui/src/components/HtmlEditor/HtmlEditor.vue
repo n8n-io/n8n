@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
@@ -18,7 +18,9 @@ import {
 	indentOnInput,
 	LanguageSupport,
 } from '@codemirror/language';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -26,7 +28,6 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
 
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
@@ -38,8 +39,9 @@ import { theme } from './theme';
 import { nonTakenRanges } from './utils';
 import type { Range, Section } from './types';
 
-export default mixins(expressionManager).extend({
+export default defineComponent({
 	name: 'HtmlEditor',
+	mixins: [expressionManager],
 	props: {
 		html: {
 			type: String,
@@ -169,11 +171,12 @@ export default mixins(expressionManager).extend({
 
 	methods: {
 		root() {
-			const root = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			const rootRef = this.$refs.htmlEditor as HTMLDivElement | undefined;
+			if (!rootRef) {
+				throw new Error('Expected div with ref "htmlEditor"');
+			}
 
-			if (!root) throw new Error('Expected div with ref "htmlEditor"');
-
-			return root;
+			return rootRef;
 		},
 
 		isMissingHtmlTags() {

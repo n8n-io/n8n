@@ -97,15 +97,16 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import { restApi } from '@/mixins/restApi';
-import {
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
-import {
+import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
@@ -116,18 +117,15 @@ import {
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
 import TitledList from '@/components/TitledList.vue';
-
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useNDVStore } from '@/stores/ndv';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
 	getAuthTypeForNodeCredential,
@@ -142,8 +140,9 @@ interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
-export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
+export default defineComponent({
 	name: 'NodeCredentials',
+	mixins: [genericHelpers, nodeHelpers],
 	props: {
 		readonly: {
 			type: Boolean,
@@ -167,6 +166,11 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 	},
 	components: {
 		TitledList,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -453,7 +457,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					type: selectedCredentialsType,
 				});
 				this.updateNodesCredentialsIssues();
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('nodeCredentials.showMessage.title'),
 					message: this.$locale.baseText('nodeCredentials.showMessage.message', {
 						interpolate: {
