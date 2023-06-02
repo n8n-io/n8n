@@ -187,7 +187,10 @@ export default defineComponent({
 		},
 		async onAllowSSOManualLogin(userId: string) {
 			const user = this.usersStore.getUserById(userId) as IUser | null;
-			if (user?.settings) {
+			if (user) {
+				if (!user.settings) {
+					user.settings = {};
+				}
 				user.settings.allowSSOManualLogin = true;
 				await this.usersStore.updateOtherUserSettings(userId, user.settings);
 
@@ -200,7 +203,10 @@ export default defineComponent({
 		},
 		async onDisallowSSOManualLogin(userId: string) {
 			const user = this.usersStore.getUserById(userId) as IUser | null;
-			if (user?.settings) {
+			if (user) {
+				if (!user.settings) {
+					user.settings = {};
+				}
 				user.settings.allowSSOManualLogin = false;
 				await this.usersStore.updateOtherUserSettings(userId, user.settings);
 				this.showToast({
