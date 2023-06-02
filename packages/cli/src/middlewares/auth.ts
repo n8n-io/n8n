@@ -19,7 +19,7 @@ const jwtFromRequest = (req: Request) => {
 	return (req.cookies?.[AUTH_COOKIE_NAME] as string | undefined) ?? null;
 };
 
-const jwtAuth = (): RequestHandler => {
+const userManagementJwtAuth = (): RequestHandler => {
 	const jwtStrategy = new Strategy(
 		{
 			jwtFromRequest,
@@ -83,7 +83,7 @@ export const setupAuthMiddlewares = (
 ) => {
 	// needed for testing; not adding overhead since it directly returns if req.cookies exists
 	app.use(cookieParser());
-	app.use(jwtAuth());
+	app.use(userManagementJwtAuth());
 
 	app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (

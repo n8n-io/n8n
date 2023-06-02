@@ -146,7 +146,6 @@ import {
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
-import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
@@ -549,14 +548,6 @@ export class Server extends AbstractServer {
 			!ignoredEndpoints.includes(this.restEndpoint),
 			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
 		);
-
-		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
-
-		// Check for and validate JWT if configured
-		if (config.getEnv('security.jwtAuth.active')) {
-			setupExternalJWTAuth(this.app, config, authIgnoreRegex);
-		}
 
 		// ----------------------------------------
 		// Public API

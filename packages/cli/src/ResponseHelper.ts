@@ -87,11 +87,6 @@ export class ServiceUnavailableError extends ResponseError {
 	}
 }
 
-export function jwtAuthAuthorizationError(resp: Response, message?: string) {
-	resp.statusCode = 403;
-	resp.json({ code: resp.statusCode, message });
-}
-
 export function sendSuccessResponse(
 	res: Response,
 	data: any,

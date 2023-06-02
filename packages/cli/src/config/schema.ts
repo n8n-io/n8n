@@ -494,56 +494,6 @@ export const schema = {
 			default: '',
 			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
 		},
-		jwtAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_JWT_AUTH_ACTIVE',
-				doc: '[DEPRECATED] If JWT auth should be activated for editor and REST-API',
-			},
-			jwtHeader: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER',
-				doc: '[DEPRECATED] The request header containing a signed JWT',
-			},
-			jwtHeaderValuePrefix: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
-				doc: '[DEPRECATED] The request header value prefix to strip (optional)',
-			},
-			jwksUri: {
-				format: String,
-				default: '',
-				env: 'N8N_JWKS_URI',
-				doc: '[DEPRECATED] The URI to fetch JWK Set for JWT authentication',
-			},
-			jwtIssuer: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ISSUER',
-				doc: '[DEPRECATED] JWT issuer to expect (optional)',
-			},
-			jwtNamespace: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_NAMESPACE',
-				doc: '[DEPRECATED] JWT namespace to expect (optional)',
-			},
-			jwtAllowedTenantKey: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
-				doc: '[DEPRECATED] JWT tenant key name to inspect within JWT namespace (optional)',
-			},
-			jwtAllowedTenant: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT',
-				doc: '[DEPRECATED] JWT tenant to allow (optional)',
-			},
-		},
 	},
 
 	endpoints: {
