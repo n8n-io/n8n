@@ -35,7 +35,7 @@
     "start:windows": "cd bin && n8n",
     "swagger": "swagger-cli",
     "test": "pnpm test:sqlite",
-    "test:sqlite": " DB_TYPE=sqlite jest",
+    "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest --no-coverage",
     "test:postgres:alt-schema": "DB_POSTGRESDB_SCHEMA=alt_schema pnpm test:postgres",
     "test:postgres:with-table-prefix": "DB_TABLE_PREFIX=xyz_ pnpm test:postgres",
