@@ -4,18 +4,20 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import type { IGoogleAuthCredentials } from '../transport';
-import { getAccessToken } from '../transport';
+import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function googleApiCredentialTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	try {
-		const tokenRequest = await getAccessToken.call(
-			this,
-			credential.data! as unknown as IGoogleAuthCredentials,
-		);
+		const scopes = [
+			'https://www.googleapis.com/auth/drive.file',
+			'https://www.googleapis.com/auth/spreadsheets',
+			'https://www.googleapis.com/auth/drive.metadata',
+		];
+
+		const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, scopes);
 		if (!tokenRequest.access_token) {
 			return {
 				status: 'Error',

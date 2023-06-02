@@ -22,10 +22,10 @@ import type {
 } from './GoogleSheet';
 import { GoogleSheet } from './GoogleSheet';
 
-import type { IGoogleAuthCredentials } from './GenericFunctions';
-import { getAccessToken, googleApiRequest, hexToRgb } from './GenericFunctions';
+import { googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
+import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export class GoogleSheetsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -71,10 +71,14 @@ export class GoogleSheetsV1 implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				try {
-					const tokenRequest = await getAccessToken.call(
-						this,
-						credential.data! as unknown as IGoogleAuthCredentials,
-					);
+					const scopes = [
+						'https://www.googleapis.com/auth/drive',
+						'https://www.googleapis.com/auth/drive.file',
+						'https://www.googleapis.com/auth/spreadsheets',
+					];
+
+					const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, scopes);
+
 					if (!tokenRequest.access_token) {
 						return {
 							status: 'Error',
