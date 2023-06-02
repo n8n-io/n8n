@@ -19,10 +19,9 @@ function getSecuritySettings() {
 	if (config.getEnv('deployment.type') === 'cloud') return null;
 
 	const userManagementEnabled = !config.getEnv('userManagement.disabled');
-	const basicAuthActive = config.getEnv('security.basicAuth.active');
 	const jwtAuthActive = config.getEnv('security.jwtAuth.active');
 
-	const isInstancePubliclyAccessible = !userManagementEnabled && !basicAuthActive && !jwtAuthActive;
+	const isInstancePubliclyAccessible = !userManagementEnabled && !jwtAuthActive;
 
 	const settings: Record<string, unknown> = {};
 
@@ -41,7 +40,6 @@ function getSecuritySettings() {
 
 	settings.auth = {
 		authExcludeEndpoints: config.getEnv('security.excludeEndpoints') || 'none',
-		basicAuthActive,
 		jwtAuthActive,
 	};
 

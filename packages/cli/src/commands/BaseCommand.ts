@@ -83,12 +83,6 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		if (process.env.N8N_BASIC_AUTH_ACTIVE === 'true') {
-			LoggerProxy.warn(
-				`Basic auth has been deprecated and will be removed in a future version of n8n. For authentication, please consider User Management. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,
-			);
-		}
-
 		if (process.env.N8N_JWT_AUTH_ACTIVE === 'true') {
 			LoggerProxy.warn(
 				`JWT auth has been deprecated and will be removed in a future version of n8n. For authentication, please consider User Management. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,

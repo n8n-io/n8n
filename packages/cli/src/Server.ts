@@ -146,7 +146,6 @@ import {
 } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
-import { setupBasicAuth } from './middlewares/basicAuth';
 import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
@@ -349,7 +348,6 @@ export class Server extends AbstractServer {
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.getEnv('security.basicAuth.active'),
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',
@@ -554,11 +552,6 @@ export class Server extends AbstractServer {
 
 		// eslint-disable-next-line no-useless-escape
 		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
-
-		// Check for basic auth credentials if activated
-		if (config.getEnv('security.basicAuth.active')) {
-			setupBasicAuth(this.app, config, authIgnoreRegex);
-		}
 
 		// Check for and validate JWT if configured
 		if (config.getEnv('security.jwtAuth.active')) {

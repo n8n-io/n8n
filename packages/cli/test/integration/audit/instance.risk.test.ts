@@ -244,7 +244,6 @@ test('should report security settings', async () => {
 		},
 		auth: {
 			authExcludeEndpoints: 'none',
-			basicAuthActive: false,
 			jwtAuthActive: false,
 		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },

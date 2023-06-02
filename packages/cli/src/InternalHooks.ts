@@ -74,7 +74,6 @@ export class InternalHooks implements IInternalHooksClass {
 			db_type: diagnosticInfo.databaseType,
 			n8n_version_notifications_enabled: diagnosticInfo.notificationsEnabled,
 			n8n_disable_production_main_process: diagnosticInfo.disableProductionWebhooksOnMainProcess,
-			n8n_basic_auth_active: diagnosticInfo.basicAuthActive,
 			system_info: diagnosticInfo.systemInfo,
 			execution_variables: diagnosticInfo.executionVariables,
 			n8n_deployment_type: diagnosticInfo.deploymentType,

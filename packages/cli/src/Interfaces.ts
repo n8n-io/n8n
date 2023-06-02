@@ -317,7 +317,6 @@ export interface IDiagnosticInfo {
 	databaseType: DatabaseType;
 	notificationsEnabled: boolean;
 	disableProductionWebhooksOnMainProcess: boolean;
-	basicAuthActive: boolean;
 	systemInfo: {
 		os: {
 			type?: string;

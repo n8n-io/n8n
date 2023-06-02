@@ -494,32 +494,6 @@ export const schema = {
 			default: '',
 			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
 		},
-		basicAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_ACTIVE',
-				doc: '[DEPRECATED] If basic auth should be activated for editor and REST-API',
-			},
-			user: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_USER',
-				doc: '[DEPRECATED] The name of the basic auth user',
-			},
-			password: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_PASSWORD',
-				doc: '[DEPRECATED] The password of the basic auth user',
-			},
-			hash: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_HASH',
-				doc: '[DEPRECATED] If password for basic auth is hashed',
-			},
-		},
 		jwtAuth: {
 			active: {
 				format: 'Boolean',
