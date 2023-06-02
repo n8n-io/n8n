@@ -38,6 +38,7 @@ import type {
 } from './types/versionControlledFile';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
+import { VersionControlImportService } from './versionControlImport.service.ee';
 @Service()
 export class VersionControlService {
 	private sshKeyName: string;
@@ -50,6 +51,7 @@ export class VersionControlService {
 		private gitService: VersionControlGitService,
 		private versionControlPreferencesService: VersionControlPreferencesService,
 		private versionControlExportService: VersionControlExportService,
+		private versionControlImportService: VersionControlImportService,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.sshFolder = path.join(userFolder, VERSION_CONTROL_SSH_FOLDER);
@@ -157,7 +159,7 @@ export class VersionControlService {
 
 	async import(options: VersionControllPullOptions): Promise<ImportResult | undefined> {
 		try {
-			return await this.versionControlExportService.importFromWorkFolder(options);
+			return await this.versionControlImportService.importFromWorkFolder(options);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

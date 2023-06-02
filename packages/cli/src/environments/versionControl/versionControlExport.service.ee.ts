@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import path from 'path';
 import {
 	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -17,19 +17,8 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import { Variables } from '@/databases/entities/Variables';
-import type { ImportResult } from './types/importResult';
-import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
-import { TagEntity } from '@/databases/entities/TagEntity';
-import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
-import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
+import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
-import { In } from 'typeorm';
 
 @Service()
 export class VersionControlExportService {
@@ -93,41 +82,41 @@ export class VersionControlExportService {
 		}
 	}
 
-	private async getOwnerGlobalRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'global' },
-		});
+	// private async getOwnerGlobalRole() {
+	// 	const ownerCredentiallRole = await Db.collections.Role.findOne({
+	// 		where: { name: 'owner', scope: 'global' },
+	// 	});
 
-		if (!ownerCredentiallRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
+	// 	if (!ownerCredentiallRole) {
+	// 		throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+	// 	}
 
-		return ownerCredentiallRole;
-	}
+	// 	return ownerCredentiallRole;
+	// }
 
-	private async getOwnerCredentialRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'credential' },
-		});
+	// private async getOwnerCredentialRole() {
+	// 	const ownerCredentiallRole = await Db.collections.Role.findOne({
+	// 		where: { name: 'owner', scope: 'credential' },
+	// 	});
 
-		if (!ownerCredentiallRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
+	// 	if (!ownerCredentiallRole) {
+	// 		throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+	// 	}
 
-		return ownerCredentiallRole;
-	}
+	// 	return ownerCredentiallRole;
+	// }
 
-	private async getOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'workflow' },
-		});
+	// private async getOwnerWorkflowRole() {
+	// 	const ownerWorkflowRole = await Db.collections.Role.findOne({
+	// 		where: { name: 'owner', scope: 'workflow' },
+	// 	});
 
-		if (!ownerWorkflowRole) {
-			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
-		}
+	// 	if (!ownerWorkflowRole) {
+	// 		throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
+	// 	}
 
-		return ownerWorkflowRole;
-	}
+	// 	return ownerWorkflowRole;
+	// }
 
 	async cleanWorkFolder() {
 		try {
@@ -378,324 +367,274 @@ export class VersionControlExportService {
 		}
 	}
 
-	private async importCredentialsFromFiles(
-		userId: string,
-	): Promise<Array<{ id: string; name: string; type: string }>> {
-		const credentialFiles = await glob('*.json', {
-			cwd: this.credentialExportFolder,
-			absolute: true,
-		});
-		const existingCredentials = await Db.collections.Credentials.find();
-		const ownerCredentialRole = await this.getOwnerCredentialRole();
-		const ownerGlobalRole = await this.getOwnerGlobalRole();
-		const encryptionKey = await UserSettings.getEncryptionKey();
-		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
-		await Db.transaction(async (transactionManager) => {
-			importCredentialsResult = await Promise.all(
-				credentialFiles.map(async (file) => {
-					LoggerProxy.debug(`Importing credentials file ${file}`);
-					const credential = jsonParse<ExportableCredential>(
-						await fsReadFile(file, { encoding: 'utf8' }),
-					);
-					const existingCredential = existingCredentials.find(
-						(e) => e.id === credential.id && e.type === credential.type,
-					);
-					const sharedOwner = await Db.collections.SharedCredentials.findOne({
-						select: ['userId'],
-						where: {
-							credentialsId: credential.id,
-							roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
-						},
-					});
+	// private async importCredentialsFromFiles(
+	// 	userId: string,
+	// ): Promise<Array<{ id: string; name: string; type: string }>> {
+	// 	const credentialFiles = await glob('*.json', {
+	// 		cwd: this.credentialExportFolder,
+	// 		absolute: true,
+	// 	});
+	// 	const existingCredentials = await Db.collections.Credentials.find();
+	// 	const ownerCredentialRole = await this.getOwnerCredentialRole();
+	// 	const ownerGlobalRole = await this.getOwnerGlobalRole();
+	// 	const encryptionKey = await UserSettings.getEncryptionKey();
+	// 	let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
+	// 	await Db.transaction(async (transactionManager) => {
+	// 		importCredentialsResult = await Promise.all(
+	// 			credentialFiles.map(async (file) => {
+	// 				LoggerProxy.debug(`Importing credentials file ${file}`);
+	// 				const credential = jsonParse<ExportableCredential>(
+	// 					await fsReadFile(file, { encoding: 'utf8' }),
+	// 				);
+	// 				const existingCredential = existingCredentials.find(
+	// 					(e) => e.id === credential.id && e.type === credential.type,
+	// 				);
+	// 				const sharedOwner = await Db.collections.SharedCredentials.findOne({
+	// 					select: ['userId'],
+	// 					where: {
+	// 						credentialsId: credential.id,
+	// 						roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
+	// 					},
+	// 				});
 
-					const { name, type, data, id } = credential;
-					const newCredentialObject = new Credentials({ id, name }, type, []);
-					if (existingCredential?.data) {
-						newCredentialObject.data = existingCredential.data;
-					} else {
-						newCredentialObject.setData(data, encryptionKey);
-					}
-					if (existingCredential?.nodesAccess) {
-						newCredentialObject.nodesAccess = existingCredential.nodesAccess;
-					}
+	// 				const { name, type, data, id } = credential;
+	// 				const newCredentialObject = new Credentials({ id, name }, type, []);
+	// 				if (existingCredential?.data) {
+	// 					newCredentialObject.data = existingCredential.data;
+	// 				} else {
+	// 					newCredentialObject.setData(data, encryptionKey);
+	// 				}
+	// 				if (existingCredential?.nodesAccess) {
+	// 					newCredentialObject.nodesAccess = existingCredential.nodesAccess;
+	// 				}
 
-					LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
-					await transactionManager.upsert(CredentialsEntity, newCredentialObject, ['id']);
+	// 				LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
+	// 				await transactionManager.upsert(CredentialsEntity, newCredentialObject, ['id']);
 
-					if (!sharedOwner) {
-						const newSharedCredential = new SharedCredentials();
-						newSharedCredential.credentialsId = newCredentialObject.id as string;
-						newSharedCredential.userId = userId;
-						newSharedCredential.roleId = ownerGlobalRole.id;
+	// 				if (!sharedOwner) {
+	// 					const newSharedCredential = new SharedCredentials();
+	// 					newSharedCredential.credentialsId = newCredentialObject.id as string;
+	// 					newSharedCredential.userId = userId;
+	// 					newSharedCredential.roleId = ownerGlobalRole.id;
 
-						await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
-							'credentialsId',
-							'userId',
-						]);
-					}
+	// 					await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
+	// 						'credentialsId',
+	// 						'userId',
+	// 					]);
+	// 				}
 
-					return {
-						id: newCredentialObject.id as string,
-						name: newCredentialObject.name,
-						type: newCredentialObject.type,
-					};
-				}),
-			);
-		});
-		return importCredentialsResult.filter((e) => e !== undefined);
-	}
-
-	private async importVariablesFromFile(valueOverrides?: {
-		[key: string]: string;
-	}): Promise<{ imported: string[]; overrides: string[] }> {
-		const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
-			cwd: this.gitFolder,
-			absolute: true,
-		});
-		if (variablesFile.length > 0) {
-			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
-			const importedVariables = jsonParse<Variables[]>(
-				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
-				{ fallbackValue: [] },
-			);
-			const overriddenKeys = Object.keys(valueOverrides ?? {});
-
-			await Db.transaction(async (transactionManager) => {
-				await Promise.all(
-					importedVariables.map(async (variable) =>
-						transactionManager.upsert(Variables, { ...variable }, ['id']),
-					),
-				);
-			});
-
-			if (valueOverrides) {
-				await Db.transaction(async (transactionManager) => {
-					await Promise.all(
-						overriddenKeys.map(async (key) => {
-							await transactionManager.upsert(Variables, { value: valueOverrides[key] }, ['key']);
-						}),
-					);
-				});
-			}
-			return {
-				imported: importedVariables.map((e) => e.key),
-				overrides: overriddenKeys.map((e) => e),
-			};
-		}
-		return { imported: [], overrides: [] };
-	}
+	// 				return {
+	// 					id: newCredentialObject.id as string,
+	// 					name: newCredentialObject.name,
+	// 					type: newCredentialObject.type,
+	// 				};
+	// 			}),
+	// 		);
+	// 	});
+	// 	return importCredentialsResult.filter((e) => e !== undefined);
+	// }
 
 	// private async importVariablesFromFile(valueOverrides?: {
 	// 	[key: string]: string;
-	// }): Promise<{ added: string[]; changed: string[] }> {
+	// }): Promise<{ imported: string[]; overrides: string[] }> {
 	// 	const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
 	// 		cwd: this.gitFolder,
 	// 		absolute: true,
 	// 	});
 	// 	if (variablesFile.length > 0) {
 	// 		LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
-	// 		const overriddenKeys = Object.keys(valueOverrides ?? {});
 	// 		const importedVariables = jsonParse<Variables[]>(
 	// 			await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
 	// 			{ fallbackValue: [] },
 	// 		);
-	// 		const importedKeys = importedVariables.map((variable) => variable.key);
-	// 		const existingVariables = await Db.collections.Variables.find();
-	// 		const existingKeys = existingVariables.map((variable) => variable.key);
-	// 		const addedKeysFromImport = without(importedKeys, ...existingKeys);
-	// 		const addedKeysFromOverride = without(overriddenKeys, ...existingKeys);
-	// 		const addedVariables = importedVariables.filter((e) => addedKeysFromImport.includes(e.key));
-	// 		addedKeysFromOverride.forEach((key) => {
-	// 			addedVariables.push({
-	// 				key,
-	// 				value: valueOverrides ? valueOverrides[key] : '',
-	// 				type: 'string',
-	// 			} as Variables);
-	// 		});
+	// 		const overriddenKeys = Object.keys(valueOverrides ?? {});
 
-	// 		// first round, add missing variable keys to Db without touching values
-	// 		await Db.transaction(async (transactionManager) => {
-	// 			await Promise.all(
-	// 				addedVariables.map(async (addedVariable) => {
-	// 					await transactionManager.insert(Variables, {
-	// 						...addedVariable,
-	// 						id: undefined,
-	// 					});
-	// 				}),
-	// 			);
-	// 		});
+	// 		for (const variable of importedVariables) {
+	// 			try {
+	// 				await Db.collections.Variables.upsert({ ...variable }, ['id']);
+	// 			} catch (errorUpsert) {
+	// 				if (isUniqueConstraintError(errorUpsert as Error)) {
+	// 					LoggerProxy.debug(`Variable ${variable.key} already exists, updating instead`);
+	// 					try {
+	// 						await Db.collections.Variables.update({ key: variable.key }, { ...variable });
+	// 					} catch (errorUpdate) {
+	// 						LoggerProxy.debug(`Failed to update variable ${variable.key}, skipping`);
+	// 						LoggerProxy.debug((errorUpdate as Error).message);
+	// 					}
+	// 				}
+	// 			}
+	// 		}
 
-	// 		// second round, update values of existing variables if overridden
 	// 		if (valueOverrides) {
 	// 			await Db.transaction(async (transactionManager) => {
 	// 				await Promise.all(
 	// 					overriddenKeys.map(async (key) => {
-	// 						await transactionManager.update(Variables, { key }, { value: valueOverrides[key] });
+	// 						await transactionManager.upsert(Variables, { value: valueOverrides[key] }, ['key']);
 	// 					}),
 	// 				);
 	// 			});
 	// 		}
 	// 		return {
-	// 			added: [...addedKeysFromImport, ...addedKeysFromOverride],
-	// 			changed: without(overriddenKeys, ...addedKeysFromOverride),
+	// 			imported: importedVariables.map((e) => e.key),
+	// 			overrides: overriddenKeys.map((e) => e),
 	// 		};
 	// 	}
-	// 	return { added: [], changed: [] };
+	// 	return { imported: [], overrides: [] };
 	// }
 
-	private async importTagsFromFile() {
-		const tagsFile = await glob(VERSION_CONTROL_TAGS_EXPORT_FILE, {
-			cwd: this.gitFolder,
-			absolute: true,
-		});
-		if (tagsFile.length > 0) {
-			LoggerProxy.debug(`Importing tags from file ${tagsFile[0]}`);
-			const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
-				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
-				{ fallbackValue: { tags: [], mappings: [] } },
-			);
-			const existingWorkflowIds = new Set(
-				(
-					await Db.collections.Workflow.find({
-						select: ['id'],
-					})
-				).map((e) => e.id),
-			);
+	// private async importTagsFromFile() {
+	// 	const tagsFile = await glob(VERSION_CONTROL_TAGS_EXPORT_FILE, {
+	// 		cwd: this.gitFolder,
+	// 		absolute: true,
+	// 	});
+	// 	if (tagsFile.length > 0) {
+	// 		LoggerProxy.debug(`Importing tags from file ${tagsFile[0]}`);
+	// 		const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
+	// 			await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
+	// 			{ fallbackValue: { tags: [], mappings: [] } },
+	// 		);
+	// 		const existingWorkflowIds = new Set(
+	// 			(
+	// 				await Db.collections.Workflow.find({
+	// 					select: ['id'],
+	// 				})
+	// 			).map((e) => e.id),
+	// 		);
 
-			await Db.transaction(async (transactionManager) => {
-				await Promise.all(
-					mappedTags.tags.map(async (tag) => {
-						await transactionManager.upsert(
-							TagEntity,
-							{
-								...tag,
-							},
-							{
-								skipUpdateIfNoValuesChanged: true,
-								conflictPaths: { id: true },
-							},
-						);
-					}),
-				);
-				await Promise.all(
-					mappedTags.mappings.map(async (mapping) => {
-						if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
-						await transactionManager.upsert(
-							WorkflowTagMapping,
-							{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
-							{
-								skipUpdateIfNoValuesChanged: true,
-								conflictPaths: { tagId: true, workflowId: true },
-							},
-						);
-					}),
-				);
-			});
-			return mappedTags;
-		}
-		return { tags: [], mappings: [] };
-	}
+	// 		await Db.transaction(async (transactionManager) => {
+	// 			await Promise.all(
+	// 				mappedTags.tags.map(async (tag) => {
+	// 					await transactionManager.upsert(
+	// 						TagEntity,
+	// 						{
+	// 							...tag,
+	// 						},
+	// 						{
+	// 							skipUpdateIfNoValuesChanged: true,
+	// 							conflictPaths: { id: true },
+	// 						},
+	// 					);
+	// 				}),
+	// 			);
+	// 			await Promise.all(
+	// 				mappedTags.mappings.map(async (mapping) => {
+	// 					if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
+	// 					await transactionManager.upsert(
+	// 						WorkflowTagMapping,
+	// 						{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
+	// 						{
+	// 							skipUpdateIfNoValuesChanged: true,
+	// 							conflictPaths: { tagId: true, workflowId: true },
+	// 						},
+	// 					);
+	// 				}),
+	// 			);
+	// 		});
+	// 		return mappedTags;
+	// 	}
+	// 	return { tags: [], mappings: [] };
+	// }
 
-	private async importWorkflowsFromFiles(
-		userId: string,
-	): Promise<Array<{ id: string; name: string }>> {
-		const workflowFiles = await glob('*.json', {
-			cwd: this.workflowExportFolder,
-			absolute: true,
-		});
+	// private async importWorkflowsFromFiles(
+	// 	userId: string,
+	// ): Promise<Array<{ id: string; name: string }>> {
+	// 	const workflowFiles = await glob('*.json', {
+	// 		cwd: this.workflowExportFolder,
+	// 		absolute: true,
+	// 	});
 
-		const existingWorkflows = await Db.collections.Workflow.find({
-			select: ['id', 'name', 'active', 'versionId'],
-		});
+	// 	const existingWorkflows = await Db.collections.Workflow.find({
+	// 		select: ['id', 'name', 'active', 'versionId'],
+	// 	});
 
-		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
-		const workflowRunner = Container.get(ActiveWorkflowRunner);
+	// 	const ownerWorkflowRole = await this.getOwnerWorkflowRole();
+	// 	const workflowRunner = Container.get(ActiveWorkflowRunner);
 
-		let importWorkflowsResult = new Array<{ id: string; name: string }>();
-		await Db.transaction(async (transactionManager) => {
-			importWorkflowsResult = await Promise.all(
-				workflowFiles.map(async (file) => {
-					LoggerProxy.debug(`Parsing workflow file ${file}`);
-					const importedWorkflow = jsonParse<IWorkflowToImport>(
-						await fsReadFile(file, { encoding: 'utf8' }),
-					);
-					const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-					if (existingWorkflow?.versionId === importedWorkflow.versionId) {
-						LoggerProxy.debug(
-							`Skipping import of workflow ${
-								importedWorkflow.id ?? 'n/a'
-							} - versionId is up to date`,
-						);
-						return {
-							id: importedWorkflow.id ?? 'n/a',
-							name: 'skipped',
-						};
-					}
-					LoggerProxy.debug(`Importing workflow ${importedWorkflow.id ?? 'n/a'}`);
-					importedWorkflow.active = existingWorkflow?.active ?? false;
-					LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-					const upsertResult = await transactionManager.upsert(
-						WorkflowEntity,
-						{ ...importedWorkflow },
-						['id'],
-					);
-					if (upsertResult?.identifiers?.length !== 1) {
-						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
-					}
-					// due to sequential Ids, this may have changed during the insert
-					// TODO: once IDs are unique and we removed autoincrement, remove this
-					const upsertedWorkflowId = upsertResult.identifiers[0].id as string;
-					await transactionManager.upsert(
-						SharedWorkflow,
-						{
-							workflowId: upsertedWorkflowId,
-							userId,
-							roleId: ownerWorkflowRole.id,
-						},
-						['workflowId', 'userId'],
-					);
+	// 	let importWorkflowsResult = new Array<{ id: string; name: string }>();
+	// 	await Db.transaction(async (transactionManager) => {
+	// 		importWorkflowsResult = await Promise.all(
+	// 			workflowFiles.map(async (file) => {
+	// 				LoggerProxy.debug(`Parsing workflow file ${file}`);
+	// 				const importedWorkflow = jsonParse<IWorkflowToImport>(
+	// 					await fsReadFile(file, { encoding: 'utf8' }),
+	// 				);
+	// 				const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
+	// 				if (existingWorkflow?.versionId === importedWorkflow.versionId) {
+	// 					LoggerProxy.debug(
+	// 						`Skipping import of workflow ${
+	// 							importedWorkflow.id ?? 'n/a'
+	// 						} - versionId is up to date`,
+	// 					);
+	// 					return {
+	// 						id: importedWorkflow.id ?? 'n/a',
+	// 						name: 'skipped',
+	// 					};
+	// 				}
+	// 				LoggerProxy.debug(`Importing workflow ${importedWorkflow.id ?? 'n/a'}`);
+	// 				importedWorkflow.active = existingWorkflow?.active ?? false;
+	// 				LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
+	// 				const upsertResult = await transactionManager.upsert(
+	// 					WorkflowEntity,
+	// 					{ ...importedWorkflow },
+	// 					['id'],
+	// 				);
+	// 				if (upsertResult?.identifiers?.length !== 1) {
+	// 					throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
+	// 				}
+	// 				// due to sequential Ids, this may have changed during the insert
+	// 				// TODO: once IDs are unique and we removed autoincrement, remove this
+	// 				const upsertedWorkflowId = upsertResult.identifiers[0].id as string;
+	// 				await transactionManager.upsert(
+	// 					SharedWorkflow,
+	// 					{
+	// 						workflowId: upsertedWorkflowId,
+	// 						userId,
+	// 						roleId: ownerWorkflowRole.id,
+	// 					},
+	// 					['workflowId', 'userId'],
+	// 				);
 
-					if (existingWorkflow?.active) {
-						try {
-							// remove active pre-import workflow
-							LoggerProxy.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-							await workflowRunner.remove(existingWorkflow.id);
-							// try activating the imported workflow
-							LoggerProxy.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-							await workflowRunner.add(existingWorkflow.id, 'activate');
-						} catch (error) {
-							LoggerProxy.error(
-								`Failed to activate workflow ${existingWorkflow.id}`,
-								error as Error,
-							);
-						}
-					}
+	// 				if (existingWorkflow?.active) {
+	// 					try {
+	// 						// remove active pre-import workflow
+	// 						LoggerProxy.debug(`Deactivating workflow id ${existingWorkflow.id}`);
+	// 						await workflowRunner.remove(existingWorkflow.id);
+	// 						// try activating the imported workflow
+	// 						LoggerProxy.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+	// 						await workflowRunner.add(existingWorkflow.id, 'activate');
+	// 					} catch (error) {
+	// 						LoggerProxy.error(
+	// 							`Failed to activate workflow ${existingWorkflow.id}`,
+	// 							error as Error,
+	// 						);
+	// 					}
+	// 				}
 
-					return {
-						id: importedWorkflow.id ?? 'unknown',
-						name: file,
-					};
-				}),
-			);
-		});
-		return importWorkflowsResult;
-	}
+	// 				return {
+	// 					id: importedWorkflow.id ?? 'unknown',
+	// 					name: file,
+	// 				};
+	// 			}),
+	// 		);
+	// 	});
+	// 	return importWorkflowsResult;
+	// }
 
-	async importFromWorkFolder(options: VersionControllPullOptions): Promise<ImportResult> {
-		try {
-			const importedVariables = await this.importVariablesFromFile(options.variables);
-			const importedCredentials = await this.importCredentialsFromFiles(options.userId);
-			const importWorkflows = await this.importWorkflowsFromFiles(options.userId);
-			const importTags = await this.importTagsFromFile();
+	// async importFromWorkFolder(options: VersionControllPullOptions): Promise<ImportResult> {
+	// 	try {
+	// 		const importedVariables = await this.importVariablesFromFile(options.variables);
+	// 		const importedCredentials = await this.importCredentialsFromFiles(options.userId);
+	// 		const importWorkflows = await this.importWorkflowsFromFiles(options.userId);
+	// 		const importTags = await this.importTagsFromFile();
 
-			return {
-				variables: importedVariables,
-				credentials: importedCredentials,
-				workflows: importWorkflows,
-				tags: importTags,
-			};
-		} catch (error) {
-			throw Error(`Failed to import workflows from work folder: ${(error as Error).message}`);
-		}
-	}
+	// 		return {
+	// 			variables: importedVariables,
+	// 			credentials: importedCredentials,
+	// 			workflows: importWorkflows,
+	// 			tags: importTags,
+	// 		};
+	// 	} catch (error) {
+	// 		throw Error(`Failed to import workflows from work folder: ${(error as Error).message}`);
+	// 	}
+	// }
 }

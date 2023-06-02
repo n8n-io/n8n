@@ -1,10 +1,11 @@
-import type { Variables } from '@/databases/entities/Variables';
+import { Variables } from '@/databases/entities/Variables';
 import { collections } from '@/Db';
 import { InternalHooks } from '@/InternalHooks';
 import Container from 'typedi';
 import { canCreateNewVariable } from './enviromentHelpers';
 import { VariablesService } from './variables.service';
 import { generateNanoId } from '../../databases/utils/generators';
+import * as Db from '@/Db';
 
 export class VariablesLicenseError extends Error {}
 export class VariablesValidationError extends Error {}
@@ -42,8 +43,23 @@ export class EEVariablesService extends VariablesService {
 	static async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
 
-		await collections.Variables.update(id, variable);
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		return (await this.get(id))!;
+		const existingVariable = await this.get(id);
+		if (!existingVariable) {
+			throw new Error('Variable not found');
+		} else {
+			if (existingVariable.key !== variable.key) {
+				const newVariable = new Variables(variable);
+				await Db.transaction(async (transactionManager) => {
+					await transactionManager.save(Variables, newVariable);
+					await transactionManager.delete(Variables, id);
+				});
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				return (await this.get(newVariable.id))!;
+			} else {
+				await collections.Variables.update(id, variable);
+			}
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			return (await this.get(id))!;
+		}
 	}
 }
