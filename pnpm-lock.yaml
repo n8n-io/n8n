@@ -900,7 +900,7 @@ importers:
         version: 5.13.2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -948,7 +948,7 @@ importers:
         version: 1.0.1
       pinia:
         specifier: ^2.0.22
-        version: 2.0.23(vue@2.7.14)
+        version: 2.0.23(typescript@5.0.3)(vue@2.7.14)
       prettier:
         specifier: ^2.8.3
         version: 2.8.3
@@ -5813,7 +5813,7 @@ packages:
     peerDependencies:
       pinia: '>=2.0.19'
     dependencies:
-      pinia: 2.0.23(vue@2.7.14)
+      pinia: 2.0.23(typescript@5.0.3)(vue@2.7.14)
       vue-demi: 0.13.11(vue@2.7.14)
     transitivePeerDependencies:
       - '@vue/composition-api'
@@ -9076,7 +9076,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -9667,14 +9667,6 @@ packages:
     dependencies:
       '@babel/runtime': 7.19.4
       is-retry-allowed: 2.2.0
-    dev: false
-
-  /axios@0.21.4:
-    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
-    dependencies:
-      follow-redirects: 1.15.2
-    transitivePeerDependencies:
-      - debug
     dev: false
 
   /axios@0.21.4(debug@4.3.2):
@@ -11646,17 +11638,6 @@ packages:
     dependencies:
       ms: 2.1.2
 
-  /debug@4.3.4:
-    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-    dependencies:
-      ms: 2.1.2
-
   /debug@4.3.4(supports-color@8.1.1):
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
@@ -13460,16 +13441,6 @@ packages:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
     dev: false
 
-  /follow-redirects@1.15.2:
-    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-    dev: false
-
   /follow-redirects@1.15.2(debug@3.2.7):
     resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
     engines: {node: '>=4.0'}
@@ -14456,7 +14427,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -18634,7 +18605,7 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /pinia@2.0.23(vue@2.7.14):
+  /pinia@2.0.23(typescript@5.0.3)(vue@2.7.14):
     resolution: {integrity: sha512-N15hFf4o5STrxpNrib1IEb1GOArvPYf1zPvQVRGOO1G1d74Ak0J0lVyalX/SmrzdT4Q0nlEFjbURsmBmIGUR5Q==}
     peerDependencies:
       '@vue/composition-api': ^1.4.0
@@ -18647,6 +18618,7 @@ packages:
         optional: true
     dependencies:
       '@vue/devtools-api': 6.4.5
+      typescript: 5.0.3
       vue: 2.7.14
       vue-demi: 0.13.11(vue@2.7.14)
 
@@ -21990,7 +21962,6 @@ packages:
     resolution: {integrity: sha512-xv8mOEDnigb/tN9PSMTwSEqAnUvkoXMQlicOb0IUVDBSQCgBSaAAROUZYy2IcUy5qU6XajK5jjjO7TMWqBTKZA==}
     engines: {node: '>=12.20'}
     hasBin: true
-    dev: true
 
   /uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
