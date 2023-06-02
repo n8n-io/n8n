@@ -79,11 +79,9 @@
 							/>
 						</td>
 						<td>
-							<span class="ph-no-capture" @click.stop="displayExecution(execution)"
-								><a href="#" :class="$style.link">{{
-									execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
-								}}</a></span
-							>
+							<span class="ph-no-capture">{{
+								execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
+							}}</span>
 						</td>
 						<td>
 							<span>{{ formatDate(execution.startedAt) }}</span>
@@ -1193,10 +1191,5 @@ export default defineComponent({
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
-}
-
-.link {
-	color: var(--color-text-light);
-	text-decoration: underline;
 }
 </style>
