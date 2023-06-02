@@ -225,10 +225,10 @@ export const schema = {
 
 	executions: {
 		// By default workflows get always executed in the main process.
-		// TODO: remove this and all usage of `executions.process`
+		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
 		process: {
 			doc: 'In what process workflows should be executed.',
-			format: ['main'] as const,
+			format: ['main', 'own'] as const,
 			default: 'main',
 			env: 'EXECUTIONS_PROCESS',
 		},
