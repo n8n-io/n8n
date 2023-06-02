@@ -8,7 +8,7 @@ COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node packages ./packages
 COPY --chown=node:node patches ./patches
 
-RUN apk add --update libc6-compat jq
+RUN apk add --update jq
 RUN corepack enable && corepack prepare --activate
 USER node
 
