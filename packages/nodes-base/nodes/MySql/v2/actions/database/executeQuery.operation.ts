@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { getResolvables, updateDisplayOptions } from '../../../../../utils/utilities';
 
 import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
@@ -59,7 +59,11 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const rawQuery = this.getNodeParameter('query', i) as string;
+		let rawQuery = this.getNodeParameter('query', i) as string;
+
+		for (const resolvable of getResolvables(rawQuery)) {
+			rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+		}
 
 		const options = this.getNodeParameter('options', i, {});
 
