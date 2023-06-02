@@ -1002,7 +1002,7 @@ export class AwsS3V2 implements INodeType {
 								`${bucketName}.s3`,
 								'PUT',
 								`${path}${fileName}`,
-								{ body },
+								body,
 								qs,
 								headers,
 								{},
