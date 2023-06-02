@@ -29,10 +29,7 @@ tmpl.brackets.set('{{ }}');
 
 // Make sure that error get forwarded
 tmpl.tmpl.errorHandler = (error: Error) => {
-	if (isExpressionError(error)) {
-		if (error.context.failExecution) throw error;
-		if (IS_FRONTEND && error.clientOnly) throw error;
-	}
+	if (isExpressionError(error)) throw error;
 };
 
 export class Expression {
@@ -313,10 +310,7 @@ export class Expression {
 		try {
 			return tmpl.tmpl(expression, data);
 		} catch (error) {
-			if (isExpressionError(error)) {
-				if (error.context.failExecution) throw error;
-				if (IS_FRONTEND && error.clientOnly) throw error;
-			}
+			if (isExpressionError(error)) throw error;
 
 			if (isSyntaxError(error)) throw new Error('invalid syntax');
 
@@ -328,6 +322,7 @@ export class Expression {
 				throw new Error(match.groups.msg);
 			}
 		}
+
 		return null;
 	}
 

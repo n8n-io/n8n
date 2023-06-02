@@ -173,7 +173,18 @@ describe('Expression', () => {
 		const expression = new Expression(workflow);
 
 		const evaluate = (value: string, data: INodeExecutionData[]) => {
-			return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', '', {});
+			const itemIndex = data.length === 0 ? -1 : 0;
+			return expression.getParameterValue(
+				value,
+				null,
+				0,
+				itemIndex,
+				'node',
+				data,
+				'manual',
+				'',
+				{},
+			);
 		};
 
 		for (const t of baseFixtures) {
