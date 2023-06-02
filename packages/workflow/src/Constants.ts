@@ -1,6 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version } = require('../package.json') as { version: string };
+import fs from 'node:fs';
 import { major } from 'semver';
+import { jsonParse } from './utils';
+
+const { version } = jsonParse<{ version: string }>(fs.readFileSync('../package.json', 'utf-8'));
 
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
