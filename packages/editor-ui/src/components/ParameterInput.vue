@@ -85,9 +85,13 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
+					v-if="
+						editorType === 'codeNodeEditor' &&
+						isCodeNode(node) &&
+						getEditorContent('codeNodeEditor') !== null
+					"
 					:mode="node.parameters.mode"
-					:value="node.parameters.jsCode"
+					:value="getEditorContent('codeNodeEditor') || undefined"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -96,8 +100,8 @@
 				/>
 
 				<html-editor
-					v-else-if="editorType === 'htmlEditor'"
-					:html="node.parameters.html"
+					v-else-if="editorType === 'htmlEditor' && getEditorContent('htmlEditor') !== null"
+					:html="getEditorContent('htmlEditor')"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -106,8 +110,8 @@
 				/>
 
 				<sql-editor
-					v-else-if="editorType === 'sqlEditor'"
-					:query="node.parameters.query"
+					v-else-if="editorType === 'sqlEditor' && getEditorContent('sqlEditor') !== null"
+					:query="getEditorContent('sqlEditor')"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -820,6 +824,10 @@ export default defineComponent({
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
 		},
+		nodeType(): INodeTypeDescription | null {
+			if (!this.node) return null;
+			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+		},
 	},
 	methods: {
 		isRemoteParameterOption(option: INodePropertyOptions) {
@@ -1134,6 +1142,18 @@ export default defineComponent({
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
 				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
+		},
+		getEditorContent(editorType: string): string | null {
+			if (!this.nodeType) {
+				return null;
+			}
+			const sqlEditorProp = this.nodeType.properties.find(
+				(p) => p.typeOptions?.editor === editorType,
+			);
+			if (!sqlEditorProp) {
+				return null;
+			}
+			return this.node.parameters[sqlEditorProp.name] as string;
 		},
 	},
 	updated() {
