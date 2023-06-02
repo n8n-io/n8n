@@ -4,7 +4,7 @@ import type { User } from '@db/entities/User';
 import { License } from '@/License';
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
-import { VersionControlService } from '../../../src/environments/versionControl/versionControl.service.ee';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

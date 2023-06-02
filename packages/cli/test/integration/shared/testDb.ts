@@ -19,7 +19,7 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleRepository } from '@db/repositories';
 import type { ICredentialsDb } from '@/Interfaces';
 
@@ -405,8 +405,7 @@ export async function createManyWorkflows(
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
 	const { active, name, nodes, connections } = attributes;
 
-	const workflow = await Db.collections.Workflow.save({
-		id: generateNanoId(),
+	const workflowEntity = new WorkflowEntity({
 		active: active ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
@@ -422,6 +421,8 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		connections: connections ?? {},
 		...attributes,
 	});
+
+	const workflow = await Db.collections.Workflow.save(workflowEntity);
 
 	if (user) {
 		await Db.collections.SharedWorkflow.save({

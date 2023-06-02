@@ -50,7 +50,7 @@ EEVariablesController.post(
 );
 
 EEVariablesController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: VariablesRequest.Update) => {
 		const id = req.params.id;
 		if (req.user.globalRole.name !== 'owner') {

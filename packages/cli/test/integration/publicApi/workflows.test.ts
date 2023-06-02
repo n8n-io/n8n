@@ -10,7 +10,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-import { generateNanoId } from '../../../src/databases/utils/generators';
+// import { generateNanoId } from '@/databases/utils/generators';
 
 let app: Application;
 let workflowOwnerRole: Role;

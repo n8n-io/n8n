@@ -27,13 +27,13 @@ import { generateNanoId } from '../utils/generators';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	// constructor(data?: Partial<WorkflowEntity>) {
-	// 	super();
-	// 	Object.assign(this, data);
-	// 	if (!this.id) {
-	// 		this.id = generateNanoId();
-	// 	}
-	// }
+	constructor(data?: Partial<WorkflowEntity>) {
+		super();
+		Object.assign(this, data);
+		if (!this.id) {
+			this.id = generateNanoId();
+		}
+	}
 
 	@BeforeInsert()
 	nanoId() {
