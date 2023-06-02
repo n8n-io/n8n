@@ -20,4 +20,3 @@ packages/**/.turbo
 cypress/videos/*
 cypress/screenshots/*
 *.swp
-package.copy.json

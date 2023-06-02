@@ -30,7 +30,6 @@ import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
-import { IS_V1_RELEASE } from './Constants';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -593,7 +592,7 @@ export class WorkflowDataProxy {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: IS_V1_RELEASE,
+							failExecution: true,
 						});
 					}
 

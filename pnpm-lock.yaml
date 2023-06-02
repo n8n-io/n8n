@@ -1651,9 +1651,6 @@ importers:
       recast:
         specifier: ^0.21.5
         version: 0.21.5
-      semver:
-        specifier: ^7.3.8
-        version: 7.3.8
       title-case:
         specifier: ^3.0.3
         version: 3.0.3
@@ -1691,9 +1688,6 @@ importers:
       '@types/luxon':
         specifier: ^3.2.0
         version: 3.2.0
-      '@types/semver':
-        specifier: ^7.5.0
-        version: 7.5.0
       '@types/xml2js':
         specifier: ^0.4.11
         version: 0.4.11

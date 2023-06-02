@@ -22,7 +22,6 @@ import type { Workflow } from './Workflow';
 import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
-import { IS_V1_RELEASE } from './Constants';
 import { isExpressionError, IS_FRONTEND, isSyntaxError, isTypeError } from './utils';
 
 // Set it to use double curly brackets instead of single ones
@@ -319,10 +318,7 @@ export class Expression {
 				if (IS_FRONTEND && error.clientOnly) throw error;
 			}
 
-			if (isSyntaxError(error)) {
-				if (!IS_V1_RELEASE && IS_FRONTEND) throw new Error('invalid syntax');
-				if (IS_V1_RELEASE) throw new Error('invalid syntax');
-			}
+			if (isSyntaxError(error)) throw new Error('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
