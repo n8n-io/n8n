@@ -165,6 +165,7 @@ jobs:
           spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
