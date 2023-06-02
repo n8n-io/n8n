@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure Turbo cache
+        uses: dtinth/setup-github-actions-caching-for-turbo@v1
+
       - name: Start MySQL & Postgres
         uses: isbang/compose-action@v1.3.2
         with:

@@ -23,6 +23,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure Turbo cache
+        uses: dtinth/setup-github-actions-caching-for-turbo@v1
+
       - name: Build
         run: pnpm build
 
