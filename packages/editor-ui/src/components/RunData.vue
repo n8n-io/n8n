@@ -1066,14 +1066,14 @@ export default defineComponent({
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.inputData)) {
+			if (!this.isValidPinDataSize(this.rawInputData)) {
 				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 				return;
 			}
 
 			this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
+			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({

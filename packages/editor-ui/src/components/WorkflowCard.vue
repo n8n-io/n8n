@@ -123,7 +123,7 @@ export default defineComponent({
 				versionId: '',
 			}),
 		},
-		readonly: {
+		readOnly: {
 			type: Boolean,
 			default: false,
 		},
@@ -137,7 +137,7 @@ export default defineComponent({
 			return getWorkflowPermissions(this.currentUser, this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
-			return [
+			const actions = [
 				{
 					label: this.$locale.baseText('workflows.item.open'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
@@ -146,20 +146,23 @@ export default defineComponent({
 					label: this.$locale.baseText('workflows.item.share'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
 				},
-				{
+			];
+
+			if (!this.readOnly) {
+				actions.push({
 					label: this.$locale.baseText('workflows.item.duplicate'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
-				},
-			].concat(
-				this.workflowPermissions.delete
-					? [
-							{
-								label: this.$locale.baseText('workflows.item.delete'),
-								value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-							},
-					  ]
-					: [],
-			);
+				});
+			}
+
+			if (this.workflowPermissions.delete && !this.readOnly) {
+				actions.push({
+					label: this.$locale.baseText('workflows.item.delete'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+				});
+			}
+
+			return actions;
 		},
 		formattedCreatedAtDate(): string {
 			const currentYear = new Date().getFullYear();

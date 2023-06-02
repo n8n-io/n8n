@@ -1447,12 +1447,43 @@ export type VersionControlPreferences = {
 	repositoryUrl: string;
 	authorName: string;
 	authorEmail: string;
-	currentBranch: string;
+	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	currentBranch?: string;
 };
+
+export interface VersionControlStatus {
+	ahead: number;
+	behind: number;
+	conflicted: string[];
+	created: string[];
+	current: string;
+	deleted: string[];
+	detached: boolean;
+	files: Array<{
+		path: string;
+		index: string;
+		working_dir: string;
+	}>;
+	modified: string[];
+	not_added: string[];
+	renamed: string[];
+	staged: string[];
+	tracking: null;
+}
+
+export interface VersionControlAggregatedFile {
+	conflict: boolean;
+	file: string;
+	id: string;
+	location: string;
+	name: string;
+	status: string;
+	type: string;
+}
 
 export declare namespace Cloud {
 	export interface PlanData {

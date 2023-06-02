@@ -1,7 +1,7 @@
 ---
 openapi: 3.0.0
 info:
-  title: n8n Public API
+  title: n8n Public API11
   description: n8n Public API
   termsOfService: https://n8n.io/legal/terms
   contact:
@@ -24,35 +24,39 @@ tags:
     description: Operations about workflows
   - name: Credential
     description: Operations about credentials
+  - name: VersionControl
+    description: Operations about version control
 
 paths:
   /audit:
-    $ref: './handlers/audit/spec/paths/audit.yml'
+    $ref: "./handlers/audit/spec/paths/audit.yml"
   /credentials:
-    $ref: './handlers/credentials/spec/paths/credentials.yml'
+    $ref: "./handlers/credentials/spec/paths/credentials.yml"
   /credentials/{id}:
-    $ref: './handlers/credentials/spec/paths/credentials.id.yml'
+    $ref: "./handlers/credentials/spec/paths/credentials.id.yml"
   /credentials/schema/{credentialTypeName}:
-    $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
+    $ref: "./handlers/credentials/spec/paths/credentials.schema.id.yml"
   /executions:
-    $ref: './handlers/executions/spec/paths/executions.yml'
+    $ref: "./handlers/executions/spec/paths/executions.yml"
   /executions/{id}:
-    $ref: './handlers/executions/spec/paths/executions.id.yml'
+    $ref: "./handlers/executions/spec/paths/executions.id.yml"
   /workflows:
-    $ref: './handlers/workflows/spec/paths/workflows.yml'
+    $ref: "./handlers/workflows/spec/paths/workflows.yml"
   /workflows/{id}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
+    $ref: "./handlers/workflows/spec/paths/workflows.id.yml"
   /workflows/{id}/activate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
+    $ref: "./handlers/workflows/spec/paths/workflows.id.activate.yml"
   /workflows/{id}/deactivate:
-    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+    $ref: "./handlers/workflows/spec/paths/workflows.id.deactivate.yml"
+  /version-control/pull:
+    $ref: "./handlers/versionControl/spec/paths/versionControl.yml"
 components:
   schemas:
-    $ref: './shared/spec/schemas/_index.yml'
+    $ref: "./shared/spec/schemas/_index.yml"
   responses:
-    $ref: './shared/spec/responses/_index.yml'
+    $ref: "./shared/spec/responses/_index.yml"
   parameters:
-    $ref: './shared/spec/parameters/_index.yml'
+    $ref: "./shared/spec/parameters/_index.yml"
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
