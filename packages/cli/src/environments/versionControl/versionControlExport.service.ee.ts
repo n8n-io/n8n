@@ -12,7 +12,6 @@ import glob from 'fast-glob';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { writeFile as fsWriteFile, readFile as fsReadFile, rm as fsRm } from 'fs/promises';
-import { VersionControlGitService } from './versionControlGit.service.ee';
 import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
@@ -23,13 +22,11 @@ import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import { Variables } from '@/databases/entities/Variables';
 import type { ImportResult } from './types/importResult';
 import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
-import config from '@/config';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
 import { TagEntity } from '@/databases/entities/TagEntity';
 import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
-import without from 'lodash.without';
 import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 import { In } from 'typeorm';
@@ -42,7 +39,7 @@ export class VersionControlExportService {
 
 	private credentialExportFolder: string;
 
-	constructor(private gitService: VersionControlGitService) {
+	constructor() {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, VERSION_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -284,6 +281,14 @@ export class VersionControlExportService {
 		try {
 			versionControlFoldersExistCheck([this.gitFolder]);
 			const tags = await Db.collections.Tag.find();
+			// do not export empty tags
+			if (tags.length === 0) {
+				return {
+					count: 0,
+					folder: this.gitFolder,
+					files: [],
+				};
+			}
 			const mappings = await Db.collections.WorkflowTagMapping.find();
 			const fileName = this.getTagsPath();
 			await fsWriteFile(
@@ -429,12 +434,6 @@ export class VersionControlExportService {
 						]);
 					}
 
-					// TODO: once IDs are unique, remove this
-					if (config.getEnv('database.type') === 'postgresdb') {
-						await transactionManager.query(
-							"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
-						);
-					}
 					return {
 						id: newCredentialObject.id as string,
 						name: newCredentialObject.name,
@@ -448,61 +447,101 @@ export class VersionControlExportService {
 
 	private async importVariablesFromFile(valueOverrides?: {
 		[key: string]: string;
-	}): Promise<{ added: string[]; changed: string[] }> {
+	}): Promise<{ imported: string[]; overrides: string[] }> {
 		const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
 		});
 		if (variablesFile.length > 0) {
 			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
-			const overriddenKeys = Object.keys(valueOverrides ?? {});
 			const importedVariables = jsonParse<Variables[]>(
 				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: [] },
 			);
-			const importedKeys = importedVariables.map((variable) => variable.key);
-			const existingVariables = await Db.collections.Variables.find();
-			const existingKeys = existingVariables.map((variable) => variable.key);
-			const addedKeysFromImport = without(importedKeys, ...existingKeys);
-			const addedKeysFromOverride = without(overriddenKeys, ...existingKeys);
-			const addedVariables = importedVariables.filter((e) => addedKeysFromImport.includes(e.key));
-			addedKeysFromOverride.forEach((key) => {
-				addedVariables.push({
-					key,
-					value: valueOverrides ? valueOverrides[key] : '',
-					type: 'string',
-				} as Variables);
-			});
+			const overriddenKeys = Object.keys(valueOverrides ?? {});
 
-			// first round, add missing variable keys to Db without touching values
 			await Db.transaction(async (transactionManager) => {
 				await Promise.all(
-					addedVariables.map(async (addedVariable) => {
-						await transactionManager.insert(Variables, {
-							...addedVariable,
-							id: undefined,
-						});
-					}),
+					importedVariables.map(async (variable) =>
+						transactionManager.upsert(Variables, { ...variable }, ['id']),
+					),
 				);
 			});
 
-			// second round, update values of existing variables if overridden
 			if (valueOverrides) {
 				await Db.transaction(async (transactionManager) => {
 					await Promise.all(
 						overriddenKeys.map(async (key) => {
-							await transactionManager.update(Variables, { key }, { value: valueOverrides[key] });
+							await transactionManager.upsert(Variables, { value: valueOverrides[key] }, ['key']);
 						}),
 					);
 				});
 			}
 			return {
-				added: [...addedKeysFromImport, ...addedKeysFromOverride],
-				changed: without(overriddenKeys, ...addedKeysFromOverride),
+				imported: importedVariables.map((e) => e.key),
+				overrides: overriddenKeys.map((e) => e),
 			};
 		}
-		return { added: [], changed: [] };
+		return { imported: [], overrides: [] };
 	}
+
+	// private async importVariablesFromFile(valueOverrides?: {
+	// 	[key: string]: string;
+	// }): Promise<{ added: string[]; changed: string[] }> {
+	// 	const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
+	// 		cwd: this.gitFolder,
+	// 		absolute: true,
+	// 	});
+	// 	if (variablesFile.length > 0) {
+	// 		LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
+	// 		const overriddenKeys = Object.keys(valueOverrides ?? {});
+	// 		const importedVariables = jsonParse<Variables[]>(
+	// 			await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
+	// 			{ fallbackValue: [] },
+	// 		);
+	// 		const importedKeys = importedVariables.map((variable) => variable.key);
+	// 		const existingVariables = await Db.collections.Variables.find();
+	// 		const existingKeys = existingVariables.map((variable) => variable.key);
+	// 		const addedKeysFromImport = without(importedKeys, ...existingKeys);
+	// 		const addedKeysFromOverride = without(overriddenKeys, ...existingKeys);
+	// 		const addedVariables = importedVariables.filter((e) => addedKeysFromImport.includes(e.key));
+	// 		addedKeysFromOverride.forEach((key) => {
+	// 			addedVariables.push({
+	// 				key,
+	// 				value: valueOverrides ? valueOverrides[key] : '',
+	// 				type: 'string',
+	// 			} as Variables);
+	// 		});
+
+	// 		// first round, add missing variable keys to Db without touching values
+	// 		await Db.transaction(async (transactionManager) => {
+	// 			await Promise.all(
+	// 				addedVariables.map(async (addedVariable) => {
+	// 					await transactionManager.insert(Variables, {
+	// 						...addedVariable,
+	// 						id: undefined,
+	// 					});
+	// 				}),
+	// 			);
+	// 		});
+
+	// 		// second round, update values of existing variables if overridden
+	// 		if (valueOverrides) {
+	// 			await Db.transaction(async (transactionManager) => {
+	// 				await Promise.all(
+	// 					overriddenKeys.map(async (key) => {
+	// 						await transactionManager.update(Variables, { key }, { value: valueOverrides[key] });
+	// 					}),
+	// 				);
+	// 			});
+	// 		}
+	// 		return {
+	// 			added: [...addedKeysFromImport, ...addedKeysFromOverride],
+	// 			changed: without(overriddenKeys, ...addedKeysFromOverride),
+	// 		};
+	// 	}
+	// 	return { added: [], changed: [] };
+	// }
 
 	private async importTagsFromFile() {
 		const tagsFile = await glob(VERSION_CONTROL_TAGS_EXPORT_FILE, {
@@ -573,18 +612,6 @@ export class VersionControlExportService {
 		const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 		let importWorkflowsResult = new Array<{ id: string; name: string }>();
-		// TODO: once IDs are unique and we removed autoincrement, remove this
-		if (config.getEnv('database.type') === 'postgresdb') {
-			await Db.transaction(async (transactionManager) => {
-				await transactionManager.query(
-					'ALTER SEQUENCE IF EXISTS "workflow_entity_id_seq" RESTART;',
-				);
-				await transactionManager.query(
-					"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity) );",
-					// "SELECT setval('workflow_entity_id_seq', (SELECT MAX(v) FROM (VALUES (1), ((SELECT MAX(id) from workflow_entity))) as value(v)));",
-				);
-			});
-		}
 		await Db.transaction(async (transactionManager) => {
 			importWorkflowsResult = await Promise.all(
 				workflowFiles.map(async (file) => {

@@ -85,11 +85,11 @@ ALTER TABLE ${tablePrefix}execution_entity DROP COLUMN "tmp_workflowId";
 ALTER TABLE ${tablePrefix}execution_entity ADD CONSTRAINT "fk_execution_entity_workflow_id" FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE ON UPDATE NO ACTION;
 
 ALTER TABLE ${tablePrefix}workflow_entity DROP CONSTRAINT IF EXISTS "pk_eded7d72664448da7745d551207";
-ALTER TABLE ${tablePrefix}workflow_entity ADD PRIMARY KEY (id);
 ALTER TABLE ${tablePrefix}tag_entity DROP CONSTRAINT IF EXISTS "PK_7a50a9b74ae6855c0dcaee25052";
-ALTER TABLE ${tablePrefix}tag_entity ADD PRIMARY KEY (id);
 ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN tmp_id;
 ALTER TABLE ${tablePrefix}tag_entity DROP COLUMN tmp_id;
+ALTER TABLE ${tablePrefix}workflow_entity ADD PRIMARY KEY (id);
+ALTER TABLE ${tablePrefix}tag_entity ADD PRIMARY KEY (id);
 
 ALTER TABLE ${tablePrefix}credentials_entity RENAME COLUMN id to tmp_id;
 ALTER TABLE ${tablePrefix}credentials_entity ADD COLUMN id varchar(36);
@@ -112,8 +112,8 @@ ALTER TABLE ${tablePrefix}shared_credentials ADD CONSTRAINT "fk_shared_credentia
 ALTER TABLE ${tablePrefix}shared_credentials DROP COLUMN "tmp_credentialsId";
 
 ALTER TABLE ${tablePrefix}credentials_entity DROP CONSTRAINT IF EXISTS "pk_814c3d3c36e8a27fa8edb761b0e";
-ALTER TABLE ${tablePrefix}credentials_entity ADD PRIMARY KEY (id);
 ALTER TABLE ${tablePrefix}credentials_entity DROP COLUMN tmp_id;
+ALTER TABLE ${tablePrefix}credentials_entity ADD PRIMARY KEY (id);
 
 ALTER TABLE ${tablePrefix}variables RENAME COLUMN id to tmp_id;
 ALTER TABLE ${tablePrefix}variables ADD COLUMN id varchar(36);
@@ -123,8 +123,8 @@ ALTER TABLE ${tablePrefix}variables ALTER COLUMN tmp_id DROP DEFAULT;
 DROP SEQUENCE IF EXISTS variables_id_seq;
 CREATE UNIQUE INDEX "pk_variables_id" ON ${tablePrefix}variables ("id");
 ALTER TABLE ${tablePrefix}variables DROP CONSTRAINT IF EXISTS "variables_pkey";
-ALTER TABLE ${tablePrefix}variables ADD PRIMARY KEY (id);
 ALTER TABLE ${tablePrefix}variables DROP COLUMN tmp_id;
+ALTER TABLE ${tablePrefix}variables ADD PRIMARY KEY (id);
 		`);
 	}
 
