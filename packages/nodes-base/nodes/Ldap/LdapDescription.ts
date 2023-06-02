@@ -89,6 +89,23 @@ export const ldapFields: INodeProperties[] = [
 		},
 		description: 'The distinguished name of the entry to modify',
 	},
+	{
+		displayName: 'DN',
+		name: 'dn',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. ou=users,dc=n8n,dc=io',
+		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: false,
+		},
+		displayOptions: {
+			show: {
+				operation: ['update'],
+			},
+		},
+		description: 'The distinguished name of the entry to update',
+	},
 	// ----------------------------------
 	//         Compare
 	// ----------------------------------
