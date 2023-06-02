@@ -95,6 +95,12 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
+		if (process.env.N8N_USER_MANAGEMENT_DISABLED === 'true') {
+			LoggerProxy.warn(
+				`User Management will be mandatory in a future version of n8n. Please set up the instance owner. To learn more: ${USER_MANAGEMENT_DOCS_URL}`,
+			);
+		}
+
 		this.instanceId = this.userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(this.instanceId);
 		await Container.get(InternalHooks).init(this.instanceId);
