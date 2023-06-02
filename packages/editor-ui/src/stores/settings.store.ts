@@ -67,7 +67,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	}),
 	getters: {
 		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeature): boolean => true;
+			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise[feature];
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
