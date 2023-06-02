@@ -2,6 +2,7 @@ import type {
 	FieldType,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
@@ -17,15 +18,29 @@ type AirtableSchema = {
 
 type TypesMap = Partial<Record<FieldType, string[]>>;
 
+const airtableReadOnlyFields = [
+	'autoNumber',
+	'button',
+	'count',
+	'createdBy',
+	'createdTime',
+	'formula',
+	'lastModifiedBy',
+	'lastModifiedTime',
+	'lookup',
+	'rollup',
+	'externalSyncSource',
+];
+
 const airtableTypesMap: TypesMap = {
-	string: ['singleLineText', 'multilineText'],
-	number: [],
+	string: ['singleLineText', 'multilineText', 'richText', 'email', 'phoneNumber', 'url'],
+	number: ['rating', 'percent', 'number', 'duration'],
 	boolean: ['checkbox'],
-	dateTime: ['createdTime'],
+	dateTime: ['dateTime', 'date'],
 	time: [],
 	object: ['multipleAttachments'],
 	options: ['singleSelect'],
-	array: [],
+	array: ['multipleSelects'],
 };
 
 function mapForeignType(foreignType: string, typesMap: TypesMap): FieldType {
@@ -67,7 +82,16 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 	const fields: ResourceMapperField[] = [];
 
 	for (const field of tableData.fields as AirtableSchema[]) {
+		if (airtableReadOnlyFields.includes(field.name)) continue;
+
 		const type = mapForeignType(field.type, airtableTypesMap);
+		const options =
+			type === 'options' && field?.options?.choices
+				? ((field.options.choices as IDataObject[]).map((choice) => ({
+						name: choice.name,
+						value: choice.name,
+				  })) as INodePropertyOptions[])
+				: undefined;
 		fields.push({
 			id: field.name,
 			displayName: field.name,
@@ -75,6 +99,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 			defaultMatch: false,
 			display: true,
 			type,
+			options,
 		});
 	}
 
