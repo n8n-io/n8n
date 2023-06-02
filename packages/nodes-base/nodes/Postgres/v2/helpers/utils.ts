@@ -1,9 +1,10 @@
-import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INode, INodeExecutionData, INodePropertyOptions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	ColumnInfo,
 	ConstructExecutionMetaData,
+	EnumInfo,
 	PgpClient,
 	PgpDatabase,
 	QueryMode,
@@ -12,6 +13,8 @@ import type {
 	SortRule,
 	WhereClause,
 } from './interfaces';
+
+const ENUM_VALUES_REGEX = /\{(.+?)\}/gm;
 
 export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[] {
 	if (!Array.isArray(data)) {
@@ -324,11 +327,58 @@ export async function getTableSchema(
 	table: string,
 ): Promise<ColumnInfo[]> {
 	const columns = await db.any(
-		'SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+		'SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
 		[schema, table],
 	);
 
 	return columns;
+}
+
+export async function uniqueColumns(db: PgpDatabase, table: string) {
+	// Using the modified query from https://wiki.postgresql.org/wiki/Retrieve_primary_key_columns
+	const unique = await db.any(
+		`
+		SELECT DISTINCT a.attname
+			FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+		WHERE i.indrelid = quote_ident($1)::regclass
+			AND (i.indisprimary OR i.indisunique);
+		`,
+		[table],
+	);
+	return unique as IDataObject[];
+}
+
+export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
+	const enumsData = await db.any(
+		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
+	);
+	return enumsData as EnumInfo[];
+}
+
+export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
+	return enumInfo.reduce((acc, current) => {
+		if (current.typname === enumName) {
+			acc.push({ name: current.enumlabel, value: current.enumlabel });
+		}
+		return acc;
+	}, [] as INodePropertyOptions[]);
+}
+
+export async function doesRowExist(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	values: string[],
+): Promise<boolean> {
+	const where = [];
+	for (let i = 3; i < 3 + values.length; i += 2) {
+		where.push(`$${i}:name=$${i + 1}`);
+	}
+	const exists = await db.any(
+		`SELECT EXISTS(SELECT 1 FROM $1:name.$2:name WHERE ${where.join(' AND ')})`,
+		[schema, table, ...values],
+	);
+	return exists[0].exists;
 }
 
 export function checkItemAgainstSchema(

@@ -2,6 +2,7 @@ export type IMenuItem = {
 	id: string;
 	label: string;
 	icon?: string;
+	secondaryIcon?: { name: string; size?: 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' };
 	customIconSize?: 'medium' | 'small';
 	available?: boolean;
 	position?: 'top' | 'bottom';

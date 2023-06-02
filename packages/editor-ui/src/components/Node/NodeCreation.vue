@@ -51,7 +51,7 @@ import { useUIStore } from '@/stores/ui.store';
 export default defineComponent({
 	name: 'node-creation',
 	components: {
-		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+		NodeCreator: async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 	},
 	props: {
 		nodeViewScale: {

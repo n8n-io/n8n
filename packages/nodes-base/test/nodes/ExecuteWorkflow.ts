@@ -13,11 +13,13 @@ export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INo
 		active: false,
 		nodeTypes,
 	});
-
 	const waitPromise = await createDeferredPromise<IRun>();
 	const nodeExecutionOrder: string[] = [];
-	const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise, nodeExecutionOrder);
-
+	const additionalData = Helpers.WorkflowExecuteAdditionalData(
+		waitPromise,
+		nodeExecutionOrder,
+		testData,
+	);
 	const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 	const executionData = await workflowExecute.run(workflowInstance);

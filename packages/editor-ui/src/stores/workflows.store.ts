@@ -248,6 +248,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return acc;
 			}, 0);
 		},
+		shouldReplaceInputDataWithPinData(): boolean {
+			return !this.activeWorkflowExecution || this.activeWorkflowExecution?.mode === 'manual';
+		},
 		executedNode(): string | undefined {
 			return this.workflowExecutionData ? this.workflowExecutionData.executedNode : undefined;
 		},
@@ -362,7 +365,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Returns a workflow from a given URL
 		async getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
 				url,
 			});
 		},
@@ -1062,7 +1065,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				`/executions/${id}/retry`,
@@ -1073,7 +1076,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Deletes executions
 		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/executions/delete',
@@ -1109,7 +1112,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
 				'/executions-current',
@@ -1155,7 +1158,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/workflows/run',
@@ -1165,7 +1168,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'DELETE',
 				`/test-webhook/${workflowId}`,
@@ -1174,7 +1177,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				`/executions-current/${executionId}/stop`,
@@ -1206,7 +1209,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 			const rootStore = useRootStore();
-			return await getExecutionData(rootStore.getRestApiContext, executionId);
+			return getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 
 		deleteExecution(execution: IExecutionsSummary): void {
@@ -1227,7 +1230,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/eventbus/execution/' + id);
 		},
 		// Binary data
-		async getBinaryUrl(dataPath, mode, fileName, mimeType): string {
+		getBinaryUrl(
+			dataPath: string,
+			mode: 'view' | 'download',
+			fileName: string,
+			mimeType: string,
+		): string {
 			const rootStore = useRootStore();
 			let restUrl = rootStore.getRestUrl;
 			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;

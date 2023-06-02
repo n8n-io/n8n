@@ -15,10 +15,13 @@
 /* eslint-disable prefer-destructuring */
 import type express from 'express';
 import get from 'lodash.get';
+import stream from 'stream';
+import { promisify } from 'util';
 
 import { BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
 import type {
+	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -58,6 +61,8 @@ import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
+
+const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -418,13 +423,17 @@ export async function executeWebhook(
 						return;
 					}
 
-					if (Buffer.isBuffer(response.body)) {
+					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
+					if (binaryData?.id) {
+						res.header(response.headers);
+						const stream = NodeExecuteFunctions.getBinaryStream(binaryData.id);
+						void pipeline(stream, res).then(() =>
+							responseCallback(null, { noWebhookResponse: true }),
+						);
+					} else if (Buffer.isBuffer(response.body)) {
 						res.header(response.headers);
 						res.end(response.body);
-
-						responseCallback(null, {
-							noWebhookResponse: true,
-						});
+						responseCallback(null, { noWebhookResponse: true });
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node

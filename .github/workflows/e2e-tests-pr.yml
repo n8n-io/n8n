@@ -48,5 +48,5 @@ jobs:
         run: exit 0
 
       - name: Fail job if run-e2e-tests failed
-        if: needs.run-e2e-tests.result == 'failure'
+        if: ${{ github.event.review.state != 'approved' || needs.run-e2e-tests.result == 'failure' }}
         run: exit 1

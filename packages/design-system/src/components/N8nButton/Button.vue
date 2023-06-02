@@ -38,7 +38,7 @@ export default defineComponent({
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
+				['xmini', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		loading: {
 			type: Boolean,
@@ -98,7 +98,7 @@ export default defineComponent({
 				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
 				`${this.block ? ` ${this.$style.block}` : ''}` +
 				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
+				`${this.icon || this.loading ? ` ${this.$style.withIcon}` : ''}` +
 				`${this.square ? ` ${this.$style.square}` : ''}`
 			);
 		},
@@ -278,6 +278,17 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  * Sizes
  */
 
+.xmini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-3xs);
+	--button-font-size: var(--font-size-3xs);
+
+	&.square {
+		height: 22px;
+		width: 22px;
+	}
+}
+
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);
 	--button-padding-horizontal: var(--spacing-2xs);
@@ -453,9 +464,16 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-active-background-color: transparent;
 }
 
+.withIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+}
+
 .icon {
 	display: inline-flex;
 	justify-content: center;
+	align-items: center;
 
 	svg {
 		display: block;

@@ -11,11 +11,12 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'Card',
+	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,

@@ -37,12 +37,13 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type { ITemplatesCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateFilters',
+	mixins: [genericHelpers],
 	props: {
 		sortOnPopulate: {
 			type: Boolean,

@@ -94,7 +94,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="list"
                     data-path="[0].list"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.list }}"
+                    data-value="{{ $('Set').item.json.list }}"
                   >
                     "list"
                   </span>
@@ -143,7 +143,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-name="list[0]"
                       data-path="[0].list[0]"
                       data-target="mappable"
-                      data-value="{{ $node.Set.json.list[0] }}"
+                      data-value="{{ $('Set').item.json.list[0] }}"
                     >
                       1
                     </span>
@@ -185,7 +185,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-name="list[1]"
                       data-path="[0].list[1]"
                       data-target="mappable"
-                      data-value="{{ $node.Set.json.list[1] }}"
+                      data-value="{{ $('Set').item.json.list[1] }}"
                     >
                       2
                     </span>
@@ -227,7 +227,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       data-name="list[2]"
                       data-path="[0].list[2]"
                       data-target="mappable"
-                      data-value="{{ $node.Set.json.list[2] }}"
+                      data-value="{{ $('Set').item.json.list[2] }}"
                     >
                       3
                     </span>
@@ -292,7 +292,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="record"
                     data-path="[0].record"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.record }}"
+                    data-value="{{ $('Set').item.json.record }}"
                   >
                     "record"
                   </span>
@@ -339,7 +339,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="name"
                     data-path="[0].record.name"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.record.name }}"
+                    data-value="{{ $('Set').item.json.record.name }}"
                   >
                     "name"
                   </span>
@@ -417,7 +417,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="myNumber"
                     data-path="[0].myNumber"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.myNumber }}"
+                    data-value="{{ $('Set').item.json.myNumber }}"
                   >
                     "myNumber"
                   </span>
@@ -467,7 +467,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="myStringNumber"
                     data-path="[0].myStringNumber"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.myStringNumber }}"
+                    data-value="{{ $('Set').item.json.myStringNumber }}"
                   >
                     "myStringNumber"
                   </span>
@@ -517,7 +517,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="myStringText"
                     data-path="[0].myStringText"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.myStringText }}"
+                    data-value="{{ $('Set').item.json.myStringText }}"
                   >
                     "myStringText"
                   </span>
@@ -567,7 +567,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="nil"
                     data-path="[0].nil"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.nil }}"
+                    data-value="{{ $('Set').item.json.nil }}"
                   >
                     "nil"
                   </span>
@@ -617,7 +617,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                     data-name="d"
                     data-path="[0].d"
                     data-target="mappable"
-                    data-value="{{ $node.Set.json.d }}"
+                    data-value="{{ $('Set').item.json.d }}"
                   >
                     "d"
                   </span>

@@ -42,10 +42,10 @@ new Vue({
 }).$mount('#app');
 
 router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 	const userStore = useUsersStore();
 	if (userStore.currentUser && to.name && to.name !== VIEWS.SIGNOUT && !to.name.includes('Modal')) {
-		userStore.showUserActivationSurveyModal();
+		void userStore.showUserActivationSurveyModal();
 	}
 });
 

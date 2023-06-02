@@ -157,6 +157,19 @@ export class NDV extends BasePage {
 			this.getters.resourceLocatorModeSelector(paramName).click();
 			this.getters.resourceLocatorModeSelector(paramName).find('li').last().click();
 			this.getters.resourceLocatorInput(paramName).type(value);
-		}
+		},
+		validateExpressionPreview: (paramName: string, value: string) => {
+			this.getters.parameterExpressionPreview(paramName).find('span').should('include.html', asEncodedHTML(value));
+		},
 	};
 }
+
+function asEncodedHTML(str: string): string {
+	return String(str)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/ /g, '&nbsp;');
+}
+

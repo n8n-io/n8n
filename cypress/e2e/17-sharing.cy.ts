@@ -52,7 +52,6 @@ const users = [
 
 describe('Sharing', () => {
 	before(() => {
-		cy.resetAll();
 		cy.setupOwner(instanceOwner);
 	});
 
@@ -161,7 +160,7 @@ describe('Sharing', () => {
 
 		cy.waitForLoad();
 		cy.visit(workflowsPage.url);
-		workflowsPage.getters.workflowCard('Workflow W2').click();
+		workflowsPage.getters.workflowCard('Workflow W2').click('top');
 		workflowPage.actions.executeWorkflow();
 	});
 

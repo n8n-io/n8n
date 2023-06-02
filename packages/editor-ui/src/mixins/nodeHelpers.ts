@@ -36,11 +36,12 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export const nodeHelpers = Vue.extend({
+export const nodeHelpers = defineComponent({
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -48,6 +49,8 @@ export const nodeHelpers = Vue.extend({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
+			useUsersStore,
+			useRootStore,
 		),
 	},
 	methods: {
@@ -355,9 +358,10 @@ export const nodeHelpers = Vue.extend({
 					}
 
 					if (nameMatches.length === 0) {
+						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
-						if (!isCredentialUsedInWorkflow) {
+						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
@@ -522,6 +526,9 @@ export const nodeHelpers = Vue.extend({
 					data as INode,
 					nodeType.subtitle,
 					'internal',
+					this.rootStore.timezone,
+					{},
+					undefined,
 					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				) as string | undefined;
 			}

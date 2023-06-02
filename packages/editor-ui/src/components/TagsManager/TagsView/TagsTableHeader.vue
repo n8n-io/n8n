@@ -28,8 +28,8 @@
 </template>
 
 <script lang="ts">
-import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { defineComponent } from 'vue';
+import { MAX_TAG_NAME_LENGTH } from '@/constants';
 
 export default defineComponent({
 	props: {
