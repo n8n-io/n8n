@@ -729,7 +729,7 @@ export const schema = {
 
 	userManagement: {
 		disabled: {
-			doc: 'Disable user management and hide it completely.',
+			doc: '[DEPRECATED] Disable user management and hide it completely.',
 			format: Boolean,
 			default: false,
 			env: 'N8N_USER_MANAGEMENT_DISABLED',
