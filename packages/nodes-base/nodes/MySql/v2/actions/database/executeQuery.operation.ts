@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			sqlDialect: 'mysql',
+			sqlDialect: 'MySQL',
 		},
 		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
 	},

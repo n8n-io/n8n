@@ -68,7 +68,7 @@ export class TimescaleDb implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					sqlDialect: 'postgres',
+					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
 					show: {

@@ -36,7 +36,12 @@ import {
 	PostgreSQL,
 	schemaCompletion,
 	StandardSQL,
+	MariaSQL,
+	SQLite,
+	Cassandra,
+	PLSQL,
 } from './sql-parser-skipping-whitespace';
+import type { SQLDialect as SQLDialectType } from './sql-parser-skipping-whitespace';
 import type { SQLDialect } from 'n8n-workflow';
 
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
@@ -49,18 +54,21 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import type { TargetItem } from '@/Interface';
 
 const SQL_DIALECTS = {
-	standard: StandardSQL,
-	mssql: MSSQL,
-	mysql: MySQL,
-	postgres: PostgreSQL,
+	StandardSQL,
+	PostgreSQL,
+	MySQL,
+	MariaSQL,
+	MSSQL,
+	SQLite,
+	Cassandra,
+	PLSQL,
 } as const;
 
-// @TODO: support configs, dialects, etc.
-function sqlLanguageSupport() {
-	return new LanguageSupport(StandardSQL.language, [
+function sqlLanguageSupport(dialect: SQLDialectType) {
+	return new LanguageSupport(dialect.language, [
 		schemaCompletion({}),
-		keywordCompletion(StandardSQL, true),
-		n8nCompletionSources().map((source) => StandardSQL.language.data.of(source)),
+		keywordCompletion(dialect, true),
+		n8nCompletionSources().map((source) => dialect.language.data.of(source)),
 	]);
 }
 
@@ -77,7 +85,7 @@ export default defineComponent({
 		},
 		dialect: {
 			type: String as PropType<SQLDialect>,
-			default: 'standard',
+			default: 'StandardSQL',
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -109,9 +117,10 @@ export default defineComponent({
 	},
 
 	mounted() {
-		const dialect = SQL_DIALECTS[this.dialect as SQLDialect] ?? SQL_DIALECTS.standard;
+		const dialect: SQLDialectType =
+			SQL_DIALECTS[this.dialect as keyof typeof SQL_DIALECTS] ?? SQL_DIALECTS.StandardSQL;
 		const extensions: Extension[] = [
-			sqlLanguageSupport(),
+			sqlLanguageSupport(dialect),
 			expressionInputHandler(),
 			codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
 			lineNumbers(),
