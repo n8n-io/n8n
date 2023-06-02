@@ -1361,7 +1361,7 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(requestOAuth2);
 				} else {
 					// bearerAuth, queryAuth, headerAuth, digestAuth, none
-					const request = this.helpers.request(requestOptions);
+					const request = this.helpers.httpRequest(requestOptions);
 					request.catch(() => {});
 					requestPromises.push(request);
 				}
@@ -1404,9 +1404,7 @@ export class HttpRequestV3 implements INodeType {
 					continue;
 				}
 			}
-
 			response = response.value;
-
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			let responseFormat = this.getNodeParameter(
@@ -1435,6 +1433,8 @@ export class HttpRequestV3 implements INodeType {
 						data = await this.helpers
 							.binaryToBuffer(response.body as Buffer | Readable)
 							.then((body) => body.toString());
+					} else {
+						data = JSON.stringify(response.body);
 					}
 					response.body = jsonParse(data, {
 						...(neverError
