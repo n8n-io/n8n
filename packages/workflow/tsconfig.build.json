@@ -7,6 +7,6 @@
 		"noEmit": false,
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "./package.json"],
 	"exclude": ["test/**"]
 }
