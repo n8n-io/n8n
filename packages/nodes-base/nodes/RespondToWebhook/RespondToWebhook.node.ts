@@ -244,16 +244,24 @@ export class RespondToWebhook implements INodeType {
 									{
 										displayName: 'Secure', // The value the user sees in the UI
 										name: 'secure', // The name used to reference the element UI within the code
-										type: 'boolean',
-										default: true,
-										description: 'Whether to mark the cookie to be used with HTTPS only',
-									},
-									{
-										displayName: 'Same-Site', // The value the user sees in the UI
-										name: 'sameSite', // The name used to reference the element UI within the code
-										type: 'boolean',
-										default: true,
-										description: 'Whether to set Same-Site enforcement',
+										type: 'options',
+										required: true,
+										options: [
+											{
+												name: 'None',
+												value: 'none',
+											},
+											{
+												name: 'Lax',
+												value: 'lax',
+											},
+											{
+												name: 'Strict',
+												value: 'strict',
+											},
+										],
+										default: 'lax',
+										description: 'Sets value of the “SameSite” Set-Cookie attribute',
 									},
 								],
 							},
@@ -298,7 +306,7 @@ export class RespondToWebhook implements INodeType {
 					httpOnly: boolean;
 					path?: string;
 					secure: boolean;
-					sameSite: boolean;
+					sameSite: string;
 				};
 				if (typeof cookie.name !== 'string') {
 					cookie.name = cookie?.name?.toString();
@@ -340,8 +348,8 @@ export class RespondToWebhook implements INodeType {
 				} else {
 					cookieOptions.secure = cookie.secure;
 				}
-				if (typeof cookie.sameSite !== 'boolean') {
-					throw new NodeOperationError(this.getNode(), 'Same-site is not a boolean value');
+				if (typeof cookie.sameSite !== 'string') {
+					cookie.sameSite = cookie?.sameSite?.toString();
 				} else {
 					cookieOptions.sameSite = cookie.sameSite;
 				}

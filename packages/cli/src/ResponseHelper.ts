@@ -128,7 +128,7 @@ export function sendSuccessResponse(
 				httpOnly: boolean;
 				path?: string;
 				secure: boolean;
-				sameSite: boolean;
+				sameSite: 'lax' | 'strict' | 'none';
 			};
 
 			if (cookieOptions?.expires) {
