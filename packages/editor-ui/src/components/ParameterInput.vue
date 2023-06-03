@@ -513,10 +513,10 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		dependentParametersValues() {
+		async dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			void this.loadRemoteParameterOptions();
+			await this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
