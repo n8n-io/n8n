@@ -129,7 +129,12 @@
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import type { INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	NodeParameterValue,
+} from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -236,7 +241,7 @@ export default defineComponent({
 			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
 		},
 		mainNodeAuthField(): INodeProperties | null {
-			return getMainAuthField(this.nodeType || undefined);
+			return getMainAuthField(this.nodeType || null);
 		},
 	},
 	methods: {
