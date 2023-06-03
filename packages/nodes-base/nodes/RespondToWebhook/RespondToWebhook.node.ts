@@ -244,6 +244,13 @@ export class RespondToWebhook implements INodeType {
 									{
 										displayName: 'Secure', // The value the user sees in the UI
 										name: 'secure', // The name used to reference the element UI within the code
+										type: 'boolean',
+										default: true,
+										description: 'Whether to mark the cookie to be used with HTTPS only',
+									},
+									{
+										displayName: 'Same-Site', // The value the user sees in the UI
+										name: 'sameSite', // The name used to reference the element UI within the code
 										type: 'options',
 										required: true,
 										options: [
@@ -300,6 +307,7 @@ export class RespondToWebhook implements INodeType {
 				i++
 			) {
 				const cookie = ((options.responseCookies as IDataObject).entries as IDataObject[])[i];
+				console.log(cookie);
 				const cookieOptions = {} as {
 					domain?: string;
 					expires?: string;
@@ -344,6 +352,7 @@ export class RespondToWebhook implements INodeType {
 					cookieOptions.path = cookie.path;
 				}
 				if (typeof cookie.secure !== 'boolean') {
+					//console.log(cookie.secure);
 					throw new NodeOperationError(this.getNode(), 'Secure is not a boolean value');
 				} else {
 					cookieOptions.secure = cookie.secure;
