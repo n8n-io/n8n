@@ -437,9 +437,11 @@ export async function executeWebhook(
 					} else {
 						// TODO: This probably needs some more changes depending on the options on the
 						//       Webhook Response node
+						//console.log('WH:' + JSON.stringify(response));
 						responseCallback(null, {
 							data: response.body as IDataObject,
 							headers: response.headers,
+							cookies: response.cookies,
 							responseCode: response.statusCode,
 						});
 					}

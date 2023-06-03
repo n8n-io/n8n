@@ -604,6 +604,7 @@ export interface IPushDataConsoleMessage {
 export interface IResponseCallbackData {
 	data?: IDataObject | IDataObject[];
 	headers?: object;
+	cookies?: object;
 	noWebhookResponse?: boolean;
 	responseCode?: number;
 }

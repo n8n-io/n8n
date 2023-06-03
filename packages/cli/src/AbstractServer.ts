@@ -278,8 +278,15 @@ export abstract class AbstractServer {
 				// Nothing else to do as the response got already sent
 				return;
 			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
+			//console.log(response);
+			sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+				response.cookies,
+			);
 		});
 	}
 
@@ -315,8 +322,14 @@ export abstract class AbstractServer {
 				// Nothing else to do as the response got already sent
 				return;
 			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
+			sendSuccessResponse(
+				res,
+				response.data,
+				true,
+				response.responseCode,
+				response.headers,
+				response.cookies,
+			);
 		});
 	}
 
@@ -372,7 +385,6 @@ export abstract class AbstractServer {
 				// Nothing else to do as the response got already sent
 				return;
 			}
-
 			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
 		});
 

@@ -104,13 +104,39 @@ export function sendSuccessResponse(
 	raw?: boolean,
 	responseCode?: number,
 	responseHeader?: object,
+	responseCookie?: object,
 ) {
+	//console.log('cookie:' + responseCookie);
 	if (responseCode !== undefined) {
 		res.status(responseCode);
 	}
 
 	if (responseHeader) {
 		res.header(responseHeader);
+	}
+
+	if (responseCookie) {
+		for (let i = 0; i < Object.keys(responseCookie).length; i++) {
+			const cookieName: string = Object.keys(responseCookie)[i];
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const cookieValue: string = (responseCookie as any)[cookieName].value as string;
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			const cookieOptions = (responseCookie as any)[cookieName].options as {
+				domain?: string;
+				expires?: Date;
+				httpOnly: boolean;
+				path?: string;
+				secure: boolean;
+				sameSite: boolean;
+			};
+
+			if (cookieOptions?.expires) {
+				cookieOptions.expires = new Date(cookieOptions.expires);
+			}
+			//console.log(cookieName + ' - ' + cookieValue + ' - ' + JSON.stringify(cookieOptions));
+			res.cookie(cookieName, cookieValue, cookieOptions);
+		}
 	}
 
 	if (raw === true) {

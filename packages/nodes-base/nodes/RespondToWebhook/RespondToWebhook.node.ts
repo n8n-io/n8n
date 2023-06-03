@@ -181,6 +181,84 @@ export class RespondToWebhook implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Cookies',
+						name: 'responseCookies',
+						placeholder: 'Add Cookies',
+						description: 'Add cookies to the webhook response',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'entries',
+								displayName: 'Entries',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										required: true,
+										default: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										required: true,
+										default: '',
+										description: 'Value is string encoded',
+									},
+									{
+										displayName: 'Domain', // The value the user sees in the UI
+										name: 'domain', // The name used to reference the element UI within the code
+										type: 'string',
+										default: '',
+										description:
+											'Domain name for the cookie. Defaults to the domain name of the webhook.',
+									},
+									{
+										displayName: 'Expires', // The value the user sees in the UI
+										name: 'expires', // The name used to reference the element UI within the code
+										type: 'dateTime',
+										default: '',
+										description:
+											'Expiry date of the cookie in GMT. If not specified or set to 0, creates a session cookie.',
+									},
+									{
+										displayName: 'HTTP Only', // The value the user sees in the UI
+										name: 'httpOnly', // The name used to reference the element UI within the code
+										type: 'boolean',
+										default: true,
+										description: 'Whether to allow client side javascript to access this cookie',
+									},
+									{
+										displayName: 'Path', // The value the user sees in the UI
+										name: 'path', // The name used to reference the element UI within the code
+										type: 'string',
+										default: '/',
+										description: 'Path for the cookie',
+									},
+									{
+										displayName: 'Secure', // The value the user sees in the UI
+										name: 'secure', // The name used to reference the element UI within the code
+										type: 'boolean',
+										default: true,
+										description: 'Whether to mark the cookie to be used with HTTPS only',
+									},
+									{
+										displayName: 'Same-Site', // The value the user sees in the UI
+										name: 'sameSite', // The name used to reference the element UI within the code
+										type: 'boolean',
+										default: true,
+										description: 'Whether to set Same-Site enforcement',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],
@@ -200,7 +278,87 @@ export class RespondToWebhook implements INodeType {
 				}
 				headers[header.name?.toLowerCase() as string] = header.value?.toString();
 			}
+			if (Object.keys(headers).includes('set-cookie')) {
+				throw new NodeOperationError(this.getNode(), 'Use cookies option to set cookies.');
+			}
 		}
+
+		const cookies = {} as IDataObject;
+		//console.log(options.responseCookies);
+		if (options.responseCookies) {
+			for (
+				let i = 0;
+				i < ((options.responseCookies as IDataObject).entries as IDataObject[]).length;
+				i++
+			) {
+				const cookie = ((options.responseCookies as IDataObject).entries as IDataObject[])[i];
+				const cookieOptions = {} as {
+					domain?: string;
+					expires?: string;
+					httpOnly: boolean;
+					path?: string;
+					secure: boolean;
+					sameSite: boolean;
+				};
+				if (typeof cookie.name !== 'string') {
+					cookie.name = cookie?.name?.toString();
+				}
+				if (!cookie.name) {
+					throw new NodeOperationError(this.getNode(), 'Cookie name is not set.');
+				}
+				if (typeof cookie.value !== 'string') {
+					cookie.value = cookie?.value?.toString();
+				}
+				if (!cookie.value) {
+					throw new NodeOperationError(this.getNode(), 'Cookie value is not set.');
+				}
+				if (typeof cookie.domain !== 'string') {
+					cookie.domain = cookie?.domain?.toString();
+				}
+				if (cookie.domain) {
+					cookieOptions.domain = cookie.domain;
+				}
+				if (typeof cookie.expires !== 'string') {
+					cookie.expires = cookie?.expires?.toString();
+				}
+				if (cookie.expires) {
+					cookieOptions.expires = cookie.expires;
+				}
+				if (typeof cookie.httpOnly !== 'boolean') {
+					throw new NodeOperationError(this.getNode(), 'Http Only is not a boolean value');
+				} else {
+					cookieOptions.httpOnly = cookie.httpOnly;
+				}
+				if (typeof cookie.path !== 'string') {
+					cookie.path = cookie?.path?.toString();
+				}
+				if (cookie.path) {
+					cookieOptions.path = cookie.path;
+				}
+				if (typeof cookie.secure !== 'boolean') {
+					throw new NodeOperationError(this.getNode(), 'Secure is not a boolean value');
+				} else {
+					cookieOptions.secure = cookie.secure;
+				}
+				if (typeof cookie.sameSite !== 'boolean') {
+					throw new NodeOperationError(this.getNode(), 'Same-site is not a boolean value');
+				} else {
+					cookieOptions.sameSite = cookie.sameSite;
+				}
+				interface CookiesValueOptions {
+					value: string;
+					options: object;
+				}
+
+				const cookiesValueOptions: CookiesValueOptions = {
+					value: cookie.value,
+					options: cookieOptions,
+				};
+
+				cookies[cookie.name] = cookiesValueOptions;
+			}
+		}
+		//console.log(cookies);
 
 		let responseBody: IN8nHttpResponse | Readable;
 		if (respondWith === 'json') {
@@ -256,9 +414,10 @@ export class RespondToWebhook implements INodeType {
 		const response: IN8nHttpFullResponse = {
 			body: responseBody,
 			headers,
+			cookies,
 			statusCode: (options.responseCode as number) || 200,
 		};
-
+		//console.log(response);
 		this.sendResponse(response);
 
 		return this.prepareOutputData(items);
