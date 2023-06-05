@@ -177,11 +177,12 @@ export class VersionControlImportService {
 
 	private async importVariablesFromFile(valueOverrides?: {
 		[key: string]: string;
-	}): Promise<{ imported: string[]; overrides: string[] }> {
+	}): Promise<{ imported: string[] }> {
 		const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
 			cwd: this.gitFolder,
 			absolute: true,
 		});
+		const result: { imported: string[] } = { imported: [] };
 		if (variablesFile.length > 0) {
 			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
 			const importedVariables = jsonParse<Variables[]>(
@@ -191,6 +192,10 @@ export class VersionControlImportService {
 			const overriddenKeys = Object.keys(valueOverrides ?? {});
 
 			for (const variable of importedVariables) {
+				if (overriddenKeys.includes(variable.key) && valueOverrides) {
+					variable.value = valueOverrides[variable.key];
+					overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
+				}
 				try {
 					await Db.collections.Variables.upsert({ ...variable }, ['id']);
 				} catch (errorUpsert) {
@@ -203,24 +208,21 @@ export class VersionControlImportService {
 							LoggerProxy.debug((errorUpdate as Error).message);
 						}
 					}
+				} finally {
+					result.imported.push(variable.key);
 				}
 			}
 
-			if (valueOverrides) {
-				await Db.transaction(async (transactionManager) => {
-					await Promise.all(
-						overriddenKeys.map(async (key) => {
-							await transactionManager.upsert(Variables, { value: valueOverrides[key] }, ['key']);
-						}),
-					);
-				});
+			// add remaining overrides as new variables
+			if (overriddenKeys.length > 0 && valueOverrides) {
+				for (const key of overriddenKeys) {
+					result.imported.push(key);
+					const newVariable = new Variables({ key, value: valueOverrides[key] });
+					await Db.collections.Variables.save(newVariable);
+				}
 			}
-			return {
-				imported: importedVariables.map((e) => e.key),
-				overrides: overriddenKeys.map((e) => e),
-			};
 		}
-		return { imported: [], overrides: [] };
+		return result;
 	}
 
 	private async importTagsFromFile() {
