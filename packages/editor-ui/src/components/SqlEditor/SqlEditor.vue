@@ -12,10 +12,9 @@
 </template>
 
 <script lang="ts">
-import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo } from '@codemirror/commands';
+import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
 import { foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
@@ -42,8 +41,6 @@ import {
 	PLSQL,
 } from './sql-parser-skipping-whitespace';
 import type { SQLDialect as SQLDialectType } from './sql-parser-skipping-whitespace';
-import type { SQLDialect } from 'n8n-workflow';
-
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
@@ -97,10 +94,28 @@ export default defineComponent({
 			editor: {} as EditorView,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 			isFocused: false,
-			skipSegments: ['Statement', 'CompositeIdentifier'],
+			skipSegments: ['Statement', 'CompositeIdentifier', 'Parens'],
 		};
 	},
+	watch: {
+		ndvInputData() {
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.query,
+				},
+			});
+
+			setTimeout(() => {
+				this.editor?.contentDOM.blur();
+			});
+		},
+	},
 	computed: {
+		ndvInputData(): object {
+			return this.ndvStore.ndvInputData;
+		},
 		doc(): string {
 			return this.editor.state.doc.toString();
 		},
@@ -142,7 +157,11 @@ export default defineComponent({
 		} else {
 			extensions.push(
 				history(),
-				keymap.of([indentWithTab, { key: 'Mod-Shift-z', run: redo }]),
+				keymap.of([
+					indentWithTab,
+					{ key: 'Mod-Shift-z', run: redo },
+					{ key: 'Mod-/', run: toggleComment },
+				]),
 				autocompletion(),
 				indentOnInput(),
 				highlightActiveLine(),

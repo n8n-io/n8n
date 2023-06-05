@@ -96,7 +96,7 @@ export const expressionManager = defineComponent({
 				rawSegments.push({
 					from: node.from,
 					to: node.to,
-					text: this.editor.state.sliceDoc(node.from, node.to),
+					text,
 					token: node.type.name === 'Resolvable' ? 'Resolvable' : 'Plaintext',
 				});
 			});
