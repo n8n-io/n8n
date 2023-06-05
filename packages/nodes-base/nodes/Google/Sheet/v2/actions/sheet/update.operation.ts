@@ -36,6 +36,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -61,6 +62,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -77,6 +79,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['update'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -96,6 +99,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['update'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -142,6 +146,40 @@ export const description: SheetProperties = [
 		],
 	},
 	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'update',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['update'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -175,6 +213,8 @@ export async function execute(
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 
+	const nodeVersion = this.getNode().typeVersion;
+
 	let headerRow = 0;
 	let firstDataRow = 1;
 
@@ -201,8 +241,18 @@ export async function execute(
 	columnNames = sheetData[headerRow];
 	const newColumns = new Set<string>();
 
-	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
-	const keyIndex = columnNames.indexOf(columnToMatchOn);
+	const columnsToMatchOn: string[] =
+		nodeVersion < 4
+			? [this.getNodeParameter('columnToMatchOn', 0) as string]
+			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+
+	// TODO: Add support for multiple columns to match on in the next overhaul
+	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
 	const columnValues = await sheet.getColumnValues(
 		range,
@@ -214,12 +264,9 @@ export async function execute(
 
 	const updateData: ISheetUpdateData[] = [];
 
-	for (let i = 0; i < items.length; i++) {
-		const dataMode = this.getNodeParameter('dataMode', i) as
-			| 'defineBelow'
-			| 'autoMapInputData'
-			| 'nothing';
+	const mappedValues: IDataObject[] = [];
 
+	for (let i = 0; i < items.length; i++) {
 		if (dataMode === 'nothing') continue;
 
 		const data: IDataObject[] = [];
@@ -249,33 +296,54 @@ export async function execute(
 				data.push(items[i].json);
 			}
 		} else {
-			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
+			const valueToMatchOn =
+				nodeVersion < 4
+					? (this.getNodeParameter('valueToMatchOn', i) as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
 
-			const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
-			if (!valuesToSend?.length) {
-				throw new NodeOperationError(
-					this.getNode(),
-					"At least one value has to be added under 'Values to Send'",
-				);
-			}
-			const fields = valuesToSend.reduce((acc, entry) => {
-				if (entry.column === 'newColumn') {
-					const columnName = entry.columnName as string;
-
-					if (!columnNames.includes(columnName)) {
-						newColumns.add(columnName);
-					}
-
-					acc[columnName] = entry.fieldValue as string;
-				} else {
-					acc[entry.column as string] = entry.fieldValue as string;
+			if (nodeVersion < 4) {
+				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+				if (!valuesToSend?.length) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"At least one value has to be added under 'Values to Send'",
+					);
 				}
-				return acc;
-			}, {} as IDataObject);
+				const fields = valuesToSend.reduce((acc, entry) => {
+					if (entry.column === 'newColumn') {
+						const columnName = entry.columnName as string;
 
-			fields[columnToMatchOn] = valueToMatchOn;
+						if (!columnNames.includes(columnName)) {
+							newColumns.add(columnName);
+						}
 
-			data.push(fields);
+						acc[columnName] = entry.fieldValue as string;
+					} else {
+						acc[entry.column as string] = entry.fieldValue as string;
+					}
+					return acc;
+				}, {} as IDataObject);
+
+				fields[columnsToMatchOn[0]] = valueToMatchOn;
+
+				data.push(fields);
+			} else {
+				const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
+				if (Object.keys(mappingValues).length === 0) {
+					throw new NodeOperationError(
+						this.getNode(),
+						"At least one value has to be added under 'Values to Send'",
+					);
+				}
+				// Setting empty values to empty string so that they are not ignored by the API
+				Object.keys(mappingValues).forEach((key) => {
+					if (mappingValues[key] === undefined || mappingValues[key] === null) {
+						mappingValues[key] = '';
+					}
+				});
+				data.push(mappingValues);
+				mappedValues.push(mappingValues);
+			}
 		}
 
 		if (newColumns.size) {
@@ -289,7 +357,7 @@ export async function execute(
 
 		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
 			data,
-			columnToMatchOn,
+			columnsToMatchOn[0],
 			range,
 			headerRow,
 			firstDataRow,
@@ -306,5 +374,9 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 
-	return items;
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items;
+	} else {
+		return this.helpers.returnJsonArray(mappedValues);
+	}
 }

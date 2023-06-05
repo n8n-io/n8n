@@ -2,7 +2,7 @@
 	<div>
 		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails />
+				<WorkflowDetails :readOnly="readOnly" />
 				<tab-bar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
@@ -18,6 +18,7 @@
 import { defineComponent } from 'vue';
 import type { Route } from 'vue-router';
 import { mapStores } from 'pinia';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -27,10 +28,9 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import type { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import type { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useUIStore } from '@/stores/ui.store';
-import { useNDVStore } from '@/stores/ndv.store';
+import { useUIStore, useNDVStore, useVersionControlStore } from '@/stores';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -53,7 +53,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useUIStore),
+		...mapStores(useNDVStore, useUIStore, useVersionControlStore),
 		tabBarItems(): ITabBarItem[] {
 			return [
 				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
@@ -80,6 +80,9 @@ export default defineComponent({
 		},
 		activeExecution(): IExecutionsSummary {
 			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
+		},
+		readOnly(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},
 	mounted() {

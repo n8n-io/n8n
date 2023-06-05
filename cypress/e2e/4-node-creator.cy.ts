@@ -6,10 +6,8 @@ const nodeCreatorFeature = new NodeCreator();
 const WorkflowPage = new WorkflowPageClass();
 const NDVModal = new NDV();
 
-
 describe('Node Creator', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 
