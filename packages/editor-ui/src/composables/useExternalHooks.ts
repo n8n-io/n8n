@@ -6,7 +6,7 @@ import { runExternalHook } from '@/utils';
 export function useExternalHooks(): IExternalHooks {
 	return {
 		async run(eventName: string, metadata?: IDataObject): Promise<void> {
-			return await runExternalHook(eventName, useWebhooksStore(), metadata);
+			return runExternalHook(eventName, useWebhooksStore(), metadata);
 		},
 	};
 }

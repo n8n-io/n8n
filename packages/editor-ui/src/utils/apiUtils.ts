@@ -62,7 +62,11 @@ async function request(config: {
 		baseURL,
 		headers,
 	};
-	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io')) {
+	if (
+		import.meta.env.NODE_ENV !== 'production' &&
+		!baseURL.includes('api.n8n.io') &&
+		!baseURL.includes('n8n.cloud')
+	) {
 		options.withCredentials = true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
@@ -123,7 +127,7 @@ export async function get(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
@@ -132,7 +136,7 @@ export async function post(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
 /**

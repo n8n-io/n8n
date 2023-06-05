@@ -98,6 +98,7 @@ export class License {
 
 	isFeatureEnabled(feature: string): boolean {
 		if (!this.manager) {
+			getLogger().warn('License manager not initialized');
 			return false;
 		}
 
@@ -130,6 +131,10 @@ export class License {
 
 	isVersionControlLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VERSION_CONTROL);
+	}
+
+	isAPIDisabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
 	}
 
 	getCurrentEntitlements() {

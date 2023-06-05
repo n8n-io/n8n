@@ -100,7 +100,7 @@ const displayName = computed<any>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 
 	return instance?.proxy.$locale.headerText({
-		key: `headers.${shortNodeType}.displayName`,
+		key: `headers.${shortNodeType.value}.displayName`,
 		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
 });

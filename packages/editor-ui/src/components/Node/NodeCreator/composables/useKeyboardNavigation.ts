@@ -31,7 +31,7 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	function getElementId(element?: Element) {
 		return element?.getAttribute(KEYBOARD_ID_ATTR) || undefined;
 	}
-	function refreshSelectableItems(): Promise<void> {
+	async function refreshSelectableItems(): Promise<void> {
 		return new Promise((resolve) => {
 			// Wait for DOM to update
 			cleanupSelectableItems();

@@ -68,8 +68,8 @@ Vue.component('Badge', Badge);
 Vue.component('WarningTooltip', WarningTooltip);
 
 export default defineComponent({
-	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	name: 'VersionCard',
+	components: { NodeIcon, TimeAgo, Badge, WarningTooltip },
 	props: ['version'],
 	// @ts-ignore
 	nodeName(node: IVersionNode): string {

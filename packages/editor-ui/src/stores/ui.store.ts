@@ -31,6 +31,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	USER_ACTIVATION_SURVEY_MODAL,
+	VERSION_CONTROL_PUSH_MODAL_KEY,
 } from '@/constants';
 import type {
 	CurlToJSONResponse,
@@ -49,8 +50,10 @@ import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
 import { useUsageStore } from './usage.store';
+import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
+import { useTelemetryStore } from '@/stores/telemetry.store';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -133,6 +136,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				showAuthSelector: false,
 			},
 			[USER_ACTIVATION_SURVEY_MODAL]: {
+				open: false,
+			},
+			[VERSION_CONTROL_PUSH_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -410,21 +416,21 @@ export const useUIStore = defineStore(STORES.UI, {
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			return fetchNextOnboardingPrompt(instanceId, currentUser);
 		},
 		async applyForOnboardingCall(email: string): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return await applyForOnboardingCall(instanceId, currentUser, email);
+			return applyForOnboardingCall(instanceId, currentUser, email);
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			return submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -477,10 +483,24 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(source: string, utm_campaign: string): void {
-			window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+		goToUpgrade(source: string, utm_campaign: string, mode: 'open' | 'redirect' = 'open'): void {
+			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
+			const { executionsLeft, workflowsLeft } = usageLeft;
+			useTelemetryStore().track('User clicked upgrade CTA', {
+				source,
+				isTrial: userIsTrialing,
+				deploymentType: useSettingsStore().deploymentType,
+				trialDaysLeft,
+				executionsLeft,
+				workflowsLeft,
+			});
+			if (mode === 'open') {
+				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+			} else {
+				location.href = this.upgradeLinkUrl(source, utm_campaign);
+			}
 		},
 	},
 });

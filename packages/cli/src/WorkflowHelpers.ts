@@ -1,3 +1,4 @@
+import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import type {
@@ -26,16 +27,16 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
-
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
 import { RoleRepository } from '@db/repositories';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
+import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import type { RoleNames } from './databases/entities/Role';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -372,16 +373,24 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
-export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
+export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
+	const where: FindOptionsWhere<SharedWorkflow> = {};
+	if (user.globalRole?.name !== 'owner') {
+		where.userId = user.id;
+	}
+	if (roles?.length) {
+		const roleIds = await Db.collections.Role.find({
+			select: ['id'],
+			where: { name: In(roles), scope: 'workflow' },
+		}).then((data) => data.map(({ id }) => id));
+		where.roleId = In(roleIds);
+	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		relations: ['workflow', 'role'],
-		where: whereClause({ user, entityType: 'workflow', roles }),
+		where,
 		select: ['workflowId'],
 	});
-
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
-
 /**
  * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
  * If user does, set flag in its settings.
