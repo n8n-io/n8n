@@ -55,9 +55,12 @@ export async function pgTriggerFunction(
 	}
 }
 
-export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('postgres');
-	const pgp = pgPromise();
+	const pgp = pgPromise({
+		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
+		noWarnings: true,
+	});
 	const config: IDataObject = {
 		host: credentials.host as string,
 		port: credentials.port as number,
@@ -74,7 +77,11 @@ export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeLi
 		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
 		config.sslmode = (credentials.ssl as string) || 'disable';
 	}
-	const db = pgp(config);
+	return pgp(config);
+}
+
+export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+	const db = await initDB.call(this);
 	const schemaList = await db.any('SELECT schema_name FROM information_schema.schemata');
 	const results: INodeListSearchItems[] = schemaList.map((s) => ({
 		name: s.schema_name as string,
@@ -85,27 +92,8 @@ export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeLi
 }
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials('postgres');
 	const schema = this.getNodeParameter('schema', 0) as IDataObject;
-	const pgp = pgPromise();
-
-	const config: IDataObject = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
-	};
-
-	if (credentials.allowUnauthorizedCerts === true) {
-		config.ssl = {
-			rejectUnauthorized: false,
-		};
-	} else {
-		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		config.sslmode = (credentials.ssl as string) || 'disable';
-	}
-	const db = pgp(config);
+	const db = await initDB.call(this);
 	let tableList = [];
 	try {
 		tableList = await db.any(

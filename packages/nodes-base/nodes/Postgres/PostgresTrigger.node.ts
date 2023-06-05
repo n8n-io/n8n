@@ -5,10 +5,10 @@ import type {
 	ITriggerFunctions,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
 import {
 	dropTriggerFunction,
 	pgTriggerFunction,
+	initDB,
 	searchSchema,
 	searchTables,
 } from './PostgresTrigger.functions';
@@ -207,32 +207,10 @@ export class PostgresTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const credentials = await this.getCredentials('postgres');
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
-		const pgp = pgPromise({
-			// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
-			noWarnings: true,
-		});
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
-		const config: IDataObject = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-		};
-
-		if (credentials.allowUnauthorizedCerts === true) {
-			config.ssl = {
-				rejectUnauthorized: false,
-			};
-		} else {
-			config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-			config.sslmode = (credentials.ssl as string) || 'disable';
-		}
-
-		const db = pgp(config);
+		const db = await initDB.call(this);
 		if (triggerMode === 'createTrigger') {
 			await pgTriggerFunction.call(this, db);
 		}
