@@ -9,7 +9,10 @@
 			@visible-change="onVisibleChange"
 		>
 			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-				<n8n-icon icon="ellipsis-v" :size="iconSize" />
+				<n8n-icon
+					:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
+					:size="iconSize"
+				/>
 			</span>
 
 			<template #dropdown>
@@ -78,6 +81,11 @@ export default defineComponent({
 			type: String,
 			default: 'default',
 			validator: (value: string): boolean => ['default', 'dark'].includes(value),
+		},
+		iconOrientation: {
+			type: String,
+			default: 'vertical',
+			validator: (value: string): boolean => ['horizontal', 'vertical'].includes(value),
 		},
 	},
 	methods: {

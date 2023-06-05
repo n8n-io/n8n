@@ -217,11 +217,13 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
+				if (error instanceof NodeApiError) error = error.cause;
 				throw new NodeApiError(this.node, error, {
 					runIndex,
 					itemIndex: i,
 					message: error?.message,
 					description: error?.description,
+					httpCode: error.isAxiosError && error.response && String(error.response?.status),
 				});
 			}
 		}

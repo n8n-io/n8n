@@ -12,7 +12,8 @@ import {
 	updateCredential,
 } from '@/api/credentials';
 import { setCredentialSharedWith } from '@/api/credentials.ee';
-import { getAppNameFromCredType, makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
+import { getAppNameFromCredType } from '@/utils/nodeTypesUtils';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
 import type {
 	ICredentialMap,
@@ -248,7 +249,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			id: string;
 		}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
 			const rootStore = useRootStore();
-			return await getCredentialData(rootStore.getRestApiContext, id);
+			return getCredentialData(rootStore.getRestApiContext, id);
 		},
 		async createNewCredential(data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
@@ -266,7 +267,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 					const usersStore = useUsersStore();
 					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						this.setCredentialSharedWith({
+						await this.setCredentialSharedWith({
 							credentialId: credential.id,
 							sharedWith: data.sharedWith,
 						});
@@ -297,7 +298,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 					const usersStore = useUsersStore();
 					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						this.setCredentialSharedWith({
+						await this.setCredentialSharedWith({
 							credentialId: credential.id,
 							sharedWith: data.sharedWith,
 						});
@@ -379,12 +380,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'GET',
-				'/credential-translation',
-				{ credentialType },
-			);
+			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/credential-translation', {
+				credentialType,
+			});
 		},
 	},
 });

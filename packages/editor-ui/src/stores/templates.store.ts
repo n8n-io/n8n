@@ -304,7 +304,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			const settingsStore = useSettingsStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
 			const versionCli: string = settingsStore.versionCli;
-			return await getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
+			return getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
 		},
 	},
 });

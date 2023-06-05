@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
 import type { SamlPreferences } from '@/Interface';
 import { updateCurrentUser } from '@/api/users';
+import type { SamlPreferencesExtractedData } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
 
 export const useSSOStore = defineStore('sso', () => {
@@ -15,9 +16,12 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const state = reactive({
 		loading: false,
+		samlConfig: undefined as (SamlPreferences & SamlPreferencesExtractedData) | undefined,
 	});
 
 	const isLoading = computed(() => state.loading);
+
+	const samlConfig = computed(() => state.samlConfig);
 
 	const setLoading = (loading: boolean) => {
 		state.loading = loading;
@@ -36,7 +40,7 @@ export const useSSOStore = defineStore('sso', () => {
 					},
 				},
 			});
-			toggleLoginEnabled(value);
+			void toggleLoginEnabled(value);
 		},
 	});
 	const isEnterpriseSamlEnabled = computed(() =>
@@ -50,16 +54,20 @@ export const useSSOStore = defineStore('sso', () => {
 			isDefaultAuthenticationSaml.value,
 	);
 
-	const getSSORedirectUrl = () => ssoApi.initSSO(rootStore.getRestApiContext);
+	const getSSORedirectUrl = async () => ssoApi.initSSO(rootStore.getRestApiContext);
 
-	const toggleLoginEnabled = (enabled: boolean) =>
+	const toggleLoginEnabled = async (enabled: boolean) =>
 		ssoApi.toggleSamlConfig(rootStore.getRestApiContext, { loginEnabled: enabled });
 
-	const getSamlMetadata = () => ssoApi.getSamlMetadata(rootStore.getRestApiContext);
-	const getSamlConfig = () => ssoApi.getSamlConfig(rootStore.getRestApiContext);
-	const saveSamlConfig = (config: SamlPreferences) =>
+	const getSamlMetadata = async () => ssoApi.getSamlMetadata(rootStore.getRestApiContext);
+	const getSamlConfig = async () => {
+		const samlConfig = await ssoApi.getSamlConfig(rootStore.getRestApiContext);
+		state.samlConfig = samlConfig;
+		return samlConfig;
+	};
+	const saveSamlConfig = async (config: SamlPreferences) =>
 		ssoApi.saveSamlConfig(rootStore.getRestApiContext, config);
-	const testSamlConfig = () => ssoApi.testSamlConfig(rootStore.getRestApiContext);
+	const testSamlConfig = async () => ssoApi.testSamlConfig(rootStore.getRestApiContext);
 
 	const updateUser = async (params: { firstName: string; lastName: string }) =>
 		updateCurrentUser(rootStore.getRestApiContext, {
@@ -77,6 +85,7 @@ export const useSSOStore = defineStore('sso', () => {
 		isEnterpriseSamlEnabled,
 		isDefaultAuthenticationSaml,
 		showSsoLoginButton,
+		samlConfig,
 		getSSORedirectUrl,
 		getSamlMetadata,
 		getSamlConfig,

@@ -514,7 +514,7 @@ describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
 	test('not be called when SMTP not set up', async () => {
 		const userManagementMailer = new UserManagementMailer();
 		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
+		await expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
 
 		expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 	});

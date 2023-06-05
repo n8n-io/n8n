@@ -1,7 +1,7 @@
-import { MAIN_AUTH_FIELD_NAME } from './../constants';
+import type { INodeCredentialDescription } from 'n8n-workflow';
+import { MAIN_AUTH_FIELD_NAME } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '../stores/nodeTypes.store';
-import type { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	CORE_NODES_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
@@ -22,6 +22,7 @@ import type {
 	NodeParameterValueType,
 	INodePropertyOptions,
 	INodePropertyCollection,
+	ResourceMapperField,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -35,6 +36,7 @@ import { i18n as locale } from '@/plugins/i18n';
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+const RESOURCE_MAPPER_FIELD_NAME_REGEX = /value\[\"(.+)\"\]/;
 
 export function getAppNameFromCredType(name: string) {
 	return name
@@ -399,4 +401,36 @@ export const isNodeParameterRequired = (
 		}
 	});
 	return true;
+};
+
+export const parseResourceMapperFieldName = (fullName: string) => {
+	const match = fullName.match(RESOURCE_MAPPER_FIELD_NAME_REGEX);
+	const fieldName = match ? match.pop() : fullName;
+
+	return fieldName;
+};
+
+export const fieldCannotBeDeleted = (
+	field: INodeProperties | ResourceMapperField,
+	showMatchingColumnsSelector: boolean,
+	resourceMapperMode = '',
+	matchingFields: string[] = [],
+): boolean => {
+	const fieldIdentifier = 'id' in field ? field.id : field.name;
+	return (
+		(resourceMapperMode === 'add' && field.required === true) ||
+		isMatchingField(fieldIdentifier, matchingFields, showMatchingColumnsSelector)
+	);
+};
+
+export const isMatchingField = (
+	field: string,
+	matchingFields: string[],
+	showMatchingColumnsSelector: boolean,
+): boolean => {
+	const fieldName = parseResourceMapperFieldName(field);
+	if (fieldName) {
+		return showMatchingColumnsSelector && (matchingFields || []).includes(fieldName);
+	}
+	return false;
 };

@@ -39,7 +39,7 @@ export default defineComponent({
 	},
 	methods: {
 		onButtonClick() {
-			this.$router.push({ name: this.redirectPage });
+			void this.$router.push({ name: this.redirectPage });
 		},
 	},
 });

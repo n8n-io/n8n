@@ -5,11 +5,12 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import emitter from '@/mixins/emitter';
 
-export default mixins(emitter).extend({
+export default defineComponent({
 	name: 'IntersectionObserved',
+	mixins: [emitter],
 	props: ['enabled'],
 	mounted() {
 		if (!this.enabled) {
