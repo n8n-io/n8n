@@ -322,13 +322,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		upgradeLinkUrl() {
 			return (source: string, utm_campaign: string): string => {
-				const usageStore = useUsageStore();
 				const linkUrlTranslationKey = this.contextBasedTranslationKeys
 					.upgradeLinkUrl as BaseTextKey;
 				let linkUrl = locale.baseText(linkUrlTranslationKey);
 
 				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${usageStore.viewPlansUrl}&source=${source}`;
+					linkUrl = `${linkUrl}?ref=${source}`;
 				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
 					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
 				}
