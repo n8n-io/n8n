@@ -19,14 +19,14 @@ import { fieldCannotBeDeleted, isResourceMapperValue, parseResourceMapperFieldNa
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 
-interface Props {
+type Props = {
 	parameter: INodeProperties;
 	node: INode | null;
 	path: string;
 	inputSize: string;
 	labelSize: string;
-	dependentParametersValues: string | null;
-}
+	dependentParametersValues?: string | null;
+};
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
