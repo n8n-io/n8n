@@ -17,7 +17,7 @@ import type {
 import { LoggerProxy } from 'n8n-workflow';
 import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { ExecutionDataRepository } from './executionData.repository';
-import { ExecutionData } from '../entities/ExecutionData';
+import type { ExecutionData } from '../entities/ExecutionData';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
@@ -222,26 +222,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
-		const { id, data, workflowData, ...executionInformation } = execution;
+		// Se isolate startedAt because it must be set when the execution starts and should never change.
+		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
+		// are resumed after waiting for some time, as a new startedAt is set)
+		const { id, data, workflowData, startedAt, ...executionInformation } = execution;
+		if (Object.keys(executionInformation).length > 0) {
+			await this.update({ id: executionId }, executionInformation);
+		}
 
-		await this.manager.transaction(async (transactionManager) => {
-			if (Object.keys(executionInformation).length > 0) {
-				await transactionManager.update(ExecutionEntity, { id: executionId }, executionInformation);
+		if (data || workflowData) {
+			const executionData = {} as Partial<ExecutionData>;
+			if (workflowData) {
+				executionData.workflowData = workflowData;
 			}
-
-			if (data || workflowData) {
-				const executionData = {} as Partial<ExecutionData>;
-				if (workflowData) {
-					executionData.workflowData = workflowData;
-				}
-				if (data) {
-					executionData.data = stringify(data);
-				}
-				// TODO: understand why ts is complaining here
-				// @ts-ignore
-				await transactionManager.update(ExecutionData, { executionId }, executionData);
+			if (data) {
+				executionData.data = stringify(data);
 			}
-		});
+			// @ts-ignore
+			await this.executionDataRepository.update({ executionId }, { ...executionData });
+		}
 	}
 
 	async deleteExecution(executionId: string) {
@@ -276,7 +275,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			])
 			.innerJoin('execution.workflow', 'workflow')
 			.limit(limit)
-			.orderBy('execution.startedAt', 'DESC')
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			.orderBy({ 'execution.id': 'DESC' })
 			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (excludedExecutionIds.length > 0) {

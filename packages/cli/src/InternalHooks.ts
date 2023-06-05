@@ -428,12 +428,6 @@ export class InternalHooks implements IInternalHooksClass {
 		}
 
 		promises.push(
-			Container.get(ExecutionRepository).updateExistingExecution(executionId, {
-				status: executionStatus,
-			}),
-		);
-
-		promises.push(
 			properties.success
 				? eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',

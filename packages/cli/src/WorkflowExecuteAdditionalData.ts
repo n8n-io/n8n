@@ -602,6 +602,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 					if (workflowWasCanceled) workflowStatusFinal = 'canceled';
+					if (fullRunData.waitTill) workflowStatusFinal = 'waiting';
 
 					if (
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
@@ -767,6 +768,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 					if (workflowWasCanceled) workflowStatusFinal = 'canceled';
+					if (fullRunData.waitTill) workflowStatusFinal = 'waiting';
 
 					if (!workflowDidSucceed) {
 						executeErrorWorkflow(
