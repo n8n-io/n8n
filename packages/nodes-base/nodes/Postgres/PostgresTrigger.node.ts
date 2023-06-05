@@ -237,7 +237,9 @@ export class PostgresTrigger implements INodeType {
 		const closeFunction = async () => {
 			connection.client.removeListener('notification', onNotification);
 			await connection.none(`UNLISTEN ${channelName}`);
-			await dropTriggerFunction.call(this, db);
+			if (triggerMode === 'createTrigger') {
+				await dropTriggerFunction.call(this, db);
+			}
 			await db.$pool.end();
 		};
 
