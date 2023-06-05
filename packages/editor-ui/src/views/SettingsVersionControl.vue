@@ -2,8 +2,7 @@
 import { computed, reactive, onBeforeMount, ref } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
-import { useVersionControlStore } from '@/stores/versionControl.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore, useVersionControlStore } from '@/stores';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
@@ -92,7 +91,7 @@ const goToUpgrade = () => {
 	uiStore.goToUpgrade('version-control', 'upgrade-version-control');
 };
 
-onBeforeMount(async () => {
+onBeforeMount(() => {
 	if (versionControlStore.preferences.connected) {
 		isConnected.value = true;
 		void versionControlStore.getBranches();
@@ -318,12 +317,12 @@ async function refreshSshKey() {
 						</i18n>
 					</n8n-checkbox>
 				</div>
-				<!-- <div :class="$style.group">
+				<div :class="$style.group">
 					<label>{{ locale.baseText('settings.versionControl.color') }}</label>
 					<div>
 						<n8n-color-picker size="small" v-model="versionControlStore.preferences.branchColor" />
 					</div>
-				</div> -->
+				</div>
 				<div :class="[$style.group, 'pt-s']">
 					<n8n-button
 						@click="onSave"
