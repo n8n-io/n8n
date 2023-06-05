@@ -209,7 +209,10 @@ export class PostgresTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('postgres');
 		const triggerMode = this.getNodeParameter('triggerMode', 0) as string;
-		const pgp = pgPromise();
+		const pgp = pgPromise({
+			// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
+			noWarnings: true,
+		});
 		const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 		const config: IDataObject = {
@@ -238,26 +241,26 @@ export class PostgresTrigger implements INodeType {
 				? additionalFields.channelName || `n8n_channel_${this.getNode().id.replace(/-/g, '_')}`
 				: (this.getNodeParameter('channelName', 0) as string);
 
-		db.connect({ direct: true })
-			.then(async (connection) => {
-				connection.client.on('notification', async (data) => {
-					if (data.payload) {
-						try {
-							data.payload = JSON.parse(data.payload as string);
-						} catch (error) {}
-					}
-					this.emit([this.helpers.returnJsonArray([data])]);
-				});
-				return connection.none(`LISTEN ${channelName}`);
-			})
-			.catch(function (error) {
-				console.error('Error:', error);
-			});
+		const onNotification = async (data: any) => {
+			if (data.payload) {
+				try {
+					data.payload = JSON.parse(data.payload as string);
+				} catch (error) {}
+			}
+			this.emit([this.helpers.returnJsonArray([data])]);
+		};
+
+		const connection = await db.connect({ direct: true });
+		connection.client.on('notification', onNotification);
+		await connection.none(`LISTEN ${channelName}`);
+
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		const closeFunction = async () => {
+			connection.client.removeListener('notification', onNotification);
+			await connection.none(`UNLISTEN ${channelName}`);
 			await dropTriggerFunction.call(this, db);
-			pgp.end();
+			await db.$pool.end();
 		};
 
 		return {
