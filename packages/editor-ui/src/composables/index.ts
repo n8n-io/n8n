@@ -11,5 +11,4 @@ export * from './useMessage';
 export * from './useTelemetry';
 export * from './useTitleChange';
 export * from './useToast';
-export * from './useUpgradeLink';
 export * from './useNodeSpecificationValues';
