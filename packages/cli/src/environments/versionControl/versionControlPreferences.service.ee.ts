@@ -45,6 +45,7 @@ export class VersionControlPreferencesService {
 		};
 	}
 
+	// merge the new preferences with the existing preferences when setting
 	public set versionControlPreferences(preferences: Partial<VersionControlPreferences>) {
 		this._versionControlPreferences = VersionControlPreferences.merge(
 			preferences,
@@ -114,19 +115,10 @@ export class VersionControlPreferencesService {
 		return this.versionControlPreferences;
 	}
 
-	setBranchReadOnly(branchReadOnly: boolean): void {
-		this._versionControlPreferences.branchReadOnly = branchReadOnly;
-	}
-
 	async validateVersionControlPreferences(
 		preferences: Partial<VersionControlPreferences>,
 		allowMissingProperties = true,
 	): Promise<ValidationError[]> {
-		if (this.isVersionControlConnected()) {
-			if (preferences.repositoryUrl !== this._versionControlPreferences.repositoryUrl) {
-				throw new Error('Cannot change repository while connected');
-			}
-		}
 		const preferencesObject = new VersionControlPreferences(preferences);
 		const validationResult = await validate(preferencesObject, {
 			forbidUnknownValues: false,
