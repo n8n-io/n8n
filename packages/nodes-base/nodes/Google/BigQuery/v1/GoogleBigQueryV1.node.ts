@@ -20,6 +20,8 @@ import { recordFields, recordOperations } from './RecordDescription';
 
 import { v4 as uuid } from 'uuid';
 
+import { oldVersionNotice } from '../../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',
 	name: 'googleBigQuery',
@@ -54,6 +56,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',

@@ -2,7 +2,6 @@ import Vue from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
 import type { INodeTranslationHeaders } from '@/Interface';
-import { IRootState } from '@/Interface';
 import {
 	deriveMiddleKey,
 	isNestedInCollectionLike,
@@ -12,8 +11,8 @@ import {
 import { locale } from 'n8n-design-system';
 
 import englishBaseText from './locales/en.json';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 Vue.use(VueI18n);
@@ -65,7 +64,7 @@ export class I18nClass {
 		key: BaseTextKey,
 		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
-		if (options && options.adjustToNumber) {
+		if (options?.adjustToNumber !== undefined) {
 			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
 		}
 

@@ -24,7 +24,7 @@ export function setupServer() {
 	server.logging = false;
 
 	// Handle undefined endpoints
-	server.post('/rest/:any', () => new Promise(() => {}));
+	server.post('/rest/:any', async () => new Promise(() => {}));
 
 	// Handle defined endpoints
 	for (const endpointsFn of endpoints) {

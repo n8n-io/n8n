@@ -472,6 +472,8 @@ process.on('message', async (message: IProcessMessage) => {
 						? new WorkflowOperationError('Workflow execution timed out!')
 						: new WorkflowOperationError('Workflow-Execution has been canceled!');
 
+				runData.status = message.type === 'timeout' ? 'failed' : 'canceled';
+
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(
 					workflowRunner.startedAt,
@@ -495,8 +497,7 @@ process.on('message', async (message: IProcessMessage) => {
 					status: 'canceled',
 				};
 
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
+				await workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
 			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {

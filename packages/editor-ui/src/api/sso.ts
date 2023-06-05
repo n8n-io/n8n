@@ -6,34 +6,34 @@ import type {
 	SamlPreferencesExtractedData,
 } from '@/Interface';
 
-export const initSSO = (context: IRestApiContext): Promise<string> => {
+export const initSSO = async (context: IRestApiContext): Promise<string> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/initsso');
 };
 
-export const getSamlMetadata = (context: IRestApiContext): Promise<SamlPreferences> => {
+export const getSamlMetadata = async (context: IRestApiContext): Promise<SamlPreferences> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/metadata');
 };
 
-export const getSamlConfig = (
+export const getSamlConfig = async (
 	context: IRestApiContext,
 ): Promise<SamlPreferences & SamlPreferencesExtractedData> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/config');
 };
 
-export const saveSamlConfig = (
+export const saveSamlConfig = async (
 	context: IRestApiContext,
 	data: SamlPreferences,
 ): Promise<SamlPreferences | undefined> => {
 	return makeRestApiRequest(context, 'POST', '/sso/saml/config', data);
 };
 
-export const toggleSamlConfig = (
+export const toggleSamlConfig = async (
 	context: IRestApiContext,
 	data: SamlPreferencesLoginEnabled,
 ): Promise<void> => {
 	return makeRestApiRequest(context, 'POST', '/sso/saml/config/toggle', data);
 };
 
-export const testSamlConfig = (context: IRestApiContext): Promise<string> => {
+export const testSamlConfig = async (context: IRestApiContext): Promise<string> => {
 	return makeRestApiRequest(context, 'GET', '/sso/saml/config/test');
 };

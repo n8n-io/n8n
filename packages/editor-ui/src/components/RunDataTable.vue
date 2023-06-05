@@ -162,18 +162,17 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/utils';
-import type { PropType } from 'vue';
-import type Vue from 'vue';
-import mixins from 'vue-typed-mixins';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 
@@ -181,8 +180,9 @@ const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'run-data-table',
+	mixins: [externalHooks],
 	components: { Draggable, MappingPill },
 	props: {
 		node: {
@@ -424,7 +424,7 @@ export default mixins(externalHooks).extend({
 					...mappingTelemetry,
 				};
 
-				this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

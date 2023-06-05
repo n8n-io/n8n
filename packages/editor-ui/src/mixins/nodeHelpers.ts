@@ -1,10 +1,6 @@
 import { EnableNodeToggleCommand } from './../models/history';
-import { useHistoryStore } from '@/stores/history';
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-} from '@/constants';
+import { useHistoryStore } from '@/stores/history.store';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
 import type {
 	IBinaryKeyData,
@@ -37,14 +33,15 @@ import { get } from 'lodash-es';
 import { isObjectLiteral } from '@/utils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import Vue from 'vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { defineComponent } from 'vue';
 
-export const nodeHelpers = Vue.extend({
+export const nodeHelpers = defineComponent({
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -52,6 +49,8 @@ export const nodeHelpers = Vue.extend({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
+			useUsersStore,
+			useRootStore,
 		),
 	},
 	methods: {
@@ -359,9 +358,10 @@ export const nodeHelpers = Vue.extend({
 					}
 
 					if (nameMatches.length === 0) {
+						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
-						if (!isCredentialUsedInWorkflow) {
+						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
@@ -526,6 +526,9 @@ export const nodeHelpers = Vue.extend({
 					data as INode,
 					nodeType.subtitle,
 					'internal',
+					this.rootStore.timezone,
+					{},
+					undefined,
 					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				) as string | undefined;
 			}

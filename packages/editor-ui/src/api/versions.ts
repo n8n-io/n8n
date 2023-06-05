@@ -1,6 +1,6 @@
 import type { IVersion } from '@/Interface';
 import { INSTANCE_ID_HEADER } from '@/constants';
-import { get } from '@/utils';
+import { get } from '@/utils/apiUtils';
 
 export async function getNextVersions(
 	endpoint: string,
@@ -8,5 +8,5 @@ export async function getNextVersions(
 	instanceId: string,
 ): Promise<IVersion[]> {
 	const headers = { [INSTANCE_ID_HEADER as string]: instanceId };
-	return await get(endpoint, version, {}, headers);
+	return get(endpoint, version, {}, headers);
 }

@@ -140,7 +140,8 @@ export class WorkflowPage extends BasePage {
 					if(action) {
 						cy.contains(action).click()
 					} else {
-						cy.getByTestId('item-iterator-item').eq(1).click()
+						// Select the first action
+						cy.get('[data-keyboard-nav-type="action"]').eq(0).click()
 					}
 				}
 			})

@@ -18,19 +18,21 @@
 </template>
 
 <script lang="ts">
-import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import mixins from 'vue-typed-mixins';
 import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useToast, useMessage } from '@/composables';
 
-export default mixins(workflowRun, pinData).extend({
+export default defineComponent({
+	mixins: [workflowRun, pinData],
 	props: {
 		nodeName: {
 			type: String,
@@ -55,6 +57,13 @@ export default mixins(workflowRun, pinData).extend({
 		telemetrySource: {
 			type: String,
 		},
+	},
+	setup(props) {
+		return {
+			...useToast(),
+			...useMessage(),
+			...workflowRun.setup?.(props),
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -173,26 +182,28 @@ export default mixins(workflowRun, pinData).extend({
 			try {
 				await this.workflowsStore.removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
+				this.showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;
 			}
 		},
 
 		async onClick() {
 			if (this.isListeningForEvents) {
-				this.stopWaitingForWebhook();
+				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
 				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
 				if (this.hasPinData) {
-					shouldUnpinAndExecute = await this.confirmMessage(
+					const confirmResult = await this.confirm(
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.description'),
 						this.$locale.baseText('ndv.pinData.unpinAndExecute.title'),
-						null,
-						this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
-						this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
+						{
+							confirmButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.confirm'),
+							cancelButtonText: this.$locale.baseText('ndv.pinData.unpinAndExecute.cancel'),
+						},
 					);
+					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
 					if (shouldUnpinAndExecute) {
 						dataPinningEventBus.emit('data-unpinning', { source: 'unpin-and-execute-modal' });
@@ -207,9 +218,9 @@ export default mixins(workflowRun, pinData).extend({
 						source: this.telemetrySource,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
-					this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
+					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 					this.$emit('execute');
 				}
 			}

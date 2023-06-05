@@ -14,7 +14,7 @@
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+					<font-awesome-icon v-else :icon="name" :class="$style.iconFa" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
@@ -127,6 +127,11 @@ export default defineComponent({
 	justify-content: center;
 	align-items: center;
 	pointer-events: none;
+
+	svg {
+		max-width: 100%;
+		max-height: 100%;
+	}
 }
 .nodeIconPlaceholder {
 	text-align: center;

@@ -1,7 +1,6 @@
 import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
-import { render } from '@testing-library/vue';
 import VariablesView from '@/views/VariablesView.vue';
 import { useSettingsStore, useUsersStore } from '@/stores';
 import { renderComponent } from '@/__tests__/utils';

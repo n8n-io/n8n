@@ -1,11 +1,12 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import {
-	ERROR_TRIGGER_NODE_TYPE,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	START_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	VIEWS,
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 } from '@/constants';
 
 import type {
@@ -27,7 +28,7 @@ import type {
 	INodeConnection,
 	IWebhookDescription,
 } from 'n8n-workflow';
-import { INodeTypeData, IPinData, NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type {
 	INodeTypesMaxCount,
@@ -42,23 +43,21 @@ import type {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv';
-import { useTemplatesStore } from '@/stores/templates';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useUsersStore } from '@/stores/users.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import type { ICredentialsResponse } from '@/Interface';
@@ -224,32 +223,36 @@ function connectionInputData(
 		}
 	}
 
-	const parentPinData = parentNode.reduce((acc: INodeExecutionData[], parentNodeName, index) => {
-		const pinData = useWorkflowsStore().pinDataByNodeName(parentNodeName);
+	const workflowsStore = useWorkflowsStore();
 
-		if (pinData) {
-			acc.push({
-				json: pinData[0],
-				pairedItem: {
-					item: index,
-					input: 1,
-				},
-			});
-		}
+	if (workflowsStore.shouldReplaceInputDataWithPinData) {
+		const parentPinData = parentNode.reduce<INodeExecutionData[]>((acc, parentNodeName, index) => {
+			const pinData = workflowsStore.pinDataByNodeName(parentNodeName);
 
-		return acc;
-	}, []);
+			if (pinData) {
+				acc.push({
+					json: pinData[0],
+					pairedItem: {
+						item: index,
+						input: 1,
+					},
+				});
+			}
 
-	if (parentPinData.length > 0) {
-		if (connectionInputData && connectionInputData.length > 0) {
-			parentPinData.forEach((parentPinDataEntry) => {
-				connectionInputData![0].json = {
-					...connectionInputData![0].json,
-					...parentPinDataEntry.json,
-				};
-			});
-		} else {
-			connectionInputData = parentPinData;
+			return acc;
+		}, []);
+
+		if (parentPinData.length > 0) {
+			if (connectionInputData && connectionInputData.length > 0) {
+				parentPinData.forEach((parentPinDataEntry) => {
+					connectionInputData![0].json = {
+						...connectionInputData![0].json,
+						...parentPinDataEntry.json,
+					};
+				});
+			} else {
+				connectionInputData = parentPinData;
+			}
 		}
 	}
 
@@ -272,21 +275,24 @@ function executeData(
 		// Add the input data to be able to also resolve the short expression format
 		// which does not use the node name
 		const parentNodeName = parentNode[0];
+		const workflowsStore = useWorkflowsStore();
 
-		const parentPinData = useWorkflowsStore().getPinData![parentNodeName];
+		if (workflowsStore.shouldReplaceInputDataWithPinData) {
+			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
-		// populate `executeData` from `pinData`
+			// populate `executeData` from `pinData`
 
-		if (parentPinData) {
-			executeData.data = { main: [parentPinData] };
-			executeData.source = { main: [{ previousNode: parentNodeName }] };
+			if (parentPinData) {
+				executeData.data = { main: [parentPinData] };
+				executeData.source = { main: [{ previousNode: parentNodeName }] };
 
-			return executeData;
+				return executeData;
+			}
 		}
 
 		// populate `executeData` from `runData`
 
-		const workflowRunData = useWorkflowsStore().getWorkflowRunData;
+		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
 		}
@@ -322,7 +328,14 @@ function executeData(
 	return executeData;
 }
 
-export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).extend({
+export const workflowHelpers = defineComponent({
+	mixins: [externalHooks, nodeHelpers],
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -726,7 +739,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 
 				this.uiStore.stateIsDirty = false;
 				this.uiStore.removeActiveAction('workflowSaving');
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				return true;
 			} catch (error) {
@@ -743,26 +756,32 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 						params: { name: currentWorkflow },
 					}).href;
 
-					const overwrite = await this.confirmMessage(
+					const overwrite = await this.confirm(
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message', {
 							interpolate: {
 								url,
 							},
 						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
-						null,
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.cancelButtonText'),
+						{
+							dangerouslyUseHTMLString: true,
+							confirmButtonText: this.$locale.baseText(
+								'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+							),
+							cancelButtonText: this.$locale.baseText(
+								'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+							),
+						},
 					);
 
-					if (overwrite) {
+					if (overwrite === MODAL_CONFIRM) {
 						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: error.message,
 					type: 'error',
@@ -877,7 +896,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 				}
 
 				if (redirect) {
-					this.$router.replace({
+					void this.$router.replace({
 						name: VIEWS.WORKFLOW,
 						params: { name: workflowData.id as string, action: 'workflowSave' },
 					});
@@ -885,14 +904,14 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.uiStore.stateIsDirty = false;
-				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+				void this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 				getCurrentWorkflow(true); // refresh cache
 				return true;
 			} catch (e) {
 				this.uiStore.removeActiveAction('workflowSaving');
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('workflowHelpers.showMessage.title'),
 					message: (e as Error).message,
 					type: 'error',

@@ -17,7 +17,7 @@ import type { PropType } from 'vue';
 import type { ITabBarItem } from '@/Interface';
 import { MAIN_HEADER_TABS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
 	name: 'tab-bar',

@@ -1,5 +1,5 @@
 import type { PointXY } from '@jsplumb/util';
-import { log, extend, quadrant } from '@jsplumb/util';
+import { quadrant } from '@jsplumb/util';
 
 import type {
 	Connection,

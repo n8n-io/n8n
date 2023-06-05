@@ -276,6 +276,14 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
+		test('should return completions for: {{ "hello"+input.| }}', () => {
+			resolveParameterSpy.mockReturnValue($input);
+
+			expect(completions('{{ "hello"+$input.| }}')).toHaveLength(
+				Reflect.ownKeys($input).length + natives('object').length,
+			);
+		});
+
 		test("should return completions for: {{ $('nodeName').| }}", () => {
 			resolveParameterSpy.mockReturnValue($('Rename'));
 

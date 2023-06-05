@@ -30,6 +30,8 @@ import { draftFields, draftOperations } from './DraftDescription';
 
 import isEmpty from 'lodash.isempty';
 
+import { oldVersionNotice } from '../../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
 	name: 'gmail',
@@ -64,6 +66,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',

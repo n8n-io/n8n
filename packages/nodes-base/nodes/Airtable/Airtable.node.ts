@@ -27,9 +27,39 @@ export class Airtable implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableTokenApi'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'airtableApi',
+					},
+					{
+						name: 'Access Token',
+						value: 'airtableTokenApi',
+					},
+				],
+				default: 'airtableApi',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -546,14 +576,15 @@ export class Airtable implements INodeType {
 						delete (row.fields as any).id;
 					} else {
 						// Add only the specified fields
-						row.fields = {} as IDataObject;
+						const rowFields: IDataObject = {};
 
 						fields = this.getNodeParameter('fields', i, []) as string[];
 
 						for (const fieldName of fields) {
-							// @ts-ignore
-							row.fields[fieldName] = items[i].json[fieldName];
+							rowFields[fieldName] = items[i].json[fieldName];
 						}
+
+						row.fields = rowFields;
 					}
 
 					rows.push(row);
@@ -761,10 +792,12 @@ export class Airtable implements INodeType {
 					} else {
 						fields = this.getNodeParameter('fields', i, []) as string[];
 
+						const rowFields: IDataObject = {};
 						for (const fieldName of fields) {
-							// @ts-ignore
-							row.fields[fieldName] = items[i].json[fieldName];
+							rowFields[fieldName] = items[i].json[fieldName];
 						}
+
+						row.fields = rowFields;
 					}
 
 					row.id = this.getNodeParameter('id', i) as string;

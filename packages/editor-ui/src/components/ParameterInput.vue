@@ -18,6 +18,7 @@
 				ref="resourceLocator"
 				:parameter="parameter"
 				:value="value"
+				:dependentParametersValues="dependentParametersValues"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
 				:expressionComputedValue="expressionEvaluated"
@@ -51,17 +52,28 @@
 					remoteParameterOptionsLoadingIssues !== null
 				"
 			>
-				<code-edit
+				<el-dialog
 					v-if="codeEditDialogVisible"
-					:value="value"
-					:parameter="parameter"
-					:type="editorType"
-					:codeAutocomplete="codeAutocomplete"
-					:path="path"
-					:readonly="isReadOnly"
-					@closeDialog="closeCodeEditDialog"
-					@valueChanged="expressionUpdated"
-				></code-edit>
+					visible
+					append-to-body
+					:close-on-click-modal="false"
+					width="80%"
+					:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+						.nodeText()
+						.inputLabelDisplayName(parameter, path)}`"
+					:before-close="closeCodeEditDialog"
+				>
+					<div class="ignore-key-press">
+						<code-node-editor
+							:value="value"
+							:defaultValue="parameter.default"
+							:language="editorLanguage"
+							:isReadOnly="isReadOnly"
+							@valueChanged="expressionUpdated"
+						/>
+					</div>
+				</el-dialog>
+
 				<text-edit
 					:dialogVisible="textEditDialogVisible"
 					:value="value"
@@ -73,16 +85,19 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCode="node.parameters.jsCode"
+					:value="editorContent"
+					:defaultValue="parameter.default"
+					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@valueChanged="valueChangedDebounced"
 				/>
 
 				<html-editor
-					v-else-if="getArgument('editor') === 'htmlEditor'"
-					:html="node.parameters.html"
+					v-else-if="editorType === 'htmlEditor'"
+					:html="editorContent"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -90,18 +105,25 @@
 					@valueChanged="valueChangedDebounced"
 				/>
 
+				<sql-editor
+					v-else-if="editorType === 'sqlEditor'"
+					:query="editorContent"
+					:dialect="getArgument('sqlDialect')"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
 				<div
-					v-else-if="isEditor === true"
-					class="code-edit clickable ph-no-capture"
+					v-else-if="editorType"
+					class="readonly-code clickable ph-no-capture"
 					@click="displayEditDialog()"
 				>
-					<prism-editor
+					<code-node-editor
 						v-if="!codeEditDialogVisible"
-						:lineNumbers="true"
-						:readonly="true"
-						:code="displayValue"
-						language="js"
-					></prism-editor>
+						:value="value"
+						:language="editorLanguage"
+						:isReadOnly="true"
+					/>
 				</div>
 
 				<n8n-input
@@ -326,6 +348,8 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 
 import { get } from 'lodash-es';
 
@@ -338,67 +362,52 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	IParameterLabel,
+	EditorType,
+	CodeNodeEditorLanguage,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeParameterValue } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
-import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
-import ScopesNotice from '@/components/ScopesNotice.vue';
-import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-// @ts-ignore
-import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
+import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-
-import mixins from 'vue-typed-mixins';
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
-import { CODE_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { htmlEditorEventBus } from '@/event-bus';
+import Vue from 'vue';
 
 type ResourceLocatorRef = InstanceType<typeof ResourceLocator>;
 
-export default mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	workflowHelpers,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'parameter-input',
+	mixins: [externalHooks, nodeHelpers, workflowHelpers, debounceHelper],
 	components: {
-		CodeEdit,
 		CodeNodeEditor,
 		HtmlEditor,
+		SqlEditor,
 		ExpressionEdit,
 		ExpressionParameterInput,
-		NodeCredentials,
 		CredentialsSelect,
-		PrismEditor,
-		ScopesNotice,
-		ParameterOptions,
 		ParameterIssues,
 		ResourceLocator,
 		TextEdit,
-		ImportParameter,
 	},
 	props: {
 		isReadOnly: {
@@ -448,6 +457,12 @@ export default mixins(
 		},
 		expressionEvaluated: {
 			type: String as PropType<string | undefined>,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	data() {
@@ -499,10 +514,10 @@ export default mixins(
 		};
 	},
 	watch: {
-		dependentParametersValues() {
+		async dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			this.loadRemoteParameterOptions();
+			await this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -513,7 +528,13 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(useCredentialsStore, useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+			useSettingsStore,
+		),
 		expressionDisplayValue(): string {
 			if (this.forceShowExpression) {
 				return '';
@@ -554,8 +575,8 @@ export default mixins(
 				return null;
 			}
 		},
-		node(): INodeUi | null {
-			return this.ndvStore.activeNode;
+		node(): INodeUi {
+			return this.ndvStore.activeNode!;
 		},
 		displayTitle(): string {
 			const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -636,7 +657,7 @@ export default mixins(
 				return 'textarea';
 			}
 
-			if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
+			if (this.editorType === 'code') {
 				return 'textarea';
 			}
 
@@ -719,11 +740,12 @@ export default mixins(
 
 			return [];
 		},
-		isEditor(): boolean {
-			return ['code', 'json'].includes(this.editorType);
+		editorType(): EditorType {
+			return this.getArgument('editor') as EditorType;
 		},
-		editorType(): string {
-			return this.getArgument('editor') as string;
+		editorLanguage(): CodeNodeEditorLanguage {
+			if (this.editorType === 'json' || this.parameter.type === 'json') return 'json';
+			return (this.getArgument('editorLanguage') as CodeNodeEditorLanguage) ?? 'javaScript';
 		},
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
@@ -799,6 +821,22 @@ export default mixins(
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
 		},
+		nodeType(): INodeTypeDescription | null {
+			if (!this.node) return null;
+			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+		},
+		editorContent(): string | undefined {
+			if (!this.nodeType) {
+				return;
+			}
+			const editorProp = this.nodeType.properties.find(
+				(p) => p.typeOptions?.editor === (this.editorType as string),
+			);
+			if (!editorProp) {
+				return;
+			}
+			return this.node.parameters[editorProp.name] as string;
+		},
 	},
 	methods: {
 		isRemoteParameterOption(option: INodePropertyOptions) {
@@ -815,7 +853,7 @@ export default mixins(
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		/**
 		 * Check whether a param value must be skipped when collecting node param issues for validation.
@@ -907,22 +945,14 @@ export default mixins(
 			this.textEditDialogVisible = false;
 		},
 		displayEditDialog() {
-			if (this.isEditor) {
+			if (this.editorType) {
 				this.codeEditDialogVisible = true;
 			} else {
 				this.textEditDialogVisible = true;
 			}
 		},
 		getArgument(argumentName: string): string | number | boolean | undefined {
-			if (this.parameter.typeOptions === undefined) {
-				return undefined;
-			}
-
-			if (this.parameter.typeOptions[argumentName] === undefined) {
-				return undefined;
-			}
-
-			return this.parameter.typeOptions[argumentName];
+			return this.parameter.typeOptions?.[argumentName];
 		},
 		expressionUpdated(value: string) {
 			const val: NodeParameterValueType = this.isResourceLocatorParameter
@@ -959,8 +989,7 @@ export default mixins(
 				this.nodeName = this.node.name;
 			}
 
-			// Set focus on field
-			setTimeout(() => {
+			Vue.nextTick(() => {
 				// @ts-ignore
 				if (this.$refs.inputField?.focus && this.$refs.inputField?.$el) {
 					// @ts-ignore
@@ -1003,7 +1032,7 @@ export default mixins(
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 		},
 		valueChanged(value: NodeParameterValueType | {} | Date) {
 			if (this.parameter.name === 'nodeCredentialType') {
@@ -1104,7 +1133,7 @@ export default mixins(
 
 					resourceLocatorRef?.$emit('refreshList');
 				}
-				this.loadRemoteParameterOptions();
+				void this.loadRemoteParameterOptions();
 			} else if (command === 'formatHtml') {
 				htmlEditorEventBus.emit('format-html');
 			}
@@ -1120,7 +1149,7 @@ export default mixins(
 					had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
 				};
 				this.$telemetry.track('User switched parameter mode', telemetryPayload);
-				this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
+				void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 			}
 		},
 	},
@@ -1129,7 +1158,7 @@ export default mixins(
 			const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 			if (remoteParameterOptions.length > 0) {
-				this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+				void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
 			}
 		});
 	},
@@ -1163,39 +1192,13 @@ export default mixins(
 			this.$watch(
 				() => this.node!.credentials,
 				() => {
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				},
 				{ deep: true, immediate: true },
 			);
-
-			// Reload function on change element from
-			// displayOptions.typeOptions.reloadOnChange parameters
-			if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-				// Get all parameter in reloadOnChange property
-				// This reload when parameters in reloadOnChange is updated
-				const parametersOnChange: string[] = this.parameter.typeOptions.reloadOnChange;
-				for (let i = 0; i < parametersOnChange.length; i++) {
-					const parameter = parametersOnChange[i] as string;
-					if (parameter in this.node.parameters) {
-						this.$watch(
-							() => {
-								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
-									return this.node.parameters![parameter];
-								} else {
-									return null;
-								}
-							},
-							() => {
-								this.loadRemoteParameterOptions();
-							},
-							{ deep: true, immediate: true },
-						);
-					}
-				}
-			}
 		}
 
-		this.$externalHooks().run('parameterInput.mount', {
+		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
 			inputFieldRef: this.$refs['inputField'],
 		});
@@ -1204,7 +1207,7 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-.code-edit {
+.readonly-code {
 	font-size: var(--font-size-xs);
 }
 

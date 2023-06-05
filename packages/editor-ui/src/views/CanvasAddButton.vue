@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 export interface Props {
 	showTooltip: boolean;

@@ -2,7 +2,7 @@
 	<div>
 		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails />
+				<WorkflowDetails :readOnly="readOnly" />
 				<tab-bar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
@@ -15,7 +15,10 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { Route } from 'vue-router';
+import { mapStores } from 'pinia';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -25,18 +28,22 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import type { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
+import type { INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import type { Route } from 'vue-router';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
+import { useUIStore, useNDVStore, useVersionControlStore } from '@/stores';
 
-export default mixins(pushConnection, workflowHelpers).extend({
+export default defineComponent({
 	name: 'MainHeader',
 	components: {
 		WorkflowDetails,
 		TabBar,
+	},
+	mixins: [pushConnection, workflowHelpers],
+	setup(props) {
+		return {
+			...pushConnection.setup?.(props),
+			...workflowHelpers.setup?.(props),
+		};
 	},
 	data() {
 		return {
@@ -46,7 +53,7 @@ export default mixins(pushConnection, workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useUIStore),
+		...mapStores(useNDVStore, useUIStore, useVersionControlStore),
 		tabBarItems(): ITabBarItem[] {
 			return [
 				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
@@ -73,6 +80,9 @@ export default mixins(pushConnection, workflowHelpers).extend({
 		},
 		activeExecution(): IExecutionsSummary {
 			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
+		},
+		readOnly(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},
 	mounted() {
@@ -110,14 +120,14 @@ export default mixins(pushConnection, workflowHelpers).extend({
 				case MAIN_HEADER_TABS.WORKFLOW:
 					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
 						if (this.$route.name !== VIEWS.WORKFLOW) {
-							this.$router.push({
+							void this.$router.push({
 								name: VIEWS.WORKFLOW,
 								params: { name: this.workflowToReturnTo },
 							});
 						}
 					} else {
 						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 							this.uiStore.stateIsDirty = this.dirtyState;
 						}
 					}
@@ -136,7 +146,10 @@ export default mixins(pushConnection, workflowHelpers).extend({
 							})
 							.catch(() => {});
 					} else {
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
+						void this.$router.push({
+							name: VIEWS.EXECUTION_HOME,
+							params: { name: routeWorkflowId },
+						});
 					}
 					// this.modalBus.emit('closeAll');
 					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;

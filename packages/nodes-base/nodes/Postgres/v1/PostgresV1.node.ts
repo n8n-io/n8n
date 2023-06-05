@@ -16,6 +16,8 @@ import pgPromise from 'pg-promise';
 
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 
+import { oldVersionNotice } from '../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
 	name: 'postgres',
@@ -36,6 +38,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Operation',
 			name: 'operation',
@@ -71,6 +74,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			typeOptions: {
+				editor: 'sqlEditor',
+				sqlDialect: 'postgres',
+			},
 			displayOptions: {
 				show: {
 					operation: ['executeQuery'],

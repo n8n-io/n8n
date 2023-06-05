@@ -79,19 +79,29 @@ export class Telemetry {
 			return;
 		}
 
-		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
-			const promise = this.track(
-				'Workflow execution count',
-				{
-					event_version: '2',
-					workflow_id: workflowId,
-					...this.executionCountsBuffer[workflowId],
-				},
-				{ withPostHog: true },
-			);
+		const allPromises = Object.keys(this.executionCountsBuffer)
+			.filter((workflowId) => {
+				const data = this.executionCountsBuffer[workflowId];
+				const sum =
+					(data.manual_error?.count ?? 0) +
+					(data.manual_success?.count ?? 0) +
+					(data.prod_error?.count ?? 0) +
+					(data.prod_success?.count ?? 0);
+				return sum > 0;
+			})
+			.map(async (workflowId) => {
+				const promise = this.track(
+					'Workflow execution count',
+					{
+						event_version: '2',
+						workflow_id: workflowId,
+						...this.executionCountsBuffer[workflowId],
+					},
+					{ withPostHog: true },
+				);
 
-			return promise;
-		});
+				return promise;
+			});
 
 		this.executionCountsBuffer = {};
 
@@ -128,7 +138,11 @@ export class Telemetry {
 				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 
-			if (!properties.success && properties.error_node_type?.startsWith('n8n-nodes-base')) {
+			if (
+				!properties.success &&
+				properties.is_manual &&
+				properties.error_node_type?.startsWith('n8n-nodes-base')
+			) {
 				void this.track('Workflow execution errored', properties);
 			}
 		}

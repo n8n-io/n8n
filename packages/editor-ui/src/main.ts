@@ -3,13 +3,11 @@
 import Vue from 'vue';
 
 import './plugins';
-import 'prismjs';
-import 'prismjs/themes/prism.css';
-import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
 import '@jsplumb/browser-ui/css/jsplumbtoolkit.css';
 import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
+
 import './styles/autocomplete-theme.scss';
 
 import '@fontsource/open-sans/latin-400.css';
@@ -25,8 +23,7 @@ import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { useWebhooksStore, useUsersStore } from '@/stores';
-import { VIEWS } from '@/constants';
+import { useWebhooksStore } from '@/stores';
 
 Vue.config.productionTip = false;
 
@@ -44,11 +41,7 @@ new Vue({
 }).$mount('#app');
 
 router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
-	const userStore = useUsersStore();
-	if (userStore.currentUser && to.name && to.name !== VIEWS.SIGNOUT && !to.name.includes('Modal')) {
-		userStore.showUserActivationSurveyModal();
-	}
+	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 });
 
 if (!import.meta.env.PROD) {

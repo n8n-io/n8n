@@ -1,3 +1,4 @@
+import type { Migration } from '@db/types';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -36,7 +37,7 @@ import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-Creat
 import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 
-export const postgresMigrations = [
+export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
 	WebhookModel1589476000887,
 	CreateIndexStoppedAt1594828256133,

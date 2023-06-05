@@ -14,6 +14,9 @@ const properties: INodeProperties[] = [
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
+		typeOptions: {
+			editor: 'sqlEditor',
+		},
 		displayOptions: {
 			hide: {
 				'/options.useLegacySql': [true],
@@ -28,6 +31,9 @@ const properties: INodeProperties[] = [
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
+		typeOptions: {
+			editor: 'sqlEditor',
+		},
 		displayOptions: {
 			show: {
 				'/options.useLegacySql': [true],

@@ -8,13 +8,13 @@ import type { Route } from 'vue-router';
 
 const undoMock = vi.fn();
 const redoMock = vi.fn();
-vi.mock('@/stores/ndv', () => ({
+vi.mock('@/stores/ndv.store', () => ({
 	useNDVStore: () => ({
 		activeNodeName: null,
 		activeNode: {},
 	}),
 }));
-vi.mock('@/stores/history', () => {
+vi.mock('@/stores/history.store', () => {
 	return {
 		useHistoryStore: () => ({
 			popUndoableToUndo: undoMock,
@@ -22,7 +22,7 @@ vi.mock('@/stores/history', () => {
 		}),
 	};
 });
-vi.mock('@/stores/ui');
+vi.mock('@/stores/ui.store');
 vi.mock('vue-router/composables', () => ({
 	useRoute: () => ({}),
 }));

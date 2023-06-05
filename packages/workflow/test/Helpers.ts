@@ -34,7 +34,7 @@ import type {
 	WorkflowExecuteMode,
 } from '@/Interfaces';
 import { ICredentials, ICredentialsHelper } from '@/Interfaces';
-import { Workflow } from '@/Workflow';
+import type { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import { WorkflowHooks } from '@/WorkflowHooks';
 import * as NodeHelpers from '@/NodeHelpers';
@@ -76,7 +76,7 @@ export class Credentials extends ICredentials {
 		const fullData = this.getData(encryptionKey, nodeType);
 
 		if (fullData === null) {
-			throw new Error(`No data was set.`);
+			throw new Error('No data was set.');
 		}
 
 		// eslint-disable-next-line no-prototype-builtins
@@ -89,7 +89,7 @@ export class Credentials extends ICredentials {
 
 	getDataToSave(): ICredentialsEncrypted {
 		if (this.data === undefined) {
-			throw new Error(`No credentials were set to save.`);
+			throw new Error('No credentials were set to save.');
 		}
 
 		return {
@@ -277,7 +277,7 @@ export function getExecuteFunctions(
 				return mode;
 			},
 			getNode: () => {
-				return JSON.parse(JSON.stringify(node));
+				return deepCopy(node);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;
@@ -444,7 +444,7 @@ export function getExecuteSingleFunctions(
 				return mode;
 			},
 			getNode: () => {
-				return JSON.parse(JSON.stringify(node));
+				return deepCopy(node);
 			},
 			getRestApiUrl: (): string => {
 				return additionalData.restApiUrl;

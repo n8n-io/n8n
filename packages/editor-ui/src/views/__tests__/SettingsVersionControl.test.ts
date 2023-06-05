@@ -6,7 +6,7 @@ import { STORES } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { i18n } from '@/plugins/i18n';
 import SettingsVersionControl from '@/views/SettingsVersionControl.vue';
-import { useVersionControlStore } from '@/stores/versionControl';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let versionControlStore: ReturnType<typeof useVersionControlStore>;
@@ -26,7 +26,7 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) =>
 		},
 	);
 
-describe('SettingsSso', () => {
+describe('SettingsVersionControl', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({
 			initialState: {

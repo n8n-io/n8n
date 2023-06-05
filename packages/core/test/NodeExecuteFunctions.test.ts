@@ -28,7 +28,7 @@ describe('NodeExecuteFunctions', () => {
 			BinaryDataManager.instance = undefined;
 		});
 
-		test(`test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode`, async () => {
+		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 			// Setup a 'default' binary data manager instance
 			await BinaryDataManager.init({
 				mode: 'default',
@@ -39,8 +39,8 @@ describe('NodeExecuteFunctions', () => {
 			});
 
 			// Set our binary data buffer
-			let inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
-			let setBinaryDataBufferResponse: IBinaryData = await setBinaryDataBuffer(
+			const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
+			const setBinaryDataBufferResponse: IBinaryData = await setBinaryDataBuffer(
 				{
 					mimeType: 'txt',
 					data: 'This should be overwritten by the actual payload in the response',
@@ -54,7 +54,7 @@ describe('NodeExecuteFunctions', () => {
 
 			// Now, re-fetch our data.
 			// An ITaskDataConnections object is used to share data between nodes. The top level property, 'main', represents the successful output object from a previous node.
-			let taskDataConnectionsInput: ITaskDataConnections = {
+			const taskDataConnectionsInput: ITaskDataConnections = {
 				main: [],
 			};
 
@@ -69,7 +69,7 @@ describe('NodeExecuteFunctions', () => {
 			]);
 
 			// Now, lets fetch our data! The item will be item index 0.
-			let getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
+			const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
 				taskDataConnectionsInput,
 				0,
 				'data',
@@ -79,7 +79,7 @@ describe('NodeExecuteFunctions', () => {
 			expect(getBinaryDataBufferResponse).toEqual(inputData);
 		});
 
-		test(`test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode`, async () => {
+		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
 			// Setup a 'filesystem' binary data manager instance
 			await BinaryDataManager.init({
 				mode: 'filesystem',
@@ -90,8 +90,8 @@ describe('NodeExecuteFunctions', () => {
 			});
 
 			// Set our binary data buffer
-			let inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
-			let setBinaryDataBufferResponse: IBinaryData = await setBinaryDataBuffer(
+			const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
+			const setBinaryDataBufferResponse: IBinaryData = await setBinaryDataBuffer(
 				{
 					mimeType: 'txt',
 					data: 'This should be overwritten with the name of the configured data manager',
@@ -112,7 +112,7 @@ describe('NodeExecuteFunctions', () => {
 
 			// Now, re-fetch our data.
 			// An ITaskDataConnections object is used to share data between nodes. The top level property, 'main', represents the successful output object from a previous node.
-			let taskDataConnectionsInput: ITaskDataConnections = {
+			const taskDataConnectionsInput: ITaskDataConnections = {
 				main: [],
 			};
 
@@ -127,7 +127,7 @@ describe('NodeExecuteFunctions', () => {
 			]);
 
 			// Now, lets fetch our data! The item will be item index 0.
-			let getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
+			const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
 				taskDataConnectionsInput,
 				0,
 				'data',

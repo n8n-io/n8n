@@ -2,15 +2,17 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router/composables';
 import { Notification } from 'element-ui';
-import type { UsageTelemetry } from '@/stores/usage';
-import { useUsageStore } from '@/stores/usage';
+import type { UsageTelemetry } from '@/stores/usage.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
+import { useUIStore } from '@/stores';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
+const uiStore = useUIStore();
 
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
@@ -104,6 +106,7 @@ const onAddActivationKey = () => {
 };
 
 const onViewPlans = () => {
+	uiStore.goToUpgrade('usage_page', 'open');
 	sendUsageTelemetry('view_plans');
 };
 

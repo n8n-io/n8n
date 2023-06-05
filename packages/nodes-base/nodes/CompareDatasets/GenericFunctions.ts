@@ -414,7 +414,15 @@ export function checkMatchFieldsInput(data: IDataObject[]) {
 	return data as PairToMatch[];
 }
 
-export function checkInput(
+export function checkInput(input: INodeExecutionData[]) {
+	if (!input) return [];
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	return input;
+}
+
+export function checkInputAndThrowError(
 	input: INodeExecutionData[],
 	fields: string[],
 	disableDotNotation: boolean,

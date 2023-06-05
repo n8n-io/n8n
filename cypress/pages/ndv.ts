@@ -18,7 +18,7 @@ export class NDV extends BasePage {
 		outputDisplayMode: () => this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.monaco-editor[role=code]'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		savePinnedDataButton: () => this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
@@ -51,6 +51,11 @@ export class NDV extends BasePage {
 		inputHoveringItem: () => this.getters.inputPanel().findChildByTestId('hovering-item'),
 		outputBranches: () => this.getters.outputPanel().findChildByTestId('branches'),
 		inputBranches: () => this.getters.inputPanel().findChildByTestId('branches'),
+		resourceLocator: (paramName: string) => cy.getByTestId(`resource-locator-${paramName}`),
+		resourceLocatorInput: (paramName: string) => this.getters.resourceLocator(paramName).find('[data-test-id="rlc-input-container"]'),
+		resourceLocatorDropdown: (paramName: string) => this.getters.resourceLocator(paramName).find('[data-test-id="resource-locator-dropdown"]'),
+		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
+		resourceLocatorModeSelector: (paramName: string) => this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 	};
 
 	actions = {
@@ -77,8 +82,7 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters.pinnedDataEditor().type(`{selectall}{backspace}`);
-			this.getters.pinnedDataEditor().type(JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}'));
+			this.getters.pinnedDataEditor().type(`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`);
 
 			this.actions.savePinnedData();
 		},
@@ -149,5 +153,23 @@ export class NDV extends BasePage {
 		switchIntputBranch: (name: string) => {
 			this.getters.inputBranches().get('span').contains(name).click();
 		},
+		setRLCValue: (paramName: string, value: string) => {
+			this.getters.resourceLocatorModeSelector(paramName).click();
+			this.getters.resourceLocatorModeSelector(paramName).find('li').last().click();
+			this.getters.resourceLocatorInput(paramName).type(value);
+		},
+		validateExpressionPreview: (paramName: string, value: string) => {
+			this.getters.parameterExpressionPreview(paramName).find('span').should('include.html', asEncodedHTML(value));
+		},
 	};
 }
+
+function asEncodedHTML(str: string): string {
+	return String(str)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/ /g, '&nbsp;');
+}
+
