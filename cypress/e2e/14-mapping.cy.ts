@@ -10,7 +10,6 @@ const ndv = new NDV();
 
 describe('Data mapping', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

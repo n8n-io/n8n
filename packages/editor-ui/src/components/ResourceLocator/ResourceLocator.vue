@@ -456,9 +456,15 @@ export default defineComponent({
 				this.$emit('input', { ...this.value, __regex: mode.extractValue.regex });
 			}
 		},
-		dependentParametersValues() {
+		dependentParametersValues(currentValue, oldValue) {
+			const isUpdated = oldValue !== null && currentValue !== null && oldValue !== currentValue;
 			// Reset value if dependent parameters change
-			if (this.value && isResourceLocatorValue(this.value) && this.value.value !== '') {
+			if (
+				isUpdated &&
+				this.value &&
+				isResourceLocatorValue(this.value) &&
+				this.value.value !== ''
+			) {
 				this.$emit('input', {
 					...this.value,
 					cachedResultName: '',
