@@ -259,9 +259,7 @@ export class Server extends AbstractServer {
 				config.getEnv('userActivationSurvey.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				showSetupOnFirstLoad:
-					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
+				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
 				smtpSetup: isEmailSetUp(),
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -410,7 +408,6 @@ export class Server extends AbstractServer {
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('userManagement.skipInstanceOwnerSetup') === false &&
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 

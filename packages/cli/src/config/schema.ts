@@ -664,12 +664,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 		},
-		skipInstanceOwnerSetup: {
-			// n8n loads this setting from DB on startup
-			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
-			format: Boolean,
-			default: false,
-		},
 		emails: {
 			mode: {
 				doc: 'How to send emails',
