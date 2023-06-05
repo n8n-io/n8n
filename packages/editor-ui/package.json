@@ -47,7 +47,6 @@
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
     "axios": "^0.21.1",
-    "canvas-confetti": "^1.6.0",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
     "copy-to-clipboard": "^3.3.3",

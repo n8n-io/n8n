@@ -2022,7 +2022,6 @@ export interface IUserManagementSettings {
 
 export interface IUserSettings {
 	isOnboarded?: boolean;
-	showUserActivationSurvey?: boolean;
 	firstSuccessfulWorkflowId?: string;
 	userActivated?: boolean;
 	allowSSOManualLogin?: boolean;
@@ -2071,7 +2070,6 @@ export interface IN8nUISettings {
 		debug: boolean;
 	};
 	personalizationSurveyEnabled: boolean;
-	userActivationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
