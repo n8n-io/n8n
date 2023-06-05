@@ -73,9 +73,10 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 		return tweetId.value as string;
 	} else if (tweetId.mode === 'url') {
 		const value = tweetId.value as string;
-		const tweetIdMatch = value.match(
-			/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)$/,
-		);
+		const tweetIdMatch = value.includes('lists')
+			? value.match(/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/list(s)?\/(\d+)$/)
+			: value.match(/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)$/);
+
 		return tweetIdMatch?.[3] as string;
 	} else {
 		throw new Error(`The mode ${tweetId.mode} is not valid!`);
@@ -90,12 +91,14 @@ export async function returnIdFromUsername(
 		usernameRlc.mode === 'username' ||
 		(usernameRlc.mode === 'name' && this.getNode().parameters.list !== undefined)
 	) {
+		console.log(usernameRlc.value);
 		const user = (await twitterApiRequest.call(
 			this,
 			'GET',
 			`/users/by/username/${usernameRlc.value}`,
 			{},
 		)) as { id: string };
+		console.log(user);
 		return user.id;
 	} else if (this.getNode().parameters.list === undefined) {
 		const list = (await twitterApiRequest.call(

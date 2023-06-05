@@ -42,14 +42,6 @@ export const listFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'By Name',
-				name: 'name',
-				type: 'string',
-				validation: [],
-				placeholder: 'e.g. Automation Tools',
-				url: '',
-			},
-			{
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',

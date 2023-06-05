@@ -264,12 +264,12 @@ export class TwitterV2 implements INodeType {
 							trim_user: trimUser,
 						};
 						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
-							data: { id: string };
+							id: string;
 						};
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/users/${user.data.id}/retweets`,
+							`/users/${user.id}/retweets`,
 							body,
 						);
 					}
@@ -292,10 +292,7 @@ export class TwitterV2 implements INodeType {
 							'',
 							{},
 						) as INodeParameterResourceLocator;
-						const listId =
-							listRlc.mode !== 'name'
-								? returnId(listRlc)
-								: await returnIdFromUsername.call(this, listRlc);
+						const listId = returnId(listRlc);
 						responseData = await twitterApiRequest.call(this, 'POST', `/lists/${listId}/members`, {
 							user_id: userId,
 						});
