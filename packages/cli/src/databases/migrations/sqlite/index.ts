@@ -34,6 +34,7 @@ import { UpdateRunningExecutionStatus1677237073720 } from './1677237073720-Updat
 import { CreateExecutionMetadataTable1679416281777 } from './1679416281777-CreateExecutionMetadataTable';
 import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
+import { AddUserOTPSecret1681134145997 } from './1681134145997-AddUserOTPSecret';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -72,6 +73,7 @@ const sqliteMigrations = [
 	CreateVariables1677501636752,
 	CreateExecutionMetadataTable1679416281777,
 	AddUserActivatedProperty1681134145996,
+	AddUserOTPSecret1681134145997,
 ];
 
 export { sqliteMigrations };
