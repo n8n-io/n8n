@@ -16,7 +16,7 @@ export async function pgTriggerFunction(
 	const tableName = this.getNodeParameter('tableName', undefined, {
 		extractValue: true,
 	}) as string;
-	const target = `${schema}.${tableName}`;
+	const target = `${schema}."${tableName}"`;
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 	const functionReplace =
 		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$;";
@@ -131,7 +131,7 @@ export async function dropTriggerFunction(
 	const tableName = this.getNodeParameter('tableName', undefined, {
 		extractValue: true,
 	}) as string;
-	const target = `${schema}.${tableName}`;
+	const target = `${schema}."${tableName}"`;
 	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 	const nodeId = this.getNode().id.replace(/-/g, '_');
 	let functionName =
