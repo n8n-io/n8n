@@ -1,7 +1,7 @@
 import { ExpressionExtensionError } from './../ExpressionError';
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import { DateTime } from 'luxon';
+import { DateTime as LuxonDateTime } from 'luxon';
 import type {
 	DateTimeUnit,
 	DurationLike,
@@ -22,6 +22,7 @@ type DurationUnit =
 	| 'months'
 	| 'quarter'
 	| 'years';
+
 type DatePart =
 	| 'day'
 	| 'week'
@@ -70,41 +71,36 @@ const DATETIMEUNIT_MAP: Record<string, DateTimeUnit> = {
 	ms: 'millisecond',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isDateTime(date: any): date is DateTime {
-	if (date) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		return DateTime.isDateTime(date);
-	}
-	return false;
+function isLuxonDateTime(date: unknown): date is LuxonDateTime {
+	return date ? LuxonDateTime.isDateTime(date) : false;
 }
+
+const toLuxonDateTime = (d: Date | LuxonDateTime) =>
+	LuxonDateTime.isDateTime(d) ? d : LuxonDateTime.fromJSDate(d);
+
+export const run = <T>(fn: () => T): T => fn();
 
 function generateDurationObject(durationValue: number, unit: DurationUnit) {
 	const convertedUnit = DURATION_MAP[unit] || unit;
 	return { [`${convertedUnit}`]: durationValue } as DurationObjectUnits;
 }
 
-function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
+function beginningOf(date: Date | LuxonDateTime, extraArgs: DurationUnit[]): string {
 	const [unit = 'week'] = extraArgs;
 
-	if (isDateTime(date)) {
-		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
-	}
-	const dateTime = DateTime.fromJSDate(date);
-	return dateTime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
+	return toLuxonDateTime(date)
+		.startOf(DATETIMEUNIT_MAP[unit] || unit)
+		.toISO();
 }
 
-function endOfMonth(date: Date | DateTime): Date {
-	if (isDateTime(date)) {
-		return date.endOf('month').toJSDate();
-	}
-	return DateTime.fromJSDate(date).endOf('month').toJSDate();
+function endOfMonth(date: Date | LuxonDateTime): string {
+	return toLuxonDateTime(date).endOf('month').toISO();
 }
 
-function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
+function extract(inputDate: Date | LuxonDateTime, extraArgs: DatePart[]): number {
 	let [part = 'week'] = extraArgs;
 	let date = inputDate;
-	if (isDateTime(date)) {
+	if (isLuxonDateTime(date)) {
 		date = date.toJSDate();
 	}
 	if (part === 'yearDayNumber') {
@@ -120,20 +116,20 @@ function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Da
 		part = 'weekNumber';
 	}
 
-	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
+	return LuxonDateTime.fromJSDate(date).get(
+		(DATETIMEUNIT_MAP[part] as keyof LuxonDateTime) || part,
+	);
 }
 
-function format(date: Date | DateTime, extraArgs: unknown[]): string {
+function format(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
 	const [dateFormat, localeOpts = {}] = extraArgs as [string, LocaleOptions];
-	if (isDateTime(date)) {
-		return date.toFormat(dateFormat, { ...localeOpts });
-	}
-	return DateTime.fromJSDate(date).toFormat(dateFormat, { ...localeOpts });
+
+	return toLuxonDateTime(date).toFormat(dateFormat, { ...localeOpts });
 }
 
 function isBetween(
-	date: Date | DateTime,
-	extraArgs: Array<string | Date | DateTime>,
+	date: Date | LuxonDateTime,
+	extraArgs: Array<string | Date | LuxonDateTime>,
 ): boolean | undefined {
 	if (extraArgs.length !== 2) {
 		throw new ExpressionExtensionError('isBetween(): expected exactly two args');
@@ -154,54 +150,51 @@ function isBetween(
 	return secondDate > date && date > firstDate;
 }
 
-function isDst(date: Date | DateTime): boolean {
-	if (isDateTime(date)) {
-		return date.isInDST;
-	}
-	return DateTime.fromJSDate(date).isInDST;
+function isDst(date: Date | LuxonDateTime): boolean {
+	return toLuxonDateTime(date).isInDST;
 }
 
-function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
+function isInLast(date: Date | LuxonDateTime, extraArgs: unknown[]): boolean {
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
-	const dateInThePast = DateTime.now().minus(generateDurationObject(durationValue, unit));
+	const dateInThePast = LuxonDateTime.now().minus(generateDurationObject(durationValue, unit));
 	let thisDate = date;
-	if (!isDateTime(thisDate)) {
-		thisDate = DateTime.fromJSDate(thisDate);
+	if (!isLuxonDateTime(thisDate)) {
+		thisDate = LuxonDateTime.fromJSDate(thisDate);
 	}
-	return dateInThePast <= thisDate && thisDate <= DateTime.now();
+	return dateInThePast <= thisDate && thisDate <= LuxonDateTime.now();
 }
 
 const WEEKEND_DAYS: WeekdayNumbers[] = [6, 7];
-function isWeekend(date: Date | DateTime): boolean {
-	const { weekday } = isDateTime(date) ? date : DateTime.fromJSDate(date);
+function isWeekend(date: Date | LuxonDateTime): boolean {
+	const { weekday } = toLuxonDateTime(date);
 	return WEEKEND_DAYS.includes(weekday);
 }
 
-function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
-	if (isDateTime(date) && extraArgs.length === 1) {
-		return date.minus(extraArgs[0] as DurationLike);
-	}
+function minus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
+	const [arg] = extraArgs as [DurationLike];
 
-	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+	if (isLuxonDateTime(date) && arg) return date.minus(arg).toISO();
 
-	if (isDateTime(date)) {
-		return date.minus(generateDurationObject(durationValue, unit)).toJSDate();
-	}
-	return DateTime.fromJSDate(date).minus(generateDurationObject(durationValue, unit)).toJSDate();
+	const duration = run(() => {
+		const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+		return generateDurationObject(durationValue, unit);
+	});
+
+	return toLuxonDateTime(date).minus(duration).toISO();
 }
 
-function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
-	if (isDateTime(date) && extraArgs.length === 1) {
-		return date.plus(extraArgs[0] as DurationLike);
-	}
+function plus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
+	const [arg] = extraArgs as [DurationLike | undefined];
 
-	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+	if (isLuxonDateTime(date) && arg) return date.plus(arg).toISO();
 
-	if (isDateTime(date)) {
-		return date.plus(generateDurationObject(durationValue, unit)).toJSDate();
-	}
-	return DateTime.fromJSDate(date).plus(generateDurationObject(durationValue, unit)).toJSDate();
+	const duration = run(() => {
+		const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+		return generateDurationObject(durationValue, unit);
+	});
+
+	return toLuxonDateTime(date).plus(duration).toISO();
 }
 
 endOfMonth.doc = {
