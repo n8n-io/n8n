@@ -535,9 +535,9 @@ export default defineComponent({
 .updates {
 	display: flex;
 	align-items: center;
-	height: 26px;
 	cursor: pointer;
-	padding: var(--spacing-xs) var(--spacing-l);
+	padding: var(--spacing-2xs) var(--spacing-l);
+	margin: var(--spacing-2xs) 0 0;
 
 	svg {
 		color: var(--color-text-base) !important;
