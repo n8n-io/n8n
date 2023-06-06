@@ -1092,6 +1092,7 @@ export async function requestOAuth2(
 		clientSecret: credentials.clientSecret as string,
 		accessTokenUri: credentials.accessTokenUrl as string,
 		scopes: (credentials.scope as string).split(' '),
+		ignoreSSLIssues: credentials.ignoreSSLIssues as boolean,
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
@@ -1131,6 +1132,9 @@ export async function requestOAuth2(
 		},
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
 	);
+
+	(requestOptions as OptionsWithUri).rejectUnauthorized = !credentials.ignoreSSLIssues;
+
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as ClientOAuth2RequestObject);
