@@ -9,6 +9,14 @@ import type { IDataObject } from 'n8n-workflow';
 
 const versionControlApiRoot = '/version-control';
 
+const createPreferencesRequestFn =
+	(method: 'POST' | 'PATCH') =>
+	async (
+		context: IRestApiContext,
+		preferences: Partial<VersionControlPreferences>,
+	): Promise<VersionControlPreferences> =>
+		makeRestApiRequest(context, method, `${versionControlApiRoot}/preferences`, preferences);
+
 export const pushWorkfolder = async (
 	context: IRestApiContext,
 	data: IDataObject,
@@ -29,19 +37,8 @@ export const getBranches = async (
 	return makeRestApiRequest(context, 'GET', `${versionControlApiRoot}/get-branches`);
 };
 
-export const setBranch = async (
-	context: IRestApiContext,
-	branch: string,
-): Promise<{ branches: string[]; currentBranch: string }> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/set-branch`, { branch });
-};
-
-export const setPreferences = async (
-	context: IRestApiContext,
-	preferences: Partial<VersionControlPreferences>,
-): Promise<VersionControlPreferences> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/preferences`, preferences);
-};
+export const savePreferences = createPreferencesRequestFn('POST');
+export const updatePreferences = createPreferencesRequestFn('PATCH');
 
 export const getPreferences = async (
 	context: IRestApiContext,
@@ -65,15 +62,6 @@ export const disconnect = async (
 ): Promise<string> => {
 	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/disconnect`, {
 		keepKeyPair,
-	});
-};
-
-export const setBranchReadonly = async (
-	context: IRestApiContext,
-	branchReadOnly: boolean,
-): Promise<string> => {
-	return makeRestApiRequest(context, 'POST', `${versionControlApiRoot}/set-read-only`, {
-		branchReadOnly,
 	});
 };
 

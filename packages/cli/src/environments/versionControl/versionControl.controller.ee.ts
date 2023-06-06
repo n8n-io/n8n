@@ -1,4 +1,4 @@
-import { Authorized, Get, Patch, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, Patch, RestController } from '@/decorators';
 import {
 	versionControlLicensedMiddleware,
 	versionControlLicensedAndEnabledMiddleware,
@@ -122,22 +122,6 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/set-read-only', { middlewares: [versionControlLicensedMiddleware] })
-	async setReadOnly(req: VersionControlRequest.SetReadOnly) {
-		try {
-			await this.versionControlPreferencesService.setPreferences(
-				{
-					branchReadOnly: req.body.branchReadOnly,
-				},
-				true,
-			);
-			return this.versionControlPreferencesService.getPreferences();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
 	@Post('/disconnect', { middlewares: [versionControlLicensedMiddleware] })
 	async disconnect(req: VersionControlRequest.Disconnect) {
 		try {
@@ -152,16 +136,6 @@ export class VersionControlController {
 	async getBranches() {
 		try {
 			return await this.versionControlService.getBranches();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/set-branch', { middlewares: [versionControlLicensedMiddleware] })
-	async setBranch(req: VersionControlRequest.SetBranch) {
-		try {
-			return await this.versionControlService.setBranch(req.body.branch);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

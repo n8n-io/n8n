@@ -904,9 +904,6 @@ importers:
       axios:
         specifier: ^0.21.1
         version: 0.21.4(debug@4.3.2)
-      canvas-confetti:
-        specifier: ^1.6.0
-        version: 1.6.0
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -10363,10 +10360,6 @@ packages:
   /caniuse-lite@1.0.30001445:
     resolution: {integrity: sha512-8sdQIdMztYmzfTMO6KfLny878Ln9c2M0fc7EH60IjlP4Dc4PiCy7K2Vl3ITmWgOyPgVQKa5x+UP/KqFsxj4mBg==}
     dev: true
-
-  /canvas-confetti@1.6.0:
-    resolution: {integrity: sha512-ej+w/m8Jzpv9Z7W7uJZer14Ke8P2ogsjg4ZMGIuq4iqUOqY2Jq8BNW42iGmNfRwREaaEfFIczLuZZiEVSYNHAA==}
-    dev: false
 
   /capital-case@1.0.4:
     resolution: {integrity: sha512-ds37W8CytHgwnhGGTi88pcPyR15qoNkOpYwmMMfnWqqWgESapLqvDx6huFjQ5vqWSn2Z06173XNA7LtMOeUh1A==}

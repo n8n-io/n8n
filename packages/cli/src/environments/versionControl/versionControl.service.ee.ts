@@ -174,7 +174,7 @@ export class VersionControlService {
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
 		await this.versionControlPreferencesService.setPreferences({
 			branchName: branch,
-			connected: branch?.length > 0 ? true : false,
+			connected: branch?.length > 0,
 		});
 		return this.gitService.setBranch(branch);
 	}
