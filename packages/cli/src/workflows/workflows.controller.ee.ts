@@ -90,7 +90,7 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		const relations = ['shared', 'shared.user', 'shared.role'];
+		const relations = ['shared', 'shared.user'];
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
 		}

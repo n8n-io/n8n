@@ -34,7 +34,7 @@ EECredentialsController.get(
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<CredentialWithSharings[]> => {
 		try {
 			const allCredentials = await EECredentials.getAll(req.user, {
-				relations: ['shared', 'shared.role', 'shared.user'],
+				relations: ['shared', 'shared.user'],
 			});
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method
@@ -60,7 +60,7 @@ EECredentialsController.get(
 
 		let credential = (await EECredentials.get(
 			{ id: credentialId },
-			{ relations: ['shared', 'shared.role', 'shared.user'] },
+			{ relations: ['shared', 'shared.user'] },
 		)) as CredentialsEntity & CredentialWithSharings;
 
 		if (!credential) {
