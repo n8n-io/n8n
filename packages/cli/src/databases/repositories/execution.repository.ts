@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import type {
 	FindManyOptions,
 	FindOneOptions,
@@ -23,6 +23,7 @@ import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import { BinaryDataManager } from 'n8n-core';
+import config from '@/config';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -247,6 +248,52 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// TODO: Should this be awaited? Should we add a catch in case it fails?
 		await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(executionId);
 		return this.delete({ id: executionId });
+	}
+
+	async countExecutions(
+		filters: IGetExecutionsQueryFilter | undefined,
+		accessibleWorkflowIds: string[],
+		currentlyRunningExecutions: string[],
+		isOwner: boolean,
+	): Promise<{ count: number; estimated: boolean }> {
+		const dbType = config.getEnv('database.type');
+		if (dbType !== 'postgresdb' || (filters && Object.keys(filters).length > 0) || !isOwner) {
+			const query = this.createQueryBuilder('execution')
+				.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds })
+				.andWhere('execution.id NOT IN (:...currentlyRunningExecutions)', {
+					currentlyRunningExecutions,
+				});
+
+			parseFiltersToQueryBuilder(query, filters);
+
+			const count = await query.getCount();
+			return { count, estimated: false };
+		}
+
+		try {
+			// Get an estimate of rows count.
+			const estimateRowsNumberSql =
+				"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+			const rows = (await this.query(estimateRowsNumberSql)) as Array<{ n_live_tup: string }>;
+
+			const estimate = parseInt(rows[0].n_live_tup, 10);
+			// If over 100k, return just an estimate.
+			if (estimate > 100_000) {
+				// if less than 100k, we get the real count as even a full
+				// table scan should not take so long.
+				return { count: estimate, estimated: true };
+			}
+		} catch (error) {
+			LoggerProxy.warn(`Failed to get executions count from Postgres: ${error}`);
+		}
+
+		const count = await this.count({
+			where: {
+				workflowId: In(accessibleWorkflowIds),
+			},
+		});
+
+		return { count, estimated: false };
 	}
 
 	async searchExecutions(

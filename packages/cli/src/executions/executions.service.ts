@@ -91,102 +91,6 @@ export class ExecutionsService {
 		return getSharedWorkflowIds(user, ['owner']);
 	}
 
-	/**
-	 * Helper function to retrieve count of Executions
-	 */
-	static async getExecutionsCount(
-		countFilter: IDataObject,
-		user: User,
-		metadata?: Array<{ key: string; value: string }>,
-	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = config.getEnv('database.type');
-		const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
-
-		// For databases other than Postgres, do a regular count
-		// when filtering based on `workflowId` or `finished` fields.
-		if (
-			dbType !== 'postgresdb' ||
-			metadata?.length ||
-			filteredFields.length > 0 ||
-			user.globalRole.name !== 'owner'
-		) {
-			const sharedWorkflowIds = await this.getWorkflowIdsForUser(user);
-
-			let query = Db.collections.Execution.createQueryBuilder('execution')
-				.select()
-				.orderBy('execution.id', 'DESC')
-				.where({ workflowId: In(sharedWorkflowIds) });
-
-			if (metadata?.length) {
-				query = query.leftJoinAndSelect(ExecutionMetadata, 'md', 'md.executionId = execution.id');
-				for (const md of metadata) {
-					query = query.andWhere('md.key = :key AND md.value = :value', md);
-				}
-			}
-
-			if (filteredFields.length > 0) {
-				query = query.andWhere(countFilter);
-			}
-
-			const count = await query.getCount();
-			return { count, estimated: false };
-		}
-
-		try {
-			// Get an estimate of rows count.
-			const estimateRowsNumberSql =
-				"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
-			const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution.query(
-				estimateRowsNumberSql,
-			);
-
-			const estimate = parseInt(rows[0].n_live_tup, 10);
-			// If over 100k, return just an estimate.
-			if (estimate > 100_000) {
-				// if less than 100k, we get the real count as even a full
-				// table scan should not take so long.
-				return { count: estimate, estimated: true };
-			}
-		} catch (error) {
-			LoggerProxy.warn(`Failed to get executions count from Postgres: ${error}`);
-		}
-
-		const sharedWorkflowIds = await getSharedWorkflowIds(user);
-
-		const count = await Db.collections.Execution.count({
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-		});
-
-		return { count, estimated: false };
-	}
-
-	static massageFilters(filter: IDataObject): void {
-		if (filter) {
-			if (filter.waitTill === true) {
-				filter.waitTill = Not(IsNull());
-				// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
-			} else if (filter.finished === false) {
-				filter.waitTill = IsNull();
-			} else {
-				delete filter.waitTill;
-			}
-
-			if (Array.isArray(filter.metadata)) {
-				delete filter.metadata;
-			}
-
-			if ('startedAfter' in filter) {
-				delete filter.startedAfter;
-			}
-
-			if ('startedBefore' in filter) {
-				delete filter.startedBefore;
-			}
-		}
-	}
-
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
@@ -255,21 +159,11 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const countFilter = deepCopy(filter ?? {});
-		const metadata = isAdvancedExecutionFiltersEnabled() ? filter?.metadata : undefined;
-
-		// deepcopy breaks the In operator so we need to reapply it
-		if (filter?.status) {
-			Object.assign(countFilter, { status: In(filter.status) });
-		}
-
-		this.massageFilters(countFilter as IDataObject);
-		countFilter.id = Not(In(executingWorkflowIds));
-
-		const { count, estimated } = await this.getExecutionsCount(
-			countFilter as IDataObject,
-			req.user,
-			metadata,
+		const { count, estimated } = await Container.get(ExecutionRepository).countExecutions(
+			filter,
+			sharedWorkflowIds,
+			executingWorkflowIds,
+			req.user.globalRole.name === 'owner',
 		);
 
 		const formattedExecutions = await Container.get(ExecutionRepository).searchExecutions(
