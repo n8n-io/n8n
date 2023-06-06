@@ -84,6 +84,7 @@ import { VersionControlService } from '@/environments/versionControl/versionCont
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { MfaService } from '@/Mfa/mfa.service';
 import { TOTPService } from '@/Mfa/totp.service';
+import { VersionControlPreferencesService } from '@/environments/versionControl/versionControlPreferences.service.ee';
 
 export const mockInstance = <T>(
 	ctor: new (...args: any[]) => T,
@@ -217,10 +218,11 @@ export async function initTestServer({
 					break;
 				case 'versionControl':
 					const versionControlService = Container.get(VersionControlService);
+					const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
 					registerController(
 						testServer.app,
 						config,
-						new VersionControlController(versionControlService),
+						new VersionControlController(versionControlService, versionControlPreferencesService),
 					);
 					break;
 				case 'nodes':

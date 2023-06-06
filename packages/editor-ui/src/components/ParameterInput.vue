@@ -87,7 +87,7 @@
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:value="node.parameters.jsCode"
+					:value="editorContent"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -97,7 +97,7 @@
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="node.parameters.html"
+					:html="editorContent"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -107,7 +107,7 @@
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="node.parameters.query"
+					:query="editorContent"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -362,8 +362,10 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValueType,
+	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -380,7 +382,6 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-
 import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
@@ -457,6 +458,12 @@ export default defineComponent({
 		expressionEvaluated: {
 			type: String as PropType<string | undefined>,
 		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
+		},
 	},
 	data() {
 		return {
@@ -507,10 +514,10 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		dependentParametersValues() {
+		async dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			void this.loadRemoteParameterOptions();
+			await this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -813,6 +820,22 @@ export default defineComponent({
 		},
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
+		},
+		nodeType(): INodeTypeDescription | null {
+			if (!this.node) return null;
+			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+		},
+		editorContent(): string | undefined {
+			if (!this.nodeType) {
+				return;
+			}
+			const editorProp = this.nodeType.properties.find(
+				(p) => p.typeOptions?.editor === (this.editorType as string),
+			);
+			if (!editorProp) {
+				return;
+			}
+			return this.node.parameters[editorProp.name] as string;
 		},
 	},
 	methods: {

@@ -29,6 +29,7 @@
 							placeholder="Select Workflow"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
 						>
@@ -57,6 +58,7 @@
 						<el-col :span="14" class="ignore-key-press">
 							<n8n-select
 								v-model="workflowSettings.callerPolicy"
+								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.selectOption')"
 								size="medium"
 								filterable
@@ -84,6 +86,7 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								:disabled="readOnlyEnv"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								size="medium"
@@ -109,6 +112,7 @@
 							placeholder="Select Timezone"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-timezone"
 						>
@@ -138,6 +142,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-failed-executions"
 						>
@@ -167,6 +172,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-success-executions"
 						>
@@ -196,6 +202,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-manual-executions"
 						>
@@ -225,6 +232,7 @@
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							size="medium"
 							filterable
+							:disabled="readOnlyEnv"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-execution-progress"
 						>
@@ -252,6 +260,7 @@
 						<div>
 							<el-switch
 								ref="inputField"
+								:disabled="readOnlyEnv"
 								:value="workflowSettings.executionTimeout > -1"
 								@change="toggleTimeout"
 								active-color="#13ce66"
@@ -277,6 +286,7 @@
 						<el-col :span="4">
 							<n8n-input
 								size="medium"
+								:disabled="readOnlyEnv"
 								:value="timeoutHMS.hours"
 								@input="(value) => setTimeout('hours', value)"
 								:min="0"
@@ -287,6 +297,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								size="medium"
+								:disabled="readOnlyEnv"
 								:value="timeoutHMS.minutes"
 								@input="(value) => setTimeout('minutes', value)"
 								:min="0"
@@ -298,6 +309,7 @@
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
 								size="medium"
+								:disabled="readOnlyEnv"
 								:value="timeoutHMS.seconds"
 								@input="(value) => setTimeout('seconds', value)"
 								:min="0"
@@ -313,6 +325,7 @@
 		<template #footer>
 			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
+					:disabled="readOnlyEnv"
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
@@ -348,11 +361,14 @@ import {
 
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import useWorkflowsEEStore from '@/stores/workflows.ee.store';
-import { useUsersStore } from '@/stores/users.store';
+import {
+	useWorkflowsStore,
+	useSettingsStore,
+	useRootStore,
+	useWorkflowsEEStore,
+	useUsersStore,
+	useVersionControlStore,
+} from '@/stores';
 import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
@@ -424,6 +440,7 @@ export default defineComponent({
 			useSettingsStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
+			useVersionControlStore,
 		),
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
@@ -446,6 +463,9 @@ export default defineComponent({
 			);
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
+		},
+		readOnlyEnv(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
 		},
 	},
 	async mounted() {

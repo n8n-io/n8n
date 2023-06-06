@@ -65,6 +65,10 @@ export const genericHelpers = defineComponent({
 			return true;
 		},
 
+		/**
+		 * @note Loading helpers extracted as composable in useLoadingService
+		 */
+
 		startLoading(text?: string) {
 			if (this.loadingService !== null) {
 				return;

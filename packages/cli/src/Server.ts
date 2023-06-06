@@ -31,6 +31,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import {
 	BinaryDataManager,
 	Credentials,
+	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
@@ -49,6 +50,7 @@ import type {
 	ICredentialTypes,
 	ExecutionStatus,
 	IExecutionsSummary,
+	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
@@ -79,6 +81,7 @@ import type {
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
 	OAuthRequest,
+	ResourceMapperRequest,
 	WorkflowRequest,
 } from '@/requests';
 import { registerController } from '@/decorators';
@@ -165,12 +168,13 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
+import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper.ee';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import { MfaService } from './Mfa/mfa.service';
 import { TOTPService } from './Mfa/totp.service';
+import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
 
 const exec = promisify(callbackExec);
 
@@ -258,8 +262,6 @@ export class Server extends AbstractServer {
 			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
-			userActivationSurveyEnabled:
-				config.getEnv('userActivationSurvey.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				enabled: isUserManagementEnabled(),
@@ -478,6 +480,7 @@ export class Server extends AbstractServer {
 		const samlService = Container.get(SamlService);
 		const versionControlService = Container.get(VersionControlService);
 		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+		const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -507,7 +510,7 @@ export class Server extends AbstractServer {
 				postHog,
 			}),
 			new SamlController(samlService),
-			new VersionControlController(versionControlService),
+			new VersionControlController(versionControlService, versionControlPreferencesService),
 		];
 
 		if (isLdapEnabled()) {
@@ -772,6 +775,58 @@ export class Server extends AbstractServer {
 					}
 
 					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
+				},
+			),
+		);
+
+		this.app.get(
+			`/${this.restEndpoint}/get-mapping-fields`,
+			ResponseHelper.send(
+				async (
+					req: ResourceMapperRequest,
+					res: express.Response,
+				): Promise<ResourceMapperFields | undefined> => {
+					const nodeTypeAndVersion = jsonParse(
+						req.query.nodeTypeAndVersion,
+					) as INodeTypeNameVersion;
+
+					const { path, methodName } = req.query;
+
+					if (!req.query.currentNodeParameters) {
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
+					}
+
+					const currentNodeParameters = jsonParse(
+						req.query.currentNodeParameters,
+					) as INodeParameters;
+
+					let credentials: INodeCredentials | undefined;
+
+					if (req.query.credentials) {
+						credentials = jsonParse(req.query.credentials);
+					}
+
+					const loadMappingOptionsInstance = new LoadMappingOptions(
+						nodeTypeAndVersion,
+						this.nodeTypes,
+						path,
+						currentNodeParameters,
+						credentials,
+					);
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(
+						req.user.id,
+						currentNodeParameters,
+					);
+
+					const fields = await loadMappingOptionsInstance.getOptionsViaMethodName(
+						methodName,
+						additionalData,
+					);
+
+					return fields;
 				},
 			),
 		);

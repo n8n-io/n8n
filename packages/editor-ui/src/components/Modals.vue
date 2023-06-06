@@ -91,14 +91,6 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
-		<ModalRoot :name="USER_ACTIVATION_SURVEY_MODAL">
-			<WorkflowSuccessModal />
-		</ModalRoot>
-
-		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
-			<MfaSetupModal />
-		</ModalRoot>
-
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -117,6 +109,12 @@
 					:isNew="data.isNew"
 					:eventBus="data.eventBus"
 				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="VERSION_CONTROL_PUSH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<VersionControlPushModal :modalName="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>
@@ -147,8 +145,8 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	ASK_AI_MODAL_KEY,
-	USER_ACTIVATION_SURVEY_MODAL,
 	MFA_SETUP_MODAL_KEY,
+	VERSION_CONTROL_PUSH_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -174,8 +172,8 @@ import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import WorkflowSuccessModal from './UserActivationSurveyModal.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import VersionControlPushModal from '@/components/VersionControlPushModal.ee.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -203,8 +201,8 @@ export default defineComponent({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
-		WorkflowSuccessModal,
 		MfaSetupModal,
+		VersionControlPushModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -229,8 +227,8 @@ export default defineComponent({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
-		USER_ACTIVATION_SURVEY_MODAL,
 		MFA_SETUP_MODAL_KEY,
+		VERSION_CONTROL_PUSH_MODAL_KEY,
 	}),
 });
 </script>

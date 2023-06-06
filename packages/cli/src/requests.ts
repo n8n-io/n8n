@@ -33,10 +33,6 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	lastName: string;
 }
 export class UserSettingsUpdatePayload {
-	@IsBoolean({ message: 'showUserActivationSurvey should be a boolean' })
-	@IsOptional()
-	showUserActivationSurvey: boolean;
-
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated: boolean;
@@ -363,6 +359,23 @@ export type NodeListSearchRequest = AuthenticatedRequest<
 		credentials: string;
 		filter?: string;
 		paginationToken?: string;
+	}
+>;
+
+// ----------------------------------
+//        /get-mapping-fields
+// ----------------------------------
+
+export type ResourceMapperRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
 	}
 >;
 
