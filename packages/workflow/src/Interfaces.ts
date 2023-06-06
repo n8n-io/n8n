@@ -1970,6 +1970,7 @@ export interface ResourceMapperField {
 	type?: FieldType;
 	removed?: boolean;
 	options?: INodePropertyOptions[];
+	readOnly?: boolean;
 }
 
 export type FieldType =

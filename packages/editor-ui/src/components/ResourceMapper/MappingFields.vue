@@ -51,7 +51,7 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 
-const fieldsUi = computed<INodeProperties[]>(() => {
+const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	return props.fieldsToMap
 		.filter((field) => field.display !== false && field.removed !== true)
 		.map((field) => {
@@ -64,11 +64,12 @@ const fieldsUi = computed<INodeProperties[]>(() => {
 				required: field.required,
 				description: getFieldDescription(field),
 				options: field.options,
+				readOnly: field.readOnly,
 			};
 		});
 });
 
-const orderedFields = computed<INodeProperties[]>(() => {
+const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	// Sort so that matching columns are first
 	if (props.paramValue.matchingColumns) {
 		fieldsUi.value.forEach((field, i) => {
@@ -327,7 +328,7 @@ defineExpose({
 					:value="getParameterValue(field.name)"
 					:displayOptions="true"
 					:path="`${props.path}.${field.name}`"
-					:isReadOnly="refreshInProgress"
+					:isReadOnly="refreshInProgress || field.readOnly"
 					:hideIssues="true"
 					:nodeValues="nodeValues"
 					:class="$style.parameterInputFull"

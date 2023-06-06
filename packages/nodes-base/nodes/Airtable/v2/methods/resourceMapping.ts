@@ -81,27 +81,54 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 
 	const fields: ResourceMapperField[] = [];
 
+	const constructOptions = (field: AirtableSchema) => {
+		if (field?.options?.choices) {
+			return (field.options.choices as IDataObject[]).map((choice) => ({
+				name: choice.name,
+				value: choice.name,
+			})) as INodePropertyOptions[];
+		}
+
+		return undefined;
+	};
+
 	for (const field of tableData.fields as AirtableSchema[]) {
-		if (airtableReadOnlyFields.includes(field.name)) continue;
+		// if (airtableReadOnlyFields.includes(field.type)) continue;
 
 		const type = mapForeignType(field.type, airtableTypesMap);
-		const options =
-			type === 'options' && field?.options?.choices
-				? ((field.options.choices as IDataObject[]).map((choice) => ({
-						name: choice.name,
-						value: choice.name,
-				  })) as INodePropertyOptions[])
-				: undefined;
+		const options = constructOptions(field);
 		fields.push({
 			id: field.name,
 			displayName: field.name,
 			required: false,
 			defaultMatch: false,
+			canBeUsedToMatch: true,
 			display: true,
 			type,
 			options,
+			readOnly: airtableReadOnlyFields.includes(field.type),
 		});
 	}
 
 	return { fields };
+}
+
+export async function getColumnsWithRecordId(
+	this: ILoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const returnData = await getColumns.call(this);
+	return {
+		fields: [
+			{
+				id: 'id',
+				displayName: 'id',
+				required: false,
+				defaultMatch: true,
+				display: true,
+				type: 'string',
+				readOnly: true,
+			},
+			...returnData.fields,
+		],
+	};
 }
