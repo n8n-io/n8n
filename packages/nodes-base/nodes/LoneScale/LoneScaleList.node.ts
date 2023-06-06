@@ -209,7 +209,6 @@ export class LoneScaleList implements INodeType {
 						type: 'string',
 						placeholder: 'name@email.com',
 						default: '',
-						description: 'Contact email',
 					},
 					{
 						displayName: 'Company Name',
@@ -379,6 +378,7 @@ export class LoneScaleList implements INodeType {
 
 						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
 						const executionData = this.helpers.constructExecutionMetaData(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
@@ -459,6 +459,7 @@ export class LoneScaleList implements INodeType {
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
