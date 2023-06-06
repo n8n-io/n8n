@@ -135,7 +135,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			where: {
 				id: In(Array.from(credentialIdsUsedByWorkflow)),
 			},
-			relations: ['shared', 'shared.user', 'shared.role'],
+			relations: ['shared', 'shared.user'],
 		});
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
