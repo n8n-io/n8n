@@ -9,7 +9,6 @@ import {
 } from './constants';
 import * as Db from '@/Db';
 import glob from 'fast-glob';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, UserSettings } from 'n8n-core';
@@ -47,10 +46,6 @@ export class VersionControlImportService {
 		);
 	}
 
-	getWorkflowPath(workflowId: string): string {
-		return path.join(this.workflowExportFolder, `${workflowId}.json`);
-	}
-
 	private async getOwnerGlobalRole() {
 		const ownerCredentiallRole = await Db.collections.Role.findOne({
 			where: { name: 'owner', scope: 'global' },
@@ -86,27 +81,6 @@ export class VersionControlImportService {
 
 		return ownerWorkflowRole;
 	}
-
-	private replaceCredentialData = (
-		data: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject => {
-		for (const [key] of Object.entries(data)) {
-			try {
-				if (typeof data[key] === 'object') {
-					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
-				} else if (typeof data[key] === 'string') {
-					data[key] = (data[key] as string)?.startsWith('={{') ? data[key] : '';
-				} else if (typeof data[key] === 'number') {
-					// TODO: leaving numbers in for now, but maybe we should remove them
-					// data[key] = 0;
-				}
-			} catch (error) {
-				LoggerProxy.error(`Failed to sanitize credential data: ${(error as Error).message}`);
-				throw error;
-			}
-		}
-		return data;
-	};
 
 	private async importCredentialsFromFiles(
 		userId: string,

@@ -8,10 +8,8 @@ import { VersionControlRequest } from './types/requests';
 import type { VersionControlPreferences } from './types/versionControlPreferences';
 import { BadRequestError } from '@/ResponseHelper';
 import type { PullResult, PushResult, StatusResult } from 'simple-git';
-import { AuthenticatedRequest } from '../../requests';
 import express from 'express';
 import type { ImportResult } from './types/importResult';
-import type { VersionControlPushWorkFolder } from './types/versionControlPushWorkFolder';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 import type { VersionControlledFile } from './types/versionControlledFile';
 import { VERSION_CONTROL_API_ROOT, VERSION_CONTROL_DEFAULT_BRANCH } from './constants';
@@ -234,105 +232,4 @@ export class VersionControlController {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}
-
-	// #region Version Control Test Functions
-	//TODO: SEPARATE FUNCTIONS FOR DEVELOPMENT ONLY
-	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
-
-	@Authorized(['global', 'owner'])
-	@Get('/export', { middlewares: [versionControlLicensedMiddleware] })
-	async export() {
-		try {
-			return await this.versionControlService.export();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Get('/import', { middlewares: [versionControlLicensedMiddleware] })
-	async import(req: AuthenticatedRequest) {
-		try {
-			return await this.versionControlService.import({
-				userId: req.user.id,
-			});
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized('any')
-	@Get('/fetch')
-	async fetch() {
-		try {
-			return await this.versionControlService.fetch();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized('any')
-	@Get('/diff')
-	async diff() {
-		try {
-			return await this.versionControlService.diff();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/push')
-	async push(req: VersionControlRequest.Push): Promise<PushResult> {
-		if (this.versionControlPreferencesService.isBranchReadOnly()) {
-			throw new BadRequestError('Cannot push onto read-only branch.');
-		}
-		try {
-			return await this.versionControlService.push(req.body.force);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/commit')
-	async commit(req: VersionControlRequest.Commit) {
-		try {
-			return await this.versionControlService.commit(req.body.message);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/stage')
-	async stage(req: VersionControlRequest.Stage): Promise<{ staged: string[] } | string> {
-		try {
-			return await this.versionControlService.stage(req.body as VersionControlPushWorkFolder);
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/unstage')
-	async unstage(): Promise<StatusResult | string> {
-		try {
-			return await this.versionControlService.unstage();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Get('/pull')
-	async pull(): Promise<PullResult> {
-		try {
-			return await this.versionControlService.pull();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	// #endregion
 }

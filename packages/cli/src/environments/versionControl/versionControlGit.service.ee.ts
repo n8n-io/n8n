@@ -96,11 +96,6 @@ export class VersionControlGitService {
 		this.git = null;
 	}
 
-	resetLocalRepository() {
-		// TODO: Implement
-		this.git = null;
-	}
-
 	async checkRepositorySetup(): Promise<boolean> {
 		if (!this.git) {
 			throw new Error('Git is not initialized');

@@ -82,42 +82,6 @@ export class VersionControlExportService {
 		}
 	}
 
-	// private async getOwnerGlobalRole() {
-	// 	const ownerCredentiallRole = await Db.collections.Role.findOne({
-	// 		where: { name: 'owner', scope: 'global' },
-	// 	});
-
-	// 	if (!ownerCredentiallRole) {
-	// 		throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-	// 	}
-
-	// 	return ownerCredentiallRole;
-	// }
-
-	// private async getOwnerCredentialRole() {
-	// 	const ownerCredentiallRole = await Db.collections.Role.findOne({
-	// 		where: { name: 'owner', scope: 'credential' },
-	// 	});
-
-	// 	if (!ownerCredentiallRole) {
-	// 		throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-	// 	}
-
-	// 	return ownerCredentiallRole;
-	// }
-
-	// private async getOwnerWorkflowRole() {
-	// 	const ownerWorkflowRole = await Db.collections.Role.findOne({
-	// 		where: { name: 'owner', scope: 'workflow' },
-	// 	});
-
-	// 	if (!ownerWorkflowRole) {
-	// 		throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
-	// 	}
-
-	// 	return ownerWorkflowRole;
-	// }
-
 	async cleanWorkFolder() {
 		try {
 			const workflowFiles = await glob('*.json', {
