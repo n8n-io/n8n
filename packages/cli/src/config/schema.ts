@@ -729,7 +729,7 @@ export const schema = {
 
 	userManagement: {
 		disabled: {
-			doc: 'Disable user management and hide it completely.',
+			doc: '[DEPRECATED] Disable user management and hide it completely.',
 			format: Boolean,
 			default: false,
 			env: 'N8N_USER_MANAGEMENT_DISABLED',
@@ -1040,15 +1040,6 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_PERSONALIZATION_ENABLED',
-		},
-	},
-
-	userActivationSurvey: {
-		enabled: {
-			doc: 'Whether user activation survey is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_USER_ACTIVATION_SURVEY_ENABLED',
 		},
 	},
 

@@ -5,9 +5,12 @@ on:
     inputs:
       node_version:
         description: 'Node.js version to build this image with.'
-        type: string
+        type: choice
         required: true
         default: '16'
+        options:
+          - '16'
+          - '18'
 
 jobs:
   build:
