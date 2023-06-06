@@ -162,6 +162,18 @@ async function refreshSshKey() {
 		toast.showError(error, locale.baseText('settings.versionControl.refreshSshKey.error.title'));
 	}
 }
+
+const refreshBranches = async () => {
+	try {
+		await versionControlStore.getBranches();
+		toast.showMessage({
+			title: locale.baseText('settings.versionControl.refreshBranches.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, locale.baseText('settings.versionControl.refreshBranches.error'));
+	}
+};
 </script>
 
 <template>
@@ -288,20 +300,37 @@ async function refreshSshKey() {
 						locale.baseText('settings.versionControl.instanceSettings')
 					}}</n8n-heading>
 					<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
-					<n8n-select
-						:value="versionControlStore.preferences.branchName"
-						class="mb-s"
-						size="medium"
-						filterable
-						@input="onSelect"
-					>
-						<n8n-option
-							v-for="b in versionControlStore.preferences.branches"
-							:key="b"
-							:value="b"
-							:label="b"
-						/>
-					</n8n-select>
+					<div :class="$style.branchSelection">
+						<n8n-select
+							:value="versionControlStore.preferences.branchName"
+							class="mb-s"
+							size="medium"
+							filterable
+							@input="onSelect"
+						>
+							<n8n-option
+								v-for="b in versionControlStore.preferences.branches"
+								:key="b"
+								:value="b"
+								:label="b"
+							/>
+						</n8n-select>
+						<n8n-tooltip placement="top">
+							<template #content>
+								<span>
+									{{ locale.baseText('settings.versionControl.refreshBranches.tooltip') }}
+								</span>
+							</template>
+							<n8n-button
+								size="small"
+								type="tertiary"
+								icon="sync"
+								square
+								:class="$style.refreshBranches"
+								@click="refreshBranches"
+							/>
+						</n8n-tooltip>
+					</div>
 					<n8n-checkbox
 						v-model="versionControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
@@ -417,5 +446,15 @@ async function refreshSshKey() {
 hr {
 	margin: 0 0 var(--spacing-xl);
 	border: 1px solid var(--color-foreground-light);
+}
+
+.branchSelection {
+	display: flex;
+
+	button.refreshBranches {
+		height: 36px;
+		width: 36px;
+		margin-left: var(--spacing-xs);
+	}
 }
 </style>
