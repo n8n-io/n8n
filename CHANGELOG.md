@@ -1,3 +1,13 @@
+## [0.231.1](https://github.com/n8n-io/n8n/compare/n8n@0.231.0...n8n@0.231.1) (2023-06-06)
+
+
+### Bug Fixes
+
+* **editor:** Fix an issue with connections breaking during renaming ([#6358](https://github.com/n8n-io/n8n/issues/6358)) ([481ca36](https://github.com/n8n-io/n8n/commit/481ca36269177c074276dff73e67edaeaae53477))
+* **editor:** Fix typing `$` in inline expression field reloading node parameters form ([#6374](https://github.com/n8n-io/n8n/issues/6374)) ([ff3c60a](https://github.com/n8n-io/n8n/commit/ff3c60ab0f5f26bd1dc778a7acdfc32bac3e2e6b))
+
+
+
 # [0.231.0](https://github.com/n8n-io/n8n/compare/n8n@0.230.0...n8n@0.231.0) (2023-05-31)
 
 
