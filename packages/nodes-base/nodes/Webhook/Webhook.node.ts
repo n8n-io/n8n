@@ -127,6 +127,10 @@ export class Webhook implements INodeType {
 						value: 'none',
 					},
 					{
+						name: 'Webhook Auth',
+						value: 'webhookAuth',
+					},
+					{
 						name: 'Zoho CRM Auth',
 						value: 'zohoCRMAuth',
 					},
@@ -507,13 +511,15 @@ export class Webhook implements INodeType {
 		} else if (authentication === 'zohoCRMAuth') {
 			try {
 				const authData = await verifyCrmToken(token, this.helpers.httpRequest);
-				const roles = (this.getNodeParameter('roles', '') as string)?.trim()?.split(',');
-				if (
-					roles?.length &&
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					!roles.includes(authData?.zohoUser?.role || authData?.zohoUser?.profile)
-				) {
-					return authorizationError(resp, realm, 403, 'User role is not authorized');
+				const setRoles = (this.getNodeParameter('roles', '') as string)?.trim();
+				if (setRoles) {
+					const roles = setRoles?.split(',');
+					if (
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+						!roles.includes(authData?.zohoUser?.role || authData?.zohoUser?.profile)
+					) {
+						return authorizationError(resp, realm, 403, 'User role is not authorized');
+					}
 				}
 			} catch (error) {
 				return authorizationError(
@@ -636,12 +642,21 @@ export class Webhook implements INodeType {
 				await binaryFile.cleanup();
 			}
 		}
+		let body = this.getBodyData();
+		// parse request body if request is made from within NOCODB
+		if (authentication === 'webhookAuth') {
+			try {
+				body = JSON.parse(Object.keys(body)[0]);
+			} catch (error) {
+				// Do nothing
+			}
+		}
 		const response: INodeExecutionData = {
 			json: {
 				headers,
 				params: this.getParamsData(),
 				query: this.getQueryData(),
-				body: this.getBodyData(),
+				body,
 			},
 		};
 		// request body, query, params validation

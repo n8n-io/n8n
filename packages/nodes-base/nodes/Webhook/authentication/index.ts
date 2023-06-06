@@ -47,7 +47,7 @@ export const verifyPortalToken = async (
 	requestHandler: (opt: IHttpRequestOptions) => Promise<any>,
 ) => {
 	if (!token) throw new Error('Token is missing');
-	const blockedTokenUrl = process.env.BLOCKED_TOKEN_TABLE_URL;
+	const blockedTokenUrl = process.env.BLOCKED_TOKEN_TABLE_LIST_URL;
 	if (blockedTokenUrl) {
 		const response = await requestHandler({
 			url: `${blockedTokenUrl}?where=(Token,eq,${token})`,
@@ -73,9 +73,7 @@ export const verifyPortalToken = async (
 					},
 				})
 					.finally()
-					.then((res) => {
-						const userRecord: Record<string, any> | undefined = res?.list?.[0];
-
+					.then((userRecord) => {
 						if (!userRecord?.Id) reject('User does not exist');
 						else if (!userRecord.IsActive) reject('The user is not active');
 						else {
