@@ -45,8 +45,9 @@
     "@types/uuid": "^8.3.2"
   },
   "dependencies": {
-    "axios": "^0.21.1",
+    "@elastic/elasticsearch": "^8.8.0",
     "@n8n/client-oauth2": "workspace:*",
+    "axios": "^0.21.1",
     "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",

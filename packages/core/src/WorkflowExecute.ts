@@ -39,6 +39,7 @@ import type {
 import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import { ElasticSearchClient } from './elasticSearch';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -1325,6 +1326,10 @@ export class WorkflowExecute {
 			}
 		}
 
+		const executionId: string =
+			this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
+		await this.storeFullDataInElasticSearch(executionId, fullRunData); // Store in Elastic
+		this.storeInS3();
 		return fullRunData;
 	}
 
@@ -1338,5 +1343,15 @@ export class WorkflowExecute {
 		};
 
 		return fullRunData;
+	}
+
+	private async storeFullDataInElasticSearch(executionId: string, fullRunData: IRun) {
+		const client = new ElasticSearchClient();
+		await client.addDocument(executionId, fullRunData.data.resultData.runData);
+	}
+
+	private storeInS3() {
+		// To be implemented
+		return;
 	}
 }
