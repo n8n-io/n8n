@@ -545,7 +545,7 @@
       "dist/nodes/LinkedIn/LinkedIn.node.js",
       "dist/nodes/LocalFileTrigger/LocalFileTrigger.node.js",
       "dist/nodes/LoneScale/LoneScaleTrigger.node.js",
-      "dist/nodes/LoneScale/LoneScaleList.node.js",
+      "dist/nodes/LoneScale/LoneScale.node.js",
       "dist/nodes/Magento/Magento2.node.js",
       "dist/nodes/Mailcheck/Mailcheck.node.js",
       "dist/nodes/Mailchimp/Mailchimp.node.js",
