@@ -48,7 +48,6 @@ import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
 import { useSettingsStore } from './settings.store';
-import { useUsageStore } from './usage.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
