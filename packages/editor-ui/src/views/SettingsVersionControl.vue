@@ -66,10 +66,11 @@ const onDisconnect = async () => {
 const onSave = async () => {
 	loadingService.startLoading();
 	try {
-		await Promise.all([
-			versionControlStore.setBranch(versionControlStore.preferences.branchName),
-			versionControlStore.setBranchReadonly(versionControlStore.preferences.branchReadOnly),
-		]);
+		await versionControlStore.updatePreferences({
+			branchName: versionControlStore.preferences.branchName,
+			branchReadOnly: versionControlStore.preferences.branchReadOnly,
+			branchColor: versionControlStore.preferences.branchColor,
+		});
 		toast.showMessage({
 			title: locale.baseText('settings.versionControl.saved.title'),
 			type: 'success',
