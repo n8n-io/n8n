@@ -71,7 +71,10 @@ async function pullWorkfolder() {
 </script>
 
 <template>
-	<div :class="{ [$style.sync]: true, [$style.collapsed]: isCollapsed }">
+	<div
+		:class="{ [$style.sync]: true, [$style.collapsed]: isCollapsed }"
+		:style="{ borderLeftColor: versionControlStore.preferences.branchColor }"
+	>
 		<span>
 			<n8n-icon icon="code-branch" />
 			{{ currentBranch }}
@@ -128,10 +131,11 @@ async function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-m);
 	margin: 0 calc(var(--spacing-l) * -1) calc(var(--spacing-m) * -1);
 	background: var(--color-background-light);
-	border-top: 1px solid var(--color-foreground-light);
+	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
 	font-size: var(--font-size-2xs);
 
 	span {
@@ -145,7 +149,7 @@ async function pullWorkfolder() {
 
 .collapsed {
 	text-align: center;
-	margin-left: calc(var(--spacing-xl) * -1);
+	padding-left: var(--spacing-xs);
 
 	> span {
 		display: none;
