@@ -183,6 +183,10 @@ const goToVersionControlSetup = async () => {
 	&.isConnected {
 		padding-left: var(--spacing-m);
 		border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
+
+		&.collapsed {
+			padding-left: var(--spacing-xs);
+		}
 	}
 
 	&:empty {
@@ -200,7 +204,7 @@ const goToVersionControlSetup = async () => {
 
 .collapsed {
 	text-align: center;
-	padding-left: var(--spacing-xs);
+	padding-left: var(--spacing-s);
 	padding-right: var(--spacing-s);
 
 	.connected {
