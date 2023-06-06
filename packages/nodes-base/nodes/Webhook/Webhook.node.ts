@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+/* eslint-disable @typescript-eslint/no-var-requires */
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
@@ -123,12 +124,12 @@ export class Webhook implements INodeType {
 						value: 'headerAuth',
 					},
 					{
-						name: 'None',
-						value: 'none',
+						name: 'NocoDB Webhook Auth',
+						value: 'nocoDBWebhookAuth',
 					},
 					{
-						name: 'Webhook Auth',
-						value: 'webhookAuth',
+						name: 'None',
+						value: 'none',
 					},
 					{
 						name: 'Zoho CRM Auth',
@@ -644,7 +645,7 @@ export class Webhook implements INodeType {
 		}
 		let body = this.getBodyData();
 		// parse request body if request is made from within NOCODB
-		if (authentication === 'webhookAuth') {
+		if (authentication === 'nocoDBWebhookAuth') {
 			try {
 				body = JSON.parse(Object.keys(body)[0]);
 			} catch (error) {
