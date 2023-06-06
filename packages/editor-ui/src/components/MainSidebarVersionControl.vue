@@ -170,7 +170,7 @@ const goToVersionControlSetup = async () => {
 <style lang="scss" module>
 .sync {
 	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-m);
-	margin: var(--spacing-2xs) 0 calc(var(--spacing-s) * -1);
+	margin: var(--spacing-2xs) 0 calc(var(--spacing-2xs) * -1);
 	background: var(--color-background-light);
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);

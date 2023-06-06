@@ -112,14 +112,17 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useVersionsStore } from '@/stores/versions.store';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useWorkflowsStore,
+	useRootStore,
+	useVersionsStore,
+	useCloudPlanStore,
+	useVersionControlStore,
+} from '@/stores/';
 import { isNavigationFailure } from 'vue-router';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
 
@@ -152,6 +155,7 @@ export default defineComponent({
 			useVersionsStore,
 			useWorkflowsStore,
 			useCloudPlanStore,
+			useVersionControlStore,
 		),
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
