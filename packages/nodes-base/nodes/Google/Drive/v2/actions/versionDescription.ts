@@ -64,10 +64,6 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Shared Drive',
-					value: 'drive',
-				},
-				{
 					name: 'File',
 					value: 'file',
 				},
@@ -78,6 +74,10 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Folder',
 					value: 'folder',
+				},
+				{
+					name: 'Shared Drive',
+					value: 'drive',
 				},
 			],
 			default: 'file',

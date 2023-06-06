@@ -24,13 +24,14 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. My New File',
-		description: 'If not specified, the file name will be used',
+		description: 'If not specified, the original file name will be used',
 	},
 	{
 		...folderRLC,
 		displayName: 'Parent Folder',
 		name: 'parentFolder',
-		description: 'The Folder you want to upload the file in. By default, the root folder is used.',
+		description:
+			'The Folder you want to upload the file in. By default, the root folder of “My Drive” is used.',
 	},
 	{
 		displayName: 'Options',
@@ -45,8 +46,7 @@ const properties: INodeProperties[] = [
 				name: 'simplifyOutput',
 				type: 'boolean',
 				default: true,
-				description:
-					'Whether to return a simplified version of the response instead of the all fields',
+				description: 'Whether to return a simplified version of the response instead of all fields',
 			},
 		],
 	},

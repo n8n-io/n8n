@@ -30,7 +30,7 @@ const properties: INodeProperties[] = [
 		name: 'inputDataFieldName',
 		type: 'string',
 		placeholder: 'e.g. data',
-		default: '',
+		default: 'data',
 		hint: 'The name of the input field containing the binary file data to update the file',
 		description:
 			'Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab',

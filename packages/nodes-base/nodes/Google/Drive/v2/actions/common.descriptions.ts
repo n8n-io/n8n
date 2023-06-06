@@ -23,7 +23,7 @@ export const fileRLC: INodeProperties = {
 			name: 'url',
 			type: 'string',
 			placeholder:
-				'https://drive.google.com/file/d/1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A/edit',
+				'e.g. https://drive.google.com/file/d/1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A/edit',
 			extractValue: {
 				type: 'regex',
 				regex:
@@ -44,7 +44,7 @@ export const fileRLC: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+			placeholder: 'e.g. 1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
 			validation: [
 				{
 					type: 'regex',
@@ -57,7 +57,7 @@ export const fileRLC: INodeProperties = {
 			url: '=https://drive.google.com/file/d/{{$value}}/view',
 		},
 	],
-	description: 'The ID of the file',
+	description: 'The file to operate on',
 };
 
 export const folderRLC: INodeProperties = {
@@ -81,7 +81,7 @@ export const folderRLC: INodeProperties = {
 			displayName: 'Link',
 			name: 'url',
 			type: 'string',
-			placeholder: 'https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
+			placeholder: 'e.g. https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
 			extractValue: {
 				type: 'regex',
 				regex:
@@ -102,7 +102,7 @@ export const folderRLC: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+			placeholder: 'e.g. 1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
 			validation: [
 				{
 					type: 'regex',
@@ -115,7 +115,7 @@ export const folderRLC: INodeProperties = {
 			url: '=https://drive.google.com/drive/folders/{{$value}}',
 		},
 	],
-	description: 'The ID of the folder',
+	description: 'The folder to operate on',
 };
 
 export const driveRLC: INodeProperties = {
@@ -129,7 +129,7 @@ export const driveRLC: INodeProperties = {
 			displayName: 'Drive',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Drive',
+			placeholder: 'Select a drive...',
 			typeOptions: {
 				searchListMethod: 'driveSearchWithDefault',
 				searchable: true,
@@ -187,7 +187,7 @@ export const sharedDriveRLC: INodeProperties = {
 			displayName: 'Drive',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Drive',
+			placeholder: 'Select a shared drive...',
 			typeOptions: {
 				searchListMethod: 'driveSearch',
 				searchable: true,
@@ -197,7 +197,7 @@ export const sharedDriveRLC: INodeProperties = {
 			displayName: 'Link',
 			name: 'url',
 			type: 'string',
-			placeholder: 'https://drive.google.com/drive/folders/0AaaaaAAAAAAAaa',
+			placeholder: 'e.g. https://drive.google.com/drive/u/1/folders/0AIjtcbwnjtcbwn9PVA',
 			extractValue: {
 				type: 'regex',
 				regex:
@@ -218,7 +218,8 @@ export const sharedDriveRLC: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			hint: 'The ID of the shared drive',
+			// hint: 'The ID of the shared drive',
+			placeholder: 'e.g. 0AMXTKI5ZSiM7Uk9PVA',
 			validation: [
 				{
 					type: 'regex',
@@ -231,7 +232,7 @@ export const sharedDriveRLC: INodeProperties = {
 			url: '=https://drive.google.com/drive/folders/{{$value}}',
 		},
 	],
-	description: 'The ID of the drive',
+	description: 'The shared drive to operate on',
 };
 
 export const shareOptions: INodeProperties = {
@@ -247,6 +248,9 @@ export const shareOptions: INodeProperties = {
 			type: 'string',
 			default: '',
 			description: 'A plain text custom message to include in the notification email',
+			typeOptions: {
+				rows: 2,
+			},
 		},
 		{
 			displayName: 'Move To New Owners Root',
@@ -301,7 +305,7 @@ export const permissionsOptions: INodeProperties = {
 					displayName: 'Role',
 					name: 'role',
 					type: 'options',
-					description: 'Defines what users can do with a file or folder',
+					description: 'Defines what users can do with the file or folder',
 					options: [
 						{
 							name: 'Commenter',
@@ -480,6 +484,7 @@ export const updateCommonOptions: INodeProperties[] = [
 		name: 'ocrLanguage',
 		type: 'string',
 		default: '',
+		placeholder: 'e.g. en',
 		description: 'A language hint for OCR processing during image import (ISO 639-1 code)',
 	},
 	{

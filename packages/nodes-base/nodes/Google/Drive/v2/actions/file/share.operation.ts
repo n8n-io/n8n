@@ -8,7 +8,6 @@ import { fileRLC, permissionsOptions, shareOptions } from '../common.description
 const properties: INodeProperties[] = [
 	{
 		...fileRLC,
-		displayName: 'File to Share',
 		description: 'The file to share',
 	},
 	permissionsOptions,

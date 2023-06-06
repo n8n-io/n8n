@@ -83,15 +83,23 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		default: {},
 		options: [
-			{ ...driveRLC, required: false },
-			{ ...folderRLC, required: false },
+			{
+				...driveRLC,
+				description:
+					'The Drive you want to search in. By default, the personal "My Drive" is used.',
+				required: false,
+			},
+			{
+				...folderRLC,
+				description:
+					'Narrow the search within the selected folder. By default, the root folder is used.',
+				required: false,
+			},
 			{
 				displayName: 'What to Search',
 				name: 'whatToSearch',
 				type: 'options',
 				default: 'all',
-				description:
-					'Narrows the search within the selected folder. By default, the root folder is used.',
 				options: [
 					{
 						name: 'Files and Folders',
@@ -108,12 +116,11 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Drive File Types',
+				displayName: 'File Types',
 				name: 'fileTypes',
 				type: 'multiOptions',
 				default: [],
-				description:
-					'Return only items corresponding to the selected types. Those mime types are specific to Google Drive, to filter by file extension use the "Additional Mime Types" option.',
+				description: 'Return only items corresponding to the selected MIME types',
 				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{

@@ -8,7 +8,7 @@ import { folderRLC, permissionsOptions, shareOptions } from '../common.descripti
 const properties: INodeProperties[] = [
 	{
 		...folderRLC,
-		displayName: 'Folder to Share',
+		description: 'The folder to share',
 	},
 	permissionsOptions,
 	shareOptions,

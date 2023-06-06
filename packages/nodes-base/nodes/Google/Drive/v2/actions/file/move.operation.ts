@@ -6,12 +6,15 @@ import { fileRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
-	fileRLC,
+	{
+		...fileRLC,
+		description: 'The file to move',
+	},
 	{
 		...folderRLC,
 		displayName: 'Destination Folder',
 		name: 'destinationFolderId',
-		description: 'The folder where you want to save the copied file',
+		description: 'The folder where you want to move the file',
 	},
 ];
 

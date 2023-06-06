@@ -12,7 +12,8 @@ const properties: INodeProperties[] = [
 		name: 'name',
 		type: 'string',
 		default: '',
-		description: 'The name of this shared drive',
+		placeholder: 'e.g. New Shared Drive',
+		description: 'The name of the shared drive to create',
 	},
 	{
 		displayName: 'Options',

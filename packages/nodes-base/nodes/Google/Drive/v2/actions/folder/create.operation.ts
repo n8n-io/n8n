@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		...folderRLC,
 		displayName: 'Parent Folder',
 		name: 'parentFolder',
-		description: 'Where to create the new folder. By default, the root of the Drive is used.',
+		description: 'Where to create the new folder. By default, the root of "My Drive" is used.',
 	},
 	{
 		displayName: 'Options',
@@ -33,8 +33,7 @@ const properties: INodeProperties[] = [
 				name: 'simplifyOutput',
 				type: 'boolean',
 				default: true,
-				description:
-					'Whether to return a simplified version of the response instead of the all fields',
+				description: 'Whether to return a simplified version of the response instead of all fields',
 			},
 			{
 				displayName: 'Folder Color',

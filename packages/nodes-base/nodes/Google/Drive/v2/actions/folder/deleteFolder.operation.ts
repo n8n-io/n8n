@@ -6,7 +6,10 @@ import { googleApiRequest } from '../../transport';
 import { folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	folderRLC,
+	{
+		...folderRLC,
+		description: 'The folder to delete',
+	},
 	{
 		displayName: 'Options',
 		name: 'options',

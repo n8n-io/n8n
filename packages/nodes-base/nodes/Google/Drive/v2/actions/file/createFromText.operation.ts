@@ -33,7 +33,7 @@ const properties: INodeProperties[] = [
 		name: 'parentFolderId',
 		required: false,
 		description:
-			'The Folder where you want to create the file in. By default, the root folder is used.',
+			'The Folder where you want to create the file in. By default, the root folder of "My Drive" is used.',
 	},
 	{
 		displayName: 'Options',

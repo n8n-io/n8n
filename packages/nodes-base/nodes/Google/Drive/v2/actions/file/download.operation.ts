@@ -11,7 +11,10 @@ import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	fileRLC,
+	{
+		...fileRLC,
+		description: 'The file to download',
+	},
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -53,7 +56,7 @@ const properties: INodeProperties[] = [
 										value: 'text/html',
 									},
 									{
-										name: '“MS Word Document',
+										name: 'MS Word Document',
 										value:
 											'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 									},
@@ -150,7 +153,7 @@ const properties: INodeProperties[] = [
 									},
 								],
 								default: 'text/csv',
-								description: 'Format used to export when downloading Google Spreadsheets files',
+								description: 'Format used to export when downloading Google Sheets files',
 							},
 						],
 					},

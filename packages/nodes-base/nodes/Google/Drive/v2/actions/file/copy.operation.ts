@@ -11,7 +11,10 @@ import { googleApiRequest } from '../../transport';
 import { fileRLC, folderRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	fileRLC,
+	{
+		...fileRLC,
+		description: 'The file to copy',
+	},
 	{
 		displayName: 'File Name',
 		name: 'name',

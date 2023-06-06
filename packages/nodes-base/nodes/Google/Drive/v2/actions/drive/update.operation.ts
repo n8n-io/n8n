@@ -30,7 +30,7 @@ const properties: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of this shared drive',
+				description: 'The updated name of the shared drive',
 			},
 			{
 				displayName: 'Restrictions',

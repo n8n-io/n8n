@@ -6,7 +6,10 @@ import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
-	fileRLC,
+	{
+		...fileRLC,
+		description: 'The file to delete',
+	},
 	{
 		displayName: 'Options',
 		name: 'options',
