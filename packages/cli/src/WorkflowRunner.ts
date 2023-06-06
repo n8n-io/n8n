@@ -137,6 +137,7 @@ export class WorkflowRunner {
 					executionId,
 					executionMode,
 					executionFlattedData?.workflowData,
+					// TODO: get metadata to be sent here
 					// executionFlattedData?.metadata,
 				);
 			}
