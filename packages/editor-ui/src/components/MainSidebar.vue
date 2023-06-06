@@ -32,7 +32,7 @@
 					v-if="!isCollapsed && userIsTrialing"
 			/></template>
 			<template #menuSuffix>
-				<div v-if="hasVersionUpdates || versionControlStore.preferences.connected">
+				<div>
 					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
@@ -46,10 +46,7 @@
 							}}
 						</n8n-text>
 					</div>
-					<MainSidebarVersionControl
-						v-if="versionControlStore.preferences.connected"
-						:is-collapsed="isCollapsed"
-					/>
+					<MainSidebarVersionControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
 			<template #footer v-if="showUserArea">
@@ -115,15 +112,17 @@ import { userHelpers } from '@/mixins/userHelpers';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useVersionsStore } from '@/stores/versions.store';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useWorkflowsStore,
+	useRootStore,
+	useVersionsStore,
+	useCloudPlanStore,
+	useVersionControlStore,
+} from '@/stores/';
 import { isNavigationFailure } from 'vue-router';
-import { useVersionControlStore } from '@/stores/versionControl.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import MainSidebarVersionControl from '@/components/MainSidebarVersionControl.vue';
 
@@ -155,8 +154,8 @@ export default defineComponent({
 			useUsersStore,
 			useVersionsStore,
 			useWorkflowsStore,
-			useVersionControlStore,
 			useCloudPlanStore,
+			useVersionControlStore,
 		),
 		hasVersionUpdates(): boolean {
 			return this.versionsStore.hasVersionUpdates;
@@ -543,8 +542,9 @@ export default defineComponent({
 .updates {
 	display: flex;
 	align-items: center;
-	height: 26px;
 	cursor: pointer;
+	padding: var(--spacing-2xs) var(--spacing-l);
+	margin: var(--spacing-2xs) 0 0;
 
 	svg {
 		color: var(--color-text-base) !important;
