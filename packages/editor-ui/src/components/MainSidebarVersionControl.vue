@@ -80,7 +80,12 @@ const goToVersionControlSetup = async () => {
 
 <template>
 	<div
-		:class="{ [$style.sync]: true, [$style.collapsed]: isCollapsed }"
+		:class="{
+			[$style.sync]: true,
+			[$style.collapsed]: isCollapsed,
+			[$style.isConnected]:
+				versionControlStore.preferences.connected && versionControlStore.preferences.branchName,
+		}"
 		:style="{ borderLeftColor: versionControlStore.preferences.branchColor }"
 		data-test-id="main-sidebar-version-control"
 	>
@@ -169,12 +174,16 @@ const goToVersionControlSetup = async () => {
 
 <style lang="scss" module>
 .sync {
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-m);
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) var(--spacing-l);
 	margin: var(--spacing-2xs) 0 calc(var(--spacing-2xs) * -1);
 	background: var(--color-background-light);
 	border-top: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-	border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
 	font-size: var(--font-size-2xs);
+
+	&.isConnected {
+		padding-left: var(--spacing-m);
+		border-left: var(--spacing-3xs) var(--border-style-base) var(--color-foreground-base);
+	}
 
 	&:empty {
 		display: none;
