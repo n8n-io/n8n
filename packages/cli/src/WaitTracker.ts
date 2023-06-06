@@ -106,7 +106,7 @@ export class WaitTracker {
 		// Also check in database
 		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
 
-		if (execution === null || !execution.waitTill) {
+		if (execution === null) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
