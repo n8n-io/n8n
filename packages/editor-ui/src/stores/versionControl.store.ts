@@ -48,6 +48,13 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		Object.assign(preferences, data);
 	};
 
+	const makePreferencesAction =
+		(action: typeof vcApi.savePreferences | typeof vcApi.updatePreferences) =>
+		async (preferences: Partial<VersionControlPreferences>) => {
+			const data = await action(rootStore.getRestApiContext, preferences);
+			setPreferences(data);
+		};
+
 	const getBranches = async () => {
 		const data = await vcApi.getBranches(rootStore.getRestApiContext);
 		setPreferences(data);
@@ -58,15 +65,9 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setPreferences(data);
 	};
 
-	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
-		const data = await vcApi.setPreferences(rootStore.getRestApiContext, preferences);
-		setPreferences(data);
-	};
+	const savePreferences = makePreferencesAction(vcApi.savePreferences);
 
-	const setBranch = async (branch: string) => {
-		const data = await vcApi.setBranch(rootStore.getRestApiContext, branch);
-		setPreferences({ ...data, connected: true });
-	};
+	const updatePreferences = makePreferencesAction(vcApi.updatePreferences);
 
 	const disconnect = async (keepKeyPair: boolean) => {
 		await vcApi.disconnect(rootStore.getRestApiContext, keepKeyPair);
@@ -90,10 +91,6 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
 	};
 
-	const setBranchReadonly = async (branchReadOnly: boolean) => {
-		return vcApi.setBranchReadonly(rootStore.getRestApiContext, branchReadOnly);
-	};
-
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
@@ -105,10 +102,9 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		generateKeyPair,
 		getBranches,
 		savePreferences,
-		setBranch,
+		updatePreferences,
 		disconnect,
 		getStatus,
 		getAggregatedStatus,
-		setBranchReadonly,
 	};
 });
