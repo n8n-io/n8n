@@ -12,6 +12,7 @@ import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 import fs from 'fs';
 import stream from 'stream';
 import { promisify } from 'util';
+import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
 import formidable from 'formidable';
 import isbot from 'isbot';
@@ -273,13 +274,15 @@ export class Webhook extends Node {
 					headers: req.headers,
 					params: req.params,
 					query: req.query,
-					body: req.body,
+					body: {},
 				},
 			};
 
 			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
+			const fileName = req.headers['content-disposition']?.split('filename=')[1] ?? uuid();
 			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
 				binaryFile.path,
+				fileName,
 				req.headers['content-type'] ?? 'application/octet-stream',
 			);
 

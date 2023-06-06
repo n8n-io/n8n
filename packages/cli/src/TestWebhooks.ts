@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
-import type { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
+import type { IResponseCallbackData, IWebhookManager, IWorkflowDb } from '@/Interfaces';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -21,7 +21,7 @@ const WEBHOOK_TEST_UNREGISTERED_HINT =
 	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
 @Service()
-export class TestWebhooks {
+export class TestWebhooks implements IWebhookManager {
 	private testWebhookData: {
 		[key: string]: {
 			sessionId?: string;
@@ -44,7 +44,7 @@ export class TestWebhooks {
 	 * data gets additionally send to the UI. After the request got handled it
 	 * automatically remove the test-webhook.
 	 */
-	async callTestWebhook(
+	async executeWebhook(
 		httpMethod: WebhookHttpMethod,
 		path: string,
 		request: express.Request,

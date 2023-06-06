@@ -4,9 +4,7 @@ import type { Server } from 'http';
 import type { Url } from 'url';
 import express from 'express';
 import bodyParser from 'body-parser';
-import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
-import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
 import type { WebhookHttpMethod } from 'n8n-workflow';
@@ -15,7 +13,7 @@ import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import type { IExternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, IWebhookManager } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import {
 	send,
@@ -28,8 +26,6 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { getRedisClusterNodes } from './GenericHelpers';
-
-const emptyBuffer = Buffer.alloc(0);
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -58,7 +54,9 @@ export abstract class AbstractServer {
 
 	protected instanceId = '';
 
-	abstract configure(): Promise<void>;
+	protected webhooksEnabled = true;
+
+	protected testWebhooksEnabled = false;
 
 	constructor() {
 		this.app = express();
@@ -76,6 +74,10 @@ export abstract class AbstractServer {
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 	}
 
+	async configure(): Promise<void> {
+		// Additional configuration in derived classes
+	}
+
 	private async setupErrorHandlers() {
 		const { app } = this;
 
@@ -87,64 +89,16 @@ export abstract class AbstractServer {
 		app.use(errorHandler());
 	}
 
-	private async setupCommonMiddlewares() {
-		const { app } = this;
-
+	private setupCommonMiddlewares() {
 		// Compress the response data
-		app.use(compression());
+		this.app.use(compression());
+	}
 
-		// Make sure that each request has the "parsedUrl" parameter
-		app.use((req, res, next) => {
-			req.parsedUrl = parseUrl(req)!;
-			req.rawBody = emptyBuffer;
-			next();
-		});
-
+	private setupBodyParserMiddleware() {
 		const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-
-		// Support application/json type post data
-		app.use(
+		this.app.use(
 			bodyParser.json({
 				limit: `${payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		// Support application/xml type post data
-		bodyParserXml(bodyParser);
-		app.use(
-			bodyParser.xml({
-				limit: `${payloadSizeMax}mb`,
-				xmlParseOptions: {
-					normalize: true, // Trim whitespace inside text nodes
-					normalizeTags: true, // Transform tags to lowercase
-					explicitArray: false, // Only put properties in array if length > 1
-				},
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		app.use(
-			bodyParser.text({
-				limit: `${payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		// support application/x-www-form-urlencoded post data
-		app.use(
-			bodyParser.urlencoded({
-				limit: `${payloadSizeMax}mb`,
-				extended: false,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
 			}),
 		);
 	}
@@ -254,52 +208,9 @@ export abstract class AbstractServer {
 		const activeWorkflowRunner = this.activeWorkflowRunner;
 
 		// Register all webhook requests
-		this.app.all(`/${endpoint}/*`, async (req, res) => {
-			// Cut away the "/webhook/" to get the registered part of the url
-			const requestUrl = req.parsedUrl.pathname!.slice(endpoint.length + 2);
-
-			const method = req.method.toUpperCase() as WebhookHttpMethod;
-			if (method === 'OPTIONS') {
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await activeWorkflowRunner.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					sendErrorResponse(res, error);
-					return;
-				}
-
-				res.header('Access-Control-Allow-Origin', '*');
-
-				sendSuccessResponse(res, {}, true, 204);
-				return;
-			}
-
-			if (!WEBHOOK_METHODS.includes(method)) {
-				sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-				return;
-			}
-
-			let response;
-			try {
-				response = await activeWorkflowRunner.executeWebhook(method, requestUrl, req, res);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-		});
+		this.app.all(`/${endpoint}/:path`, async (req, res) =>
+			this.handleWebhookRequest(req, res, activeWorkflowRunner),
+		);
 	}
 
 	// ----------------------------------------
@@ -310,33 +221,9 @@ export abstract class AbstractServer {
 		const waitingWebhooks = Container.get(WaitingWebhooks);
 
 		// Register all webhook-waiting requests
-		this.app.all(`/${endpoint}/*`, async (req, res) => {
-			// Cut away the "/webhook-waiting/" to get the registered part of the url
-			const requestUrl = req.parsedUrl.pathname!.slice(endpoint.length + 2);
-
-			const method = req.method.toUpperCase() as WebhookHttpMethod;
-
-			if (!WEBHOOK_METHODS.includes(method)) {
-				sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-				return;
-			}
-
-			let response;
-			try {
-				response = await waitingWebhooks.executeWebhook(method, requestUrl, req, res);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-		});
+		this.app.all(`/${endpoint}/:path`, async (req, res) =>
+			this.handleWebhookRequest(req, res, waitingWebhooks),
+		);
 	}
 
 	// ----------------------------------------
@@ -347,53 +234,9 @@ export abstract class AbstractServer {
 		const testWebhooks = Container.get(TestWebhooks);
 
 		// Register all test webhook requests (for testing via the UI)
-		this.app.all(`/${endpoint}/*`, async (req, res) => {
-			// Cut away the "/webhook-test/" to get the registered part of the url
-			const requestUrl = req.parsedUrl.pathname!.slice(endpoint.length + 2);
-
-			const method = req.method.toUpperCase() as WebhookHttpMethod;
-
-			if (method === 'OPTIONS') {
-				let allowedMethods: string[];
-				try {
-					allowedMethods = await testWebhooks.getWebhookMethods(requestUrl);
-					allowedMethods.push('OPTIONS');
-
-					// Add custom "Allow" header to satisfy OPTIONS response.
-					res.append('Allow', allowedMethods);
-				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-					sendErrorResponse(res, error);
-					return;
-				}
-
-				res.header('Access-Control-Allow-Origin', '*');
-
-				sendSuccessResponse(res, {}, true, 204);
-				return;
-			}
-
-			if (!WEBHOOK_METHODS.includes(method)) {
-				sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
-				return;
-			}
-
-			let response;
-			try {
-				response = await testWebhooks.callTestWebhook(method, requestUrl, req, res);
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				sendErrorResponse(res, error);
-				return;
-			}
-
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
-		});
+		this.app.all(`/${endpoint}/:path`, async (req, res) =>
+			this.handleWebhookRequest(req, res, testWebhooks),
+		);
 
 		// Removes a test webhook
 		// TODO UM: check if this needs validation with user management.
@@ -445,7 +288,19 @@ export abstract class AbstractServer {
 	async start(): Promise<void> {
 		await this.setupErrorHandlers();
 		this.setupPushServer();
-		await this.setupCommonMiddlewares();
+		this.setupCommonMiddlewares();
+
+		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
+		if (this.webhooksEnabled) {
+			this.setupWebhookEndpoint();
+			this.setupWaitingWebhookEndpoint();
+		}
+
+		if (this.testWebhooksEnabled) {
+			this.setupTestWebhookEndpoint();
+		}
+
+		this.setupBodyParserMiddleware();
 		if (inDevelopment) {
 			this.setupDevMiddlewares();
 		}
@@ -459,6 +314,52 @@ export abstract class AbstractServer {
 		}
 
 		await this.externalHooks.run('n8n.ready', [this, config]);
+	}
+
+	private async handleWebhookRequest(
+		req: express.Request<{ path: string }>,
+		res: express.Response,
+		webhookManager: IWebhookManager,
+	) {
+		const { path } = req.params;
+		const method = req.method;
+
+		if (!WEBHOOK_METHODS.includes(method)) {
+			return sendErrorResponse(res, new Error(`The method ${method} is not supported.`));
+		}
+
+		if ('origin' in req.headers) {
+			res.header('Access-Control-Allow-Origin', '*');
+		}
+
+		if (method === 'OPTIONS') {
+			if (webhookManager.getWebhookMethods) {
+				let allowedMethods: string[];
+				try {
+					allowedMethods = await webhookManager.getWebhookMethods(path);
+					allowedMethods.push('OPTIONS');
+
+					// Add custom "Allow" header to satisfy OPTIONS response.
+					res.append('Allow', allowedMethods);
+				} catch (error) {
+					return sendErrorResponse(res, error as Error);
+				}
+			}
+
+			sendSuccessResponse(res, {}, true, 204);
+			return;
+		}
+
+		let response;
+		try {
+			response = await webhookManager.executeWebhook(method as WebhookHttpMethod, path, req, res);
+		} catch (error) {
+			return sendErrorResponse(res, error as Error);
+		}
+
+		// Don't respond, if already responded
+		if (!response.noWebhookResponse)
+			sendSuccessResponse(res, response.data, true, response.responseCode, response.headers);
 	}
 }
 
