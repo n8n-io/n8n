@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/cred-class-name-unsuffixed,n8n-nodes-base/cred-class-field-name-unsuffixed,n8n-nodes-base/cred-class-field-display-name-missing-api */
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Ldap implements ICredentialType {
 	name = 'ldap';
