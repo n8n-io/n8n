@@ -4,7 +4,6 @@ import { compare } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import * as utils from './shared/utils';
 import {
@@ -16,11 +15,10 @@ import {
 import * as testDb from './shared/testDb';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
+import { ROLES } from '@/constants';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
 let owner: User;
 let authlessAgent: SuperAgentTest;
 const externalHooks = utils.mockInstance(ExternalHooks);
@@ -28,15 +26,12 @@ const externalHooks = utils.mockInstance(ExternalHooks);
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['passwordReset'] });
 
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
-
 	authlessAgent = utils.createAgent(app);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	externalHooks.run.mockReset();
@@ -50,7 +45,7 @@ describe('POST /forgot-password', () => {
 	test('should send password reset email', async () => {
 		const member = await testDb.createUser({
 			email: 'test@test.com',
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		config.set('userManagement.emails.mode', 'smtp');
@@ -83,7 +78,7 @@ describe('POST /forgot-password', () => {
 		config.set('userManagement.emails.mode', 'smtp');
 		const member = await testDb.createUser({
 			email: 'test@test.com',
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		await authlessAgent.post('/forgot-password').send({ email: member.email }).expect(403);

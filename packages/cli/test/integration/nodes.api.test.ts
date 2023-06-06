@@ -18,6 +18,7 @@ import { Push } from '@/push';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
+import { ROLES } from '@/constants';
 
 const mockLoadNodesAndCredentials = utils.mockInstance(LoadNodesAndCredentials);
 utils.mockInstance(NodeTypes);
@@ -50,8 +51,7 @@ let authOwnerShellAgent: SuperAgentTest;
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['nodes'] });
 
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await testDb.createUserShell(ROLES.GLOBAL_OWNER);
 	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
 
 	await utils.initConfigFile();

@@ -4,10 +4,9 @@ import { UserSettings } from 'n8n-core';
 
 import * as Db from '@/Db';
 import config from '@/config';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, ROLES } from '@/constants';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -19,8 +18,6 @@ const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSha
 mockIsCredentialsSharingEnabled.mockReturnValue(false);
 
 let app: Application;
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -33,14 +30,10 @@ beforeAll(async () => {
 
 	await utils.initConfigFile();
 
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
-	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
+	member = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
-
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(ROLES.CREDENTIAL_OWNER);
 
 	authAgent = utils.createAuthAgent(app);
 	authOwnerAgent = authAgent(owner);
@@ -80,7 +73,7 @@ describe('GET /credentials', () => {
 
 	test('should return only own creds for member', async () => {
 		const [member1, member2] = await testDb.createManyUsers(2, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		const [savedCredential1] = await Promise.all([

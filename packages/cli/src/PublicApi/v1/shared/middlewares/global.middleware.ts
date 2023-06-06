@@ -12,9 +12,7 @@ export const authorize =
 		res: express.Response,
 		next: express.NextFunction,
 	): express.Response | void => {
-		const { name } = req.user.globalRole;
-
-		if (!authorizedRoles.includes(name)) {
+		if (!authorizedRoles.includes(req.user.role)) {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
 

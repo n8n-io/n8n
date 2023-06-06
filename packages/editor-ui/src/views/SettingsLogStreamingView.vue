@@ -112,7 +112,7 @@ export default defineComponent({
 	async mounted() {
 		if (!this.isLicensed) return;
 
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
+		this.isInstanceOwner = this.usersStore.currentUser?.role === 'owner:global'; // @TODO: Use enum
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		await this.credentialsStore.fetchAllCredentials();

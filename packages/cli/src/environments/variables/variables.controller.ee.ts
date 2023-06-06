@@ -9,6 +9,7 @@ import {
 	VariablesValidationError,
 } from './variables.service.ee';
 import { isVariablesEnabled } from './enviromentHelpers';
+import { ROLES } from '@/constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEVariablesController = express.Router();
@@ -28,7 +29,7 @@ EEVariablesController.use((req, res, next) => {
 EEVariablesController.post(
 	'/',
 	ResponseHelper.send(async (req: VariablesRequest.Create) => {
-		if (req.user.globalRole.name !== 'owner') {
+		if (req.user.role !== ROLES.GLOBAL_OWNER) {
 			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
 				userId: req.user.id,
 			});
@@ -56,7 +57,7 @@ EEVariablesController.patch(
 		if (isNaN(id)) {
 			throw new ResponseHelper.BadRequestError('Invalid variable id ' + req.params.id);
 		}
-		if (req.user.globalRole.name !== 'owner') {
+		if (req.user.role !== ROLES.GLOBAL_OWNER) {
 			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
 				id,
 				userId: req.user.id,

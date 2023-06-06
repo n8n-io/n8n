@@ -13,10 +13,10 @@ import type {
 import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
+import type { RoleEnum } from './constants';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -57,7 +57,7 @@ export type AuthenticatedRequest<
 > = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
 	user: User;
 	mailer?: UserManagementMailer;
-	globalMemberRole?: Role;
+	role?: RoleEnum;
 };
 
 // ----------------------------------

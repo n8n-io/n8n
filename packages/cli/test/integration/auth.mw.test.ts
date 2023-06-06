@@ -5,14 +5,14 @@ import {
 } from './shared/constants';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import { ROLES } from '@/constants';
 
 let authlessAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['me', 'auth', 'owner', 'users'] });
-	const globalMemberRole = await testDb.getGlobalMemberRole();
-	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	const member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 	authlessAgent = utils.createAgent(app);
 	authMemberAgent = utils.createAuthAgent(app)(member);

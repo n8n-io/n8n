@@ -8,12 +8,13 @@ import type { User } from '@db/entities/User';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { createWorkflow, getGlobalMemberRole, getGlobalOwnerRole } from './shared/testDb';
+import { createWorkflow } from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import { License } from '@/License';
 import { getSharedWorkflowIds } from '../../src/WorkflowHelpers';
+import { ROLES } from '@/constants';
 
 let owner: User;
 let member: User;
@@ -28,20 +29,16 @@ beforeAll(async () => {
 	Container.get(License).isSharingEnabled = () => true;
 	const app = await utils.initTestServer({ endpointGroups: ['workflows'] });
 
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const globalMemberRole = await testDb.getGlobalMemberRole();
-	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
-
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
-	anotherMember = await testDb.createUser({ globalRole: globalMemberRole });
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
+	member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
+	anotherMember = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 	const authAgent = utils.createAuthAgent(app);
 	authOwnerAgent = authAgent(owner);
 	authMemberAgent = authAgent(member);
 	authAnotherMemberAgent = authAgent(anotherMember);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(ROLES.CREDENTIAL_OWNER);
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 	await utils.initNodeTypes();
@@ -854,7 +851,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 describe('getSharedWorkflowIds', () => {
 	it('should show all workflows to owners', async () => {
-		owner.globalRole = await getGlobalOwnerRole();
+		owner.role = ROLES.GLOBAL_OWNER;
 		const workflow1 = await createWorkflow({}, member);
 		const workflow2 = await createWorkflow({}, anotherMember);
 		const sharedWorkflowIds = await getSharedWorkflowIds(owner);
@@ -864,7 +861,7 @@ describe('getSharedWorkflowIds', () => {
 	});
 
 	it('should show shared workflows to users', async () => {
-		member.globalRole = await getGlobalMemberRole();
+		member.role = ROLES.GLOBAL_MEMBER;
 		const workflow1 = await createWorkflow({}, anotherMember);
 		const workflow2 = await createWorkflow({}, anotherMember);
 		const workflow3 = await createWorkflow({}, anotherMember);

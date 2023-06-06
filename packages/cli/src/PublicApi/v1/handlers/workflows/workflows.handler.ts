@@ -11,7 +11,6 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
@@ -28,6 +27,7 @@ import {
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
+import { ROLES } from '@/constants';
 
 export = {
 	createWorkflow: [
@@ -45,9 +45,7 @@ export = {
 
 			addNodeIds(workflow);
 
-			const role = await getWorkflowOwnerRole();
-
-			const createdWorkflow = await createWorkflow(workflow, req.user, role);
+			const createdWorkflow = await createWorkflow(workflow, req.user, ROLES.WORKFLOW_OWNER);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
 			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
@@ -101,7 +99,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isInstanceOwner()) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);

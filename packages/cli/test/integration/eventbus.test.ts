@@ -7,7 +7,6 @@ import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type {
 	MessageEventBusDestinationSentryOptions,
@@ -27,6 +26,7 @@ import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBu
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 import { License } from '@/License';
+import { ROLES } from '@/constants';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -35,7 +35,6 @@ jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 let app: express.Application;
-let globalOwnerRole: Role;
 let owner: User;
 let unAuthOwnerAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
@@ -84,8 +83,7 @@ beforeAll(async () => {
 	Container.get(License).isLogStreamingEnabled = () => true;
 	app = await utils.initTestServer({ endpointGroups: ['eventBus'] });
 
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
 	unAuthOwnerAgent = utils.createAgent(app, {
 		apiPath: 'internal',

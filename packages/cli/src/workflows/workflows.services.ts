@@ -27,7 +27,8 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 import type { WorkflowForList } from '@/workflows/workflows.types';
 import { InternalHooks } from '@/InternalHooks';
-import type { RoleNames } from '../databases/entities/Role';
+import { ROLES } from '@/constants';
+import type { RoleEnum } from '@/constants';
 
 export type IGetWorkflowsQueryFilter = Pick<
 	FindOptionsWhere<WorkflowEntity>,
@@ -58,7 +59,7 @@ export class WorkflowsService {
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// workflows they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		if (!allowGlobalOwner || user.role !== ROLES.GLOBAL_OWNER) {
 			where.userId = user.id;
 		}
 
@@ -112,12 +113,12 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: RoleNames[]): Promise<string[]> {
+	static async getWorkflowIdsForUser(user: User, roles?: RoleEnum[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
 	static async getMany(user: User, rawFilter: string): Promise<WorkflowForList[]> {
-		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, [ROLES.WORKFLOW_OWNER]);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
@@ -170,7 +171,7 @@ export class WorkflowsService {
 
 		if (isSharingEnabled()) {
 			relations.push('shared');
-			select.shared = { userId: true, roleId: true };
+			select.shared = { userId: true, role: true };
 			select.versionId = true;
 		}
 
@@ -192,7 +193,7 @@ export class WorkflowsService {
 		roles?: string[],
 	): Promise<WorkflowEntity> {
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow', 'role'],
+			relations: ['workflow'],
 			where: whereClause({
 				user,
 				entityType: 'workflow',
@@ -434,7 +435,7 @@ export class WorkflowsService {
 		await Container.get(ExternalHooks).run('workflow.delete', [workflowId]);
 
 		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow', 'role'],
+			relations: ['workflow'],
 			where: whereClause({
 				user,
 				entityType: 'workflow',

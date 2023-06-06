@@ -11,12 +11,10 @@ import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '../License';
-import { LICENSE_FEATURES } from '@/constants';
+import { LICENSE_FEATURES, ROLES } from '@/constants';
 
 if (process.env.E2E_TESTS !== 'true') {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -53,7 +51,6 @@ const tablesToTruncate = [
 	'installed_packages',
 	'installed_nodes',
 	'user',
-	'role',
 	'variables',
 ];
 
@@ -74,26 +71,21 @@ const truncateAll = async () => {
 const setupUserManagement = async () => {
 	const connection = Db.getConnection();
 	await connection.query('INSERT INTO role (name, scope) VALUES ("owner", "global");');
-	const instanceOwnerRole = (await connection.query(
-		'SELECT last_insert_rowid() as insertId',
-	)) as Array<{ insertId: number }>;
 
-	const roles: Array<[Role['name'], Role['scope']]> = [
-		['member', 'global'],
-		['owner', 'workflow'],
-		['owner', 'credential'],
-		['user', 'credential'],
-		['editor', 'workflow'],
+	const roles: string[] = [
+		'member:global',
+		'owner:workflow',
+		'owner:credential',
+		'user:credential',
+		'editor:workflow',
 	];
 
 	await Promise.all(
-		roles.map(async ([name, scope]) =>
-			connection.query(`INSERT INTO role (name, scope) VALUES ("${name}", "${scope}");`),
+		roles.map(async (role) =>
+			connection.query(`INSERT INTO role (name, scope) VALUES ("${role}");`),
 		),
 	);
-	await connection.query(
-		`INSERT INTO user (id, globalRoleId) values ("${uuid()}", ${instanceOwnerRole[0].insertId})`,
-	);
+	await connection.query(`INSERT INTO user (id, role) values ("${uuid()}", 'owner:global')`);
 	await connection.query(
 		"INSERT INTO \"settings\" (key, value, loadOnStartup) values ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)",
 	);
@@ -124,9 +116,7 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 		return;
 	}
 
-	const globalRole = await Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
-
-	const owner = await Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
+	const owner = await Db.collections.User.findOneByOrFail({ role: ROLES.GLOBAL_OWNER });
 
 	await Db.collections.User.update(owner.id, {
 		email: req.body.email,

@@ -30,13 +30,13 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import omit from 'lodash.omit';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { isWorkflowIdValid } from './utils';
 import { UserService } from './user/user.service';
 import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import type { RoleNames } from './databases/entities/Role';
+import { ROLES } from './constants';
+import type { RoleEnum } from './constants';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -373,17 +373,13 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
-export async function getSharedWorkflowIds(user: User, roles?: RoleNames[]): Promise<string[]> {
+export async function getSharedWorkflowIds(user: User, roles?: RoleEnum[]): Promise<string[]> {
 	const where: FindOptionsWhere<SharedWorkflow> = {};
-	if (user.globalRole?.name !== 'owner') {
+	if (user.role !== ROLES.WORKFLOW_OWNER) {
 		where.userId = user.id;
 	}
 	if (roles?.length) {
-		const roleIds = await Db.collections.Role.find({
-			select: ['id'],
-			where: { name: In(roles), scope: 'workflow' },
-		}).then((data) => data.map(({ id }) => id));
-		where.roleId = In(roleIds);
+		where.role = In(roles);
 	}
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		where,
@@ -399,11 +395,10 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		where: {
 			userId: user.id,
-			roleId: workflowOwnerRole?.id,
+			role: ROLES.WORKFLOW_OWNER,
 		},
 		select: ['workflowId'],
 	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));

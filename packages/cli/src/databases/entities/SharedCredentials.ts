@@ -1,17 +1,13 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
-import { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class SharedCredentials extends AbstractEntity {
-	@ManyToOne('Role', 'sharedCredentials', { nullable: false })
-	role: Role;
-
 	@Column()
-	roleId: string;
+	role: string;
 
 	@ManyToOne('User', 'sharedCredentials')
 	user: User;

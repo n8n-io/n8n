@@ -12,8 +12,8 @@ import { useWorkflowsStore } from './workflows.store';
 
 export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 	getters: {
-		globalRoleName(): string {
-			return useUsersStore().globalRoleName;
+		roleName(): string {
+			return useUsersStore().role;
 		},
 		getContextBasedTranslationKeys() {
 			return useUIStore().contextBasedTranslationKeys;

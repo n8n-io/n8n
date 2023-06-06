@@ -77,7 +77,7 @@ export class OwnerController {
 	@Post('/setup')
 	async setupOwner(req: OwnerRequest.Post, res: Response) {
 		const { email, firstName, lastName, password } = req.body;
-		const { id: userId, globalRole } = req.user;
+		const { id: userId } = req.user;
 
 		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
@@ -108,7 +108,7 @@ export class OwnerController {
 		}
 
 		// TODO: This check should be in a middleware outside this class
-		if (globalRole.scope === 'global' && globalRole.name !== 'owner') {
+		if (req.user.isInstanceOwner()) {
 			this.logger.debug(
 				'Request to claim instance ownership failed because user shell does not exist or has wrong role!',
 				{

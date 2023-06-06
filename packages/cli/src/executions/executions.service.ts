@@ -41,6 +41,7 @@ import {
 } from './executionHelpers';
 import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import { ROLES } from '@/constants';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -99,7 +100,7 @@ export class ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows using owner role
-		return getSharedWorkflowIds(user, ['owner']);
+		return getSharedWorkflowIds(user, [ROLES.WORKFLOW_OWNER]);
 	}
 
 	/**
@@ -119,7 +120,7 @@ export class ExecutionsService {
 			dbType !== 'postgresdb' ||
 			metadata?.length ||
 			filteredFields.length > 0 ||
-			user.globalRole.name !== 'owner'
+			user.role !== ROLES.WORKFLOW_OWNER
 		) {
 			const sharedWorkflowIds = await this.getWorkflowIdsForUser(user);
 

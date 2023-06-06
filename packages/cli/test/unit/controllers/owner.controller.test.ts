@@ -15,7 +15,7 @@ import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers';
 import { badPasswords } from '../shared/testData';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, ROLES } from '@/constants';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
@@ -96,7 +96,7 @@ describe('OwnerController', () => {
 		it('should setup the instance owner successfully', async () => {
 			const user = mock<User>({
 				id: 'userId',
-				globalRole: { scope: 'global', name: 'owner' },
+				role: ROLES.GLOBAL_OWNER,
 				authIdentities: [],
 			});
 			const req = mock<OwnerRequest.Post>({

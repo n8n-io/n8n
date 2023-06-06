@@ -9,19 +9,16 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories';
 import config from '@/config';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';
 import type { PostHogClient } from '@/posthog';
+import { ROLES } from '@/constants';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
-
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
-		relations: ['user', 'user.globalRole'],
+		where: { workflowId, role: ROLES.WORKFLOW_OWNER ?? undefined },
+		relations: ['user'],
 	});
 
 	return sharedWorkflow.user;
@@ -58,22 +55,12 @@ export function isSharingEnabled(): boolean {
 	return isUserManagementEnabled() && license.isSharingEnabled();
 }
 
-export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-	return Container.get(RoleRepository)
-		.findRoleOrFail(scope, name)
-		.then((role) => role.id);
-}
-
 export async function getInstanceOwner(): Promise<User> {
-	const ownerRoleId = await getRoleId('global', 'owner');
-
-	const owner = await Db.collections.User.findOneOrFail({
-		relations: ['globalRole'],
+	return Db.collections.User.findOneOrFail({
 		where: {
-			globalRoleId: ownerRoleId,
+			role: ROLES.GLOBAL_OWNER,
 		},
 	});
-	return owner;
 }
 
 /**
@@ -189,7 +176,6 @@ export function addInviteLinkToUser(user: PublicUser, inviterId: string): Public
 export async function getUserById(userId: string): Promise<User> {
 	const user = await Db.collections.User.findOneOrFail({
 		where: { id: userId },
-		relations: ['globalRole'],
 	});
 	return user;
 }
@@ -254,7 +240,7 @@ export function whereClause({
 	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
 
 	// TODO: Decide if owner access should be restricted
-	if (user.globalRole.name !== 'owner') {
+	if (user.role !== ROLES.GLOBAL_OWNER) {
 		where.user = { id: user.id };
 		if (roles?.length) {
 			where.role = { name: In(roles) };

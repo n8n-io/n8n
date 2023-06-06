@@ -9,16 +9,16 @@ import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { isInstanceOwner } from '../users/users.service';
-import type { Role } from '@db/entities/Role';
 import config from '@/config';
-import { START_NODES } from '@/constants';
+import type { RoleEnum } from '@/constants';
+import { ROLES, START_NODES } from '@/constants';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
+	const where = user.role === ROLES.WORKFLOW_OWNER ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		where,
 		select: ['workflowId'],
@@ -79,7 +79,7 @@ export async function getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
 export async function createWorkflow(
 	workflow: WorkflowEntity,
 	user: User,
-	role: Role,
+	role: RoleEnum,
 ): Promise<WorkflowEntity> {
 	return Db.transaction(async (transactionManager) => {
 		const newWorkflow = new WorkflowEntity();

@@ -313,7 +313,7 @@ export default defineComponent({
 		},
 	},
 	mounted() {
-		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
+		this.isInstanceOwner = this.usersStore.currentUser?.role === 'owner';
 		this.setupNode(
 			Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination),
 		);

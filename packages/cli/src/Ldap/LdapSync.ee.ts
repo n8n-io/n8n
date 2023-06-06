@@ -4,7 +4,6 @@ import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 import type { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
 import {
-	getLdapUserRole,
 	mapLdapUserToDbUser,
 	processUsers,
 	saveLdapSynchronization,
@@ -13,10 +12,11 @@ import {
 	getLdapIds,
 } from './helpers';
 import type { User } from '@db/entities/User';
-import type { Role } from '@db/entities/Role';
 import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import type { RoleEnum } from '@/constants';
+import { ROLES } from '@/constants';
 
 export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -96,12 +96,10 @@ export class LdapSync {
 
 		const localAdUsers = await getLdapIds();
 
-		const role = await getLdapUserRole();
-
 		const { usersToCreate, usersToUpdate, usersToDisable } = this.getUsersToProcess(
 			adUsers,
 			localAdUsers,
-			role,
+			ROLES.GLOBAL_MEMBER,
 		);
 
 		if (usersToDisable.length) {
@@ -169,7 +167,7 @@ export class LdapSync {
 	private getUsersToProcess(
 		adUsers: LdapUser[],
 		localAdUsers: string[],
-		role: Role,
+		role: RoleEnum,
 	): {
 		usersToCreate: Array<[string, User]>;
 		usersToUpdate: Array<[string, User]>;
@@ -188,7 +186,7 @@ export class LdapSync {
 	private getUsersToCreate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-		role: Role,
+		role: RoleEnum,
 	): Array<[string, User]> {
 		return remoteAdUsers
 			.filter((adUser) => !localLdapIds.includes(adUser[this._config.ldapIdAttribute] as string))

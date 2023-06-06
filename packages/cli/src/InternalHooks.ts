@@ -28,7 +28,7 @@ import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, ROLES } from '@/constants';
 import * as Db from '@/Db';
 import { NodeTypes } from './NodeTypes';
 import type { ExecutionMetadata } from './databases/entities/ExecutionMetadata';
@@ -38,14 +38,14 @@ function userToPayload(user: User): {
 	_email: string;
 	_firstName: string;
 	_lastName: string;
-	globalRole?: string;
+	role?: string;
 } {
 	return {
 		userId: user.id,
 		_email: user.email,
 		_firstName: user.firstName,
 		_lastName: user.lastName,
-		globalRole: user.globalRole?.name,
+		role: user.role,
 	};
 }
 
@@ -162,9 +162,9 @@ export class InternalHooks implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (user.id && workflow.id) {
-			const role = await this.roleService.getUserRoleForWorkflow(user.id, workflow.id);
+			const { role } = user;
 			if (role) {
-				userRole = role.name === 'owner' ? 'owner' : 'sharee';
+				userRole = role === ROLES.WORKFLOW_OWNER ? 'owner' : 'sharee';
 			}
 		}
 
@@ -368,7 +368,7 @@ export class InternalHooks implements IInternalHooksClass {
 				if (userId) {
 					const role = await this.roleService.getUserRoleForWorkflow(userId, workflow.id);
 					if (role) {
-						userRole = role.name === 'owner' ? 'owner' : 'sharee';
+						userRole = role === ROLES.WORKFLOW_OWNER ? 'owner' : 'sharee';
 					}
 				}
 

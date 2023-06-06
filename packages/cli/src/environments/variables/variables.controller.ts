@@ -6,6 +6,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
 import { VariablesService } from './variables.service';
 import { EEVariablesController } from './variables.controller.ee';
+import { ROLES } from '@/constants';
 
 export const variablesController = express.Router();
 
@@ -68,7 +69,7 @@ variablesController.delete(
 		if (isNaN(id)) {
 			throw new ResponseHelper.BadRequestError('Invalid variable id ' + req.params.id);
 		}
-		if (req.user.globalRole.name !== 'owner') {
+		if (req.user.role !== ROLES.GLOBAL_OWNER) {
 			LoggerProxy.info('Attempt to delete a variable blocked due to lack of permissions', {
 				id,
 				userId: req.user.id,

@@ -25,6 +25,7 @@ import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '../sso/ssoHelpers';
 import { UserService } from '../user/user.service';
+import { ROLES } from '@/constants';
 
 @RestController()
 export class PasswordResetController {
@@ -100,12 +101,12 @@ export class PasswordResetController {
 				email,
 				password: Not(IsNull()),
 			},
-			relations: ['authIdentities', 'globalRole'],
+			relations: ['authIdentities'],
 		});
 
 		if (
 			isSamlCurrentAuthenticationMethod() &&
-			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
+			!(user?.isInstanceOwner() || user?.settings?.allowSSOManualLogin === true)
 		) {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',

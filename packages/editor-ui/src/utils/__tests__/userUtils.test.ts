@@ -17,11 +17,7 @@ const DEFAULT_USER: IUser = {
 	isDefaultUser: true,
 	isOwner: false,
 	isPendingUser: false,
-	globalRole: {
-		name: 'default',
-		id: '1',
-		createdAt: new Date(),
-	},
+	role: 'owner',
 };
 
 describe('userUtils', () => {
@@ -43,11 +39,7 @@ describe('userUtils', () => {
 			const user: IUser = merge({}, DEFAULT_USER, {
 				isDefaultUser: false,
 				isOwner: true,
-				globalRole: {
-					id: '1',
-					name: 'owner',
-					createdAt: new Date(),
-				},
+				role: 'owner:global',
 			});
 
 			settingsStore.setSettings(merge({}, DEFAULT_SETTINGS, { enterprise: { saml: true } }));

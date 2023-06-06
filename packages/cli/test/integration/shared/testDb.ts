@@ -1,7 +1,6 @@
 import { UserSettings } from 'n8n-core';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
-import { Container } from 'typedi';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -16,11 +15,9 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
 import type { ICredentialsDb } from '@/Interfaces';
 
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
@@ -32,6 +29,8 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { ROLES } from '@/constants';
+import type { RoleEnum } from '@/constants';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -115,7 +114,8 @@ export async function terminate() {
  */
 export async function truncate(collections: CollectionName[]) {
 	for (const collection of collections) {
-		await Db.collections[collection].delete({});
+		console.log('collection', collection);
+		await Db.collections[collection]?.delete({});
 	}
 }
 
@@ -128,7 +128,7 @@ export async function truncate(collections: CollectionName[]) {
  */
 export async function saveCredential(
 	credentialPayload: CredentialPayload,
-	{ user, role }: { user: User; role: Role },
+	{ user, role }: { user: User; role: RoleEnum },
 ) {
 	const newCredential = new CredentialsEntity();
 
@@ -152,18 +152,17 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleRepository).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
 			credentialsId: credential.id,
-			roleId: role?.id,
+			role: ROLES.CREDENTIAL_USER,
 		}),
 	);
 	return Db.collections.SharedCredentials.save(newSharedCredentials);
 }
 
-export function affixRoleToSaveCredential(role: Role) {
+export function affixRoleToSaveCredential(role: RoleEnum) {
 	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
 		saveCredential(credentialPayload, { user, role });
 }
@@ -176,13 +175,13 @@ export function affixRoleToSaveCredential(role: Role) {
  * Store a user in the DB, defaulting to a `member`.
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
+	const { email, password, firstName, lastName, role, ...rest } = attributes;
 	const user: Partial<User> = {
 		email: email ?? randomEmail(),
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
+		role: role ?? ROLES.GLOBAL_MEMBER,
 		...rest,
 	};
 
@@ -196,17 +195,17 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 }
 
 export async function createOwner() {
-	return createUser({ globalRole: await getGlobalOwnerRole() });
+	return createUser({ role: ROLES.GLOBAL_OWNER });
 }
 
-export async function createUserShell(globalRole: Role): Promise<User> {
-	if (globalRole.scope !== 'global') {
-		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
+export async function createUserShell(role: RoleEnum): Promise<User> {
+	if (!role.endsWith('global')) {
+		throw new Error(`Invalid role received: ${JSON.stringify(role)}`);
 	}
 
-	const shell: Partial<User> = { globalRoleId: globalRole.id };
+	const shell: Partial<User> = { role };
 
-	if (globalRole.name !== 'owner') {
+	if (!role.startsWith('owner')) {
 		shell.email = randomEmail();
 	}
 
@@ -221,9 +220,9 @@ export async function createManyUsers(
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
 	// eslint-disable-next-line prefer-const
-	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	if (!globalRole) {
-		globalRole = await getGlobalMemberRole();
+	let { email, password, firstName, lastName, role, ...rest } = attributes;
+	if (!role) {
+		role = await ROLES.GLOBAL_MEMBER;
 	}
 
 	const users = await Promise.all(
@@ -233,7 +232,7 @@ export async function createManyUsers(
 				password: await hashPassword(password ?? randomValidPassword()),
 				firstName: firstName ?? randomName(),
 				lastName: lastName ?? randomName(),
-				globalRole,
+				role,
 				...rest,
 			}),
 		),
@@ -276,38 +275,9 @@ export async function addApiKey(user: User): Promise<User> {
 //          role fetchers
 // ----------------------------------
 
-export async function getGlobalOwnerRole() {
-	return Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
-}
-
-export async function getGlobalMemberRole() {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
-}
-
-export async function getWorkflowOwnerRole() {
-	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
-}
-
-export async function getWorkflowEditorRole() {
-	return Container.get(RoleRepository).findWorkflowEditorRoleOrFail();
-}
-
-export async function getCredentialOwnerRole() {
-	return Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
-}
-
-export async function getAllRoles() {
-	return Promise.all([
-		getGlobalOwnerRole(),
-		getGlobalMemberRole(),
-		getWorkflowOwnerRole(),
-		getCredentialOwnerRole(),
-	]);
-}
-
 export const getAllUsers = async () =>
 	Db.collections.User.find({
-		relations: ['globalRole', 'authIdentities'],
+		relations: ['authIdentities'],
 	});
 
 export const getLdapIdentities = async () =>
@@ -424,18 +394,17 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		await Db.collections.SharedWorkflow.save({
 			user,
 			workflow,
-			role: await getWorkflowOwnerRole(),
+			role: ROLES.WORKFLOW_OWNER,
 		});
 	}
 	return workflow;
 }
 
 export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
-	const role = await getWorkflowEditorRole();
 	const sharedWorkflows = users.map((user) => ({
 		user,
 		workflow,
-		role,
+		role: ROLES.WORKFLOW_EDITOR,
 	}));
 	return Db.collections.SharedWorkflow.save(sharedWorkflows);
 }

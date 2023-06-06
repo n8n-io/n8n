@@ -102,7 +102,6 @@ export class MeController {
 		await this.userRepository.update(userId, payload);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
-			relations: { globalRole: true },
 		});
 
 		this.logger.info('User updated successfully', { userId });

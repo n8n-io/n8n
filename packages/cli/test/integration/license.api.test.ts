@@ -5,6 +5,7 @@ import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import { ROLES } from '@/constants';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -17,10 +18,8 @@ let authMemberAgent: SuperAgentTest;
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['license'] });
 
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const globalMemberRole = await testDb.getGlobalMemberRole();
-	owner = await testDb.createUserShell(globalOwnerRole);
-	member = await testDb.createUserShell(globalMemberRole);
+	owner = await testDb.createUserShell(ROLES.GLOBAL_OWNER);
+	member = await testDb.createUserShell(ROLES.GLOBAL_MEMBER);
 
 	const authAgent = utils.createAuthAgent(app);
 	authOwnerAgent = authAgent(owner);

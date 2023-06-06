@@ -1,21 +1,17 @@
 import * as Db from '@/Db';
 import { Reset } from '@/commands/user-management/reset';
-import type { Role } from '@db/entities/Role';
 import * as testDb from '../shared/testDb';
 import { mockInstance } from '../shared/utils';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
-
-let globalOwnerRole: Role;
+import { ROLES } from '@/constants';
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
 	mockInstance(NodeTypes);
 	await testDb.init();
-
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
@@ -28,11 +24,11 @@ afterAll(async () => {
 
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test.skip('user-management:reset should reset DB to default user state', async () => {
-	await testDb.createUser({ globalRole: globalOwnerRole });
+	await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
 	await Reset.run();
 
-	const user = await Db.collections.User.findOneBy({ globalRoleId: globalOwnerRole.id });
+	const user = await Db.collections.User.findOneBy({ role: ROLES.GLOBAL_OWNER });
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');

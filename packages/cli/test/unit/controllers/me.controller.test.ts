@@ -6,7 +6,7 @@ import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import type { UserRepository } from '@db/repositories';
 import { MeController } from '@/controllers';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, ROLES } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
@@ -43,7 +43,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				globalRoleId: '1',
+				role: ROLES.GLOBAL_OWNER,
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
@@ -71,7 +71,7 @@ describe('MeController', () => {
 				id: '123',
 				password: 'password',
 				authIdentities: [],
-				globalRoleId: '1',
+				role: ROLES.GLOBAL_OWNER,
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
@@ -80,7 +80,7 @@ describe('MeController', () => {
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
-			Object.assign(reqBody, { id: '0', globalRoleId: '42' });
+			Object.assign(reqBody, { id: '0', role: ROLES.WORKFLOW_EDITOR });
 
 			await controller.updateCurrentUser(req, res);
 
@@ -91,7 +91,7 @@ describe('MeController', () => {
 			expect(updatedUser.firstName).toBe(reqBody.firstName);
 			expect(updatedUser.lastName).toBe(reqBody.lastName);
 			expect(updatedUser.id).not.toBe('0');
-			expect(updatedUser.globalRoleId).not.toBe('42');
+			expect(updatedUser.role).not.toBe(ROLES.WORKFLOW_EDITOR);
 		});
 	});
 

@@ -6,13 +6,11 @@ import {
 	Entity,
 	Index,
 	OneToMany,
-	ManyToOne,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
@@ -20,6 +18,7 @@ import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
+import { ROLES, RoleEnum } from '@/constants';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -75,11 +74,8 @@ export class User extends AbstractEntity implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@ManyToOne('Role', 'globalForUsers', { nullable: false })
-	globalRole: Role;
-
 	@Column()
-	globalRoleId: string;
+	role: RoleEnum;
 
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
@@ -112,5 +108,9 @@ export class User extends AbstractEntity implements IUser {
 	@AfterUpdate()
 	computeIsPending(): void {
 		this.isPending = this.password === null;
+	}
+
+	isInstanceOwner() {
+		return this.role === ROLES.GLOBAL_OWNER;
 	}
 }

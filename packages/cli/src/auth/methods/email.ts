@@ -11,7 +11,7 @@ export const handleEmailLogin = async (
 ): Promise<User | undefined> => {
 	const user = await Db.collections.User.findOne({
 		where: { email },
-		relations: ['globalRole', 'authIdentities'],
+		relations: ['authIdentities'],
 	});
 
 	if (user?.password && (await compareHash(password, user.password))) {

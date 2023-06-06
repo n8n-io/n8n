@@ -3,7 +3,7 @@ import config from '@/config';
 import * as Db from '@/Db';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
+import { ROLES } from '@/constants';
 import { License } from '@/License';
 import { AuthError, InternalServerError } from '@/ResponseHelper';
 import { hashPassword, isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
@@ -101,7 +101,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.email = attributes.email;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	user.role = ROLES.GLOBAL_MEMBER;
 	// generates a password that is not used or known to the user
 	user.password = await hashPassword(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;

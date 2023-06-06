@@ -5,7 +5,6 @@ import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
@@ -22,12 +21,10 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import { ROLES } from '@/constants';
 
 jest.mock('@/UserManagement/email/NodeMailer');
 
-let globalMemberRole: Role;
-let workflowOwnerRole: Role;
-let credentialOwnerRole: Role;
 let owner: User;
 let authlessAgent: SuperAgentTest;
 let authOwnerAgent: SuperAgentTest;
@@ -36,18 +33,7 @@ let authAgentFor: (user: User) => SuperAgentTest;
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['users'] });
 
-	const [
-		globalOwnerRole,
-		fetchedGlobalMemberRole,
-		fetchedWorkflowOwnerRole,
-		fetchedCredentialOwnerRole,
-	] = await testDb.getAllRoles();
-
-	globalMemberRole = fetchedGlobalMemberRole;
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
 	authlessAgent = utils.createAgent(app);
 	authAgentFor = utils.createAuthAgent(app);
@@ -72,7 +58,7 @@ afterAll(async () => {
 
 describe('GET /users', () => {
 	test('should return all users (for owner)', async () => {
-		await testDb.createUser({ globalRole: globalMemberRole });
+		await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const response = await authOwnerAgent.get('/users');
 
@@ -86,7 +72,7 @@ describe('GET /users', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				resetPasswordToken,
 				isPending,
@@ -101,13 +87,13 @@ describe('GET /users', () => {
 			expect(password).toBeUndefined();
 			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole).toBeDefined();
+			expect(role).toBeDefined();
 			expect(apiKey).not.toBeDefined();
 		});
 	});
 
 	test('should return all users (for member)', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 		const response = await authAgentFor(member).get('/users');
 
 		expect(response.statusCode).toBe(200);
@@ -117,7 +103,7 @@ describe('GET /users', () => {
 
 describe('DELETE /users/:id', () => {
 	test('should delete the user', async () => {
-		const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
+		const userToDelete = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const newWorkflow = new WorkflowEntity();
 
@@ -131,7 +117,7 @@ describe('DELETE /users/:id', () => {
 		const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
 
 		await Db.collections.SharedWorkflow.save({
-			role: workflowOwnerRole,
+			role: ROLES.WORKFLOW_OWNER,
 			user: userToDelete,
 			workflow: savedWorkflow,
 		});
@@ -148,7 +134,7 @@ describe('DELETE /users/:id', () => {
 		const savedCredential = await Db.collections.Credentials.save(newCredential);
 
 		await Db.collections.SharedCredentials.save({
-			role: credentialOwnerRole,
+			role: ROLES.CREDENTIAL_OWNER,
 			user: userToDelete,
 			credentials: savedCredential,
 		});
@@ -163,13 +149,13 @@ describe('DELETE /users/:id', () => {
 
 		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 			relations: ['user'],
-			where: { userId: userToDelete.id, roleId: workflowOwnerRole.id },
+			where: { userId: userToDelete.id, role: ROLES.WORKFLOW_OWNER },
 		});
 		expect(sharedWorkflow).toBeNull(); // deleted
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOne({
 			relations: ['user'],
-			where: { userId: userToDelete.id, roleId: credentialOwnerRole.id },
+			where: { userId: userToDelete.id, role: ROLES.CREDENTIAL_OWNER },
 		});
 		expect(sharedCredential).toBeNull(); // deleted
 
@@ -192,7 +178,7 @@ describe('DELETE /users/:id', () => {
 	});
 
 	test('should fail if user to delete is transferee', async () => {
-		const { id: idToDelete } = await testDb.createUser({ globalRole: globalMemberRole });
+		const { id: idToDelete } = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
 			transferId: idToDelete,
@@ -205,13 +191,13 @@ describe('DELETE /users/:id', () => {
 	});
 
 	test('with transferId should perform transfer', async () => {
-		const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
+		const userToDelete = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
 		const savedCredential = await testDb.saveCredential(randomCredentialPayload(), {
 			user: userToDelete,
-			role: credentialOwnerRole,
+			role: ROLES.CREDENTIAL_OWNER,
 		});
 
 		const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`).query({
@@ -244,7 +230,7 @@ describe('DELETE /users/:id', () => {
 
 describe('POST /users/:id', () => {
 	test('should fill out a user shell', async () => {
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const memberShell = await testDb.createUserShell(ROLES.GLOBAL_MEMBER);
 
 		const memberData = {
 			inviterId: owner.id,
@@ -263,7 +249,7 @@ describe('POST /users/:id', () => {
 			personalizationAnswers,
 			password,
 			resetPasswordToken,
-			globalRole,
+			role,
 			isPending,
 			apiKey,
 		} = response.body.data;
@@ -276,7 +262,7 @@ describe('POST /users/:id', () => {
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(globalRole).toBeDefined();
+		expect(role).toBeDefined();
 		expect(apiKey).not.toBeDefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -293,7 +279,7 @@ describe('POST /users/:id', () => {
 
 		const memberShell = await Db.collections.User.save({
 			email: memberShellEmail,
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		const invalidPayloads = [
@@ -342,7 +328,7 @@ describe('POST /users/:id', () => {
 	});
 
 	test('should fail with already accepted invite', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const newMemberData = {
 			inviterId: owner.id,
@@ -389,8 +375,8 @@ describe('POST /users', () => {
 	});
 
 	test('should email invites and create user shells but ignore existing', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
+		const memberShell = await testDb.createUserShell(ROLES.GLOBAL_MEMBER);
 
 		const testEmails = [
 			randomEmail(),
@@ -488,7 +474,7 @@ describe('POST /users/:id/reinvite', () => {
 
 		expect(reinviteResponse.statusCode).toBe(200);
 
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 		const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
 
 		expect(reinviteMemberResponse.statusCode).toBe(400);

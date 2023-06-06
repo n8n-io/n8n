@@ -7,6 +7,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import { ROLES } from '@/constants';
 
 let app: Application;
 let owner: User;
@@ -24,11 +25,9 @@ beforeAll(async () => {
 		enablePublicAPI: true,
 	});
 
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const globalUserRole = await testDb.getGlobalMemberRole();
-	owner = await testDb.createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-	user1 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
-	user2 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER, apiKey: randomApiKey() });
+	user1 = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER, apiKey: randomApiKey() });
+	user2 = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER, apiKey: randomApiKey() });
 
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();

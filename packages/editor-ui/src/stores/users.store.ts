@@ -42,12 +42,11 @@ import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 
 const isDefaultUser = (user: IUserResponse | null) =>
-	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
+	Boolean(user && user.isPending && user.role === ROLE.Owner);
 
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
-const isInstanceOwner = (user: IUserResponse | null) =>
-	Boolean(user?.globalRole?.name === ROLE.Owner);
+const isInstanceOwner = (user: IUserResponse | null) => Boolean(user?.role === ROLE.Owner);
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
@@ -73,8 +72,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
 		},
-		globalRoleName(): IRole {
-			return this.currentUser?.globalRole?.name ?? 'default';
+		role(): IRole {
+			return this.currentUser?.role ?? 'default';
 		},
 		canUserDeleteTags(): boolean {
 			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
@@ -131,7 +130,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
+					isOwner: updatedUser.role === ROLE.Owner,
 				};
 				Vue.set(this.users, user.id, user);
 			});

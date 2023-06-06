@@ -11,6 +11,7 @@ import { EECredentialsService as EECredentials } from './credentials.service.ee'
 import type { CredentialWithSharings } from './credentials.types';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ROLES } from '@/constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
@@ -70,13 +71,13 @@ EECredentialsController.get(
 
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
+		if (!userSharing && req.user.role !== ROLES.CREDENTIAL_OWNER) {
 			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
 		credential = EECredentials.addOwnerAndSharings(credential);
 
-		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
+		if (!includeDecryptedData || !userSharing || userSharing.role !== ROLES.CREDENTIAL_OWNER) {
 			const { data: _, ...rest } = credential;
 			return { ...rest };
 		}

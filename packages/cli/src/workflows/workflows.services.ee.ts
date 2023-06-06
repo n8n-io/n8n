@@ -5,10 +5,9 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import type { Role } from '@db/entities/Role';
+import { ROLES } from '@/constants';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleService } from '@/role/role.service';
 import { UserService } from '@/user/user.service';
 import { WorkflowsService } from './workflows.services';
 import type {
@@ -30,11 +29,11 @@ export class EEWorkflowsService extends WorkflowsService {
 		user: User,
 		workflowId: string,
 	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.getSharing(user, workflowId, ['workflow', 'role'], {
+		const sharing = await this.getSharing(user, workflowId, ['workflow'], {
 			allowGlobalOwner: false,
 		});
 
-		if (!sharing || sharing.role.name !== 'owner') return { ownsWorkflow: false };
+		if (!sharing || sharing.role !== ROLES.WORKFLOW_OWNER) return { ownsWorkflow: false };
 
 		const { workflow } = sharing;
 
@@ -68,10 +67,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		workflow: WorkflowEntity,
 		shareWithIds: string[],
 	): Promise<SharedWorkflow[]> {
-		const [users, role] = await Promise.all([
-			UserService.getByIds(transaction, shareWithIds),
-			RoleService.trxGet(transaction, { scope: 'workflow', name: 'editor' }),
-		]);
+		const users = await UserService.getByIds(transaction, shareWithIds);
 
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
 			if (user.isPending) {
@@ -80,7 +76,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			const entity: Partial<SharedWorkflow> = {
 				workflowId: workflow.id,
 				userId: user.id,
-				roleId: role?.id,
+				role: ROLES.WORKFLOW_EDITOR,
 			};
 			acc.push(Db.collections.SharedWorkflow.create(entity));
 			return acc;
@@ -89,10 +85,8 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerId(workflow: WorkflowForList, workflowOwnerRole: Role): void {
-		const ownerId = workflow.shared?.find(
-			({ roleId }) => String(roleId) === workflowOwnerRole.id,
-		)?.userId;
+	static addOwnerId(workflow: WorkflowForList): void {
+		const ownerId = workflow.shared?.find(({ role }) => role === ROLES.WORKFLOW_OWNER)?.userId;
 		workflow.ownedBy = ownerId ? { id: ownerId } : null;
 		delete workflow.shared;
 	}
@@ -107,7 +101,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		workflow.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
 
-			if (role.name === 'owner') {
+			if (role === ROLES.WORKFLOW_OWNER) {
 				workflow.ownedBy = { id, email, firstName, lastName };
 				return;
 			}
@@ -156,7 +150,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			};
 			credential.shared?.forEach(({ user, role }) => {
 				const { id, email, firstName, lastName } = user;
-				if (role.name === 'owner') {
+				if (role === ROLES.WORKFLOW_OWNER) {
 					workflowCredential.ownedBy = { id, email, firstName, lastName };
 				} else {
 					workflowCredential.sharedWith?.push({ id, email, firstName, lastName });

@@ -14,7 +14,6 @@ import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
@@ -26,6 +25,7 @@ import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ROLES } from '@/constants';
 
 export const workflowsController = express.Router();
 
@@ -81,12 +81,10 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
-
 			const newSharedWorkflow = new SharedWorkflow();
 
 			Object.assign(newSharedWorkflow, {
-				role,
+				role: ROLES.WORKFLOW_OWNER,
 				user: req.user,
 				workflow: savedWorkflow,
 			});
@@ -193,7 +191,7 @@ workflowsController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		let relations = ['workflow', 'workflow.tags', 'role'];
+		let relations = ['workflow', 'workflow.tags'];
 
 		if (config.getEnv('workflowTagsDisabled')) {
 			relations = relations.filter((relation) => relation !== 'workflow.tags');

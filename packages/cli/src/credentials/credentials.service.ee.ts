@@ -2,24 +2,24 @@
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
 import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
-import { RoleService } from '@/role/role.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { UserService } from '@/user/user.service';
 import { CredentialsService } from './credentials.service';
 import type { CredentialWithSharings } from './credentials.types';
+import { ROLES } from '@/constants';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
 		user: User,
 		credentialId: string,
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
-		const sharing = await this.getSharing(user, credentialId, ['credentials', 'role'], {
+		const sharing = await this.getSharing(user, credentialId, ['credentials'], {
 			allowGlobalOwner: false,
 		});
 
-		if (!sharing || sharing.role.name !== 'owner') return { ownsCredential: false };
+		if (!sharing || sharing.role !== ROLES.CREDENTIAL_OWNER) return { ownsCredential: false };
 
 		const { credentials: credential } = sharing;
 
@@ -40,7 +40,7 @@ export class EECredentialsService extends CredentialsService {
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		if (!allowGlobalOwner || user.role !== ROLES.GLOBAL_OWNER) {
 			where.userId = user.id;
 		}
 
@@ -78,10 +78,7 @@ export class EECredentialsService extends CredentialsService {
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 	): Promise<SharedCredentials[]> {
-		const [users, role] = await Promise.all([
-			UserService.getByIds(transaction, shareWithIds),
-			RoleService.trxGet(transaction, { scope: 'credential', name: 'user' }),
-		]);
+		const users = await UserService.getByIds(transaction, shareWithIds);
 
 		const newSharedCredentials = users
 			.filter((user) => !user.isPending)
@@ -89,7 +86,7 @@ export class EECredentialsService extends CredentialsService {
 				Db.collections.SharedCredentials.create({
 					credentialsId: credential.id,
 					userId: user.id,
-					roleId: role?.id,
+					role: ROLES.CREDENTIAL_USER,
 				}),
 			);
 
@@ -105,7 +102,7 @@ export class EECredentialsService extends CredentialsService {
 		credential.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
 
-			if (role.name === 'owner') {
+			if (role === ROLES.CREDENTIAL_OWNER) {
 				credential.ownedBy = { id, email, firstName, lastName };
 				return;
 			}

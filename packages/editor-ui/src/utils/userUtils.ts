@@ -148,8 +148,8 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 			return false;
 		}
 
-		if (currentUser?.globalRole?.name) {
-			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
+		if (currentUser?.role) {
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.role;
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
@@ -169,8 +169,8 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 			return true;
 		}
 
-		if (currentUser?.globalRole?.name) {
-			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.globalRole.name;
+		if (currentUser?.role) {
+			const role = currentUser.isDefaultUser ? ROLE.Default : currentUser.role;
 			if (permissions.allow.role && permissions.allow.role.includes(role)) {
 				return true;
 			}

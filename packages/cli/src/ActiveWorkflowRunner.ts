@@ -58,7 +58,11 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
-import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
+import {
+	ROLES,
+	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+} from '@/constants';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -98,7 +102,7 @@ export class ActiveWorkflowRunner {
 		// so instead of pulling all the active webhooks just pull the actives that have a trigger
 		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: ['shared', 'shared.user', 'shared.role'],
 		})) as IWorkflowDb[];
 
 		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
@@ -264,7 +268,7 @@ export class ActiveWorkflowRunner {
 
 		const workflowData = await Db.collections.Workflow.findOne({
 			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 		if (workflowData === null) {
 			throw new ResponseHelper.NotFoundError(
@@ -345,7 +349,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async getActiveWorkflows(user?: User): Promise<string[]> {
 		let activeWorkflows: WorkflowEntity[] = [];
-		if (!user || user.globalRole.name === 'owner') {
+		if (!user || user.isInstanceOwner()) {
 			activeWorkflows = await Db.collections.Workflow.find({
 				select: ['id'],
 				where: { active: true },
@@ -508,7 +512,7 @@ export class ActiveWorkflowRunner {
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
 		const workflowData = await Db.collections.Workflow.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 		if (workflowData === null) {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
@@ -775,7 +779,7 @@ export class ActiveWorkflowRunner {
 			if (workflowData === undefined) {
 				workflowData = (await Db.collections.Workflow.findOne({
 					where: { id: workflowId },
-					relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+					relations: ['shared', 'shared.user', 'shared.role'],
 				})) as IWorkflowDb;
 			}
 
@@ -803,7 +807,7 @@ export class ActiveWorkflowRunner {
 
 			const mode = 'trigger';
 			const workflowOwner = (workflowData as WorkflowEntity).shared.find(
-				(shared) => shared.role.name === 'owner',
+				(shared) => shared.role === ROLES.WORKFLOW_OWNER,
 			);
 			if (!workflowOwner) {
 				throw new Error('Workflow cannot be activated because it has no owner');

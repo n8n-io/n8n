@@ -7,10 +7,8 @@ import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { RoleRepository } from '@db/repositories';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
@@ -33,6 +31,7 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
 import { InternalServerError } from '../ResponseHelper';
+import type { RoleEnum } from '@/constants';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -88,13 +87,6 @@ export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLE
  */
 export const randomPassword = (): string => {
 	return Math.random().toString(36).slice(-8);
-};
-
-/**
- * Return the user role to be assigned to LDAP users
- */
-export const getLdapUserRole = async (): Promise<Role> => {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
 };
 
 /**
@@ -312,7 +304,7 @@ export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
 ): Promise<AuthIdentity | null> => {
 	return Db.collections.AuthIdentity.findOne({
-		relations: ['user', 'user.globalRole'],
+		relations: ['user'],
 		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
@@ -323,7 +315,6 @@ export const getAuthIdentityByLdapId = async (
 export const getUserByEmail = async (email: string): Promise<User | null> => {
 	return Db.collections.User.findOne({
 		where: { email },
-		relations: ['globalRole'],
 	});
 };
 
@@ -374,13 +365,13 @@ export const getLdapUsers = async (): Promise<User[]> => {
 export const mapLdapUserToDbUser = (
 	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
-	role?: Role,
+	role?: RoleEnum,
 ): [string, User] => {
 	const user = new User();
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
 	if (role) {
-		user.globalRole = role;
+		user.role = role;
 		user.password = randomPassword();
 		user.disabled = false;
 	} else {
@@ -480,10 +471,14 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 	return Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId));
 };
 
-export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>, ldapId: string) => {
+export const createLdapUserOnLocalDb = async (
+	role: RoleEnum,
+	data: Partial<User>,
+	ldapId: string,
+) => {
 	const user = await Db.collections.User.save({
 		password: randomPassword(),
-		globalRole: role,
+		role,
 		...data,
 	});
 	await createLdapAuthIdentity(user, ldapId);

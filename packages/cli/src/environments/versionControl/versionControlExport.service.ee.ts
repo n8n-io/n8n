@@ -22,7 +22,6 @@ import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import { Variables } from '@/databases/entities/Variables';
 import type { ImportResult } from './types/importResult';
-import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import config from '@/config';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
@@ -33,6 +32,7 @@ import without from 'lodash.without';
 import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
 import { In } from 'typeorm';
+import { ROLES } from '@/constants';
 
 @Service()
 export class VersionControlExportService {
@@ -94,42 +94,6 @@ export class VersionControlExportService {
 		} catch (error) {
 			return undefined;
 		}
-	}
-
-	private async getOwnerGlobalRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'global' },
-		});
-
-		if (!ownerCredentiallRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return ownerCredentiallRole;
-	}
-
-	private async getOwnerCredentialRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'credential' },
-		});
-
-		if (!ownerCredentiallRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return ownerCredentiallRole;
-	}
-
-	private async getOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'workflow' },
-		});
-
-		if (!ownerWorkflowRole) {
-			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return ownerWorkflowRole;
 	}
 
 	async cleanWorkFolder() {
@@ -223,12 +187,9 @@ export class VersionControlExportService {
 		try {
 			versionControlFoldersExistCheck([this.workflowExportFolder]);
 			const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-				relations: ['workflow', 'role', 'user'],
+				relations: ['workflow', 'user'],
 				where: {
-					role: {
-						name: 'owner',
-						scope: 'workflow',
-					},
+					role: ROLES.WORKFLOW_OWNER,
 				},
 			});
 
@@ -337,7 +298,7 @@ export class VersionControlExportService {
 		try {
 			versionControlFoldersExistCheck([this.credentialExportFolder]);
 			const sharedCredentials = await Db.collections.SharedCredentials.find({
-				relations: ['credentials', 'role', 'user'],
+				relations: ['credentials', 'user'],
 			});
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
@@ -381,8 +342,7 @@ export class VersionControlExportService {
 			absolute: true,
 		});
 		const existingCredentials = await Db.collections.Credentials.find();
-		const ownerCredentialRole = await this.getOwnerCredentialRole();
-		const ownerGlobalRole = await this.getOwnerGlobalRole();
+
 		const encryptionKey = await UserSettings.getEncryptionKey();
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		await Db.transaction(async (transactionManager) => {
@@ -399,7 +359,7 @@ export class VersionControlExportService {
 						select: ['userId'],
 						where: {
 							credentialsId: credential.id,
-							roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
+							role: In([ROLES.CREDENTIAL_OWNER, ROLES.GLOBAL_OWNER]),
 						},
 					});
 
@@ -421,7 +381,7 @@ export class VersionControlExportService {
 						const newSharedCredential = new SharedCredentials();
 						newSharedCredential.credentialsId = newCredentialObject.id as string;
 						newSharedCredential.userId = userId;
-						newSharedCredential.roleId = ownerGlobalRole.id;
+						newSharedCredential.role = ROLES.GLOBAL_OWNER;
 
 						await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
 							'credentialsId',
@@ -569,7 +529,6 @@ export class VersionControlExportService {
 			select: ['id', 'name', 'active', 'versionId'],
 		});
 
-		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
 		const workflowRunner = Container.get(ActiveWorkflowRunner);
 
 		let importWorkflowsResult = new Array<{ id: string; name: string }>();
@@ -623,7 +582,7 @@ export class VersionControlExportService {
 						{
 							workflowId: upsertedWorkflowId,
 							userId,
-							roleId: ownerWorkflowRole.id,
+							role: ROLES.WORKFLOW_OWNER,
 						},
 						['workflowId', 'userId'],
 					);

@@ -147,7 +147,7 @@ export class SamlService {
 		if (attributes.email) {
 			const user = await Db.collections.User.findOne({
 				where: { email: attributes.email },
-				relations: ['globalRole', 'authIdentities'],
+				relations: ['authIdentities'],
 			});
 			if (user) {
 				// Login path for existing users that are fully set up and that have a SAML authIdentity set up

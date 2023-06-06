@@ -3,7 +3,6 @@ import {
 	createLdapUserOnLocalDb,
 	findAndAuthenticateLdapUser,
 	getLdapConfig,
-	getLdapUserRole,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
 	isLdapDisabled,
@@ -11,6 +10,7 @@ import {
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
+import { ROLES } from '@/constants';
 import type { User } from '@db/entities/User';
 import { Container } from 'typedi';
 
@@ -50,8 +50,7 @@ export const handleLdapLogin = async (
 			const identity = await createLdapAuthIdentity(emailUser, ldapId);
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
-			const role = await getLdapUserRole();
-			const user = await createLdapUserOnLocalDb(role, ldapAttributesValues, ldapId);
+			const user = await createLdapUserOnLocalDb(ROLES.GLOBAL_MEMBER, ldapAttributesValues, ldapId);
 			void Container.get(InternalHooks).onUserSignup(user, {
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,

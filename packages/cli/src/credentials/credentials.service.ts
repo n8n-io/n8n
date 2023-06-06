@@ -16,13 +16,12 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
-import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES, ROLES } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 
@@ -52,7 +51,7 @@ export class CredentialsService {
 
 		// if instance owner, return all credentials
 
-		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
+		if (user.isInstanceOwner() && options?.disableGlobalRole !== true) {
 			return Db.collections.Credentials.find({
 				select: SELECT_FIELDS,
 				relations: options?.relations,
@@ -63,9 +62,8 @@ export class CredentialsService {
 		const userSharings = await Db.collections.SharedCredentials.find({
 			where: {
 				userId: user.id,
-				...(options?.roles?.length ? { role: { name: In(options.roles) } } : {}),
+				...(options?.roles?.length ? { role: In(options.roles) } : {}),
 			},
-			relations: options?.roles?.length ? ['role'] : [],
 		});
 
 		return Db.collections.Credentials.find({
@@ -95,14 +93,11 @@ export class CredentialsService {
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+		if (!allowGlobalOwner || user.isInstanceOwner()) {
 			Object.assign(where, {
 				userId: user.id,
-				role: { name: 'owner' },
+				role: ROLES.CREDENTIAL_OWNER,
 			});
-			if (!relations.includes('role')) {
-				relations.push('role');
-			}
 		}
 
 		return Db.collections.SharedCredentials.findOne({ where, relations });
@@ -223,8 +218,6 @@ export class CredentialsService {
 
 		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-		const role = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
-
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
@@ -233,7 +226,7 @@ export class CredentialsService {
 			const newSharedCredential = new SharedCredentials();
 
 			Object.assign(newSharedCredential, {
-				role,
+				role: ROLES.CREDENTIAL_OWNER,
 				user,
 				credentials: savedCredential,
 			});

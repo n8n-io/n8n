@@ -11,7 +11,6 @@ import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelp
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { RoleRepository } from '@db/repositories';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
@@ -20,6 +19,7 @@ import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ROLES } from '@/constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -103,7 +103,7 @@ EEWorkflowController.get(
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 
-		if (!userSharing && req.user.globalRole.name !== 'owner') {
+		if (!userSharing && req.user.role !== ROLES.WORKFLOW_OWNER) {
 			throw new ResponseHelper.UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
@@ -163,12 +163,10 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
-
 			const newSharedWorkflow = new SharedWorkflow();
 
 			Object.assign(newSharedWorkflow, {
-				role,
+				role: ROLES.WORKFLOW_OWNER,
 				user: req.user,
 				workflow: savedWorkflow,
 			});
@@ -202,13 +200,10 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const [workflows, workflowOwnerRole] = await Promise.all([
-			EEWorkflows.getMany(req.user, req.query.filter),
-			Container.get(RoleRepository).findWorkflowOwnerRoleOrFail(),
-		]);
+		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
 
 		return workflows.map((workflow) => {
-			EEWorkflows.addOwnerId(workflow, workflowOwnerRole);
+			EEWorkflows.addOwnerId(workflow);
 			return workflow;
 		});
 	}),

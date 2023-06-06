@@ -9,7 +9,6 @@ import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
 export class UserService {
 	static async get(where: FindOptionsWhere<User>): Promise<User | null> {
 		return Db.collections.User.findOne({
-			relations: ['globalRole'],
 			where,
 		});
 	}

@@ -20,6 +20,7 @@ import {
 	toJsonSchema,
 } from './credentials.service';
 import { Container } from 'typedi';
+import { ROLES } from '@/constants';
 
 export = {
 	createCredential: [
@@ -60,13 +61,10 @@ export = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (req.user.globalRole.name !== 'owner') {
-				const shared = await getSharedCredentials(req.user.id, credentialId, [
-					'credentials',
-					'role',
-				]);
+			if (req.user.role !== ROLES.CREDENTIAL_OWNER) {
+				const shared = await getSharedCredentials(req.user.id, credentialId, ['credentials']);
 
-				if (shared?.role.name === 'owner') {
+				if (shared?.role === ROLES.CREDENTIAL_OWNER) {
 					credential = shared.credentials;
 				}
 			} else {

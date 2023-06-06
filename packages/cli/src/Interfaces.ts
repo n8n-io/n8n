@@ -35,7 +35,7 @@ import type { ChildProcess } from 'child_process';
 
 import type { DatabaseType } from '@db/types';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import type { Role } from '@db/entities/Role';
+import type { RoleEnum } from './constants';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
@@ -48,7 +48,6 @@ import type {
 	ExecutionRepository,
 	InstalledNodesRepository,
 	InstalledPackagesRepository,
-	RoleRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -93,7 +92,6 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	ExecutionMetadata: ExecutionMetadataRepository;
 	InstalledNodes: InstalledNodesRepository;
 	InstalledPackages: InstalledPackagesRepository;
-	Role: RoleRepository;
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
@@ -768,7 +766,7 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
-	globalRole?: Role;
+	role?: RoleEnum;
 	signInType: AuthProviderType;
 	disabled: boolean;
 	settings?: IUserSettings | null;

@@ -1,9 +1,8 @@
-import { Container } from 'typedi';
 import { Not } from 'typeorm';
 import * as Db from '@/Db';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
+import { ROLES } from '@/constants';
 import { BaseCommand } from '../BaseCommand';
 
 const defaultUserProps = {
@@ -22,16 +21,13 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
-		const ownerCredentialRole = await Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
-
 		await Db.collections.SharedWorkflow.update(
-			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
+			{ userId: Not(owner.id), role: ROLES.WORKFLOW_OWNER },
 			{ user: owner },
 		);
 
 		await Db.collections.SharedCredentials.update(
-			{ userId: Not(owner.id), roleId: ownerCredentialRole.id },
+			{ userId: Not(owner.id), role: ROLES.CREDENTIAL_OWNER },
 			{ user: owner },
 		);
 
@@ -47,7 +43,7 @@ export class Reset extends BaseCommand {
 			Db.collections.SharedCredentials.create({
 				credentials,
 				user: owner,
-				role: ownerCredentialRole,
+				role: ROLES.CREDENTIAL_OWNER,
 			}),
 		);
 		await Db.collections.SharedCredentials.save(newSharedCredentials);
@@ -65,19 +61,15 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
-
-		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
+		const owner = await Db.collections.User.findOneBy({ role: ROLES.GLOBAL_OWNER });
 
 		if (owner) return owner;
 
 		const user = new User();
 
-		Object.assign(user, { ...defaultUserProps, globalRole });
+		Object.assign(user, { ...defaultUserProps, role: ROLES.GLOBAL_OWNER });
 
-		await Db.collections.User.save(user);
-
-		return Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
+		return Db.collections.User.save(user);
 	}
 
 	async catch(error: Error): Promise<void> {

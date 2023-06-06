@@ -7,14 +7,14 @@ import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
+import { ROLES } from '@/constants';
 
 let ownerShell: User;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
 	const app = await utils.initTestServer({ endpointGroups: ['workflows'] });
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await testDb.createUserShell(ROLES.GLOBAL_OWNER);
 	authOwnerAgent = utils.createAgent(app, { auth: true, user: ownerShell });
 
 	// mock whether sharing is enabled or not

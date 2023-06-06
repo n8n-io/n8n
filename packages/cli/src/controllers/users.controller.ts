@@ -35,13 +35,13 @@ import type { PostHogClient } from '@/posthog';
 import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import type {
-	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 } from '@db/repositories';
 import { UserService } from '../user/user.service';
 import { plainToInstance } from 'class-transformer';
+import { ROLES } from '@/constants';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
@@ -55,8 +55,6 @@ export class UsersController {
 	private internalHooks: IInternalHooksClass;
 
 	private userRepository: UserRepository;
-
-	private roleRepository: RoleRepository;
 
 	private sharedCredentialsRepository: SharedCredentialsRepository;
 
@@ -82,10 +80,7 @@ export class UsersController {
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<
-			IDatabaseCollections,
-			'User' | 'Role' | 'SharedCredentials' | 'SharedWorkflow'
-		>;
+		repositories: Pick<IDatabaseCollections, 'User' | 'SharedCredentials' | 'SharedWorkflow'>;
 		activeWorkflowRunner: ActiveWorkflowRunner;
 		mailer: UserManagementMailer;
 		postHog?: PostHogClient;
@@ -95,7 +90,6 @@ export class UsersController {
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.userRepository = repositories.User;
-		this.roleRepository = repositories.Role;
 		this.sharedCredentialsRepository = repositories.SharedCredentials;
 		this.sharedWorkflowRepository = repositories.SharedWorkflow;
 		this.activeWorkflowRunner = activeWorkflowRunner;
@@ -154,15 +148,6 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findGlobalMemberRole();
-
-		if (!role) {
-			this.logger.error(
-				'Request to send email invite(s) to user(s) failed because no global member role was found in database',
-			);
-			throw new InternalServerError('Members role not found in database - inconsistent state');
-		}
-
 		// remove/exclude existing users from creation
 		const existingUsers = await this.userRepository.find({
 			where: { email: In(Object.keys(createUsers)) },
@@ -186,7 +171,7 @@ export class UsersController {
 					usersToSetUp.map(async (email) => {
 						const newUser = Object.assign(new User(), {
 							email,
-							globalRole: role,
+							role: ROLES.GLOBAL_MEMBER,
 						});
 						const savedUser = await transactionManager.save<User>(newUser);
 						createUsers[savedUser.email] = savedUser.id;
@@ -304,7 +289,6 @@ export class UsersController {
 
 		const users = await this.userRepository.find({
 			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
 		});
 
 		if (users.length !== 2) {
@@ -350,7 +334,7 @@ export class UsersController {
 	@Authorized('any')
 	@Get('/')
 	async listUsers(req: UserRequest.List) {
-		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
+		const users = await this.userRepository.find({ relations: ['authIdentities'] });
 		return users.map(
 			(user): PublicUser =>
 				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
@@ -436,11 +420,6 @@ export class UsersController {
 			telemetryData.migration_user_id = transferId;
 		}
 
-		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findWorkflowOwnerRole(),
-			this.roleRepository.findCredentialOwnerRole(),
-		]);
-
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
 
@@ -450,7 +429,7 @@ export class UsersController {
 					.getRepository(SharedWorkflow)
 					.find({
 						select: ['workflowId'],
-						where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+						where: { userId: userToDelete.id, role: ROLES.WORKFLOW_OWNER },
 					})
 					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -464,7 +443,7 @@ export class UsersController {
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
 					SharedWorkflow,
-					{ user: userToDelete, role: workflowOwnerRole },
+					{ user: userToDelete, role: ROLES.WORKFLOW_OWNER },
 					{ user: transferee },
 				);
 
@@ -475,7 +454,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+						where: { userId: userToDelete.id, role: ROLES.CREDENTIAL_OWNER },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -489,7 +468,7 @@ export class UsersController {
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: credentialOwnerRole },
+					{ user: userToDelete, role: ROLES.CREDENTIAL_OWNER },
 					{ user: transferee },
 				);
 
@@ -511,11 +490,11 @@ export class UsersController {
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
-				where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+				where: { userId: userToDelete.id, role: ROLES.WORKFLOW_OWNER },
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+				where: { userId: userToDelete.id, role: ROLES.CREDENTIAL_OWNER },
 			}),
 		]);
 

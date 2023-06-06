@@ -1,16 +1,13 @@
 import type { SuperAgentTest } from 'supertest';
 import { UserSettings } from 'n8n-core';
 import * as Db from '@/Db';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, ROLES } from '@/constants';
 import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 
-let globalMemberRole: Role;
-let credentialOwnerRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -27,14 +24,8 @@ beforeAll(async () => {
 
 	await utils.initConfigFile();
 
-	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
-		await testDb.getAllRoles();
-
-	globalMemberRole = fetchedGlobalMemberRole;
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-
-	owner = await testDb.addApiKey(await testDb.createUserShell(globalOwnerRole));
-	member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	owner = await testDb.addApiKey(await testDb.createUserShell(ROLES.GLOBAL_OWNER));
+	member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER, apiKey: randomApiKey() });
 
 	authOwnerAgent = utils.createAgent(app, {
 		apiPath: 'public',
@@ -49,7 +40,7 @@ beforeAll(async () => {
 		user: member,
 	});
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(ROLES.CREDENTIAL_OWNER);
 
 	await utils.initCredentialsTypes();
 });
@@ -90,11 +81,11 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
-			relations: ['user', 'credentials', 'role'],
+			relations: ['user', 'credentials'],
 			where: { credentialsId: credential.id, userId: owner.id },
 		});
 
-		expect(sharedCredential.role).toEqual(credentialOwnerRole);
+		expect(sharedCredential.role).toEqual(ROLES.CREDENTIAL_OWNER);
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
@@ -186,7 +177,7 @@ describe('DELETE /credentials/:id', () => {
 
 	test('should delete owned cred for member but leave others untouched', async () => {
 		const anotherMember = await testDb.createUser({
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 			apiKey: randomApiKey(),
 		});
 

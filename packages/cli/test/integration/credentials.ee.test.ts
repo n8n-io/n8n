@@ -4,17 +4,15 @@ import { UserSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 
 import * as Db from '@/Db';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, ROLES } from '@/constants';
 import type { CredentialWithSharings } from '@/credentials/credentials.types';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
-let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -27,17 +25,13 @@ beforeAll(async () => {
 
 	await utils.initConfigFile();
 
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
-	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
-
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
+	owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
+	member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 	authAgent = utils.createAuthAgent(app);
 	authOwnerAgent = authAgent(owner);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(ROLES.CREDENTIAL_OWNER);
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });
 
@@ -87,7 +81,7 @@ describe('router should switch based on flag', () => {
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [member1, member2, member3] = await testDb.createManyUsers(3, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -147,7 +141,7 @@ describe('GET /credentials', () => {
 
 	test('should return only relevant creds for member', async () => {
 		const [member1, member2] = await testDb.createManyUsers(2, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		await saveCredential(randomCredentialPayload(), { user: member2 });
@@ -223,7 +217,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should retrieve non-owned cred for owner', async () => {
 		const [member1, member2] = await testDb.createManyUsers(2, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
@@ -262,7 +256,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should retrieve owned cred for member', async () => {
 		const [member1, member2, member3] = await testDb.createManyUsers(3, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 		const authMemberAgent = authAgent(member1);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
@@ -343,7 +337,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2, member3, member4, member5] = await testDb.createManyUsers(5, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 		const shareWithIds = [member1.id, member2.id, member3.id];
 
@@ -357,7 +351,6 @@ describe('PUT /credentials/:id/share', () => {
 		expect(response.body.data).toBeUndefined();
 
 		const sharedCredentials = await Db.collections.SharedCredentials.find({
-			relations: ['role'],
 			where: { credentialsId: savedCredential.id },
 		});
 
@@ -366,19 +359,17 @@ describe('PUT /credentials/:id/share', () => {
 
 		sharedCredentials.forEach((sharedCredential) => {
 			if (sharedCredential.userId === owner.id) {
-				expect(sharedCredential.role.name).toBe('owner');
-				expect(sharedCredential.role.scope).toBe('credential');
+				expect(sharedCredential.role).toBe(ROLES.CREDENTIAL_OWNER);
 				return;
 			}
 			expect(shareWithIds).toContain(sharedCredential.userId);
-			expect(sharedCredential.role.name).toBe('user');
-			expect(sharedCredential.role.scope).toBe('credential');
+			expect(sharedCredential.role).toBe(ROLES.CREDENTIAL_USER);
 		});
 	});
 
 	test('should share the credential with the provided userIds', async () => {
 		const [member1, member2, member3] = await testDb.createManyUsers(3, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 		const memberIds = [member1.id, member2.id, member3.id];
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -392,25 +383,21 @@ describe('PUT /credentials/:id/share', () => {
 
 		// check that sharings got correctly set in DB
 		const sharedCredentials = await Db.collections.SharedCredentials.find({
-			relations: ['role'],
 			where: { credentialsId: savedCredential.id, userId: In([...memberIds]) },
 		});
 
 		expect(sharedCredentials.length).toBe(memberIds.length);
 
 		sharedCredentials.forEach((sharedCredential) => {
-			expect(sharedCredential.role.name).toBe('user');
-			expect(sharedCredential.role.scope).toBe('credential');
+			expect(sharedCredential.role).toBe(ROLES.CREDENTIAL_USER);
 		});
 
 		// check that owner still exists
 		const ownerSharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
-			relations: ['role'],
 			where: { credentialsId: savedCredential.id, userId: owner.id },
 		});
 
-		expect(ownerSharedCredential.role.name).toBe('owner');
-		expect(ownerSharedCredential.role.scope).toBe('credential');
+		expect(ownerSharedCredential.role).toBe(ROLES.CREDENTIAL_OWNER);
 	});
 
 	test('should respond 403 for non-existing credentials', async () => {
@@ -432,7 +419,7 @@ describe('PUT /credentials/:id/share', () => {
 	});
 
 	test('should ignore pending sharee', async () => {
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const memberShell = await testDb.createUserShell(ROLES.GLOBAL_MEMBER);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const response = await authOwnerAgent
@@ -480,7 +467,7 @@ describe('PUT /credentials/:id/share', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2] = await testDb.createManyUsers(2, {
-			globalRole: globalMemberRole,
+			role: ROLES.GLOBAL_MEMBER,
 		});
 
 		await testDb.shareCredentialWithUsers(savedCredential, [member1, member2]);

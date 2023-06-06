@@ -2,7 +2,6 @@ import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
 import * as Db from '@/Db';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -10,9 +9,9 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
+import { ROLES } from '@/constants';
 
 let app: Application;
-let workflowOwnerRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -26,17 +25,13 @@ beforeAll(async () => {
 		enablePublicAPI: true,
 	});
 
-	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await testDb.getAllRoles();
-
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
-
 	owner = await testDb.createUser({
-		globalRole: globalOwnerRole,
+		role: ROLES.GLOBAL_OWNER,
 		apiKey: randomApiKey(),
 	});
 
 	member = await testDb.createUser({
-		globalRole: globalMemberRole,
+		role: ROLES.GLOBAL_MEMBER,
 		apiKey: randomApiKey(),
 	});
 
@@ -694,12 +689,12 @@ describe('POST /workflows', () => {
 				userId: member.id,
 				workflowId: response.body.id,
 			},
-			relations: ['workflow', 'role'],
+			relations: ['workflow'],
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
-		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
+		expect(sharedWorkflow?.role).toEqual(ROLES.WORKFLOW_OWNER);
 	});
 });
 
@@ -896,13 +891,13 @@ describe('PUT /workflows/:id', () => {
 				userId: member.id,
 				workflowId: response.body.id,
 			},
-			relations: ['workflow', 'role'],
+			relations: ['workflow'],
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(payload.name);
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
-		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
+		expect(sharedWorkflow?.role).toEqual(ROLES.WORKFLOW_OWNER);
 	});
 });

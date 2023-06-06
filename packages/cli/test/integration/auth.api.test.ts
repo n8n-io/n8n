@@ -3,8 +3,7 @@ import type { SuperAgentTest } from 'supertest';
 import validator from 'validator';
 import config from '@/config';
 import * as Db from '@/Db';
-import { AUTH_COOKIE_NAME } from '@/constants';
-import type { Role } from '@db/entities/Role';
+import { AUTH_COOKIE_NAME, ROLES } from '@/constants';
 import type { User } from '@db/entities/User';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
@@ -13,8 +12,6 @@ import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 let app: Application;
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
 let owner: User;
 let authAgent: AuthAgent;
 let authlessAgent: SuperAgentTest;
@@ -24,9 +21,6 @@ const ownerPassword = randomValidPassword();
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['auth'] });
 	authAgent = utils.createAuthAgent(app);
-
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
 });
 
 beforeEach(async () => {
@@ -44,7 +38,7 @@ describe('POST /login', () => {
 	beforeEach(async () => {
 		owner = await testDb.createUser({
 			password: ownerPassword,
-			globalRole: globalOwnerRole,
+			role: ROLES.GLOBAL_OWNER,
 		});
 	});
 
@@ -63,7 +57,7 @@ describe('POST /login', () => {
 			lastName,
 			password,
 			personalizationAnswers,
-			globalRole,
+			role,
 			resetPasswordToken,
 			apiKey,
 		} = response.body.data;
@@ -76,9 +70,7 @@ describe('POST /login', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole).toBeDefined();
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe(ROLES.GLOBAL_OWNER);
 		expect(apiKey).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -97,7 +89,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return cookie if UM is disabled and no cookie is already set', async () => {
-		await testDb.createUserShell(globalOwnerRole);
+		await testDb.createUserShell(ROLES.GLOBAL_OWNER);
 		await utils.setInstanceOwnerSetUp(false);
 
 		const response = await authlessAgent.get('/login');
@@ -120,7 +112,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in owner shell', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
+		const ownerShell = await testDb.createUserShell(ROLES.GLOBAL_OWNER);
 
 		const response = await authAgent(ownerShell).get('/login');
 
@@ -133,7 +125,7 @@ describe('GET /login', () => {
 			lastName,
 			password,
 			personalizationAnswers,
-			globalRole,
+			role,
 			resetPasswordToken,
 			apiKey,
 		} = response.body.data;
@@ -146,9 +138,7 @@ describe('GET /login', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole).toBeDefined();
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe(ROLES.GLOBAL_OWNER);
 		expect(apiKey).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -156,7 +146,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in member shell', async () => {
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const memberShell = await testDb.createUserShell(ROLES.GLOBAL_MEMBER);
 
 		const response = await authAgent(memberShell).get('/login');
 
@@ -169,7 +159,7 @@ describe('GET /login', () => {
 			lastName,
 			password,
 			personalizationAnswers,
-			globalRole,
+			role,
 			resetPasswordToken,
 			apiKey,
 		} = response.body.data;
@@ -182,9 +172,7 @@ describe('GET /login', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole).toBeDefined();
-		expect(globalRole.name).toBe('member');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe(ROLES.GLOBAL_MEMBER);
 		expect(apiKey).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -192,7 +180,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in owner', async () => {
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
 		const response = await authAgent(owner).get('/login');
 
@@ -205,7 +193,7 @@ describe('GET /login', () => {
 			lastName,
 			password,
 			personalizationAnswers,
-			globalRole,
+			role,
 			resetPasswordToken,
 			apiKey,
 		} = response.body.data;
@@ -218,9 +206,7 @@ describe('GET /login', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole).toBeDefined();
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe(ROLES.GLOBAL_OWNER);
 		expect(apiKey).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -228,7 +214,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return logged-in member', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const member = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const response = await authAgent(member).get('/login');
 
@@ -241,7 +227,7 @@ describe('GET /login', () => {
 			lastName,
 			password,
 			personalizationAnswers,
-			globalRole,
+			role,
 			resetPasswordToken,
 			apiKey,
 		} = response.body.data;
@@ -254,9 +240,7 @@ describe('GET /login', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole).toBeDefined();
-		expect(globalRole.name).toBe('member');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe(ROLES.GLOBAL_MEMBER);
 		expect(apiKey).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
@@ -268,13 +252,13 @@ describe('GET /resolve-signup-token', () => {
 	beforeEach(async () => {
 		owner = await testDb.createUser({
 			password: ownerPassword,
-			globalRole: globalOwnerRole,
+			role: ROLES.GLOBAL_OWNER,
 		});
 		authOwnerAgent = authAgent(owner);
 	});
 
 	test('should validate invite token', async () => {
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const memberShell = await testDb.createUserShell(ROLES.GLOBAL_MEMBER);
 
 		const response = await authOwnerAgent
 			.get('/resolve-signup-token')
@@ -293,7 +277,7 @@ describe('GET /resolve-signup-token', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const { id: inviteeId } = await testDb.createUser({ globalRole: globalMemberRole });
+		const { id: inviteeId } = await testDb.createUser({ role: ROLES.GLOBAL_MEMBER });
 
 		const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
 
@@ -325,7 +309,7 @@ describe('GET /resolve-signup-token', () => {
 
 describe('POST /logout', () => {
 	test('should log user out', async () => {
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const owner = await testDb.createUser({ role: ROLES.GLOBAL_OWNER });
 
 		const response = await authAgent(owner).post('/logout');
 

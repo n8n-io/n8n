@@ -90,3 +90,14 @@ export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a
 
 export const USER_MANAGEMENT_DOCS_URL =
 	'https://docs.n8n.io/hosting/authentication/user-management-self-hosted';
+
+export const ROLES = {
+	GLOBAL_OWNER: 'global:owner',
+	GLOBAL_MEMBER: 'global:member',
+	WORKFLOW_OWNER: 'workflow:owner',
+	CREDENTIAL_OWNER: 'credential:owner',
+	CREDENTIAL_USER: 'credential:user',
+	WORKFLOW_EDITOR: 'workflow:editor',
+} as const;
+
+export type RoleEnum = (typeof ROLES)[keyof typeof ROLES];

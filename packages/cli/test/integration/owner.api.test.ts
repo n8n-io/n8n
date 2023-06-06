@@ -4,7 +4,6 @@ import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import {
 	randomEmail,
@@ -14,20 +13,19 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils';
+import { ROLES } from '@/constants';
 
 let app: Application;
-let globalOwnerRole: Role;
 let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['owner'] });
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
 	config.set('userManagement.isInstanceOwnerSetUp', false);
-	ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await testDb.createUserShell(ROLES.GLOBAL_OWNER);
 	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
 });
 
@@ -58,7 +56,7 @@ describe('POST /owner/setup', () => {
 			firstName,
 			lastName,
 			personalizationAnswers,
-			globalRole,
+			role,
 			password,
 			resetPasswordToken,
 			isPending,
@@ -73,8 +71,7 @@ describe('POST /owner/setup', () => {
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
 		expect(resetPasswordToken).toBeUndefined();
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe(ROLES.GLOBAL_OWNER);
 		expect(apiKey).toBeUndefined();
 
 		const storedOwner = await Db.collections.User.findOneByOrFail({ id });

@@ -8,7 +8,6 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { randomEmail, randomName } from '../integration/shared/random';
@@ -24,6 +23,7 @@ import { mockInstance } from '../integration/shared/utils';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
+import { ROLES } from '@/constants';
 
 /**
  * TODO:
@@ -37,10 +37,6 @@ let databaseActiveWorkflowsList: WorkflowEntity[] = [];
 
 const generateWorkflows = (count: number): WorkflowEntity[] => {
 	const workflows: WorkflowEntity[] = [];
-	const ownerRole = new Role();
-	ownerRole.scope = 'workflow';
-	ownerRole.name = 'owner';
-	ownerRole.id = '1';
 
 	const owner = new User();
 	owner.id = uuid();
@@ -75,7 +71,7 @@ const generateWorkflows = (count: number): WorkflowEntity[] => {
 		});
 		const sharedWorkflow = new SharedWorkflow();
 		sharedWorkflow.workflowId = workflow.id;
-		sharedWorkflow.role = ownerRole;
+		sharedWorkflow.role = ROLES.WORKFLOW_OWNER;
 		sharedWorkflow.user = owner;
 
 		workflow.shared = [sharedWorkflow];

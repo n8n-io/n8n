@@ -5,7 +5,6 @@ import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -23,10 +22,9 @@ import * as testDb from '../integration/shared/testDb';
 import { mockNodeTypesData } from './Helpers';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockInstance } from '../integration/shared/utils';
+import { ROLES } from '@/constants';
 
 let mockNodeTypes: INodeTypes;
-let credentialOwnerRole: Role;
-let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);
@@ -44,10 +42,7 @@ beforeAll(async () => {
 
 	mockNodeTypes = Container.get(NodeTypes);
 
-	credentialOwnerRole = await testDb.getCredentialOwnerRole();
-	workflowOwnerRole = await testDb.getWorkflowOwnerRole();
-
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(ROLES.CREDENTIAL_OWNER);
 });
 
 beforeEach(async () => {
@@ -208,7 +203,7 @@ describe('PermissionChecker.check()', () => {
 		await Db.collections.SharedWorkflow.save({
 			workflow: workflowEntity,
 			user: member,
-			role: workflowOwnerRole,
+			role: ROLES.WORKFLOW_OWNER,
 		});
 
 		const workflow = new Workflow(workflowDetails);
@@ -222,15 +217,11 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 	const fakeUser = new User();
 	fakeUser.id = userId;
 
-	const ownerMockRole = new Role();
-	ownerMockRole.name = 'owner';
 	const sharedWorkflowOwner = new SharedWorkflow();
-	sharedWorkflowOwner.role = ownerMockRole;
+	sharedWorkflowOwner.role = ROLES.WORKFLOW_OWNER;
 
-	const nonOwnerMockRole = new Role();
-	nonOwnerMockRole.name = 'editor';
 	const sharedWorkflowNotOwner = new SharedWorkflow();
-	sharedWorkflowNotOwner.role = nonOwnerMockRole;
+	sharedWorkflowNotOwner.role = ROLES.WORKFLOW_EDITOR;
 
 	test('sets default policy from environment when subworkflow has none', async () => {
 		config.set('workflows.callerPolicyDefaultOption', 'none');
