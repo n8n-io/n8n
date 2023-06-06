@@ -546,7 +546,12 @@ export class Webhook implements INodeType {
 			const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
 
 			try {
-				await pipeline(req, fs.createWriteStream(binaryFile.path));
+				// If the request body was `text/plain` or `application/json`,
+				// it's already been parsed by the bodyParser middlewares,
+				// and isn't available as a stream.
+				if (typeof req.body === 'string')
+					await fs.promises.writeFile(binaryFile.path, req.body, 'utf-8');
+				else await pipeline(req, fs.createWriteStream(binaryFile.path));
 
 				const returnItem: INodeExecutionData = {
 					binary: {},
