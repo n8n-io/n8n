@@ -4,7 +4,8 @@
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as qs from 'querystring';
-import axios from 'axios';
+import { Agent } from 'https';
+import axios, { AxiosRequestConfig } from 'axios';
 import { getAuthError } from './utils';
 import type { ClientOAuth2TokenData } from './ClientOAuth2Token';
 import { ClientOAuth2Token } from './ClientOAuth2Token';
@@ -18,6 +19,7 @@ export interface ClientOAuth2RequestObject {
 	body?: Record<string, any>;
 	query?: qs.ParsedUrlQuery;
 	headers?: Headers;
+	ignoreSSLIssues?: boolean;
 }
 
 export interface ClientOAuth2Options {
@@ -32,6 +34,7 @@ export interface ClientOAuth2Options {
 	state?: string;
 	body?: Record<string, any>;
 	query?: qs.ParsedUrlQuery;
+	ignoreSSLIssues?: boolean;
 }
 
 class ResponseError extends Error {
@@ -39,6 +42,8 @@ class ResponseError extends Error {
 		super(`HTTP status ${status}`);
 	}
 }
+
+const sslIgnoringAgent = new Agent({ rejectUnauthorized: false });
 
 /**
  * Construct an object that can handle the multiple OAuth 2.0 flows.
@@ -86,7 +91,7 @@ export class ClientOAuth2 {
 			url += (url.indexOf('?') === -1 ? '?' : '&') + query;
 		}
 
-		const response = await axios.request({
+		const requestConfig: AxiosRequestConfig = {
 			url,
 			method: options.method,
 			data: qs.stringify(options.body),
@@ -95,7 +100,13 @@ export class ClientOAuth2 {
 			// Axios rejects the promise by default for all status codes 4xx.
 			// We override this to reject promises only on 5xxs
 			validateStatus: (status) => status < 500,
-		});
+		};
+
+		if (options.ignoreSSLIssues) {
+			requestConfig.httpsAgent = sslIgnoringAgent;
+		}
+
+		const response = await axios.request(requestConfig);
 
 		const body = this.parseResponseBody<T>(response.data);
 
