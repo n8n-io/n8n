@@ -492,82 +492,6 @@ export const schema = {
 			default: '',
 			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
 		},
-		basicAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_ACTIVE',
-				doc: '[DEPRECATED] If basic auth should be activated for editor and REST-API',
-			},
-			user: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_USER',
-				doc: '[DEPRECATED] The name of the basic auth user',
-			},
-			password: {
-				format: String,
-				default: '',
-				env: 'N8N_BASIC_AUTH_PASSWORD',
-				doc: '[DEPRECATED] The password of the basic auth user',
-			},
-			hash: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_BASIC_AUTH_HASH',
-				doc: '[DEPRECATED] If password for basic auth is hashed',
-			},
-		},
-		jwtAuth: {
-			active: {
-				format: 'Boolean',
-				default: false,
-				env: 'N8N_JWT_AUTH_ACTIVE',
-				doc: '[DEPRECATED] If JWT auth should be activated for editor and REST-API',
-			},
-			jwtHeader: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER',
-				doc: '[DEPRECATED] The request header containing a signed JWT',
-			},
-			jwtHeaderValuePrefix: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
-				doc: '[DEPRECATED] The request header value prefix to strip (optional)',
-			},
-			jwksUri: {
-				format: String,
-				default: '',
-				env: 'N8N_JWKS_URI',
-				doc: '[DEPRECATED] The URI to fetch JWK Set for JWT authentication',
-			},
-			jwtIssuer: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ISSUER',
-				doc: '[DEPRECATED] JWT issuer to expect (optional)',
-			},
-			jwtNamespace: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_NAMESPACE',
-				doc: '[DEPRECATED] JWT namespace to expect (optional)',
-			},
-			jwtAllowedTenantKey: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
-				doc: '[DEPRECATED] JWT tenant key name to inspect within JWT namespace (optional)',
-			},
-			jwtAllowedTenant: {
-				format: String,
-				default: '',
-				env: 'N8N_JWT_ALLOWED_TENANT',
-				doc: '[DEPRECATED] JWT tenant to allow (optional)',
-			},
-		},
 	},
 
 	endpoints: {
@@ -726,12 +650,6 @@ export const schema = {
 	},
 
 	userManagement: {
-		disabled: {
-			doc: '[DEPRECATED] Disable user management and hide it completely.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_USER_MANAGEMENT_DISABLED',
-		},
 		jwtSecret: {
 			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
 			format: String,
@@ -741,12 +659,6 @@ export const schema = {
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
-			format: Boolean,
-			default: false,
-		},
-		skipInstanceOwnerSetup: {
-			// n8n loads this setting from DB on startup
-			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
 			format: Boolean,
 			default: false,
 		},

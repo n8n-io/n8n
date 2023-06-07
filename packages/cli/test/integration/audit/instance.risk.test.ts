@@ -244,12 +244,9 @@ test('should report security settings', async () => {
 			versionNotificationsEnabled: true,
 			templatesEnabled: true,
 			publicApiEnabled: false,
-			userManagementEnabled: true,
 		},
 		auth: {
 			authExcludeEndpoints: 'none',
-			basicAuthActive: false,
-			jwtAuthActive: false,
 		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
 		telemetry: { diagnosticsEnabled: true },

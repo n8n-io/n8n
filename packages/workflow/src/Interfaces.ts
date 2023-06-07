@@ -2041,7 +2041,6 @@ export interface IVersionNotificationSettings {
 }
 
 export interface IUserManagementSettings {
-	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
