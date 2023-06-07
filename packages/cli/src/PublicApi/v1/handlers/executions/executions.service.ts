@@ -89,6 +89,7 @@ export async function getExecutionsCount(data: {
 	status?: ExecutionStatus;
 	excludedWorkflowIds?: string[];
 }): Promise<number> {
+	// TODO: Consider moving this to the repository as well
 	const executions = await Db.collections.Execution.count({
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),

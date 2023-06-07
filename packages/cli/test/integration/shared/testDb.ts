@@ -337,7 +337,7 @@ async function createExecution(
 	attributes: Partial<ExecutionEntity & ExecutionData>,
 	workflow: WorkflowEntity,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
 
 	const execution = await Db.collections.Execution.save({
 		finished: finished ?? true,
@@ -346,6 +346,7 @@ async function createExecution(
 		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
+		status,
 	});
 
 	await Db.collections.ExecutionData.save({
@@ -361,21 +362,21 @@ async function createExecution(
  * Store a successful execution in the DB and assign it to a workflow.
  */
 export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true }, workflow);
+	return createExecution({ finished: true, status: 'success' }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date() }, workflow);
+	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
 }
 
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date() }, workflow);
+	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
 }
 
 // ----------------------------------
