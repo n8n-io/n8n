@@ -1,18 +1,20 @@
-import type { IDataObject } from 'n8n-workflow';
+import { SettingsRepository } from '@/databases/repositories';
+import type {
+	ExternalSecretsSettings,
+	ProviderProperty,
+	SecretsProvider,
+	SecretsProviderSettings,
+} from '@/Interfaces';
+
+import { UserSettings } from 'n8n-core';
 import { Service } from 'typedi';
 
-export type ProviderSettings = IDataObject;
+import { AES, enc } from 'crypto-js';
+import { getLogger } from '@/Logger';
 
-export abstract class SecretsProvider {
-	static providerName: string;
+import type { IDataObject } from 'n8n-workflow';
 
-	providerName: string;
-
-	abstract init(settings: ProviderSettings): Promise<void>;
-	abstract update(): Promise<void>;
-	abstract getSecret(name: string): string | undefined;
-	abstract getSecretNames(): string[];
-}
+const logger = getLogger();
 
 class DummyProvider implements SecretsProvider {
 	private static DATA: Record<string, string> = {
@@ -20,15 +22,37 @@ class DummyProvider implements SecretsProvider {
 		api_key: 'testapikey',
 	};
 
-	static providerName = 'dummy';
+	properties: ProviderProperty[] = [
+		{
+			displayName: 'Username',
+			name: 'username',
+			type: 'string',
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+		},
+	];
 
-	providerName = DummyProvider.providerName;
+	displayName = 'Dummy Provider';
+
+	name = 'dummy';
+
+	initialized = false;
 
 	async init(): Promise<void> {
-		//
+		this.initialized = true;
 	}
 
 	async update(): Promise<void> {
+		//
+	}
+
+	async connect(): Promise<void> {
 		//
 	}
 
@@ -41,28 +65,77 @@ class DummyProvider implements SecretsProvider {
 	}
 }
 
-@Service()
-export class ExternalSecretsManager {
-	private providers: Array<{ new (): SecretsProvider }>;
+class Dummy2Provider implements SecretsProvider {
+	private static DATA: Record<string, string> = {
+		password: 'testpassword',
+		api_key: 'testapikey',
+	};
 
-	private activeProviders: SecretsProvider[];
+	properties: ProviderProperty[] = [
+		{
+			displayName: 'Username',
+			name: 'username',
+			type: 'string',
+		},
+		{
+			displayName: 'Password',
+			name: 'password',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+		},
+	];
 
-	private initializingPromise?: Promise<void>;
+	displayName = 'Dummy2 Provider';
+
+	name = 'dummy2';
 
 	initialized = false;
 
-	constructor() {
-		this.providers = [DummyProvider];
-		this.activeProviders = [new DummyProvider()];
+	async init(): Promise<void> {
+		this.initialized = true;
 	}
+
+	async update(): Promise<void> {
+		//
+	}
+
+	async connect(): Promise<void> {
+		//
+	}
+
+	getSecret(name: string): string {
+		return Dummy2Provider.DATA[name];
+	}
+
+	getSecretNames(): string[] {
+		return Object.keys(Dummy2Provider.DATA);
+	}
+}
+
+const PROVIDER_MAP: Record<string, { new (): SecretsProvider }> = {
+	dummy: DummyProvider,
+	dummy2: Dummy2Provider,
+};
+
+@Service()
+export class ExternalSecretsManager {
+	private providers: Record<string, SecretsProvider> = {};
+
+	private initializingPromise?: Promise<void>;
+
+	private cachedSettings: ExternalSecretsSettings = {};
+
+	initialized = false;
+
+	constructor(private settingsRepo: SettingsRepository) {}
 
 	async init(): Promise<void> {
 		if (!this.initialized) {
 			if (!this.initializingPromise) {
 				this.initializingPromise = new Promise<void>(async (resolve) => {
-					this.activeProviders = await this.getActiveProviders();
-					// TODO: fetch settings from DB
-					await Promise.all(this.activeProviders.map(async (p) => p.init({})));
+					await this.internalInit();
 					this.initialized = true;
 					resolve();
 					this.initializingPromise = undefined;
@@ -72,31 +145,151 @@ export class ExternalSecretsManager {
 		}
 	}
 
-	private async getActiveProviders(): Promise<SecretsProvider[]> {
-		return [new DummyProvider()];
+	private async getEncryptionKey(): Promise<string> {
+		return UserSettings.getEncryptionKey();
+	}
+
+	private decryptSecretsSettings(value: string, encryptionKey: string): ExternalSecretsSettings {
+		const decryptedData = AES.decrypt(value, encryptionKey);
+
+		try {
+			return JSON.parse(decryptedData.toString(enc.Utf8)) as ExternalSecretsSettings;
+		} catch (e) {
+			throw new Error(
+				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
+			);
+		}
+	}
+
+	private async getDecryptedSettings(
+		settingsRepo: SettingsRepository,
+	): Promise<ExternalSecretsSettings | null> {
+		const encryptedSettings = await settingsRepo.getEncryptedSecretsProviderSettings();
+		if (encryptedSettings === null) {
+			return null;
+		}
+		const encryptionKey = await this.getEncryptionKey();
+		return this.decryptSecretsSettings(encryptedSettings, encryptionKey);
+	}
+
+	private async internalInit() {
+		const settings = await this.getDecryptedSettings(this.settingsRepo);
+		if (!settings) {
+			return;
+		}
+		const providers: Array<SecretsProvider | null> = await Promise.all(
+			Object.entries(settings).map(async ([name, providerSettings]) => {
+				const providerClass = PROVIDER_MAP[name];
+				if (!providerClass) {
+					return null;
+				}
+				const provider: SecretsProvider = new providerClass();
+
+				try {
+					await provider.init(providerSettings);
+				} catch (e) {
+					logger.error(
+						`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
+					);
+					return null;
+				}
+
+				try {
+					if (providerSettings.connected) {
+						await provider.connect();
+					}
+				} catch (e) {
+					logger.error(
+						`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
+					);
+					return null;
+				}
+
+				return provider;
+			}),
+		);
+		this.providers = Object.fromEntries(
+			(providers.filter((p) => p !== null) as SecretsProvider[]).map((s) => [s.name, s]),
+		);
+		this.cachedSettings = settings;
+		await this.updateSecrets();
 	}
 
 	async updateSecrets() {
-		await Promise.all(this.activeProviders.map(async (p) => p.update()));
+		await Promise.all(Object.values(this.providers).map(async (p) => p.update()));
 	}
 
-	private getActiveProvider(provider: string): SecretsProvider | undefined {
-		return this.activeProviders.find((p) => p.providerName === provider);
+	private getProvider(provider: string): SecretsProvider | undefined {
+		return this.providers[provider];
 	}
 
-	hasActiveProvider(provider: string): boolean {
-		return this.activeProviders.some((p) => p.providerName === provider);
+	hasProvider(provider: string): boolean {
+		return provider in this.providers;
 	}
 
-	getActiveProviderNames(): string[] | undefined {
-		return this.activeProviders.map((p) => p.providerName);
+	getProviderNames(): string[] | undefined {
+		return Object.keys(this.providers);
 	}
 
 	getSecret(provider: string, name: string): string | undefined {
-		return this.getActiveProvider(provider)?.getSecret(name);
+		return this.getProvider(provider)?.getSecret(name);
 	}
 
 	getSecretNames(provider: string): string[] | undefined {
-		return this.getActiveProvider(provider)?.getSecretNames();
+		return this.getProvider(provider)?.getSecretNames();
+	}
+
+	getProvidersWithSettings(): Array<{
+		provider: SecretsProvider;
+		settings: SecretsProviderSettings;
+	}> {
+		return Object.entries(PROVIDER_MAP).map(([k, c]) => ({
+			provider: this.getProvider(k) ?? new c(),
+			settings: this.cachedSettings[k] ?? {},
+		}));
+	}
+
+	getProviderWithSettings(provider: string):
+		| {
+				provider: SecretsProvider;
+				settings: SecretsProviderSettings;
+		  }
+		| undefined {
+		if (!(provider in PROVIDER_MAP)) {
+			return undefined;
+		}
+		return {
+			provider: this.getProvider(provider) ?? new PROVIDER_MAP[provider](),
+			settings: this.cachedSettings[provider] ?? {},
+		};
+	}
+
+	async setProviderSettings(provider: string, data: IDataObject) {
+		await this.settingsRepo.manager.transaction(async (em) => {
+			const settingsRepo = new SettingsRepository(em.connection);
+
+			let settings = await this.getDecryptedSettings(settingsRepo);
+			if (!settings) {
+				settings = {};
+			}
+			settings[provider] = {
+				connected: settings[provider]?.connected ?? false,
+				connectedAt: settings[provider]?.connectedAt ?? new Date(),
+				settings: data,
+			};
+
+			await this.saveAndSetSettings(settings, settingsRepo);
+			this.cachedSettings = settings;
+		});
+	}
+
+	encryptSecretsSettings(settings: ExternalSecretsSettings, encryptionKey: string): string {
+		return AES.encrypt(JSON.stringify(settings), encryptionKey).toString();
+	}
+
+	async saveAndSetSettings(settings: ExternalSecretsSettings, settingsRepo: SettingsRepository) {
+		const encryptionKey = await this.getEncryptionKey();
+		const encryptedSettings = this.encryptSecretsSettings(settings, encryptionKey);
+		await settingsRepo.saveEncryptedSecretsProviderSettings(encryptedSettings);
 	}
 }

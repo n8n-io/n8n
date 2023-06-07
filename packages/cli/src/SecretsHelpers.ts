@@ -17,11 +17,11 @@ export class SecretsHelper implements SecretsHelpersBase {
 	}
 
 	hasProvider(provider: string): boolean {
-		return this.service.hasActiveProvider(provider);
+		return this.service.hasProvider(provider);
 	}
 
 	listProviders(): string[] {
-		return this.service.getActiveProviderNames() ?? [];
+		return this.service.getProviderNames() ?? [];
 	}
 
 	listSecrets(provider: string): string[] {

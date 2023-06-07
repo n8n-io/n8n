@@ -308,7 +308,7 @@ export class CredentialsService {
 				continue;
 			}
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			if (prop.typeOptions?.password && !(copiedData[dataKey] as string).startsWith('={{')) {
+			if (prop.typeOptions?.password && !(copiedData[dataKey] as string).startsWith('=')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 			}

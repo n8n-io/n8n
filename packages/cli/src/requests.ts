@@ -3,6 +3,7 @@ import type {
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
+	IDataObject,
 	INode,
 	INodeCredentialTestRequest,
 	IPinData,
@@ -400,4 +401,10 @@ export declare namespace VariablesRequest {
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
 	type Delete = Get;
+}
+
+export declare namespace ExternalSecretsRequest {
+	type GetProviders = AuthenticatedRequest;
+	type GetProvider = AuthenticatedRequest<{ provider: string }>;
+	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
 }

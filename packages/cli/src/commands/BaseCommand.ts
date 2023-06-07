@@ -20,6 +20,7 @@ import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
+import { ExternalSecretsManager } from '@/secrets/SecretsManager.ee';
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
@@ -140,6 +141,11 @@ export abstract class BaseCommand extends Command {
 				LoggerProxy.error('Could not activate license', e as Error);
 			}
 		}
+	}
+
+	async initExternalSecrets() {
+		const secretsManager = Container.get(ExternalSecretsManager);
+		await secretsManager.init();
 	}
 
 	async finally(error: Error | undefined) {

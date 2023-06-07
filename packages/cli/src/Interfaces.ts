@@ -793,3 +793,41 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export interface SecretsProviderSettings<T extends IDataObject = IDataObject> {
+	connected: boolean;
+	connectedAt: Date;
+	settings: T;
+}
+
+export interface ExternalSecretsSettings {
+	[key: string]: SecretsProviderSettings;
+}
+
+export type ProviderPropertyTypes = 'string' | 'number' | 'boolean';
+export interface ProviderPropertyTypeOptions {
+	password?: boolean; // Supported by: string
+}
+
+export interface ProviderProperty {
+	name: string;
+	displayName: string;
+	type: ProviderPropertyTypes;
+	typeOptions?: ProviderPropertyTypeOptions;
+}
+
+export abstract class SecretsProvider {
+	displayName: string;
+
+	name: string;
+
+	initialized: boolean;
+
+	properties: ProviderProperty[];
+
+	abstract init(settings: SecretsProviderSettings): Promise<void>;
+	abstract connect(): Promise<void>;
+	abstract update(): Promise<void>;
+	abstract getSecret(name: string): string | undefined;
+	abstract getSecretNames(): string[];
+}
