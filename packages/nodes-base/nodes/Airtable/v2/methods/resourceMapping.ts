@@ -93,9 +93,8 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 	};
 
 	for (const field of tableData.fields as AirtableSchema[]) {
-		// if (airtableReadOnlyFields.includes(field.type)) continue;
-
 		const type = mapForeignType(field.type, airtableTypesMap);
+		const isReadOnly = airtableReadOnlyFields.includes(field.type);
 		const options = constructOptions(field);
 		fields.push({
 			id: field.name,
@@ -106,7 +105,8 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 			display: true,
 			type,
 			options,
-			readOnly: airtableReadOnlyFields.includes(field.type),
+			readOnly: isReadOnly,
+			removed: isReadOnly,
 		});
 	}
 

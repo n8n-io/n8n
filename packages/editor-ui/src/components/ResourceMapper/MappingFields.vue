@@ -51,6 +51,15 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 
+function markAsReadOnly(field: ResourceMapperField): boolean {
+	if (
+		isMatchingField(field.id, props.paramValue.matchingColumns, props.showMatchingColumnsSelector)
+	) {
+		return false;
+	}
+	return field.readOnly || false;
+}
+
 const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	return props.fieldsToMap
 		.filter((field) => field.display !== false && field.removed !== true)
@@ -64,7 +73,7 @@ const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean 
 				required: field.required,
 				description: getFieldDescription(field),
 				options: field.options,
-				readOnly: field.readOnly,
+				readOnly: markAsReadOnly(field),
 			};
 		});
 });
