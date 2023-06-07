@@ -501,20 +501,7 @@ export class MergeV2 implements INodeType {
 					}
 				}
 
-				input1 = checkInput(
-					input1,
-					matchFields.map((pair) => pair.field1),
-					options.disableDotNotation || false,
-					'Input 1',
-				);
 				if (!input1) return [returnData];
-
-				input2 = checkInput(
-					input2,
-					matchFields.map((pair) => pair.field2),
-					options.disableDotNotation || false,
-					'Input 2',
-				);
 
 				if (!input2 || !matchFields.length) {
 					if (
