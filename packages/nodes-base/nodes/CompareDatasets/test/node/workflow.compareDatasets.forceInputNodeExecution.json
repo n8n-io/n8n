@@ -32,9 +32,9 @@
 				"options": {}
 			},
 			"id": "f3e5e43b-a3bf-46c7-acd7-ae3d7d19d9f9",
-			"name": "Compare Datasets 2.1 - Old",
+			"name": "Compare Datasets 2.2 - Old",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 2.1,
+			"typeVersion": 2.2,
 			"position": [1260, 40]
 		},
 		{
@@ -176,9 +176,9 @@
 				"options": {}
 			},
 			"id": "5514c636-ee64-45f3-8832-77ad6652cc08",
-			"name": "Compare Datasets 2.2 - New - Connected",
+			"name": "Compare Datasets 2.3 - New - Connected",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 2.2,
+			"typeVersion": 2.3,
 			"position": [1260, 1320]
 		},
 		{
@@ -194,9 +194,9 @@
 				"options": {}
 			},
 			"id": "a25f4766-9bb4-40a0-9ae2-ef0004f5938a",
-			"name": "Compare Datasets 2.2 - New - Not Connected",
+			"name": "Compare Datasets 2.3 - New - Not Connected",
 			"type": "n8n-nodes-base.compareDatasets",
-			"typeVersion": 2.2,
+			"typeVersion": 2.3,
 			"position": [1260, 660]
 		}
 	],
@@ -338,17 +338,17 @@
 			"main": [
 				[
 					{
-						"node": "Compare Datasets 2.2 - New - Not Connected",
+						"node": "Compare Datasets 2.3 - New - Not Connected",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Compare Datasets 2.1 - Old",
+						"node": "Compare Datasets 2.2 - Old",
 						"type": "main",
 						"index": 0
 					},
 					{
-						"node": "Compare Datasets 2.2 - New - Connected",
+						"node": "Compare Datasets 2.3 - New - Connected",
 						"type": "main",
 						"index": 0
 					}
@@ -359,7 +359,7 @@
 			"main": [
 				[
 					{
-						"node": "Compare Datasets 2.1 - Old",
+						"node": "Compare Datasets 2.2 - Old",
 						"type": "main",
 						"index": 1
 					}
@@ -370,14 +370,14 @@
 			"main": [
 				[
 					{
-						"node": "Compare Datasets 2.2 - New - Not Connected",
+						"node": "Compare Datasets 2.3 - New - Not Connected",
 						"type": "main",
 						"index": 1
 					}
 				]
 			]
 		},
-		"Compare Datasets 2.1 - Old": {
+		"Compare Datasets 2.2 - Old": {
 			"main": [
 				[
 					{
@@ -413,14 +413,14 @@
 			"main": [
 				[
 					{
-						"node": "Compare Datasets 2.2 - New - Connected",
+						"node": "Compare Datasets 2.3 - New - Connected",
 						"type": "main",
 						"index": 1
 					}
 				]
 			]
 		},
-		"Compare Datasets 2.2 - New - Connected": {
+		"Compare Datasets 2.3 - New - Connected": {
 			"main": [
 				[
 					{
@@ -452,7 +452,7 @@
 				]
 			]
 		},
-		"Compare Datasets 2.2 - New - Not Connected": {
+		"Compare Datasets 2.3 - New - Not Connected": {
 			"main": [
 				[
 					{
