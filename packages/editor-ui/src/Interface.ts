@@ -966,6 +966,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	lastUpdated: Date | null;
 }
 
 export interface ITagsState {

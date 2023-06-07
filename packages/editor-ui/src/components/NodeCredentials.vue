@@ -177,9 +177,13 @@ export default defineComponent({
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
 			subscribedToCredentialType: '',
 			listeningForAuthChange: false,
+			isFetching: false,
 		};
 	},
-	mounted() {
+	async mounted() {
+		this.isFetching = true;
+		const result = await this.credentialsStore.fetchCredentialsByType(this.credentialTypesNode);
+		this.isFetching = false;
 		// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
 		this.credentialsStore.$onAction(({ name, after, store, args }) => {
 			const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
@@ -361,6 +365,9 @@ export default defineComponent({
 			return this.selected?.[type]?.name;
 		},
 		getSelectPlaceholder(type: string, issues: string[]) {
+			if (this.isFetching) {
+				return this.$locale.baseText('nodeCredentials.fetchingCredentials');
+			}
 			return issues.length && this.getSelectedName(type)
 				? this.$locale.baseText('nodeCredentials.selectedCredentialUnavailable', {
 						interpolate: { name: this.getSelectedName(type) },

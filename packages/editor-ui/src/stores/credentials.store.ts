@@ -4,6 +4,7 @@ import {
 	deleteCredential,
 	getAllCredentials,
 	getCredentialData,
+	getCredentialsByType,
 	getCredentialsNewName,
 	getCredentialTypes,
 	oAuth1CredentialAuthorize,
@@ -46,6 +47,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 	state: (): ICredentialsState => ({
 		credentialTypes: {},
 		credentials: {},
+		lastUpdated: null,
 	}),
 	getters: {
 		credentialTypesById(): Record<ICredentialType['name'], ICredentialType> {
@@ -217,6 +219,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					this.credentials[cred.id] = { ...this.credentials[cred.id], ...cred };
 				}
 			});
+			Vue.set(this, 'credentials', { ...this.credentials });
 		},
 		upsertCredential(credential: ICredentialsResponse): void {
 			if (credential.id) {
@@ -239,8 +242,20 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
-			const credentials = await getAllCredentials(rootStore.getRestApiContext);
-			this.setCredentials(credentials);
+			const updatedSince = this.lastUpdated ? this.lastUpdated : undefined;
+			const credentials = await getAllCredentials(rootStore.getRestApiContext, updatedSince);
+			if (this.lastUpdated === null) {
+				this.setCredentials(credentials);
+			} else {
+				this.addCredentials(credentials);
+			}
+			this.lastUpdated = new Date();
+			return credentials;
+		},
+		async fetchCredentialsByType(type: string[]): Promise<ICredentialsResponse[]> {
+			const rootStore = useRootStore();
+			const credentials = await getCredentialsByType(rootStore.getRestApiContext, type);
+			this.addCredentials(credentials);
 			return credentials;
 		},
 		async getCredentialData({

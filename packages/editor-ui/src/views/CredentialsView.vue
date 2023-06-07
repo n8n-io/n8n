@@ -35,7 +35,9 @@
 						v-for="credentialType in allCredentialTypes"
 						:key="credentialType.name"
 						:value="credentialType.name"
-						:label="credentialType.displayName"
+						:label="`${credentialType.displayName} (${
+							allCredentials.filter((cred) => cred.type === credentialType.name).length
+						})`"
 					/>
 				</n8n-select>
 			</div>

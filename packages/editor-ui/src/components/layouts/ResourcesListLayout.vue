@@ -117,40 +117,51 @@
 
 				<slot name="preamble" />
 
-				<div
-					v-if="filteredAndSortedSubviewResources.length > 0"
-					:class="$style.listWrapper"
-					ref="listWrapperRef"
-				>
-					<n8n-recycle-scroller
-						v-if="type === 'list'"
-						data-test-id="resources-list"
-						:class="[$style.list, 'list-style-none']"
-						:items="filteredAndSortedSubviewResources"
-						:item-size="typeProps.itemSize"
-						item-key="id"
-					>
-						<template #default="{ item, updateItemSize }">
-							<slot :data="item" :updateItemSize="updateItemSize" />
-						</template>
-					</n8n-recycle-scroller>
-					<n8n-datatable
-						v-if="typeProps.columns"
-						data-test-id="resources-table"
-						:class="$style.datatable"
-						:columns="typeProps.columns"
-						:rows="filteredAndSortedSubviewResources"
-						:currentPage="currentPage"
-						:rowsPerPage="rowsPerPage"
-						@update:currentPage="setCurrentPage"
-						@update:rowsPerPage="setRowsPerPage"
-					>
-						<template #row="{ columns, row }">
-							<slot :data="row" :columns="columns" />
-						</template>
-					</n8n-datatable>
+				<div v-if="filteredAndSortedSubviewResources.length > 100">
+					<slot name="empty">
+						<n8n-action-box
+							data-test-id="empty-resources-list"
+							emoji="🙀"
+							:heading="'Too many entries to display'"
+							:description="`There are currently ${filteredAndSortedSubviewResources.length} search results. Please use the search and filters to narrow down the list.`"
+						/>
+					</slot>
 				</div>
-
+				<div v-else>
+					<div
+						v-if="filteredAndSortedSubviewResources.length > 0"
+						:class="$style.listWrapper"
+						ref="listWrapperRef"
+					>
+						<n8n-recycle-scroller
+							v-if="type === 'list'"
+							data-test-id="resources-list"
+							:class="[$style.list, 'list-style-none']"
+							:items="filteredAndSortedSubviewResources"
+							:item-size="typeProps.itemSize"
+							item-key="id"
+						>
+							<template #default="{ item, updateItemSize }">
+								<slot :data="item" :updateItemSize="updateItemSize" />
+							</template>
+						</n8n-recycle-scroller>
+						<n8n-datatable
+							v-if="typeProps.columns"
+							data-test-id="resources-table"
+							:class="$style.datatable"
+							:columns="typeProps.columns"
+							:rows="filteredAndSortedSubviewResources"
+							:currentPage="currentPage"
+							:rowsPerPage="rowsPerPage"
+							@update:currentPage="setCurrentPage"
+							@update:rowsPerPage="setRowsPerPage"
+						>
+							<template #row="{ columns, row }">
+								<slot :data="row" :columns="columns" />
+							</template>
+						</n8n-datatable>
+					</div>
+				</div>
 				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
 					{{ $locale.baseText(`${resourceKey}.noResults`) }}
 					<template v-if="shouldSwitchToAllSubview">

@@ -3550,6 +3550,9 @@ export default defineComponent({
 		async loadCredentials(): Promise<void> {
 			await this.credentialsStore.fetchAllCredentials();
 		},
+		async loadCredentialsByType(string: type): Promise<void> {
+			await this.credentialsStore.fetchCredentialsByType();
+		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
 		},
@@ -3813,7 +3816,7 @@ export default defineComponent({
 		this.startLoading();
 		const loadPromises = [
 			this.loadActiveWorkflows(),
-			this.loadCredentials(),
+			// this.loadCredentials(),
 			this.loadCredentialTypes(),
 			this.loadVariables(),
 		];

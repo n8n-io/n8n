@@ -10,7 +10,7 @@ import type {
 import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { In, MoreThanOrEqual } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -39,7 +39,13 @@ export class CredentialsService {
 
 	static async getAll(
 		user: User,
-		options?: { relations?: string[]; roles?: string[]; disableGlobalRole?: boolean },
+		options?: {
+			relations?: string[];
+			roles?: string[];
+			disableGlobalRole?: boolean;
+			updatedSince?: string;
+			type?: string[];
+		},
 	): Promise<ICredentialsDb[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
@@ -51,11 +57,16 @@ export class CredentialsService {
 		];
 
 		// if instance owner, return all credentials
-
 		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
 			return Db.collections.Credentials.find({
 				select: SELECT_FIELDS,
 				relations: options?.relations,
+				where: {
+					updatedAt: options?.updatedSince
+						? MoreThanOrEqual(new Date(options.updatedSince))
+						: undefined,
+					type: options?.type ? In(options.type) : undefined,
+				},
 			});
 		}
 
@@ -73,6 +84,9 @@ export class CredentialsService {
 			relations: options?.relations,
 			where: {
 				id: In(userSharings.map((x) => x.credentialsId)),
+				updatedAt: options?.updatedSince
+					? MoreThanOrEqual(new Date(options.updatedSince))
+					: undefined,
 			},
 		});
 	}

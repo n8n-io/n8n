@@ -25,8 +25,19 @@ export async function getCredentialsNewName(
 	return makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
-export async function getAllCredentials(context: IRestApiContext): Promise<ICredentialsResponse[]> {
-	return makeRestApiRequest(context, 'GET', '/credentials');
+export async function getAllCredentials(
+	context: IRestApiContext,
+	updatedSince?: Date,
+): Promise<ICredentialsResponse[]> {
+	const updatedSinceString = updatedSince ? updatedSince.toISOString() : undefined;
+	return makeRestApiRequest(context, 'GET', '/credentials', { updatedSince: updatedSinceString });
+}
+
+export async function getCredentialsByType(
+	context: IRestApiContext,
+	type: string[],
+): Promise<ICredentialsResponse[]> {
+	return makeRestApiRequest(context, 'GET', '/credentials', { type });
 }
 
 export async function createNewCredential(

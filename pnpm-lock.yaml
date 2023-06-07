@@ -142,7 +142,7 @@ importers:
     dependencies:
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -223,7 +223,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -656,7 +656,7 @@ importers:
         version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
@@ -904,7 +904,7 @@ importers:
         version: 5.13.2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -952,7 +952,7 @@ importers:
         version: 1.0.1
       pinia:
         specifier: ^2.0.22
-        version: 2.0.23(typescript@5.1.3)(vue@2.7.14)
+        version: 2.0.23(vue@2.7.14)
       prettier:
         specifier: ^2.8.3
         version: 2.8.3
@@ -5631,6 +5631,38 @@ packages:
     dev: false
     optional: true
 
+  /@oclif/command@1.8.18(@oclif/config@1.18.2):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.2
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.3.8
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@oclif/command@1.8.18(@oclif/config@1.18.5):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.5(supports-color@8.1.1)
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.3.8
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@oclif/command@1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
@@ -5712,7 +5744,7 @@ packages:
     engines: {node: '>=8.10.0'}
     hasBin: true
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.5)
       '@oclif/config': 1.18.5(supports-color@8.1.1)
       '@oclif/errors': 1.3.6
       '@oclif/plugin-help': 3.2.18
@@ -5782,7 +5814,7 @@ packages:
     resolution: {integrity: sha512-5n5Pkz4L0duknIvFwx2Ko9Xda3miT6RZP8bgaaK3Q/9fzVBrhi4bOM0u05/OThI6V+3NsSdxYS2o1NLcXToWDg==}
     engines: {node: '>=8.0.0'}
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.2)
       '@oclif/config': 1.18.2
       '@oclif/errors': 1.3.5
       '@oclif/help': 1.0.3(supports-color@8.1.1)
@@ -5817,7 +5849,7 @@ packages:
     peerDependencies:
       pinia: '>=2.0.19'
     dependencies:
-      pinia: 2.0.23(typescript@5.1.3)(vue@2.7.14)
+      pinia: 2.0.23(vue@2.7.14)
       vue-demi: 0.13.11(vue@2.7.14)
     transitivePeerDependencies:
       - '@vue/composition-api'
@@ -5842,7 +5874,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4(debug@4.3.2)
+      axios: 0.21.4
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -9080,7 +9112,7 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -9671,6 +9703,14 @@ packages:
     dependencies:
       '@babel/runtime': 7.19.4
       is-retry-allowed: 2.2.0
+    dev: false
+
+  /axios@0.21.4:
+    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
+    dependencies:
+      follow-redirects: 1.15.2
+    transitivePeerDependencies:
+      - debug
     dev: false
 
   /axios@0.21.4(debug@4.3.2):
@@ -11618,7 +11658,6 @@ packages:
     dependencies:
       ms: 2.1.3
       supports-color: 5.5.0
-    dev: true
 
   /debug@3.2.7(supports-color@8.1.1):
     resolution: {integrity: sha512-CFjzYYAi4ThfiQvizrFQevTTXHtnCqWfe7x1AhgEscTz6ZbLbfoLRLPugTQyBth6f8ZERVUSyWHFD/7Wu4t1XQ==}
@@ -11630,9 +11669,21 @@ packages:
     dependencies:
       ms: 2.1.3
       supports-color: 8.1.1
+    dev: true
 
   /debug@4.3.2:
     resolution: {integrity: sha512-mOp8wKcvj7XxC78zLgw/ZA+6TSgkoE2C/ienthhRD298T7UNwAg9diBpLRxC0mOezLl4B0xV7M0cCO6P/O0Xhw==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+    dependencies:
+      ms: 2.1.2
+
+  /debug@4.3.4:
+    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
     engines: {node: '>=6.0'}
     peerDependencies:
       supports-color: '*'
@@ -12512,7 +12563,7 @@ packages:
   /eslint-import-resolver-node@0.3.7:
     resolution: {integrity: sha512-gozW2blMLJCeFpBwugLTGyvVjNoeo1knonXAcatC6bjPBZitotxdWf7Gimr25N4c0AAOo4eOUfaG82IJPDpqCA==}
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.11.0
       resolve: 1.22.1
     transitivePeerDependencies:
@@ -12565,7 +12616,7 @@ packages:
         optional: true
     dependencies:
       '@typescript-eslint/parser': 5.59.0(eslint@8.39.0)(typescript@5.1.3)
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       eslint: 8.39.0
       eslint-import-resolver-node: 0.3.7
       eslint-import-resolver-typescript: 3.5.5(@typescript-eslint/parser@5.59.0)(eslint-plugin-import@2.27.5)(eslint@8.39.0)
@@ -12596,7 +12647,7 @@ packages:
       array-includes: 3.1.6
       array.prototype.flat: 1.3.1
       array.prototype.flatmap: 1.3.1
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.39.0
       eslint-import-resolver-node: 0.3.7
@@ -13445,6 +13496,16 @@ packages:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
     dev: false
 
+  /follow-redirects@1.15.2:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+    dev: false
+
   /follow-redirects@1.15.2(debug@3.2.7):
     resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
     engines: {node: '>=4.0'}
@@ -13454,7 +13515,7 @@ packages:
       debug:
         optional: true
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     dev: false
 
   /follow-redirects@1.15.2(debug@4.3.2):
@@ -14045,7 +14106,7 @@ packages:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -14157,7 +14218,6 @@ packages:
   /has-flag@3.0.0:
     resolution: {integrity: sha512-sKJf1+ceQBr4SMkvQnBDNDtf4TXpVhVGateu0t918bl30FnbE2m4vNLX+VWe/dpjlb+HugGYzW7uQXH98HPEYw==}
     engines: {node: '>=4'}
-    dev: true
 
   /has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -14431,7 +14491,7 @@ packages:
     engines: {node: '>= 6'}
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
@@ -18484,7 +18544,7 @@ packages:
     resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
     engines: {node: '>=6.8.1'}
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -18609,7 +18669,7 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /pinia@2.0.23(typescript@5.1.3)(vue@2.7.14):
+  /pinia@2.0.23(vue@2.7.14):
     resolution: {integrity: sha512-N15hFf4o5STrxpNrib1IEb1GOArvPYf1zPvQVRGOO1G1d74Ak0J0lVyalX/SmrzdT4Q0nlEFjbURsmBmIGUR5Q==}
     peerDependencies:
       '@vue/composition-api': ^1.4.0
@@ -18622,7 +18682,6 @@ packages:
         optional: true
     dependencies:
       '@vue/devtools-api': 6.4.5
-      typescript: 5.1.3
       vue: 2.7.14
       vue-demi: 0.13.11(vue@2.7.14)
 
@@ -19907,7 +19966,7 @@ packages:
   /rhea@1.0.24:
     resolution: {integrity: sha512-PEl62U2EhxCO5wMUZ2/bCBcXAVKN9AdMSNQOrp3+R5b77TEaOSiy16MQ0sIOmzj/iqsgIAgPs1mt3FYfu1vIXA==}
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -20480,7 +20539,7 @@ packages:
       bignumber.js: 2.4.0
       binascii: 0.0.2
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       expand-tilde: 2.0.2
       extend: 3.0.2
       generic-pool: 3.9.0
@@ -21123,7 +21182,6 @@ packages:
     engines: {node: '>=4'}
     dependencies:
       has-flag: 3.0.0
-    dev: true
 
   /supports-color@6.1.0:
     resolution: {integrity: sha512-qe1jfm1Mg7Nq/NSh6XE24gPXROEVsWHxC1LIx//XNlD9iw7YZQGjZNjYN7xGaEG6iKdA8EtNFW6R0gjnVXp+wQ==}
@@ -21966,6 +22024,7 @@ packages:
     resolution: {integrity: sha512-XH627E9vkeqhlZFQuL+UsyAXEnibT0kWR2FWONlr4sTjvxyJYnyefgrkyECLzM5NenmKzRAy2rR/OlYLA1HkZw==}
     engines: {node: '>=14.17'}
     hasBin: true
+    dev: true
 
   /uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}

@@ -38,7 +38,11 @@ credentialsController.use('/', EECredentialsController);
 credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsDb[]> => {
-		return CredentialsService.getAll(req.user, { roles: ['owner'] });
+		return CredentialsService.getAll(req.user, {
+			roles: ['owner'],
+			updatedSince: req.query.updatedSince,
+			type: req.query.type,
+		});
 	}),
 );
 

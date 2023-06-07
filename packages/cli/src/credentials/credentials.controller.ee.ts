@@ -34,6 +34,8 @@ EECredentialsController.get(
 		try {
 			const allCredentials = await EECredentials.getAll(req.user, {
 				relations: ['shared', 'shared.role', 'shared.user'],
+				updatedSince: req.query.updatedSince,
+				type: req.query.type,
 			});
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method

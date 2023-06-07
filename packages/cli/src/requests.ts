@@ -129,7 +129,12 @@ export declare namespace CredentialRequest {
 
 	type Delete = Get;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{ filter: string; updatedSince?: string; type?: string[] }
+	>;
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
 
