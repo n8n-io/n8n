@@ -104,7 +104,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import { useVersionControlStore } from '@/stores/versionControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
@@ -140,7 +139,6 @@ const WorkflowsView = defineComponent({
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
-			useCredentialsStore,
 			useVersionControlStore,
 		),
 		currentUser(): IUser {
@@ -183,10 +181,8 @@ const WorkflowsView = defineComponent({
 		},
 		async initialize() {
 			await Promise.all([
-				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
-				this.credentialsStore.fetchAllCredentials(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
