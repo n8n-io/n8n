@@ -587,6 +587,7 @@
       "dist/nodes/Netlify/NetlifyTrigger.node.js",
       "dist/nodes/NextCloud/NextCloud.node.js",
       "dist/nodes/NocoDB/NocoDB.node.js",
+      "dist/nodes/NocoDbHttpRequest/NocoDbHttpRequest.node.js",
       "dist/nodes/SendInBlue/SendInBlue.node.js",
       "dist/nodes/SendInBlue/SendInBlueTrigger.node.js",
       "dist/nodes/StickyNote/StickyNote.node.js",
