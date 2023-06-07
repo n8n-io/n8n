@@ -25,7 +25,7 @@
 					"name": "Twitter OAuth account 2"
 				}
 			},
-			"disabled": true
+			"disabled": false
 		},
 		{
 			"parameters": {
