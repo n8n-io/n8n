@@ -38,6 +38,7 @@ import { UpdateRunningExecutionStatus1677236788851 } from './1677236788851-Updat
 import { CreateExecutionMetadataTable1679416281779 } from './1679416281779-CreateExecutionMetadataTable';
 import { CreateVariables1677501636753 } from './1677501636753-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -79,4 +80,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateExecutionMetadataTable1679416281779,
 	CreateVariables1677501636753,
 	AddUserActivatedProperty1681134145996,
+	RemoveSkipOwnerSetup1681134145997,
 ];

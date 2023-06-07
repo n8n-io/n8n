@@ -13,7 +13,6 @@ import {
 	sendForgotPasswordEmail,
 	setupOwner,
 	signup,
-	skipOwnerSetup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -330,14 +329,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 					uiStore.openModal(USER_ACTIVATION_SURVEY_MODAL);
 				}
 			}
-		},
-		async skipOwnerSetup(): Promise<void> {
-			try {
-				const rootStore = useRootStore();
-				const settingsStore = useSettingsStore();
-				settingsStore.stopShowingSetupPage();
-				await skipOwnerSetup(rootStore.getRestApiContext);
-			} catch (error) {}
 		},
 	},
 });

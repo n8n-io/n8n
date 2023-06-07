@@ -37,7 +37,6 @@
 			"userActivationSurveyEnabled": true,
 			"defaultLocale": "en",
 			"userManagement": {
-				"enabled": true,
 				"showSetupOnFirstLoad": false,
 				"smtpSetup": false
 			},

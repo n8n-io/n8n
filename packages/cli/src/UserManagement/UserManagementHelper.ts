@@ -36,26 +36,8 @@ export function isEmailSetUp(): boolean {
 	return smtp && host && user && pass;
 }
 
-export function isUserManagementEnabled(): boolean {
-	// This can be simplified but readability is more important here
-
-	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-		// Short circuit - if owner is set up, UM cannot be disabled.
-		// Users must reset their instance in order to do so.
-		return true;
-	}
-
-	// UM is disabled for desktop by default
-	if (config.getEnv('deployment.type').startsWith('desktop_')) {
-		return false;
-	}
-
-	return config.getEnv('userManagement.disabled') ? false : true;
-}
-
 export function isSharingEnabled(): boolean {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isSharingEnabled();
+	return Container.get(License).isSharingEnabled();
 }
 
 export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {

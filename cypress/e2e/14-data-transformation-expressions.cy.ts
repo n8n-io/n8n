@@ -1,14 +1,22 @@
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('Data transformation expressions', () => {
 	before(() => {
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		wf.actions.visit();
 
 		cy.window().then(
