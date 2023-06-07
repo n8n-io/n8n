@@ -90,14 +90,12 @@ export async function returnIdFromUsername(
 		usernameRlc.mode === 'username' ||
 		(usernameRlc.mode === 'name' && this.getNode().parameters.list !== undefined)
 	) {
-		console.log(usernameRlc.value);
 		const user = (await twitterApiRequest.call(
 			this,
 			'GET',
 			`/users/by/username/${usernameRlc.value}`,
 			{},
 		)) as { id: string };
-		console.log(user);
 		return user.id;
 	} else if (this.getNode().parameters.list === undefined) {
 		const list = (await twitterApiRequest.call(

@@ -214,7 +214,6 @@ export class TwitterV2 implements INodeType {
 							const inReplyToStatusIdValue = { in_reply_to_tweet_id: returnId(inReplyToStatusId) };
 							body.reply = inReplyToStatusIdValue;
 						}
-						console.log(body);
 						responseData = await twitterApiRequest.call(this, 'POST', '/tweets', body);
 					}
 					if (operation === 'delete') {
@@ -249,9 +248,6 @@ export class TwitterV2 implements INodeType {
 						);
 					}
 					if (operation === 'retweet') {
-						const { trimUser } = this.getNodeParameter('additionalFields', i, '', {}) as {
-							trimUser: boolean;
-						};
 						const tweetRLC = this.getNodeParameter(
 							'tweetId',
 							i,
@@ -261,7 +257,6 @@ export class TwitterV2 implements INodeType {
 						const tweetId = returnId(tweetRLC);
 						const body: IDataObject = {
 							tweet_id: tweetId,
-							trim_user: trimUser,
 						};
 						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
 							id: string;
@@ -318,7 +313,6 @@ export class TwitterV2 implements INodeType {
 						if (attachments) {
 							body.attachments = [{ media_id: attachments }];
 						}
-						console.log(body);
 
 						responseData = await twitterApiRequest.call(
 							this,

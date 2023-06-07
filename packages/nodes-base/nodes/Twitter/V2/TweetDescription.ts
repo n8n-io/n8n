@@ -440,27 +440,4 @@ export const tweetFields: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['retweet'],
-				resource: ['tweet'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Trim User',
-				name: 'trimUser',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether each tweet returned in a timeline will include a user object including only the status authors numerical ID',
-			},
-		],
-	},
 ];
