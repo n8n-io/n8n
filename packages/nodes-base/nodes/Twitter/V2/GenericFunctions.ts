@@ -37,7 +37,9 @@ export async function twitterApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
+		console.log(await this.helpers.requestOAuth2.call(this, 'twitterOAuth2Api', options));
 		const { data } = await this.helpers.requestOAuth2.call(this, 'twitterOAuth2Api', options);
+		console.log(data);
 		return data;
 	} catch (error) {
 		console.log(error);
