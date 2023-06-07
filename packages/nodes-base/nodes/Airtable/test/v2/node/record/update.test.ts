@@ -50,8 +50,10 @@ describe('Test AirtableV2, update operation', () => {
 	it('should update a record by id, autoMapInputData', async () => {
 		const nodeParameters = {
 			operation: 'update',
-			dataMode: 'autoMapInputData',
-			columnToMatchOn: 'id',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['id'],
+			},
 			options: {},
 		};
 
@@ -81,8 +83,10 @@ describe('Test AirtableV2, update operation', () => {
 	it('should update a record by field name, autoMapInputData', async () => {
 		const nodeParameters = {
 			operation: 'update',
-			dataMode: 'autoMapInputData',
-			columnToMatchOn: 'foo',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['foo'],
+			},
 			options: {},
 		};
 
