@@ -4,7 +4,6 @@
 		:formLoading="loading"
 		data-test-id="setup-form"
 		@submit="onSubmit"
-		@secondaryClick="showSkipConfirmation"
 	/>
 </template>
 
@@ -41,7 +40,6 @@ export default defineComponent({
 		const FORM_CONFIG: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.setup.setupOwner'),
 			buttonText: this.$locale.baseText('auth.setup.next'),
-			secondaryButtonText: this.$locale.baseText('auth.setup.skipSetupTemporarily'),
 			inputs: [
 				{
 					name: 'email',
@@ -176,25 +174,6 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
 			this.loading = false;
-		},
-		async showSkipConfirmation() {
-			const skip = await this.confirm(
-				this.$locale.baseText('auth.setup.ownerAccountBenefits'),
-				this.$locale.baseText('auth.setup.skipOwnerSetupQuestion'),
-				{
-					confirmButtonText: this.$locale.baseText('auth.setup.skipSetup'),
-					cancelButtonText: this.$locale.baseText('auth.setup.goBack'),
-				},
-			);
-			if (skip === MODAL_CONFIRM) {
-				this.onSkip();
-			}
-		},
-		onSkip() {
-			void this.usersStore.skipOwnerSetup();
-			void this.$router.push({
-				name: VIEWS.NEW_WORKFLOW,
-			});
 		},
 	},
 });

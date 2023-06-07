@@ -77,7 +77,6 @@ beforeEach(async () => {
 
 	jest.mock('@/telemetry');
 
-	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 });

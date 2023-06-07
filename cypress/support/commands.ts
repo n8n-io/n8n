@@ -173,34 +173,6 @@ Cypress.Commands.add('inviteUsers', ({ instanceOwner, users }) => {
 	});
 });
 
-Cypress.Commands.add('skipSetup', () => {
-	const signupPage = new SignupPage();
-	const workflowPage = new WorkflowPage();
-	const Confirmation = new MessageBox();
-
-	cy.intercept('GET', signupPage.url).as('setupPage');
-	cy.visit(signupPage.url);
-	cy.wait('@setupPage');
-
-	signupPage.getters.form().within(() => {
-		cy.url().then((url) => {
-			if (url.endsWith(signupPage.url)) {
-				signupPage.getters.skip().click();
-
-				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
-				Confirmation.actions.confirm();
-
-				// we should be redirected to empty canvas
-				cy.intercept('GET', '/rest/workflows/new').as('loading');
-				cy.url().should('include', workflowPage.url);
-				cy.wait('@loading');
-			} else {
-				cy.log('User already signed up');
-			}
-		});
-	});
-});
-
 Cypress.Commands.add('resetAll', () => {
 	cy.task('reset');
 	Cypress.session.clearAllSavedSessions();

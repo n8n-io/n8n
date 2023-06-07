@@ -142,7 +142,7 @@ export default defineComponent({
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
+			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
