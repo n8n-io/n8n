@@ -129,6 +129,9 @@ export class TwitterV2 implements INodeType {
 								{},
 							) as INodeParameterResourceLocator;
 							if (userRlc.mode === 'username') {
+								userRlc.value = (userRlc.value as string).includes('@')
+									? (userRlc.value as string).replace('@', '')
+									: userRlc.value;
 								responseData = await twitterApiRequest.call(
 									this,
 									'GET',

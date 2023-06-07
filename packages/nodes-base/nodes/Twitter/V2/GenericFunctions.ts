@@ -86,6 +86,9 @@ export async function returnIdFromUsername(
 	this: IExecuteFunctions,
 	usernameRlc: INodeParameterResourceLocator,
 ) {
+	usernameRlc.value = (usernameRlc.value as string).includes('@')
+		? (usernameRlc.value as string).replace('@', '')
+		: usernameRlc.value;
 	if (
 		usernameRlc.mode === 'username' ||
 		(usernameRlc.mode === 'name' && this.getNode().parameters.list !== undefined)
