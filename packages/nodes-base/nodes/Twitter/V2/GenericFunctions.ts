@@ -40,7 +40,6 @@ export async function twitterApiRequest(
 		const { data } = await this.helpers.requestOAuth2.call(this, 'twitterOAuth2Api', options);
 		return data;
 	} catch (error) {
-		console.log(error);
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
