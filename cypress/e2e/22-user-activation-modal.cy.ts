@@ -1,6 +1,8 @@
 import { WorkflowPage, NDV, UserActivationSurveyModal } from '../pages';
 import SettingsWithActivationModalEnabled from '../fixtures/Settings_user_activation_modal_enabled.json';
 import { v4 as uuid } from 'uuid';
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -8,12 +10,17 @@ const userActivationSurveyModal = new UserActivationSurveyModal();
 
 const BASE_WEBHOOK_URL = 'http://localhost:5678/webhook';
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('User activation survey', () => {
+	before(() => {
+		cy.setup({ email, firstName, lastName, password });
+	});
+
 	it('Should show activation survey', () => {
-		cy.resetAll();
-
-		cy.skipSetup();
-
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.reply(SettingsWithActivationModalEnabled);
 		});

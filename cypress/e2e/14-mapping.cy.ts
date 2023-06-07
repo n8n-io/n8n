@@ -2,19 +2,27 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
+	DEFAULT_USER_EMAIL,
+	DEFAULT_USER_PASSWORD,
 } from './../constants';
 import { WorkflowPage, NDV } from '../pages';
+import { randFirstName, randLastName } from '@ngneat/falso';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('Data mapping', () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		workflowPage.actions.visit();
 
 		cy.window().then(

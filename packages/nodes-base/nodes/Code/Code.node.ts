@@ -12,7 +12,6 @@ import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
-import { IS_V1_RELEASE } from '../../utils/constants';
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +20,7 @@ export class Code implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: [1, 2],
-		defaultVersion: IS_V1_RELEASE ? 2 : 1,
+		defaultVersion: 2,
 		description: 'Run custom JavaScript code',
 		defaults: {
 			name: 'Code',
@@ -102,13 +101,18 @@ export class Code implements INodeType {
 		const getSandbox = (index = 0) => {
 			const code = this.getNodeParameter(codeParameterName, index) as string;
 			const context = getSandboxContext.call(this, index);
+			if (nodeMode === 'runOnceForAllItems') {
+				context.items = context.$input.all();
+			} else {
+				context.item = context.$input.item;
+			}
+
 			if (language === 'python') {
 				const modules = this.getNodeParameter('modules', index) as string;
 				const moduleImports: string[] = modules ? modules.split(',').map((m) => m.trim()) : [];
 				context.printOverwrite = workflowMode === 'manual' ? this.sendMessageToUI : null;
 				return new PythonSandbox(context, code, moduleImports, index, this.helpers);
 			} else {
-				context.items = context.$input.all();
 				const sandbox = new JavaScriptSandbox(context, code, index, workflowMode, this.helpers);
 				if (workflowMode === 'manual') {
 					sandbox.vm.on('console.log', this.sendMessageToUI);

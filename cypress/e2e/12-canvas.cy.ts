@@ -8,8 +8,11 @@ import {
 	IF_NODE_NAME,
 	MERGE_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
+	DEFAULT_USER_EMAIL,
+	DEFAULT_USER_PASSWORD,
 } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { randFirstName, randLastName } from '@ngneat/falso';
 
 const WorkflowPage = new WorkflowPageClass();
 
@@ -20,13 +23,18 @@ const ZOOM_OUT_X1_FACTOR = 0.8;
 const ZOOM_OUT_X2_FACTOR = 0.64;
 const RENAME_NODE_NAME = 'Something else';
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('Canvas Node Manipulation and Navigation', () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		WorkflowPage.actions.visit();
 	});
 

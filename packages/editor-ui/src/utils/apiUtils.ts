@@ -62,7 +62,11 @@ async function request(config: {
 		baseURL,
 		headers,
 	};
-	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io')) {
+	if (
+		import.meta.env.NODE_ENV !== 'production' &&
+		!baseURL.includes('api.n8n.io') &&
+		!baseURL.includes('n8n.cloud')
+	) {
 		options.withCredentials = true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {

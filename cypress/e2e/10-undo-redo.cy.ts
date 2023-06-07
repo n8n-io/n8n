@@ -1,7 +1,8 @@
-import { CODE_NODE_NAME, SET_NODE_NAME } from './../constants';
+import { CODE_NODE_NAME, DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD, SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
+import { randFirstName, randLastName } from '@ngneat/falso';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';
@@ -9,13 +10,18 @@ const CODE_NODE_NEW_NAME = 'Something else';
 const WorkflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('Undo/Redo', () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		WorkflowPage.actions.visit();
 	});
 

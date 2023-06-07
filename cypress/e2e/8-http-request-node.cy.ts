@@ -1,12 +1,18 @@
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('HTTP Request node', () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	it('should make a request with a URL and receive a response', () => {

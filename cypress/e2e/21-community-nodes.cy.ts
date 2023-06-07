@@ -4,18 +4,24 @@ import { CredentialsModal, WorkflowPage } from '../pages';
 import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
 import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
 import CustomCredential from '../fixtures/Custom_credential.json';
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
 const workflowPage = new WorkflowPage();
+
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
 
 // We separate-out the custom nodes because they require injecting nodes and credentials
 // so the /nodes and /credentials endpoints are intercepted and non-cached.
 // We want to keep the other tests as fast as possible so we don't want to break the cache in those.
 describe('Community Nodes', () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	})
 	beforeEach(() => {
 		cy.intercept('/types/nodes.json', { middleware: true }, (req) => {
@@ -37,6 +43,7 @@ describe('Community Nodes', () => {
 				credentials.push(CustomCredential);
 			})
 		})
+		cy.signin({ email, password });
 		workflowPage.actions.visit();
 	});
 

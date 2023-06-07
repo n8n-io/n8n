@@ -4,27 +4,32 @@
 		:formLoading="loading"
 		data-test-id="setup-form"
 		@submit="onSubmit"
-		@secondaryClick="showSkipConfirmation"
 	/>
 </template>
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
 
-import mixins from 'vue-typed-mixins';
+import { useToast, useMessage } from '@/composables';
 import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SetupView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	async mounted() {
 		const { credentials, workflows } = await this.usersStore.preOwnerSetup();
@@ -35,7 +40,6 @@ export default mixins(showMessage).extend({
 		const FORM_CONFIG: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.setup.setupOwner'),
 			buttonText: this.$locale.baseText('auth.setup.next'),
-			secondaryButtonText: this.$locale.baseText('auth.setup.skipSetupTemporarily'),
 			inputs: [
 				{
 					name: 'email',
@@ -126,17 +130,21 @@ export default mixins(showMessage).extend({
 							interpolate: { workflows, credentials },
 					  })
 					: workflows || credentials;
-			return this.confirmMessage(
+			const confirm = await this.confirm(
 				this.$locale.baseText('auth.setup.confirmOwnerSetupMessage', {
 					interpolate: {
 						entities,
 					},
 				}),
 				this.$locale.baseText('auth.setup.confirmOwnerSetup'),
-				null,
-				this.$locale.baseText('auth.setup.createAccount'),
-				this.$locale.baseText('auth.setup.goBack'),
+				{
+					dangerouslyUseHTMLString: true,
+					confirmButtonText: this.$locale.baseText('auth.setup.createAccount'),
+					cancelButtonText: this.$locale.baseText('auth.setup.goBack'),
+				},
 			);
+
+			return confirm === MODAL_CONFIRM;
 		},
 		async onSubmit(values: { [key: string]: string | boolean }) {
 			try {
@@ -163,27 +171,9 @@ export default mixins(showMessage).extend({
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
+				this.showError(error, this.$locale.baseText('auth.setup.settingUpOwnerError'));
 			}
 			this.loading = false;
-		},
-		async showSkipConfirmation() {
-			const skip = await this.confirmMessage(
-				this.$locale.baseText('auth.setup.ownerAccountBenefits'),
-				this.$locale.baseText('auth.setup.skipOwnerSetupQuestion'),
-				null,
-				this.$locale.baseText('auth.setup.skipSetup'),
-				this.$locale.baseText('auth.setup.goBack'),
-			);
-			if (skip) {
-				this.onSkip();
-			}
-		},
-		onSkip() {
-			void this.usersStore.skipOwnerSetup();
-			void this.$router.push({
-				name: VIEWS.NEW_WORKFLOW,
-			});
 		},
 	},
 });

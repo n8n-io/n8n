@@ -1,13 +1,24 @@
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { WorkflowPage, WorkflowsPage, NDV } from '../pages';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 describe('Schedule Trigger node', async () => {
+	before(() => {
+		cy.setup({ email, firstName, lastName, password });
+	});
+
 	beforeEach(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.signin({ email, password });
+		workflowPage.actions.visit();
 	});
 
 	it('should execute and return the execution timestamp', () => {

@@ -60,7 +60,6 @@ beforeEach(async () => {
 
 	jest.mock('@/config');
 
-	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', 'smtp');
 	config.set('userManagement.emails.smtp.host', '');
@@ -379,15 +378,6 @@ describe('POST /users', () => {
 		expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
 	});
 
-	test('should fail if user management is disabled', async () => {
-		config.set('userManagement.disabled', true);
-		config.set('userManagement.isInstanceOwnerSetUp', false);
-
-		const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
-
-		expect(response.statusCode).toBe(400);
-	});
-
 	test('should email invites and create user shells but ignore existing', async () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const memberShell = await testDb.createUserShell(globalMemberRole);
@@ -514,7 +504,7 @@ describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
 	test('not be called when SMTP not set up', async () => {
 		const userManagementMailer = new UserManagementMailer();
 		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
+		await expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
 
 		expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 	});

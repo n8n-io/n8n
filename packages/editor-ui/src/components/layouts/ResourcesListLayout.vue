@@ -61,20 +61,6 @@
 			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
-						<n8n-callout
-							v-if="starsBannerShouldRender"
-							theme="secondary"
-							icon="star"
-							:class="$style['github-stars-banner']"
-						>
-							<span v-html="$locale.baseText('githubStars.banner.title')"></span>
-							<template #trailingContent>
-								<n8n-link :to="repoUrl" size="small" theme="secondary" bold underline>
-									{{ $locale.baseText('githubStars.banner.link') }}
-								</n8n-link>
-							</template>
-						</n8n-callout>
-
 						<div :class="$style['filters-row']">
 							<n8n-input
 								:class="[$style['search'], 'mr-2xs']"
@@ -195,23 +181,17 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import type { IUser } from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
+import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
-import {
-	EnterpriseEditionFeature,
-	GITHUB_STARS_BANNER_SHOW_UNTIL_DATE,
-	MAIN_REPOSITORY_URL,
-} from '@/constants';
-import TemplateCard from '@/components/TemplateCard.vue';
-import type { PropType } from 'vue';
+import { EnterpriseEditionFeature } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
-import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput } from 'n8n-design-system';
@@ -237,12 +217,10 @@ interface IFilters {
 type IResourceKeyType = 'credentials' | 'workflows';
 type SearchRef = InstanceType<typeof N8nInput>;
 
-const filterKeys = ['ownedBy', 'sharedWith'];
-
-export default mixins(showMessage, debounceHelper).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [debounceHelper],
 	components: {
-		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceOwnershipSelect,
@@ -303,7 +281,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		typeProps: {
 			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
 			default: () => ({
-				itemSize: 0,
+				itemSize: 80,
 			}),
 		},
 	},
@@ -317,14 +295,10 @@ export default mixins(showMessage, debounceHelper).extend({
 			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
-			repoUrl: MAIN_REPOSITORY_URL,
 		};
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUsersStore),
-		starsBannerShouldRender() {
-			return this.resourceKey === 'workflows' && new Date() < GITHUB_STARS_BANNER_SHOW_UNTIL_DATE;
-		},
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
@@ -502,7 +476,11 @@ export default mixins(showMessage, debounceHelper).extend({
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', { debounceTime: 1000, trailing: true }, 'search');
+			void this.callDebounced(
+				'sendFiltersTelemetry',
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
 		},
 		sortBy(newValue) {
 			this.$emit('sort', newValue);
@@ -554,9 +532,5 @@ export default mixins(showMessage, debounceHelper).extend({
 
 .datatable {
 	padding-bottom: var(--spacing-s);
-}
-
-.github-stars-banner {
-	margin-bottom: var(--spacing-m);
 }
 </style>

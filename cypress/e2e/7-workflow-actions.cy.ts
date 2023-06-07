@@ -1,5 +1,8 @@
+import { randFirstName, randLastName } from '@ngneat/falso';
 import {
 	CODE_NODE_NAME,
+	DEFAULT_USER_EMAIL,
+	DEFAULT_USER_PASSWORD,
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
@@ -11,15 +14,20 @@ const IMPORT_WORKFLOW_URL = 'https://gist.githubusercontent.com/OlegIvaniv/010bd
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
 const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
+
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		WorkflowPage.actions.visit();
 	});
 
@@ -111,8 +119,6 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should update workflow settings', () => {
-		cy.resetAll();
-		cy.skipSetup();
 		WorkflowPage.actions.visit();
 		// Open settings dialog
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
@@ -121,7 +127,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
 		WorkflowPage.getters.workflowMenuItemSettings().click();
 		// Change all settings
-		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 2);
+		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 7);
 		WorkflowPage.getters
 			.workflowSettingsErrorWorkflowSelect()
 			.find('li')
@@ -229,6 +235,7 @@ describe('Workflow Actions', () => {
 		it('should duplicate unsaved workflow', () => {
 			duplicateWorkflow();
 		});
+
 		it('should duplicate saved workflow', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();

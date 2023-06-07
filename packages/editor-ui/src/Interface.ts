@@ -33,6 +33,7 @@ import type {
 	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
+	IUserSettings,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -561,12 +562,7 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
-	settings?: {
-		isOnboarded?: boolean;
-		showUserActivationSurvey?: boolean;
-		firstSuccessfulWorkflowId?: string;
-		userActivated?: boolean;
-	};
+	settings?: IUserSettings;
 }
 
 export interface CurrentUserResponse extends IUserResponse {
@@ -585,6 +581,12 @@ export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
 	infoUrl: string;
+}
+
+export interface IUserListAction {
+	label: string;
+	value: string;
+	guard?: (user: IUser) => boolean;
 }
 
 export interface IN8nPrompts {
@@ -1359,6 +1361,13 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
+export interface ResourceMapperReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+}
 export interface EnvironmentVariable {
 	id: number;
 	key: string;
@@ -1438,9 +1447,79 @@ export type VersionControlPreferences = {
 	repositoryUrl: string;
 	authorName: string;
 	authorEmail: string;
-	currentBranch: string;
+	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	currentBranch?: string;
 };
+
+export interface VersionControlStatus {
+	ahead: number;
+	behind: number;
+	conflicted: string[];
+	created: string[];
+	current: string;
+	deleted: string[];
+	detached: boolean;
+	files: Array<{
+		path: string;
+		index: string;
+		working_dir: string;
+	}>;
+	modified: string[];
+	not_added: string[];
+	renamed: string[];
+	staged: string[];
+	tracking: null;
+}
+
+export interface VersionControlAggregatedFile {
+	conflict: boolean;
+	file: string;
+	id: string;
+	location: string;
+	name: string;
+	status: string;
+	type: string;
+}
+
+export declare namespace Cloud {
+	export interface PlanData {
+		planId: number;
+		monthlyExecutionsLimit: number;
+		activeWorkflowsLimit: number;
+		credentialsLimit: number;
+		isActive: boolean;
+		displayName: string;
+		expirationDate: string;
+		metadata: PlanMetadata;
+	}
+
+	export interface PlanMetadata {
+		version: 'v1';
+		group: 'opt-out' | 'opt-in' | 'trial';
+		slug: 'pro-1' | 'pro-2' | 'starter' | 'trial-1';
+		trial?: Trial;
+	}
+
+	interface Trial {
+		length: number;
+		gracePeriod: number;
+	}
+}
+
+export interface CloudPlanState {
+	data: Cloud.PlanData | null;
+	usage: InstanceUsage | null;
+	loadingPlan: boolean;
+}
+
+export interface InstanceUsage {
+	timeframe?: string;
+	executions: number;
+	activeWorkflows: number;
+}
+
+export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };

@@ -44,7 +44,6 @@ export const ROUTES_REQUIRING_AUTHORIZATION: Readonly<string[]> = [
 	'POST /users/123/reinvite',
 	'GET /owner/pre-setup',
 	'POST /owner/setup',
-	'POST /owner/skip-setup',
 ];
 
 export const COMMUNITY_PACKAGE_VERSION = {

@@ -1,6 +1,13 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { cowBase64 } from '../support/binaryTestFiles';
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
+
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -92,11 +99,11 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 describe('Webhook Trigger node', async () => {
 	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		workflowPage.actions.visit();
 
 		cy.window().then(

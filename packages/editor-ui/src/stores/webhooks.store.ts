@@ -5,7 +5,6 @@ import type { IWorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { useNDVStore } from './ndv.store';
-import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useWorkflowsStore } from './workflows.store';
@@ -20,9 +19,6 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		},
 		getFakeDoorFeatures() {
 			return useUIStore().fakeDoorFeatures;
-		},
-		isUserManagementEnabled() {
-			return useSettingsStore().isUserManagementEnabled;
 		},
 		getFakeDoorItems(): IFakeDoor[] {
 			return useUIStore().fakeDoorFeatures;

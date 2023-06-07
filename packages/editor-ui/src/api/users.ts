@@ -38,10 +38,6 @@ export async function setupOwner(
 	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
 }
 
-export async function skipOwnerSetup(context: IRestApiContext): Promise<void> {
-	return makeRestApiRequest(context, 'POST', '/owner/skip-setup');
-}
-
 export async function validateSignupToken(
 	context: IRestApiContext,
 	params: { inviterId: string; inviteeId: string },
@@ -105,7 +101,15 @@ export async function updateCurrentUserSettings(
 	context: IRestApiContext,
 	settings: IUserResponse['settings'],
 ): Promise<IUserResponse['settings']> {
-	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
+	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings as IDataObject);
+}
+
+export async function updateOtherUserSettings(
+	context: IRestApiContext,
+	userId: string,
+	settings: IUserResponse['settings'],
+): Promise<IUserResponse['settings']> {
+	return makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings as IDataObject);
 }
 
 export async function updateCurrentUserPassword(
@@ -142,6 +146,13 @@ export async function getInviteLink(
 	{ id }: { id: string },
 ): Promise<{ link: string }> {
 	return makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
+}
+
+export async function getPasswordResetLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return makeRestApiRequest(context, 'GET', `/users/${id}/password-reset-link`);
 }
 
 export async function submitPersonalizationSurvey(

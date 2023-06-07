@@ -46,6 +46,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import type { Component } from 'vue';
+import { mapStores } from 'pinia';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
@@ -55,13 +58,11 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
-import type { Component } from 'vue';
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 
-export default mixins(nodeHelpers).extend({
+export default defineComponent({
 	name: 'CollectionParameter',
+	mixins: [nodeHelpers],
 	props: [
 		'hideDelete', // boolean
 		'nodeValues', // NodeParameters

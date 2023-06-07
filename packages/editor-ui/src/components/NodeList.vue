@@ -13,13 +13,15 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import type { ITemplatesNode } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes } from '@/utils';
-export default mixins(genericHelpers).extend({
+
+export default defineComponent({
 	name: 'NodeList',
+	mixins: [genericHelpers],
 	props: {
 		nodes: {
 			type: Array,

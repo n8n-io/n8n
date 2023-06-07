@@ -6,8 +6,8 @@
 </template>
 
 <script lang="ts">
-import { VIEWS } from '@/constants';
 import { defineComponent } from 'vue';
+import { VIEWS } from '@/constants';
 
 export default defineComponent({
 	name: 'GoBackButton',

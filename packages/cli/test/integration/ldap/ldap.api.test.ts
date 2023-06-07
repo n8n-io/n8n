@@ -58,7 +58,7 @@ beforeAll(async () => {
 		defaultLdapConfig.bindingAdminPassword,
 	);
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 
 	await setCurrentAuthenticationMethod('email');
 });
@@ -77,7 +77,6 @@ beforeEach(async () => {
 
 	jest.mock('@/telemetry');
 
-	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');
 });
