@@ -18,7 +18,7 @@ export class ScheduleTrigger implements INodeType {
 		name: 'scheduleTrigger',
 		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
@@ -415,6 +415,7 @@ export class ScheduleTrigger implements INodeType {
 		const rule = this.getNodeParameter('rule', []) as IDataObject;
 		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
+		const version = this.getNode().typeVersion;
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
 		const staticData = this.getWorkflowStaticData('node') as {
@@ -450,6 +451,20 @@ export class ScheduleTrigger implements INodeType {
 		for (let i = 0; i < interval.length; i++) {
 			let intervalValue = 1000;
 			if (interval[i].field === 'cronExpression') {
+				if (version > 1) {
+					// ! Remove this part if we use a cron library that follows unix cron expression
+					const expression = (interval[i].expression as string).split(' ');
+					if (expression.length === 5) {
+						expression[3] =
+							parseInt(expression[3]) !== 0 ? String(parseInt(expression[3]) - 1) : expression[3];
+						expression[4] = expression[4].replace('7', '0');
+					} else if (expression.length === 6) {
+						expression[4] =
+							parseInt(expression[4]) !== 0 ? String(parseInt(expression[4]) - 1) : expression[4];
+						expression[5] = expression[5].replace('7', '0');
+					}
+					interval[i].expression = expression.join(' ');
+				}
 				const cronExpression = interval[i].expression as string;
 				try {
 					const cronJob = new CronJob(
