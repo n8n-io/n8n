@@ -114,7 +114,7 @@
 				/>
 
 				<code-node-editor
-					v-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
+					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
 					:value="value"
 					:defaultValue="parameter.default"
 					:language="'json'"
