@@ -15,6 +15,7 @@
     "eslint-plugin-import": "~2.27",
     "eslint-plugin-n8n-local-rules": "~1.0",
     "eslint-plugin-prettier": "~4.2",
+    "eslint-plugin-sonarjs": "~0.19",
     "eslint-plugin-unicorn": "~46.0",
     "eslint-plugin-unused-imports": "~2.0",
     "eslint-plugin-vue": "^9.12.0",

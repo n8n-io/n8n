@@ -39,6 +39,9 @@ const config = (module.exports = {
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn */
 		'eslint-plugin-unicorn',
+
+		/** https://github.com/SonarSource/eslint-plugin-sonarjs */
+		'sonarjs'
 	],
 
 	extends: [
@@ -70,6 +73,8 @@ const config = (module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
+
+		'plugin:sonarjs/recommended'
 	],
 
 	rules: {

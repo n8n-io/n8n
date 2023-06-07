@@ -178,6 +178,9 @@ importers:
       eslint-plugin-prettier:
         specifier: ~4.2
         version: 4.2.1(eslint-config-prettier@8.8.0)(eslint@8.39.0)(prettier@2.8.3)
+      eslint-plugin-sonarjs:
+        specifier: ~0.19
+        version: 0.19.0(eslint@8.39.0)
       eslint-plugin-unicorn:
         specifier: ~46.0
         version: 46.0.0(eslint@8.39.0)
@@ -12647,6 +12650,15 @@ packages:
       eslint-config-prettier: 8.8.0(eslint@8.39.0)
       prettier: 2.8.3
       prettier-linter-helpers: 1.0.0
+    dev: true
+
+  /eslint-plugin-sonarjs@0.19.0(eslint@8.39.0):
+    resolution: {integrity: sha512-6+s5oNk5TFtVlbRxqZN7FIGmjdPCYQKaTzFPmqieCmsU1kBYDzndTeQav0xtQNwZJWu5awWfTGe8Srq9xFOGnw==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      eslint: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+    dependencies:
+      eslint: 8.39.0
     dev: true
 
   /eslint-plugin-unicorn@46.0.0(eslint@8.39.0):
