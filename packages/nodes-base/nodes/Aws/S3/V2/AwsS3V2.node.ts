@@ -911,26 +911,44 @@ export class AwsS3V2 implements INodeType {
 									region as string,
 								)) as {
 									ListPartsResult: {
-										Part: Array<{
-											ETag: string;
-											PartNumber: number;
-										}>;
+										Part:
+											| Array<{
+													ETag: string;
+													PartNumber: number;
+											  }>
+											| {
+													ETag: string;
+													PartNumber: number;
+											  };
 									};
 								};
-
-								body = {
-									CompleteMultipartUpload: {
-										$: {
-											xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+								if (!Array.isArray(listParts.ListPartsResult.Part)) {
+									body = {
+										CompleteMultipartUpload: {
+											$: {
+												xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+											},
+											Part: {
+												ETag: listParts.ListPartsResult.Part.ETag,
+												PartNumber: listParts.ListPartsResult.Part.PartNumber,
+											},
 										},
-										Part: listParts.ListPartsResult.Part.map((Part) => {
-											return {
-												ETag: Part.ETag,
-												PartNumber: Part.PartNumber,
-											};
-										}),
-									},
-								};
+									};
+								} else {
+									body = {
+										CompleteMultipartUpload: {
+											$: {
+												xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+											},
+											Part: listParts.ListPartsResult.Part.map((Part) => {
+												return {
+													ETag: Part.ETag,
+													PartNumber: Part.PartNumber,
+												};
+											}),
+										},
+									};
+								}
 								const builder = new Builder();
 								const data = builder.buildObject(body);
 								const completeUpload = (await awsApiRequestREST.call(
