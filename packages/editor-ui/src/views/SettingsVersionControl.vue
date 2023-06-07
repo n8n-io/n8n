@@ -384,6 +384,11 @@ const refreshBranches = async () => {
 	width: 100%;
 	display: block;
 
+	hr {
+		margin: 0 0 var(--spacing-xl);
+		border: 1px solid var(--color-foreground-light);
+	}
+
 	label {
 		display: inline-block;
 		padding: 0 0 var(--spacing-2xs);
@@ -441,11 +446,6 @@ const refreshBranches = async () => {
 	> button {
 		height: 42px;
 	}
-}
-
-hr {
-	margin: 0 0 var(--spacing-xl);
-	border: 1px solid var(--color-foreground-light);
 }
 
 .branchSelection {
