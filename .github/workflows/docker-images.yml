@@ -8,10 +8,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        docker-context: ['', '-debian']
-
     steps:
       - uses: actions/checkout@v3
 
@@ -41,12 +37,12 @@ jobs:
       - name: Build
         uses: docker/build-push-action@v4
         with:
-          context: ./docker/images/n8n${{ matrix.docker-context }}
+          context: ./docker/images/n8n
           build-args: |
             N8N_VERSION=${{ steps.vars.outputs.tag }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           provenance: false
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
-            ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
+            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/n8n:${{ steps.vars.outputs.tag }}
