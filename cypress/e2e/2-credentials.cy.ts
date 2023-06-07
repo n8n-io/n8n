@@ -33,10 +33,11 @@ const NEW_CREDENTIAL_NAME = 'Something else';
 
 describe('Credentials', () => {
 	before(() => {
-		cy.skipSetup();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
 		cy.visit(credentialsPage.url);
 	});
 

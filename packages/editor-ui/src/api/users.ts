@@ -38,10 +38,6 @@ export async function setupOwner(
 	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
 }
 
-export async function skipOwnerSetup(context: IRestApiContext): Promise<void> {
-	return makeRestApiRequest(context, 'POST', '/owner/skip-setup');
-}
-
 export async function validateSignupToken(
 	context: IRestApiContext,
 	params: { inviterId: string; inviteeId: string },

@@ -40,7 +40,6 @@ declare global {
 			setupOwner(payload: SetupPayload): void;
 			inviteUsers(payload: InviteUsersPayload): void;
 			interceptREST(method: string, url: string): Chainable<Interception>;
-			skipSetup(): void;
 			resetAll(): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
