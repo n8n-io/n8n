@@ -1,4 +1,4 @@
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Authorized, Get, Post, Patch, RestController } from '@/decorators';
 import {
 	versionControlLicensedMiddleware,
 	versionControlLicensedAndEnabledMiddleware,
@@ -83,10 +83,38 @@ export class VersionControlController {
 	}
 
 	@Authorized(['global', 'owner'])
-	@Post('/set-read-only', { middlewares: [versionControlLicensedMiddleware] })
-	async setReadOnly(req: VersionControlRequest.SetReadOnly) {
+	@Patch('/preferences', { middlewares: [versionControlLicensedMiddleware] })
+	async updatePreferences(req: VersionControlRequest.UpdatePreferences) {
 		try {
-			this.versionControlPreferencesService.setBranchReadOnly(req.body.branchReadOnly);
+			const sanitizedPreferences: Partial<VersionControlPreferences> = {
+				...req.body,
+				initRepo: false,
+				connected: undefined,
+				publicKey: undefined,
+				repositoryUrl: undefined,
+				authorName: undefined,
+				authorEmail: undefined,
+			};
+			const currentPreferences = this.versionControlPreferencesService.getPreferences();
+			await this.versionControlPreferencesService.validateVersionControlPreferences(
+				sanitizedPreferences,
+			);
+			if (
+				sanitizedPreferences.branchName &&
+				sanitizedPreferences.branchName !== currentPreferences.branchName
+			) {
+				await this.versionControlService.setBranch(sanitizedPreferences.branchName);
+			}
+			if (sanitizedPreferences.branchColor || sanitizedPreferences.branchReadOnly !== undefined) {
+				await this.versionControlPreferencesService.setPreferences(
+					{
+						branchColor: sanitizedPreferences.branchColor,
+						branchReadOnly: sanitizedPreferences.branchReadOnly,
+					},
+					true,
+				);
+			}
+			await this.versionControlService.init();
 			return this.versionControlPreferencesService.getPreferences();
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
@@ -108,16 +136,6 @@ export class VersionControlController {
 	async getBranches() {
 		try {
 			return await this.versionControlService.getBranches();
-		} catch (error) {
-			throw new BadRequestError((error as { message: string }).message);
-		}
-	}
-
-	@Authorized(['global', 'owner'])
-	@Post('/set-branch', { middlewares: [versionControlLicensedMiddleware] })
-	async setBranch(req: VersionControlRequest.SetBranch) {
-		try {
-			return await this.versionControlService.setBranch(req.body.branch);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
