@@ -92,7 +92,7 @@ export class NocoDbHttpRequestV3 implements INodeType {
 				},
 				{
 					displayName: `Base URL has been set to ${
-						process.env.ESA_NOCODB_BASE_URL || ''
+						process.env.DCS_NOCODB_BASE_URL || ''
 					} and Authentication is set to a NocoDB API token.`,
 					name: 'baseURL',
 					type: 'notice',
@@ -925,7 +925,7 @@ export class NocoDbHttpRequestV3 implements INodeType {
 				redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 			};
 
-			const baseURL = process.env.ESA_NOCODB_BASE_URL;
+			const baseURL = process.env.DCS_NOCODB_BASE_URL;
 
 			if (!baseURL) {
 				throw new NodeOperationError(this.getNode(), 'No base URL configured!', { itemIndex });
@@ -957,7 +957,7 @@ export class NocoDbHttpRequestV3 implements INodeType {
 
 			requestOptions = {
 				headers: {
-					'xc-token': process.env.ESA_NOCODB_TOKEN,
+					'xc-token': process.env.DCS_NOCODB_TOKEN,
 				},
 				method: requestMethod,
 				uri: url,
@@ -1277,7 +1277,7 @@ export class NocoDbHttpRequestV3 implements INodeType {
 
 			response = response.value;
 
-			const baseURL = process.env.ESA_NOCODB_BASE_URL;
+			const baseURL = process.env.DCS_NOCODB_BASE_URL;
 
 			if (!baseURL) {
 				throw new NodeOperationError(this.getNode(), 'No base URL configured!', { itemIndex });
