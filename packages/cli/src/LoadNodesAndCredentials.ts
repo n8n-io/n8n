@@ -66,20 +66,22 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
-		// Load nodes from `n8n-nodes-base` and any other `n8n-nodes-*` package in the main `node_modules`
-		const pathsToScan = [
+		// Load nodes from `n8n-nodes-base`
+		const basePathsToScan = [
 			// In case "n8n" package is in same node_modules folder.
 			path.join(CLI_DIR, '..'),
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(CLI_DIR, 'node_modules'),
-			// Path where all community nodes are installed
-			path.join(this.downloadFolder, 'node_modules'),
 		];
 
-		for (const nodeModulesDir of pathsToScan) {
-			await this.loadNodesFromNodeModules(nodeModulesDir);
+		for (const nodeModulesDir of basePathsToScan) {
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 		}
+
+		// Load nodes from any other `n8n-nodes-*` packages in the download directory
+		// This includes the community nodes
+		await this.loadNodesFromNodeModules(path.join(this.downloadFolder, 'node_modules'));
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -127,12 +129,15 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	private async loadNodesFromNodeModules(nodeModulesDir: string): Promise<void> {
-		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
-		const installedPackagePaths = [
-			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
-			...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-		];
+	private async loadNodesFromNodeModules(
+		nodeModulesDir: string,
+		packageName?: string,
+	): Promise<void> {
+		const installedPackagePaths = await glob(packageName ?? ['n8n-nodes-*', '@*/n8n-nodes-*'], {
+			cwd: nodeModulesDir,
+			onlyDirectories: true,
+			deep: 1,
+		});
 
 		for (const packagePath of installedPackagePaths) {
 			try {

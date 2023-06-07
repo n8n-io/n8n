@@ -4,7 +4,6 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { IS_V1_RELEASE } from '@/constants';
 
 convict.addFormat({
 	name: 'nodes-list',
@@ -225,13 +224,12 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in their own process.
-		// If this option gets set to "main" it will run them in the
-		// main-process instead.
+		// By default workflows get always executed in the main process.
+		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
 		process: {
-			doc: 'In what process workflows should be executed. Note: Own mode has been deprecated and will be removed in a future version as well as this setting.',
+			doc: 'In what process workflows should be executed.',
 			format: ['main', 'own'] as const,
-			default: IS_V1_RELEASE ? 'main' : 'own',
+			default: 'main',
 			env: 'EXECUTIONS_PROCESS',
 		},
 
@@ -856,7 +854,7 @@ export const schema = {
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
-			default: IS_V1_RELEASE ? 'websocket' : 'sse',
+			default: 'websocket',
 			env: 'N8N_PUSH_BACKEND',
 			doc: 'Backend to use for push notifications',
 		},
