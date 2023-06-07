@@ -58,9 +58,11 @@ describe('test AirtableV2, findMatches', () => {
 		];
 
 		const key = 'id';
-		const value = 'rec123';
 
-		const result = findMatches(data, key, value);
+		const result = findMatches(data, [key], {
+			id: 'rec123',
+			data: 'data 1',
+		});
 
 		expect(result).toEqual([
 			{
@@ -94,9 +96,16 @@ describe('test AirtableV2, findMatches', () => {
 		];
 
 		const key = 'id';
-		const value = 'rec123';
 
-		const result = findMatches(data, key, value, true);
+		const result = findMatches(
+			data,
+			[key],
+			{
+				id: 'rec123',
+				data: 'data 1',
+			},
+			true,
+		);
 
 		expect(result).toEqual([
 			{

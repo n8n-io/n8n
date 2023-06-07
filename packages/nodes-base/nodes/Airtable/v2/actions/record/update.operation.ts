@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequestAllItems, batchUpdate } from '../../transport';
-import { findMatches2, processAirtableError, removeIgnored } from '../../helpers/utils';
+import { findMatches, processAirtableError, removeIgnored } from '../../helpers/utils';
 import type { UpdateRecord } from '../../helpers/interfaces';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -85,7 +85,7 @@ export async function execute(
 						fields: removeIgnored(fields, options.ignoreFields as string),
 					});
 				} else {
-					const matches = findMatches2(
+					const matches = findMatches(
 						tableData,
 						columnsToMatchOn,
 						items[i].json,
@@ -107,7 +107,7 @@ export async function execute(
 				} else {
 					const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
 
-					const matches = findMatches2(
+					const matches = findMatches(
 						tableData,
 						columnsToMatchOn,
 						fields,

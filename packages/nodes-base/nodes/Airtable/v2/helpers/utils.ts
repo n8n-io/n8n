@@ -27,35 +27,6 @@ export function removeIgnored(data: IDataObject, ignore: string | string[]) {
 
 export function findMatches(
 	data: UpdateRecord[],
-	key: string,
-	value: IDataObject | string,
-	updateAll?: boolean,
-) {
-	if (updateAll) {
-		const matches = data.filter((record) => {
-			return record.fields[key] === value;
-		});
-
-		if (!matches?.length) {
-			throw new Error(`No record found where: ${key} = ${value}`);
-		}
-
-		return matches;
-	} else {
-		const match = data.find((record) => {
-			return record.fields[key] === value;
-		});
-
-		if (!match) {
-			throw new Error(`No record found where: ${key} = ${value}`);
-		}
-
-		return [match];
-	}
-}
-
-export function findMatches2(
-	data: UpdateRecord[],
 	keys: string[],
 	fields: IDataObject,
 	updateAll?: boolean,

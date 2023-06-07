@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 					plural: 'columns',
 				},
 				addAllFields: true,
-				multiKeyMatch: false,
+				multiKeyMatch: true,
 			},
 		},
 	},
@@ -55,7 +55,7 @@ export async function execute(
 
 	const dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
 
-	const [columnToMatchOn, _rest] = this.getNodeParameter('columns.matchingColumns', 0) as string[];
+	const columnsToMatchOn = this.getNodeParameter('columns.matchingColumns', 0) as string[];
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -63,7 +63,7 @@ export async function execute(
 			const options = this.getNodeParameter('options', i, {});
 
 			if (dataMode === 'autoMapInputData') {
-				if (columnToMatchOn === 'id') {
+				if (columnsToMatchOn.includes('id')) {
 					const { id, ...fields } = items[i].json;
 
 					records.push({
@@ -78,7 +78,7 @@ export async function execute(
 			if (dataMode === 'defineBelow') {
 				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
 
-				if (columnToMatchOn === 'id') {
+				if (columnsToMatchOn.includes('id')) {
 					const id = fields.id as string;
 					delete fields.id;
 					records.push({ id, fields });
@@ -91,29 +91,32 @@ export async function execute(
 				typecast: options.typecast ? true : false,
 			};
 
-			if (columnToMatchOn !== 'id') {
-				body.performUpsert = { fieldsToMergeOn: [columnToMatchOn] };
+			if (!columnsToMatchOn.includes('id')) {
+				body.performUpsert = { fieldsToMergeOn: columnsToMatchOn };
 			}
 
 			let responseData;
 			try {
 				responseData = await batchUpdate.call(this, endpoint, body, records);
 			} catch (error) {
-				if (error.httpCode === '422' && columnToMatchOn === 'id') {
+				if (error.httpCode === '422' && columnsToMatchOn.includes('id')) {
 					const createBody = {
 						...body,
 						records: records.map(({ fields }) => ({ fields })),
 					};
 					responseData = await apiRequest.call(this, 'POST', endpoint, createBody);
 				} else if (error?.description?.includes('Cannot update more than one record')) {
+					const conditions = columnsToMatchOn
+						.map((column) => `{${column}} = '${records[0].fields[column]}'`)
+						.join(',');
 					const response = await apiRequestAllItems.call(
 						this,
 						'GET',
 						endpoint,
 						{},
 						{
-							fields: [columnToMatchOn],
-							filterByFormula: `{${columnToMatchOn}} = '${records[0].fields[columnToMatchOn]}'`,
+							fields: columnsToMatchOn,
+							filterByFormula: `AND(${conditions})`,
 						},
 					);
 					const matches = response.records as UpdateRecord[];
