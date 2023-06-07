@@ -957,7 +957,7 @@ export class NocoDbHttpRequestV3 implements INodeType {
 
 			requestOptions = {
 				headers: {
-					'xc-token': process.env.DCS_NOCODB_TOKEN,
+					'xc-token': process.env.DCS_NOCODB_API_TOKEN,
 				},
 				method: requestMethod,
 				uri: url,
