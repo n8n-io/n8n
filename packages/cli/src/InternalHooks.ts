@@ -57,6 +57,7 @@ export class InternalHooks implements IInternalHooksClass {
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
 		private roleService: RoleService,
+		private executionRepository: ExecutionRepository,
 	) {}
 
 	async init(instanceId: string) {
@@ -236,7 +237,7 @@ export class InternalHooks implements IInternalHooksClass {
 		data: IWorkflowExecutionDataProcess,
 	): Promise<void> {
 		void Promise.all([
-			Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+			this.executionRepository.updateExistingExecution(executionId, {
 				status: 'running',
 			}),
 			eventBus.sendWorkflowEvent({

@@ -61,7 +61,6 @@ export class ActiveExecutions {
 			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
 				fullExecutionData,
 			);
-			// TODO: what is going on here?
 			executionId = executionResult.id.toString();
 			if (executionId === undefined) {
 				throw new Error('There was an issue assigning an execution id to the execution');
