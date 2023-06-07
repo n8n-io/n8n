@@ -148,19 +148,4 @@ export class OwnerController {
 
 		return sanitizeUser(owner);
 	}
-
-	/**
-	 * Persist that the instance owner setup has been skipped
-	 */
-	@Post('/skip-setup')
-	async skipSetup() {
-		await this.settingsRepository.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: JSON.stringify(true) },
-		);
-
-		this.config.set('userManagement.skipInstanceOwnerSetup', true);
-
-		return { success: true };
-	}
 }
