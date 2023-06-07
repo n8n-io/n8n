@@ -12,6 +12,9 @@ jest.mock('../../../../v2/transport', () => {
 		apiRequest: jest.fn(async function () {
 			return {};
 		}),
+		batchUpdate: jest.fn(async function () {
+			return {};
+		}),
 		apiRequestAllItems: jest.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
@@ -74,10 +77,11 @@ describe('Test AirtableV2, update operation', () => {
 			'tblltable',
 		);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('PATCH', 'appYoLbase/tblltable', {
-			records: [{ fields: { bar: 'bar 1', foo: 'foo 1' }, id: 'recXXX' }],
-			typecast: false,
-		});
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			'appYoLbase/tblltable',
+			{ typecast: false },
+			[{ fields: { bar: 'bar 1', foo: 'foo 1' }, id: 'recXXX' }],
+		);
 	});
 
 	it('should update a record by field name, autoMapInputData', async () => {
@@ -107,9 +111,10 @@ describe('Test AirtableV2, update operation', () => {
 			'tblltable',
 		);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('PATCH', 'appYoLbase/tblltable', {
-			records: [{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
-			typecast: false,
-		});
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			'appYoLbase/tblltable',
+			{ typecast: false },
+			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
+		);
 	});
 });

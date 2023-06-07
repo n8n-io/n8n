@@ -118,3 +118,46 @@ export async function downloadRecordAttachments(
 	}
 	return elements;
 }
+
+export async function batchUpdate(
+	this: IExecuteFunctions | IPollFunctions,
+	endpoint: string,
+	body: IDataObject,
+	updateRecords: IDataObject[],
+) {
+	if (!updateRecords.length) {
+		return { records: [] };
+	}
+
+	let responseData: IDataObject;
+
+	if (updateRecords.length && updateRecords.length <= 10) {
+		const updateBody = {
+			...body,
+			records: updateRecords,
+		};
+
+		responseData = await apiRequest.call(this, 'PATCH', endpoint, updateBody);
+		return responseData;
+	}
+
+	const batchSize = 10;
+	const batches = Math.ceil(updateRecords.length / batchSize);
+	const updatedRecords: IDataObject[] = [];
+
+	for (let j = 0; j < batches; j++) {
+		const batch = updateRecords.slice(j * batchSize, (j + 1) * batchSize);
+
+		const updateBody = {
+			...body,
+			records: batch,
+		};
+
+		const updateResponse = await apiRequest.call(this, 'PATCH', endpoint, updateBody);
+		updatedRecords.push(...((updateResponse.records as IDataObject[]) || []));
+	}
+
+	responseData = { records: updatedRecords };
+
+	return responseData;
+}

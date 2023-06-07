@@ -1,9 +1,15 @@
 import type { IDataObject, NodeApiError } from 'n8n-workflow';
 import type { UpdateRecord } from './interfaces';
 
-export function removeIgnored(data: IDataObject, ignore: string) {
+export function removeIgnored(data: IDataObject, ignore: string | string[]) {
 	if (ignore) {
-		const ignoreFields = ignore.split(',').map((field) => field.trim());
+		let ignoreFields: string[] = [];
+
+		if (typeof ignore === 'string') {
+			ignoreFields = ignore.split(',').map((field) => field.trim());
+		} else {
+			ignoreFields = ignore;
+		}
 
 		const newData: IDataObject = {};
 
@@ -42,6 +48,45 @@ export function findMatches(
 
 		if (!match) {
 			throw new Error(`No record found where: ${key} = ${value}`);
+		}
+
+		return [match];
+	}
+}
+
+export function findMatches2(
+	data: UpdateRecord[],
+	keys: string[],
+	fields: IDataObject,
+	updateAll?: boolean,
+) {
+	if (updateAll) {
+		const matches = data.filter((record) => {
+			for (const key of keys) {
+				if (record.fields[key] !== fields[key]) {
+					return false;
+				}
+			}
+			return true;
+		});
+
+		if (!matches?.length) {
+			throw new Error('No records match provided keys');
+		}
+
+		return matches;
+	} else {
+		const match = data.find((record) => {
+			for (const key of keys) {
+				if (record.fields[key] !== fields[key]) {
+					return false;
+				}
+			}
+			return true;
+		});
+
+		if (!match) {
+			throw new Error('Record matching provided keys was not found');
 		}
 
 		return [match];

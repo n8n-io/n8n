@@ -1,9 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { apiRequest, apiRequestAllItems } from '../../transport';
+import { apiRequest, apiRequestAllItems, batchUpdate } from '../../transport';
 import { removeIgnored } from '../../helpers/utils';
-import type { UpdateBody, UpdateRecord } from '../../helpers/interfaces';
+import type { UpdateRecord } from '../../helpers/interfaces';
 import { insertUpdateOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -87,8 +87,7 @@ export async function execute(
 				}
 			}
 
-			const body: UpdateBody = {
-				records,
+			const body: IDataObject = {
 				typecast: options.typecast ? true : false,
 			};
 
@@ -98,7 +97,7 @@ export async function execute(
 
 			let responseData;
 			try {
-				responseData = await apiRequest.call(this, 'PATCH', endpoint, body);
+				responseData = await batchUpdate.call(this, endpoint, body, records);
 			} catch (error) {
 				if (error.httpCode === '422' && columnToMatchOn === 'id') {
 					const createBody = {
@@ -127,23 +126,7 @@ export async function execute(
 						updateRecords.push({ id: matches[0].id, fields: records[0].fields });
 					}
 
-					const batchSize = 10;
-					const batches = Math.ceil(updateRecords.length / batchSize);
-					const updatedRecords: IDataObject[] = [];
-
-					for (let j = 0; j < batches; j++) {
-						const batch = updateRecords.slice(j * batchSize, (j + 1) * batchSize);
-
-						const updateBody = {
-							...body,
-							records: batch,
-						};
-
-						const updateResponse = await apiRequest.call(this, 'PATCH', endpoint, updateBody);
-						updatedRecords.push(...((updateResponse.records as IDataObject[]) || []));
-					}
-
-					responseData = { records: updatedRecords };
+					responseData = await batchUpdate.call(this, endpoint, body, updateRecords);
 				} else {
 					throw error;
 				}

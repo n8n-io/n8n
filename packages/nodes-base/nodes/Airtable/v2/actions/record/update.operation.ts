@@ -1,9 +1,9 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties, NodeApiError } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { apiRequest, apiRequestAllItems } from '../../transport';
-import { findMatches, processAirtableError, removeIgnored } from '../../helpers/utils';
-import type { UpdateBody, UpdateRecord } from '../../helpers/interfaces';
+import { apiRequestAllItems, batchUpdate } from '../../transport';
+import { findMatches2, processAirtableError, removeIgnored } from '../../helpers/utils';
+import type { UpdateRecord } from '../../helpers/interfaces';
 import { insertUpdateOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 					plural: 'columns',
 				},
 				addAllFields: true,
-				multiKeyMatch: false,
+				multiKeyMatch: true,
 			},
 		},
 	},
@@ -55,16 +55,16 @@ export async function execute(
 
 	const dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
 
-	const [columnToMatchOn, _rest] = this.getNodeParameter('columns.matchingColumns', 0) as string[];
+	const columnsToMatchOn = this.getNodeParameter('columns.matchingColumns', 0) as string[];
 
 	let tableData: UpdateRecord[] = [];
-	if (columnToMatchOn !== 'id') {
+	if (!columnsToMatchOn.includes('id')) {
 		const response = await apiRequestAllItems.call(
 			this,
 			'GET',
 			endpoint,
 			{},
-			{ fields: [columnToMatchOn] },
+			{ fields: columnsToMatchOn },
 		);
 		tableData = response.records as UpdateRecord[];
 	}
@@ -76,7 +76,7 @@ export async function execute(
 			const options = this.getNodeParameter('options', i, {});
 
 			if (dataMode === 'autoMapInputData') {
-				if (columnToMatchOn === 'id') {
+				if (columnsToMatchOn.includes('id')) {
 					const { id, ...fields } = items[i].json;
 					recordId = id as string;
 
@@ -85,12 +85,10 @@ export async function execute(
 						fields: removeIgnored(fields, options.ignoreFields as string),
 					});
 				} else {
-					const columnToMatchOnValue = items[i].json[columnToMatchOn] as string;
-
-					const matches = findMatches(
+					const matches = findMatches2(
 						tableData,
-						columnToMatchOn,
-						columnToMatchOnValue,
+						columnsToMatchOn,
+						items[i].json,
 						options.updateAllMatches as boolean,
 					);
 
@@ -103,32 +101,29 @@ export async function execute(
 			}
 
 			if (dataMode === 'defineBelow') {
-				if (columnToMatchOn === 'id') {
+				if (columnsToMatchOn.includes('id')) {
 					const { id, ...fields } = this.getNodeParameter('columns.value', i, []) as IDataObject;
 					records.push({ id: id as string, fields });
 				} else {
 					const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
 
-					const valueToMatchOn = fields[columnToMatchOn] as string;
-					delete fields[columnToMatchOn];
-
-					const matches = findMatches(
+					const matches = findMatches2(
 						tableData,
-						columnToMatchOn,
-						valueToMatchOn,
+						columnsToMatchOn,
+						fields,
 						options.updateAllMatches as boolean,
 					);
 
 					for (const match of matches) {
 						const id = match.id as string;
-						records.push({ id, fields });
+						records.push({ id, fields: removeIgnored(fields, columnsToMatchOn) });
 					}
 				}
 			}
 
-			const body: UpdateBody = { records, typecast: options.typecast ? true : false };
+			const body: IDataObject = { typecast: options.typecast ? true : false };
 
-			const responseData = await apiRequest.call(this, 'PATCH', endpoint, body);
+			const responseData = await batchUpdate.call(this, endpoint, body, records);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				wrapData(responseData.records as IDataObject[]),
