@@ -2,10 +2,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import type { IDataObject, IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
-import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
+import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
+import { LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
-import { In, IsNull, Not } from 'typeorm';
+import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -24,11 +24,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Container } from 'typedi';
-import {
-	getStatusUsingPreviousExecutionStatusMethod,
-	isAdvancedExecutionFiltersEnabled,
-} from './executionHelpers';
-import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import { ExecutionRepository } from '@/databases/repositories';
 
 export interface IGetExecutionsQueryFilter {

@@ -1,5 +1,5 @@
 import type { DeleteResult, FindOptionsWhere } from 'typeorm';
-import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
+import { In, Not, Raw, LessThan } from 'typeorm';
 
 import * as Db from '@/Db';
 import type { IExecutionBase, IExecutionFlattedDb } from '@/Interfaces';
@@ -9,18 +9,14 @@ import { ExecutionRepository } from '@/databases/repositories';
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 function getStatusCondition(status: ExecutionStatus) {
-	const condition: Pick<
-		FindOptionsWhere<IExecutionFlattedDb>,
-		'finished' | 'waitTill' | 'stoppedAt'
-	> = {};
+	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
 	if (status === 'success') {
-		condition.finished = true;
+		condition.status = 'success';
 	} else if (status === 'waiting') {
-		condition.waitTill = Not(IsNull());
+		condition.status = 'waiting';
 	} else if (status === 'error') {
-		condition.stoppedAt = Not(IsNull());
-		condition.finished = false;
+		condition.status = In(['error', 'crashed', 'failed']);
 	}
 
 	return condition;

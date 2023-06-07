@@ -258,11 +258,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	): Promise<{ count: number; estimated: boolean }> {
 		const dbType = config.getEnv('database.type');
 		if (dbType !== 'postgresdb' || (filters && Object.keys(filters).length > 0) || !isOwner) {
-			const query = this.createQueryBuilder('execution')
-				.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds })
-				.andWhere('execution.id NOT IN (:...currentlyRunningExecutions)', {
+			const query = this.createQueryBuilder('execution').andWhere(
+				'execution.workflowId IN (:...accessibleWorkflowIds)',
+				{ accessibleWorkflowIds },
+			);
+			if (currentlyRunningExecutions.length > 0) {
+				query.andWhere('execution.id NOT IN (:...currentlyRunningExecutions)', {
 					currentlyRunningExecutions,
 				});
+			}
 
 			parseFiltersToQueryBuilder(query, filters);
 
