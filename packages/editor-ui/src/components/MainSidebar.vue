@@ -92,6 +92,7 @@
 						<n8n-action-dropdown
 							:items="userMenuItems"
 							placement="top-start"
+							data-test-id="user-menu"
 							@select="onUserActionToggle"
 						/>
 					</div>
