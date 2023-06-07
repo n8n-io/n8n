@@ -123,15 +123,4 @@ describe('OwnerController', () => {
 			expect(cookieOptions.value.sameSite).toBe('lax');
 		});
 	});
-
-	describe('skipSetup', () => {
-		it('should skip setting up the instance owner', async () => {
-			await controller.skipSetup();
-			expect(settingsRepository.update).toHaveBeenCalledWith(
-				{ key: 'userManagement.skipInstanceOwnerSetup' },
-				{ value: JSON.stringify(true) },
-			);
-			expect(config.set).toHaveBeenCalledWith('userManagement.skipInstanceOwnerSetup', true);
-		});
-	});
 });

@@ -95,7 +95,7 @@ const setupUserManagement = async () => {
 		`INSERT INTO user (id, globalRoleId) values ("${uuid()}", ${instanceOwnerRole[0].insertId})`,
 	);
 	await connection.query(
-		"INSERT INTO \"settings\" (key, value, loadOnStartup) values ('userManagement.isInstanceOwnerSetUp', 'false', true), ('userManagement.skipInstanceOwnerSetup', 'false', true)",
+		"INSERT INTO \"settings\" (key, value, loadOnStartup) values ('userManagement.isInstanceOwnerSetUp', 'false', true)",
 	);
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
