@@ -5,6 +5,7 @@ import { useExternalSecretsStore } from '@/stores';
 import { onMounted } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { DateTime } from 'luxon';
+import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
 
 const { i18n } = useI18n();
 const uiStore = useUIStore();
@@ -13,6 +14,7 @@ const message = useMessage();
 const toast = useToast();
 
 onMounted(() => {
+	void externalSecretsStore.fetchAllSecrets();
 	void externalSecretsStore.getProviders();
 });
 
@@ -22,6 +24,10 @@ function goToUpgrade() {
 
 function formatDate(provider: ExternalSecretsProvider) {
 	return DateTime.fromISO(provider.connectedAt!).toFormat('dd LLL yyyy');
+}
+
+function openExternalSecretProvider(id: string) {
+	uiStore.openModalWithData({ name: EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, data: { id } });
 }
 </script>
 
@@ -53,7 +59,7 @@ function formatDate(provider: ExternalSecretsProvider) {
 								{{
 									i18n.baseText('settings.externalSecrets.card.secretsCount', {
 										interpolate: {
-											count: provider.secrets.length,
+											count: externalSecretsStore.secrets[provider.id]?.length,
 										},
 									})
 								}}
@@ -70,11 +76,9 @@ function formatDate(provider: ExternalSecretsProvider) {
 							</span>
 						</n8n-text>
 					</div>
-					<n8n-link :to="`/settings/external-secrets/${provider.id}`">
-						<n8n-button type="tertiary">
-							{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
-						</n8n-button>
-					</n8n-link>
+					<n8n-button type="tertiary" @click="openExternalSecretProvider(provider.id)">
+						{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
+					</n8n-button>
 				</div>
 			</n8n-card>
 		</div>

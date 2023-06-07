@@ -1,7 +1,6 @@
-import { makeRestApiRequest } from '@/utils';
 import type { IRestApiContext, ExternalSecretsProvider } from '@/Interface';
 
-const infisical = {
+const infisical: ExternalSecretsProvider = {
 	id: 'infisical',
 	name: 'Infisical',
 	image:
@@ -14,8 +13,7 @@ export const getExternalSecrets = async (
 	context: IRestApiContext,
 ): Promise<Record<string, string[]>> => {
 	return {
-		infisical: [],
-		whatever: [],
+		infisical: ['EXAMPLE'],
 	};
 	// return makeRestApiRequest(context, 'GET', '/external-secrets');
 };

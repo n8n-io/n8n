@@ -1532,7 +1532,6 @@ export interface ExternalSecretsProvider {
 	id: string;
 	name: string;
 	image: string;
-	secrets: ExternalSecretsProviderSecret[];
 	connected: boolean;
 	connectedAt?: string;
 }

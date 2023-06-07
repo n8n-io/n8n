@@ -12,6 +12,7 @@ export const useExternalSecretsStore = defineStore('sso', () => {
 
 	const state = reactive({
 		providers: [] as ExternalSecretsProvider[],
+		secrets: {} as Record<string, string[]>,
 	});
 
 	const isEnterpriseExternalSecretsEnabled = computed(
@@ -19,10 +20,12 @@ export const useExternalSecretsStore = defineStore('sso', () => {
 			settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets) || true,
 	);
 
+	const secrets = computed(() => state.secrets);
 	const providers = computed(() => state.providers);
-	const providerById = computed(() => (id: string) => {
-		return computed(() => state.providers.find((provider) => provider.id === id));
-	});
+
+	async function fetchAllSecrets() {
+		state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
+	}
 
 	async function getProviders() {
 		state.providers = await externalSecretsApi.getExternalSecretsProviders(
@@ -46,9 +49,10 @@ export const useExternalSecretsStore = defineStore('sso', () => {
 
 	return {
 		providers,
+		secrets,
 		isEnterpriseExternalSecretsEnabled,
+		fetchAllSecrets,
 		getProvider,
 		getProviders,
-		providerById,
 	};
 });

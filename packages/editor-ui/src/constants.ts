@@ -50,6 +50,8 @@ export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
 
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
+
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
 	UPDATE: 'update',
@@ -375,7 +377,6 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
-	EXTERNAL_SECRETS_PROVIDER_SETTINGS = 'ExternalSecretsProviderSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	VERSION_CONTROL = 'VersionControl',
 }
