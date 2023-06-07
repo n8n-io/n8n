@@ -288,7 +288,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				return { count: estimate, estimated: true };
 			}
 		} catch (error) {
-			LoggerProxy.warn(`Failed to get executions count from Postgres: ${error}`);
+			if (error instanceof Error) {
+				LoggerProxy.warn(`Failed to get executions count from Postgres: ${error.message}`, {
+					error,
+				});
+			}
 		}
 
 		const count = await this.count({

@@ -1,4 +1,3 @@
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class SeparateExecutionData1682411848784 implements ReversibleMigration {
