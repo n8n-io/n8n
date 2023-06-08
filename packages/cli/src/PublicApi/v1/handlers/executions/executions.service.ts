@@ -6,7 +6,6 @@ import type { IExecutionBase, IExecutionFlattedDb } from '@/Interfaces';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 import { ExecutionRepository } from '@/databases/repositories';
-import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 function getStatusCondition(status: ExecutionStatus) {
 	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};

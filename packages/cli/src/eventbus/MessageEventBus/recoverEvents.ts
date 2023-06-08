@@ -3,7 +3,7 @@ import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { Push } from '@/push';
-import type { IExecutionResponse, IPushDataExecutionRecovered } from '../../Interfaces';
+import type { IPushDataExecutionRecovered } from '../../Interfaces';
 import { workflowExecutionCompleted } from '../../events/WorkflowStatistics';
 import { eventBus } from './MessageEventBus';
 import { Container } from 'typedi';
