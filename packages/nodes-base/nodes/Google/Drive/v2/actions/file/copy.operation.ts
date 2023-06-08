@@ -25,27 +25,18 @@ const properties: INodeProperties[] = [
 			'The name of the new file. If not set, “Copy of {original file name}” will be used.',
 	},
 	{
-		displayName: 'Copy Location',
+		displayName: 'Copy In The Same Folder',
 		name: 'copyLocation',
-		type: 'options',
-		default: 'current',
-		options: [
-			{
-				name: 'Copy In The Same Folder',
-				value: 'current',
-			},
-			{
-				name: 'Select Destination',
-				value: 'select',
-			},
-		],
+		type: 'boolean',
+		default: true,
+		description: 'Whether to copy the file in the same folder as the original file',
 	},
 	{
 		...folderRLC,
 		displayName: 'Destination Folder',
 		name: 'destinationFolderId',
 		description: 'The folder where you want to save the copied file',
-		displayOptions: { show: { copyLocation: ['select'] } },
+		displayOptions: { show: { copyLocation: [false] } },
 	},
 	{
 		displayName: 'Options',
@@ -95,8 +86,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
 	const parents: string[] = [];
-	const copyLocation = this.getNodeParameter('copyLocation', i) as string;
-	if (copyLocation === 'select') {
+	const copyLocation = this.getNodeParameter('copyLocation', i) as boolean;
+	if (!copyLocation) {
 		const destinationFolder = this.getNodeParameter('destinationFolderId', i, undefined, {
 			extractValue: true,
 		}) as string;

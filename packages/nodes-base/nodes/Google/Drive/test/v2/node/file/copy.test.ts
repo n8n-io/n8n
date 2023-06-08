@@ -37,7 +37,7 @@ describe('test GoogleDriveV2: file copy', () => {
 				cachedResultUrl: 'https://drive.google.com/file/d/fileIDxxxxxx/view?usp=drivesdk',
 			},
 			name: 'copyImage.png',
-			copyLocation: 'select',
+			copyLocation: false,
 			destinationFolderId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',

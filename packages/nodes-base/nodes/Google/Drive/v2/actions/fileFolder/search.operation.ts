@@ -2,7 +2,7 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { driveRLC, folderRLC } from '../common.descriptions';
+import { driveRLC, fileTypesOptions, folderRLC } from '../common.descriptions';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 import { prepareQueryString } from '../../helpers/utils';
 import type { SearchFilter } from '../../helpers/interfaces';
@@ -121,73 +121,23 @@ const properties: INodeProperties[] = [
 				type: 'multiOptions',
 				default: [],
 				description: 'Return only items corresponding to the selected MIME types',
-				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
-				options: [
-					{
-						name: 'All',
-						value: '*',
-						description: 'Return all file types',
-					},
-					{
-						name: '3rd Party Shortcut',
-						value: DRIVE.SDK,
-					},
-					{
-						name: 'Audio',
-						value: DRIVE.AUDIO,
-					},
-					{
-						name: 'Google Apps Scripts',
-						value: DRIVE.APP_SCRIPTS,
-					},
-					{
-						name: 'Google Docs',
-						value: DRIVE.DOCUMENT,
-					},
-					{
-						name: 'Google Drawing',
-						value: DRIVE.DRAWING,
-					},
-					{
-						name: 'Google Forms',
-						value: DRIVE.FORM,
-					},
-					{
-						name: 'Google Fusion Tables',
-						value: DRIVE.FUSIONTABLE,
-					},
-					{
-						name: 'Google My Maps',
-						value: DRIVE.MAP,
-					},
-					{
-						name: 'Google Sheets',
-						value: DRIVE.SPREADSHEET,
-					},
-					{
-						name: 'Google Sites',
-						value: DRIVE.SITES,
-					},
-					{
-						name: 'Google Slides',
-						value: DRIVE.PRESENTATION,
-					},
-					{
-						name: 'Photo',
-						value: DRIVE.PHOTO,
-					},
-					{
-						name: 'Unknown',
-						value: DRIVE.UNKNOWN,
-					},
-					{
-						name: 'Video',
-						value: DRIVE.VIDEO,
-					},
-				],
+				options: fileTypesOptions,
 				displayOptions: {
-					hide: {
-						whatToSearch: ['folders'],
+					show: {
+						whatToSearch: ['all'],
+					},
+				},
+			},
+			{
+				displayName: 'File Types',
+				name: 'fileTypes',
+				type: 'multiOptions',
+				default: [],
+				description: 'Return only items corresponding to the selected MIME types',
+				options: fileTypesOptions.filter((option) => option.name !== 'Folder'),
+				displayOptions: {
+					show: {
+						whatToSearch: ['files'],
 					},
 				},
 			},

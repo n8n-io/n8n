@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { RLC_DRIVE_DEFAULT } from '../helpers/interfaces';
+import { DRIVE, RLC_DRIVE_DEFAULT } from '../helpers/interfaces';
 
 export const fileRLC: INodeProperties = {
 	displayName: 'File',
@@ -493,5 +493,73 @@ export const updateCommonOptions: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: 'Whether to use the uploaded content as indexable text',
+	},
+];
+
+export const fileTypesOptions = [
+	{
+		name: 'All',
+		value: '*',
+		description: 'Return all file types',
+	},
+	{
+		name: '3rd Party Shortcut',
+		value: DRIVE.SDK,
+	},
+	{
+		name: 'Audio',
+		value: DRIVE.AUDIO,
+	},
+	{
+		name: 'Folder',
+		value: DRIVE.FOLDER,
+	},
+	{
+		name: 'Google Apps Scripts',
+		value: DRIVE.APP_SCRIPTS,
+	},
+	{
+		name: 'Google Docs',
+		value: DRIVE.DOCUMENT,
+	},
+	{
+		name: 'Google Drawing',
+		value: DRIVE.DRAWING,
+	},
+	{
+		name: 'Google Forms',
+		value: DRIVE.FORM,
+	},
+	{
+		name: 'Google Fusion Tables',
+		value: DRIVE.FUSIONTABLE,
+	},
+	{
+		name: 'Google My Maps',
+		value: DRIVE.MAP,
+	},
+	{
+		name: 'Google Sheets',
+		value: DRIVE.SPREADSHEET,
+	},
+	{
+		name: 'Google Sites',
+		value: DRIVE.SITES,
+	},
+	{
+		name: 'Google Slides',
+		value: DRIVE.PRESENTATION,
+	},
+	{
+		name: 'Photo',
+		value: DRIVE.PHOTO,
+	},
+	{
+		name: 'Unknown',
+		value: DRIVE.UNKNOWN,
+	},
+	{
+		name: 'Video',
+		value: DRIVE.VIDEO,
 	},
 ];

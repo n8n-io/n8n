@@ -141,7 +141,7 @@ const properties: INodeProperties[] = [
 									},
 									{
 										name: 'MS Excel',
-										value: 'application/x-vnd.oasis.opendocument.spreadsheet',
+										value: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 									},
 									{
 										name: 'Open Office Sheet',

@@ -3,8 +3,13 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
+import { sharedDriveRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
+	{
+		...sharedDriveRLC,
+		description: 'The shared drive to update',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'options',

@@ -87,7 +87,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const boundary = 'XXXXXX';
 
-	const qs = setUpdateCommonParams({}, options);
+	const qs = setUpdateCommonParams(
+		{
+			supportsAllDrives: true,
+		},
+		options,
+	);
 
 	let response;
 	if (convertToGoogleDocument) {

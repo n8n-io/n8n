@@ -3,8 +3,14 @@ import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
+import { sharedDriveRLC } from '../common.descriptions';
 
-const properties: INodeProperties[] = [];
+const properties: INodeProperties[] = [
+	{
+		...sharedDriveRLC,
+		description: 'The shared drive to delete',
+	},
+];
 
 const displayOptions = {
 	show: {
