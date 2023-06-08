@@ -37,15 +37,15 @@ const properties: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						placeholder: 'e.g. fieldName',
-						description: 'Name of the field to set the value of. Supports dot-notation.',
+						description:
+							'Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.',
 						requiresDataPath: 'single',
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
 						type: 'options',
-						description:
-							'The field value type. It is auto-detected from input data and can be modified. More info.',
+						description: 'The field value type',
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
@@ -118,7 +118,9 @@ const properties: INodeProperties[] = [
 						displayName: 'Value',
 						name: 'array',
 						type: 'string',
-						default: '={{[]}}',
+						// default: '={{[]}}',
+						default: '',
+						placeholder: 'e.g. [ arrayItem1, arrayItem2, arrayItem3 ]',
 						displayOptions: {
 							show: {
 								type: ['array'],

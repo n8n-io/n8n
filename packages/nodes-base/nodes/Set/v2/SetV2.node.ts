@@ -62,7 +62,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 		{
 			displayName:
-				'Item duplication is set in node settings(this option would be ignored in prodaction)',
+				'Item duplication is set in the node settings. This option will be ignored when the workflow runs automatically.',
 			name: 'duplicateWarning',
 			type: 'notice',
 			default: '',
