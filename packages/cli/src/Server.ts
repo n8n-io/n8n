@@ -1246,7 +1246,7 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.findOne({
+				const execution = await Db.collections.Execution.exist({
 					where: {
 						id: executionId,
 						workflowId: In(sharedWorkflowIds),
