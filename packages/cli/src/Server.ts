@@ -1319,6 +1319,13 @@ export class Server extends AbstractServer {
 					// We're not running queue mode and the execution is not in `ActiveExecutions`.
 					// If the status is still running, it's probably simply stuck (maybe due to crash)
 
+					// If active execution could not be found check if it is a waiting one
+					try {
+						returnData = await this.waitTracker.stopExecution(executionId);
+					} catch (error) {
+						// Ignore, if it errors as then it is probably a currently running
+					}
+
 					if (['new', 'running'].includes(execution.status)) {
 						try {
 							return ResponseHelper.unflattenExecutionData(execution);
@@ -1336,9 +1343,6 @@ export class Server extends AbstractServer {
 							}
 						}
 					}
-
-					// If active execution could not be found check if it is a waiting one
-					returnData = await this.waitTracker.stopExecution(executionId);
 				} else {
 					returnData = {
 						mode: result.mode,
