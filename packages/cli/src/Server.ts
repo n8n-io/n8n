@@ -115,6 +115,7 @@ import type {
 	ICredentialsOverwrite,
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
+	IExecutionResponse,
 	IExecutionsStopData,
 } from '@/Interfaces';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -171,6 +172,7 @@ import { isVersionControlLicensed } from '@/environments/versionControl/versionC
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
 import { VersionControlPreferencesService } from './environments/versionControl/versionControlPreferences.service.ee';
+import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 
 const exec = promisify(callbackExec);
 
@@ -1246,7 +1248,7 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.exist({
+				const execution = await Db.collections.Execution.findOne({
 					where: {
 						id: executionId,
 						workflowId: In(sharedWorkflowIds),
@@ -1314,6 +1316,27 @@ export class Server extends AbstractServer {
 
 				let returnData: IExecutionsStopData;
 				if (result === undefined) {
+					// We're not running queue mode and the execution is not in `ActiveExecutions`.
+					// If the status is still running, it's probably simply stuck (maybe due to crash)
+
+					if (['new', 'running'].includes(execution.status)) {
+						try {
+							return ResponseHelper.unflattenExecutionData(execution);
+						} catch (error) {
+							// if the execution ended in an unforseen, non-cancelable state, try to recover it
+							await recoverExecutionDataFromEventLogMessages(executionId, [], true);
+							// find recovered data
+							const recoveredExecution = await Db.collections.Execution.findOneBy({
+								id: executionId,
+							});
+							if (recoveredExecution) {
+								return ResponseHelper.unflattenExecutionData(recoveredExecution);
+							} else {
+								throw new Error(`Execution ${executionId} could not be recovered or canceled.`);
+							}
+						}
+					}
+
 					// If active execution could not be found check if it is a waiting one
 					returnData = await this.waitTracker.stopExecution(executionId);
 				} else {
