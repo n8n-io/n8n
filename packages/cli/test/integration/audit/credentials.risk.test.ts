@@ -149,15 +149,18 @@ test('should report credential in not recently executed workflow', async () => {
 	const date = new Date();
 	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') - 1);
 
-	await Db.collections.Execution.save({
-		data: '[]',
+	const savedExecution = await Db.collections.Execution.save({
 		finished: true,
 		mode: 'manual',
 		startedAt: date,
 		stoppedAt: date,
-		workflowData: workflow,
 		workflowId: workflow.id,
 		waitTill: null,
+	});
+	await Db.collections.ExecutionData.save({
+		execution: savedExecution,
+		data: '[]',
+		workflowData: workflow,
 	});
 
 	const testAudit = await audit(['credentials']);
@@ -214,15 +217,19 @@ test('should not report credentials in recently executed workflow', async () => 
 	const date = new Date();
 	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') + 1);
 
-	await Db.collections.Execution.save({
-		data: '[]',
+	const savedExecution = await Db.collections.Execution.save({
 		finished: true,
 		mode: 'manual',
 		startedAt: date,
 		stoppedAt: date,
-		workflowData: workflow,
 		workflowId: workflow.id,
 		waitTill: null,
+	});
+
+	await Db.collections.ExecutionData.save({
+		execution: savedExecution,
+		data: '[]',
+		workflowData: workflow,
 	});
 
 	const testAudit = await audit(['credentials']);

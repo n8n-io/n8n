@@ -32,6 +32,7 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import type { ExecutionData } from '@/databases/entities/ExecutionData';
 import { generateNanoId } from '@/databases/utils/generators';
 
 export type TestDBType = 'postgres' | 'mysql';
@@ -333,17 +334,26 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(attributes: Partial<ExecutionEntity>, workflow: WorkflowEntity) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
+async function createExecution(
+	attributes: Partial<ExecutionEntity & ExecutionData>,
+	workflow: WorkflowEntity,
+) {
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
 
 	const execution = await Db.collections.Execution.save({
-		data: data ?? '[]',
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
+		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
+		status,
+	});
+
+	await Db.collections.ExecutionData.save({
+		data: data ?? '[]',
+		workflowData: workflow ?? {},
+		executionId: execution.id,
 	});
 
 	return execution;
@@ -353,21 +363,21 @@ async function createExecution(attributes: Partial<ExecutionEntity>, workflow: W
  * Store a successful execution in the DB and assign it to a workflow.
  */
 export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true }, workflow);
+	return createExecution({ finished: true, status: 'success' }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date() }, workflow);
+	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
 }
 
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date() }, workflow);
+	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
 }
 
 // ----------------------------------

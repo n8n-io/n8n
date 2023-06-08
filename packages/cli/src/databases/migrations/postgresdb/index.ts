@@ -37,6 +37,7 @@ import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-Creat
 import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
+import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -77,4 +78,5 @@ export const postgresMigrations: Migration[] = [
 	CreateVariables1677501636754,
 	AddUserActivatedProperty1681134145996,
 	MigrateIntegerKeysToString1690000000000,
+	SeparateExecutionData1690000000020,
 ];

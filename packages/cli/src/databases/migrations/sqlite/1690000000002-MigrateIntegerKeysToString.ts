@@ -138,8 +138,8 @@ CREATE TABLE "${tablePrefix}TMP_workflows_tags" ("workflowId" varchar(36) NOT NU
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE "${tablePrefix}TMP_shared_credentials" ("createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), 
-			"updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), 
+			`CREATE TABLE "${tablePrefix}TMP_shared_credentials" ("createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+			"updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 			"roleId" integer NOT NULL,
 			"userId" varchar NOT NULL, "credentialsId" varchar(36) NOT NULL,
 			CONSTRAINT "FK_shared_credentials_role" FOREIGN KEY ("roleId") REFERENCES "role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION,
