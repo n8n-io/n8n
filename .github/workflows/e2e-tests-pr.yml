@@ -8,20 +8,19 @@ on:
 
 jobs:
   run-e2e-tests:
-    name: E2E [Electron/Node 16]
+    name: E2E [Electron/Node 18]
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'community') }}
     with:
       branch: ${{ github.event.pull_request.head.ref }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
       spec: 'e2e/*'
-      run-env: base:16.18.1
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 
   post-e2e-tests:
     runs-on: ubuntu-latest
-    name: E2E [Electron/Node 16] - Checks
+    name: E2E [Electron/Node 18] - Checks
     needs: [run-e2e-tests]
     if: always()
     steps:

@@ -90,10 +90,10 @@ import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/constants';
-import { useCloudPlanStore } from '@/stores';
-import { CLOUD_CHANGE_PLAN_PAGE } from '@/constants';
 
 export default defineComponent({
 	name: 'SettingsApiView',
@@ -104,6 +104,7 @@ export default defineComponent({
 		return {
 			...useToast(),
 			...useMessage(),
+			...useUIStore(),
 		};
 	},
 	data() {
@@ -126,7 +127,7 @@ export default defineComponent({
 			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore),
+		...mapStores(useRootStore, useSettingsStore, useUsersStore, useCloudPlanStore, useUIStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
@@ -139,7 +140,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			location.href = CLOUD_CHANGE_PLAN_PAGE;
+			this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(
