@@ -42,24 +42,8 @@ export class EEVariablesService extends VariablesService {
 
 	static async update(id: string, variable: Omit<Variables, 'id'>): Promise<Variables> {
 		this.validateVariable(variable);
-
-		const existingVariable = await this.get(id);
-		if (!existingVariable) {
-			throw new Error('Variable not found');
-		} else {
-			if (existingVariable.key !== variable.key) {
-				const newVariable = new Variables(variable);
-				await Db.transaction(async (transactionManager) => {
-					await transactionManager.save(Variables, newVariable);
-					await transactionManager.delete(Variables, id);
-				});
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				return (await this.get(newVariable.id))!;
-			} else {
-				await collections.Variables.update(id, variable);
-			}
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			return (await this.get(id))!;
-		}
+		await collections.Variables.update(id, variable);
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		return (await this.get(id))!;
 	}
 }

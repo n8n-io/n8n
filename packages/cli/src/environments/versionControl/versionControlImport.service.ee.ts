@@ -159,13 +159,21 @@ export class VersionControlImportService {
 		const result: { imported: string[] } = { imported: [] };
 		if (variablesFile.length > 0) {
 			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
-			const importedVariables = jsonParse<Variables[]>(
+			const importedVariables = jsonParse<Array<Partial<Variables>>>(
 				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: [] },
 			);
 			const overriddenKeys = Object.keys(valueOverrides ?? {});
 
 			for (const variable of importedVariables) {
+				if (!variable.key) {
+					continue;
+				}
+				// by default no value is stored remotely, so an empty string is retuned
+				// it must be changed to undefined so as to not overwrite existing values!
+				if (variable.value === '') {
+					variable.value = undefined;
+				}
 				if (overriddenKeys.includes(variable.key) && valueOverrides) {
 					variable.value = valueOverrides[variable.key];
 					overriddenKeys.splice(overriddenKeys.indexOf(variable.key), 1);
