@@ -39,7 +39,7 @@ import type {
 import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
-import { ElasticSearchClient } from './elasticSearch';
+import { ElasticSearchCoreClient } from './elasticSearchCore';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -1346,7 +1346,7 @@ export class WorkflowExecute {
 	}
 
 	private async storeFullDataInElasticSearch(executionId: string, fullRunData: IRun) {
-		const client = new ElasticSearchClient();
+		const client = new ElasticSearchCoreClient();
 		await client.addDocument(executionId, fullRunData.data.resultData.runData);
 	}
 

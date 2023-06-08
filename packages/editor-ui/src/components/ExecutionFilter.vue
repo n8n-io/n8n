@@ -50,6 +50,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	startDate: '',
 	endDate: '',
 	metadata: [{ key: '', value: '' }],
+	advancedSearch: '',
 });
 const filter = reactive(getDefaultFilter());
 
@@ -101,6 +102,9 @@ const countSelectedFilterProps = computed(() => {
 	if (!!filter.endDate) {
 		count++;
 	}
+	if (!isEmpty(filter.advancedSearch)) {
+		count++;
+	}
 	return count;
 });
 
@@ -128,6 +132,11 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 const onTagsChange = (tags: string[]) => {
 	filter.tags = tags;
 	emit('filterChanged', filter);
+};
+
+const onFilterAdvancedSearchChange = (advancedSearch: string) => {
+	filter.advancedSearch = advancedSearch;
+	debouncedEmit('filterChanged', filter);
 };
 
 const onFilterReset = () => {
@@ -264,7 +273,7 @@ onBeforeMount(() => {
 						<label for="execution-filter-saved-data-key">{{
 							locale.baseText('executionsFilter.savedDataKey')
 						}}</label>
-						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
@@ -282,7 +291,6 @@ onBeforeMount(() => {
 								name="execution-filter-saved-data-key"
 								type="text"
 								size="medium"
-								:disabled="!isAdvancedExecutionFilterEnabled"
 								:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 								:value="filter.metadata[0]?.key"
 								@input="onFilterMetaChange(0, 'key', $event)"
@@ -292,7 +300,7 @@ onBeforeMount(() => {
 						<label for="execution-filter-saved-data-value">{{
 							locale.baseText('executionsFilter.savedDataValue')
 						}}</label>
-						<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
+						<n8n-tooltip placement="top">
 							<template #content>
 								<i18n tag="span" path="executionsFilter.customData.inputTooltip">
 									<template #link>
@@ -307,13 +315,33 @@ onBeforeMount(() => {
 								name="execution-filter-saved-data-value"
 								type="text"
 								size="medium"
-								:disabled="!isAdvancedExecutionFilterEnabled"
 								:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 								:value="filter.metadata[0]?.value"
 								@input="onFilterMetaChange(0, 'value', $event)"
 								data-test-id="execution-filter-saved-data-value-input"
 							/>
 						</n8n-tooltip>
+					</div>
+				</div>
+				<!-- Advanced search  -->
+				<div :class="$style.group">
+					<span :class="$style.label">
+						{{ locale.baseText('executionsFilter.advancedSearchData') }}
+					</span>
+					<div :class="$style.subGroup">
+						<label for="execution-filter-advanced-search-value">{{
+							locale.baseText('executionsFilter.advancedSearchDataValue')
+						}}</label>
+						<n8n-input
+							id="execution-filter-advanced-search-value"
+							name="execution-filter-advanced-search-value"
+							type="text"
+							size="medium"
+							:placeholder="locale.baseText('executionsFilter.advancedSearchDataValuePlaceholder')"
+							:value="filter.advancedSearch"
+							@input="onFilterAdvancedSearchChange($event)"
+							data-test-id="execution-filter-advanced-search-value-input"
+						/>
 					</div>
 				</div>
 				<n8n-button
