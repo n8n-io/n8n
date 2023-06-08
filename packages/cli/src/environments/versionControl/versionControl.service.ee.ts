@@ -16,14 +16,7 @@ import {
 import { LoggerProxy } from 'n8n-workflow';
 import { VersionControlGitService } from './versionControlGit.service.ee';
 import { UserSettings } from 'n8n-core';
-import type {
-	CommitResult,
-	DiffResult,
-	FetchResult,
-	PullResult,
-	PushResult,
-	StatusResult,
-} from 'simple-git';
+import type { PushResult, StatusResult } from 'simple-git';
 import type { ExportResult } from './types/exportResult';
 import { VersionControlExportService } from './versionControlExport.service.ee';
 import { BadRequestError } from '../../ResponseHelper';
@@ -38,6 +31,7 @@ import type {
 } from './types/versionControlledFile';
 import { VersionControlPreferencesService } from './versionControlPreferences.service.ee';
 import { writeFileSync } from 'fs';
+import { VersionControlImportService } from './versionControlImport.service.ee';
 @Service()
 export class VersionControlService {
 	private sshKeyName: string;
@@ -50,6 +44,7 @@ export class VersionControlService {
 		private gitService: VersionControlGitService,
 		private versionControlPreferencesService: VersionControlPreferencesService,
 		private versionControlExportService: VersionControlExportService,
+		private versionControlImportService: VersionControlImportService,
 	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.sshFolder = path.join(userFolder, VERSION_CONTROL_SSH_FOLDER);
@@ -157,7 +152,7 @@ export class VersionControlService {
 
 	async import(options: VersionControllPullOptions): Promise<ImportResult | undefined> {
 		try {
-			return await this.versionControlExportService.importFromWorkFolder(options);
+			return await this.versionControlImportService.importFromWorkFolder(options);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
@@ -426,32 +421,4 @@ export class VersionControlService {
 		});
 		return versionControlledFiles;
 	}
-
-	// #region Version Control Test Functions
-	//TODO: SEPARATE FUNCTIONS FOR DEVELOPMENT ONLY
-	//TODO: REMOVE THESE FUNCTIONS AFTER TESTING
-
-	async commit(message?: string): Promise<CommitResult> {
-		return this.gitService.commit(message ?? 'Updated Workfolder');
-	}
-
-	async fetch(): Promise<FetchResult> {
-		return this.gitService.fetch();
-	}
-
-	async diff(): Promise<DiffResult> {
-		return this.gitService.diff();
-	}
-
-	async pull(): Promise<PullResult> {
-		return this.gitService.pull();
-	}
-
-	async push(force = false): Promise<PushResult> {
-		return this.gitService.push({
-			branch: this.versionControlPreferencesService.getBranchName(),
-			force,
-		});
-	}
-	// #endregion
 }

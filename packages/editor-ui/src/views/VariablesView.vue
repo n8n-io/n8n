@@ -157,9 +157,8 @@ async function saveVariable(data: EnvironmentVariable | TemporaryEnvironmentVari
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
 			updatedVariable = await environmentsStore.updateVariable(data as EnvironmentVariable);
-			allVariables.value = allVariables.value.map((variable) =>
-				variable.id === data.id ? updatedVariable : variable,
-			);
+			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
+			allVariables.value.push(updatedVariable);
 			toggleEditing(updatedVariable);
 		}
 	} catch (error) {

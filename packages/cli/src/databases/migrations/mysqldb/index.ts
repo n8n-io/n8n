@@ -39,6 +39,7 @@ import { CreateExecutionMetadataTable1679416281779 } from './1679416281779-Creat
 import { CreateVariables1677501636753 } from './1677501636753-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { SeparateExecutionData1682411848786 } from './1682411848786-SeparateExecutionData';
+import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-MigrateIntegerKeysToString';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -81,4 +82,5 @@ export const mysqlMigrations: Migration[] = [
 	CreateVariables1677501636753,
 	AddUserActivatedProperty1681134145996,
 	SeparateExecutionData1682411848786,
+	MigrateIntegerKeysToString1690000000001,
 ];

@@ -49,7 +49,7 @@ export class ExecutionEntity {
 	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
-	@Column({ nullable: true, transformer: idStringifier })
+	@Column({ nullable: true })
 	workflowId: string;
 
 	@Column({ type: datetimeColumnType, nullable: true })

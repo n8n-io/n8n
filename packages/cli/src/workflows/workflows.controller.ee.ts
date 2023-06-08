@@ -86,7 +86,7 @@ EEWorkflowController.put(
 );
 
 EEWorkflowController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
@@ -215,7 +215,7 @@ EEWorkflowController.get(
 );
 
 EEWorkflowController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';

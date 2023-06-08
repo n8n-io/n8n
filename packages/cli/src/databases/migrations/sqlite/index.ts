@@ -36,6 +36,7 @@ import { CreateExecutionMetadataTable1679416281777 } from './1679416281777-Creat
 import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { SeparateExecutionData1682411848784 } from './1682411848784-SeparateExecutionData';
+import { MigrateIntegerKeysToString1690000000002 } from './1690000000002-MigrateIntegerKeysToString';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -75,6 +76,7 @@ const sqliteMigrations: Migration[] = [
 	CreateExecutionMetadataTable1679416281777,
 	AddUserActivatedProperty1681134145996,
 	SeparateExecutionData1682411848784,
+	MigrateIntegerKeysToString1690000000002,
 ];
 
 export { sqliteMigrations };

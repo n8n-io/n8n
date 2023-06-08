@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import path from 'path';
 import {
 	VERSION_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -12,27 +12,13 @@ import glob from 'fast-glob';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { writeFile as fsWriteFile, readFile as fsReadFile, rm as fsRm } from 'fs/promises';
-import { VersionControlGitService } from './versionControlGit.service.ee';
 import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import { Variables } from '@/databases/entities/Variables';
-import type { ImportResult } from './types/importResult';
-import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
-import config from '@/config';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
-import { TagEntity } from '@/databases/entities/TagEntity';
-import { ActiveWorkflowRunner } from '../../ActiveWorkflowRunner';
-import without from 'lodash.without';
-import type { VersionControllPullOptions } from './types/versionControlPullWorkFolder';
+import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { versionControlFoldersExistCheck } from './versionControlHelper.ee';
-import { In } from 'typeorm';
 
 @Service()
 export class VersionControlExportService {
@@ -42,7 +28,7 @@ export class VersionControlExportService {
 
 	private credentialExportFolder: string;
 
-	constructor(private gitService: VersionControlGitService) {
+	constructor() {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, VERSION_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, VERSION_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -94,42 +80,6 @@ export class VersionControlExportService {
 		} catch (error) {
 			return undefined;
 		}
-	}
-
-	private async getOwnerGlobalRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'global' },
-		});
-
-		if (!ownerCredentiallRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return ownerCredentiallRole;
-	}
-
-	private async getOwnerCredentialRole() {
-		const ownerCredentiallRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'credential' },
-		});
-
-		if (!ownerCredentiallRole) {
-			throw new Error(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return ownerCredentiallRole;
-	}
-
-	private async getOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'workflow' },
-		});
-
-		if (!ownerWorkflowRole) {
-			throw new Error(`Failed to find owner workflow role. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return ownerWorkflowRole;
 	}
 
 	async cleanWorkFolder() {
@@ -284,6 +234,14 @@ export class VersionControlExportService {
 		try {
 			versionControlFoldersExistCheck([this.gitFolder]);
 			const tags = await Db.collections.Tag.find();
+			// do not export empty tags
+			if (tags.length === 0) {
+				return {
+					count: 0,
+					folder: this.gitFolder,
+					files: [],
+				};
+			}
 			const mappings = await Db.collections.WorkflowTagMapping.find();
 			const fileName = this.getTagsPath();
 			await fsWriteFile(
@@ -370,305 +328,6 @@ export class VersionControlExportService {
 			};
 		} catch (error) {
 			throw Error(`Failed to export credentials to work folder: ${(error as Error).message}`);
-		}
-	}
-
-	private async importCredentialsFromFiles(
-		userId: string,
-	): Promise<Array<{ id: string; name: string; type: string }>> {
-		const credentialFiles = await glob('*.json', {
-			cwd: this.credentialExportFolder,
-			absolute: true,
-		});
-		const existingCredentials = await Db.collections.Credentials.find();
-		const ownerCredentialRole = await this.getOwnerCredentialRole();
-		const ownerGlobalRole = await this.getOwnerGlobalRole();
-		const encryptionKey = await UserSettings.getEncryptionKey();
-		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
-		await Db.transaction(async (transactionManager) => {
-			importCredentialsResult = await Promise.all(
-				credentialFiles.map(async (file) => {
-					LoggerProxy.debug(`Importing credentials file ${file}`);
-					const credential = jsonParse<ExportableCredential>(
-						await fsReadFile(file, { encoding: 'utf8' }),
-					);
-					const existingCredential = existingCredentials.find(
-						(e) => e.id === credential.id && e.type === credential.type,
-					);
-					const sharedOwner = await Db.collections.SharedCredentials.findOne({
-						select: ['userId'],
-						where: {
-							credentialsId: credential.id,
-							roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
-						},
-					});
-
-					const { name, type, data, id } = credential;
-					const newCredentialObject = new Credentials({ id, name }, type, []);
-					if (existingCredential?.data) {
-						newCredentialObject.data = existingCredential.data;
-					} else {
-						newCredentialObject.setData(data, encryptionKey);
-					}
-					if (existingCredential?.nodesAccess) {
-						newCredentialObject.nodesAccess = existingCredential.nodesAccess;
-					}
-
-					LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
-					await transactionManager.upsert(CredentialsEntity, newCredentialObject, ['id']);
-
-					if (!sharedOwner) {
-						const newSharedCredential = new SharedCredentials();
-						newSharedCredential.credentialsId = newCredentialObject.id as string;
-						newSharedCredential.userId = userId;
-						newSharedCredential.roleId = ownerGlobalRole.id;
-
-						await transactionManager.upsert(SharedCredentials, { ...newSharedCredential }, [
-							'credentialsId',
-							'userId',
-						]);
-					}
-
-					// TODO: once IDs are unique, remove this
-					if (config.getEnv('database.type') === 'postgresdb') {
-						await transactionManager.query(
-							"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
-						);
-					}
-					return {
-						id: newCredentialObject.id as string,
-						name: newCredentialObject.name,
-						type: newCredentialObject.type,
-					};
-				}),
-			);
-		});
-		return importCredentialsResult.filter((e) => e !== undefined);
-	}
-
-	private async importVariablesFromFile(valueOverrides?: {
-		[key: string]: string;
-	}): Promise<{ added: string[]; changed: string[] }> {
-		const variablesFile = await glob(VERSION_CONTROL_VARIABLES_EXPORT_FILE, {
-			cwd: this.gitFolder,
-			absolute: true,
-		});
-		if (variablesFile.length > 0) {
-			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
-			const overriddenKeys = Object.keys(valueOverrides ?? {});
-			const importedVariables = jsonParse<Variables[]>(
-				await fsReadFile(variablesFile[0], { encoding: 'utf8' }),
-				{ fallbackValue: [] },
-			);
-			const importedKeys = importedVariables.map((variable) => variable.key);
-			const existingVariables = await Db.collections.Variables.find();
-			const existingKeys = existingVariables.map((variable) => variable.key);
-			const addedKeysFromImport = without(importedKeys, ...existingKeys);
-			const addedKeysFromOverride = without(overriddenKeys, ...existingKeys);
-			const addedVariables = importedVariables.filter((e) => addedKeysFromImport.includes(e.key));
-			addedKeysFromOverride.forEach((key) => {
-				addedVariables.push({
-					key,
-					value: valueOverrides ? valueOverrides[key] : '',
-					type: 'string',
-				} as Variables);
-			});
-
-			// first round, add missing variable keys to Db without touching values
-			await Db.transaction(async (transactionManager) => {
-				await Promise.all(
-					addedVariables.map(async (addedVariable) => {
-						await transactionManager.insert(Variables, {
-							...addedVariable,
-							id: undefined,
-						});
-					}),
-				);
-			});
-
-			// second round, update values of existing variables if overridden
-			if (valueOverrides) {
-				await Db.transaction(async (transactionManager) => {
-					await Promise.all(
-						overriddenKeys.map(async (key) => {
-							await transactionManager.update(Variables, { key }, { value: valueOverrides[key] });
-						}),
-					);
-				});
-			}
-			return {
-				added: [...addedKeysFromImport, ...addedKeysFromOverride],
-				changed: without(overriddenKeys, ...addedKeysFromOverride),
-			};
-		}
-		return { added: [], changed: [] };
-	}
-
-	private async importTagsFromFile() {
-		const tagsFile = await glob(VERSION_CONTROL_TAGS_EXPORT_FILE, {
-			cwd: this.gitFolder,
-			absolute: true,
-		});
-		if (tagsFile.length > 0) {
-			LoggerProxy.debug(`Importing tags from file ${tagsFile[0]}`);
-			const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
-				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
-				{ fallbackValue: { tags: [], mappings: [] } },
-			);
-			const existingWorkflowIds = new Set(
-				(
-					await Db.collections.Workflow.find({
-						select: ['id'],
-					})
-				).map((e) => e.id),
-			);
-
-			await Db.transaction(async (transactionManager) => {
-				await Promise.all(
-					mappedTags.tags.map(async (tag) => {
-						await transactionManager.upsert(
-							TagEntity,
-							{
-								...tag,
-							},
-							{
-								skipUpdateIfNoValuesChanged: true,
-								conflictPaths: { id: true },
-							},
-						);
-					}),
-				);
-				await Promise.all(
-					mappedTags.mappings.map(async (mapping) => {
-						if (!existingWorkflowIds.has(String(mapping.workflowId))) return;
-						await transactionManager.upsert(
-							WorkflowTagMapping,
-							{ tagId: String(mapping.tagId), workflowId: String(mapping.workflowId) },
-							{
-								skipUpdateIfNoValuesChanged: true,
-								conflictPaths: { tagId: true, workflowId: true },
-							},
-						);
-					}),
-				);
-			});
-			return mappedTags;
-		}
-		return { tags: [], mappings: [] };
-	}
-
-	private async importWorkflowsFromFiles(
-		userId: string,
-	): Promise<Array<{ id: string; name: string }>> {
-		const workflowFiles = await glob('*.json', {
-			cwd: this.workflowExportFolder,
-			absolute: true,
-		});
-
-		const existingWorkflows = await Db.collections.Workflow.find({
-			select: ['id', 'name', 'active', 'versionId'],
-		});
-
-		const ownerWorkflowRole = await this.getOwnerWorkflowRole();
-		const workflowRunner = Container.get(ActiveWorkflowRunner);
-
-		let importWorkflowsResult = new Array<{ id: string; name: string }>();
-		// TODO: once IDs are unique and we removed autoincrement, remove this
-		if (config.getEnv('database.type') === 'postgresdb') {
-			await Db.transaction(async (transactionManager) => {
-				await transactionManager.query(
-					'ALTER SEQUENCE IF EXISTS "workflow_entity_id_seq" RESTART;',
-				);
-				await transactionManager.query(
-					"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity) );",
-					// "SELECT setval('workflow_entity_id_seq', (SELECT MAX(v) FROM (VALUES (1), ((SELECT MAX(id) from workflow_entity))) as value(v)));",
-				);
-			});
-		}
-		await Db.transaction(async (transactionManager) => {
-			importWorkflowsResult = await Promise.all(
-				workflowFiles.map(async (file) => {
-					LoggerProxy.debug(`Parsing workflow file ${file}`);
-					const importedWorkflow = jsonParse<IWorkflowToImport>(
-						await fsReadFile(file, { encoding: 'utf8' }),
-					);
-					const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
-					if (existingWorkflow?.versionId === importedWorkflow.versionId) {
-						LoggerProxy.debug(
-							`Skipping import of workflow ${
-								importedWorkflow.id ?? 'n/a'
-							} - versionId is up to date`,
-						);
-						return {
-							id: importedWorkflow.id ?? 'n/a',
-							name: 'skipped',
-						};
-					}
-					LoggerProxy.debug(`Importing workflow ${importedWorkflow.id ?? 'n/a'}`);
-					importedWorkflow.active = existingWorkflow?.active ?? false;
-					LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
-					const upsertResult = await transactionManager.upsert(
-						WorkflowEntity,
-						{ ...importedWorkflow },
-						['id'],
-					);
-					if (upsertResult?.identifiers?.length !== 1) {
-						throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
-					}
-					// due to sequential Ids, this may have changed during the insert
-					// TODO: once IDs are unique and we removed autoincrement, remove this
-					const upsertedWorkflowId = upsertResult.identifiers[0].id as string;
-					await transactionManager.upsert(
-						SharedWorkflow,
-						{
-							workflowId: upsertedWorkflowId,
-							userId,
-							roleId: ownerWorkflowRole.id,
-						},
-						['workflowId', 'userId'],
-					);
-
-					if (existingWorkflow?.active) {
-						try {
-							// remove active pre-import workflow
-							LoggerProxy.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-							await workflowRunner.remove(existingWorkflow.id);
-							// try activating the imported workflow
-							LoggerProxy.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-							await workflowRunner.add(existingWorkflow.id, 'activate');
-						} catch (error) {
-							LoggerProxy.error(
-								`Failed to activate workflow ${existingWorkflow.id}`,
-								error as Error,
-							);
-						}
-					}
-
-					return {
-						id: importedWorkflow.id ?? 'unknown',
-						name: file,
-					};
-				}),
-			);
-		});
-		return importWorkflowsResult;
-	}
-
-	async importFromWorkFolder(options: VersionControllPullOptions): Promise<ImportResult> {
-		try {
-			const importedVariables = await this.importVariablesFromFile(options.variables);
-			const importedCredentials = await this.importCredentialsFromFiles(options.userId);
-			const importWorkflows = await this.importWorkflowsFromFiles(options.userId);
-			const importTags = await this.importTagsFromFile();
-
-			return {
-				variables: importedVariables,
-				credentials: importedCredentials,
-				workflows: importWorkflows,
-				tags: importTags,
-			};
-		} catch (error) {
-			throw Error(`Failed to import workflows from work folder: ${(error as Error).message}`);
 		}
 	}
 }

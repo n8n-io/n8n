@@ -45,6 +45,7 @@ export class VersionControlPreferencesService {
 		};
 	}
 
+	// merge the new preferences with the existing preferences when setting
 	public set versionControlPreferences(preferences: Partial<VersionControlPreferences>) {
 		this._versionControlPreferences = VersionControlPreferences.merge(
 			preferences,
