@@ -142,7 +142,7 @@ importers:
     dependencies:
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -223,7 +223,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -656,7 +656,7 @@ importers:
         version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
@@ -904,7 +904,7 @@ importers:
         version: 5.13.2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -5631,6 +5631,38 @@ packages:
     dev: false
     optional: true
 
+  /@oclif/command@1.8.18(@oclif/config@1.18.2):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.2
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.3.8
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@oclif/command@1.8.18(@oclif/config@1.18.5):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.5(supports-color@8.1.1)
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.3.8
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@oclif/command@1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
@@ -5712,7 +5744,7 @@ packages:
     engines: {node: '>=8.10.0'}
     hasBin: true
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.5)
       '@oclif/config': 1.18.5(supports-color@8.1.1)
       '@oclif/errors': 1.3.6
       '@oclif/plugin-help': 3.2.18
@@ -5782,7 +5814,7 @@ packages:
     resolution: {integrity: sha512-5n5Pkz4L0duknIvFwx2Ko9Xda3miT6RZP8bgaaK3Q/9fzVBrhi4bOM0u05/OThI6V+3NsSdxYS2o1NLcXToWDg==}
     engines: {node: '>=8.0.0'}
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.2)
       '@oclif/config': 1.18.2
       '@oclif/errors': 1.3.5
       '@oclif/help': 1.0.3(supports-color@8.1.1)
@@ -5842,7 +5874,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4(debug@4.3.2)
+      axios: 0.21.4
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -9671,6 +9703,14 @@ packages:
     dependencies:
       '@babel/runtime': 7.19.4
       is-retry-allowed: 2.2.0
+    dev: false
+
+  /axios@0.21.4:
+    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@3.2.7)
+    transitivePeerDependencies:
+      - debug
     dev: false
 
   /axios@0.21.4(debug@4.3.2):

@@ -16,13 +16,10 @@ export async function recoverExecutionDataFromEventLogMessages(
 	messages: EventMessageTypes[],
 	applyToDb = true,
 ): Promise<IRunExecutionData | undefined> {
-	const executionEntry = (await Container.get(ExecutionRepository).findSingleExecution(
-		executionId,
-		{
-			includeData: true,
-			unflattenData: true,
-		},
-	)) as IExecutionResponse;
+	const executionEntry = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
+		includeData: true,
+		unflattenData: true,
+	});
 
 	if (executionEntry && messages) {
 		let executionData = executionEntry.data;

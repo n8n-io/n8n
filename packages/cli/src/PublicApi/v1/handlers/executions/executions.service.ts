@@ -22,20 +22,6 @@ function getStatusCondition(status: ExecutionStatus) {
 	return condition;
 }
 
-function getExecutionSelectableProperties(): Array<keyof ExecutionEntity> {
-	return [
-		'id',
-		'mode',
-		'retryOf',
-		'retrySuccessId',
-		'startedAt',
-		'stoppedAt',
-		'workflowId',
-		'waitTill',
-		'finished',
-	];
-}
-
 export async function getExecutions(params: {
 	limit: number;
 	includeData?: boolean;
@@ -65,9 +51,19 @@ export async function getExecutions(params: {
 		where = { ...where, workflowId: In(params.workflowIds) };
 	}
 
-	const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+	return Container.get(ExecutionRepository).findMultipleExecutions(
 		{
-			select: getExecutionSelectableProperties(),
+			select: [
+				'id',
+				'mode',
+				'retryOf',
+				'retrySuccessId',
+				'startedAt',
+				'stoppedAt',
+				'workflowId',
+				'waitTill',
+				'finished',
+			],
 			where,
 			order: { id: 'DESC' },
 			take: params.limit,
@@ -78,8 +74,6 @@ export async function getExecutions(params: {
 			unflattenData: true,
 		},
 	);
-
-	return executions;
 }
 
 export async function getExecutionsCount(data: {

@@ -4,8 +4,6 @@ export class SeparateExecutionData1682411848784 implements ReversibleMigration {
 	name = 'SeparateExecutionData1682411848784';
 
 	async up({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}execution_data" (
 				"executionId" int PRIMARY KEY NOT NULL,
@@ -28,13 +26,9 @@ export class SeparateExecutionData1682411848784 implements ReversibleMigration {
 			`ALTER TABLE \`${tablePrefix}execution_entity\` DROP COLUMN "workflowData"`,
 		);
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}execution_entity\` DROP COLUMN "data"`);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 
 	async down({ queryRunner, tablePrefix }: MigrationContext): Promise<void> {
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}execution_entity\` ADD COLUMN "workflowData" text NOT NULL`,
 		);
@@ -55,7 +49,5 @@ export class SeparateExecutionData1682411848784 implements ReversibleMigration {
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}execution_entity\` DROP COLUMN "data"`);
 
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_data"`);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 }

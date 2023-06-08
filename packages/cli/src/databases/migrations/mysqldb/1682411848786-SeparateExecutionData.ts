@@ -4,11 +4,10 @@ export class SeparateExecutionData1682411848786 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}execution_data (
-				executionId int(11) NOT NULL,
+				executionId int(11) NOT NULL primary key,
 				workflowData json NOT NULL,
 				data TEXT NOT NULL,
-				CONSTRAINT \`${tablePrefix}execution_data_FK\` FOREIGN KEY (\`executionId\`) REFERENCES \`${tablePrefix}execution_entity\` (\`id\`) ON DELETE CASCADE,
-				INDEX \`IDX_${tablePrefix}30c3c0bedf58476bf6d26d1aefbbdf73\` (\`executionId\` ASC)
+				CONSTRAINT \`${tablePrefix}execution_data_FK\` FOREIGN KEY (\`executionId\`) REFERENCES \`${tablePrefix}execution_entity\` (\`id\`) ON DELETE CASCADE
 			)
 			ENGINE=InnoDB`,
 		);

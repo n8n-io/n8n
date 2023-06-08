@@ -90,12 +90,15 @@ export class Worker extends BaseCommand {
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const executionDb = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
+		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+			executionId,
+			{
+				includeData: true,
+				unflattenData: true,
+			},
+		);
 
-		if (!executionDb) {
+		if (!fullExecutionData) {
 			LoggerProxy.error(
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
@@ -104,14 +107,14 @@ export class Worker extends BaseCommand {
 				`Unable to find data of execution "${executionId}" in database. Aborting execution.`,
 			);
 		}
-		const workflowId = executionDb.workflowData.id!;
+		const workflowId = fullExecutionData.workflowData.id!;
 		LoggerProxy.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
 		const workflowOwner = await getWorkflowOwner(workflowId);
 
-		let { staticData } = executionDb.workflowData;
+		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
 			const workflowData = await Db.collections.Workflow.findOne({
 				select: ['id', 'staticData'],
@@ -129,7 +132,7 @@ export class Worker extends BaseCommand {
 			staticData = workflowData.staticData;
 		}
 
-		const workflowSettings = executionDb.workflowData.settings ?? {};
+		const workflowSettings = fullExecutionData.workflowData.settings ?? {};
 
 		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 
@@ -141,13 +144,13 @@ export class Worker extends BaseCommand {
 
 		const workflow = new Workflow({
 			id: workflowId,
-			name: executionDb.workflowData.name,
-			nodes: executionDb.workflowData.nodes,
-			connections: executionDb.workflowData.connections,
-			active: executionDb.workflowData.active,
+			name: fullExecutionData.workflowData.name,
+			nodes: fullExecutionData.workflowData.nodes,
+			connections: fullExecutionData.workflowData.connections,
+			active: fullExecutionData.workflowData.active,
 			nodeTypes,
 			staticData,
-			settings: executionDb.workflowData.settings,
+			settings: fullExecutionData.workflowData.settings,
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
@@ -156,10 +159,10 @@ export class Worker extends BaseCommand {
 			executionTimeoutTimestamp,
 		);
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
-			executionDb.mode,
+			fullExecutionData.mode,
 			job.data.executionId,
-			executionDb.workflowData,
-			{ retryOf: executionDb.retryOf as string },
+			fullExecutionData.workflowData,
+			{ retryOf: fullExecutionData.retryOf as string },
 		);
 
 		try {
@@ -167,7 +170,7 @@ export class Worker extends BaseCommand {
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				const failedExecution = generateFailedExecutionFromError(
-					executionDb.mode,
+					fullExecutionData.mode,
 					error,
 					error.node,
 				);
@@ -195,13 +198,17 @@ export class Worker extends BaseCommand {
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
-		if (executionDb.data !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, executionDb.mode, executionDb.data);
+		if (fullExecutionData.data !== undefined) {
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				fullExecutionData.mode,
+				fullExecutionData.data,
+			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes
 			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, executionDb.mode);
+			workflowExecute = new WorkflowExecute(additionalData, fullExecutionData.mode);
 			workflowRun = workflowExecute.run(workflow);
 		}
 

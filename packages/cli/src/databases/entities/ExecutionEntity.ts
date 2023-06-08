@@ -8,10 +8,10 @@ import {
 	OneToMany,
 	OneToOne,
 	PrimaryColumn,
+	Relation,
 } from 'typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { ExecutionData } from './ExecutionData';
 import type { ExecutionMetadata } from './ExecutionMetadata';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -59,7 +59,7 @@ export class ExecutionEntity {
 	metadata: ExecutionMetadata[];
 
 	@OneToOne('ExecutionData', 'execution')
-	executionData: ExecutionData;
+	executionData: Relation<ExecutionData>;
 
 	@ManyToOne('WorkflowEntity')
 	workflow: WorkflowEntity;

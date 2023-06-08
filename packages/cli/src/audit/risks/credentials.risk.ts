@@ -46,7 +46,7 @@ async function getExecutionsInPastDays(days: number) {
 
 	const utcDate = DateUtils.mixedDateToUtcDatetimeString(date) as string;
 
-	const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
+	return Container.get(ExecutionRepository).findMultipleExecutions(
 		{
 			where: {
 				startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
@@ -54,8 +54,6 @@ async function getExecutionsInPastDays(days: number) {
 		},
 		{ includeData: true },
 	);
-
-	return executions;
 }
 
 /**

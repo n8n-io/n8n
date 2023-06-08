@@ -17,7 +17,7 @@ export class ExecutionData {
 	@Column(jsonColumnType)
 	workflowData: IWorkflowBase;
 
-	@PrimaryColumn({ nullable: false, transformer: idStringifier })
+	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;
 
 	@ManyToOne('ExecutionEntity', 'data', {

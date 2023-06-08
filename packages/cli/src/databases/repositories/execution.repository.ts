@@ -27,7 +27,7 @@ import config from '@/config';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
-	filters: IGetExecutionsQueryFilter | undefined,
+	filters?: IGetExecutionsQueryFilter,
 ) {
 	if (filters?.status) {
 		qb.andWhere('execution.status IN (:...workflowStatus)', {
@@ -132,9 +132,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return executions.map((execution) => {
 			const { executionData, ...rest } = execution;
-			return {
-				...rest,
-			} as IExecutionBase;
+			return rest;
 		});
 	}
 
@@ -202,17 +200,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			} as IExecutionFlattedDb;
 		}
 
-		return {
-			...rest,
-		} as IExecutionBase;
+		return rest;
 	}
 
 	async createNewExecution(execution: IExecutionDb) {
 		const { data, workflowData, ...rest } = execution;
 
-		const newExecution = await this.save({
-			...rest,
-		});
+		const newExecution = await this.save(rest);
 		await this.executionDataRepository.save({
 			execution: newExecution,
 			workflowData,
@@ -232,7 +226,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		if (data || workflowData) {
-			const executionData = {} as Partial<ExecutionData>;
+			const executionData: Partial<ExecutionData> = {};
 			if (workflowData) {
 				executionData.workflowData = workflowData;
 			}
@@ -240,7 +234,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				executionData.data = stringify(data);
 			}
 			// @ts-ignore
-			await this.executionDataRepository.update({ executionId }, { ...executionData });
+			await this.executionDataRepository.update({ executionId }, executionData);
 		}
 	}
 
