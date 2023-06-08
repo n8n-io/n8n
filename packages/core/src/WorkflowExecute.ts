@@ -20,6 +20,7 @@ import type {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	IPairedItemData,
 	IPinData,
 	IRun,
 	IRunData,
@@ -1018,10 +1019,26 @@ export class WorkflowExecute {
 
 							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
 								if (executionData.node.alwaysOutputData === true) {
+									const pairedItem: IPairedItemData[] = [];
+
+									// Get pairedItem from all input items
+									executionData.data.main.forEach((inputData, inputIndex) => {
+										if (!inputData) {
+											return;
+										}
+										inputData.forEach((item, itemIndex) => {
+											pairedItem.push({
+												item: itemIndex,
+												input: inputIndex,
+											});
+										});
+									});
+
 									nodeSuccessData = nodeSuccessData || [];
 									nodeSuccessData[0] = [
 										{
 											json: {},
+											pairedItem,
 										},
 									];
 								}
