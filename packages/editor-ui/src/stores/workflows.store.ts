@@ -660,6 +660,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		addConnection(data: { connection: IConnection[] }): void {
+			console.log('🚀 ~ file: workflows.store.ts:663 ~ addConnection ~ data:', data);
 			if (data.connection.length !== 2) {
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned

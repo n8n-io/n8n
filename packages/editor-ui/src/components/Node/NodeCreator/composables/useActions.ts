@@ -1,5 +1,6 @@
 import { getCurrentInstance, computed } from 'vue';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import { isEmpty } from '@/utils/typesUtils';
 import type {
 	ActionTypeDescription,
 	INodeCreateElement,
@@ -179,14 +180,16 @@ export const useActions = () => {
 		action: IUpdateInformation,
 		telemetry?: Telemetry,
 		rootView = '',
+		onDone: () => void = () => {},
 	) {
 		const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 		const storeWatcher = onWorkflowStoreAction(
 			({ name, after, store: { setLastNodeParameters }, args }) => {
 				if (name !== 'addNode' || args[0].type !== action.key) return;
 				after(() => {
-					setLastNodeParameters(action);
+					if (!isEmpty(action.value)) setLastNodeParameters(action);
 					if (telemetry) trackActionSelected(action, telemetry, rootView);
+					onDone();
 					// Unsubscribe from the store watcher
 					storeWatcher();
 				});

@@ -114,12 +114,12 @@ export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation'
 	}
 
 	function attachKeydownEvent() {
-		document.addEventListener('keydown', onKeyDown, { capture: true });
+		document.addEventListener('keydown', onKeyDown, { capture: false });
 	}
 
 	function detachKeydownEvent() {
 		cleanupSelectableItems();
-		document.removeEventListener('keydown', onKeyDown, { capture: true });
+		document.removeEventListener('keydown', onKeyDown, { capture: false });
 	}
 
 	function registerKeyHook(name: string, hook: KeyHook) {

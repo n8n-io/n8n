@@ -267,6 +267,16 @@ export function useActionsGenerator() {
 				}
 			});
 
+		const nodesWithoutActions = mergedNodes
+			.filter((node) => actions[node.name]?.length === 0)
+			.map((n) => ({
+				...getSimplifiedNodeType(n),
+				actionKey: n.name,
+			}))
+			.forEach((nodeAction) => {
+				actions[nodeAction.name] = [nodeAction];
+			});
+
 		return {
 			actions,
 			mergedNodes,

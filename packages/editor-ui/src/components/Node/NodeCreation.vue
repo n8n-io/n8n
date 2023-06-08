@@ -32,6 +32,7 @@
 			:active="createNodeActive"
 			@nodeTypeSelected="nodeTypeSelected"
 			@closeNodeCreator="closeNodeCreator"
+			@reset="$emit('reset')"
 		/>
 	</div>
 </template>
@@ -47,11 +48,12 @@ import {
 } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
+import NodeCreator from '@/components/Node/NodeCreator/NodeCreator.vue';
 
 export default defineComponent({
 	name: 'node-creation',
 	components: {
-		NodeCreator: async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+		NodeCreator,
 	},
 	props: {
 		nodeViewScale: {

@@ -100,6 +100,7 @@
 				:node-view-scale="nodeViewScale"
 				@toggleNodeCreator="onToggleNodeCreator"
 				@addNode="onAddNode"
+				@reset="resetCanvas"
 			/>
 			<canvas-controls />
 			<div class="workflow-execute-wrapper" v-if="!isReadOnly">
@@ -310,13 +311,13 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/endpoints/N8nPlusEndpointType';
+import NodeCreation from '@/components/Node/NodeCreation.vue';
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
 
-const NodeCreation = async () => import('@/components/Node/NodeCreation.vue');
 const CanvasControls = async () => import('@/components/CanvasControls.vue');
 
 export default defineComponent({
@@ -859,6 +860,31 @@ export default defineComponent({
 			});
 			this.stopLoading();
 		},
+		async resetCanvas() {
+			const nodes = JSON.stringify(this.workflowsStore.allNodes);
+			const connections = JSON.stringify(this.workflowsStore.allConnections);
+
+			await this.saveCurrentWorkflow({}, false, true);
+			// Reset all nodes and connections to load the new ones
+			this.deleteEveryEndpoint();
+
+			this.workflowsStore.removeAllConnections({ setStateDirty: false });
+			this.workflowsStore.removeAllNodes({ removePinData: false, setStateDirty: true });
+
+			// Wait a tick that the old nodes had time to get removed
+			await Vue.nextTick();
+
+			// Add the new updated nodes
+			try {
+				await this.addNodes(JSON.parse(nodes), JSON.parse(connections), false);
+				// Make sure that the node is selected again
+				this.deselectAllNodes();
+
+				this.canvasStore.zoomToFit();
+			} catch (error) {
+				this.showError(error, 'Failed to insert nodes');
+			}
+		},
 		async openWorkflow(workflow: IWorkflowDb) {
 			this.startLoading();
 
@@ -949,6 +975,9 @@ export default defineComponent({
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
+			if (['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName)) {
+				return;
+			}
 			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
 				e.stopPropagation();
 				e.preventDefault();
@@ -1264,28 +1293,24 @@ export default defineComponent({
 			this.nodeSelectedByName(lastSelectedNode.name);
 		},
 
-		pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
+		async pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
 			const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
 			const workflow = this.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(sourceNodeName);
+
 			for (const nodeName of childNodes) {
 				const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
 				const oldPosition = node.position;
 
-				if (node.position[0] < sourceNode.position[0]) {
-					continue;
-				}
-
 				const updateInformation: INodeUpdatePropertiesInformation = {
 					name: nodeName,
 					properties: {
-						position: [node.position[0] + margin, node.position[1]],
+						position: [node.position[0] + margin, node.position[1] + margin],
 					},
 				};
 
 				this.workflowsStore.updateNodeProperties(updateInformation);
 				this.onNodeMoved(node);
-
 				if (
 					(recordHistory && oldPosition[0] !== node.position[0]) ||
 					oldPosition[1] !== node.position[1]
@@ -1924,10 +1949,7 @@ export default defineComponent({
 			if (trackHistory) {
 				this.deselectAllNodes();
 				setTimeout(() => {
-					this.nodeSelectedByName(
-						newNodeData.name,
-						showDetail && nodeTypeName !== STICKY_NODE_TYPE,
-					);
+					// this.nodeSelectedByName(newNodeData.name, false);
 				});
 			}
 
@@ -3253,6 +3275,7 @@ export default defineComponent({
 				}
 
 				this.workflowsStore.addNode(node);
+
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(new AddNodeCommand(node));
 				}
@@ -3811,6 +3834,8 @@ export default defineComponent({
 		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.startLoading();
+		window.__downstream = this.pushDownstreamNodes;
+		window.__reset = this.resetCanvas;
 		const loadPromises = [
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),

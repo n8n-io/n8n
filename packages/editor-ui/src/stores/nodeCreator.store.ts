@@ -7,7 +7,7 @@ import type {
 	ActionsRecord,
 } from '@/Interface';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
@@ -37,12 +37,15 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openSource.value = view;
 	}
 
+	const getActions = computed(() => actions.value);
+
 	return {
 		openSource,
 		selectedView,
 		showScrim,
 		mergedNodes,
 		actions,
+		getActions,
 		setShowScrim,
 		setSelectedView,
 		setOpenSource,

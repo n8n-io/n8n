@@ -16,6 +16,7 @@
 				<NodesListPanel @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
 		</slide-transition>
+		<AiWorkflow @nodeTypeSelected="$listeners.nodeTypeSelected" @reset="$emit('reset')" />
 	</div>
 </template>
 
@@ -30,6 +31,7 @@ import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
+import AiWorkflow from './AI/index.vue';
 
 export interface Props {
 	active?: boolean;
@@ -129,10 +131,14 @@ registerKeyHook('NodeCreatorCloseTab', {
 	handler: () => emit('closeNodeCreator'),
 });
 
+console.log('Node creatorrr');
 watch(
 	() => useNodeTypesStore().visibleNodeTypes,
 	(nodeTypes) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+		console.log('Visible node types changed');
+		const { actions, mergedNodes } = generateMergedNodesAndActions(
+			useNodeTypesStore().visibleNodeTypes,
+		);
 
 		setActions(actions);
 		setMergeNodes(mergedNodes);
