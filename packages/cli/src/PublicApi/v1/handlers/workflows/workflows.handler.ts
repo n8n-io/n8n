@@ -152,8 +152,9 @@ export = {
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
-			const updateData = new WorkflowEntity({ id });
+			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
+			updateData.id = id;
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
