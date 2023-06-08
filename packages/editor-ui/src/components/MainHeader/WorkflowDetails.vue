@@ -202,13 +202,15 @@ export default defineComponent({
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
 			interval: null as NodeJS.Timer | null,
+			locallySavedWorkflow: null as string | null,
 			EnterpriseEditionFeature,
 		};
 	},
 	mounted() {
 		this.interval = setInterval(() => {
 			if (this.isDirty && !this.isNewWorkflow && !this.isWorkflowSaving && !this.isWorkflowActive) {
-				this.onSaveButtonClick();
+				// this.onSaveButtonClick();
+				this.loadData();
 			}
 		}, 2000);
 	},
@@ -296,6 +298,11 @@ export default defineComponent({
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 					label: this.$locale.baseText('menuActions.importFromFile'),
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
+				},
+				{
+					id: WORKFLOW_MENU_ACTIONS.RESTORE_FROM_LOCAL_STORAGE,
+					label: this.$locale.baseText('menuActions.restoreFromLocalStorage'),
 					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				},
 				{
@@ -507,6 +514,10 @@ export default defineComponent({
 					(this.$refs.importFile as HTMLInputElement).click();
 					break;
 				}
+				case WORKFLOW_MENU_ACTIONS.RESTORE_FROM_LOCAL_STORAGE: {
+					this.$root.$emit('restoreFromLocalStorage', { data: this.locallySavedWorkflow });
+					break;
+				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
 					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 					break;
@@ -556,11 +567,20 @@ export default defineComponent({
 		goToUpgrade() {
 			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
+		async loadData() {
+			console.log('SAVING');
+			const data = await this.getWorkflowDataToSave();
+			window.localStorage.setItem(this.currentWorkflowId, JSON.stringify(data));
+		},
 	},
 	watch: {
-		currentWorkflowId() {
+		currentWorkflowId(newValue) {
 			this.$data.isTagsEditEnabled = false;
 			this.$data.isNameEditEnabled = false;
+			this.$data.locallySavedWorkflow = window.localStorage.getItem(newValue);
+		},
+		isDirty(newValue, oldValue) {
+			this.loadData();
 		},
 	},
 });

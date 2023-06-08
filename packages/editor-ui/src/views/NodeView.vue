@@ -3618,6 +3618,13 @@ export default defineComponent({
 				await this.importWorkflowData(workflowData, 'url');
 			}
 		},
+		async onRestoreFromLocalStorageEvent(data: IDataObject) {
+			console.log(data.data)
+			this.workflowsStore.removeAllConnections({ setStateDirty: false });
+			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
+			await this.importWorkflowData(JSON.parse(data.data) as IWorkflowDataUpdate, 'file');
+			this.canvasStore.zoomToFit();
+		},
 		addPinDataConnections(pinData: IPinData) {
 			Object.keys(pinData).forEach((nodeName) => {
 				const node = this.workflowsStore.getNodeByName(nodeName);
@@ -3891,6 +3898,7 @@ export default defineComponent({
 		this.$root.$on('newWorkflow', this.newWorkflow);
 		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		this.$root.$on('restoreFromLocalStorage', this.onRestoreFromLocalStorageEvent);
 		historyBus.on('nodeMove', this.onMoveNode);
 		historyBus.on('revertAddNode', this.onRevertAddNode);
 		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
@@ -3916,6 +3924,7 @@ export default defineComponent({
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		this.$root.$off('restoreFromLocalStorage', this.onRestoreFromLocalStorageEvent);
 		historyBus.off('nodeMove', this.onMoveNode);
 		historyBus.off('revertAddNode', this.onRevertAddNode);
 		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
@@ -3937,6 +3946,7 @@ export default defineComponent({
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		this.$root.$off('restoreFromLocalStorage', this.onRestoreFromLocalStorageEvent);
 		this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 	},
 });

@@ -428,6 +428,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	RESTORE_FROM_LOCAL_STORAGE = 'restore-from-local-storage',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }

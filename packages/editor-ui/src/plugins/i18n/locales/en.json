@@ -634,6 +634,7 @@
 	"menuActions.download": "Download",
 	"menuActions.importFromUrl": "Import from URL...",
 	"menuActions.importFromFile": "Import from File...",
+	"menuActions.restoreFromLocalStorage": "Restore from Local Storage...",
 	"menuActions.delete": "Delete",
 	"multipleParameter.addItem": "Add item",
 	"multipleParameter.currentlyNoItemsExist": "Currently no items exist",
