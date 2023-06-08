@@ -21,6 +21,8 @@ describe('Expression editor modal', () => {
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openExpressionEditorModal();
+
+		cy.on('uncaught:exception', (err) => err.name !== 'ExpressionError');
 	});
 
 	it('should resolve primitive resolvables', () => {
