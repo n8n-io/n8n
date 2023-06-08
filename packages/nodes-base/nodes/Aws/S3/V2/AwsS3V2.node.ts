@@ -853,7 +853,7 @@ export class AwsS3V2 implements INodeType {
 									this,
 									`${bucketName}.s3`,
 									'POST',
-									`/${bucketName}-${this.getNode().id}?uploads`,
+									`${bucketName}/?uploads`,
 									body,
 									qs,
 									{ ...neededHeaders, ...multipartHeaders },
@@ -874,7 +874,7 @@ export class AwsS3V2 implements INodeType {
 											this,
 											`${bucketName}.s3`,
 											'PUT',
-											`/${bucketName}-${this.getNode().id}?partNumber=${part}&uploadId=${uploadId}`,
+											`/${bucketName}?partNumber=${part}&uploadId=${uploadId}`,
 											chunk,
 											qs,
 											listHeaders,
@@ -888,7 +888,7 @@ export class AwsS3V2 implements INodeType {
 												this,
 												`${bucketName}.s3`,
 												'DELETE',
-												`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+												`/${bucketName}?uploadId=${uploadId}`,
 											);
 										} catch (err) {
 											throw new NodeOperationError(this.getNode(), err as Error);
@@ -901,9 +901,7 @@ export class AwsS3V2 implements INodeType {
 									this,
 									`${bucketName}.s3`,
 									'GET',
-									`/${bucketName}-${
-										this.getNode().id
-									}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
+									`/${bucketName}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
 									'',
 									qs,
 									{ ...neededHeaders },
@@ -955,7 +953,7 @@ export class AwsS3V2 implements INodeType {
 									this,
 									`${bucketName}.s3`,
 									'POST',
-									`/${bucketName}-${this.getNode().id}?uploadId=${uploadId}`,
+									`/${bucketName}?uploadId=${uploadId}`,
 									data,
 									qs,
 									{
