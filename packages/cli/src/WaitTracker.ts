@@ -16,7 +16,6 @@ import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
 import type {
-	IExecutionFlattedDb,
 	IExecutionResponse,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
