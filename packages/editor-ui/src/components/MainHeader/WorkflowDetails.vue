@@ -303,7 +303,7 @@ export default defineComponent({
 				{
 					id: WORKFLOW_MENU_ACTIONS.RESTORE_FROM_LOCAL_STORAGE,
 					label: this.$locale.baseText('menuActions.restoreFromLocalStorage'),
-					disabled: !this.onWorkflowPage || this.onExecutionsTab,
+					disabled: !this.onWorkflowPage || this.onExecutionsTab || !this.locallySavedWorkflow,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
