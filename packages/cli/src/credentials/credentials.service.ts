@@ -307,8 +307,11 @@ export class CredentialsService {
 			if (!prop) {
 				continue;
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			if (prop.typeOptions?.password && !(copiedData[dataKey] as string).startsWith('=')) {
+
+			if (
+				prop.typeOptions?.password &&
+				(!(copiedData[dataKey] as string).startsWith('=') || prop.noDataExpression)
+			) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 			}
@@ -321,7 +324,6 @@ export class CredentialsService {
 	private static unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			if (value === CREDENTIAL_BLANKING_VALUE) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 				unmerged[key] = replacement[key];

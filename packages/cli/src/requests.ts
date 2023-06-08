@@ -13,7 +13,12 @@ import type {
 
 import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
-import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
+import type {
+	PublicUser,
+	IExecutionDeleteFilter,
+	IWorkflowDb,
+	SecretsProvider,
+} from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
@@ -404,7 +409,14 @@ export declare namespace VariablesRequest {
 }
 
 export declare namespace ExternalSecretsRequest {
+	type GetProviderResponse = Pick<SecretsProvider, 'displayName' | 'name' | 'properties'> & {
+		icon: string;
+		connected: boolean;
+		connectedAt: Date;
+		data: IDataObject;
+	};
+
 	type GetProviders = AuthenticatedRequest;
-	type GetProvider = AuthenticatedRequest<{ provider: string }>;
+	type GetProvider = AuthenticatedRequest<{ provider: string }, GetProviderResponse>;
 	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
 }

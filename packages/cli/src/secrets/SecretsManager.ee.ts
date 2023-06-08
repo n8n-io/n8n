@@ -1,7 +1,6 @@
 import { SettingsRepository } from '@/databases/repositories';
 import type {
 	ExternalSecretsSettings,
-	ProviderProperty,
 	SecretsProvider,
 	SecretsProviderSettings,
 } from '@/Interfaces';
@@ -12,7 +11,7 @@ import { Service } from 'typedi';
 import { AES, enc } from 'crypto-js';
 import { getLogger } from '@/Logger';
 
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 const logger = getLogger();
 
@@ -22,15 +21,19 @@ class DummyProvider implements SecretsProvider {
 		api_key: 'testapikey',
 	};
 
-	properties: ProviderProperty[] = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
 			name: 'username',
+			default: '',
+			placeholder: 'Username',
 			type: 'string',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
+			default: '',
+			placeholder: '*********',
 			type: 'string',
 			typeOptions: {
 				password: true,
@@ -56,6 +59,10 @@ class DummyProvider implements SecretsProvider {
 		//
 	}
 
+	async test() {
+		return true;
+	}
+
 	getSecret(name: string): string {
 		return DummyProvider.DATA[name];
 	}
@@ -71,15 +78,19 @@ class Dummy2Provider implements SecretsProvider {
 		api_key: 'testapikey',
 	};
 
-	properties: ProviderProperty[] = [
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
 			name: 'username',
+			default: '',
+			placeholder: 'Username',
 			type: 'string',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
+			default: '',
+			placeholder: '*********',
 			type: 'string',
 			typeOptions: {
 				password: true,
@@ -103,6 +114,10 @@ class Dummy2Provider implements SecretsProvider {
 
 	async connect(): Promise<void> {
 		//
+	}
+
+	async test() {
+		return false;
 	}
 
 	getSecret(name: string): string {
@@ -219,7 +234,7 @@ export class ExternalSecretsManager {
 		await Promise.all(Object.values(this.providers).map(async (p) => p.update()));
 	}
 
-	private getProvider(provider: string): SecretsProvider | undefined {
+	getProvider(provider: string): SecretsProvider | undefined {
 		return this.providers[provider];
 	}
 

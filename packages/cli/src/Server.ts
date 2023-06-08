@@ -168,7 +168,7 @@ import {
 import { isVersionControlLicensed } from '@/environments/versionControl/versionControlHelper';
 import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
 import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
-import { ExternalSecretsManager } from './secrets/SecretsManager.ee';
+import { SecretsService } from './secrets/secrets.service.ee';
 
 const exec = promisify(callbackExec);
 
@@ -467,7 +467,7 @@ export class Server extends AbstractServer {
 		const postHog = this.postHog;
 		const samlService = Container.get(SamlService);
 		const versionControlService = Container.get(VersionControlService);
-		const secretsManager = Container.get(ExternalSecretsManager);
+		const secretsService = Container.get(SecretsService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -497,9 +497,7 @@ export class Server extends AbstractServer {
 			}),
 			new SamlController(samlService),
 			new VersionControlController(versionControlService),
-			new ExternalSecretsController({
-				secretsManager,
-			}),
+			new ExternalSecretsController(secretsService),
 		];
 
 		if (isLdapEnabled()) {
