@@ -795,7 +795,7 @@ export interface N8nApp {
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
 
-export interface SecretsProviderSettings<T extends IDataObject = IDataObject> {
+export interface SecretsProviderSettings<T = IDataObject> {
 	connected: boolean;
 	connectedAt: Date;
 	settings: T;

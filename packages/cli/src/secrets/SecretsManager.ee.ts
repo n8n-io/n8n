@@ -12,6 +12,7 @@ import { AES, enc } from 'crypto-js';
 import { getLogger } from '@/Logger';
 
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { InfisicalProvider } from './providers/infisical';
 
 const logger = getLogger();
 
@@ -132,6 +133,7 @@ class Dummy2Provider implements SecretsProvider {
 const PROVIDER_MAP: Record<string, { new (): SecretsProvider }> = {
 	dummy: DummyProvider,
 	dummy2: Dummy2Provider,
+	infisical: InfisicalProvider,
 };
 
 @Service()
@@ -193,41 +195,45 @@ export class ExternalSecretsManager {
 			return;
 		}
 		const providers: Array<SecretsProvider | null> = await Promise.all(
-			Object.entries(settings).map(async ([name, providerSettings]) => {
-				const providerClass = PROVIDER_MAP[name];
-				if (!providerClass) {
-					return null;
-				}
-				const provider: SecretsProvider = new providerClass();
-
-				try {
-					await provider.init(providerSettings);
-				} catch (e) {
-					logger.error(
-						`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
-					);
-					return null;
-				}
-
-				try {
-					if (providerSettings.connected) {
-						await provider.connect();
-					}
-				} catch (e) {
-					logger.error(
-						`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
-					);
-					return null;
-				}
-
-				return provider;
-			}),
+			Object.entries(settings).map(async ([name, providerSettings]) =>
+				this.initProvider(name, providerSettings),
+			),
 		);
 		this.providers = Object.fromEntries(
 			(providers.filter((p) => p !== null) as SecretsProvider[]).map((s) => [s.name, s]),
 		);
 		this.cachedSettings = settings;
 		await this.updateSecrets();
+	}
+
+	private async initProvider(name: string, providerSettings: SecretsProviderSettings) {
+		const providerClass = PROVIDER_MAP[name];
+		if (!providerClass) {
+			return null;
+		}
+		const provider: SecretsProvider = new providerClass();
+
+		try {
+			await provider.init(providerSettings);
+		} catch (e) {
+			logger.error(
+				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
+			);
+			return null;
+		}
+
+		try {
+			if (providerSettings.connected) {
+				await provider.connect();
+			}
+		} catch (e) {
+			logger.error(
+				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
+			);
+			return null;
+		}
+
+		return provider;
 	}
 
 	async updateSecrets() {
@@ -296,6 +302,14 @@ export class ExternalSecretsManager {
 			await this.saveAndSetSettings(settings, settingsRepo);
 			this.cachedSettings = settings;
 		});
+		const newProvider = await this.initProvider(provider, this.cachedSettings[provider]);
+		if (newProvider) {
+			this.providers[provider] = newProvider;
+		} else {
+			// Delete it so we're not fetching old values
+			delete this.providers[provider];
+		}
+		await this.updateSecrets();
 	}
 
 	encryptSecretsSettings(settings: ExternalSecretsSettings, encryptionKey: string): string {
