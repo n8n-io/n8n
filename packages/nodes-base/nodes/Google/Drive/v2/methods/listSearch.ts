@@ -1,9 +1,11 @@
 import type {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
 import { googleApiRequest } from '../transport';
+import type { SearchFilter } from '../helpers/interfaces';
 import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../helpers/interfaces';
 
 interface GoogleDriveFilesItem {
@@ -56,14 +58,34 @@ export async function folderSearch(
 		query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
 	query.push(`mimeType = '${DRIVE.FOLDER}'`);
-	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
+
+	const qs: IDataObject = {
 		q: query.join(' and '),
 		pageToken: paginationToken,
-		fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
+		fields: 'nextPageToken,files(id,name,mimeType,webViewLink,parents,driveId)',
 		orderBy: 'name_natural',
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
-	});
+	};
+
+	const searchFilter = this.getNodeParameter('filter', {}) as SearchFilter;
+
+	if (searchFilter.driveId) {
+		if (searchFilter.driveId.value === RLC_DRIVE_DEFAULT) {
+			qs.includeItemsFromAllDrives = false;
+			qs.supportsAllDrives = false;
+		} else {
+			if (searchFilter.driveId.mode === 'url') {
+				searchFilter.driveId.value = this.getNodeParameter('filter.folderId', undefined, {
+					extractValue: true,
+				}) as string;
+			}
+			qs.driveId = searchFilter.driveId.value;
+			qs.corpora = 'drive';
+		}
+	}
+
+	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
 
 	const results: INodeListSearchItems[] = [
 		{
