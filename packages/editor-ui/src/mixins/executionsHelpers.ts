@@ -44,6 +44,8 @@ export const executionHelpers = defineComponent({
 			if (execution.status === 'waiting' || execution.waitTill) {
 				status.name = 'waiting';
 				status.label = this.$locale.baseText('executionsList.waiting');
+			} else if (execution.status === 'canceled') {
+				status.label = this.$locale.baseText('executionsList.canceled');
 			} else if (
 				execution.status === 'running' ||
 				execution.status === 'new' ||
@@ -57,8 +59,6 @@ export const executionHelpers = defineComponent({
 			} else if (execution.status === 'failed' || execution.status === 'crashed') {
 				status.name = 'error';
 				status.label = this.$locale.baseText('executionsList.error');
-			} else if (execution.status === 'canceled') {
-				status.label = this.$locale.baseText('executionsList.canceled');
 			}
 
 			if (!execution.status) execution.status = 'unknown';
