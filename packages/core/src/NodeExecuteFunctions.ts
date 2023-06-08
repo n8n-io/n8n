@@ -1982,7 +1982,6 @@ const validateValueAgainstSchema = (
 			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
-				failExecution: true,
 				runIndex,
 				itemIndex,
 				nodeCause: node.name,
