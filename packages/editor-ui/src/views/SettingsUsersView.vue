@@ -203,10 +203,7 @@ export default defineComponent({
 		},
 		async onDisallowSSOManualLogin(userId: string) {
 			const user = this.usersStore.getUserById(userId) as IUser | null;
-			if (user) {
-				if (!user.settings) {
-					user.settings = {};
-				}
+			if (user?.settings) {
 				user.settings.allowSSOManualLogin = false;
 				await this.usersStore.updateOtherUserSettings(userId, user.settings);
 				this.showToast({

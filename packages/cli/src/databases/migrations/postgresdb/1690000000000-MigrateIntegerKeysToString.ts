@@ -169,12 +169,6 @@ export class MigrateIntegerKeysToString1690000000000 implements ReversibleMigrat
 			`CREATE INDEX "idx_execution_entity_workflow_id_id" ON ${tablePrefix}execution_entity ("workflowId","id");`,
 		);
 		await queryRunner.query(
-			`CREATE INDEX "idx_execution_entity_workflow_id_finished_id" ON ${tablePrefix}execution_entity ("workflowId","finished","id");`,
-		);
-		await queryRunner.query(
-			`CREATE INDEX "idx_execution_entity_workflow_id_wait_till_id" ON ${tablePrefix}execution_entity ("workflowId","waitTill","id");`,
-		);
-		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity DROP COLUMN "tmp_workflowId";`,
 		);
 		// -- FK was missing in prev schema - should it be added?
