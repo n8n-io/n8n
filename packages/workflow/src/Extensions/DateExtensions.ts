@@ -78,8 +78,6 @@ function isLuxonDateTime(date: unknown): date is LuxonDateTime {
 const toLuxonDateTime = (d: Date | LuxonDateTime) =>
 	LuxonDateTime.isDateTime(d) ? d : LuxonDateTime.fromJSDate(d);
 
-export const run = <T>(fn: () => T): T => fn();
-
 function generateDurationObject(durationValue: number, unit: DurationUnit) {
 	const convertedUnit = DURATION_MAP[unit] || unit;
 	return { [`${convertedUnit}`]: durationValue } as DurationObjectUnits;
@@ -176,10 +174,8 @@ function minus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
 
 	if (isLuxonDateTime(date) && arg) return date.minus(arg).toISO();
 
-	const duration = run(() => {
-		const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
-		return generateDurationObject(durationValue, unit);
-	});
+	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+	const duration = generateDurationObject(durationValue, unit);
 
 	return toLuxonDateTime(date).minus(duration).toISO();
 }
@@ -189,10 +185,8 @@ function plus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
 
 	if (isLuxonDateTime(date) && arg) return date.plus(arg).toISO();
 
-	const duration = run(() => {
-		const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
-		return generateDurationObject(durationValue, unit);
-	});
+	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
+	const duration = generateDurationObject(durationValue, unit);
 
 	return toLuxonDateTime(date).plus(duration).toISO();
 }
