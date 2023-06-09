@@ -174,13 +174,21 @@ export const showMessage = mixins(externalHooks).extend({
 			confirmButtonText?: string,
 			cancelButtonText?: string,
 			showClose = false,
-		): Promise<string> {
+			moreOptions: {
+				showCancelButton?: boolean;
+				beforeClose?: ElMessageBoxOptions['beforeClose'];
+			} = {
+				showCancelButton: true,
+			},
+		): Promise<string | { action: string; done: Function }> {
 			try {
 				const options: ElMessageBoxOptions = {
 					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
 					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
 					dangerouslyUseHTMLString: true,
 					showClose,
+					showCancelButton: moreOptions.showCancelButton,
+					beforeClose: moreOptions.beforeClose,
 					...(type && { type }),
 				};
 

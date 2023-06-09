@@ -29,6 +29,7 @@ import {
 	InstalledNodesRepository,
 	InstalledPackagesRepository,
 	RoleRepository,
+	SaveRequestLogRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -184,6 +185,7 @@ export async function init(
 	collections.Workflow = Container.get(WorkflowRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+	collections.SaveRequestLog = Container.get(SaveRequestLogRepository);
 
 	isInitialized = true;
 

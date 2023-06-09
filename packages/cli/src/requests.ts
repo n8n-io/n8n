@@ -218,6 +218,18 @@ export declare namespace PasswordResetRequest {
 }
 
 // ----------------------------------
+//             /save-request-log
+// ----------------------------------
+
+export declare namespace SaveRequestLogRequest {
+	export type Add = AuthenticatedRequest<
+		{},
+		{},
+		{ request: unknown; response: unknown; workflowId: string; status: 'successful' | 'failed' }
+	>;
+}
+
+// ----------------------------------
 //             /users
 // ----------------------------------
 

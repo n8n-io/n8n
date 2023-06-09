@@ -94,6 +94,7 @@ import {
 	TagsController,
 	TranslationController,
 	UsersController,
+	SaveRequestLogController,
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
@@ -426,6 +427,7 @@ class Server extends AbstractServer {
 			}),
 			new SamlController(samlService),
 			new VersionControlController(versionControlService),
+			new SaveRequestLogController({ logger, repositories }),
 		];
 
 		if (isLdapEnabled()) {

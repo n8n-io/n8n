@@ -728,6 +728,11 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, showMessage).e
 				this.uiStore.removeActiveAction('workflowSaving');
 				this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
+				this.$showMessage({
+					title: 'Changes Saved Successfully',
+					type: 'success',
+				});
+
 				return true;
 			} catch (error) {
 				this.uiStore.removeActiveAction('workflowSaving');

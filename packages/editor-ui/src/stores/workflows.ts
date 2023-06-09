@@ -1139,12 +1139,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			forceSave = false,
 		): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'PATCH',
-				`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
-				data as unknown as IDataObject,
-			);
+			let response;
+			let error;
+			try {
+				response = await makeRestApiRequest(
+					rootStore.getRestApiContext,
+					'PATCH',
+					`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
+					data as unknown as IDataObject,
+				);
+			} catch (err) {
+				error = err;
+			}
+
+			const logData = {
+				request: data,
+				response: response || error,
+				workflowId: id,
+				status: response ? 'successful' : 'failed',
+			};
+
+			await makeRestApiRequest(rootStore.getRestApiContext, 'POST', '/save-request-log', logData);
+			if (error) throw error;
+			return response;
 		},
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {

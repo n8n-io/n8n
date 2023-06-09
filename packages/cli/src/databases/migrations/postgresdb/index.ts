@@ -36,6 +36,7 @@ import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-Creat
 import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { AddUserOTPSecret1681134145997 } from './1681134145997-AddUserOTPSecret';
+import { AddSaveRequestLog1681134145998 } from './1681134145998-AddSaveRequestLog';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -76,4 +77,5 @@ export const postgresMigrations = [
 	CreateVariables1677501636754,
 	AddUserActivatedProperty1681134145996,
 	AddUserOTPSecret1681134145997,
+	AddSaveRequestLog1681134145998,
 ];
