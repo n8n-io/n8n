@@ -219,6 +219,7 @@ const refreshBranches = async () => {
 						@click="onDisconnect"
 						size="large"
 						icon="trash"
+						data-test-id="version-control-disconnect-button"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
 				</div>

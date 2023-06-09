@@ -60,4 +60,18 @@ export function routesForVersionControl(server: Server) {
 			},
 		);
 	});
+
+	server.post(`${versionControlApiRoot}/disconnect`, () => {
+		return new Response(
+			200,
+			{},
+			{
+				data: {
+					...defaultVersionControlPreferences,
+					branchName: '',
+					connected: false,
+				},
+			},
+		);
+	});
 }

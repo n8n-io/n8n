@@ -67,11 +67,11 @@ describe('SettingsVersionControl', () => {
 		expect(queryByTestId('version-control-connected-content')).not.toBeInTheDocument();
 	});
 
-	it('should render user flow', async () => {
+	it('should render user flow happy path', async () => {
 		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled').mockReturnValue(true);
 		const updatePreferencesSpy = vi.spyOn(versionControlStore, 'updatePreferences');
 
-		const { container, getByTestId, queryByTestId } = renderComponent();
+		const { container, getByTestId, queryByTestId, getByRole } = renderComponent();
 
 		const connectButton = getByTestId('version-control-connect-button');
 		expect(connectButton).toBeDisabled();
@@ -129,5 +129,15 @@ describe('SettingsVersionControl', () => {
 			branchColor: '#1d6acb',
 		});
 		await waitFor(() => expect(screen.getByText('Settings successfully saved')).toBeVisible());
+
+		await userEvent.click(getByTestId('version-control-disconnect-button'));
+		const disconnectDialog = getByRole('dialog');
+		await waitFor(() => expect(disconnectDialog).toBeVisible());
+
+		await userEvent.click(within(disconnectDialog).getAllByRole('button')[1]);
+		await waitFor(() => expect(disconnectDialog).not.toBeVisible());
+		await waitFor(() =>
+			expect(queryByTestId('version-control-connected-content')).not.toBeInTheDocument(),
+		);
 	});
 });
