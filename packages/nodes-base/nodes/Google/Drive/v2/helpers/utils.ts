@@ -102,13 +102,14 @@ export function setUpdateCommonParams(qs: IDataObject, options: IDataObject) {
 export function updateDriveScopes(
 	qs: IDataObject,
 	driveId: string,
-	rootDriveId = RLC_DRIVE_DEFAULT,
+	defaultDrive = RLC_DRIVE_DEFAULT,
 ) {
 	if (driveId) {
-		if (driveId === rootDriveId) {
-			qs.includeItemsFromAllDrives = false;
-			qs.supportsAllDrives = false;
-			qs.corpora = 'user';
+		if (driveId === defaultDrive) {
+			qs.includeItemsFromAllDrives = true;
+			qs.supportsAllDrives = true;
+			qs.spaces = 'appDataFolder, drive';
+			qs.corpora = 'allDrives';
 		} else {
 			qs.driveId = driveId;
 			qs.corpora = 'drive';

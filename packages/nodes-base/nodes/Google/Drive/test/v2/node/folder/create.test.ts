@@ -30,7 +30,7 @@ describe('test GoogleDriveV2: folder create', () => {
 		const nodeParameters = {
 			resource: 'folder',
 			name: 'testFolder 2',
-			parentFolder: {
+			folderId: {
 				__rl: true,
 				value: 'root',
 				mode: 'list',
@@ -56,7 +56,13 @@ describe('test GoogleDriveV2: folder create', () => {
 				name: 'testFolder 2',
 				parents: ['root'],
 			},
-			{ fields: undefined, supportsAllDrives: true },
+			{
+				fields: undefined,
+				includeItemsFromAllDrives: true,
+				supportsAllDrives: true,
+				spaces: 'appDataFolder, drive',
+				corpora: 'allDrives',
+			},
 		);
 	});
 });

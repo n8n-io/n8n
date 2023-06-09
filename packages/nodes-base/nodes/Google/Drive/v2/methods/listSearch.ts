@@ -119,6 +119,8 @@ export async function folderSearch(
 		orderBy: 'name_natural',
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
+		spaces: 'appDataFolder, drive',
+		corpora: 'allDrives',
 	};
 
 	let driveId;

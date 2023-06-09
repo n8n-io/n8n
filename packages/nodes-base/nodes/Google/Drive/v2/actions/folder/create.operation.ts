@@ -3,8 +3,9 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { folderRLC } from '../common.descriptions';
+import { driveRLC, folderRLC } from '../common.descriptions';
 import { DRIVE } from '../../helpers/interfaces';
+import { setParentFolder } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -16,9 +17,13 @@ const properties: INodeProperties[] = [
 		description: "The name of the new folder. If not set, 'Untitled' will be used.",
 	},
 	{
+		...driveRLC,
+		displayName: 'Parent Drive',
+		description: 'Where to create the new folder. By default, the root of "My Drive" is used.',
+	},
+	{
 		...folderRLC,
 		displayName: 'Parent Folder',
-		name: 'parentFolder',
 		description: 'Where to create the new folder. By default, the root of "My Drive" is used.',
 	},
 	{
@@ -59,14 +64,18 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const name = (this.getNodeParameter('name', i) as string) || 'Untitled';
 
-	const parentFolder = this.getNodeParameter('parentFolder', i, undefined, {
+	const driveId = this.getNodeParameter('driveId', i, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const folderId = this.getNodeParameter('folderId', i, undefined, {
 		extractValue: true,
 	}) as string;
 
 	const body: IDataObject = {
 		name,
 		mimeType: DRIVE.FOLDER,
-		parents: [parentFolder],
+		parents: [setParentFolder(folderId, driveId)],
 	};
 
 	const folderColorRgb =
@@ -83,7 +92,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const qs = {
 		fields,
+		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
+		spaces: 'appDataFolder, drive',
+		corpora: 'allDrives',
 	};
 
 	const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
