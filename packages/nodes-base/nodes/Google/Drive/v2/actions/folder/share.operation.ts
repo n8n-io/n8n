@@ -3,11 +3,11 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { folderRLC, permissionsOptions, shareOptions } from '../common.descriptions';
+import { folderNoRootRLC, permissionsOptions, shareOptions } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
-		...folderRLC,
+		...folderNoRootRLC,
 		description: 'The folder to share',
 	},
 	permissionsOptions,
@@ -26,7 +26,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const folderId = this.getNodeParameter('folderId', i, undefined, {
+	const folderId = this.getNodeParameter('folderNoRootId', i, undefined, {
 		extractValue: true,
 	}) as string;
 

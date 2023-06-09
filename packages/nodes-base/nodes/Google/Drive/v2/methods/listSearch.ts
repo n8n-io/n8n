@@ -140,13 +140,7 @@ export async function folderSearch(
 
 	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
 
-	const results: INodeListSearchItems[] = [
-		{
-			name: '/ (Root Folder)',
-			value: RLC_FOLDER_DEFAULT,
-			url: 'https://drive.google.com/drive',
-		},
-	];
+	const results: INodeListSearchItems[] = [];
 
 	res.files.forEach((i: FilesItem) => {
 		results.push({
@@ -159,5 +153,27 @@ export async function folderSearch(
 	return {
 		results,
 		paginationToken: res.nextPageToken,
+	};
+}
+
+export async function folderSearchWithDefault(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const folders = await folderSearch.call(this, filter, paginationToken);
+
+	const results: INodeListSearchItems[] = [
+		{
+			name: '/ (Root Folder)',
+			value: RLC_FOLDER_DEFAULT,
+			url: 'https://drive.google.com/drive',
+		},
+		...folders.results,
+	];
+
+	return {
+		results,
+		paginationToken: folders.paginationToken,
 	};
 }

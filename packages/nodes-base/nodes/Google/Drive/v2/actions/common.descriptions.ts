@@ -60,11 +60,11 @@ export const fileRLC: INodeProperties = {
 	description: 'The file to operate on',
 };
 
-export const folderRLC: INodeProperties = {
+export const folderNoRootRLC: INodeProperties = {
 	displayName: 'Folder',
-	name: 'folderId',
+	name: 'folderNoRootId',
 	type: 'resourceLocator',
-	default: { mode: 'list', value: 'root' },
+	default: { mode: 'list', value: '' },
 	required: true,
 	modes: [
 		{
@@ -74,6 +74,64 @@ export const folderRLC: INodeProperties = {
 			placeholder: 'Select a folder...',
 			typeOptions: {
 				searchListMethod: 'folderSearch',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'Link',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
+			extractValue: {
+				type: 'regex',
+				regex:
+					'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'https:\\/\\/drive\\.google\\.com(?:\\/.*|)\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						errorMessage: 'Not a valid Google Drive Folder URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Google Drive Folder ID',
+					},
+				},
+			],
+			url: '=https://drive.google.com/drive/folders/{{$value}}',
+		},
+	],
+	description: 'The folder to operate on',
+};
+
+export const folderRLC: INodeProperties = {
+	displayName: 'Folder',
+	name: 'folderId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: 'root', cachedResultName: '/ (Root Folder)' },
+	required: true,
+	modes: [
+		{
+			displayName: 'Folder',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a folder...',
+			typeOptions: {
+				searchListMethod: 'folderSearchWithDefault',
 				searchable: true,
 			},
 		},

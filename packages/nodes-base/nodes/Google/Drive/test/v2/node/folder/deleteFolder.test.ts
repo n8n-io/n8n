@@ -30,7 +30,7 @@ describe('test GoogleDriveV2: folder deleteFolder', () => {
 		const nodeParameters = {
 			resource: 'folder',
 			operation: 'deleteFolder',
-			folderId: {
+			folderNoRootId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',
@@ -56,7 +56,7 @@ describe('test GoogleDriveV2: folder deleteFolder', () => {
 		const nodeParameters = {
 			resource: 'folder',
 			operation: 'deleteFolder',
-			folderId: {
+			folderNoRootId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',

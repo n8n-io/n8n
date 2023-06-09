@@ -30,7 +30,7 @@ describe('test GoogleDriveV2: folder share', () => {
 		const nodeParameters = {
 			resource: 'folder',
 			operation: 'share',
-			folderId: {
+			folderNoRootId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',
