@@ -759,7 +759,7 @@ export class AwsS3V2 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];
-						let path = '/';
+						let path = '';
 						let body;
 
 						const multipartHeaders: IDataObject = {};
@@ -769,7 +769,9 @@ export class AwsS3V2 implements INodeType {
 							neededHeaders['x-amz-request-payer'] = 'requester';
 						}
 						if (additionalFields.parentFolderKey) {
-							path = `/${additionalFields.parentFolderKey}/`;
+							path = `${additionalFields.parentFolderKey}/${fileName}`;
+						} else {
+							path = `${fileName}`;
 						}
 						if (additionalFields.storageClass) {
 							multipartHeaders['x-amz-storage-class'] = snakeCase(
@@ -845,14 +847,13 @@ export class AwsS3V2 implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							let uploadData: Buffer | Readable;
-							console.log(binaryPropertyData.id);
 							if (binaryPropertyData.id) {
 								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id, UPLOAD_CHUNK_SIZE);
 								const createMultiPartUpload = await awsApiRequestREST.call(
 									this,
 									`${bucketName}.s3`,
 									'POST',
-									`/${fileName}?uploads`,
+									`/${path}?uploads`,
 									body,
 									qs,
 									{ ...neededHeaders, ...multipartHeaders },
@@ -862,8 +863,6 @@ export class AwsS3V2 implements INodeType {
 
 								const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
 								let part = 1;
-								console.log(uploadId);
-								console.log('Starting upload of binary data');
 								for await (const chunk of uploadData) {
 									const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
 									const listHeaders: IDataObject = {
@@ -872,28 +871,25 @@ export class AwsS3V2 implements INodeType {
 										...neededHeaders,
 									};
 									try {
-										console.log('Uploading chunk');
 										await awsApiRequestREST.call(
 											this,
 											`${bucketName}.s3`,
 											'PUT',
-											`/${fileName}?partNumber=${part}&uploadId=${uploadId}`,
+											`/${path}?partNumber=${part}&uploadId=${uploadId}`,
 											chunk,
 											qs,
 											listHeaders,
 											{},
 											region as string,
 										);
-										console.log(part);
 										part++;
 									} catch (error) {
-										console.log(error);
 										try {
 											await awsApiRequestREST.call(
 												this,
 												`${bucketName}.s3`,
 												'DELETE',
-												`/${fileName}?uploadId=${uploadId}`,
+												`/${path}?uploadId=${uploadId}`,
 											);
 										} catch (err) {
 											throw new NodeOperationError(this.getNode(), err as Error);
@@ -906,7 +902,7 @@ export class AwsS3V2 implements INodeType {
 									this,
 									`${bucketName}.s3`,
 									'GET',
-									`/${fileName}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
+									`/${path}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
 									'',
 									qs,
 									{ ...neededHeaders },
@@ -952,14 +948,13 @@ export class AwsS3V2 implements INodeType {
 										},
 									};
 								}
-								console.log(body);
 								const builder = new Builder();
 								const data = builder.buildObject(body);
 								const completeUpload = (await awsApiRequestREST.call(
 									this,
 									`${bucketName}.s3`,
 									'POST',
-									`/${fileName}?uploadId=${uploadId}`,
+									`/${path}?uploadId=${uploadId}`,
 									data,
 									qs,
 									{
@@ -980,7 +975,6 @@ export class AwsS3V2 implements INodeType {
 								responseData = {
 									...completeUpload.CompleteMultipartUploadResult,
 								};
-								console.log(responseData);
 							} else {
 								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 									i,
@@ -997,7 +991,7 @@ export class AwsS3V2 implements INodeType {
 									this,
 									`${bucketName}.s3`,
 									'PUT',
-									`${path}${fileName || binaryPropertyData.fileName}`,
+									`/${path || binaryPropertyData.fileName}`,
 									body,
 									qs,
 									headers,
@@ -1005,14 +999,12 @@ export class AwsS3V2 implements INodeType {
 									region as string,
 								);
 							}
-							console.log(responseData);
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
 						} else {
-							console.log('fileContent');
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
 							body = Buffer.from(fileContent, 'utf8');
@@ -1025,7 +1017,7 @@ export class AwsS3V2 implements INodeType {
 								this,
 								`${bucketName}.s3`,
 								'PUT',
-								`${path}${fileName}`,
+								`/${path}`,
 								body,
 								qs,
 								headers,
