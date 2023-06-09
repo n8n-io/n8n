@@ -291,9 +291,10 @@ const refreshBranches = async () => {
 				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
+				data-test-id="version-control-connect-button"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
-			<div v-if="isConnected">
+			<div v-if="isConnected" data-test-id="version-control-connected-content">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
@@ -307,6 +308,7 @@ const refreshBranches = async () => {
 							size="medium"
 							filterable
 							@input="onSelect"
+							data-test-id="version-control-branch-select"
 						>
 							<n8n-option
 								v-for="b in versionControlStore.preferences.branches"
@@ -328,6 +330,7 @@ const refreshBranches = async () => {
 								square
 								:class="$style.refreshBranches"
 								@click="refreshBranches"
+								data-test-id="version-control-refresh-branches-button"
 							/>
 						</n8n-tooltip>
 					</div>
@@ -358,6 +361,7 @@ const refreshBranches = async () => {
 						@click="onSave"
 						size="large"
 						:disabled="!versionControlStore.preferences.branchName"
+						data-test-id="version-control-save-settings-button"
 						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
 					>
 				</div>
