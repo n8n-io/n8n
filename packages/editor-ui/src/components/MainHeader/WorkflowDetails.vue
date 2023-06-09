@@ -197,6 +197,7 @@ export default mixins(workflowHelpers).extend({
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
 			EnterpriseEditionFeature,
+			saveReminderTimeout: '',
 		};
 	},
 	computed: {
@@ -299,6 +300,52 @@ export default mixins(workflowHelpers).extend({
 					: []),
 			];
 		},
+	},
+	mounted() {
+		const runSaveReminderTimeout = () => {
+			if (this.$data.saveReminderTimeout) clearTimeout(this.$data.saveReminderTimeout);
+			this.$data.saveReminderTimeout = setTimeout(async () => {
+				await this.confirmModal(
+					'If you dont save, you might lose your changes if the browser or system crashes',
+					'Save changes',
+					'warning',
+					'Save',
+					'Cancel',
+					true,
+					{
+						showCancelButton: false,
+						beforeClose: async (action, _nouse, done) => {
+							if (action !== 'confirm') {
+								return done();
+							}
+							let currentId = undefined;
+							if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+								currentId = this.currentWorkflowId;
+							} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+								currentId = this.$route.params.name;
+							}
+							const saved = await this.saveCurrentWorkflow({
+								id: currentId,
+								name: this.workflowName,
+								tags: this.currentWorkflowTagIds,
+							});
+							if (saved) {
+								await this.settingsStore.fetchPromptsData();
+								done();
+							}
+						},
+					},
+				);
+
+				return runSaveReminderTimeout();
+			}, Number(process.env.VUE_APP_SAVE_DIALOG_PERIOD_MINUTES || 20) * 60 * 1000);
+		};
+		runSaveReminderTimeout();
+	},
+	beforeDestroy() {
+		if (this.$data.saveReminderTimeout) {
+			clearTimeout(this.$data.saveReminderTimeout);
+		}
 	},
 	methods: {
 		async onSaveButtonClick() {

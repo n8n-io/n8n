@@ -47,6 +47,7 @@ import type {
 	InstalledNodesRepository,
 	InstalledPackagesRepository,
 	RoleRepository,
+	SaveRequestLogRepository,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -102,6 +103,7 @@ export interface IDatabaseCollections {
 	Workflow: WorkflowRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
+	SaveRequestLog: SaveRequestLogRepository;
 }
 /* eslint-enable @typescript-eslint/naming-convention */
 

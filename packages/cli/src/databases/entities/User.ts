@@ -20,6 +20,7 @@ import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
+import type { SaveRequestLog } from './SaveRequestLog';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -116,4 +117,7 @@ export class User extends AbstractEntity implements IUser {
 
 	@Column({ nullable: true, type: String })
 	otpsecret?: string | null;
+
+	@OneToMany('SaveRequestLog', 'user')
+	saveRequestLogs: SaveRequestLog[];
 }

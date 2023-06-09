@@ -419,31 +419,49 @@ export default mixins(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
 				true,
-			);
-			if (confirmModal === MODAL_CONFIRMED) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				const saved = await this.saveCurrentWorkflow({}, false);
-				if (saved) {
-					await this.settingsStore.fetchPromptsData();
-				}
-				this.uiStore.stateIsDirty = false;
+				{
+					showCancelButton: true,
+					beforeClose: async (action, _nouse, done) => {
+						if (action !== 'confirm') {
+							return done();
+						}
+						let currentId = undefined;
+						if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+							currentId = this.currentWorkflowId;
+						} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+							currentId = this.$route.params.name;
+						}
+						const saved = await this.saveCurrentWorkflow({
+							id: currentId,
+							name: this.workflowName,
+							tags: this.currentWorkflowTagIds,
+						});
+						if (!saved) return;
 
-				if (from.name === VIEWS.NEW_WORKFLOW) {
-					// Replace the current route with the new workflow route
-					// before navigating to the new route when saving new workflow.
-					this.$router.replace(
-						{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
-						() => {
-							// We can't use next() here since vue-router
-							// would prevent the navigation with an error
-							this.$router.push(to as RawLocation);
-						},
-					);
-				} else {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
+						await this.settingsStore.fetchPromptsData();
+
+						this.uiStore.stateIsDirty = false;
+
+						if (from.name === VIEWS.NEW_WORKFLOW) {
+							// Replace the current route with the new workflow route
+							// before navigating to the new route when saving new workflow.
+							this.$router.replace(
+								{ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } },
+								() => {
+									// We can't use next() here since vue-router
+									// would prevent the navigation with an error
+									this.$router.push(to as RawLocation);
+								},
+							);
+							done();
+						} else {
+							next();
+							done();
+						}
+					},
+				},
+			);
+			if (confirmModal === MODAL_CANCEL) {
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
