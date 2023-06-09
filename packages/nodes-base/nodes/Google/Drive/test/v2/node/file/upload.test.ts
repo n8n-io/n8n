@@ -51,7 +51,7 @@ describe('test GoogleDriveV2: file upload', () => {
 	it('shuold be called with', async () => {
 		const nodeParameters = {
 			name: 'newFile.txt',
-			parentFolder: {
+			folderId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',
@@ -81,7 +81,13 @@ describe('test GoogleDriveV2: file upload', () => {
 			'PATCH',
 			'/drive/v3/files/undefined',
 			{ mimeType: 'text/plain', name: 'newFile.txt', originalFilename: 'original.txt' },
-			{ addParents: 'folderIDxxxxxx', supportsAllDrives: true },
+			{
+				addParents: 'folderIDxxxxxx',
+				supportsAllDrives: true,
+				corpora: 'allDrives',
+				includeItemsFromAllDrives: true,
+				spaces: 'appDataFolder, drive',
+			},
 		);
 
 		expect(utils.getItemBinaryData).toBeCalledTimes(1);

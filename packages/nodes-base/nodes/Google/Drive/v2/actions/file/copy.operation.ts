@@ -8,7 +8,8 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { fileRLC, folderRLC } from '../common.descriptions';
+import { driveRLC, fileRLC, folderRLC } from '../common.descriptions';
+import { setParentFolder } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -26,17 +27,22 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Copy In The Same Folder',
-		name: 'copyLocation',
+		name: 'sameFolder',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to copy the file in the same folder as the original file',
 	},
 	{
+		...driveRLC,
+		displayName: 'Destination Drive',
+		description: 'The drive where you want to save the copied file',
+		displayOptions: { show: { sameFolder: [false] } },
+	},
+	{
 		...folderRLC,
 		displayName: 'Destination Folder',
-		name: 'destinationFolderId',
 		description: 'The folder where you want to save the copied file',
-		displayOptions: { show: { copyLocation: [false] } },
+		displayOptions: { show: { sameFolder: [false] } },
 	},
 	{
 		displayName: 'Options',
@@ -85,13 +91,26 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
+	const qs = {
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
+		spaces: 'appDataFolder, drive',
+		corpora: 'allDrives',
+	};
+
 	const parents: string[] = [];
-	const copyLocation = this.getNodeParameter('copyLocation', i) as boolean;
-	if (!copyLocation) {
-		const destinationFolder = this.getNodeParameter('destinationFolderId', i, undefined, {
+	const sameFolder = this.getNodeParameter('sameFolder', i) as boolean;
+
+	if (!sameFolder) {
+		const driveId = this.getNodeParameter('driveId', i, undefined, {
 			extractValue: true,
 		}) as string;
-		parents.push(destinationFolder);
+
+		const folderId = this.getNodeParameter('folderId', i, undefined, {
+			extractValue: true,
+		}) as string;
+
+		parents.push(setParentFolder(folderId, driveId));
 	}
 
 	const body: IDataObject = { copyRequiresWriterPermission, parents, name };
@@ -99,10 +118,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (options.description) {
 		body.description = options.description;
 	}
-
-	const qs = {
-		supportsAllDrives: true,
-	};
 
 	const response = await googleApiRequest.call(
 		this,

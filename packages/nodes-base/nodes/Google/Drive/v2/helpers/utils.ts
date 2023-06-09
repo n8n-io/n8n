@@ -2,7 +2,7 @@ import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import type { Readable } from 'stream';
-import { UPLOAD_CHUNK_SIZE } from './interfaces';
+import { RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT, UPLOAD_CHUNK_SIZE } from './interfaces';
 
 export function prepareQueryString(fields: string[] | undefined) {
 	let queryFields = 'id, name';
@@ -97,4 +97,36 @@ export function setUpdateCommonParams(qs: IDataObject, options: IDataObject) {
 	}
 
 	return qs;
+}
+
+export function updateDriveScopes(
+	qs: IDataObject,
+	driveId: string,
+	rootDriveId = RLC_DRIVE_DEFAULT,
+) {
+	if (driveId) {
+		if (driveId === rootDriveId) {
+			qs.includeItemsFromAllDrives = false;
+			qs.supportsAllDrives = false;
+			qs.corpora = 'user';
+		} else {
+			qs.driveId = driveId;
+			qs.corpora = 'drive';
+		}
+	}
+}
+
+export function setParentFolder(
+	folderId: string,
+	driveId: string,
+	folderIdDefault = RLC_FOLDER_DEFAULT,
+	driveIdDefault = RLC_DRIVE_DEFAULT,
+) {
+	if (folderId !== folderIdDefault) {
+		return folderId;
+	} else if (driveId && driveId !== driveIdDefault) {
+		return driveId;
+	} else {
+		return 'root';
+	}
 }

@@ -2,10 +2,10 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { folderRLC, updateCommonOptions } from '../common.descriptions';
+import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
 import { DRIVE } from '../../helpers/interfaces';
-import { setFileProperties, setUpdateCommonParams } from '../../helpers/utils';
+import { setFileProperties, setParentFolder, setUpdateCommonParams } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -28,9 +28,14 @@ const properties: INodeProperties[] = [
 			"The name of the file you want to create. If not specified, 'Untitled' will be used.",
 	},
 	{
+		...driveRLC,
+		displayName: 'Parent Drive',
+		required: false,
+		description: 'The drive where you want to create the file in',
+	},
+	{
 		...folderRLC,
 		displayName: 'Parent Folder',
-		name: 'parentFolderId',
 		required: false,
 		description:
 			'The Folder where you want to create the file in. By default, the root folder of "My Drive" is used.',
@@ -71,15 +76,18 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const convertToGoogleDocument = (options.convertToGoogleDocument as boolean) || false;
 	const mimeType = convertToGoogleDocument ? DRIVE.DOCUMENT : 'text/plain';
 
-	const parentFolderId =
-		(this.getNodeParameter('parentFolderId', i, undefined, {
-			extractValue: true,
-		}) as string) || 'root';
+	const driveId = this.getNodeParameter('driveId', i, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const folderId = this.getNodeParameter('folderId', i, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const bodyParameters = setFileProperties(
 		{
 			name,
-			parents: [parentFolderId],
+			parents: [setParentFolder(folderId, driveId)],
 			mimeType,
 		},
 		options,
@@ -89,7 +97,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const qs = setUpdateCommonParams(
 		{
+			includeItemsFromAllDrives: true,
 			supportsAllDrives: true,
+			spaces: 'appDataFolder, drive',
+			corpora: 'allDrives',
 		},
 		options,
 	);
@@ -150,7 +161,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			body,
 			{
 				uploadType: 'multipart',
-				supportsAllDrives: true,
 				...qs,
 			},
 			undefined,

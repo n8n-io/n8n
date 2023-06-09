@@ -41,7 +41,7 @@ describe('test GoogleDriveV2: file move', () => {
 				cachedResultName: 'test.txt',
 				cachedResultUrl: 'https://drive.google.com/file/d/fileIDxxxxxx/view?usp=drivesdk',
 			},
-			destinationFolderId: {
+			folderId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',
@@ -59,13 +59,26 @@ describe('test GoogleDriveV2: file move', () => {
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx',
 			undefined,
-			{ fields: 'parents' },
+			{
+				corpora: 'allDrives',
+				fields: 'parents',
+				includeItemsFromAllDrives: true,
+				spaces: 'appDataFolder, drive',
+				supportsAllDrives: true,
+			},
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
 			'/drive/v3/files/fileIDxxxxxx',
 			undefined,
-			{ addParents: 'folderIDxxxxxx', removeParents: 'parentFolderIDxxxxxx' },
+			{
+				addParents: 'folderIDxxxxxx',
+				removeParents: 'parentFolderIDxxxxxx',
+				corpora: 'allDrives',
+				includeItemsFromAllDrives: true,
+				spaces: 'appDataFolder, drive',
+				supportsAllDrives: true,
+			},
 		);
 	});
 });

@@ -4,9 +4,9 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { driveRLC, fileTypesOptions, folderRLC } from '../common.descriptions';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
-import { prepareQueryString } from '../../helpers/utils';
+import { prepareQueryString, updateDriveScopes } from '../../helpers/utils';
 import type { SearchFilter } from '../../helpers/interfaces';
-import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../../helpers/interfaces';
+import { DRIVE, RLC_FOLDER_DEFAULT } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -281,7 +281,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			query.push(`'${value}' in parents`);
 		}
 
-		if (filter.driveId && filter.driveId.value !== RLC_DRIVE_DEFAULT) {
+		if (filter.driveId) {
 			let value;
 			if (filter.driveId.mode === 'url') {
 				value = this.getNodeParameter('filter.driveId', i, undefined, {
@@ -328,10 +328,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		corpora: 'allDrives',
 	};
 
-	if (driveId) {
-		qs.driveId = driveId;
-		qs.corpora = 'drive';
-	}
+	updateDriveScopes(qs, driveId);
 
 	const returnAll = this.getNodeParameter('returnAll', i, false);
 

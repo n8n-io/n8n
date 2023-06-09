@@ -2,8 +2,9 @@ import type { IExecuteFunctions } from 'n8n-core';
 import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { fileRLC, folderRLC } from '../common.descriptions';
+import { driveRLC, fileRLC, folderRLC } from '../common.descriptions';
 import { googleApiRequest } from '../../transport';
+import { setParentFolder } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -11,9 +12,13 @@ const properties: INodeProperties[] = [
 		description: 'The file to move',
 	},
 	{
+		...driveRLC,
+		displayName: 'Destination Drive',
+		description: 'The drive where you want to move the file',
+	},
+	{
 		...folderRLC,
 		displayName: 'Destination Folder',
-		name: 'destinationFolderId',
 		description: 'The folder where you want to move the file',
 	},
 ];
@@ -32,9 +37,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		extractValue: true,
 	});
 
-	const destinationFolderId = this.getNodeParameter('destinationFolderId', i, undefined, {
+	const driveId = this.getNodeParameter('driveId', i, undefined, {
 		extractValue: true,
-	});
+	}) as string;
+
+	const folderId = this.getNodeParameter('folderId', i, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const qs = {
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
+		spaces: 'appDataFolder, drive',
+		corpora: 'allDrives',
+	};
 
 	const { parents } = await googleApiRequest.call(
 		this,
@@ -42,6 +58,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		`/drive/v3/files/${fileId}`,
 		undefined,
 		{
+			...qs,
 			fields: 'parents',
 		},
 	);
@@ -52,7 +69,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		`/drive/v3/files/${fileId}`,
 		undefined,
 		{
-			addParents: destinationFolderId,
+			...qs,
+			addParents: setParentFolder(folderId, driveId),
 			removeParents: ((parents as string[]) || []).join(','),
 		},
 	);

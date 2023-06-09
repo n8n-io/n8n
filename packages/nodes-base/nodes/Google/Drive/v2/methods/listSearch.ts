@@ -7,15 +7,16 @@ import type {
 import { googleApiRequest } from '../transport';
 import type { SearchFilter } from '../helpers/interfaces';
 import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../helpers/interfaces';
+import { updateDriveScopes } from '../helpers/utils';
 
-interface GoogleDriveFilesItem {
+interface FilesItem {
 	id: string;
 	name: string;
 	mimeType: string;
 	webViewLink: string;
 }
 
-interface GoogleDriveDriveItem {
+interface DriveItem {
 	id: string;
 	name: string;
 }
@@ -37,74 +38,15 @@ export async function fileSearch(
 		orderBy: 'name_natural',
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
+		spaces: 'appDataFolder, drive',
+		corpora: 'allDrives',
 	});
 	return {
-		results: res.files.map((i: GoogleDriveFilesItem) => ({
-			name: i.name,
-			value: i.id,
-			url: i.webViewLink,
+		results: res.files.map((file: FilesItem) => ({
+			name: file.name,
+			value: file.id,
+			url: file.webViewLink,
 		})),
-		paginationToken: res.nextPageToken,
-	};
-}
-
-export async function folderSearch(
-	this: ILoadOptionsFunctions,
-	filter?: string,
-	paginationToken?: string,
-): Promise<INodeListSearchResult> {
-	const query: string[] = [];
-	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
-	}
-	query.push(`mimeType = '${DRIVE.FOLDER}'`);
-
-	const qs: IDataObject = {
-		q: query.join(' and '),
-		pageToken: paginationToken,
-		fields: 'nextPageToken,files(id,name,mimeType,webViewLink,parents,driveId)',
-		orderBy: 'name_natural',
-		includeItemsFromAllDrives: true,
-		supportsAllDrives: true,
-	};
-
-	const searchFilter = this.getNodeParameter('filter', {}) as SearchFilter;
-
-	if (searchFilter.driveId) {
-		if (searchFilter.driveId.value === RLC_DRIVE_DEFAULT) {
-			qs.includeItemsFromAllDrives = false;
-			qs.supportsAllDrives = false;
-		} else {
-			if (searchFilter.driveId.mode === 'url') {
-				searchFilter.driveId.value = this.getNodeParameter('filter.folderId', undefined, {
-					extractValue: true,
-				}) as string;
-			}
-			qs.driveId = searchFilter.driveId.value;
-			qs.corpora = 'drive';
-		}
-	}
-
-	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
-
-	const results: INodeListSearchItems[] = [
-		{
-			name: RLC_FOLDER_DEFAULT,
-			value: RLC_FOLDER_DEFAULT,
-			url: 'https://drive.google.com/drive',
-		},
-	];
-
-	res.files.forEach((i: GoogleDriveFilesItem) => {
-		results.push({
-			name: i.name,
-			value: i.id,
-			url: i.webViewLink,
-		});
-	});
-
-	return {
-		results,
 		paginationToken: res.nextPageToken,
 	};
 }
@@ -123,7 +65,7 @@ export async function driveSearch(
 
 	const results: INodeListSearchItems[] = [];
 
-	res.drives.forEach((drive: GoogleDriveDriveItem) => {
+	res.drives.forEach((drive: DriveItem) => {
 		results.push({
 			name: drive.name,
 			value: drive.id,
@@ -156,5 +98,64 @@ export async function driveSearchWithDefault(
 	return {
 		results,
 		paginationToken: drives.paginationToken,
+	};
+}
+
+export async function folderSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const query: string[] = [];
+	if (filter) {
+		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+	}
+	query.push(`mimeType = '${DRIVE.FOLDER}'`);
+
+	const qs: IDataObject = {
+		q: query.join(' and '),
+		pageToken: paginationToken,
+		fields: 'nextPageToken,files(id,name,mimeType,webViewLink,parents,driveId)',
+		orderBy: 'name_natural',
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
+	};
+
+	let driveId;
+
+	driveId = this.getNodeParameter('driveId', '') as IDataObject;
+
+	if (!driveId) {
+		const searchFilter = this.getNodeParameter('filter', {}) as SearchFilter;
+		if (searchFilter?.driveId?.mode === 'url') {
+			searchFilter.driveId.value = this.getNodeParameter('filter.folderId', undefined, {
+				extractValue: true,
+			}) as string;
+		}
+		driveId = searchFilter.driveId;
+	}
+	updateDriveScopes(qs, driveId?.value as string);
+
+	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
+
+	const results: INodeListSearchItems[] = [
+		{
+			name: '/ (Root Folder)',
+			value: RLC_FOLDER_DEFAULT,
+			url: 'https://drive.google.com/drive',
+		},
+	];
+
+	res.files.forEach((i: FilesItem) => {
+		results.push({
+			name: i.name,
+			value: i.id,
+			url: i.webViewLink,
+		});
+	});
+
+	return {
+		results,
+		paginationToken: res.nextPageToken,
 	};
 }

@@ -37,8 +37,8 @@ describe('test GoogleDriveV2: file copy', () => {
 				cachedResultUrl: 'https://drive.google.com/file/d/fileIDxxxxxx/view?usp=drivesdk',
 			},
 			name: 'copyImage.png',
-			copyLocation: false,
-			destinationFolderId: {
+			sameFolder: false,
+			folderId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',
@@ -65,7 +65,12 @@ describe('test GoogleDriveV2: file copy', () => {
 				name: 'copyImage.png',
 				parents: ['folderIDxxxxxx'],
 			},
-			{ supportsAllDrives: true },
+			{
+				supportsAllDrives: true,
+				corpora: 'allDrives',
+				includeItemsFromAllDrives: true,
+				spaces: 'appDataFolder, drive',
+			},
 		);
 	});
 });

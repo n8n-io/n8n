@@ -3,8 +3,13 @@ import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workf
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { googleApiRequest } from '../../transport';
-import { folderRLC, updateCommonOptions } from '../common.descriptions';
-import { getItemBinaryData, setFileProperties, setUpdateCommonParams } from '../../helpers/utils';
+import { driveRLC, folderRLC, updateCommonOptions } from '../common.descriptions';
+import {
+	getItemBinaryData,
+	setFileProperties,
+	setUpdateCommonParams,
+	setParentFolder,
+} from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -27,9 +32,13 @@ const properties: INodeProperties[] = [
 		description: 'If not specified, the original file name will be used',
 	},
 	{
+		...driveRLC,
+		displayName: 'Parent Drive',
+		description: 'The drive where you want to upload the file',
+	},
+	{
 		...folderRLC,
 		displayName: 'Parent Folder',
-		name: 'parentFolder',
 		description:
 			'The Folder you want to upload the file in. By default, the root folder of “My Drive” is used.',
 	},
@@ -73,7 +82,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	);
 
 	const name = (this.getNodeParameter('name', i) as string) || originalFilename;
-	const parentFolder = this.getNodeParameter('parentFolder', i, undefined, { extractValue: true });
+
+	const driveId = this.getNodeParameter('driveId', i, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const folderId = this.getNodeParameter('folderId', i, undefined, {
+		extractValue: true,
+	}) as string;
 
 	let uploadId;
 	if (Buffer.isBuffer(fileContent)) {
@@ -134,8 +150,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const qs = setUpdateCommonParams(
 		{
-			addParents: parentFolder,
+			addParents: setParentFolder(folderId, driveId),
+			includeItemsFromAllDrives: true,
 			supportsAllDrives: true,
+			spaces: 'appDataFolder, drive',
+			corpora: 'allDrives',
 		},
 		options,
 	);

@@ -31,7 +31,7 @@ describe('test GoogleDriveV2: file createFromText', () => {
 			operation: 'createFromText',
 			content: 'hello drive!',
 			name: 'helloDrive.txt',
-			parentFolderId: {
+			folderId: {
 				__rl: true,
 				value: 'folderIDxxxxxx',
 				mode: 'list',
@@ -75,8 +75,11 @@ describe('test GoogleDriveV2: file createFromText', () => {
 			'/upload/drive/v3/files',
 			'\n\t\t\n--XXXXXX\t\t\nContent-Type: application/json; charset=UTF-8\t\t\n\n{"name":"helloDrive.txt","parents":["folderIDxxxxxx"],"mimeType":"text/plain","properties":{"prop1":"value1","prop2":"value2"},"appProperties":{"appKey1":"appValue1"}}\t\t\n--XXXXXX\t\t\nContent-Type: text/plain\t\t\nContent-Transfer-Encoding: base64\t\t\n\nhello drive!\t\t\n--XXXXXX--',
 			{
+				corpora: 'allDrives',
+				includeItemsFromAllDrives: true,
 				keepRevisionForever: true,
 				ocrLanguage: 'en',
+				spaces: 'appDataFolder, drive',
 				supportsAllDrives: true,
 				uploadType: 'multipart',
 				useContentAsIndexableText: true,
