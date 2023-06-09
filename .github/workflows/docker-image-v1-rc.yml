@@ -12,11 +12,12 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: release-v1
 
       - uses: pnpm/action-setup@v2.2.4
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
       - run: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Bump package versions to 1.0.0
