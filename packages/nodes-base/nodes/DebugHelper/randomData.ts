@@ -53,11 +53,11 @@ export function generateRandomEmail() {
 }
 
 export function generateUUID() {
-	return uuid.v4();
+	return { uuid: uuid.v4() };
 }
 
-export function generateNanoid(customAlphabet: string, length: string): string {
-	return nanoId.customAlphabet(customAlphabet, parseInt(length, 10))().toString();
+export function generateNanoid(customAlphabet: string, length: string) {
+	return { nanoId: nanoId.customAlphabet(customAlphabet, parseInt(length, 10))().toString() };
 }
 
 export function generateCreditCard() {
@@ -77,25 +77,25 @@ export function generateCreditCard() {
 }
 
 export function generateURL() {
-	return domainUrl();
+	return { url: domainUrl() };
 }
 
 export function generateIPv4() {
-	return ip();
+	return { ip: ip() };
 }
 
 export function generateIPv6() {
-	return ipv6();
+	return { ipv6: ipv6() };
 }
 
 export function generateMAC() {
-	return macAddress();
+	return { mac: macAddress() };
 }
 
 export function generateLocation() {
-	return latLong();
+	return { location: latLong() };
 }
 
 export function generateVersion() {
-	return semver();
+	return { version: semver() };
 }
