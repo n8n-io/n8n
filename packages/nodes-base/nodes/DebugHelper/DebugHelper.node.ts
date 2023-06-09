@@ -294,7 +294,7 @@ export class DebugHelper implements INodeType {
 						) as boolean;
 						const newItem: INodeExecutionData = {
 							json: {},
-							pairedItem: items[i].pairedItem,
+							pairedItem: { item: i },
 						};
 						if (randomDataSeed !== '') {
 							setSeed(randomDataSeed);
@@ -349,7 +349,7 @@ export class DebugHelper implements INodeType {
 							for (const generatedItem of generatedItems) {
 								returnData.push({
 									json: generatedItem,
-									pairedItem: items[i].pairedItem,
+									pairedItem: { item: i },
 								});
 							}
 						}
