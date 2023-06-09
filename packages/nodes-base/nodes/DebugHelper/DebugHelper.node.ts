@@ -193,7 +193,7 @@ export class DebugHelper implements INodeType {
 				},
 			},
 			{
-				displayName: 'NanoId Alphabet',
+				displayName: 'NanoId Length',
 				name: 'nanoidLength',
 				type: 'string',
 				default: '16',
