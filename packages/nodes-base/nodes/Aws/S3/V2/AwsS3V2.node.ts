@@ -1030,7 +1030,6 @@ export class AwsS3V2 implements INodeType {
 							);
 							returnData.push(...executionData);
 						}
-						console.log(responseData);
 					}
 				}
 			} catch (error) {
