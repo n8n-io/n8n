@@ -18,11 +18,13 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type {
 	IExecutionFlattedDb,
+	IExecutionResponse,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 
 @Service()
 export class WaitTracker {
@@ -106,12 +108,29 @@ export class WaitTracker {
 		// Also check in database
 		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
 
-		if (execution === null || !execution.waitTill) {
+		if (execution === null) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
-		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-
+		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
+			throw new Error(
+				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
+			);
+		}
+		let fullExecutionData: IExecutionResponse;
+		try {
+			fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
+		} catch (error) {
+			// if the execution ended in an unforseen, non-cancelable state, try to recover it
+			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
+			// find recovered data
+			const recoveredExecution = await Db.collections.Execution.findOneBy({ id: executionId });
+			if (recoveredExecution) {
+				fullExecutionData = ResponseHelper.unflattenExecutionData(recoveredExecution);
+			} else {
+				throw new Error(`Execution ${executionId} could not be recovered or canceled.`);
+			}
+		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
 
