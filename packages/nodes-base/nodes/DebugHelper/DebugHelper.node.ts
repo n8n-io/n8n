@@ -358,9 +358,12 @@ export class DebugHelper implements INodeType {
 						break;
 				}
 			} catch (error) {
-				console.log(error);
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message, json: {}, itemIndex: i });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
