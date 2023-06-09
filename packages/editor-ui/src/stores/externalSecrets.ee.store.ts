@@ -24,6 +24,23 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const secrets = computed(() => state.secrets);
 	const providers = computed(() => state.providers);
 
+	const secretsAsObject = computed(() => {
+		return Object.keys(secrets.value).reduce<Record<string, Record<string, string>>>(
+			(providerAcc, provider) => {
+				providerAcc[provider] = secrets.value[provider]?.reduce<Record<string, string>>(
+					(secretAcc, secret) => {
+						secretAcc[secret] = '*********';
+						return secretAcc;
+					},
+					{},
+				);
+
+				return providerAcc;
+			},
+			{},
+		);
+	});
+
 	async function fetchAllSecrets() {
 		state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
 	}
@@ -81,6 +98,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	return {
 		providers,
 		secrets,
+		secretsAsObject,
 		isEnterpriseExternalSecretsEnabled,
 		fetchAllSecrets,
 		getProvider,

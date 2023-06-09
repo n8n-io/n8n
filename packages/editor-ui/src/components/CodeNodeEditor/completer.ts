@@ -15,6 +15,7 @@ import { itemIndexCompletions } from './completions/itemIndex.completions';
 import { itemFieldCompletions } from './completions/itemField.completions';
 import { jsonFieldCompletions } from './completions/jsonField.completions';
 import { variablesCompletions } from './completions/variables.completions';
+import { secretsCompletions } from './completions/secrets.completions';
 
 import type { CodeNodeEditorMixin } from './types';
 
@@ -26,6 +27,7 @@ export const completerExtension = defineComponent({
 		executionCompletions,
 		workflowCompletions,
 		variablesCompletions,
+		secretsCompletions,
 		prevNodeCompletions,
 		luxonCompletions,
 		itemIndexCompletions,
@@ -56,6 +58,7 @@ export const completerExtension = defineComponent({
 					this.prevNodeCompletions,
 					this.workflowCompletions,
 					this.variablesCompletions,
+					this.secretsCompletions,
 					this.executionCompletions,
 
 					// luxon
@@ -175,6 +178,9 @@ export const completerExtension = defineComponent({
 
 				if (value === '$execution') return this.executionCompletions(context, variable);
 				if (value === '$vars') return this.variablesCompletions(context, variable);
+
+				if (value === '$secrets') return this.secretsCompletions(context, variable);
+
 				if (value === '$workflow') return this.workflowCompletions(context, variable);
 				if (value === '$prevNode') return this.prevNodeCompletions(context, variable);
 

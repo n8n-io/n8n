@@ -420,6 +420,7 @@ export const MAPPING_PARAMS = [
 	'$runIndex',
 	'$today',
 	'$vars',
+	'$secrets',
 	'$workflow',
 ];
 
