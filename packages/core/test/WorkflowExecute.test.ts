@@ -1016,6 +1016,367 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			},
+			// TODO: Is now executing more correctly, but still not 100% correct. Fix!
+			{
+				description:
+					'should simply execute the next multi-input-node (totally ignoring the runIndex)',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {
+									values: {
+										number: [
+											{
+												name: 'counter',
+												value: '={{ ($input.first().json.counter || 0) + 1 }}',
+											},
+										],
+									},
+									options: {},
+								},
+								id: '18191406-b56b-4388-9d4b-ff5b22fdc02c',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 2,
+								position: [640, 660],
+							},
+							{
+								parameters: {
+									conditions: {
+										number: [
+											{
+												value1: '={{ $json.counter }}',
+												value2: 3,
+											},
+										],
+									},
+								},
+								id: '0c6f239b-f9f5-4a20-b554-c69e7bc692b1',
+								name: 'IF',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [900, 660],
+							},
+							{
+								parameters: {},
+								id: '463194c3-4fcb-4da4-bba0-bc58462ac59a',
+								name: 'Merge',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 2.1,
+								position: [1180, 760],
+							},
+							{
+								parameters: {
+									values: {
+										number: [
+											{
+												name: 'counter',
+												value: '={{ ($input.first().json.counter || 0) + 1 }}',
+											},
+										],
+									},
+									options: {},
+								},
+								id: '8b5177c1-34ab-468f-8cb1-ff1d253562dc',
+								name: 'Set1',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 2,
+								position: [640, 320],
+							},
+							{
+								parameters: {
+									conditions: {
+										number: [
+											{
+												value1: '={{ $json.counter }}',
+												value2: 3,
+											},
+										],
+									},
+								},
+								id: '455663ab-bc3b-4674-9769-7428c85918c3',
+								name: 'IF1',
+								type: 'n8n-nodes-base.if',
+								typeVersion: 1,
+								position: [860, 320],
+							},
+							{
+								parameters: {},
+								id: 'ffc0d327-5cbc-4cf3-8fb0-77c087b391c1',
+								name: 'Merge1',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 2.1,
+								position: [1180, 420],
+							},
+							{
+								parameters: {},
+								id: '9a5b13a4-eba1-4a18-a4c6-36bedb07d975',
+								name: 'Merge2',
+								type: 'n8n-nodes-base.merge',
+								typeVersion: 2.1,
+								position: [1500, 600],
+							},
+							{
+								parameters: {},
+								id: '89a78e50-2ec6-48bf-be5f-3838600cd08a',
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [-20, 700],
+							},
+						],
+						connections: {
+							Set: {
+								main: [
+									[
+										{
+											node: 'IF',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							IF: {
+								main: [
+									[
+										{
+											node: 'Set',
+											type: 'main',
+											index: 0,
+										},
+										{
+											node: 'Merge1',
+											type: 'main',
+											index: 1,
+										},
+									],
+									[
+										{
+											node: 'Merge',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							Merge: {
+								main: [
+									[
+										{
+											node: 'Merge2',
+											type: 'main',
+											index: 1,
+										},
+									],
+								],
+							},
+							Set1: {
+								main: [
+									[
+										{
+											node: 'IF1',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							IF1: {
+								main: [
+									[
+										{
+											node: 'Set1',
+											type: 'main',
+											index: 0,
+										},
+										{
+											node: 'Merge1',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							Merge1: {
+								main: [
+									[
+										{
+											node: 'Merge2',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							Start: {
+								main: [
+									[
+										{
+											node: 'Merge',
+											type: 'main',
+											index: 1,
+										},
+										{
+											node: 'Set1',
+											type: 'main',
+											index: 0,
+										},
+										{
+											node: 'Set',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: [
+						'Start',
+						'Set1',
+						'Set',
+						'IF1',
+						'IF',
+						'Set1',
+						'Set',
+						'Merge1',
+						'IF1',
+						'IF',
+						'Set1',
+						'Set',
+						'Merge1',
+						'IF1',
+						'IF',
+						'Merge',
+						'Merge2',
+						'Merge1',
+						'Merge2',
+						'Merge2',
+					],
+					nodeData: {
+						Start: [[{}]],
+						Set1: [
+							[
+								{
+									counter: 1,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+							[
+								{
+									counter: 3,
+								},
+							],
+						],
+						Set: [
+							[
+								{
+									counter: 1,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+							[
+								{
+									counter: 3,
+								},
+							],
+						],
+						IF1: [
+							[
+								{
+									counter: 1,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+							[],
+						],
+						IF: [
+							[
+								{
+									counter: 1,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+							[],
+						],
+						Merge1: [
+							[
+								{
+									counter: 1,
+								},
+								{
+									counter: 1,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+								{
+									counter: 2,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+						],
+						Merge: [
+							[
+								{
+									counter: 3,
+								},
+								{},
+							],
+						],
+						Merge2: [
+							[
+								{
+									counter: 1,
+								},
+								{
+									counter: 1,
+								},
+								{
+									counter: 3,
+								},
+								{},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+							[
+								{
+									counter: 2,
+								},
+							],
+						],
+					},
+				},
+			},
 			{
 				description: 'should run basic two node workflow',
 				input: {
@@ -2382,7 +2743,6 @@ describe('WorkflowExecute', () => {
 						return nodeData.data.main[0]!.map((entry) => entry.json);
 					});
 
-					// expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
 				}
 

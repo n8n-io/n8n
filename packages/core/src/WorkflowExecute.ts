@@ -348,6 +348,27 @@ export class WorkflowExecute {
 		return true;
 	}
 
+	prepareWaitingToExecution(nodeName: string, numberOfConnections: number, runIndex: number) {
+		if (!this.runExecutionData.executionData!.waitingExecutionSource) {
+			this.runExecutionData.executionData!.waitingExecutionSource = {};
+		}
+
+		this.runExecutionData.executionData!.waitingExecution[nodeName][runIndex] = {
+			main: [],
+		};
+		this.runExecutionData.executionData!.waitingExecutionSource[nodeName][runIndex] = {
+			main: [],
+		};
+
+		for (let i = 0; i < numberOfConnections; i++) {
+			this.runExecutionData.executionData!.waitingExecution[nodeName][runIndex].main.push(null);
+
+			this.runExecutionData.executionData!.waitingExecutionSource[nodeName][runIndex].main.push(
+				null,
+			);
+		}
+	}
+
 	addNodeToBeExecuted(
 		workflow: Workflow,
 		connectionData: IConnection,
@@ -377,47 +398,66 @@ export class WorkflowExecute {
 				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node] = {};
 				nodeWasWaiting = false;
 			}
-			if (
-				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] ===
-				undefined
-			) {
-				// Node does not have data for runIndex yet so create also empty one and init it
-				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] = {
-					main: [],
-				};
-				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][runIndex] =
-					{
-						main: [],
-					};
-				for (
-					let i = 0;
-					i < workflow.connectionsByDestinationNode[connectionData.node].main.length;
-					i++
-				) {
-					this.runExecutionData.executionData!.waitingExecution[connectionData.node][
-						runIndex
-					].main.push(null);
 
-					this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
-						runIndex
-					].main.push(null);
+			let waitingNodeIndex: number | undefined;
+
+			// Figure out if the node is already waiting with partial data to which to add the
+			// data to or if a new entry has to get created
+			let createNewWaitingEntry = true;
+
+			if (
+				Object.keys(this.runExecutionData.executionData!.waitingExecution[connectionData.node])
+					.length > 0
+			) {
+				// Check if there is already data for the input on all of the waiting nodes
+				for (const index of Object.keys(
+					this.runExecutionData.executionData!.waitingExecution[connectionData.node],
+				)) {
+					if (
+						!this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+							parseInt(index)
+						].main[connectionData.index]
+					) {
+						// Data for the input is missing so we can add it to the existing entry
+						createNewWaitingEntry = false;
+						waitingNodeIndex = parseInt(index);
+						break;
+					}
 				}
+			}
+
+			if (waitingNodeIndex === undefined) {
+				waitingNodeIndex = Object.values(
+					this.runExecutionData.executionData!.waitingExecution[connectionData.node],
+				).length;
+			}
+
+			if (createNewWaitingEntry) {
+				// There is currently no node waiting that does not already have data for
+				// the given input, so create a new entry
+
+				this.prepareWaitingToExecution(
+					connectionData.node,
+					workflow.connectionsByDestinationNode[connectionData.node].main.length,
+					waitingNodeIndex,
+				);
 			}
 
 			// Add the new data
 			if (nodeSuccessData === null) {
-				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main[
-					connectionData.index
-				] = null;
+				this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+					waitingNodeIndex
+				].main[connectionData.index] = null;
 				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
-					runIndex
+					waitingNodeIndex
 				].main[connectionData.index] = null;
 			} else {
-				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main[
-					connectionData.index
-				] = nodeSuccessData[outputIndex];
+				this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+					waitingNodeIndex
+				].main[connectionData.index] = nodeSuccessData[outputIndex];
+
 				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
-					runIndex
+					waitingNodeIndex
 				].main[connectionData.index] = {
 					previousNode: parentNodeName,
 					previousNodeOutput: outputIndex || undefined,
@@ -431,14 +471,14 @@ export class WorkflowExecute {
 			for (
 				let i = 0;
 				i <
-				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main
-					.length;
+				this.runExecutionData.executionData!.waitingExecution[connectionData.node][waitingNodeIndex]
+					.main.length;
 				i++
 			) {
 				thisExecutionData =
-					this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main[
-						i
-					];
+					this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+						waitingNodeIndex
+					].main[i];
 				if (thisExecutionData === null) {
 					allDataFound = false;
 					break;
@@ -452,11 +492,11 @@ export class WorkflowExecute {
 				const executionStackItem = {
 					node: workflow.nodes[connectionData.node],
 					data: this.runExecutionData.executionData!.waitingExecution[connectionData.node][
-						runIndex
+						waitingNodeIndex
 					],
 					source:
 						this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
-							runIndex
+							waitingNodeIndex
 						],
 				} as IExecuteData;
 
@@ -466,16 +506,18 @@ export class WorkflowExecute {
 				) {
 					executionStackItem.source =
 						this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
-							runIndex
+							waitingNodeIndex
 						];
 				}
 
 				this.runExecutionData.executionData!.nodeExecutionStack.push(executionStackItem);
 
 				// Remove the data from waiting
-				delete this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex];
+				delete this.runExecutionData.executionData!.waitingExecution[connectionData.node][
+					waitingNodeIndex
+				];
 				delete this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
-					runIndex
+					waitingNodeIndex
 				];
 
 				if (
@@ -680,13 +722,22 @@ export class WorkflowExecute {
 
 		if (stillDataMissing) {
 			// Additional data is needed to run node so add it to waiting
-			if (
-				!this.runExecutionData.executionData!.waitingExecution.hasOwnProperty(connectionData.node)
-			) {
-				this.runExecutionData.executionData!.waitingExecution[connectionData.node] = {};
-			}
+			this.prepareWaitingToExecution(
+				connectionData.node,
+				workflow.connectionsByDestinationNode[connectionData.node].main.length,
+				runIndex,
+			);
+
 			this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] = {
 				main: connectionDataArray,
+			};
+
+			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
+				runIndex
+			].main[connectionData.index] = {
+				previousNode: parentNodeName,
+				previousNodeOutput: outputIndex || undefined,
+				previousNodeRun: runIndex || undefined,
 			};
 		} else {
 			// All data is there so add it directly to stack
