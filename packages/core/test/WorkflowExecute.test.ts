@@ -1253,8 +1253,6 @@ describe('WorkflowExecute', () => {
 						'IF',
 						'Merge',
 						'Merge2',
-						'Merge1',
-						'Merge2',
 						'Merge2',
 					],
 					nodeData: {
@@ -1336,11 +1334,6 @@ describe('WorkflowExecute', () => {
 									counter: 2,
 								},
 							],
-							[
-								{
-									counter: 2,
-								},
-							],
 						],
 						Merge: [
 							[
@@ -1367,8 +1360,6 @@ describe('WorkflowExecute', () => {
 								{
 									counter: 2,
 								},
-							],
-							[
 								{
 									counter: 2,
 								},

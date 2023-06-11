@@ -378,6 +378,7 @@ export class WorkflowExecute {
 		runIndex: number,
 	): void {
 		let stillDataMissing = false;
+		let waitingNodeIndex: number | undefined;
 
 		// Check if node has multiple inputs as then we have to wait for all input data
 		// to be present before we can add it to the node-execution-stack
@@ -398,8 +399,6 @@ export class WorkflowExecute {
 				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node] = {};
 				nodeWasWaiting = false;
 			}
-
-			let waitingNodeIndex: number | undefined;
 
 			// Figure out if the node is already waiting with partial data to which to add the
 			// data to or if a new entry has to get created
@@ -721,19 +720,22 @@ export class WorkflowExecute {
 		}
 
 		if (stillDataMissing) {
+			waitingNodeIndex = waitingNodeIndex!;
+
 			// Additional data is needed to run node so add it to waiting
 			this.prepareWaitingToExecution(
 				connectionData.node,
 				workflow.connectionsByDestinationNode[connectionData.node].main.length,
-				runIndex,
+				waitingNodeIndex,
 			);
 
-			this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] = {
-				main: connectionDataArray,
-			};
+			this.runExecutionData.executionData!.waitingExecution[connectionData.node][waitingNodeIndex] =
+				{
+					main: connectionDataArray,
+				};
 
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
-				runIndex
+				waitingNodeIndex
 			].main[connectionData.index] = {
 				previousNode: parentNodeName,
 				previousNodeOutput: outputIndex || undefined,
