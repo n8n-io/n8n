@@ -62,8 +62,6 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
-	// INodeProperties,
-	// FieldType,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -1954,8 +1952,7 @@ const validateValueAgainstSchema = (
 	itemIndex: number,
 ) => {
 	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
-
-	// Validate resource mapper values
+	// Currently only validate resource mapper values
 	const resourceMapperField = nodeType.description.properties.find(
 		(prop) =>
 			NodeHelpers.displayParameter(node.parameters, prop, node) &&
