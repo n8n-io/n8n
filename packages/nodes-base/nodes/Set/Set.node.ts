@@ -11,7 +11,7 @@ export class Set extends VersionedNodeType {
 			name: 'set',
 			icon: 'fa:pen',
 			group: ['input'],
-			description: 'Sets values on items and optionally remove other values',
+			description: 'Add or edit fields on an input item and optionally remove other fields',
 			defaultVersion: 3,
 		};
 

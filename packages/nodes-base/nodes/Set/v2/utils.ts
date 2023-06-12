@@ -77,19 +77,22 @@ export const prepareEntry = (
 	itemIndex: number,
 	ignoreErrors = false,
 ) => {
-	const value = entry[entry.type];
+	const entryValue = entry[entry.type];
+	const name = entry.name;
 
-	const validationResult = validateFieldType(entry.name, value, entry.type);
-
-	if (validationResult.valid) {
-		return { name: entry.name, value: validationResult.newValue };
-	} else {
-		if (ignoreErrors) {
-			return { name: entry.name, value: null };
-		} else {
-			throw new NodeOperationError(node, validationResult.errorMessage as string, {
-				itemIndex,
-			});
-		}
+	if (ignoreErrors) {
+		return { name, value: entryValue };
 	}
+
+	const validationResult = validateFieldType(name, entryValue, entry.type);
+
+	if (!validationResult.valid) {
+		throw new NodeOperationError(node, validationResult.errorMessage as string, {
+			itemIndex,
+		});
+	}
+
+	const value = validationResult.newValue === undefined ? null : validationResult.newValue;
+
+	return { name, value };
 };

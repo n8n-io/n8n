@@ -50,7 +50,14 @@ const versionDescription: INodeTypeDescription = {
 		},
 		{
 			displayName: 'Duplicate Item',
-			name: 'duplicate',
+			name: 'duplicateItem',
+			type: 'boolean',
+			default: false,
+			isNodeSetting: true,
+		},
+		{
+			displayName: 'Duplicate Item Count',
+			name: 'duplicateCount',
 			type: 'number',
 			default: 0,
 			typeOptions: {
@@ -59,6 +66,11 @@ const versionDescription: INodeTypeDescription = {
 			description:
 				'How many times the item should be duplicated, mainly used for testing and debugging',
 			isNodeSetting: true,
+			displayOptions: {
+				show: {
+					duplicateItem: [true],
+				},
+			},
 		},
 		{
 			displayName:
@@ -67,8 +79,8 @@ const versionDescription: INodeTypeDescription = {
 			type: 'notice',
 			default: '',
 			displayOptions: {
-				hide: {
-					duplicate: [0],
+				show: {
+					duplicateItem: [true],
 				},
 			},
 		},
@@ -90,7 +102,7 @@ export class SetV2 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0) as Mode;
-		const duplicate = this.getNodeParameter('duplicate', 0) as number;
+		const duplicateItem = this.getNodeParameter('duplicateItem', 0, false) as boolean;
 
 		const setNode = { raw, manual };
 
@@ -101,8 +113,9 @@ export class SetV2 implements INodeType {
 
 			const newItem = await setNode[mode].execute.call(this, items, i, includeOtherFields);
 
-			if (duplicate > 0 && this.getMode() === 'manual') {
-				for (let j = 0; j <= duplicate; j++) {
+			if (duplicateItem && this.getMode() === 'manual') {
+				const duplicateCount = this.getNodeParameter('duplicateCount', 0, 0) as number;
+				for (let j = 0; j <= duplicateCount; j++) {
 					returnData.push(newItem);
 				}
 			} else {
