@@ -49,6 +49,7 @@
     "@storybook/vue": "^7.0.7",
     "@storybook/vue-webpack5": "^7.0.7",
     "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3",
     "@testing-library/vue": "^5.8.3",
     "@types/markdown-it": "^12.2.3",
     "@types/markdown-it-emoji": "^2.0.2",
