@@ -215,11 +215,19 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			}
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
-			const activeNode = this.activeNode;
+			const workflowsStore = useWorkflowsStore();
+			const activeNode = workflowsStore.getNodeByName(this.activeNodeName || '');
+
 			if (activeNode) {
-				Vue.set(activeNode, 'issues', {
-					...activeNode.issues,
-					...issues,
+				const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
+					return node.name === activeNode.name;
+				});
+
+				workflowsStore.updateNodeAtIndex(nodeIndex, {
+					issues: {
+						...activeNode.issues,
+						...issues,
+					},
 				});
 			}
 		},
