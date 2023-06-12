@@ -16,6 +16,7 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
 			@blur="onBlur"
@@ -51,6 +52,7 @@ import InputHint from '@/components/ParameterInputHint.vue';
 import type {
 	INodeProperties,
 	INodePropertyMode,
+	IParameterLabel,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
@@ -115,6 +117,12 @@ export default defineComponent({
 		},
 		eventSource: {
 			type: String,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	computed: {

@@ -2,6 +2,7 @@ import {
 	changePassword,
 	deleteUser,
 	getInviteLink,
+	getPasswordResetLink,
 	getUsers,
 	inviteUsers,
 	login,
@@ -17,10 +18,11 @@ import {
 	updateCurrentUser,
 	updateCurrentUserPassword,
 	updateCurrentUserSettings,
+	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, USER_ACTIVATION_SURVEY_MODAL, STORES } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
 	ICredentialsResponse,
 	IInviteResponse,
@@ -251,6 +253,19 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([this.currentUser]);
 			}
 		},
+		async updateOtherUserSettings(
+			userId: string,
+			settings: IUserResponse['settings'],
+		): Promise<void> {
+			const rootStore = useRootStore();
+			const updatedSettings = await updateOtherUserSettings(
+				rootStore.getRestApiContext,
+				userId,
+				settings,
+			);
+			this.users[userId].settings = updatedSettings;
+			this.addUsers([this.users[userId]]);
+		},
 		async updateCurrentUserPassword({
 			password,
 			currentPassword,
@@ -288,6 +303,10 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return getInviteLink(rootStore.getRestApiContext, params);
 		},
+		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
+			const rootStore = useRootStore();
+			return getPasswordResetLink(rootStore.getRestApiContext, params);
+		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();
 			await submitPersonalizationSurvey(rootStore.getRestApiContext, results);
@@ -300,16 +319,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
-			}
-		},
-		async showUserActivationSurveyModal() {
-			const settingsStore = useSettingsStore();
-			if (settingsStore.isUserActivationSurveyEnabled) {
-				const currentUser = this.currentUser;
-				if (currentUser?.settings?.showUserActivationSurvey) {
-					const uiStore = useUIStore();
-					uiStore.openModal(USER_ACTIVATION_SURVEY_MODAL);
-				}
 			}
 		},
 		async skipOwnerSetup(): Promise<void> {

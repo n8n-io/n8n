@@ -14,10 +14,10 @@ jobs:
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js 16
+      - name: Use Node.js 18
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: pnpm
 
       - name: Install dependencies
@@ -34,7 +34,7 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-base:16.18.1-test-lint
+          key: ${{ github.sha }}-base:18-test-lint
 
   unit-test:
     name: Unit tests
@@ -54,14 +54,14 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-base:16.18.1-test-lint
+          key: ${{ github.sha }}-base:18-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js 16
+      - name: Use Node.js 18
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: pnpm
 
       - name: Test
@@ -90,14 +90,14 @@ jobs:
             /github/home/.pnpm-store
             ./node_modules
             ./packages
-          key: ${{ github.sha }}-base:16.18.1-test-lint
+          key: ${{ github.sha }}-base:18-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
 
-      - name: Use Node.js 16
+      - name: Use Node.js 18
         uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
           cache: pnpm
 
       - name: Fetch base branch for `git diff`
@@ -109,13 +109,12 @@ jobs:
         run: pnpm lint
 
   smoke-test:
-    name: E2E [Electron/Node 16]
+    name: E2E [Electron/Node 18]
     uses: ./.github/workflows/e2e-reusable.yml
     with:
       branch: ${{ github.event.pull_request.base.ref }}
       user: ${{ github.event.inputs.user || 'PR User' }}
       spec: ${{ github.event.inputs.spec || 'e2e/0-smoke.cy.ts' }}
-      run-env: browsers:node16.18.0-chrome107-ff106-edge
       record: false
       parallel: false
       pr_number: ${{ github.event.number }}

@@ -16,6 +16,7 @@ on:
         options:
           - patch
           - minor
+          - major
 
 jobs:
   create-release-pr:
@@ -42,7 +43,7 @@ jobs:
       - uses: pnpm/action-setup@v2.2.4
       - uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 18.x
       - run: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Bump package versions
