@@ -8,7 +8,7 @@ describe('Basic Auth Middleware', () => {
 
 	beforeAll(() => {
 		app = express();
-		config.set('security.basicAuth', { user: 'jim', password: 'n8n', hash: false });
+		config.set('security.basicAuth', { user: 'jim', password: 'n8n', hash: false, active: true });
 		setupBasicAuth(app, config, new RegExp('^/skip-auth'));
 		app.get('/test', (req, res) => res.send({ auth: true }));
 		app.get('/skip-auth', (req, res) => res.send({ auth: false }));

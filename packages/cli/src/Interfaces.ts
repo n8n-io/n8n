@@ -22,6 +22,7 @@ import type {
 	IExecutionsSummary,
 	FeatureFlags,
 	INodeProperties,
+	IUserSettings,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -477,13 +478,6 @@ export interface IPersonalizationSurveyAnswers {
 	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
 	workArea: string[] | string | null;
-}
-
-export interface IUserSettings {
-	isOnboarded?: boolean;
-	showUserActivationSurvey?: boolean;
-	firstSuccessfulWorkflowId?: string;
-	userActivated?: boolean;
 }
 
 export interface IActiveDirectorySettings {

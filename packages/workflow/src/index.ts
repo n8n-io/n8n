@@ -39,6 +39,7 @@ export {
 	isINodePropertiesList,
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
+	isResourceMapperValue,
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';

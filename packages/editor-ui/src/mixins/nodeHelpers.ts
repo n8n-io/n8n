@@ -36,6 +36,7 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
@@ -49,6 +50,7 @@ export const nodeHelpers = defineComponent({
 			useSettingsStore,
 			useWorkflowsStore,
 			useUsersStore,
+			useRootStore,
 		),
 	},
 	methods: {
@@ -524,6 +526,9 @@ export const nodeHelpers = defineComponent({
 					data as INode,
 					nodeType.subtitle,
 					'internal',
+					this.rootStore.timezone,
+					{},
+					undefined,
 					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				) as string | undefined;
 			}

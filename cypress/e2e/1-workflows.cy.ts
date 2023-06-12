@@ -9,7 +9,6 @@ const multipleWorkflowsCount = 5;
 
 describe('Workflows', () => {
 	before(() => {
-		cy.resetAll();
 		cy.skipSetup();
 	});
 

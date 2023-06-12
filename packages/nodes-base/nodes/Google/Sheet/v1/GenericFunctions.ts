@@ -1,7 +1,6 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
-	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -9,73 +8,13 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
+import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export interface IGoogleAuthCredentials {
 	delegatedEmail?: string;
 	email: string;
 	inpersonate: boolean;
 	privateKey: string;
-}
-
-export async function getAccessToken(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| ICredentialTestFunctions,
-	credentials: IGoogleAuthCredentials,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = [
-		'https://www.googleapis.com/auth/drive',
-		'https://www.googleapis.com/auth/drive.file',
-		'https://www.googleapis.com/auth/spreadsheets',
-	];
-
-	const now = moment().unix();
-
-	credentials.email = credentials.email.trim();
-	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email,
-			sub: credentials.delegatedEmail || credentials.email,
-			scope: scopes.join(' '),
-			aud: 'https://oauth2.googleapis.com/token',
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request(options);
 }
 
 export async function googleApiRequest(
@@ -114,10 +53,7 @@ export async function googleApiRequest(
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const { access_token } = await getAccessToken.call(
-				this,
-				credentials as unknown as IGoogleAuthCredentials,
-			);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'sheetV1');
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request(options);

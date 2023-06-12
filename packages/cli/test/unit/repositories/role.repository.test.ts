@@ -39,7 +39,7 @@ describe('RoleRepository', () => {
 
 		test('should throw otherwise', async () => {
 			entityManager.findOneOrFail.mockRejectedValueOnce(new Error());
-			expect(async () => roleRepository.findRoleOrFail('global', 'owner')).rejects.toThrow();
+			await expect(async () => roleRepository.findRoleOrFail('global', 'owner')).rejects.toThrow();
 		});
 	});
 
