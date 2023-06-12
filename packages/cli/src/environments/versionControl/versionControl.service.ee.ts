@@ -172,7 +172,7 @@ export class VersionControlService {
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
 		await this.versionControlPreferencesService.setPreferences({
 			branchName: branch,
-			connected: true,
+			connected: branch?.length > 0,
 		});
 		return this.gitService.setBranch(branch);
 	}
@@ -215,40 +215,6 @@ export class VersionControlService {
 			force: options.force ?? false,
 		});
 	}
-
-	// async pushWorkfolder(
-	// 	options: VersionControlPushWorkFolder,
-	// ): Promise<PushResult | VersionControlledFile[]> {
-	// 	await this.gitService.fetch();
-	// 	await this.export(); // refresh workfolder
-	// 	await this.stage(options);
-	// 	await this.gitService.commit(options.message ?? 'Updated Workfolder');
-	// 	return this.gitService.push({
-	// 		branch: this.versionControlPreferencesService.getBranchName(),
-	// 		force: options.force ?? false,
-	// 	});
-	// }
-
-	// TODO: Alternate implementation for pull
-	// async pullWorkfolder(
-	// 	options: VersionControllPullOptions,
-	// ): Promise<ImportResult | VersionControlledFile[] | PullResult | undefined> {
-	// 	const diffResult = await this.getStatus();
-	// 	const possibleConflicts = diffResult?.filter((file) => file.conflict);
-	// 	if (possibleConflicts?.length > 0 || options.force === true) {
-	// 		await this.unstage();
-	// 		if (options.force === true) {
-	// 			return this.resetWorkfolder(options);
-	// 		} else {
-	// 			return diffResult;
-	// 		}
-	// 	}
-	// 	const pullResult = await this.gitService.pull();
-	// 	if (options.importAfterPull) {
-	// 		return this.import(options);
-	// 	}
-	// 	return pullResult;
-	// }
 
 	async pullWorkfolder(
 		options: VersionControllPullOptions,
