@@ -16,6 +16,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		typeOptions: {
 			editor: 'sqlEditor',
+			rows: 5,
 		},
 		displayOptions: {
 			hide: {
@@ -33,6 +34,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		typeOptions: {
 			editor: 'sqlEditor',
+			rows: 5,
 		},
 		displayOptions: {
 			show: {

@@ -23,6 +23,7 @@ const properties: INodeProperties[] = [
 		typeOptions: {
 			editor: 'sqlEditor',
 			sqlDialect: 'mysql',
+			rows: 5,
 		},
 		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
 	},

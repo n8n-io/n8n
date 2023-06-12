@@ -93,6 +93,7 @@ export class MicrosoftSql implements INodeType {
 				typeOptions: {
 					editor: 'sqlEditor',
 					sqlDialect: 'mssql',
+					rows: 5,
 				},
 				displayOptions: {
 					show: {

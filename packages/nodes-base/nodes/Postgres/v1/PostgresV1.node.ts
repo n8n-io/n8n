@@ -77,6 +77,7 @@ const versionDescription: INodeTypeDescription = {
 			typeOptions: {
 				editor: 'sqlEditor',
 				sqlDialect: 'postgres',
+				rows: 5,
 			},
 			displayOptions: {
 				show: {

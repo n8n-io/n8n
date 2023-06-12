@@ -67,6 +67,7 @@ export class Snowflake implements INodeType {
 				type: 'string',
 				typeOptions: {
 					editor: 'sqlEditor',
+					rows: 5,
 				},
 				displayOptions: {
 					show: {

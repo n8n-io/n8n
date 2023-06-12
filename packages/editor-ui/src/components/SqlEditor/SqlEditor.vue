@@ -47,6 +47,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		rows: {
+			type: Number,
+			default: -1,
+		},
 	},
 	data() {
 		return {
@@ -88,7 +92,15 @@ export default defineComponent({
 				}),
 			);
 		}
-		const state = EditorState.create({ doc: this.query, extensions });
+		let doc = this.query;
+
+		const lines = doc.split('\n');
+
+		if (lines.length < this.rows) {
+			doc += '\n'.repeat(this.rows - lines.length);
+		}
+
+		const state = EditorState.create({ doc, extensions });
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 	},
 });

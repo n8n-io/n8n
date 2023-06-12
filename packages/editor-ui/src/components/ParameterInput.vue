@@ -110,6 +110,7 @@
 					:query="value"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					@valueChanged="valueChangedDebounced"
 				/>
 
@@ -133,6 +134,7 @@
 						:value="value"
 						:language="editorLanguage"
 						:isReadOnly="true"
+						:rows="getArgument('rows')"
 					/>
 				</div>
 
