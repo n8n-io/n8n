@@ -94,7 +94,7 @@ export class AwsS3V2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
-			const headers: IDataObject = {};
+			let headers: IDataObject = {};
 			try {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
@@ -984,7 +984,7 @@ export class AwsS3V2 implements INodeType {
 								);
 
 								body = binaryDataBuffer;
-
+								headers = { ...neededHeaders, ...multipartHeaders };
 								headers['Content-Type'] = binaryPropertyData.mimeType;
 
 								headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
@@ -1011,6 +1011,8 @@ export class AwsS3V2 implements INodeType {
 
 							body = Buffer.from(fileContent, 'utf8');
 
+							headers = { ...neededHeaders, ...multipartHeaders };
+
 							headers['Content-Type'] = 'text/html';
 
 							headers['Content-MD5'] = createHash('md5').update(fileContent).digest('base64');
@@ -1022,7 +1024,7 @@ export class AwsS3V2 implements INodeType {
 								`/${path}`,
 								body,
 								qs,
-								headers,
+								{ ...headers },
 								{},
 								region as string,
 							);
