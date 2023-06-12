@@ -39,6 +39,9 @@ importers:
       '@elastic/elasticsearch':
         specifier: ^8.8.0
         version: 8.8.0
+      aws-sdk:
+        specifier: ^2.1394.0
+        version: 2.1394.0
       n8n:
         specifier: workspace:*
         version: link:packages/cli
@@ -9673,8 +9676,8 @@ packages:
     engines: {node: '>=0.11'}
     dev: false
 
-  /aws-sdk@2.1231.0:
-    resolution: {integrity: sha512-ONBuRsOxsu0zL8u/Vmz49tPWi9D4ls2pjb6szdfSx9VQef7bOnWe9gJpWoA94OTzcjOWsvjsG7UgjvQJkIuPBg==}
+  /aws-sdk@2.1394.0:
+    resolution: {integrity: sha512-Co33zmBHfVkQ/PxM5AZQ5HVKmhQFT9yGAiP+dfCgIxHTGjZ4t1tlc/cPEoA5bd1fbIP29EGOd11+Tu9UAYwB+w==}
     engines: {node: '>= 10.0.0'}
     dependencies:
       buffer: 4.9.2
@@ -9684,7 +9687,7 @@ packages:
       querystring: 0.2.0
       sax: 1.2.1
       url: 0.10.3
-      util: 0.12.4
+      util: 0.12.5
       uuid: 8.0.0
       xml2js: 0.5.0
     dev: false
@@ -20515,7 +20518,7 @@ packages:
       agent-base: 6.0.2
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      aws-sdk: 2.1231.0
+      aws-sdk: 2.1394.0
       axios: 0.27.2(debug@3.2.7)
       big-integer: 1.6.51
       bignumber.js: 2.4.0
@@ -22325,17 +22328,6 @@ packages:
       object.getownpropertydescriptors: 2.1.4
     dev: false
 
-  /util@0.12.4:
-    resolution: {integrity: sha512-bxZ9qtSlGUWSOy9Qa9Xgk11kSslpuZwaxCg4sNIDj6FLucDab2JxnHwyNTCpHMtK1MjoQiWQ6DiUMZYbSrO+Sw==}
-    dependencies:
-      inherits: 2.0.4
-      is-arguments: 1.1.1
-      is-generator-function: 1.0.10
-      is-typed-array: 1.1.10
-      safe-buffer: 5.2.1
-      which-typed-array: 1.1.9
-    dev: false
-
   /util@0.12.5:
     resolution: {integrity: sha512-kZf/K6hEIrWHI6XqOFUiiMa+79wE/D8Q+NCNAWclkyg3b4d2k7s0QGepNjiABc+aR3N1PAyHL7p6UcLY6LmrnA==}
     dependencies:
@@ -22344,7 +22336,6 @@ packages:
       is-generator-function: 1.0.10
       is-typed-array: 1.1.10
       which-typed-array: 1.1.9
-    dev: true
 
   /utila@0.4.0:
     resolution: {integrity: sha512-Z0DbgELS9/L/75wZbro8xAnT50pBVFQZ+hUEueGDU5FN51YSCYM+jdxsfCiHjwNP/4LCDD0i/graKpeBnOXKRA==}

@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.8.0",
+    "aws-sdk": "^2.1394.0",
     "n8n": "workspace:*"
   },
   "devDependencies": {

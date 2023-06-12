@@ -40,6 +40,7 @@ import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import { ElasticSearchCoreClient } from './elasticSearchCore';
+import { S3 } from 'aws-sdk';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -1329,7 +1330,7 @@ export class WorkflowExecute {
 		const executionId: string =
 			this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
 		await this.storeFullDataInElasticSearch(executionId, fullRunData); // Store in Elastic
-		this.storeInS3();
+		this.storeFullDataInS3(executionId, fullRunData.data.resultData.error, fullRunData);
 		return fullRunData;
 	}
 
@@ -1350,8 +1351,72 @@ export class WorkflowExecute {
 		await client.addDocument(executionId, fullRunData.data.resultData.runData);
 	}
 
-	private storeInS3() {
-		// To be implemented
-		return;
+	private storeFullDataInS3(
+		executionId: string,
+		executionError: ExecutionError | undefined,
+		fullRunData: IRun,
+	) {
+		// The n8n hierarchy is:
+		// - bucket's name - environment
+		// -- Date
+		// --- status (succeeded / failed)
+		// --- document name is the execution id
+
+		const s3_configuration = process.env.AWS_S3_EXECUTIONS_BUCKET;
+		if (!s3_configuration) {
+			// We don't store anything in s3 if env is not configured
+			return;
+		}
+
+		// aws s3 url should look like this
+		// https://aws.amazon.com/?accessKeyId=yourAccessKey&secretAccessKey=yourSecretKey&region=yourRegion&bucketName=YourBucket
+		const awsUrl = new URL(s3_configuration);
+
+		const accessKeyId: string | undefined = awsUrl.searchParams.get('accessKeyId') || undefined;
+		const bucket: string | undefined = awsUrl.searchParams.get('bucket') || undefined;
+		const secretAccessKey: string | undefined =
+			awsUrl.searchParams.get('secretAccessKey') || undefined;
+		const region: string | undefined = awsUrl.searchParams.get('region') || undefined;
+
+		// Validate s3 url
+		if (!accessKeyId || !bucket || !secretAccessKey || !region) {
+			Logger.error(
+				`AWS S3: Malformed url, could not insert execution ${executionId} to bucket:${bucket}`,
+			);
+			return;
+		}
+
+		const s3: S3 = new S3({
+			accessKeyId,
+			secretAccessKey,
+			region,
+		});
+
+		// get today's date and format it as YYYY-MM-DD
+		const today = new Date();
+		const formattedDate = today.toLocaleDateString('en-CA');
+
+		// Determine if status is successful
+		const status: string = executionError ? 'failed' : 'succeeded';
+
+		const pathAndKey = `${formattedDate}/${status}/${executionId}`;
+
+		const awsParams: S3.PutObjectRequest = {
+			Bucket: bucket,
+			Key: pathAndKey,
+			Body: JSON.stringify(fullRunData),
+		};
+
+		s3.putObject(awsParams, function (error, data) {
+			if (error) {
+				Logger.error(
+					`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+				);
+			} else {
+				Logger.debug(
+					`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+				);
+			}
+		});
 	}
 }
