@@ -1,5 +1,5 @@
 import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
-import { deepCopy, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
 
 import set from 'lodash.set';
 
@@ -71,53 +71,25 @@ export type SetField = {
 	object?: string | IDataObject;
 };
 
-export const prepareEntry = (entry: SetField, node: INode, i: number, ignoreErrors = false) => {
-	let value = entry[entry.type];
+export const prepareEntry = (
+	entry: SetField,
+	node: INode,
+	itemIndex: number,
+	ignoreErrors = false,
+) => {
+	const value = entry[entry.type];
 
-	try {
-		switch (entry.type) {
-			case 'boolean':
-				value = Boolean(value);
-				break;
-			case 'number':
-				value = Number(value);
-				break;
-			case 'object':
-				value = parseJsonParameter(value as string, node, i);
-				break;
-			case 'array':
-				if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-					value = [value];
-				}
-				if (typeof value === 'string') {
-					value = value.split(',').map((item) => item.trim());
-				}
-				break;
-			default:
-				if (typeof value !== 'string') {
-					value = String(value);
-				}
-		}
-	} catch (error) {
-		if (ignoreErrors) {
-			return { name: entry.name, value: null };
-		}
-		throw new NodeOperationError(node, error as Error);
-	}
+	const validationResult = validateFieldType(entry.name, value, entry.type);
 
-	if (value === 'undefined' || (entry.type === 'number' && isNaN(value as number))) {
+	if (validationResult.valid) {
+		return { name: entry.name, value: validationResult.newValue };
+	} else {
 		if (ignoreErrors) {
 			return { name: entry.name, value: null };
 		} else {
-			throw new NodeOperationError(
-				node,
-				`The value "${entry[entry.type]}" for the field "${
-					entry.name
-				}" could not be converted to a ${entry.type}`,
-				{ itemIndex: i },
-			);
+			throw new NodeOperationError(node, validationResult.errorMessage as string, {
+				itemIndex,
+			});
 		}
 	}
-
-	return { name: entry.name, value };
 };

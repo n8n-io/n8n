@@ -62,8 +62,8 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
-	INodeProperties,
-	FieldType,
+	// INodeProperties,
+	// FieldType,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -1945,27 +1945,6 @@ const validateResourceMapperValue = (
 	return result;
 };
 
-const validateValue = (
-	parameterPath: string[],
-	paramValue: IDataObject | IDataObject[] | GenericValue | GenericValue[],
-	property: INodeProperties,
-): ExtendedValidationResult => {
-	let result: ExtendedValidationResult = { valid: true, newValue: paramValue };
-
-	if (parameterPath.length === 1) {
-		const key = parameterPath[0];
-		const type = (property.typeOptions?.expectedType || property.type) as FieldType;
-		const validationResult = validateFieldType(key, paramValue, type);
-		if (!validationResult.valid) {
-			return { ...validationResult, fieldName: key };
-		} else {
-			result = validationResult;
-		}
-	}
-
-	return result;
-};
-
 const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
@@ -1991,19 +1970,6 @@ const validateValueAgainstSchema = (
 			node,
 			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
 		);
-	}
-
-	const pathSplited = parameterName.split('.');
-	const propertyToValidate = nodeType.description.properties.find(
-		(prop) =>
-			prop.type !== 'resourceMapper' &&
-			NodeHelpers.displayParameter(node.parameters, prop, node) &&
-			prop.typeOptions?.validate &&
-			(pathSplited.length > 1 ? prop.name === pathSplited[0] : prop.name === parameterName),
-	);
-
-	if (propertyToValidate) {
-		validationResult = validateValue(pathSplited, inputValues, propertyToValidate);
 	}
 
 	if (!validationResult.valid) {
