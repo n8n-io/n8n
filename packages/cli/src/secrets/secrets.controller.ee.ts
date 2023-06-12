@@ -39,4 +39,23 @@ export class ExternalSecretsController {
 		}
 		return {};
 	}
+
+	@Post('/providers/:provider/connect')
+	async setProviderConnected(req: ExternalSecretsRequest.SetProviderConnected) {
+		const providerName = req.params.provider;
+		try {
+			await this.secretsService.saveProviderConnected(providerName, req.body.connected);
+		} catch (e) {
+			if (e instanceof ProviderNotFoundError) {
+				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
+			}
+			throw e;
+		}
+		return {};
+	}
+
+	@Get('/secrets')
+	getSecretNames() {
+		return this.secretsService.getAllSecrets();
+	}
 }

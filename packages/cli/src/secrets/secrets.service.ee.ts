@@ -113,4 +113,16 @@ export class SecretsService {
 		const newData = this.unredact(data, settings.settings);
 		await this.secretsManager.setProviderSettings(providerName, newData);
 	}
+
+	async saveProviderConnected(providerName: string, connected: boolean) {
+		const providerAndSettings = this.secretsManager.getProviderWithSettings(providerName);
+		if (!providerAndSettings) {
+			throw new ProviderNotFoundError(providerName);
+		}
+		await this.secretsManager.setProviderConnected(providerName, connected);
+	}
+
+	getAllSecrets(): Record<string, string[]> {
+		return this.secretsManager.getAllSecretNames();
+	}
 }

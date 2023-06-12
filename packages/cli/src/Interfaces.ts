@@ -791,7 +791,7 @@ export type UserSettings = Pick<User, 'id' | 'settings'>;
 
 export interface SecretsProviderSettings<T = IDataObject> {
 	connected: boolean;
-	connectedAt: Date;
+	connectedAt: Date | null;
 	settings: T;
 }
 

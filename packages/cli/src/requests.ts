@@ -437,11 +437,16 @@ export declare namespace ExternalSecretsRequest {
 	type GetProviderResponse = Pick<SecretsProvider, 'displayName' | 'name' | 'properties'> & {
 		icon: string;
 		connected: boolean;
-		connectedAt: Date;
+		connectedAt: Date | null;
 		data: IDataObject;
 	};
 
 	type GetProviders = AuthenticatedRequest;
 	type GetProvider = AuthenticatedRequest<{ provider: string }, GetProviderResponse>;
 	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
+	type SetProviderConnected = AuthenticatedRequest<
+		{ provider: string },
+		{},
+		{ connected: boolean }
+	>;
 }

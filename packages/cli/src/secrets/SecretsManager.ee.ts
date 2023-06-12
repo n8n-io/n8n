@@ -260,6 +260,15 @@ export class ExternalSecretsManager {
 		return this.getProvider(provider)?.getSecretNames();
 	}
 
+	getAllSecretNames(): Record<string, string[]> {
+		return Object.fromEntries(
+			Object.keys(this.providers).map((provider) => [
+				provider,
+				this.getSecretNames(provider) ?? [],
+			]),
+		);
+	}
+
 	getProvidersWithSettings(): Array<{
 		provider: SecretsProvider;
 		settings: SecretsProviderSettings;
@@ -297,6 +306,33 @@ export class ExternalSecretsManager {
 				connected: settings[provider]?.connected ?? false,
 				connectedAt: settings[provider]?.connectedAt ?? new Date(),
 				settings: data,
+			};
+
+			await this.saveAndSetSettings(settings, settingsRepo);
+			this.cachedSettings = settings;
+		});
+		const newProvider = await this.initProvider(provider, this.cachedSettings[provider]);
+		if (newProvider) {
+			this.providers[provider] = newProvider;
+		} else {
+			// Delete it so we're not fetching old values
+			delete this.providers[provider];
+		}
+		await this.updateSecrets();
+	}
+
+	async setProviderConnected(provider: string, connected: boolean) {
+		await this.settingsRepo.manager.transaction(async (em) => {
+			const settingsRepo = new SettingsRepository(em.connection);
+
+			let settings = await this.getDecryptedSettings(settingsRepo);
+			if (!settings) {
+				settings = {};
+			}
+			settings[provider] = {
+				connected,
+				connectedAt: connected ? new Date() : settings[provider]?.connectedAt ?? null,
+				settings: settings[provider]?.settings ?? {},
 			};
 
 			await this.saveAndSetSettings(settings, settingsRepo);
