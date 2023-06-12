@@ -570,10 +570,10 @@ export default defineComponent({
 							value,
 						);
 					}
-
-					this.nodeValues = { ...this.nodeValues };
 				}
 			}
+
+			this.nodeValues = { ...this.nodeValues };
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node
