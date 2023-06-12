@@ -6,7 +6,7 @@
     "@types/eslint": "~8.37",
     "@typescript-eslint/eslint-plugin": "~5.59",
     "@typescript-eslint/parser": "~5.59",
-    "@vue/eslint-config-typescript": "~8.0",
+    "@vue/eslint-config-typescript": "^11.0.3",
     "eslint": "~8.39",
     "eslint-config-airbnb-typescript": "~17.0",
     "eslint-config-prettier": "~8.8",
@@ -17,7 +17,8 @@
     "eslint-plugin-prettier": "~4.2",
     "eslint-plugin-unicorn": "~46.0",
     "eslint-plugin-unused-imports": "~2.0",
-    "eslint-plugin-vue": "~7.17"
+    "eslint-plugin-vue": "^9.12.0",
+    "vue-eslint-parser": "^9.3.0"
   },
   "scripts": {
     "clean": "rimraf .turbo",

@@ -88,6 +88,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system';
 import Modal from '@/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -95,11 +98,8 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_RISKS_DOCS_URL,
 } from '@/constants';
-import { defineComponent } from 'vue';
 import { useToast } from '@/composables';
-import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { createEventBus } from '@/event-bus';
 
 export default defineComponent({
 	name: 'CommunityPackageInstallModal',

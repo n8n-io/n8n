@@ -204,6 +204,8 @@ export class DateTimeV2 implements INodeType {
 				},
 			);
 			returnData.push(...executionData);
+			// Reset responseData
+			responseData.length = 0;
 		}
 		return this.prepareOutputData(returnData);
 	}

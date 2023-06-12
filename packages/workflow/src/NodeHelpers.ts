@@ -37,11 +37,16 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	WebhookHttpMethod,
+	FieldType,
+	INodePropertyOptions,
+	ResourceMapperValue,
+	ValidationResult,
 } from './Interfaces';
-import { isValidResourceLocatorParameterValue } from './type-guards';
+import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
+import { DateTime } from 'luxon';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1097,6 +1102,173 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
+// Validates field against the schema and tries to parse it to the correct type
+export const validateFieldType = (
+	fieldName: string,
+	value: unknown,
+	type: FieldType,
+	options?: INodePropertyOptions[],
+): ValidationResult => {
+	if (value === null || value === undefined) return { valid: true };
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'.`;
+	switch (type.toLowerCase()) {
+		case 'number': {
+			try {
+				return { valid: true, newValue: tryToParseNumber(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'boolean': {
+			try {
+				return { valid: true, newValue: tryToParseBoolean(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'datetime': {
+			try {
+				return { valid: true, newValue: tryToParseDateTime(value) };
+			} catch (e) {
+				const luxonDocsURL =
+					'https://moment.github.io/luxon/api-docs/index.html#datetimefromformat';
+				const errorMessage = `${defaultErrorMessage} <br/><br/> Consider using <a href="${luxonDocsURL}" target="_blank"><code>DateTime.fromFormat</code></a> to work with custom date formats.`;
+				return { valid: false, errorMessage };
+			}
+		}
+		case 'time': {
+			try {
+				return { valid: true, newValue: tryToParseTime(value) };
+			} catch (e) {
+				return {
+					valid: false,
+					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
+				};
+			}
+		}
+		case 'object': {
+			try {
+				return { valid: true, newValue: tryToParseObject(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'array': {
+			try {
+				return { valid: true, newValue: tryToParseArray(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'options': {
+			const validOptions = options?.map((option) => option.value).join(', ') || '';
+			const isValidOption = options?.some((option) => option.value === value) || false;
+
+			if (!isValidOption) {
+				return {
+					valid: false,
+					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+						value,
+					)}'`,
+				};
+			}
+			return { valid: true, newValue: value };
+		}
+		default: {
+			return { valid: true, newValue: value };
+		}
+	}
+};
+
+export const tryToParseNumber = (value: unknown): number => {
+	const isValidNumber = !isNaN(Number(value));
+
+	if (!isValidNumber) {
+		throw new Error(`Could not parse '${String(value)}' to number.`);
+	}
+	return Number(value);
+};
+
+export const tryToParseBoolean = (value: unknown): value is boolean => {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+
+	if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
+		return value.toLowerCase() === 'true';
+	}
+
+	const num = Number(value);
+	if (num === 0) {
+		return false;
+	} else if (num === 1) {
+		return true;
+	}
+	throw new Error(`Could not parse '${String(value)}' to boolean.`);
+};
+
+export const tryToParseDateTime = (value: unknown): DateTime => {
+	const dateString = String(value).trim();
+
+	// Rely on luxon to parse different date formats
+	const isoDate = DateTime.fromISO(dateString, { setZone: true });
+	if (isoDate.isValid) {
+		return isoDate;
+	}
+	const httpDate = DateTime.fromHTTP(dateString, { setZone: true });
+	if (httpDate.isValid) {
+		return httpDate;
+	}
+	const rfc2822Date = DateTime.fromRFC2822(dateString, { setZone: true });
+	if (rfc2822Date.isValid) {
+		return rfc2822Date;
+	}
+	const sqlDate = DateTime.fromSQL(dateString, { setZone: true });
+	if (sqlDate.isValid) {
+		return sqlDate;
+	}
+
+	throw new Error(`The value "${dateString}" is not a valid date.`);
+};
+
+export const tryToParseTime = (value: unknown): string => {
+	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?((\-|\+)\d{4})?((\-|\+)\d{1,2}(:\d{2})?)?$/s.test(
+		String(value),
+	);
+	if (!isTimeInput) {
+		throw new Error(`The value "${String(value)}" is not a valid time.`);
+	}
+	return String(value);
+};
+
+export const tryToParseArray = (value: unknown): unknown[] => {
+	try {
+		const parsed = JSON.parse(String(value));
+		if (!Array.isArray(parsed)) {
+			throw new Error(`The value "${String(value)}" is not a valid array.`);
+		}
+		return parsed;
+	} catch (e) {
+		throw new Error(`The value "${String(value)}" is not a valid array.`);
+	}
+};
+
+export const tryToParseObject = (value: unknown): object => {
+	if (value && typeof value === 'object' && !Array.isArray(value)) {
+		return value;
+	}
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const o = JSON.parse(String(value));
+		if (typeof o !== 'object' || Array.isArray(o)) {
+			throw new Error(`The value "${String(value)}" is not a valid object.`);
+		}
+		return o;
+	} catch (e) {
+		throw new Error(`The value "${String(value)}" is not a valid object.`);
+	}
+};
+
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
  *
@@ -1126,6 +1298,42 @@ export const validateResourceLocatorParameter = (
 	}
 
 	return validationErrors;
+};
+
+/*
+ * Validates resource mapper values based on service schema
+ *
+ */
+export const validateResourceMapperParameter = (
+	nodeProperties: INodeProperties,
+	value: ResourceMapperValue,
+	skipRequiredCheck = false,
+): Record<string, string[]> => {
+	const issues: Record<string, string[]> = {};
+	let fieldWordSingular =
+		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
+	fieldWordSingular = fieldWordSingular.charAt(0).toUpperCase() + fieldWordSingular.slice(1);
+	value.schema.forEach((field) => {
+		const fieldValue = value.value ? value.value[field.id] : null;
+		const key = `${nodeProperties.name}.${field.id}`;
+		const fieldErrors: string[] = [];
+		if (field.required && !skipRequiredCheck) {
+			if (value.value === null || fieldValue === null || fieldValue === undefined) {
+				const error = `${fieldWordSingular} "${field.id}" is required`;
+				fieldErrors.push(error);
+			}
+		}
+		if (!fieldValue?.toString().startsWith('=') && field.type) {
+			const validationResult = validateFieldType(field.id, fieldValue, field.type, field.options);
+			if (!validationResult.valid && validationResult.errorMessage) {
+				fieldErrors.push(validationResult.errorMessage);
+			}
+		}
+		if (fieldErrors.length > 0) {
+			issues[key] = fieldErrors;
+		}
+	});
+	return issues;
 };
 
 /**
@@ -1196,8 +1404,9 @@ export function getParameterIssues(
 	node: INode,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
+	const isDisplayed = displayParameterPath(nodeValues, nodeProperties, path, node);
 	if (nodeProperties.required === true) {
-		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
+		if (isDisplayed) {
 			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
@@ -1218,24 +1427,37 @@ export function getParameterIssues(
 		}
 	}
 
-	if (nodeProperties.type === 'resourceLocator') {
-		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
-			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
-			if (isINodeParameterResourceLocator(value)) {
-				const mode = nodeProperties.modes?.find((option) => option.name === value.mode);
-				if (mode) {
-					const errors = validateResourceLocatorParameter(value, mode);
-					errors.forEach((error) => {
-						if (foundIssues.parameters === undefined) {
-							foundIssues.parameters = {};
-						}
-						if (foundIssues.parameters[nodeProperties.name] === undefined) {
-							foundIssues.parameters[nodeProperties.name] = [];
-						}
+	if (nodeProperties.type === 'resourceLocator' && isDisplayed) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isINodeParameterResourceLocator(value)) {
+			const mode = nodeProperties.modes?.find((option) => option.name === value.mode);
+			if (mode) {
+				const errors = validateResourceLocatorParameter(value, mode);
+				errors.forEach((error) => {
+					if (foundIssues.parameters === undefined) {
+						foundIssues.parameters = {};
+					}
+					if (foundIssues.parameters[nodeProperties.name] === undefined) {
+						foundIssues.parameters[nodeProperties.name] = [];
+					}
 
-						foundIssues.parameters[nodeProperties.name].push(error);
-					});
+					foundIssues.parameters[nodeProperties.name].push(error);
+				});
+			}
+		}
+	} else if (nodeProperties.type === 'resourceMapper' && isDisplayed) {
+		const skipRequiredCheck = nodeProperties.typeOptions?.resourceMapper?.mode !== 'add';
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isResourceMapperValue(value)) {
+			const issues = validateResourceMapperParameter(nodeProperties, value, skipRequiredCheck);
+			if (Object.keys(issues).length > 0) {
+				if (foundIssues.parameters === undefined) {
+					foundIssues.parameters = {};
 				}
+				if (foundIssues.parameters[nodeProperties.name] === undefined) {
+					foundIssues.parameters[nodeProperties.name] = [];
+				}
+				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
 		}
 	}

@@ -213,7 +213,7 @@ describe('PermissionChecker.check()', () => {
 
 		const workflow = new Workflow(workflowDetails);
 
-		expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
+		await expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
 	});
 });
 
@@ -274,11 +274,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 
 		// Check description
 		try {
-			await PermissionChecker.checkSubworkflowExecutePolicy(
-				subworkflow,
-				subworkflow.settings.userId as string,
-				'abcde',
-			);
+			await PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, '', 'abcde');
 		} catch (error) {
 			if (error instanceof SubworkflowOperationError) {
 				expect(error.description).toBe(

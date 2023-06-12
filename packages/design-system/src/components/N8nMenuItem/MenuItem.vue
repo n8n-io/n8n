@@ -36,6 +36,9 @@
 			>
 				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
 				<span :class="$style.label">{{ child.label }}</span>
+				<span v-if="child.secondaryIcon" :class="$style.secondaryIcon">
+					<n8n-icon :icon="child.secondaryIcon.name" :size="child.secondaryIcon.size || 'small'" />
+				</span>
 			</el-menu-item>
 		</el-submenu>
 		<n8n-tooltip
@@ -65,6 +68,9 @@
 					:size="item.customIconSize || 'large'"
 				/>
 				<span :class="$style.label">{{ item.label }}</span>
+				<span v-if="item.secondaryIcon" :class="$style.secondaryIcon">
+					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
+				</span>
 			</el-menu-item>
 		</n8n-tooltip>
 	</div>
@@ -264,12 +270,20 @@ export default defineComponent({
 	padding: var(--spacing-2xs) var(--spacing-xs) !important;
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
+	overflow: hidden;
 }
 
 .icon {
 	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 	text-align: center;
+}
+
+.secondaryIcon {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 1;
 }
 
 .label {
@@ -292,6 +306,9 @@ export default defineComponent({
 		height: initial !important;
 	}
 	.label {
+		display: none;
+	}
+	.secondaryIcon {
 		display: none;
 	}
 }

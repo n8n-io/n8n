@@ -252,6 +252,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return acc;
 			}, 0);
 		},
+		shouldReplaceInputDataWithPinData(): boolean {
+			return !this.activeWorkflowExecution || this.activeWorkflowExecution?.mode === 'manual';
+		},
 		executedNode(): string | undefined {
 			return this.workflowExecutionData ? this.workflowExecutionData.executedNode : undefined;
 		},

@@ -47,7 +47,8 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const USER_ACTIVATION_SURVEY_MODAL = 'userActivationSurvey';
+
+export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -80,7 +81,6 @@ export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integr
 export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
-export const MAIN_REPOSITORY_URL = 'https://github.com/n8n-io/n8n';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -530,7 +530,17 @@ export const TEMPLATE_EXPERIMENT = {
 	variant: 'variant',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
+export const ONBOARDING_EXPERIMENT = {
+	name: '004_checklist',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const EXPERIMENTS_TO_TRACK = [
+	TEMPLATE_EXPERIMENT.name,
+	AUTO_INSERT_ACTION_EXPERIMENT.name,
+	ONBOARDING_EXPERIMENT.name,
+];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
@@ -549,8 +559,6 @@ export const ALLOWED_HTML_TAGS = [
 	'details',
 	'summary',
 ];
-
-export const GITHUB_STARS_BANNER_SHOW_UNTIL_DATE = new Date('2023-06-01');
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
 	? 'https://stage-app.n8n.cloud/account/change-plan'

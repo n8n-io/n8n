@@ -500,7 +500,6 @@ import {
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
-import WarningTooltip from '@/components/WarningTooltip.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -530,7 +529,6 @@ export default defineComponent({
 	components: {
 		BinaryDataDisplay,
 		NodeErrorView,
-		WarningTooltip,
 		CodeNodeEditor,
 		RunDataTable,
 		RunDataJson,
@@ -1068,14 +1066,14 @@ export default defineComponent({
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.inputData)) {
+			if (!this.isValidPinDataSize(this.rawInputData)) {
 				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 				return;
 			}
 
 			this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-			this.workflowsStore.pinData({ node: this.node, data: this.inputData });
+			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({

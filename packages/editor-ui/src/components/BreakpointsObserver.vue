@@ -37,7 +37,7 @@ export default defineComponent({
 	},
 	methods: {
 		onResize() {
-			this.callDebounced('onResizeEnd', { debounceTime: 50 });
+			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;

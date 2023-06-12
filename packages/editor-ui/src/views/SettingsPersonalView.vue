@@ -66,7 +66,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import { createEventBus } from '@/event-bus';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'SettingsPersonalView',

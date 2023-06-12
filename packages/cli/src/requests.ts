@@ -33,13 +33,13 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	lastName: string;
 }
 export class UserSettingsUpdatePayload {
-	@IsBoolean({ message: 'showUserActivationSurvey should be a boolean' })
-	@IsOptional()
-	showUserActivationSurvey: boolean;
-
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated: boolean;
+
+	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
+	@IsOptional()
+	allowSSOManualLogin?: boolean;
 }
 
 export type AuthlessRequest<
@@ -250,6 +250,14 @@ export declare namespace UserRequest {
 		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
 	>;
 
+	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+
+	export type UserSettingsUpdate = AuthenticatedRequest<
+		{ id: string },
+		{},
+		UserSettingsUpdatePayload
+	>;
+
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
 	export type Update = AuthlessRequest<
@@ -333,6 +341,23 @@ export type NodeListSearchRequest = AuthenticatedRequest<
 		credentials: string;
 		filter?: string;
 		paginationToken?: string;
+	}
+>;
+
+// ----------------------------------
+//        /get-mapping-fields
+// ----------------------------------
+
+export type ResourceMapperRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
 	}
 >;
 

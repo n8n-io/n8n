@@ -33,6 +33,7 @@ import type {
 	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
+	IUserSettings,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -561,12 +562,7 @@ export interface IUserResponse {
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
 	signInType?: SignInType;
-	settings?: {
-		isOnboarded?: boolean;
-		showUserActivationSurvey?: boolean;
-		firstSuccessfulWorkflowId?: string;
-		userActivated?: boolean;
-	};
+	settings?: IUserSettings;
 }
 
 export interface CurrentUserResponse extends IUserResponse {
@@ -1362,6 +1358,13 @@ export type NodeAuthenticationOption = {
 	displayOptions?: IDisplayOptions;
 };
 
+export interface ResourceMapperReqParams {
+	nodeTypeAndVersion: INodeTypeNameVersion;
+	path: string;
+	methodName?: string;
+	currentNodeParameters: INodeParameters;
+	credentials?: INodeCredentials;
+}
 export interface EnvironmentVariable {
 	id: number;
 	key: string;
@@ -1441,12 +1444,43 @@ export type VersionControlPreferences = {
 	repositoryUrl: string;
 	authorName: string;
 	authorEmail: string;
-	currentBranch: string;
+	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	currentBranch?: string;
 };
+
+export interface VersionControlStatus {
+	ahead: number;
+	behind: number;
+	conflicted: string[];
+	created: string[];
+	current: string;
+	deleted: string[];
+	detached: boolean;
+	files: Array<{
+		path: string;
+		index: string;
+		working_dir: string;
+	}>;
+	modified: string[];
+	not_added: string[];
+	renamed: string[];
+	staged: string[];
+	tracking: null;
+}
+
+export interface VersionControlAggregatedFile {
+	conflict: boolean;
+	file: string;
+	id: string;
+	location: string;
+	name: string;
+	status: string;
+	type: string;
+}
 
 export declare namespace Cloud {
 	export interface PlanData {

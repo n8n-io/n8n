@@ -79,9 +79,11 @@
 							/>
 						</td>
 						<td>
-							<span class="ph-no-capture">{{
-								execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
-							}}</span>
+							<span class="ph-no-capture" @click.stop="displayExecution(execution)"
+								><a href="#" :class="$style.link">{{
+									execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
+								}}</a></span
+							>
 						</td>
 						<td>
 							<span>{{ formatDate(execution.startedAt) }}</span>
@@ -283,7 +285,6 @@
 import Vue, { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import { MODAL_CONFIRM, VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
@@ -310,8 +311,13 @@ export default defineComponent({
 	mixins: [externalHooks, genericHelpers, executionHelpers],
 	components: {
 		ExecutionTime,
-		WorkflowActivator,
 		ExecutionFilter,
+	},
+	props: {
+		autoRefreshEnabled: {
+			type: Boolean,
+			default: true,
+		},
 	},
 	setup() {
 		return {
@@ -328,8 +334,8 @@ export default defineComponent({
 
 			allVisibleSelected: false,
 			allExistingSelected: false,
-			autoRefresh: true,
-			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			autoRefresh: this.autoRefreshEnabled,
+			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 
 			filter: {} as ExecutionFilterType,
 
@@ -345,10 +351,12 @@ export default defineComponent({
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
+
+		void this.handleAutoRefreshToggle();
+		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	async created() {
 		await this.loadWorkflows();
-		this.handleAutoRefreshToggle();
 
 		void this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', {
@@ -356,10 +364,8 @@ export default defineComponent({
 		});
 	},
 	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
+		this.stopAutoRefreshInterval();
+		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
@@ -413,16 +419,9 @@ export default defineComponent({
 			});
 			window.open(route.href, '_blank');
 		},
-		handleAutoRefreshToggle() {
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
+		async handleAutoRefreshToggle() {
+			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
+			void this.startAutoRefreshInterval();
 		},
 		handleCheckAllExistingChange() {
 			this.allExistingSelected = !this.allExistingSelected;
@@ -501,7 +500,7 @@ export default defineComponent({
 			});
 
 			this.handleClearSelection();
-			this.refreshData();
+			await this.refreshData();
 		},
 		handleClearSelection(): void {
 			this.allVisibleSelected = false;
@@ -514,14 +513,14 @@ export default defineComponent({
 			this.handleClearSelection();
 			this.isMounting = false;
 		},
-		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
+		async handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
 			if (['currentlySaved', 'original'].includes(commandData.command)) {
 				let loadWorkflow = false;
 				if (commandData.command === 'currentlySaved') {
 					loadWorkflow = true;
 				}
 
-				this.retryExecution(commandData.execution, loadWorkflow);
+				await this.retryExecution(commandData.execution, loadWorkflow);
 
 				this.$telemetry.track('User clicked retry execution button', {
 					workflow_id: this.workflowsStore.workflowId,
@@ -530,7 +529,7 @@ export default defineComponent({
 				});
 			}
 			if (commandData.command === 'delete') {
-				this.deleteExecution(commandData.execution);
+				await this.deleteExecution(commandData.execution);
 			}
 		},
 		getWorkflowName(workflowId: string): string | undefined {
@@ -581,8 +580,11 @@ export default defineComponent({
 			);
 			let lastId = 0;
 			const gaps = [] as number[];
-			for (let i = results[0].results.length - 1; i >= 0; i--) {
-				const currentItem = results[0].results[i];
+
+			const pastExecutions = results[0] || { results: [], count: 0, estimated: false };
+
+			for (let i = pastExecutions.results.length - 1; i >= 0; i--) {
+				const currentItem = pastExecutions.results[i];
 				const currentId = parseInt(currentItem.id, 10);
 				if (lastId !== 0 && !isNaN(currentId)) {
 					// We are doing this iteration to detect possible gaps.
@@ -633,8 +635,8 @@ export default defineComponent({
 				(execution) =>
 					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
 			);
-			this.finishedExecutionsCount = results[0].count;
-			this.finishedExecutionsCountEstimated = results[0].estimated;
+			this.finishedExecutionsCount = pastExecutions.count;
+			this.finishedExecutionsCountEstimated = pastExecutions.estimated;
 
 			this.finishedExecutions = alreadyPresentExecutionsFiltered;
 			this.workflowsStore.addToCurrentExecutions(alreadyPresentExecutionsFiltered);
@@ -877,7 +879,7 @@ export default defineComponent({
 					type: 'success',
 				});
 
-				this.refreshData();
+				await this.refreshData();
 			} catch (error) {
 				this.showError(
 					error,
@@ -930,6 +932,27 @@ export default defineComponent({
 			if (this.allExistingSelected) {
 				this.allVisibleSelected = true;
 				this.selectAllVisibleExecutions();
+			}
+		},
+		async startAutoRefreshInterval() {
+			if (this.autoRefresh) {
+				await this.loadAutoRefresh();
+				this.autoRefreshTimeout = setTimeout(() => {
+					void this.startAutoRefreshInterval();
+				}, 4 * 1000); // refresh data every 4 secs
+			}
+		},
+		stopAutoRefreshInterval() {
+			if (this.autoRefreshTimeout) {
+				clearTimeout(this.autoRefreshTimeout);
+				this.autoRefreshTimeout = undefined;
+			}
+		},
+		onDocumentVisibilityChange() {
+			if (document.visibilityState === 'hidden') {
+				this.stopAutoRefreshInterval();
+			} else {
+				void this.startAutoRefreshInterval();
 			}
 		},
 	},
@@ -1173,5 +1196,10 @@ export default defineComponent({
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
+}
+
+.link {
+	color: var(--color-text-light);
+	text-decoration: underline;
 }
 </style>
