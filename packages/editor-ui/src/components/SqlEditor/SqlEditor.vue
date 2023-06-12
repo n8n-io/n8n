@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="sql-editor">
 		<div ref="sqlEditor" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
