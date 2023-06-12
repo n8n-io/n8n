@@ -21,19 +21,20 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import type { IFakeDoor } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default mixins(userHelpers).extend({
+export default defineComponent({
 	name: 'SettingsSidebar',
+	mixins: [userHelpers],
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
@@ -171,27 +172,27 @@ export default mixins(userHelpers).extend({
 			switch (key) {
 				case 'settings-personal':
 					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
-						this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+						await this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					}
 					break;
 				case 'settings-users':
 					if (this.$router.currentRoute.name !== VIEWS.USERS_SETTINGS) {
-						this.$router.push({ name: VIEWS.USERS_SETTINGS });
+						await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 					}
 					break;
 				case 'settings-api':
 					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
-						this.$router.push({ name: VIEWS.API_SETTINGS });
+						await this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
 				case 'settings-ldap':
 					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
-						this.$router.push({ name: VIEWS.LDAP_SETTINGS });
+						void this.$router.push({ name: VIEWS.LDAP_SETTINGS });
 					}
 					break;
 				case 'settings-log-streaming':
 					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
-						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
+						void this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
@@ -201,22 +202,22 @@ export default mixins(userHelpers).extend({
 					break;
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
-						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+						await this.$router.push({ name: VIEWS.COMMUNITY_NODES });
 					}
 					break;
 				case 'settings-usage-and-plan':
 					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
-						this.$router.push({ name: VIEWS.USAGE });
+						void this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				case 'settings-sso':
 					if (this.$router.currentRoute.name !== VIEWS.SSO_SETTINGS) {
-						this.$router.push({ name: VIEWS.SSO_SETTINGS });
+						void this.$router.push({ name: VIEWS.SSO_SETTINGS });
 					}
 					break;
 				case 'settings-version-control':
 					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
-						this.$router.push({ name: VIEWS.VERSION_CONTROL });
+						void this.$router.push({ name: VIEWS.VERSION_CONTROL });
 					}
 					break;
 				default:
@@ -245,8 +246,11 @@ export default mixins(userHelpers).extend({
 	}
 }
 
+.versionContainer {
+	padding: var(--spacing-xs) var(--spacing-l);
+}
+
 @media screen and (max-height: 420px) {
-	.updatesSubmenu,
 	.versionContainer {
 		display: none;
 	}

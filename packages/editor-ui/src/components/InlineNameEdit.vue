@@ -32,10 +32,10 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'InlineNameEdit',
 	props: {
 		name: {
@@ -51,6 +51,11 @@ export default mixins(showMessage).extend({
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -75,7 +80,7 @@ export default mixins(showMessage).extend({
 			if (!this.name) {
 				this.$emit('input', `Untitled ${this.type}`);
 
-				this.$showToast({
+				this.showToast({
 					title: 'Error',
 					message: `${this.type} name cannot be empty`,
 					type: 'warning',

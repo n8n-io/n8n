@@ -3,7 +3,9 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
@@ -100,7 +102,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
+					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src="cid:image_1"&gt;',
 			},
 			{
 				displayName: 'CC Email',
@@ -227,6 +229,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					attachments.push({
 						filename: binaryData.fileName || 'unknown',
 						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
+						cid: propertyName,
 					});
 				}
 
@@ -255,7 +258,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				});
 				continue;
 			}
-			throw error;
+			delete error.cert;
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 

@@ -145,6 +145,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 export function WorkflowExecuteAdditionalData(
 	waitPromise: IDeferredPromise<IRun>,
 	nodeExecutionOrder: string[],
+	workflowTestData?: WorkflowTestData,
 ): IWorkflowExecuteAdditionalData {
 	const hookFunctions = {
 		nodeExecuteAfter: [
@@ -167,7 +168,6 @@ export function WorkflowExecuteAdditionalData(
 		nodes: [],
 		connections: {},
 	};
-
 	return {
 		credentialsHelper: new CredentialsHelper(credentialTypes),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
@@ -175,7 +175,7 @@ export function WorkflowExecuteAdditionalData(
 		sendMessageToUI: (message: string) => {},
 		restApiUrl: '',
 		encryptionKey: 'test',
-		timezone: 'America/New_York',
+		timezone: workflowTestData?.input.workflowData.settings?.timezone || 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
@@ -318,9 +318,9 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 
 	// check if result node data matches expected test data
 	const resultNodeData = getResultNodeData(result, testData);
-
 	resultNodeData.forEach(({ nodeName, resultData }) => {
-		return expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+		const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
 	expect(result.finished).toEqual(true);
@@ -339,7 +339,6 @@ const preparePinData = (pinData: IDataObject) => {
 	);
 	return returnData;
 };
-
 export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {

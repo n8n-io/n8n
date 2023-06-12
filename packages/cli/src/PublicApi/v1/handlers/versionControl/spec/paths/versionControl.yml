@@ -1,0 +1,25 @@
+post:
+  x-eov-operation-id: pull
+  x-eov-operation-handler: v1/handlers/versionControl/versionControl.handler
+  tags:
+    - VersionControl
+  summary: Pull changes from the remote repository
+  description: Requires the Version Control feature to be licensed and connected to a repository.
+  requestBody:
+    description: Pull options
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/pull.yml"
+  responses:
+    "200":
+      description: Import result
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/importResult.yml"
+    "400":
+      $ref: "../../../../shared/spec/responses/badRequest.yml"
+    "409":
+      $ref: "../../../../shared/spec/responses/conflict.yml"

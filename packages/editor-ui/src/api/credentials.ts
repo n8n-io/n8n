@@ -3,7 +3,7 @@ import type {
 	ICredentialsResponse,
 	IRestApiContext,
 } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -22,11 +22,11 @@ export async function getCredentialsNewName(
 	context: IRestApiContext,
 	name?: string,
 ): Promise<{ name: string }> {
-	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
+	return makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
 export async function getAllCredentials(context: IRestApiContext): Promise<ICredentialsResponse[]> {
-	return await makeRestApiRequest(context, 'GET', '/credentials');
+	return makeRestApiRequest(context, 'GET', '/credentials');
 }
 
 export async function createNewCredential(

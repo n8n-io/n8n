@@ -37,7 +37,9 @@ const SettingsView = defineComponent({
 	},
 	methods: {
 		onReturn() {
-			this.$router.push(this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE });
+			void this.$router.push(
+				this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE },
+			);
 		},
 	},
 });

@@ -21,6 +21,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
+	IUserSettings,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -28,7 +29,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator } from 'typeorm';
+import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
@@ -83,7 +84,7 @@ export interface ICredentialsOverwrite {
 }
 
 /* eslint-disable @typescript-eslint/naming-convention */
-export interface IDatabaseCollections {
+export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	AuthIdentity: AuthIdentityRepository;
 	AuthProviderSyncHistory: AuthProviderSyncHistoryRepository;
 	Credentials: CredentialsRepository;
@@ -476,13 +477,6 @@ export interface IPersonalizationSurveyAnswers {
 	otherCompanyIndustry: string | null;
 	otherWorkArea: string | null;
 	workArea: string[] | string | null;
-}
-
-export interface IUserSettings {
-	isOnboarded?: boolean;
-	showUserActivationSurvey?: boolean;
-	firstSuccessfulWorkflowId?: string;
-	userActivated?: boolean;
 }
 
 export interface IActiveDirectorySettings {

@@ -20,7 +20,7 @@ on:
       run-env:
         description: 'Node env version to run tests with.'
         required: false
-        default: 'browsers:node16.18.0-chrome90-ff88'
+        default: 'browsers:node18.12.0-chrome107'
         type: string
       cache-key:
         description: 'Cache key for modules and build artifacts.'
@@ -54,7 +54,6 @@ on:
       tests_passed:
         description: 'True if all E2E tests passed, otherwise false'
         value: ${{ jobs.check_testing_matrix.outputs.all_tests_passed }}
-
 
 jobs:
   # single job that generates and outputs a common id
@@ -163,9 +162,10 @@ jobs:
           # We have to provide custom ci-build-id key to make sure that this workflow could be run multiple times
           # in the same parent workflow
           ci-build-id: ${{ needs.prepare.outputs.uuid }}
-          spec: "/__w/n8n/n8n/cypress/${{ inputs.spec }}"
+          spec: '/__w/n8n/n8n/cypress/${{ inputs.spec }}'
           config-file: /__w/n8n/n8n/cypress.config.js
         env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
