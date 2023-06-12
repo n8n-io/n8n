@@ -81,7 +81,7 @@ export const prepareEntry = (
 	const name = entry.name;
 
 	if (ignoreErrors) {
-		return { name, value: entryValue };
+		return { name, value: entryValue === undefined ? null : entryValue };
 	}
 
 	const validationResult = validateFieldType(name, entryValue, entry.type);

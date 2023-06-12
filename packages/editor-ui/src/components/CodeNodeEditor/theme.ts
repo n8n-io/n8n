@@ -80,7 +80,7 @@ export const codeNodeEditorTheme = ({ isReadOnly }: ThemeSettings) => [
 		'.cm-scroller': {
 			overflow: 'auto',
 			maxHeight: '100%',
-			...(isReadOnly ? {} : { minHeight: '10em' }),
+			...(isReadOnly ? {} : { minHeight: '1.3em' }),
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,

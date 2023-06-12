@@ -134,6 +134,7 @@ const properties: INodeProperties[] = [
 						default: '{}',
 						typeOptions: {
 							editor: 'json',
+							rows: 2,
 						},
 						displayOptions: {
 							show: {
