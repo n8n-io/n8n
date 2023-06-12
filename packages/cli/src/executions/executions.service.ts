@@ -41,6 +41,7 @@ import {
 } from './executionHelpers';
 import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { DateUtils } from 'typeorm/util/DateUtils';
+import { ElasticSearchClient } from '@/elasticSearchCli';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -55,6 +56,7 @@ interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	advancedSearch?: string;
 }
 
 const schemaGetExecutionsQueryFilter = {
@@ -75,6 +77,7 @@ const schemaGetExecutionsQueryFilter = {
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
+		advancedSearch: { type: 'string' },
 	},
 	$defs: {
 		metadata: {
@@ -322,13 +325,13 @@ export class ExecutionsService {
 			.take(limit)
 			.where(findWhere);
 
-		const countFilter = deepCopy(filter ?? {});
+		let countFilter = deepCopy(filter ?? {});
 		const metadata = isAdvancedExecutionFiltersEnabled() ? filter?.metadata : undefined;
 
 		if (metadata?.length) {
 			query = query.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 			for (const md of metadata) {
-				query = query.andWhere('md.key = :key AND md.value = :value', md);
+				query = query.andWhere('md.key = :key AND md.value ~ :value', md);
 			}
 		}
 
@@ -354,6 +357,21 @@ export class ExecutionsService {
 			Object.assign(countFilter, { status: In(filter.status) });
 		}
 
+		let advancedSearchValue: string | undefined;
+		let advancedFilteredExecutions: any;
+
+		if (filter?.advancedSearch) {
+			// advancedSearchValue is not a real field in the database so we want to make
+			// sure we're saving it in memory and not passing it down to the database query.
+			advancedSearchValue = filter.advancedSearch;
+			filter.advancedSearch = undefined;
+			delete filter.advancedSearch;
+			delete countFilter.advancedSearch;
+			// Calling Elastic to retrieve all the relevant docs
+			const client = new ElasticSearchClient();
+			advancedFilteredExecutions = (await client.searchDocuments(advancedSearchValue)) || [];
+		}
+
 		if (filter) {
 			this.massageFilters(filter as IDataObject);
 			query = query.andWhere(filter);
@@ -362,8 +380,12 @@ export class ExecutionsService {
 		this.massageFilters(countFilter as IDataObject);
 		countFilter.id = Not(In(executingWorkflowIds));
 
-		const executions = await query.getMany();
+		let executions = await query.getMany();
 
+		if (advancedFilteredExecutions) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			executions = executions.filter((obj) => advancedFilteredExecutions.includes(obj.id));
+		}
 		const { count, estimated } = await this.getExecutionsCount(
 			countFilter as IDataObject,
 			req.user,

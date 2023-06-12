@@ -21,4 +21,5 @@ cypress/videos/*
 cypress/screenshots/*
 *.swp
 .env
+.env.local.with.aws
 dump.rdb

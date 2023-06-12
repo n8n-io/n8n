@@ -341,7 +341,7 @@ export default defineComponent({
 
 			isDataLoading: false,
 
-			requestItemsPerRequest: 10,
+			requestItemsPerRequest: 100,
 
 			selectedItems: {} as { [key: string]: boolean },
 

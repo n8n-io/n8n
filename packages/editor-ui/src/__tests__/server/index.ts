@@ -23,13 +23,13 @@ export function setupServer() {
 	// Enable logging
 	server.logging = false;
 
-	// Handle undefined endpoints
-	server.post('/rest/:any', async () => new Promise(() => {}));
-
 	// Handle defined endpoints
 	for (const endpointsFn of endpoints) {
 		endpointsFn(server);
 	}
+
+	// Handle undefined endpoints
+	server.post('/rest/:any', async () => ({}));
 
 	// Reset for everything else
 	server.namespace = '';

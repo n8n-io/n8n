@@ -1390,6 +1390,7 @@ export type ExecutionFilterType = {
 	endDate: string | Date;
 	tags: string[];
 	metadata: ExecutionFilterMetadata[];
+	advancedSearch: string;
 };
 
 export type ExecutionsQueryFilter = {
@@ -1400,6 +1401,7 @@ export type ExecutionsQueryFilter = {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	advancedSearch?: string;
 };
 
 export type SamlAttributeMapping = {

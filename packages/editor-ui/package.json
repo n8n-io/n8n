@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.196.0",
+  "version": "0.197.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -47,7 +47,6 @@
     "@jsplumb/core": "^5.13.2",
     "@jsplumb/util": "^5.13.2",
     "axios": "^0.21.1",
-    "canvas-confetti": "^1.6.0",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
     "copy-to-clipboard": "^3.3.3",

@@ -24,6 +24,13 @@ export const executionFilterToQueryFilter = (
 		queryFilter.metadata = filter.metadata;
 	}
 
+	if (!isEmpty(filter.advancedSearch)) {
+		if (filter.advancedSearch.length >= 3) {
+			// We don't want to enable this capability when there are not too many characters
+			queryFilter.advancedSearch = filter.advancedSearch;
+		}
+	}
+
 	if (!!filter.startDate) {
 		queryFilter.startedAfter = filter.startDate;
 	}

@@ -5,6 +5,7 @@ import { IWorkflowDb } from '@/Interfaces';
 import type { IExecutionFlattedDb } from '@/Interfaces';
 import { idStringifier } from '../utils/transformers';
 import type { ExecutionMetadata } from './ExecutionMetadata';
+import { IsOptional } from 'class-validator';
 
 @Entity()
 @Index(['workflowId', 'id'])
