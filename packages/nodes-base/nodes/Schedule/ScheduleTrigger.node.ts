@@ -10,7 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { CronJob } from 'cron';
 import moment from 'moment';
 import type { IRecurencyRule } from './SchedulerInterface';
-import { recurencyCheck } from './GenericFunctions';
+import { convertToUnixFormat, recurencyCheck } from './GenericFunctions';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -453,17 +453,7 @@ export class ScheduleTrigger implements INodeType {
 			if (interval[i].field === 'cronExpression') {
 				if (version > 1) {
 					// ! Remove this part if we use a cron library that follows unix cron expression
-					const expression = (interval[i].expression as string).split(' ');
-					if (expression.length === 5) {
-						expression[3] =
-							parseInt(expression[3]) !== 0 ? String(parseInt(expression[3]) - 1) : expression[3];
-						expression[4] = expression[4].replace('7', '0');
-					} else if (expression.length === 6) {
-						expression[4] =
-							parseInt(expression[4]) !== 0 ? String(parseInt(expression[4]) - 1) : expression[4];
-						expression[5] = expression[5].replace('7', '0');
-					}
-					interval[i].expression = expression.join(' ');
+					convertToUnixFormat(interval[i]);
 				}
 				const cronExpression = interval[i].expression as string;
 				try {
