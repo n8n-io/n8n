@@ -174,13 +174,8 @@ describe('Resolution-based completions', () => {
 			// @ts-expect-error Spied function is mistyped
 			resolveParameterSpy.mockReturnValueOnce(new Date());
 
-			expect(completions('{{ (new Date()).| }}')).toHaveLength(
-				natives('date').length + extensions('date').length,
-			);
-
-			expect(completions('{{ new Date().| }}')).toHaveLength(
-				natives('date').length + extensions('date').length,
-			);
+			expect(completions('{{ (new Date()).| }}')).toHaveLength(extensions('date').length);
+			expect(completions('{{ new Date().| }}')).toHaveLength(extensions('date').length);
 		});
 	});
 

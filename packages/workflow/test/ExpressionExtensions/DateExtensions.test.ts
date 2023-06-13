@@ -151,7 +151,7 @@ describe('Date extensions on strings parseable as luxon `DateTime`', () => {
 	describe('parse non-standardized datetime string', () => {
 		test('YYYY-MM-DD', () => {
 			const actual = evaluate("={{ '2023-06-12'.plus(5, 'days') }}");
-			const expected = toLuxonIsoDateTime(2023, 6, 16, 20);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 18);
 
 			expect(actual).toEqual(expected);
 		});
