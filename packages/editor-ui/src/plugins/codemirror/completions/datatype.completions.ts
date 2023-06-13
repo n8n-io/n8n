@@ -32,8 +32,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	// eslint-disable-next-line prefer-const
-	let [base, tail] = splitBaseTail(word.text);
+	const [base, tail] = splitBaseTail(word.text);
 
 	let options: Completion[] = [];
 
@@ -79,11 +78,23 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
+function isParseableAsLuxonDateTime(input: unknown): input is string {
+	if (typeof input !== 'string' || input.length === 0) return false;
+
+	const jsDate = new Date(input);
+
+	return jsDate instanceof Date && !isNaN(jsDate.valueOf()) && DateTime.fromJSDate(jsDate).isValid;
+}
+
 function datatypeOptions(resolved: Resolved, toResolve: string) {
 	if (resolved === null) return [];
 
 	if (typeof resolved === 'number') {
 		return [...natives('number'), ...extensions('number')];
+	}
+
+	if (resolved instanceof Date || isParseableAsLuxonDateTime(resolved)) {
+		return [...natives('date'), ...extensions('date')];
 	}
 
 	if (typeof resolved === 'string') {
@@ -92,10 +103,6 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 
 	if (['$now', '$today'].includes(toResolve)) {
 		return [...luxonInstanceOptions(), ...extensions('date')];
-	}
-
-	if (resolved instanceof Date) {
-		return [...natives('date'), ...extensions('date')];
 	}
 
 	if (Array.isArray(resolved)) {

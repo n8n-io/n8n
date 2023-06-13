@@ -4,6 +4,7 @@
 
 import { DateTime } from 'luxon';
 import { evaluate, getLocalISOString, TEST_TIMEZONE } from './Helpers';
+import { ExpressionExtensionError } from '@/ExpressionError';
 
 describe('Data Transformation Functions', () => {
 	describe('Date Data Transformation Functions', () => {
@@ -96,6 +97,114 @@ describe('Data Transformation Functions', () => {
 			expect(() =>
 				evaluate("={{ $now.isBetween($now, '2023-06-23', '2023-09-21'.toDate()) }}"),
 			).toThrow();
+		});
+	});
+});
+
+describe('Date extensions on strings parseable as luxon `DateTime`', () => {
+	const BASE_DATETIME = '2023-06-12T01:23:45.678';
+
+	const MS_LESS_DATETIME = BASE_DATETIME.split('.').shift();
+
+	if (!MS_LESS_DATETIME) fail();
+
+	const toLuxonIsoDateTime = (
+		year: number,
+		month: number,
+		day: number,
+		hour = 0,
+		minute = 0,
+		second = 0,
+		milliseconds = 0,
+	) =>
+		DateTime.local(year, month, day, hour, minute, second, milliseconds, {
+			zone: TEST_TIMEZONE,
+		}).toISO();
+
+	test('chain date extensions', () => {
+		const actual = evaluate(`={{ "${BASE_DATETIME}Z".plus(5, "days").plus(5, "days") }}`);
+		const expected = toLuxonIsoDateTime(2023, 6, 21, 21, 23, 45, 678);
+
+		expect(actual).toEqual(expected);
+	});
+
+	test('fail on non-parseable string', () => {
+		for (const i of ['2023_06_12', '2023-06-12T', '2023-06-12T01:23:45.']) {
+			expect(() => evaluate(`={{ "${i}".plus(5, "days") }}`)).toThrow(ExpressionExtensionError);
+		}
+	});
+
+	describe('parse non-standardized datetime string', () => {
+		test('YYYY-MM-DD', () => {
+			const actual = evaluate("={{ '2023-06-12'.plus(5, 'days') }}");
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 20);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('YYYY.MM.DD', () => {
+			const actual = evaluate("={{ '2023.06.12'.plus(5, 'days') }}");
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 18);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('YYYY/MM/DD', () => {
+			const actual = evaluate("={{ '2023/06/12'.plus(5, 'days') }}");
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 18);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('YYYY MM DD', () => {
+			const actual = evaluate("={{ '2023 06 12'.plus(5, 'days') }}");
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 18);
+
+			expect(actual).toEqual(expected);
+		});
+	});
+
+	describe('parse ISO-8601 datetime string', () => {
+		test('with milliseconds and zero offset', () => {
+			const actual = evaluate(`={{ "${BASE_DATETIME}Z".plus(5, "days") }}`);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 21, 23, 45, 678);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('with milliseconds and non-zero offset', () => {
+			const actual = evaluate(`={{ "${BASE_DATETIME}+02:00".plus(5, "days") }}`);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 19, 23, 45, 678);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('with milliseconds and no offset', () => {
+			const actual = evaluate(`={{ "${BASE_DATETIME}".plus(5, "days") }}`);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 19, 23, 45, 678);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('without milliseconds and zero offset', () => {
+			const actual = evaluate(`={{ "${MS_LESS_DATETIME}Z".plus(5, "days") }}`);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 21, 23, 45);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('without milliseconds and non-zero offset', () => {
+			const actual = evaluate(`={{ "${MS_LESS_DATETIME}+02:00".plus(5, "days") }}`);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 19, 23, 45);
+
+			expect(actual).toEqual(expected);
+		});
+
+		test('without milliseconds and no offset', () => {
+			const actual = evaluate(`={{ "${MS_LESS_DATETIME}".plus(5, "days") }}`);
+			const expected = toLuxonIsoDateTime(2023, 6, 16, 19, 23, 45);
+
+			expect(actual).toEqual(expected);
 		});
 	});
 });

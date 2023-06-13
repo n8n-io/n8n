@@ -169,6 +169,15 @@ describe('Resolution-based completions', () => {
 				Object.keys(object).length + natives('object').length + extensions('object').length,
 			);
 		});
+
+		test('should return completions for date: {{ (new Date()).| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce(new Date());
+
+			expect(completions('{{ (new Date()).| }}')).toHaveLength(
+				natives('date').length + extensions('date').length,
+			);
+		});
 	});
 
 	describe('complex expression completions', () => {

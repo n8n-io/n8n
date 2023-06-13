@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { DateTime } from 'luxon';
+import { DateTime as LuxonDateTime } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { parse, visit, types, print } from 'recast';
 import { getOption } from 'recast/lib/util';
@@ -434,40 +434,37 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	}
 };
 
-function isDate(input: unknown): boolean {
-	if (typeof input !== 'string' || !input.length) {
-		return false;
-	}
-	if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/.test(input)) {
-		return false;
-	}
-	const d = new Date(input);
-	return d instanceof Date && !isNaN(d.valueOf()) && d.toISOString() === input;
-}
-
 interface FoundFunction {
 	type: 'native' | 'extended';
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	function: Function;
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+function isParseableAsLuxonDateTime(input: unknown): input is string {
+	if (typeof input !== 'string' || input.length === 0) return false;
+
+	const jsDate = new Date(input);
+
+	return (
+		jsDate instanceof Date && !isNaN(jsDate.valueOf()) && LuxonDateTime.fromJSDate(jsDate).isValid
+	);
+}
+
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
 	// eslint-disable-next-line @typescript-eslint/ban-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
 		foundFunction = arrayExtensions.functions[functionName];
-	} else if (isDate(input) && functionName !== 'toDate') {
+	} else if (isParseableAsLuxonDateTime(input) && functionName !== 'toDate') {
 		// If it's a string date (from $json), convert it to a Date object,
 		// unless that function is `toDate`, since `toDate` does something
 		// very different on date objects
-		input = new Date(input as string);
 		foundFunction = dateExtensions.functions[functionName];
 	} else if (typeof input === 'string') {
 		foundFunction = stringExtensions.functions[functionName];
 	} else if (typeof input === 'number') {
 		foundFunction = numberExtensions.functions[functionName];
-	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
+	} else if (input && (LuxonDateTime.isDateTime(input) || input instanceof Date)) {
 		foundFunction = dateExtensions.functions[functionName];
 	} else if (input !== null && typeof input === 'object') {
 		foundFunction = objectExtensions.functions[functionName];
@@ -508,7 +505,6 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
  * ```
  */
 export function extend(input: unknown, functionName: string, args: unknown[]) {
-	// eslint-disable-next-line @typescript-eslint/ban-types
 	const foundFunction = findExtendedFunction(input, functionName);
 
 	// No type specific or generic function found. Check to see if
@@ -529,8 +525,12 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 				`${functionName}() is only callable on types ${typeNames}`,
 			);
 		} else {
+			const [fn] = haveFunction;
+
 			throw new ExpressionExtensionError(
-				`${functionName}() is only callable on type "${haveFunction[0].typeName}"`,
+				fn.typeName === 'Date'
+					? `${functionName}() is only callable on type "${fn.typeName}" and ISO-8601 datetime strings`
+					: `${functionName}() is only callable on type "${fn.typeName}"`,
 			);
 		}
 	}
@@ -538,6 +538,10 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	if (foundFunction.type === 'native') {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return foundFunction.function.apply(input, args);
+	}
+
+	if (isParseableAsLuxonDateTime(input) && functionName !== 'toDate') {
+		input = LuxonDateTime.fromJSDate(new Date(input));
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return

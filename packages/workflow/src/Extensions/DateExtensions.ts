@@ -22,7 +22,6 @@ type DurationUnit =
 	| 'months'
 	| 'quarter'
 	| 'years';
-
 type DatePart =
 	| 'day'
 	| 'week'
@@ -170,25 +169,33 @@ function isWeekend(date: Date | LuxonDateTime): boolean {
 }
 
 function minus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
-	const [arg] = extraArgs as [DurationLike];
+	const luxonDateTime = toLuxonDateTime(date);
 
-	if (isLuxonDateTime(date) && arg) return date.minus(arg).toISO();
+	if (extraArgs.length === 1) {
+		const [duration] = extraArgs as [DurationLike];
+
+		return luxonDateTime.minus(duration).toISO();
+	}
 
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 	const duration = generateDurationObject(durationValue, unit);
 
-	return toLuxonDateTime(date).minus(duration).toISO();
+	return luxonDateTime.minus(duration).toISO();
 }
 
 function plus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
-	const [arg] = extraArgs as [DurationLike | undefined];
+	const luxonDateTime = toLuxonDateTime(date);
 
-	if (isLuxonDateTime(date) && arg) return date.plus(arg).toISO();
+	if (extraArgs.length === 1) {
+		const [duration] = extraArgs as [DurationLike];
+
+		return luxonDateTime.plus(duration).toISO();
+	}
 
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 	const duration = generateDurationObject(durationValue, unit);
 
-	return toLuxonDateTime(date).plus(duration).toISO();
+	return luxonDateTime.plus(duration).toISO();
 }
 
 endOfMonth.doc = {

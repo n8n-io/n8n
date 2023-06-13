@@ -41,6 +41,8 @@ export function longestCommonPrefix(...strings: string[]) {
 // this function will extract expression that is currently typed so autocomplete
 // suggestions can be matched based on it.
 function extractSubExpression(userInput: string): string {
+	if (userInput.includes('new Date(')) return userInput;
+
 	const dollarSignIndex = userInput.indexOf('$');
 	// If it's not a dollar sign expression just strip parentheses
 	if (dollarSignIndex === -1) {
