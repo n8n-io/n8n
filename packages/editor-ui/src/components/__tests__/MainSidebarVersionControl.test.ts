@@ -28,7 +28,10 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 };
 
 describe('MainSidebarVersionControl', () => {
+	const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
+
 	beforeEach(() => {
+		getItemSpy.mockReturnValue('true');
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
