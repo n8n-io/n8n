@@ -25,7 +25,7 @@ const tooltipOpenDelay = ref(300);
 const currentBranch = computed(() => {
 	return versionControlStore.preferences.branchName;
 });
-
+const featureEnabled = computed(() => window.localStorage.getItem('version-control'));
 const setupButtonTooltipPlacement = computed(() => (props.isCollapsed ? 'right' : 'top'));
 
 async function pushWorkfolder() {
@@ -80,6 +80,7 @@ const goToVersionControlSetup = async () => {
 
 <template>
 	<div
+		v-if="featureEnabled"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
