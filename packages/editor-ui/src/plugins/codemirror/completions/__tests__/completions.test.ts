@@ -177,6 +177,10 @@ describe('Resolution-based completions', () => {
 			expect(completions('{{ (new Date()).| }}')).toHaveLength(
 				natives('date').length + extensions('date').length,
 			);
+
+			expect(completions('{{ new Date().| }}')).toHaveLength(
+				natives('date').length + extensions('date').length,
+			);
 		});
 	});
 
