@@ -59,7 +59,7 @@ export function recurencyCheck(
 
 export function convertMonthToUnix(expression: string): string {
 	if (!isNaN(parseInt(expression)) || expression.includes('-') || expression.includes(',')) {
-		let matches = expression.match(/([0-9])/g) as string[];
+		let matches = expression.match(/([0-9])+/g) as string[];
 		if (matches) {
 			matches = matches.map((match) =>
 				parseInt(match) !== 0 ? String(parseInt(match) - 1) : match,
