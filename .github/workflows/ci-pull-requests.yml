@@ -13,6 +13,8 @@ jobs:
           ref: ${{ inputs.branch }}
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 8.6.1
 
       - name: Use Node.js 18
         uses: actions/setup-node@v3
@@ -57,6 +59,8 @@ jobs:
           key: ${{ github.sha }}-base:18-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 8.6.1
 
       - name: Use Node.js 18
         uses: actions/setup-node@v3
@@ -93,6 +97,8 @@ jobs:
           key: ${{ github.sha }}-base:18-test-lint
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 8.6.1
 
       - name: Use Node.js 18
         uses: actions/setup-node@v3
