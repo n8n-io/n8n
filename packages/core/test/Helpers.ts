@@ -1,5 +1,8 @@
 import set from 'lodash.set';
 
+import path from 'path';
+import { readdirSync } from 'fs';
+
 import type {
 	ICredentialDataDecryptedObject,
 	IDeferredPromise,
@@ -855,7 +858,7 @@ export function WorkflowExecuteAdditionalData(
 	return {
 		credentialsHelper: new CredentialsHelper(''),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
+		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo) => {},
 		sendMessageToUI: (message: string) => {},
 		restApiUrl: '',
 		encryptionKey: 'test',
@@ -866,3 +869,17 @@ export function WorkflowExecuteAdditionalData(
 		userId: '123',
 	};
 }
+
+export const getWorkflowFilenames = (dirname: string) => {
+	const workflows: string[] = [];
+
+	const filenames: string[] = readdirSync(dirname);
+	const testFolder = dirname.split(`${path.sep}nodes-base${path.sep}`)[1];
+	filenames.forEach((file) => {
+		if (file.endsWith('.json')) {
+			workflows.push(path.join(testFolder, file));
+		}
+	});
+
+	return workflows;
+};

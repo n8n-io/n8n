@@ -972,9 +972,18 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
-							if (nodeSuccessData) {
+							if (nodeSuccessData?.length) {
 								// Check if the output data contains pairedItem data and if not try
 								// to automatically fix it
+
+								const isSingleInputAndOutput =
+									executionData.data.main.length === 1 && executionData.data.main[0]?.length === 1;
+
+								const isSameNumberOfItems =
+									nodeSuccessData.length === 1 &&
+									executionData.data.main.length === 1 &&
+									executionData.data.main[0]?.length === nodeSuccessData[0].length;
+
 								checkOutputData: for (const outputData of nodeSuccessData) {
 									if (outputData === null) {
 										continue;
@@ -982,20 +991,13 @@ export class WorkflowExecute {
 									for (const [index, item] of outputData.entries()) {
 										if (item.pairedItem === undefined) {
 											// The pairedItem data is missing, so check if it can get automatically fixed
-											if (
-												executionData.data.main.length === 1 &&
-												executionData.data.main[0]?.length === 1
-											) {
+											if (isSingleInputAndOutput) {
 												// The node has one input and one incoming item, so we know
 												// that all items must originate from that single
 												item.pairedItem = {
 													item: 0,
 												};
-											} else if (
-												nodeSuccessData.length === 1 &&
-												executionData.data.main.length === 1 &&
-												executionData.data.main[0]?.length === nodeSuccessData[0].length
-											) {
+											} else if (isSameNumberOfItems) {
 												// The number of oncoming and outcoming items is identical so we can
 												// make the reasonable assumption that each of the input items
 												// is the origin of the corresponding output items

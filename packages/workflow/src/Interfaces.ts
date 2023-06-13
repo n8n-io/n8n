@@ -1763,6 +1763,23 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 }
 
+export interface WorkflowTestData {
+	description: string;
+	input: {
+		workflowData: {
+			nodes: INode[];
+			connections: IConnections;
+			settings?: IWorkflowSettings;
+		};
+	};
+	output: {
+		nodeExecutionOrder?: string[];
+		nodeData: {
+			[key: string]: any[][];
+		};
+	};
+}
+
 export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
 
 export interface ILogger {

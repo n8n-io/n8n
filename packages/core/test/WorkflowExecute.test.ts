@@ -1,4 +1,4 @@
-import type { IConnections, INode, IRun } from 'n8n-workflow';
+import type { IRun, WorkflowTestData } from 'n8n-workflow';
 import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
@@ -11,21 +11,7 @@ describe('WorkflowExecute', () => {
 	});
 
 	describe('run', () => {
-		const tests: Array<{
-			description: string;
-			input: {
-				workflowData: {
-					nodes: INode[];
-					connections: IConnections;
-				};
-			};
-			output: {
-				nodeExecutionOrder: string[];
-				nodeData: {
-					[key: string]: any[][];
-				};
-			};
-		}> = [
+		const tests: WorkflowTestData[] = [
 			{
 				description: 'should run basic two node workflow',
 				input: {
