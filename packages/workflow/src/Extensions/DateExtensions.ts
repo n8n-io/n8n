@@ -152,10 +152,8 @@ function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	const dateInThePast = DateTime.now().minus(generateDurationObject(durationValue, unit));
-	let thisDate = date;
-	if (!isDateTime(thisDate)) {
-		thisDate = DateTime.fromJSDate(thisDate);
-	}
+	const thisDate = toDateTime(date);
+
 	return dateInThePast <= thisDate && thisDate <= DateTime.now();
 }
 
