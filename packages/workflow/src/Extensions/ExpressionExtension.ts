@@ -458,6 +458,8 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		// unless that function is `toDate`, since `toDate` does something
 		// very different on date objects
 		foundFunction = dateExtensions.functions[functionName];
+
+		if (!foundFunction) foundFunction = stringExtensions.functions[functionName];
 	} else if (typeof input === 'string') {
 		foundFunction = stringExtensions.functions[functionName];
 	} else if (typeof input === 'number') {
@@ -538,7 +540,11 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		return foundFunction.function.apply(input, args);
 	}
 
-	if (isParseableAsLuxonDateTime(input) && functionName !== 'toDate') {
+	if (
+		functionName !== 'toDate' &&
+		!stringExtensions.functions[functionName] &&
+		isParseableAsLuxonDateTime(input)
+	) {
 		input = DateTime.fromJSDate(new Date(input));
 	}
 

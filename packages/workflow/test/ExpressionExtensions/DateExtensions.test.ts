@@ -134,6 +134,20 @@ describe('Date extensions on strings parseable as luxon `DateTime`', () => {
 		}
 	});
 
+	test('allow extended string methods to work', () => {
+		const actual = evaluate(`={{ "${BASE_DATETIME}".toTitleCase() }}`);
+		const expected = BASE_DATETIME;
+
+		expect(actual).toEqual(expected);
+	});
+
+	test('allow native string methods to work', () => {
+		const actual = evaluate(`={{ "${BASE_DATETIME}".charAt(0) }}`);
+		const expected = '2';
+
+		expect(actual).toEqual(expected);
+	});
+
 	describe('parse non-standardized datetime string', () => {
 		test('YYYY-MM-DD', () => {
 			const actual = evaluate("={{ '2023-06-12'.plus(5, 'days') }}");
