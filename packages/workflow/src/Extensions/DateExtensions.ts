@@ -1,7 +1,7 @@
 import { ExpressionExtensionError } from './../ExpressionError';
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import { DateTime as LuxonDateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import type {
 	DateTimeUnit,
 	DurationLike,
@@ -70,19 +70,19 @@ const DATETIMEUNIT_MAP: Record<string, DateTimeUnit> = {
 	ms: 'millisecond',
 };
 
-function isLuxonDateTime(date: unknown): date is LuxonDateTime {
-	return date ? LuxonDateTime.isDateTime(date) : false;
+function isLuxonDateTime(date: unknown): date is DateTime {
+	return date ? DateTime.isDateTime(date) : false;
 }
 
-const toLuxonDateTime = (d: Date | LuxonDateTime) =>
-	LuxonDateTime.isDateTime(d) ? d : LuxonDateTime.fromJSDate(d);
+const toLuxonDateTime = (d: Date | DateTime) =>
+	DateTime.isDateTime(d) ? d : DateTime.fromJSDate(d);
 
 function generateDurationObject(durationValue: number, unit: DurationUnit) {
 	const convertedUnit = DURATION_MAP[unit] || unit;
 	return { [`${convertedUnit}`]: durationValue } as DurationObjectUnits;
 }
 
-function beginningOf(date: Date | LuxonDateTime, extraArgs: DurationUnit[]): string {
+function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): string {
 	const [unit = 'week'] = extraArgs;
 
 	return toLuxonDateTime(date)
@@ -90,11 +90,11 @@ function beginningOf(date: Date | LuxonDateTime, extraArgs: DurationUnit[]): str
 		.toISO();
 }
 
-function endOfMonth(date: Date | LuxonDateTime): string {
+function endOfMonth(date: Date | DateTime): string {
 	return toLuxonDateTime(date).endOf('month').toISO();
 }
 
-function extract(inputDate: Date | LuxonDateTime, extraArgs: DatePart[]): number {
+function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number {
 	let [part = 'week'] = extraArgs;
 	let date = inputDate;
 	if (isLuxonDateTime(date)) {
@@ -113,20 +113,18 @@ function extract(inputDate: Date | LuxonDateTime, extraArgs: DatePart[]): number
 		part = 'weekNumber';
 	}
 
-	return LuxonDateTime.fromJSDate(date).get(
-		(DATETIMEUNIT_MAP[part] as keyof LuxonDateTime) || part,
-	);
+	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
 }
 
-function format(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
+function format(date: Date | DateTime, extraArgs: unknown[]): string {
 	const [dateFormat, localeOpts = {}] = extraArgs as [string, LocaleOptions];
 
 	return toLuxonDateTime(date).toFormat(dateFormat, { ...localeOpts });
 }
 
 function isBetween(
-	date: Date | LuxonDateTime,
-	extraArgs: Array<string | Date | LuxonDateTime>,
+	date: Date | DateTime,
+	extraArgs: Array<string | Date | DateTime>,
 ): boolean | undefined {
 	if (extraArgs.length !== 2) {
 		throw new ExpressionExtensionError('isBetween(): expected exactly two args');
@@ -147,28 +145,28 @@ function isBetween(
 	return secondDate > date && date > firstDate;
 }
 
-function isDst(date: Date | LuxonDateTime): boolean {
+function isDst(date: Date | DateTime): boolean {
 	return toLuxonDateTime(date).isInDST;
 }
 
-function isInLast(date: Date | LuxonDateTime, extraArgs: unknown[]): boolean {
+function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
-	const dateInThePast = LuxonDateTime.now().minus(generateDurationObject(durationValue, unit));
+	const dateInThePast = DateTime.now().minus(generateDurationObject(durationValue, unit));
 	let thisDate = date;
 	if (!isLuxonDateTime(thisDate)) {
-		thisDate = LuxonDateTime.fromJSDate(thisDate);
+		thisDate = DateTime.fromJSDate(thisDate);
 	}
-	return dateInThePast <= thisDate && thisDate <= LuxonDateTime.now();
+	return dateInThePast <= thisDate && thisDate <= DateTime.now();
 }
 
 const WEEKEND_DAYS: WeekdayNumbers[] = [6, 7];
-function isWeekend(date: Date | LuxonDateTime): boolean {
+function isWeekend(date: Date | DateTime): boolean {
 	const { weekday } = toLuxonDateTime(date);
 	return WEEKEND_DAYS.includes(weekday);
 }
 
-function minus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
+function minus(date: Date | DateTime, extraArgs: unknown[]): string {
 	const luxonDateTime = toLuxonDateTime(date);
 
 	if (extraArgs.length === 1) {
@@ -183,7 +181,7 @@ function minus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
 	return luxonDateTime.minus(duration).toISO();
 }
 
-function plus(date: Date | LuxonDateTime, extraArgs: unknown[]): string {
+function plus(date: Date | DateTime, extraArgs: unknown[]): string {
 	const luxonDateTime = toLuxonDateTime(date);
 
 	if (extraArgs.length === 1) {
