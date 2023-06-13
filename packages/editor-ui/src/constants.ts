@@ -376,6 +376,7 @@ export const enum VIEWS {
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	VERSION_CONTROL = 'VersionControl',
+	AUDIT_LOGS = 'AuditLogs',
 }
 
 export const enum FAKE_DOOR_FEATURES {

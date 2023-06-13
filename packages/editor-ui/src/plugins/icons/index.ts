@@ -32,6 +32,7 @@ import {
 	faCodeBranch,
 	faCog,
 	faCogs,
+	faClipboardList,
 	faClock,
 	faClone,
 	faCloud,
@@ -171,6 +172,7 @@ addIcon(faCode);
 addIcon(faCodeBranch);
 addIcon(faCog);
 addIcon(faCogs);
+addIcon(faClipboardList);
 addIcon(faClock);
 addIcon(faClone);
 addIcon(faCloud);
