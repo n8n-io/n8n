@@ -1,6 +1,6 @@
 <template>
 	<div class="sql-editor">
-		<div ref="sqlEditor" class="ph-no-capture"></div>
+		<div ref="sqlEditor" data-test-id="sql-editor-container" class="ph-no-capture"></div>
 		<InlineExpressionEditorOutput
 			:segments="segments"
 			:value="query"
