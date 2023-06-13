@@ -212,5 +212,19 @@ describe('NodeExecuteFunctions', () => {
 				node,
 			]);
 		});
+
+		test('should throw on link-local requests if access is blocked', async () => {
+			process.env.N8N_BLOCK_LINK_LOCAL_REQUESTS = 'true';
+			const testUrl = 'http://169.254.169.254/testing';
+			try {
+				await proxyRequestToAxios(workflow, additionalData, node, testUrl);
+			} catch (error) {
+				expect(error.message).toEqual('Access to link-local IP addressed is blocked');
+				expect(error.statusCode).toBeUndefined();
+				expect(error.request).toBeUndefined();
+				expect(error.response).toBeUndefined();
+			}
+			expect(hooks.executeHookFunctions).not.toHaveBeenCalled();
+		});
 	});
 });

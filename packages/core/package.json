@@ -54,6 +54,7 @@
     "file-type": "^16.5.4",
     "flatted": "^3.2.4",
     "form-data": "^4.0.0",
+    "ipaddr.js": "^2.1.0",
     "lodash.get": "^4.4.2",
     "lodash.pick": "^4.4.0",
     "mime-types": "^2.1.27",

@@ -95,6 +95,7 @@ import crypto, { createHmac } from 'crypto';
 import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
+import ipaddr from 'ipaddr.js';
 import path from 'path';
 import type { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
@@ -624,6 +625,17 @@ export async function proxyRequestToAxios(
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+
+	if (process.env.N8N_BLOCK_LINK_LOCAL_REQUESTS === 'true') {
+		let ipRange: ReturnType<(ipaddr.IPv4 | ipaddr.IPv6)['range']> | undefined;
+		try {
+			const { hostname } = new URL(axiosConfig.url!);
+			ipRange = ipaddr.parse(hostname).range();
+		} catch {}
+		if (ipRange === 'linkLocal') {
+			throw new NodeOperationError(node, 'Access to link-local IP addressed is blocked', {});
+		}
+	}
 
 	Logger.debug(
 		'Proxying request to axios',
