@@ -258,8 +258,6 @@ export class Server extends AbstractServer {
 			},
 			personalizationSurveyEnabled:
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
-			userActivationSurveyEnabled:
-				config.getEnv('userActivationSurvey.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
 				enabled: isUserManagementEnabled(),
@@ -1248,7 +1246,7 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
-				const execution = await Db.collections.Execution.findOne({
+				const execution = await Db.collections.Execution.exist({
 					where: {
 						id: executionId,
 						workflowId: In(sharedWorkflowIds),

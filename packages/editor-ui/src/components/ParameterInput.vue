@@ -91,7 +91,7 @@
 						getEditorContent('codeNodeEditor') !== null
 					"
 					:mode="node.parameters.mode"
-					:value="editorContent"
+					:value="value"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -101,7 +101,7 @@
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="editorContent"
+					:html="value"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -111,7 +111,7 @@
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="editorContent"
+					:query="value"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -369,7 +369,6 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -824,22 +823,6 @@ export default defineComponent({
 		},
 		remoteParameterOptionsKeys(): string[] {
 			return (this.remoteParameterOptions || []).map((o) => o.name);
-		},
-		nodeType(): INodeTypeDescription | null {
-			if (!this.node) return null;
-			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-		},
-		editorContent(): string | undefined {
-			if (!this.nodeType) {
-				return;
-			}
-			const editorProp = this.nodeType.properties.find(
-				(p) => p.typeOptions?.editor === (this.editorType as string),
-			);
-			if (!editorProp) {
-				return;
-			}
-			return this.node.parameters[editorProp.name] as string;
 		},
 	},
 	methods: {
