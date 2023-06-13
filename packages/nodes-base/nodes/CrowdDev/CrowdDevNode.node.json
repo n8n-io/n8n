@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.crowd",
+	"node": "n8n-nodes-base.crowdDev",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Productivity"],
