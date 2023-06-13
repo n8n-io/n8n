@@ -34,13 +34,12 @@ const properties: INodeProperties[] = [
 	{
 		...driveRLC,
 		displayName: 'Parent Drive',
-		description: 'The drive where you want to upload the file',
+		description: 'The drive where to upload the file',
 	},
 	{
 		...folderRLC,
 		displayName: 'Parent Folder',
-		description:
-			'The Folder you want to upload the file in. By default, the root folder of “My Drive” is used.',
+		description: 'The folder where to upload the file',
 	},
 	{
 		displayName: 'Options',

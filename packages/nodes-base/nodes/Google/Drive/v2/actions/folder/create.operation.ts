@@ -19,12 +19,12 @@ const properties: INodeProperties[] = [
 	{
 		...driveRLC,
 		displayName: 'Parent Drive',
-		description: 'Where to create the new folder. By default, the root of "My Drive" is used.',
+		description: 'The drive where to create the new folder',
 	},
 	{
 		...folderRLC,
 		displayName: 'Parent Folder',
-		description: 'Where to create the new folder. By default, the root of "My Drive" is used.',
+		description: 'The parent folder where to create the new folder',
 	},
 	{
 		displayName: 'Options',

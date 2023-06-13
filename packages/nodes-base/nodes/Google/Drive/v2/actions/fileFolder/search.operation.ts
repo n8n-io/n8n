@@ -86,13 +86,13 @@ const properties: INodeProperties[] = [
 			{
 				...driveRLC,
 				description:
-					'The Drive you want to search in. By default, the personal "My Drive" is used.',
+					'The drive you want to search in. By default, the personal "My Drive" is used.',
 				required: false,
 			},
 			{
 				...folderRLC,
 				description:
-					'Narrow the search within the selected folder. By default, the root folder is used.',
+					'The folder you want to search in. By default, the root folder of the drive is used.',
 				required: false,
 			},
 			{

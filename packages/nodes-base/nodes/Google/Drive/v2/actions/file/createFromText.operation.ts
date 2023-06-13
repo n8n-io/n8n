@@ -31,14 +31,13 @@ const properties: INodeProperties[] = [
 		...driveRLC,
 		displayName: 'Parent Drive',
 		required: false,
-		description: 'The drive where you want to create the file in',
+		description: 'The drive where to create the new file',
 	},
 	{
 		...folderRLC,
 		displayName: 'Parent Folder',
 		required: false,
-		description:
-			'The Folder where you want to create the file in. By default, the root folder of "My Drive" is used.',
+		description: 'The folder where to create the new file',
 	},
 	{
 		displayName: 'Options',

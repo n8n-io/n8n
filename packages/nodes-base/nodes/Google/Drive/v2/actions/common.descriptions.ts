@@ -122,7 +122,7 @@ export const folderRLC: INodeProperties = {
 	displayName: 'Folder',
 	name: 'folderId',
 	type: 'resourceLocator',
-	default: { mode: 'list', value: 'root', cachedResultName: '/ (Root Folder)' },
+	default: { mode: 'list', value: 'root', cachedResultName: '/ (Root folder)' },
 	required: true,
 	modes: [
 		{

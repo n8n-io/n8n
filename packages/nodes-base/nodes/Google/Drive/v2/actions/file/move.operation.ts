@@ -13,13 +13,13 @@ const properties: INodeProperties[] = [
 	},
 	{
 		...driveRLC,
-		displayName: 'Destination Drive',
-		description: 'The drive where you want to move the file',
+		displayName: 'Parent Drive',
+		description: 'The drive where to move the file',
 	},
 	{
 		...folderRLC,
-		displayName: 'Destination Folder',
-		description: 'The folder where you want to move the file',
+		displayName: 'Parent Folder',
+		description: 'The folder where to move the file',
 	},
 ];
 

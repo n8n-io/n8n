@@ -34,14 +34,14 @@ const properties: INodeProperties[] = [
 	},
 	{
 		...driveRLC,
-		displayName: 'Destination Drive',
-		description: 'The drive where you want to save the copied file',
+		displayName: 'Parent Drive',
+		description: 'The drive where to save the copied file',
 		displayOptions: { show: { sameFolder: [false] } },
 	},
 	{
 		...folderRLC,
-		displayName: 'Destination Folder',
-		description: 'The folder where you want to save the copied file',
+		displayName: 'Parent Folder',
+		description: 'The folder where to save the copied file',
 		displayOptions: { show: { sameFolder: [false] } },
 	},
 	{

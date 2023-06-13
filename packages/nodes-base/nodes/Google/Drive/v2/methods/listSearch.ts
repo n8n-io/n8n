@@ -165,7 +165,8 @@ export async function folderSearchWithDefault(
 
 	const results: INodeListSearchItems[] = [
 		{
-			name: '/ (Root Folder)',
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: '/ (Root folder)',
 			value: RLC_FOLDER_DEFAULT,
 			url: 'https://drive.google.com/drive',
 		},
