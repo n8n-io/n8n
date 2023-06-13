@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { DateTime as LuxonDateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { parse, visit, types, print } from 'recast';
 import { getOption } from 'recast/lib/util';
@@ -445,9 +445,7 @@ function isParseableAsLuxonDateTime(input: unknown): input is string {
 
 	const jsDate = new Date(input);
 
-	return (
-		jsDate instanceof Date && !isNaN(jsDate.valueOf()) && LuxonDateTime.fromJSDate(jsDate).isValid
-	);
+	return jsDate instanceof Date && !isNaN(jsDate.valueOf()) && DateTime.fromJSDate(jsDate).isValid;
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
@@ -464,7 +462,7 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		foundFunction = stringExtensions.functions[functionName];
 	} else if (typeof input === 'number') {
 		foundFunction = numberExtensions.functions[functionName];
-	} else if (input && (LuxonDateTime.isDateTime(input) || input instanceof Date)) {
+	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
 		foundFunction = dateExtensions.functions[functionName];
 	} else if (input !== null && typeof input === 'object') {
 		foundFunction = objectExtensions.functions[functionName];
@@ -529,7 +527,7 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 
 			throw new ExpressionExtensionError(
 				fn.typeName === 'Date'
-					? `${functionName}() is only callable on type "${fn.typeName}" and ISO-8601 datetime strings`
+					? `${functionName}() is only callable on type "${fn.typeName}" and datetime strings`
 					: `${functionName}() is only callable on type "${fn.typeName}"`,
 			);
 		}
@@ -541,7 +539,7 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	}
 
 	if (isParseableAsLuxonDateTime(input) && functionName !== 'toDate') {
-		input = LuxonDateTime.fromJSDate(new Date(input));
+		input = DateTime.fromJSDate(new Date(input));
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
