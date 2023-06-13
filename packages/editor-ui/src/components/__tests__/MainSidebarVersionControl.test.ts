@@ -44,6 +44,12 @@ describe('MainSidebarVersionControl', () => {
 		usersStore = useUsersStore();
 	});
 
+	it('should render nothing', async () => {
+		getItemSpy.mockReturnValue(null);
+		const { container } = renderComponent({ props: { isCollapsed: false } });
+		expect(container).toBeEmptyDOMElement();
+	});
+
 	it('should render empty content', async () => {
 		const { getByTestId } = renderComponent({ props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-version-control')).toBeInTheDocument();
