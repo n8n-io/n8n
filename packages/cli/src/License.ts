@@ -106,11 +106,11 @@ export class License {
 	}
 
 	isSharingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+		return true;
 	}
 
 	isLogStreamingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
+		return true;
 	}
 
 	isLdapEnabled() {
@@ -126,7 +126,7 @@ export class License {
 	}
 
 	isVariablesEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+		return true;
 	}
 
 	isVersionControlLicensed() {

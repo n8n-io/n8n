@@ -287,7 +287,7 @@ export const schema = {
 		saveExecutionProgress: {
 			doc: 'Whether or not to save progress for each node executed',
 			format: 'Boolean',
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
 
