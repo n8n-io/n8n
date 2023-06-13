@@ -13,10 +13,10 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Search User',
+				name: 'Get',
 				value: 'searchUser',
-				description: 'Search user by username',
-				action: 'Search user by username',
+				description: 'Retrieve a user by username',
+				action: 'Get User',
 			},
 		],
 		default: 'searchUser',

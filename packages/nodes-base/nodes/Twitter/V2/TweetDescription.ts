@@ -15,31 +15,31 @@ export const tweetOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create, quote, or reply to a Tweet',
-				action: 'Create a Tweet',
+				description: 'Create, quote, or reply to a tweet',
+				action: 'Create Tweet',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a Tweet',
-				action: 'Delete a Tweet',
+				description: 'Delete a tweet',
+				action: 'Delete Tweet',
 			},
 			{
 				name: 'Like',
 				value: 'like',
-				description: 'Like a Tweet',
-				action: 'Like a Tweet',
+				description: 'Like a tweet',
+				action: 'Like Tweet',
 			},
 			{
 				name: 'Retweet',
 				value: 'retweet',
 				description: 'Retweet a tweet',
-				action: 'Retweet a tweet',
+				action: 'Retweet Tweet',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search for Tweets from the last seven days',
+				description: 'Search for tweets from the last seven days',
 				action: 'Search Tweets',
 			},
 		],
@@ -88,7 +88,7 @@ export const tweetFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: '4e696bef7e24d378',
 				default: '',
-				description: 'Location information for the Tweet',
+				description: 'Location information for the tweet',
 			},
 			{
 				displayName: 'Media',
@@ -103,7 +103,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'inQuoteToStatusId',
 				type: 'resourceLocator',
 				default: { mode: 'id', value: '' },
-				description: 'The Tweet being quoted',
+				description: 'The tweet being quoted',
 				modes: [
 					{
 						displayName: 'By ID',
@@ -129,7 +129,7 @@ export const tweetFields: INodeProperties[] = [
 				type: 'resourceLocator',
 				default: { mode: 'id', value: '' },
 				// required: true,
-				description: 'The Tweet being replied to',
+				description: 'The tweet being replied to',
 				modes: [
 					{
 						displayName: 'By ID',
@@ -161,7 +161,7 @@ export const tweetFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'id', value: '' },
 		required: true,
-		description: 'The Tweet to delete',
+		description: 'The tweet to delete',
 		displayOptions: {
 			show: {
 				resource: ['tweet'],
@@ -197,7 +197,7 @@ export const tweetFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'id', value: '' },
 		required: true,
-		description: 'The Tweet to like',
+		description: 'The tweet to like',
 		displayOptions: {
 			show: {
 				operation: ['like'],
@@ -298,14 +298,16 @@ export const tweetFields: INodeProperties[] = [
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Tweets before this date will not be returned',
+				description:
+					'Tweets before this date will not be returned. This date must be within the last 7 days.',
 			},
 			{
 				displayName: 'Before',
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Tweets after this date will not be returned',
+				description:
+					'Tweets after this date will not be returned. This date must be within the last 7 days.',
 			},
 			{
 				displayName: 'Tweet Fields',
@@ -400,7 +402,7 @@ export const tweetFields: INodeProperties[] = [
 				],
 				default: [],
 				description:
-					'The fields to add to each returned Tweet object. Default fields are: ID, text, edit_history_tweet_ids.',
+					'The fields to add to each returned tweet object. Default fields are: ID, text, edit_history_tweet_ids.',
 			},
 		],
 	},
@@ -414,7 +416,7 @@ export const tweetFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'id', value: '' },
 		required: true,
-		description: 'The Tweet to Retweet',
+		description: 'The tweet to retweet',
 		displayOptions: {
 			show: {
 				operation: ['retweet'],

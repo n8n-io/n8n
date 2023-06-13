@@ -61,7 +61,7 @@ export class TwitterV2 implements INodeType {
 						{
 							name: 'Tweet',
 							value: 'tweet',
-							description: 'Create, like, search, or delete a Tweet',
+							description: 'Create, like, search, or delete a tweet',
 						},
 						{
 							name: 'User',

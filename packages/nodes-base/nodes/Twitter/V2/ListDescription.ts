@@ -16,7 +16,7 @@ export const listOperations: INodeProperties[] = [
 				name: 'Add Member',
 				value: 'add',
 				description: 'Add a member to a list',
-				action: 'Add a member to a list',
+				action: 'Add Member to List',
 			},
 		],
 		default: 'add',

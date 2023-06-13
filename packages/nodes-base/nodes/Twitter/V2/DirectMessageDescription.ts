@@ -16,7 +16,7 @@ export const directMessageOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Send a direct message to a user',
-				action: 'Send a direct message to a user',
+				action: 'Create Direct Message',
 			},
 		],
 		default: 'create',
