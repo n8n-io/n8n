@@ -20,7 +20,7 @@ export const description: INodeProperties[] = [
 				name: 'Search',
 				value: 'search',
 				description: 'Search or list files and folders',
-				action: 'Search Files and Folders',
+				action: 'Search files and folders',
 			},
 		],
 		default: 'search',
