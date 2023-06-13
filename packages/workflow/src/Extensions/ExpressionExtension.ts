@@ -434,18 +434,18 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	}
 };
 
-interface FoundFunction {
-	type: 'native' | 'extended';
-	// eslint-disable-next-line @typescript-eslint/ban-types
-	function: Function;
-}
-
 function isParseableAsLuxonDateTime(input: unknown): input is string {
 	if (typeof input !== 'string' || input.length === 0) return false;
 
 	const jsDate = new Date(input);
 
 	return jsDate instanceof Date && !isNaN(jsDate.valueOf()) && DateTime.fromJSDate(jsDate).isValid;
+}
+
+interface FoundFunction {
+	type: 'native' | 'extended';
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	function: Function;
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
