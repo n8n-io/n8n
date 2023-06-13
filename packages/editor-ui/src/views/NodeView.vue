@@ -428,8 +428,8 @@ export default defineComponent({
 				elementRef.style.transform = `scale(${newScale})`;
 			}
 		},
-		executionId(newExecId) {
-			if (newExecId) {
+		executionId(newExecId, oldExecId) {
+			if (newExecId !== oldExecId) {
 				this.openExecution(newExecId);
 			}
 		},
