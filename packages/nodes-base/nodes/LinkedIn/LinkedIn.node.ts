@@ -107,7 +107,6 @@ export class LinkedIn implements INodeType {
 							lifecycleState: 'PUBLISHED',
 							distribution: {
 								feedDistribution: 'MAIN_FEED',
-								targetEnties: [],
 								thirdPartyDistributionChannels: [],
 							},
 							visibility,
@@ -187,6 +186,8 @@ export class LinkedIn implements INodeType {
 						const endpoint = '/posts';
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
 					}
+
+					console.log(responseData);
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
