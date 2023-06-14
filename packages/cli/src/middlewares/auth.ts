@@ -10,7 +10,6 @@ import type { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, EDITOR_UI_DIST_DIR } from '@/constants';
 import { issueCookie, resolveJwtContent } from '@/auth/jwt';
-import type { UserRepository } from '@db/repositories';
 import { canSkipAuth } from '@/decorators/registerController';
 
 const jwtFromRequest = (req: Request) => {
