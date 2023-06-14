@@ -3,9 +3,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useI18n, useMessage, useToast } from '@/composables';
 import { useExternalSecretsStore } from '@/stores';
 import { onMounted } from 'vue';
-import type { ExternalSecretsProvider } from '@/Interface';
-import { DateTime } from 'luxon';
-import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
+import ExternalSecretsProviderCard from '@/components/ExternalSecretsProviderCard.ee.vue';
 
 const { i18n } = useI18n();
 const uiStore = useUIStore();
@@ -20,14 +18,6 @@ onMounted(() => {
 
 function goToUpgrade() {
 	uiStore.goToUpgrade('external-secrets', 'upgrade-external-secrets');
-}
-
-function formatDate(provider: ExternalSecretsProvider) {
-	return DateTime.fromISO(provider.connectedAt!).toFormat('dd LLL yyyy');
-}
-
-function openExternalSecretProvider(id: string) {
-	uiStore.openModalWithData({ name: EXTERNAL_SECRETS_PROVIDER_MODAL_KEY, data: { id } });
 }
 </script>
 
@@ -45,42 +35,11 @@ function openExternalSecretProvider(id: string) {
 			v-if="externalSecretsStore.isEnterpriseExternalSecretsEnabled"
 			data-test-id="sso-content-licensed"
 		>
-			<n8n-card
+			<ExternalSecretsProviderCard
 				v-for="provider in externalSecretsStore.providers"
-				:key="provider.id"
-				:class="$style.card"
-			>
-				<div :class="$style.cardBody">
-					<img :class="$style.cardImage" :src="provider.image" :alt="provider.name" />
-					<div :class="$style.cardContent">
-						<n8n-text bold>{{ provider.name }}</n8n-text>
-						<n8n-text color="text-light" size="small" v-if="provider.connected">
-							<span>
-								{{
-									i18n.baseText('settings.externalSecrets.card.secretsCount', {
-										interpolate: {
-											count: externalSecretsStore.secrets[provider.id]?.length,
-										},
-									})
-								}}
-							</span>
-							|
-							<span>
-								{{
-									i18n.baseText('settings.externalSecrets.card.connectedAt', {
-										interpolate: {
-											date: formatDate(provider),
-										},
-									})
-								}}
-							</span>
-						</n8n-text>
-					</div>
-					<n8n-button type="tertiary" @click="openExternalSecretProvider(provider.id)">
-						{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
-					</n8n-button>
-				</div>
-			</n8n-card>
+				:key="provider.name"
+				:provider="provider"
+			/>
 		</div>
 		<n8n-action-box
 			v-else
@@ -95,27 +54,3 @@ function openExternalSecretProvider(id: string) {
 		</n8n-action-box>
 	</div>
 </template>
-
-<style lang="scss" module>
-.card {
-	position: relative;
-}
-
-.cardImage {
-	width: 28px;
-	height: 28px;
-}
-
-.cardBody {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-}
-
-.cardContent {
-	display: flex;
-	flex-direction: column;
-	flex-grow: 1;
-	margin-left: var(--spacing-s);
-}
-</style>
