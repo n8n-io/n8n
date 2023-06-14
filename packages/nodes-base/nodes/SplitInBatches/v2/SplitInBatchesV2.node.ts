@@ -14,7 +14,7 @@ export class SplitInBatchesV2 implements INodeType {
 		name: 'splitInBatches',
 		icon: 'fa:th-large',
 		group: ['organization'],
-		version: 2,
+		version: [2, 2.1],
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'Split In Batches',
@@ -150,10 +150,18 @@ export class SplitInBatchesV2 implements INodeType {
 			});
 		}
 
-		nodeContext.noItemsLeft = nodeContext.items.length === 0;
+		if (this.getNode().typeVersion === 2) {
+			nodeContext.noItemsLeft = nodeContext.items.length === 0;
+		}
 
 		if (returnItems.length === 0) {
+			if (this.getNode().typeVersion === 2.1) {
+				// Mark it only as "noItemsLeft" after the "done" run
+				nodeContext.noItemsLeft = true;
+			}
 			return [[], nodeContext.processedItems];
+		} else if (this.getNode().typeVersion === 2.1) {
+			nodeContext.noItemsLeft = false;
 		}
 
 		return [returnItems, []];

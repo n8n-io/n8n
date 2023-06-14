@@ -12,12 +12,13 @@ export class SplitInBatches extends VersionedNodeType {
 			icon: 'fa:th-large',
 			group: ['organization'],
 			description: 'Split data into batches and iterate over each batch',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SplitInBatchesV1(),
 			2: new SplitInBatchesV2(),
+			2.1: new SplitInBatchesV2(),
 		};
 
 		super(nodeVersions, baseDescription);

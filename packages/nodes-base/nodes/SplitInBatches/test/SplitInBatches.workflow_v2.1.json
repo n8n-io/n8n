@@ -1,0 +1,738 @@
+{
+	"name": "New Split in Batches - Issue",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "ccadc44b-5813-4e74-8692-a7c4c304824f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-320, 620]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $node[\"Split In Batches 3_2\"].context[\"noItemsLeft\"] }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "7531de27-3977-4131-a786-07425bae9d5d",
+			"name": "No Items Left",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1260, 1080]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			},
+			"id": "ae2830e6-cafb-4e75-919d-e779ec7c8066",
+			"name": "Split In Batches 1",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2.1,
+			"position": [160, 440]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {
+					"reset": "={{ $node[\"Split In Batches 1_2\"].context[\"noItemsLeft\"] }}"
+				}
+			},
+			"id": "94c7054b-678e-4c89-9ead-b9a7b5d94a8a",
+			"name": "Split In Batches 1_2",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2.1,
+			"position": [780, 500]
+		},
+		{
+			"parameters": {
+				"content": "# V2.1",
+				"height": 109.07102593010146
+			},
+			"id": "4949f05f-b1aa-4c32-b058-9e66fab678e9",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-400, 448.92897406989846]
+		},
+		{
+			"parameters": {
+				"content": "# V2",
+				"height": 113.61217587373169
+			},
+			"id": "e7ead0b9-98ad-4e3f-8e7d-e6f2a1054b34",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-400, 840]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $node[\"Split In Batches 2_2\"].context[\"noItemsLeft\"] }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "2b22d18a-1ea9-4da4-8bfe-81cd0dd99ba9",
+			"name": "No Items Left2",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1260, 840]
+		},
+		{
+			"parameters": {
+				"content": "# V1",
+				"height": 113.61217587373169
+			},
+			"id": "2562b44e-c6fd-4fdb-a51f-6f1a767fcccf",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-400, 1080]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $node[\"Split In Batches 3\"].context[\"noItemsLeft\"] }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "84b2e9fe-1578-421d-9993-0a700d2ed999",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1480, 1060]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $node[\"Split In Batches 2\"].context[\"noItemsLeft\"] }}",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "d73d73a8-e01c-42c8-b126-0a61cc1f6efa",
+			"name": "IF1",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1480, 820]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
+			},
+			"id": "d8012d72-ee44-4145-b531-1abcf005cf8a",
+			"name": "Mock Data 1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-60, 440]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
+			},
+			"id": "8983afa4-3b04-4f75-9800-20ce3f911d14",
+			"name": "Mock Data 1_2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [520, 420]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
+			},
+			"id": "d574fd58-b998-4a29-804d-4de1e91a64a2",
+			"name": "Mock Data 2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-60, 800]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
+			},
+			"id": "eaef2f79-6edd-480f-94f8-98aa25e9a800",
+			"name": "Mock Data 2_2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [520, 780]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
+			},
+			"id": "2300fc3a-a12c-42ea-8bd8-2e05031b87b7",
+			"name": "Mock Data 3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-60, 1080]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
+			},
+			"id": "deddc7e3-1723-4b20-b5df-ab4883ad08a4",
+			"name": "Mock Data 3_2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [520, 1080]
+		},
+		{
+			"parameters": {},
+			"id": "e5ef9a06-9504-4a6b-9391-11b662df9fc7",
+			"name": "Results 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [340, 520]
+		},
+		{
+			"parameters": {
+				"jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Some Operation 2\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);\n"
+			},
+			"id": "ad9fb558-ec37-4fc6-b593-8bb0605809e3",
+			"name": "Result 2",
+			"type": "n8n-nodes-base.code",
+			"position": [1800, 800],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {
+				"jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Some Operation 3\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);\n"
+			},
+			"id": "ecddfb63-8316-4d6d-9ad5-fb44d1f9695e",
+			"name": "Result 3",
+			"type": "n8n-nodes-base.code",
+			"position": [1800, 1040],
+			"typeVersion": 1
+		},
+		{
+			"parameters": {},
+			"id": "6de7b063-6995-42f7-927d-f2490db7334f",
+			"name": "Some Operation 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1040, 480]
+		},
+		{
+			"parameters": {},
+			"id": "0c56f03d-a8e0-482d-be77-b9ac9a53012e",
+			"name": "Some Operation 2",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1040, 840]
+		},
+		{
+			"parameters": {},
+			"id": "49faa06f-1625-4ff1-81a6-06947445f17b",
+			"name": "Some Operation 3",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1040, 1080]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			},
+			"id": "fc6ba4b9-9780-4ae7-8a02-69535fb419ec",
+			"name": "Split In Batches 3",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 1,
+			"position": [160, 1080]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			},
+			"id": "4c667500-c653-43e8-a4b7-49758cec20f1",
+			"name": "Split In Batches 2",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2,
+			"position": [160, 800]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {
+					"reset": "={{ $node[\"Split In Batches 3_2\"].context[\"noItemsLeft\"] }}"
+				}
+			},
+			"id": "f84116dd-e294-4bdf-af87-5fa53708d73f",
+			"name": "Split In Batches 3_2",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 1,
+			"position": [780, 1080]
+		},
+		{
+			"parameters": {
+				"batchSize": 1,
+				"options": {
+					"reset": "={{ $node[\"Split In Batches 2_2\"].context[\"noItemsLeft\"] }}"
+				}
+			},
+			"id": "32e254be-53ba-4ede-9680-2d8f347ff93c",
+			"name": "Split In Batches 2_2",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2,
+			"position": [780, 860]
+		}
+	],
+	"pinData": {
+		"Results 1": [
+			{
+				"json": {
+					"key": "10_0"
+				}
+			},
+			{
+				"json": {
+					"key": "11_0"
+				}
+			},
+			{
+				"json": {
+					"key": "12_0"
+				}
+			},
+			{
+				"json": {
+					"key": "13_0"
+				}
+			},
+			{
+				"json": {
+					"key": "14_0"
+				}
+			},
+			{
+				"json": {
+					"key": "10_1"
+				}
+			},
+			{
+				"json": {
+					"key": "11_1"
+				}
+			},
+			{
+				"json": {
+					"key": "12_1"
+				}
+			},
+			{
+				"json": {
+					"key": "13_1"
+				}
+			},
+			{
+				"json": {
+					"key": "14_1"
+				}
+			}
+		],
+		"Result 3": [
+			{
+				"json": {
+					"key": "10_0"
+				}
+			},
+			{
+				"json": {
+					"key": "11_0"
+				}
+			},
+			{
+				"json": {
+					"key": "12_0"
+				}
+			},
+			{
+				"json": {
+					"key": "13_0"
+				}
+			},
+			{
+				"json": {
+					"key": "14_0"
+				}
+			},
+			{
+				"json": {
+					"key": "10_1"
+				}
+			},
+			{
+				"json": {
+					"key": "11_1"
+				}
+			},
+			{
+				"json": {
+					"key": "12_1"
+				}
+			},
+			{
+				"json": {
+					"key": "13_1"
+				}
+			},
+			{
+				"json": {
+					"key": "14_1"
+				}
+			}
+		],
+		"Result 2": [
+			{
+				"json": {
+					"key": "10_0"
+				}
+			},
+			{
+				"json": {
+					"key": "11_0"
+				}
+			},
+			{
+				"json": {
+					"key": "12_0"
+				}
+			},
+			{
+				"json": {
+					"key": "13_0"
+				}
+			},
+			{
+				"json": {
+					"key": "14_0"
+				}
+			},
+			{
+				"json": {
+					"key": "10_1"
+				}
+			},
+			{
+				"json": {
+					"key": "11_1"
+				}
+			},
+			{
+				"json": {
+					"key": "12_1"
+				}
+			},
+			{
+				"json": {
+					"key": "13_1"
+				}
+			},
+			{
+				"json": {
+					"key": "14_1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Mock Data 1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mock Data 2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mock Data 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Items Left": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Split In Batches 3_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split In Batches 1": {
+			"main": [
+				[
+					{
+						"node": "Mock Data 1_2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Results 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split In Batches 1_2": {
+			"main": [
+				[
+					{
+						"node": "Some Operation 1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Split In Batches 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Items Left2": {
+			"main": [
+				[
+					{
+						"node": "IF1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Split In Batches 2_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Result 3",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Split In Batches 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF1": {
+			"main": [
+				[
+					{
+						"node": "Result 2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Split In Batches 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data 1": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data 1_2": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 1_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data 2": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data 2_2": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 2_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data 3": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data 3_2": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 3_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Some Operation 1": {
+			"main": [
+				[
+					{
+						"node": "Split In Batches 1_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Some Operation 2": {
+			"main": [
+				[
+					{
+						"node": "No Items Left2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Some Operation 3": {
+			"main": [
+				[
+					{
+						"node": "No Items Left",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split In Batches 3": {
+			"main": [
+				[
+					{
+						"node": "Mock Data 3_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split In Batches 2": {
+			"main": [
+				[
+					{
+						"node": "Mock Data 2_2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split In Batches 3_2": {
+			"main": [
+				[
+					{
+						"node": "Some Operation 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split In Batches 2_2": {
+			"main": [
+				[
+					{
+						"node": "Some Operation 2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "c519e655-532d-4d30-9b95-46fb54dd7c2b",
+	"id": "1122",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}
