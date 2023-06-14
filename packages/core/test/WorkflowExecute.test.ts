@@ -1016,7 +1016,6 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			},
-			// TODO: Is now executing more correctly, but still not 100% correct. Fix!
 			{
 				description:
 					'should simply execute the next multi-input-node (totally ignoring the runIndex)',
