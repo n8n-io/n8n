@@ -50,6 +50,9 @@ describe('Schedule Trigger node', async () => {
 			cy.wait(1200);
 			cy.request('GET', `${BACKEND_BASE_URL}/rest/executions`).then((response) => {
 				expect(response.status).to.eq(200);
+				expect(response.body.data).to.have.length(1);
+				const workflowId = response.body.data[0].id.toString();
+				expect(workflowId).to.not.be.undefined;
 				expect(response.body.data.results.length).to.be.greaterThan(0);
 				const matchingExecutions = response.body.data.results.filter(
 					(execution: any) => execution.workflowId === workflowId,
