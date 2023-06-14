@@ -10,6 +10,13 @@ const apiKey = ref('');
 const isLoading = computed(() => useAI().isLoading);
 async function onSubmit() {
 	setUserPrompt(userPrompt.value);
+	// const actions = useAI().parsedActions;
+	// const stringifiedActions = actions
+	// 	.map((action) => {
+	// 		return `${action.displayName}|${action.node}|${action.inputs}|${action.outputs}`;
+	// 	})
+	// 	.join('\n');
+	// console.log('🚀 ~ file: UserPrompt.vue:14 ~ onSubmit ~ actions:', stringifiedActions);
 	await fetchSuggestedNodes();
 	emit('next');
 }

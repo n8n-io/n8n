@@ -89,7 +89,8 @@ export const useAI = defineStore('ai', () => {
 			.flat()
 			.filter((a) => a.actionKey !== '__CUSTOM_API_CALL__')
 			.map((a) => {
-				const matchedNodeData = visibleNodeTypes.find((n) => n.name === a.name);
+				const matchedNodeData = useNodeTypesStore().visibleNodeTypes.find((n) => n.name === a.name);
+				// console.log('🚀 ~ file: useAI.composable.ts:93 ~ .map ~ matchedNodeData:', matchedNodeData);
 				return {
 					actionKey: `${a.displayOptions?.show?.resource?.[0] || ''}:${a.actionKey}`,
 					description: a.description,
@@ -113,7 +114,12 @@ export const useAI = defineStore('ai', () => {
 		setUserPrompt('');
 		setPseudoWorkflow([]);
 	}
-	async function getCompletions(messages: Array<{ role: string; content: string }>) {
+	async function getCompletions(
+		messages: Array<{ role: string; content: string }>,
+		functions: any[],
+		functionCall: { name: string },
+	) {
+		console.log('🚀 ~ file: useAI.composable.ts:122 ~ useAI ~ functions:', functions);
 		try {
 			const completion = await fetch('https://api.openai.com/v1/chat/completions', {
 				method: 'POST',
@@ -122,14 +128,69 @@ export const useAI = defineStore('ai', () => {
 					Authorization: 'Bearer ' + apiKey.value,
 				},
 				body: JSON.stringify({
-					model: 'gpt-4',
-					temperature: 0.65,
+					model: 'gpt-3.5-turbo-16k-0613',
+					// model: 'gpt-4-0613',
+					// temperature: 0.65,
 					messages,
+					functions: [
+						...functions,
+						// {
+						// 	name: 'add_action_to_workflow',
+						// 	description: 'Adds an action to the workflow',
+						// 	// parameters is a JSON schema
+						// 	parameters: {
+						// 		type: 'object',
+						// 		properties: {
+						// 			actionKey: {
+						// 				type: 'string',
+						// 				description: 'The action to add to the workflow',
+						// 			},
+						// 			node: {
+						// 				type: 'string',
+						// 				description: 'The parent node',
+						// 			},
+						// 			explainWhy: {
+						// 				type: 'string',
+						// 				description: 'The reason why the action was added',
+						// 			},
+						// 		},
+						// 	},
+						// 	required: ['actionKey', 'node', 'explainWhy'],
+						// },
+						// {
+						// 	name: 'connect_actions',
+						// 	description: 'Connects input of one action to output of another',
+						// 	// parameters is a JSON schema
+						// 	parameters: {
+						// 		type: 'object',
+						// 		properties: {
+						// 			inputAction: {
+						// 				type: 'string',
+						// 				description: 'The action to connect to the input of another action',
+						// 			},
+						// 			inputIndex: {
+						// 				type: 'number',
+						// 				description: 'The index of the input to connect to',
+						// 			},
+						// 			outputIndex: {
+						// 				type: 'number',
+						// 				description: 'The index of the output to connect to',
+						// 			},
+						// 			outputAction: {
+						// 				type: 'string',
+						// 				description: 'The action to connect to the output of another action',
+						// 			},
+						// 		},
+						// 		required: ['inputAction', 'inputIndex', 'outputAction', 'outputIndex'],
+						// 	},
+						// },
+					],
+					function_call: functionCall,
 				}),
 			});
 
 			const completionJSON = await completion.json();
-			return completionJSON?.choices[0]?.message?.content;
+			return completionJSON?.choices[0]?.message?.function_call?.arguments;
 		} catch (error) {
 			showError(
 				error,
@@ -157,7 +218,7 @@ export const useAI = defineStore('ai', () => {
 		isLoading.value = true;
 
 		const startTime = performance.now();
-		const nonCoreNodes = visibleNodeTypes.filter(
+		const nonCoreNodes = useNodeTypesStore().visibleNodeTypes.filter(
 			(n) => !n.codex?.categories?.includes('Core Nodes'),
 		);
 		const triggerNodes = nonCoreNodes
@@ -171,18 +232,57 @@ export const useAI = defineStore('ai', () => {
 			.join(',');
 
 		const prompt = getNodeSuggestionsPrompt(triggerNodes, regularNodes);
-		const generated = await getCompletions([
+		const generated = await getCompletions(
+			[
+				{
+					role: 'system',
+					content: prompt,
+				},
+				{
+					role: 'user',
+					content: userPrompt.value,
+				},
+			],
+			[
+				{
+					name: 'add_nodes_to_suggested_nodes',
+					description: 'Adds an array of nodes to the suggested/identified nodes',
+					// parameters is a JSON schema
+					parameters: {
+						type: 'object',
+						required: ['nodes'],
+						properties: {
+							nodes: {
+								type: 'array',
+								items: {
+									type: 'object',
+									required: ['node', 'explainWhy'],
+									properties: {
+										node: {
+											type: 'string',
+											description: 'The node to suggest',
+										},
+										explainWhy: {
+											type: 'string',
+											description: 'The reason why the node was suggested',
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			],
 			{
-				role: 'system',
-				content: prompt,
+				name: 'add_nodes_to_suggested_nodes',
 			},
-			{
-				role: 'user',
-				content: userPrompt.value,
-			},
-		]);
+		);
 		try {
-			suggestedNodes.value = JSON.parse(generated);
+			console.log(
+				'🚀 ~ file: useAI.composable.ts:267 ~ fetchSuggestedNodes ~ generated:',
+				generated,
+			);
+			suggestedNodes.value = JSON.parse(generated)?.nodes;
 			isLoading.value = false;
 			const endTime = performance.now();
 
@@ -206,7 +306,7 @@ export const useAI = defineStore('ai', () => {
 				return matchesNode;
 			});
 
-			const relevantActions = selectRelevantActions(n.explainWhy, nodeActions, 2);
+			const relevantActions = selectRelevantActions(n.explainWhy, nodeActions, 10);
 
 			return relevantActions.map((a) => ({
 				node: a.node,
@@ -233,20 +333,86 @@ export const useAI = defineStore('ai', () => {
 		const actionCompositionPrompt = getActionsCompositionPrompt(minifiedNodes, minifiedActions);
 
 		isLoading.value = true;
-		const generated = await getCompletions([
+		const generated = await getCompletions(
+			[
+				{
+					role: 'system',
+					content: actionCompositionPrompt,
+				},
+				{
+					role: 'user',
+					content: userPrompt.value,
+				},
+			],
+			[
+				{
+					name: 'add_actions_to_workflow',
+					description: 'Add list of actions to the workflow',
+					// parameters is a JSON schema
+					parameters: {
+						type: 'object',
+						properties: {
+							actions: {
+								type: 'array',
+								items: {
+									type: 'object',
+									properties: {
+										id: {
+											type: 'number',
+											description: 'The index position of the action starting with 1',
+										},
+										actionKey: {
+											type: 'string',
+											description: 'The action to add to the workflow',
+										},
+										node: {
+											type: 'string',
+											description: 'The parent node',
+										},
+										explainWhy: {
+											type: 'string',
+											description: 'The reason why the action was added',
+										},
+										inputActions: {
+											type: 'array',
+											description: 'IDs representing connected input actions',
+											items: {
+												type: 'number',
+												description: 'Id of the action',
+											},
+										},
+										outputActions: {
+											type: 'array',
+											description: 'IDs representing connected output actions',
+											items: {
+												type: 'number',
+												description: 'Id of the action',
+											},
+										},
+									},
+									required: [
+										'actionKey',
+										'node',
+										'explainWhy',
+										'inputActions',
+										'outputActions',
+										'id',
+									],
+								},
+							},
+						},
+						required: ['actions'],
+					},
+				},
+			],
 			{
-				role: 'system',
-				content: actionCompositionPrompt,
+				name: 'add_actions_to_workflow',
 			},
-			{
-				role: 'user',
-				content: userPrompt.value,
-			},
-		]);
+		);
 
 		isLoading.value = false;
 		try {
-			pseudoWorkflow.value = JSON.parse(generated);
+			pseudoWorkflow.value = JSON.parse(generated)?.actions;
 			const endTime = performance.now();
 
 			console.log(`[${endTime - startTime}ms] Fetched Actions Composition: `, pseudoWorkflow.value);

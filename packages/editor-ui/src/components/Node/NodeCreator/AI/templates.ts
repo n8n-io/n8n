@@ -62,13 +62,6 @@ export function getNodeSuggestionsPrompt(triggerNodes: string, regularNodes: str
 
 		Make sure to use the appropriate action type (trigger or regular) based on the workflow requirements. Keep the workflow as streamlined and efficient as possible. Utilize the universal nodes and their functionalities effectively.
 
-		Your JSON output should follow this modified TypeScript interface:
-
-		interface SuggestedNode {
-			node: string;
-			explainWhy: string;
-		}
-
 		When creating the workflow, it's important to use logical nodes efficiently:
 		- Use a 'switch' node when there are multiple conditions that need to be checked.
 		- Use an 'if' node when there is a single condition to check.
@@ -78,6 +71,8 @@ export function getNodeSuggestionsPrompt(triggerNodes: string, regularNodes: str
 		- Do not make up your own nodes or actions or it will break the workflow.
 		- If you need to do some Javascript operation use "code" node.
 		- Always return an array of nodes.
+		- Workflow always needs to have a trigger node.
+		- Workflow can have only a single trigger node.
 	`;
 }
 
@@ -99,20 +94,17 @@ export function getNodeSuggestionsPrompt(triggerNodes: string, regularNodes: str
 // }
 export function getActionsCompositionPrompt(matchedNodes: string, matchedActions: string) {
 	return `
-		You are an n8n workflow builder assistant. Your task is to create a workflow requested by the user. Given the identified node actions, compose appropriate actions and construct the requested workflow connections, respecting the inputs and outputs each action can handle. Your JSON output should following this Typescript interface:
-		\`\`\`
-		interface SuggestedActionConnection {
-			id: string // id of the action starting with '1';
-			node: string;
-			actionKey: string;
-			explainWhy: string;
-			inputActions: string[]; // array of IDs representing input actions
-			outputActions: string[]; // array of IDs representing output actions
-		}
-		\`\`\`
-		Only use actions provided below. Please consider each node's restrictions on the number of inputs and outputs and strictly follow these limitations while creating the workflow. Each node should be present at least once in the workflow. Respond only with JSON array, do not include any additional comments. \n
+		You are an n8n workflow builder assistant. Your task is to create a workflow requested by the user. Given the identified node actions, compose appropriate actions and construct the requested workflow connections, respecting the inputs and outputs each action can handle.
+
+		Only use actions provided below. Please consider each node's restrictions on the number of inputs and outputs and strictly follow these limitations while creating the workflow. Each node should be present at least once in the workflow.\n
+		When creating the workflow, it's important to use logical nodes efficiently:
+		- Aim for efficiency and simplicity in the workflow.
+		- Do not make up your own nodes or actions or it will break the workflow.
+		- Workflow always needs to have a trigger node.
+		- Workflow can have only a single trigger node.
+		\n
 		Nodes to use: ${matchedNodes} \n
-		Node actions: ${matchedActions}
+		Actions: ${matchedActions}
 	`;
 }
 
