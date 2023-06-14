@@ -1,3 +1,21 @@
+## [0.231.2](https://github.com/n8n-io/n8n/compare/n8n@0.231.1...n8n@0.231.2) (2023-06-14)
+
+
+### Bug Fixes
+
+* **core:** Allow all executions to be stopped ([#6386](https://github.com/n8n-io/n8n/issues/6386)) ([ceb3661](https://github.com/n8n-io/n8n/commit/ceb366119807ec168e33bff55c885f562a3089ff))
+* **Date & Time Node:** Reset responseData at end of loop ([#6385](https://github.com/n8n-io/n8n/issues/6385)) ([713ab82](https://github.com/n8n-io/n8n/commit/713ab82dc40635e6f47f1749e6af07d5223cac65))
+* **editor:** Fix hard-coded parameter names for code editors ([#6372](https://github.com/n8n-io/n8n/issues/6372)) ([800d8f3](https://github.com/n8n-io/n8n/commit/800d8f3d510aa1cfc0cf33180ea6de26b69c0cb4))
+* **editor:** Pin all data regardless of pagination ([#6346](https://github.com/n8n-io/n8n/issues/6346)) ([a789dcd](https://github.com/n8n-io/n8n/commit/a789dcd3f8082ad6960e9b49819ce0170619de76))
+* **editor:** Remove explicit parameter name scanning for code editors ([#6390](https://github.com/n8n-io/n8n/issues/6390)) ([a8f93ca](https://github.com/n8n-io/n8n/commit/a8f93ca88e147a0e7f1588a0664766ce5b348f49))
+* Improve executions list polling performance ([#6355](https://github.com/n8n-io/n8n/issues/6355)) ([e55e93e](https://github.com/n8n-io/n8n/commit/e55e93e11bf8a1041097612c5c4e9e64e6744c46))
+* **Ldap Node:** Add DN field to update operation ([#6371](https://github.com/n8n-io/n8n/issues/6371)) ([43d660c](https://github.com/n8n-io/n8n/commit/43d660cbe4a153e56a0e9c8fb3d9c2928ec068c4))
+* **LinkedIn Node:** Fix issue with posting as user or organization ([#6414](https://github.com/n8n-io/n8n/issues/6414)) ([2522a85](https://github.com/n8n-io/n8n/commit/2522a85bbfc0e33ce2b3fb05d8dbac9b3a6dbcc6))
+* **Schedule Trigger Node:** Follow the correct Unix cron format for month and days of the week ([#6401](https://github.com/n8n-io/n8n/issues/6401)) ([2f51aeb](https://github.com/n8n-io/n8n/commit/2f51aeb3383f2ceb7af3f86dbcd8e937e7925637))
+* Show actual execution data for production executions even if pin data exists ([#6302](https://github.com/n8n-io/n8n/issues/6302)) ([f9a61c2](https://github.com/n8n-io/n8n/commit/f9a61c241ea59b638ec394537f371f7682625589))
+
+
+
 ## [0.231.1](https://github.com/n8n-io/n8n/compare/n8n@0.231.0...n8n@0.231.1) (2023-06-06)
 
 
