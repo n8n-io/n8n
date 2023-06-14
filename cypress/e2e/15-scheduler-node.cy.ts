@@ -60,21 +60,19 @@ describe('Schedule Trigger node', async () => {
 				expect(matchingExecutions).to.have.length(1);
 
 				cy.wait(1200);
-				cy.request('GET', `${BACKEND_BASE_URL}/rest/executions`)
-					.then((response) => {
-						expect(response.status).to.eq(200);
-						expect(response.body.data.results.length).to.be.greaterThan(0);
-						const matchingExecutions = response.body.data.results.filter(
-							(execution: any) => execution.workflowId === workflowId,
-						);
-						expect(matchingExecutions).to.have.length(2);
-					})
-					.then(() => {
-						workflowPage.actions.activateWorkflow();
-						workflowPage.getters.activatorSwitch().should('not.have.class', 'is-checked');
-						cy.visit(workflowsPage.url);
-						workflowsPage.actions.deleteWorkFlow('Schedule Trigger Workflow');
-					});
+				cy.request('GET', `${BACKEND_BASE_URL}/rest/executions`).then((response) => {
+					expect(response.status).to.eq(200);
+					expect(response.body.data.results.length).to.be.greaterThan(0);
+					const matchingExecutions = response.body.data.results.filter(
+						(execution: any) => execution.workflowId === workflowId,
+					);
+					expect(matchingExecutions).to.have.length(2);
+
+					workflowPage.actions.activateWorkflow();
+					workflowPage.getters.activatorSwitch().should('not.have.class', 'is-checked');
+					cy.visit(workflowsPage.url);
+					workflowsPage.actions.deleteWorkFlow('Schedule Trigger Workflow');
+				});
 			});
 		});
 	});
