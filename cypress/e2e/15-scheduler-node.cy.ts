@@ -1,5 +1,5 @@
 import { WorkflowPage, WorkflowsPage, NDV } from '../pages';
-import { N8N_REST_API_URL } from '../constants';
+import { BACKEND_BASE_URL } from '../constants';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -40,7 +40,7 @@ describe('Schedule Trigger node', async () => {
 		workflowPage.actions.activateWorkflow();
 		workflowPage.getters.activatorSwitch().should('have.class', 'is-checked');
 
-		cy.request('GET', `${N8N_REST_API_URL}/rest/workflows`).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/rest/workflows`).then((response) => {
 			cy.log(response);
 			expect(response.status).to.eq(200);
 			expect(response.body.data).to.have.length(1);
@@ -48,7 +48,7 @@ describe('Schedule Trigger node', async () => {
 			expect(workflowId).to.not.be.undefined;
 
 			cy.wait(1200);
-			cy.request('GET', `${N8N_REST_API_URL}/rest/executions`).then((response) => {
+			cy.request('GET', `${BACKEND_BASE_URL}/rest/executions`).then((response) => {
 				expect(response.status).to.eq(200);
 				expect(response.body.data.results.length).to.be.greaterThan(0);
 				const matchingExecutions = response.body.data.results.filter(
@@ -57,7 +57,7 @@ describe('Schedule Trigger node', async () => {
 				expect(matchingExecutions).to.have.length(1);
 
 				cy.wait(1200);
-				cy.request('GET', `${N8N_REST_API_URL}/rest/executions`)
+				cy.request('GET', `${BACKEND_BASE_URL}/rest/executions`)
 					.then((response) => {
 						expect(response.status).to.eq(200);
 						expect(response.body.data.results.length).to.be.greaterThan(0);
