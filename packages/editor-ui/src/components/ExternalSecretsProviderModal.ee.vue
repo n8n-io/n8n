@@ -93,17 +93,18 @@ async function save() {
 		});
 	} catch (error) {
 		toast.showError(error, 'Error');
-	} finally {
-		loadingService.stopLoading();
 	}
 
 	try {
-		const { success } = await externalSecretsStore.testProviderConnection(props.data.name, {
-			data: providerData.value,
-		});
+		const { success } = await externalSecretsStore.testProviderConnection(
+			props.data.name,
+			providerData.value,
+		);
 		connectionState.value = success ? 'connected' : 'error';
 	} catch (error) {
 		connectionState.value = 'error';
+	} finally {
+		loadingService.stopLoading();
 	}
 }
 </script>
