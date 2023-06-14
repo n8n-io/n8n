@@ -5,12 +5,24 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class CiscoMerakiApi implements ICredentialType {
-	name = 'ciscoMerakiApi';
+export class ElasticSIEMApi implements ICredentialType {
+	name = 'elasticSIEMApi';
 
-	displayName = 'Cisco Meraki API';
+	displayName = 'Elastic SIEM API';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'API URL',
+			name: 'apiUrl',
+			type: 'string',
+			default: 'https://localhost:9200',
+		},
+		{
+			displayName: 'Port',
+			name: 'port',
+			type: 'number',
+			default: '',
+		},
 		{
 			displayName: 'Username',
 			name: 'username',
@@ -37,8 +49,8 @@ export class CiscoMerakiApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.meraki.com/api/v1',
-			url: '/organizations',
+			baseURL: '={{$credentials.apiUrl}}:={{$credentials.port}}',
+			url: 'api/detection_engine/tags',
 		},
 	};
 }
