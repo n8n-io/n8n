@@ -1,5 +1,7 @@
 import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
+import { Container } from 'typedi';
+import { License } from '@/License';
 import validator from 'validator';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -84,6 +86,25 @@ describe('POST /login', () => {
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
 	});
+
+	test('should throw AuthError for non-owner when User Management is disabled', async () => {
+		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		const member = await testDb.createUserShell(globalMemberRole);
+		const response = await authAgent(member).get('/login');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should not throw AuthError for owner even when User Management is disabled', async () => {
+		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		const ownerUser = await testDb.createUser({
+			password: randomValidPassword(),
+			globalRole: globalOwnerRole,
+		});
+
+		const response = await authAgent(ownerUser).get('/login');
+		expect(response.statusCode).toBe(200);
+	});
 });
 
 describe('GET /login', () => {
@@ -96,7 +117,7 @@ describe('GET /login', () => {
 		expect(authToken).toBeUndefined();
 	});
 
-	test('should return cookie if UM is disabled and no cookie is already set', async () => {
+	test('should return cookie if UM is disabled and no cookie is already set and is owner', async () => {
 		await testDb.createUserShell(globalOwnerRole);
 		await utils.setInstanceOwnerSetUp(false);
 
@@ -106,6 +127,15 @@ describe('GET /login', () => {
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();
+	});
+
+	test('should return 401 Unauthorized if UM is disabled and is not owner', async () => {
+		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+		const memberShell = await testDb.createUserShell(globalMemberRole);
+
+		const response = await authAgent(memberShell).get('/login');
+
+		expect(response.statusCode).toBe(401);
 	});
 
 	test('should return 401 Unauthorized if invalid cookie', async () => {
@@ -290,6 +320,15 @@ describe('GET /resolve-signup-token', () => {
 				},
 			},
 		});
+	});
+
+	test('should return 400 if UM is disabled', async () => {
+		await testDb.createUser({ globalRole: globalMemberRole });
+
+		const response = await authOwnerAgent
+			.get('/resolve-signup-token')
+			.query({ inviterId: owner.id });
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should fail with invalid inputs', async () => {

@@ -178,6 +178,12 @@ export class License {
 	}
 
 	// Helper functions for computed data
+	getUsersLimit(): number {
+		const limit = this.getFeatureValue(LICENSE_QUOTAS.USERS_LIMIT);
+
+		return (limit ?? -1) as number;
+	}
+
 	getTriggerLimit(): number {
 		return (this.getFeatureValue(LICENSE_QUOTAS.TRIGGER_LIMIT) ?? -1) as number;
 	}

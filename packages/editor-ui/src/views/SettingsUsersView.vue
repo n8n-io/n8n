@@ -9,7 +9,7 @@
 					</template>
 					<div>
 						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled"
+							:disabled="!settingsStore.isUserManagementEnabled || ssoStore.isSamlLoginEnabled"
 							:label="$locale.baseText('settings.users.invite')"
 							@click="onInvite"
 							size="large"
@@ -45,7 +45,10 @@
 				@click="redirectToSetup"
 			/>
 		</div>
-		<div :class="$style.usersContainer" v-else>
+		<!-- If there's more than 1 user it means UM was enabled before. So we need to allow instance
+			owner to be able to delete users and transfer workflows.
+		-->
+		<div :class="$style.usersContainer" v-if="usersStore.allUsers.length > 1">
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
@@ -99,12 +102,16 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
 					value: 'copyInviteLink',
-					guard: (user) => !user.firstName && !!user.inviteAcceptUrl,
+					guard: (user) =>
+						this.settingsStore.isUserManagementEnabled && !user.firstName && !!user.inviteAcceptUrl,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.reinvite'),
 					value: 'reinvite',
-					guard: (user) => !user.firstName && this.settingsStore.isSmtpSetup,
+					guard: (user) =>
+						this.settingsStore.isUserManagementEnabled &&
+						!user.firstName &&
+						this.settingsStore.isSmtpSetup,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.delete'),
@@ -113,6 +120,7 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
+					guard: () => this.settingsStore.isUserManagementEnabled,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),

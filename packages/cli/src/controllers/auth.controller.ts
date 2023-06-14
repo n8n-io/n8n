@@ -1,7 +1,12 @@
 import validator from 'validator';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
+import {
+	sanitizeUser,
+	withFeatureFlags,
+	throwOnDisabledUserManagement,
+	isUserManagementEnabled,
+} from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { Request, Response } from 'express';
@@ -91,6 +96,7 @@ export class AuthController {
 			user = await handleEmailLogin(email, password);
 		}
 		if (user) {
+			throwOnDisabledUserManagement(user);
 			await issueCookie(res, user);
 			void Container.get(InternalHooks).onUserLoginSuccess({
 				user,
@@ -120,6 +126,7 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
+				throwOnDisabledUserManagement(user);
 				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
@@ -144,7 +151,7 @@ export class AuthController {
 		if (user.email || user.password) {
 			throw new InternalServerError('Invalid database state - user has password set.');
 		}
-
+		throwOnDisabledUserManagement(user);
 		await issueCookie(res, user);
 		return withFeatureFlags(this.postHog, sanitizeUser(user));
 	}
@@ -162,6 +169,14 @@ export class AuthController {
 				{ inviterId, inviteeId },
 			);
 			throw new BadRequestError('Invalid payload');
+		}
+
+		if (!isUserManagementEnabled()) {
+			this.logger.debug(
+				'Request to resolve signup token failed because user management is disabled',
+				{ inviterId, inviteeId },
+			);
+			throw new BadRequestError('User management is disabled');
 		}
 
 		// Postgres validates UUID format

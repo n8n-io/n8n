@@ -11,7 +11,8 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';
+import { getWorkflowOwnerRole } from '../users/users.service';
+import { isInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import {
 	getWorkflowById,
 	getSharedWorkflow,

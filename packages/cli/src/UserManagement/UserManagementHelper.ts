@@ -4,6 +4,7 @@ import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
+import { AuthError } from '@/ResponseHelper';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
@@ -37,8 +38,16 @@ export function isEmailSetUp(): boolean {
 }
 
 export function isUserManagementEnabled(): boolean {
-	// This can be simplified but readability is more important here
+	const license = Container.get(License);
+	const usersLimit = license.getUsersLimit();
+	// If users limit is 1, UM is disabled
+	// TODO: Check if this should be checked after isInstanceOwnerSetUp
+	if (usersLimit === 1) {
+		console.log('User management is disabled because users limit is 1');
+		return false;
+	}
 
+	// This can be simplified but readability is more important here
 	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 		// Short circuit - if owner is set up, UM cannot be disabled.
 		// Users must reset their instance in order to do so.
@@ -262,4 +271,16 @@ export function whereClause({
 	}
 
 	return where;
+}
+
+export function isInstanceOwner(user: User): boolean {
+	return user.globalRole.name === 'owner';
+}
+
+export function throwOnDisabledUserManagement(user: User) {
+	const isOwner = isInstanceOwner(user);
+	const isUMEnable = isUserManagementEnabled();
+	if (!isOwner && !isUMEnable) {
+		throw new AuthError('User management is disabled. Please contact your instance owner.');
+	}
 }

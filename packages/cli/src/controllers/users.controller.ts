@@ -14,6 +14,7 @@ import {
 	isEmailSetUp,
 	sanitizeUser,
 	validatePassword,
+	isUserManagementEnabled,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
@@ -552,6 +553,13 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
+
+		if (!isUserManagementEnabled()) {
+			this.logger.error('Request to reinvite a user failed because user management is not enabled');
+			throw new InternalServerError(
+				'User management must be enabled in order to invite other users',
+			);
+		}
 
 		if (!isEmailSetUp()) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');
