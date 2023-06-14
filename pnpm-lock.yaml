@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 onlyBuiltDependencies:
   - sqlite3
   - vue-demi
@@ -138,7 +142,7 @@ importers:
     dependencies:
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -219,7 +223,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -652,7 +656,7 @@ importers:
         version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
@@ -698,12 +702,6 @@ importers:
       qs:
         specifier: ^6.10.1
         version: 6.11.0
-      request:
-        specifier: ^2.88.2
-        version: 2.88.2
-      request-promise-native:
-        specifier: ^1.0.7
-        version: 1.0.9(request@2.88.2)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -900,7 +898,7 @@ importers:
         version: 5.13.2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4(debug@4.3.2)
+        version: 0.21.4
       canvas-confetti:
         specifier: ^1.6.0
         version: 1.6.0
@@ -1353,9 +1351,6 @@ importers:
       redis:
         specifier: ^3.1.1
         version: 3.1.2
-      request:
-        specifier: ^2.88.2
-        version: 2.88.2
       rhea:
         specifier: ^1.0.11
         version: 1.0.24
@@ -5630,6 +5625,38 @@ packages:
     dev: false
     optional: true
 
+  /@oclif/command@1.8.18(@oclif/config@1.18.2):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.2
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.3.8
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@oclif/command@1.8.18(@oclif/config@1.18.5):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.5(supports-color@8.1.1)
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.3.8
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /@oclif/command@1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
@@ -5711,7 +5738,7 @@ packages:
     engines: {node: '>=8.10.0'}
     hasBin: true
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.5)
       '@oclif/config': 1.18.5(supports-color@8.1.1)
       '@oclif/errors': 1.3.6
       '@oclif/plugin-help': 3.2.18
@@ -5781,7 +5808,7 @@ packages:
     resolution: {integrity: sha512-5n5Pkz4L0duknIvFwx2Ko9Xda3miT6RZP8bgaaK3Q/9fzVBrhi4bOM0u05/OThI6V+3NsSdxYS2o1NLcXToWDg==}
     engines: {node: '>=8.0.0'}
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.2)
       '@oclif/config': 1.18.2
       '@oclif/errors': 1.3.5
       '@oclif/help': 1.0.3(supports-color@8.1.1)
@@ -5841,7 +5868,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4(debug@4.3.2)
+      axios: 0.21.4
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -9672,6 +9699,14 @@ packages:
       is-retry-allowed: 2.2.0
     dev: false
 
+  /axios@0.21.4:
+    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@3.2.7)
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
   /axios@0.21.4(debug@4.3.2):
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
@@ -11001,6 +11036,7 @@ packages:
   /consolidate@0.15.1(react-dom@18.2.0)(react@17.0.2):
     resolution: {integrity: sha512-DW46nrsMJgy9kqAbPt5rKaCr7uFtpo4mSUvLHIUbJEjm0vo+aY5QLwBUq3FK4tRnJr/X0Psc0C4jf/h+HtXSMw==}
     engines: {node: '>= 0.10.0'}
+    deprecated: Please upgrade to consolidate v1.0.0+ as it has been modernized with several long-awaited fixes implemented. Maintenance is supported by Forward Email at https://forwardemail.net ; follow/watch https://github.com/ladjs/consolidate for updates and release changelog
     peerDependencies:
       arc-templates: ^0.5.3
       atpl: '>=0.7.6'
@@ -19760,29 +19796,6 @@ packages:
       throttleit: 1.0.0
     dev: true
 
-  /request-promise-core@1.1.4(request@2.88.2):
-    resolution: {integrity: sha512-TTbAfBBRdWD7aNNOoVOBH4pN/KigV6LyapYNNlAPA8JwbovRti1E88m3sYAwsLi5ryhPKsE9APwnjFTgdUjTpw==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      request: ^2.34
-    dependencies:
-      lodash: 4.17.21
-      request: 2.88.2
-    dev: false
-
-  /request-promise-native@1.0.9(request@2.88.2):
-    resolution: {integrity: sha512-wcW+sIUiWnKgNY0dqCpOZkUbF/I+YPi+f09JZIDa39Ec+q82CpSYniDp+ISgTTbKmnpJWASeJBPZmoxH84wt3g==}
-    engines: {node: '>=0.12.0'}
-    deprecated: request-promise-native has been deprecated because it extends the now deprecated request package, see https://github.com/request/request/issues/3142
-    peerDependencies:
-      request: ^2.34
-    dependencies:
-      request: 2.88.2
-      request-promise-core: 1.1.4(request@2.88.2)
-      stealthy-require: 1.1.1
-      tough-cookie: 2.5.0
-    dev: false
-
   /request@2.88.2:
     resolution: {integrity: sha512-MsvtOrfG9ZcrOwAW+Qi+F6HbD0CWXEh9ou77uOb7FM2WPhwT7smM833PzanhJLsgXjN89Ir6V2PczXNnMpwKhw==}
     engines: {node: '>= 6'}
@@ -20807,11 +20820,6 @@ packages:
   /std-env@3.3.2:
     resolution: {integrity: sha512-uUZI65yrV2Qva5gqE0+A7uVAvO40iPo6jGhs7s8keRfHCmtg+uB2X6EiLGCI9IgL1J17xGhvoOqSz79lzICPTA==}
     dev: true
-
-  /stealthy-require@1.1.1:
-    resolution: {integrity: sha512-ZnWpYnYugiOVEY5GkcuJK1io5V8QmNYChG62gSit9pQVGErXtrKuPC55ITaVSukmMta5qpMU7vqLt2Lnni4f/g==}
-    engines: {node: '>=0.10.0'}
-    dev: false
 
   /stop-iteration-iterator@1.0.0:
     resolution: {integrity: sha512-iCGQj+0l0HOdZ2AEeBADlsRC+vsnDsZsbdSiH1yNSjcfKM7fdpCMfqAL/dwF5BLiw/XhRft/Wax6zQbhq2BcjQ==}
