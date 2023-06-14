@@ -28,7 +28,10 @@ const renderComponent = (renderOptions: Parameters<typeof render>[1] = {}) => {
 };
 
 describe('MainSidebarVersionControl', () => {
+	const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
+
 	beforeEach(() => {
+		getItemSpy.mockReturnValue('true');
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: {
@@ -39,6 +42,12 @@ describe('MainSidebarVersionControl', () => {
 
 		versionControlStore = useVersionControlStore();
 		usersStore = useUsersStore();
+	});
+
+	it('should render nothing', async () => {
+		getItemSpy.mockReturnValue(null);
+		const { container } = renderComponent({ props: { isCollapsed: false } });
+		expect(container).toBeEmptyDOMElement();
 	});
 
 	it('should render empty content', async () => {
