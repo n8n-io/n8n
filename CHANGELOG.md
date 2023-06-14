@@ -1,3 +1,58 @@
+# [0.232.0](https://github.com/n8n-io/n8n/compare/n8n@0.231.0...n8n@0.232.0) (2023-06-07)
+
+
+### Bug Fixes
+
+* **core:** RMC boolean value fix ([#6397](https://github.com/n8n-io/n8n/issues/6397)) ([28bb797](https://github.com/n8n-io/n8n/commit/28bb797bb0ea59b66a7641fc116f47c25564c21a))
+* **Date & Time Node:** Reset responseData at end of loop ([#6385](https://github.com/n8n-io/n8n/issues/6385)) ([eaa8648](https://github.com/n8n-io/n8n/commit/eaa8648f2bf61074eae6dcd7355f8f107a31388e))
+* **editor:** Add button to refresh branches ([#6387](https://github.com/n8n-io/n8n/issues/6387)) ([ce57816](https://github.com/n8n-io/n8n/commit/ce578162f4e44a6cc1774ab217967110b254ab3f))
+* **editor:** Add secondary icon to menu items ([#6351](https://github.com/n8n-io/n8n/issues/6351)) ([3dd2601](https://github.com/n8n-io/n8n/commit/3dd260168eb627fd7fbed740bc97fa7f6289628f))
+* **editor:** Add Set up version control CTA ([#6356](https://github.com/n8n-io/n8n/issues/6356)) ([e72521d](https://github.com/n8n-io/n8n/commit/e72521d5ec7a5e57dc311defb70f1fe19054b0f0))
+* **editor:** Adding branch color ([#6380](https://github.com/n8n-io/n8n/issues/6380)) ([dba3f44](https://github.com/n8n-io/n8n/commit/dba3f44bc00de68113cc98db9afc6267f56ec04c))
+* **editor:** Fix an issue with connections breaking during renaming ([#6358](https://github.com/n8n-io/n8n/issues/6358)) ([0f2bc6b](https://github.com/n8n-io/n8n/commit/0f2bc6b73711597fdf008ee54665d9bed82a1a9e))
+* **editor:** Fix hard-coded parameter names for code editors ([#6372](https://github.com/n8n-io/n8n/issues/6372)) ([f61b776](https://github.com/n8n-io/n8n/commit/f61b776beac961fa58c6c69371c69ae1e74ef83e))
+* **editor:** Fix typing `$` in inline expression field reloading node parameters form ([#6374](https://github.com/n8n-io/n8n/issues/6374)) ([4c0d4eb](https://github.com/n8n-io/n8n/commit/4c0d4ebd9917e52512e85a5cad2c93b554e0e212))
+* **editor:** Pin all data regardless of pagination ([#6346](https://github.com/n8n-io/n8n/issues/6346)) ([f88029f](https://github.com/n8n-io/n8n/commit/f88029f308356c1c8271d7345ecbbd6e91c41b3d))
+* **editor:** Remove explicit parameter name scanning for code editors ([#6390](https://github.com/n8n-io/n8n/issues/6390)) ([97295f6](https://github.com/n8n-io/n8n/commit/97295f67f0f8509ac6ba0d4ce38ce12582dff074))
+* **editor:** Remove root level tag selector from css module to avoid making it a global style ([#6392](https://github.com/n8n-io/n8n/issues/6392)) ([cc37f21](https://github.com/n8n-io/n8n/commit/cc37f21aa27f3536f2043b5ff5da944388ac5504))
+* **editor:** Update version control setup CTA tooltip ([#6393](https://github.com/n8n-io/n8n/issues/6393)) ([385b3e8](https://github.com/n8n-io/n8n/commit/385b3e871a9307c36428f8239a5db318d71948c1))
+* Improve executions list polling performance ([#6355](https://github.com/n8n-io/n8n/issues/6355)) ([b5cabfe](https://github.com/n8n-io/n8n/commit/b5cabfef54e186f59580112a90566099bb79305e))
+* **Ldap Node:** Add DN field to update operation ([#6371](https://github.com/n8n-io/n8n/issues/6371)) ([9396e7e](https://github.com/n8n-io/n8n/commit/9396e7eb585ab9d6fda742b0d234c4262570af93))
+* Show actual execution data for production executions even if pin data exists ([#6302](https://github.com/n8n-io/n8n/issues/6302)) ([4eb8437](https://github.com/n8n-io/n8n/commit/4eb8437196a298a64f039aff51ba030dc21abb08))
+
+
+### Features
+
+* **Crypto Node:** Add support for hash and hmac on binary data ([#6359](https://github.com/n8n-io/n8n/issues/6359)) ([406a405](https://github.com/n8n-io/n8n/commit/406a405dd153833057286a27d04278ef71ceef3d))
+* **editor:** Make WF name a link on /executions ([#6354](https://github.com/n8n-io/n8n/issues/6354)) ([6ddf161](https://github.com/n8n-io/n8n/commit/6ddf16128b4ab47db716eeab89f7526558073f56))
+* New trigger PostgreSQL  ([#5495](https://github.com/n8n-io/n8n/issues/5495)) ([4488f93](https://github.com/n8n-io/n8n/commit/4488f93c39b0ec0b4a0eff98391b46db6a2eed78))
+* Version control mvp ([#6271](https://github.com/n8n-io/n8n/issues/6271)) ([1b32141](https://github.com/n8n-io/n8n/commit/1b321416c0ba5371e0016398ae660ce298b8cdd6))
+
+
+# [0.231.0](https://github.com/n8n-io/n8n/compare/n8n@0.230.0...n8n@0.231.0) (2023-05-31)
+
+
+### Bug Fixes
+
+* **Code Node:** Fix `item` and `items` alias regression ([#6331](https://github.com/n8n-io/n8n/issues/6331)) ([54e3838](https://github.com/n8n-io/n8n/commit/54e3838daed1f0931a04ba76cfd1ea7519c0e382))
+* **Code Node:** Update vm2 to address CVE-2023-32313 ([#6318](https://github.com/n8n-io/n8n/issues/6318)) ([bcbec52](https://github.com/n8n-io/n8n/commit/bcbec52552d52b0509659cab13112e1377a256b3))
+* **core:** Optimize getSharedWorkflowIds query ([#6314](https://github.com/n8n-io/n8n/issues/6314)) ([0631f69](https://github.com/n8n-io/n8n/commit/0631f69d98e5420faebba1a54d9ad47a2664d110))
+* **core:** Prevent prototype pollution on injectable services ([#6309](https://github.com/n8n-io/n8n/issues/6309)) ([d94c20a](https://github.com/n8n-io/n8n/commit/d94c20ada543767f700475b40ef7174c433c26c5))
+* **editor:** Fix locale plularisation if count is 0 ([#6312](https://github.com/n8n-io/n8n/issues/6312)) ([0d88bd7](https://github.com/n8n-io/n8n/commit/0d88bd7c1ae95cf077c2fa231d942204ff3b8f68))
+* **editor:** Fix Luxon date parsing of ExecutionsUsage component ([#6333](https://github.com/n8n-io/n8n/issues/6333)) ([8f0ff46](https://github.com/n8n-io/n8n/commit/8f0ff460b11999f4d78f8313910358aa87311713))
+* **editor:** Update SSO settings styles ([#6342](https://github.com/n8n-io/n8n/issues/6342)) ([5ae1124](https://github.com/n8n-io/n8n/commit/5ae1124106e7597d0943c371eae6aba6c105fd6b))
+* **Execute Command Node:** Block executions when `command` is empty ([#6308](https://github.com/n8n-io/n8n/issues/6308)) ([011d577](https://github.com/n8n-io/n8n/commit/011d5778b15232cff94a321dfee18c3d7489f93d))
+* Show `Ask AI` only on Code Node ([#6336](https://github.com/n8n-io/n8n/issues/6336)) ([da856d1](https://github.com/n8n-io/n8n/commit/da856d1c6593b43e1ce8d1becb1464c19c908e78))
+
+
+### Features
+
+* Add manual login option and password reset link for SSO ([#6328](https://github.com/n8n-io/n8n/issues/6328)) ([77e3f15](https://github.com/n8n-io/n8n/commit/77e3f1551dd7473a69f8833be5678d98964142e1))
+* **core:** Add metadata (customdata) to event log ([#6334](https://github.com/n8n-io/n8n/issues/6334)) ([792b1c1](https://github.com/n8n-io/n8n/commit/792b1c1ffb0eb279bc3451787891ca3835f59d9f))
+* **editor:** Implement Resource Mapper component ([#6207](https://github.com/n8n-io/n8n/issues/6207)) ([04cfa54](https://github.com/n8n-io/n8n/commit/04cfa548af3c7a25f1f0a36ddfb1de6a9e3f2169)), closes [#5752](https://github.com/n8n-io/n8n/issues/5752) [#5814](https://github.com/n8n-io/n8n/issues/5814)
+
+
+
 # [0.230.0](https://github.com/n8n-io/n8n/compare/n8n@0.229.0...n8n@0.230.0) (2023-05-24)
 
 

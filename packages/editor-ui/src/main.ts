@@ -23,8 +23,7 @@ import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { useWebhooksStore, useUsersStore } from '@/stores';
-import { VIEWS } from '@/constants';
+import { useWebhooksStore } from '@/stores';
 
 Vue.config.productionTip = false;
 
@@ -43,10 +42,6 @@ new Vue({
 
 router.afterEach((to, from) => {
 	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
-	const userStore = useUsersStore();
-	if (userStore.currentUser && to.name && to.name !== VIEWS.SIGNOUT && !to.name.includes('Modal')) {
-		void userStore.showUserActivationSurveyModal();
-	}
 });
 
 if (!import.meta.env.PROD) {
