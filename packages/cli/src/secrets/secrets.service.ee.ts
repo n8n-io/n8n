@@ -26,6 +26,7 @@ export class SecretsService {
 			displayName: provider.displayName,
 			name: provider.name,
 			icon: provider.name,
+			state: provider.state,
 			connected: settings.connected,
 			connectedAt: settings.connectedAt,
 			properties: provider.properties,
@@ -38,6 +39,7 @@ export class SecretsService {
 			displayName: provider.displayName,
 			name: provider.name,
 			icon: provider.name,
+			state: provider.state,
 			connected: !!settings.connected,
 			connectedAt: !!settings.connectedAt,
 		}));
@@ -99,7 +101,7 @@ export class SecretsService {
 	// redacted data to create an unredacted version.
 	unredact(redactedData: IDataObject, savedData: IDataObject): IDataObject {
 		// Replace any blank sentinel values with their saved version
-		const mergedData = deepCopy(redactedData);
+		const mergedData = deepCopy(redactedData ?? {});
 		this.unredactRestoreValues(mergedData, savedData);
 		return mergedData;
 	}
@@ -124,5 +126,15 @@ export class SecretsService {
 
 	getAllSecrets(): Record<string, string[]> {
 		return this.secretsManager.getAllSecretNames();
+	}
+
+	async testProviderSettings(providerName: string, data: IDataObject): Promise<boolean> {
+		const providerAndSettings = this.secretsManager.getProviderWithSettings(providerName);
+		if (!providerAndSettings) {
+			throw new ProviderNotFoundError(providerName);
+		}
+		const { settings } = providerAndSettings;
+		const newData = this.unredact(data, settings.settings);
+		return this.secretsManager.testProviderSettings(providerName, newData);
 	}
 }

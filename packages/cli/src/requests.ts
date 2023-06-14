@@ -18,6 +18,7 @@ import type {
 	IExecutionDeleteFilter,
 	IWorkflowDb,
 	SecretsProvider,
+	SecretsProviderState,
 } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -438,12 +439,14 @@ export declare namespace ExternalSecretsRequest {
 		icon: string;
 		connected: boolean;
 		connectedAt: Date | null;
+		state: SecretsProviderState;
 		data: IDataObject;
 	};
 
 	type GetProviders = AuthenticatedRequest;
 	type GetProvider = AuthenticatedRequest<{ provider: string }, GetProviderResponse>;
 	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
+	type TestProviderSettings = SetProviderSettings;
 	type SetProviderConnected = AuthenticatedRequest<
 		{ provider: string },
 		{},

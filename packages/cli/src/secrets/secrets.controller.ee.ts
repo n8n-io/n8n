@@ -26,6 +26,20 @@ export class ExternalSecretsController {
 		}
 	}
 
+	@Post('/providers/:provider/test')
+	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings) {
+		const providerName = req.params.provider;
+		try {
+			const result = await this.secretsService.testProviderSettings(providerName, req.body);
+			return { success: result };
+		} catch (e) {
+			if (e instanceof ProviderNotFoundError) {
+				throw new NotFoundError(`Could not find provider "${e.providerName}"`);
+			}
+			throw e;
+		}
+	}
+
 	@Post('/providers/:provider')
 	async setProviderSettings(req: ExternalSecretsRequest.SetProviderSettings) {
 		const providerName = req.params.provider;

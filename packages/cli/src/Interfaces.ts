@@ -799,14 +799,16 @@ export interface ExternalSecretsSettings {
 	[key: string]: SecretsProviderSettings;
 }
 
+export type SecretsProviderState = 'initializing' | 'connected' | 'error';
+
 export abstract class SecretsProvider {
 	displayName: string;
 
 	name: string;
 
-	initialized: boolean;
-
 	properties: INodeProperties[];
+
+	state: SecretsProviderState;
 
 	abstract init(settings: SecretsProviderSettings): Promise<void>;
 	abstract connect(): Promise<void>;

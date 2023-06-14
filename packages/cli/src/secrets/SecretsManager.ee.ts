@@ -11,128 +11,12 @@ import { Service } from 'typedi';
 import { AES, enc } from 'crypto-js';
 import { getLogger } from '@/Logger';
 
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { InfisicalProvider } from './providers/infisical';
 
 const logger = getLogger();
 
-class DummyProvider implements SecretsProvider {
-	private static DATA: Record<string, string> = {
-		password: 'testpassword',
-		api_key: 'testapikey',
-	};
-
-	properties: INodeProperties[] = [
-		{
-			displayName: 'Username',
-			name: 'username',
-			default: '',
-			placeholder: 'Username',
-			type: 'string',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			default: '',
-			placeholder: '*********',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-		},
-	];
-
-	displayName = 'Dummy Provider';
-
-	name = 'dummy';
-
-	initialized = false;
-
-	async init(): Promise<void> {
-		this.initialized = true;
-	}
-
-	async update(): Promise<void> {
-		//
-	}
-
-	async connect(): Promise<void> {
-		//
-	}
-
-	async test() {
-		return true;
-	}
-
-	getSecret(name: string): string {
-		return DummyProvider.DATA[name];
-	}
-
-	getSecretNames(): string[] {
-		return Object.keys(DummyProvider.DATA);
-	}
-}
-
-class Dummy2Provider implements SecretsProvider {
-	private static DATA: Record<string, string> = {
-		password: 'testpassword',
-		api_key: 'testapikey',
-	};
-
-	properties: INodeProperties[] = [
-		{
-			displayName: 'Username',
-			name: 'username',
-			default: '',
-			placeholder: 'Username',
-			type: 'string',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			default: '',
-			placeholder: '*********',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-		},
-	];
-
-	displayName = 'Dummy2 Provider';
-
-	name = 'dummy2';
-
-	initialized = false;
-
-	async init(): Promise<void> {
-		this.initialized = true;
-	}
-
-	async update(): Promise<void> {
-		//
-	}
-
-	async connect(): Promise<void> {
-		//
-	}
-
-	async test() {
-		return false;
-	}
-
-	getSecret(name: string): string {
-		return Dummy2Provider.DATA[name];
-	}
-
-	getSecretNames(): string[] {
-		return Object.keys(Dummy2Provider.DATA);
-	}
-}
-
 const PROVIDER_MAP: Record<string, { new (): SecretsProvider }> = {
-	dummy: DummyProvider,
-	dummy2: Dummy2Provider,
 	infisical: InfisicalProvider,
 };
 
@@ -237,7 +121,13 @@ export class ExternalSecretsManager {
 	}
 
 	async updateSecrets() {
-		await Promise.all(Object.values(this.providers).map(async (p) => p.update()));
+		await Promise.all(
+			Object.entries(this.providers).map(async ([k, p]) => {
+				if (this.cachedSettings[k].connected) {
+					await p.update();
+				}
+			}),
+		);
 	}
 
 	getProvider(provider: string): SecretsProvider | undefined {
@@ -356,5 +246,21 @@ export class ExternalSecretsManager {
 		const encryptionKey = await this.getEncryptionKey();
 		const encryptedSettings = this.encryptSecretsSettings(settings, encryptionKey);
 		await settingsRepo.saveEncryptedSecretsProviderSettings(encryptedSettings);
+	}
+
+	async testProviderSettings(provider: string, data: IDataObject): Promise<boolean> {
+		try {
+			const testProvider = await this.initProvider(provider, {
+				connected: true,
+				connectedAt: new Date(),
+				settings: data,
+			});
+			if (!testProvider) {
+				return false;
+			}
+			return await testProvider.test();
+		} catch {
+			return false;
+		}
 	}
 }
