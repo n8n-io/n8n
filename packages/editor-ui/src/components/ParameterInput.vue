@@ -85,11 +85,7 @@
 				></text-edit>
 
 				<code-node-editor
-					v-if="
-						editorType === 'codeNodeEditor' &&
-						isCodeNode(node) &&
-						getEditorContent('codeNodeEditor') !== null
-					"
+					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
 					:value="value"
 					:defaultValue="parameter.default"
