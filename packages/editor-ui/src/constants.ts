@@ -444,6 +444,7 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	VersionControl = 'versionControl',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
