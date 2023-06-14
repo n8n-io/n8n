@@ -342,6 +342,7 @@ export class I18nClass {
 		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
 		$today: this.baseText('codeNodeEditor.completer.$today'),
 		$vars: this.baseText('codeNodeEditor.completer.$vars'),
+		$secrets: this.baseText('codeNodeEditor.completer.$secrets'),
 		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
 	};
 

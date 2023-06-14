@@ -50,6 +50,8 @@ export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const VERSION_CONTROL_PUSH_MODAL_KEY = 'versionControlPush';
 
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
+
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
 	UPDATE: 'update',
@@ -374,6 +376,7 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	VERSION_CONTROL = 'VersionControl',
 }
@@ -417,6 +420,7 @@ export const MAPPING_PARAMS = [
 	'$runIndex',
 	'$today',
 	'$vars',
+	'$secrets',
 	'$workflow',
 ];
 
@@ -443,6 +447,7 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	VersionControl = 'versionControl',
+	ExternalSecrets = 'externalSecrets',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

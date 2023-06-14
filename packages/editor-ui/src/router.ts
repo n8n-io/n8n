@@ -42,6 +42,7 @@ import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsVersionControl from './views/SettingsVersionControl.vue';
+import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
 import { usePostHog } from './stores/posthog.store';
 
 Vue.use(Router);
@@ -600,6 +601,31 @@ export const routes = [
 						},
 						deny: {
 							shouldDeny: () => !window.localStorage.getItem('version-control'),
+						},
+					},
+				},
+			},
+			{
+				path: 'external-secrets',
+				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
+				components: {
+					settingsView: SettingsExternalSecrets,
+				},
+				meta: {
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties(route: Route) {
+							return {
+								feature: 'external-secrets',
+							};
+						},
+					},
+					permissions: {
+						allow: {
+							role: [ROLE.Owner],
+						},
+						deny: {
+							shouldDeny: () => !window.localStorage.getItem('external-secrets'),
 						},
 					},
 				},

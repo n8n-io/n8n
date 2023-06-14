@@ -75,6 +75,17 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
 				{
+					id: 'settings-external-secrets',
+					icon: 'external-link-alt',
+					label: this.$locale.baseText('settings.externalSecrets.title'),
+					position: 'top',
+					available: this.canAccessExternalSecrets(),
+					activateOnRouteNames: [
+						VIEWS.EXTERNAL_SECRETS_SETTINGS,
+						VIEWS.EXTERNAL_SECRETS_PROVIDER_SETTINGS,
+					],
+				},
+				{
 					id: 'settings-version-control',
 					icon: 'code-branch',
 					label: this.$locale.baseText('settings.versionControl.title'),
@@ -156,6 +167,9 @@ export default defineComponent({
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
+		canAccessExternalSecrets(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS);
+		},
 		canAccessVersionControl(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.VERSION_CONTROL);
 		},
@@ -168,57 +182,48 @@ export default defineComponent({
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
 		},
+		async navigateTo(routeName: (typeof VIEWS)[keyof typeof VIEWS]) {
+			if (this.$router.currentRoute.name !== routeName) {
+				await this.$router.push({ name: routeName });
+			}
+		},
 		async handleSelect(key: string) {
 			switch (key) {
 				case 'settings-personal':
-					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
-						await this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
-					}
+					await this.navigateTo(VIEWS.PERSONAL_SETTINGS);
 					break;
 				case 'settings-users':
-					if (this.$router.currentRoute.name !== VIEWS.USERS_SETTINGS) {
-						await this.$router.push({ name: VIEWS.USERS_SETTINGS });
-					}
+					await this.navigateTo(VIEWS.USERS_SETTINGS);
 					break;
 				case 'settings-api':
-					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
-						await this.$router.push({ name: VIEWS.API_SETTINGS });
-					}
+					await this.navigateTo(VIEWS.API_SETTINGS);
 					break;
 				case 'settings-ldap':
-					if (this.$router.currentRoute.name !== VIEWS.LDAP_SETTINGS) {
-						void this.$router.push({ name: VIEWS.LDAP_SETTINGS });
-					}
+					await this.navigateTo(VIEWS.LDAP_SETTINGS);
 					break;
 				case 'settings-log-streaming':
-					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
-						void this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
-					}
+					await this.navigateTo(VIEWS.LOG_STREAMING_SETTINGS);
 					break;
-				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
+				// Fakedoor feature added via hooks when user management is disabled on cloud
+				case 'users':
 				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
 				case 'settings-community-nodes':
-					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
-						await this.$router.push({ name: VIEWS.COMMUNITY_NODES });
-					}
+					await this.navigateTo(VIEWS.COMMUNITY_NODES);
 					break;
 				case 'settings-usage-and-plan':
-					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
-						void this.$router.push({ name: VIEWS.USAGE });
-					}
+					await this.navigateTo(VIEWS.USAGE);
 					break;
 				case 'settings-sso':
-					if (this.$router.currentRoute.name !== VIEWS.SSO_SETTINGS) {
-						void this.$router.push({ name: VIEWS.SSO_SETTINGS });
-					}
+					await this.navigateTo(VIEWS.SSO_SETTINGS);
 					break;
 				case 'settings-version-control':
-					if (this.$router.currentRoute.name !== VIEWS.VERSION_CONTROL) {
-						void this.$router.push({ name: VIEWS.VERSION_CONTROL });
-					}
+					await this.navigateTo(VIEWS.VERSION_CONTROL);
+					break;
+				case 'settings-external-secrets':
+					await this.navigateTo(VIEWS.EXTERNAL_SECRETS_SETTINGS);
 					break;
 				default:
 					break;
