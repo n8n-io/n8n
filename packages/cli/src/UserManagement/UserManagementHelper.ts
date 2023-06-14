@@ -41,7 +41,6 @@ export function isUserManagementEnabled(): boolean {
 	const license = Container.get(License);
 	const usersLimit = license.getUsersLimit();
 	// If users limit is 1, UM is disabled
-	// TODO: Check if this should be checked after isInstanceOwnerSetUp
 	if (usersLimit === 1) {
 		console.log('User management is disabled because users limit is 1');
 		return false;
