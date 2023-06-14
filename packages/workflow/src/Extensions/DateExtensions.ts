@@ -95,7 +95,7 @@ function endOfMonth(date: Date | DateTime): Date | DateTime {
 	return DateTime.fromJSDate(date).endOf('month').toJSDate();
 }
 
-function extract(date: Date | DateTime, args: DatePart[]): Date | DateTime | number {
+function extract(date: Date | DateTime, args: DatePart[]): number {
 	let [part = 'week'] = args;
 
 	if (part === 'yearDayNumber') {
