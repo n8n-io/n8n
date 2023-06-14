@@ -387,9 +387,6 @@ export async function execute(
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
 		return items;
 	} else {
-		if (!updateData.length && !appendData.length) {
-			return [];
-		}
 		return this.helpers.returnJsonArray(mappedValues);
 	}
 }
