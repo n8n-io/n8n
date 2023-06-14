@@ -4,7 +4,12 @@ import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequest } from '../../transport';
 import { baseRLC } from '../common.descriptions';
 
-const properties: INodeProperties[] = [baseRLC];
+const properties: INodeProperties[] = [
+	{
+		...baseRLC,
+		description: 'The Airtable Base to retrieve the schema from',
+	},
+];
 
 const displayOptions = {
 	show: {

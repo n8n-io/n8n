@@ -6,7 +6,7 @@ export const baseRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'The Airtable Base in which to operate on',
+	// description: 'The Airtable Base in which to operate on',
 	modes: [
 		{
 			displayName: 'From List',
@@ -21,7 +21,7 @@ export const baseRLC: INodeProperties = {
 			displayName: 'By URL',
 			name: 'url',
 			type: 'string',
-			placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+			placeholder: 'e.g. https://airtable.com/app12DiScdfes/tbl9WvGeEPa6lZyVq/viwHdfasdfeieg5p',
 			validation: [
 				{
 					type: 'regex',
@@ -49,7 +49,7 @@ export const baseRLC: INodeProperties = {
 					},
 				},
 			],
-			placeholder: 'appD3dfaeidke',
+			placeholder: 'e.g. appD3dfaeidke',
 			url: '=https://airtable.com/{{$value}}',
 		},
 	],
