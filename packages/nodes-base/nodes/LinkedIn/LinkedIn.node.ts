@@ -107,7 +107,6 @@ export class LinkedIn implements INodeType {
 							lifecycleState: 'PUBLISHED',
 							distribution: {
 								feedDistribution: 'MAIN_FEED',
-								targetEnties: [],
 								thirdPartyDistributionChannels: [],
 							},
 							visibility,
