@@ -21,10 +21,10 @@ const props = defineProps({
 });
 
 const loadingService = useLoadingService();
+const externalSecretsStore = useExternalSecretsStore();
 const uiStore = useUIStore();
 const toast = useToast();
 const { i18n } = useI18n();
-const externalSecretsStore = useExternalSecretsStore();
 const route = useRoute();
 
 const labelSize: IParameterLabel = { size: 'medium' };
@@ -34,6 +34,8 @@ const provider = computed(() =>
 );
 
 const providerData = ref<Record<string, IUpdateInformation['value']>>({});
+
+const connectedSuccessfully = ref<boolean | null>(null);
 
 const providerDataUpdated = computed(() => {
 	return Object.keys(providerData.value).find((key) => {
@@ -59,6 +61,15 @@ onMounted(async () => {
 		loadingService.startLoading();
 		const provider = await externalSecretsStore.getProvider(props.data.name);
 		providerData.value = { ...provider.data };
+
+		if (Object.keys(provider.data).length > 0) {
+			try {
+				await externalSecretsStore.testProviderConnection(props.data.name);
+				connectedSuccessfully.value = true;
+			} catch (error) {
+				connectedSuccessfully.value = false;
+			}
+		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
@@ -79,6 +90,7 @@ function onValueChange(updateInformation: IUpdateInformation) {
 
 async function save() {
 	try {
+		loadingService.startLoading();
 		await externalSecretsStore.updateProvider(provider.value.name, {
 			data: providerData.value,
 		});
@@ -90,7 +102,14 @@ async function save() {
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
-		close();
+		loadingService.stopLoading();
+	}
+
+	try {
+		await externalSecretsStore.testProviderConnection(props.data.name);
+		connectedSuccessfully.value = true;
+	} catch (error) {
+		connectedSuccessfully.value = false;
 	}
 }
 </script>
@@ -118,6 +137,27 @@ async function save() {
 		<template #content>
 			<div :class="$style.container">
 				<hr class="mb-l" />
+
+				<div class="mb-l" v-if="connectedSuccessfully !== null">
+					<n8n-callout v-if="connectedSuccessfully" theme="success">
+						{{
+							i18n.baseText('settings.externalSecrets.provider.testConnection.success', {
+								interpolate: {
+									count: `${externalSecretsStore.secrets[provider.name]?.length}`,
+									provider: provider.displayName,
+								},
+							})
+						}}
+					</n8n-callout>
+					<n8n-callout v-else theme="danger">
+						{{
+							i18n.baseText('settings.externalSecrets.provider.testConnection.error', {
+								interpolate: { provider: provider.displayName },
+							})
+						}}
+					</n8n-callout>
+				</div>
+
 				<form
 					v-for="property in provider.properties"
 					:key="property.name"

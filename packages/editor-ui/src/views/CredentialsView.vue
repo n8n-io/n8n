@@ -58,6 +58,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useVersionControlStore } from '@/stores/versionControl.store';
+import { useExternalSecretsStore } from '@/stores';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -85,6 +86,7 @@ export default defineComponent({
 			useUIStore,
 			useUsersStore,
 			useVersionControlStore,
+			useExternalSecretsStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
@@ -108,6 +110,7 @@ export default defineComponent({
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(),
 				this.credentialsStore.fetchCredentialTypes(false),
+				this.externalSecretsStore.fetchAllSecrets(),
 			];
 
 			if (this.nodeTypesStore.allNodeTypes.length === 0) {

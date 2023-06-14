@@ -141,7 +141,6 @@ export function resolveParameter(
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: useEnvironmentsStore().variablesAsObject,
-		$secrets: useExternalSecretsStore().secretsAsObject,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

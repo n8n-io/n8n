@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
@@ -18,6 +18,7 @@ import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expre
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
+import { IDataObject } from 'n8n-workflow';
 
 const editableConf = new Compartment();
 
@@ -38,6 +39,10 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+		},
+		additionalData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
 		},
 	},
 	watch: {

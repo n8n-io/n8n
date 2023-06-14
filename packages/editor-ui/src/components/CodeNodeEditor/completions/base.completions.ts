@@ -73,10 +73,6 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 					info: this.$locale.baseText('codeNodeEditor.completer.$vars'),
 				},
 				{
-					label: `${prefix}secrets`,
-					info: this.$locale.baseText('codeNodeEditor.completer.$secrets'),
-				},
-				{
 					label: `${prefix}now`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$now'),
 				},

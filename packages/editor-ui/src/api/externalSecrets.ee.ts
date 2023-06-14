@@ -24,6 +24,13 @@ export const getExternalSecretsProvider = async (
 	return makeRestApiRequest(context, 'GET', `/external-secrets/providers/${id}`);
 };
 
+export const testExternalSecretsProviderConnection = async (
+	context: IRestApiContext,
+	id: string,
+): Promise<boolean> => {
+	return makeRestApiRequest(context, 'GET', `/external-secrets/providers/${id}/test`);
+};
+
 export const updateProvider = async (
 	context: IRestApiContext,
 	id: string,
