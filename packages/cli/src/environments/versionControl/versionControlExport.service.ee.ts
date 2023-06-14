@@ -275,13 +275,15 @@ export class VersionControlExportService {
 	): ICredentialDataDecryptedObject => {
 		for (const [key] of Object.entries(data)) {
 			try {
-				if (typeof data[key] === 'object') {
+				if (data[key] === null) {
+					delete data[key]; // remove invalid null values
+				} else if (typeof data[key] === 'object') {
 					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
 				} else if (typeof data[key] === 'string') {
 					data[key] = (data[key] as string)?.startsWith('={{') ? data[key] : '';
 				} else if (typeof data[key] === 'number') {
 					// TODO: leaving numbers in for now, but maybe we should remove them
-					// data[key] = 0;
+					continue;
 				}
 			} catch (error) {
 				LoggerProxy.error(`Failed to sanitize credential data: ${(error as Error).message}`);
