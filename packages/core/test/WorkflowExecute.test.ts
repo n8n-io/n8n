@@ -1395,6 +1395,8 @@ describe('WorkflowExecute', () => {
 		}
 	});
 
+	//run tests on json files from specified directory, default 'workflows'
+	//workflows must have pinned data that would be used to test output after execution
 	describe('run test workflows', () => {
 		const tests: WorkflowTestData[] = Helpers.workflowToTests(getWorkflowFilenames(__dirname));
 

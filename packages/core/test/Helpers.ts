@@ -875,14 +875,14 @@ export function WorkflowExecuteAdditionalData(
 	};
 }
 
-export const getWorkflowFilenames = (dirname: string) => {
+export const getWorkflowFilenames = (dirname: string, testFolder = 'workflows') => {
 	const workflows: string[] = [];
 
-	const filenames: string[] = readdirSync(`${dirname}${path.sep}workflows`);
+	const filenames: string[] = readdirSync(`${dirname}${path.sep}${testFolder}`);
 
 	filenames.forEach((file) => {
 		if (file.endsWith('.json')) {
-			workflows.push(path.join('core', 'test', 'workflows', file));
+			workflows.push(path.join('core', 'test', testFolder, file));
 		}
 	});
 
