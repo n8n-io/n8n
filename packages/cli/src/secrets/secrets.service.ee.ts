@@ -41,14 +41,15 @@ export class SecretsService {
 			icon: provider.name,
 			state: provider.state,
 			connected: !!settings.connected,
-			connectedAt: !!settings.connectedAt,
+			connectedAt: settings.connectedAt,
+			data: this.redact(settings.settings, provider),
 		}));
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
 	redact(data: IDataObject, provider: SecretsProvider): IDataObject {
-		const copiedData = deepCopy(data);
+		const copiedData = deepCopy(data || {});
 
 		const properties = provider.properties;
 

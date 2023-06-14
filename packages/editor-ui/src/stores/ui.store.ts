@@ -31,6 +31,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	VERSION_CONTROL_PUSH_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 } from '@/constants';
 import type {
 	CurlToJSONResponse,
@@ -134,6 +135,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				showAuthSelector: false,
 			},
 			[VERSION_CONTROL_PUSH_MODAL_KEY]: {
+				open: false,
+			},
+			[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]: {
 				open: false,
 			},
 		},

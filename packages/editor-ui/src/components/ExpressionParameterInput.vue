@@ -15,6 +15,7 @@
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
 				:isSingleLine="isForRecordLocator"
+				:additionalData="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -66,7 +67,7 @@
 
 <script lang="ts">
 import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -78,6 +79,7 @@ import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 
 type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
 
@@ -109,6 +111,10 @@ export default defineComponent({
 		isForRecordLocator: {
 			type: Boolean,
 			default: false,
+		},
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
 		},
 	},
 	computed: {

@@ -61,7 +61,7 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import type { ICredentialsResponse } from '@/Interface';
-import { useEnvironmentsStore } from '@/stores';
+import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],

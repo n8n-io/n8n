@@ -40,6 +40,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
+				:additional-expression-data="additionalExpressionData"
 				@valueChanged="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -365,6 +366,7 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -409,6 +411,10 @@ export default defineComponent({
 		TextEdit,
 	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},

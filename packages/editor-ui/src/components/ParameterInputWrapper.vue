@@ -16,6 +16,7 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:additionalExpressionData="resolvedAdditionalExpressionData"
 			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
 			@focus="onFocus"
@@ -50,6 +51,7 @@ import { mapStores } from 'pinia';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import type {
+	IDataObject,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
@@ -61,6 +63,7 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useExternalSecretsStore } from '@/stores';
 
 type ParamRef = InstanceType<typeof ParameterInput>;
 
@@ -75,6 +78,10 @@ export default defineComponent({
 		this.$on('optionSelected', this.optionSelected);
 	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},
@@ -126,7 +133,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useExternalSecretsStore),
 		isValueExpression() {
 			return isValueExpression(this.parameter, this.value);
 		},
@@ -204,6 +211,14 @@ export default defineComponent({
 			}
 
 			return null;
+		},
+		resolvedAdditionalExpressionData() {
+			return {
+				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled
+					? { $secrets: this.externalSecretsStore.secretsAsObject }
+					: {}),
+				...this.additionalExpressionData,
+			};
 		},
 	},
 	methods: {
