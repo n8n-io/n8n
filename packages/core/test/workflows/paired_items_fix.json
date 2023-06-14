@@ -59,7 +59,7 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [240, 680]
+			"position": [200, 980]
 		},
 		{
 			"parameters": {
@@ -117,18 +117,6 @@
 		},
 		{
 			"parameters": {
-				"content": "### Messed up autorepair",
-				"height": 223,
-				"width": 858
-			},
-			"id": "88c8dc7a-8f11-4607-b6e2-5caa7001d182",
-			"name": "Sticky Note",
-			"type": "n8n-nodes-base.stickyNote",
-			"typeVersion": 1,
-			"position": [780, 816]
-		},
-		{
-			"parameters": {
 				"content": "### Always output data & multiple possible output resolve which are identical",
 				"height": 258,
 				"width": 855
@@ -138,21 +126,129 @@
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
 			"position": [780, 400]
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople"
+			},
+			"id": "5ba8d43b-9fa3-4ba0-9c08-3199a9d2d602",
+			"name": "cuctomers",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [640, 1340]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "00114764-691d-40b4-ae11-c5206a9448e3",
+			"name": "result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1380, 1180],
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst data = [];\nfor (const [index, entry] of $input.all().entries()) {\n  entry.json.myNewField = index;\n  entry.pairedItem = 0;\n  data.push(entry);\n}\n\nreturn data;"
+			},
+			"id": "d3aa3bc3-3e5a-42d2-a26d-ea0c273ea3e8",
+			"name": "changePairedindex",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [920, 1180]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "=nameOriginalItem",
+							"value": "={{ $('cuctomers').item.json.name }}"
+						},
+						{
+							"name": "name",
+							"value": "={{ $json.name }}"
+						}
+					],
+					"boolean": [
+						{
+							"name": "test",
+							"value": "={{ $('cuctomers').item.json.id === $json.id  }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "af18482d-4a88-4ffb-b6e3-67be45cdfad1",
+			"name": "checkWithOriginal",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1140, 1180]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "3bad8f81-2fac-4e6e-bb7c-3a4921674005",
+			"name": "loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2,
+			"position": [920, 1420]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "=nameOriginalItem",
+							"value": "={{ $('cuctomers').item.json.name }}"
+						},
+						{
+							"name": "name",
+							"value": "={{ $json.name }}"
+						}
+					],
+					"boolean": [
+						{
+							"name": "test",
+							"value": "={{ $('cuctomers').item.json.id === $json.id  }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "865691b7-e4b8-487e-a5ec-80387118ea61",
+			"name": "testAfterLoop",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1180, 1620]
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "8c5d3a1c-e34b-4937-bc22-88b418391002",
+			"name": "result1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1380, 1620],
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst data = [];\nfor (const [index, entry] of $input.all().entries()) {\n  entry.json.myNewField = index;\n  entry.pairedItem = 0;\n  data.push(entry);\n}\n\nreturn data;"
+			},
+			"id": "ad476a3a-d491-406f-903d-022cb0f0ef3c",
+			"name": "changePairedindex1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1380, 1400]
 		}
 	],
 	"pinData": {
-		"Set1": [
-			{
-				"json": {
-					"propertyName": {
-						"setting": "hello"
-					}
-				},
-				"pairedItem": {
-					"item": 0
-				}
-			}
-		],
 		"Set3": [
 			{
 				"json": {
@@ -182,6 +278,122 @@
 				},
 				"pairedItem": {
 					"item": 2
+				}
+			}
+		],
+		"Set1": [
+			{
+				"json": {
+					"propertyName": {
+						"setting": "hello"
+					}
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			}
+		],
+		"result": [
+			{
+				"json": {
+					"test": true,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Jay Gatsby"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "José Arcadio Buendía"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Max Sendak"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Zaphod Beeblebrox"
+				},
+				"pairedItem": {
+					"item": 3
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Edmund Pevensie"
+				},
+				"pairedItem": {
+					"item": 4
+				}
+			}
+		],
+		"result1": [
+			{
+				"json": {
+					"test": true,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Jay Gatsby"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "José Arcadio Buendía"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Max Sendak"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Zaphod Beeblebrox"
+				},
+				"pairedItem": {
+					"item": 3
+				}
+			},
+			{
+				"json": {
+					"test": false,
+					"nameOriginalItem": "Jay Gatsby",
+					"name": "Edmund Pevensie"
+				},
+				"pairedItem": {
+					"item": 4
 				}
 			}
 		]
@@ -221,6 +433,11 @@
 						"node": "Set",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "cuctomers",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -257,11 +474,89 @@
 					}
 				]
 			]
+		},
+		"cuctomers": {
+			"main": [
+				[
+					{
+						"node": "changePairedindex",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"changePairedindex": {
+			"main": [
+				[
+					{
+						"node": "checkWithOriginal",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"checkWithOriginal": {
+			"main": [
+				[
+					{
+						"node": "result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"loop": {
+			"main": [
+				[
+					{
+						"node": "changePairedindex1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "testAfterLoop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"testAfterLoop": {
+			"main": [
+				[
+					{
+						"node": "result1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"changePairedindex1": {
+			"main": [
+				[
+					{
+						"node": "loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
 	"settings": {},
-	"versionId": "24977da3-48cb-4f26-9762-5c71d1236786",
+	"versionId": "6f6ee01c-8c99-493f-a30c-6a5ed2b71750",
 	"id": "169",
 	"meta": {
 		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
