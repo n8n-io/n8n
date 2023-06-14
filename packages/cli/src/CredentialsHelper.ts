@@ -357,6 +357,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		await additionalData.secretsHelpers.update();
 
+		const canUseSecrets = await this.credentialOwnedByOwner(nodeCredentials);
+
 		return this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
@@ -364,7 +366,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			mode,
 			defaultTimezone,
 			expressionResolveValues,
-			true,
+			canUseSecrets,
 		);
 	}
 
@@ -742,6 +744,43 @@ export class CredentialsHelper extends ICredentialsHelper {
 			status: 'OK',
 			message: 'Connection successful!',
 		};
+	}
+
+	async credentialOwnedByOwner(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
+		if (!nodeCredential.id) {
+			return false;
+		}
+
+		// const credential = userId
+		// 	? await Db.collections.SharedCredentials.findOneOrFail({
+		// 			relations: ['credentials'],
+		// 			where: { credentials: { id: nodeCredential.id, type }, userId },
+		// 	  }).then((shared) => shared.credentials)
+		// 	: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+
+		const credential = await Db.collections.SharedCredentials.findOne({
+			where: {
+				role: {
+					scope: 'credential',
+					name: 'owner',
+				},
+				user: {
+					globalRole: {
+						scope: 'global',
+						name: 'owner',
+					},
+				},
+				credentials: {
+					id: nodeCredential.id,
+				},
+			},
+		});
+
+		if (!credential) {
+			return false;
+		}
+
+		return true;
 	}
 }
 
