@@ -106,10 +106,10 @@ export function updateDriveScopes(
 ) {
 	if (driveId) {
 		if (driveId === defaultDrive) {
-			qs.includeItemsFromAllDrives = true;
-			qs.supportsAllDrives = true;
+			qs.includeItemsFromAllDrives = false;
+			qs.supportsAllDrives = false;
 			qs.spaces = 'appDataFolder, drive';
-			qs.corpora = 'allDrives';
+			qs.corpora = 'user';
 		} else {
 			qs.driveId = driveId;
 			qs.corpora = 'drive';
