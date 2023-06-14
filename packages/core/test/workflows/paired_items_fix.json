@@ -1,0 +1,270 @@
+{
+	"name": "paired items fix",
+	"nodes": [
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "setting",
+							"value": "hello"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [500, 680],
+			"id": "18333790-db22-4235-92e6-b7dec8c20b77"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": true
+						}
+					]
+				}
+			},
+			"id": "4d4af5e5-860d-416f-b2d7-f0f87f380355",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [1080, 500],
+			"alwaysOutputData": true
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"value": "={{ $('Set').item.json }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "26569caf-084d-4d5b-a575-c8e439358d10",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1340, 480]
+		},
+		{
+			"parameters": {},
+			"id": "f4f91c8c-e695-422b-97ad-802b10c7d868",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [240, 680]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    'thing': 1,\n    'letter': 'a'\n  },\n  {\n    'thing': 2,\n    'letter': 'b'\n  },\n  {\n    'thing': 3,\n    'letter': 'c'\n  }\n]"
+			},
+			"id": "5eb81a1f-b845-408a-9fcc-e75e607212fa",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [840, 500]
+		},
+		{
+			"parameters": {
+				"functionCode": "return [\n  {\n    'number': 1,\n    'letter': 'a'\n  },\n  {\n    'number': 2,\n    'letter': 'b'\n  },\n  {\n    'number': 3,\n    'letter': 'c'\n  }\n]"
+			},
+			"name": "Generate new items",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [840, 860],
+			"id": "dd5d92f2-5893-4591-9f22-051f50e1b348"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "numberOriginal",
+							"value": "={{ $('Generate new items').item.json.number }}"
+						}
+					],
+					"string": [
+						{
+							"name": "letterOriginal",
+							"value": "={{ $('Generate new items').item.json.letter }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "ebb23410-831b-4f8f-834a-0ca22eb7c050",
+			"name": "Set3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [1320, 860]
+		},
+		{
+			"parameters": {
+				"functionCode": "return [\n  {\n    'json': {\n      'originalItem': 'third'\n    },\n    'pairedItem': 2\n  },\n  {\n    'json': {\n      'originalItem': 'first'\n    },\n    'pairedItem': 0\n  },\n  {\n    'json': {\n      'originalItem': 'second'\n    },\n    'pairedItem': 1\n  }\n]"
+			},
+			"name": "Mix up pairing",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [1080, 860],
+			"id": "33ee2a0e-edc9-4197-94a2-4f77735240ff"
+		},
+		{
+			"parameters": {
+				"content": "### Messed up autorepair",
+				"height": 223,
+				"width": 858
+			},
+			"id": "88c8dc7a-8f11-4607-b6e2-5caa7001d182",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [780, 816]
+		},
+		{
+			"parameters": {
+				"content": "### Always output data & multiple possible output resolve which are identical",
+				"height": 258,
+				"width": 855
+			},
+			"id": "3dc9ccfa-ef78-4022-8bbc-45ef8eb3a207",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [780, 400]
+		}
+	],
+	"pinData": {
+		"Set1": [
+			{
+				"json": {
+					"propertyName": {
+						"setting": "hello"
+					}
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			}
+		],
+		"Set3": [
+			{
+				"json": {
+					"originalItem": "third",
+					"numberOriginal": 3,
+					"letterOriginal": "c"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"originalItem": "first",
+					"numberOriginal": 1,
+					"letterOriginal": "a"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"originalItem": "second",
+					"numberOriginal": 2,
+					"letterOriginal": "b"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Generate new items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate new items": {
+			"main": [
+				[
+					{
+						"node": "Mix up pairing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mix up pairing": {
+			"main": [
+				[
+					{
+						"node": "Set3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "24977da3-48cb-4f26-9762-5c71d1236786",
+	"id": "169",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

@@ -1,10 +1,12 @@
 import set from 'lodash.set';
 
 import path from 'path';
-import { readdirSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
+const BASE_DIR = path.resolve(__dirname, '../..');
 
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	IDeferredPromise,
 	IExecuteWorkflowInfo,
 	IHttpRequestHelper,
@@ -21,7 +23,9 @@ import type {
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	NodeLoadingDetails,
 	NodeParameterValue,
+	WorkflowTestData,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
@@ -74,6 +78,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {
+		...getNodeTypes(workflowToTests(getWorkflowFilenames(__dirname))),
 		'n8n-nodes-base.if': {
 			sourcePath: '',
 			type: {
@@ -873,13 +878,86 @@ export function WorkflowExecuteAdditionalData(
 export const getWorkflowFilenames = (dirname: string) => {
 	const workflows: string[] = [];
 
-	const filenames: string[] = readdirSync(dirname);
-	const testFolder = dirname.split(`${path.sep}nodes-base${path.sep}`)[1];
+	const filenames: string[] = readdirSync(`${dirname}${path.sep}workflows`);
+
 	filenames.forEach((file) => {
 		if (file.endsWith('.json')) {
-			workflows.push(path.join(testFolder, file));
+			workflows.push(path.join('core', 'test', 'workflows', file));
 		}
 	});
 
 	return workflows;
+};
+
+const preparePinData = (pinData: IDataObject) => {
+	const returnData = Object.keys(pinData).reduce(
+		(acc, key) => {
+			const data = pinData[key] as IDataObject[];
+			acc[key] = [data];
+			return acc;
+		},
+		{} as {
+			[key: string]: IDataObject[][];
+		},
+	);
+	return returnData;
+};
+
+const readJsonFileSync = <T>(filePath: string) =>
+	JSON.parse(readFileSync(path.join(BASE_DIR, filePath), 'utf-8')) as T;
+
+const knownNodes = readJsonFileSync<Record<string, NodeLoadingDetails>>(
+	'nodes-base/dist/known/nodes.json',
+);
+
+export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
+	if (!Array.isArray(testData)) {
+		testData = [testData];
+	}
+
+	const nodeTypes: INodeTypeData = {};
+
+	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
+
+	const nodeNames = nodes.map((n) => n.type);
+
+	for (const nodeName of nodeNames) {
+		if (!nodeName.startsWith('n8n-nodes-base.')) {
+			throw new Error(`Unknown node type: ${nodeName}`);
+		}
+		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
+		if (!loadInfo) {
+			throw new Error(`Unknown node type: ${nodeName}`);
+		}
+		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
+		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);
+		const node = new (require(nodeSourcePath)[loadInfo.className])() as INodeType;
+		nodeTypes[nodeName] = {
+			sourcePath: '',
+			type: node,
+		};
+	}
+
+	return nodeTypes;
+}
+
+export const workflowToTests = (workflowFiles: string[]) => {
+	const testCases: WorkflowTestData[] = [];
+	for (const filePath of workflowFiles) {
+		const description = filePath.replace('.json', '');
+		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
+		if (workflowData.pinData === undefined) {
+			throw new Error('Workflow data does not contain pinData');
+		}
+
+		const nodeData = preparePinData(workflowData.pinData);
+
+		delete workflowData.pinData;
+
+		const input = { workflowData };
+		const output = { nodeData };
+
+		testCases.push({ description, input, output });
+	}
+	return testCases;
 };
