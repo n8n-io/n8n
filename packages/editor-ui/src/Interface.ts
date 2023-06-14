@@ -1535,6 +1535,7 @@ export interface ExternalSecretsProvider {
 	displayName: string;
 	connected: boolean;
 	connectedAt: string | false;
+	state: 'connected' | 'initializing' | 'error';
 	data?: Record<string, IUpdateInformation['value']>;
 }
 

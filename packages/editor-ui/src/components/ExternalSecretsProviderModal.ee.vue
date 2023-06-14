@@ -9,7 +9,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router/composables';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
-import type { IUpdateInformation } from '@/Interface';
+import type { ExternalSecretsProvider, IUpdateInformation } from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 
@@ -35,7 +35,7 @@ const provider = computed(() =>
 
 const providerData = ref<Record<string, IUpdateInformation['value']>>({});
 
-const connectedSuccessfully = ref<boolean | null>(null);
+const connectionState = ref<ExternalSecretsProvider['state']>();
 
 const providerDataUpdated = computed(() => {
 	return Object.keys(providerData.value).find((key) => {
@@ -61,15 +61,7 @@ onMounted(async () => {
 		loadingService.startLoading();
 		const provider = await externalSecretsStore.getProvider(props.data.name);
 		providerData.value = { ...provider.data };
-
-		if (Object.keys(provider.data).length > 0) {
-			try {
-				await externalSecretsStore.testProviderConnection(props.data.name);
-				connectedSuccessfully.value = true;
-			} catch (error) {
-				connectedSuccessfully.value = false;
-			}
-		}
+		connectionState.value = provider.state;
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
@@ -106,10 +98,12 @@ async function save() {
 	}
 
 	try {
-		await externalSecretsStore.testProviderConnection(props.data.name);
-		connectedSuccessfully.value = true;
+		const { success } = await externalSecretsStore.testProviderConnection(props.data.name, {
+			data: providerData.value,
+		});
+		connectionState.value = success ? 'connected' : 'error';
 	} catch (error) {
-		connectedSuccessfully.value = false;
+		connectionState.value = 'error';
 	}
 }
 </script>
@@ -138,8 +132,8 @@ async function save() {
 			<div :class="$style.container">
 				<hr class="mb-l" />
 
-				<div class="mb-l" v-if="connectedSuccessfully !== null">
-					<n8n-callout v-if="connectedSuccessfully" theme="success">
+				<div class="mb-l" v-if="connectionState !== 'initializing'">
+					<n8n-callout v-if="connectionState === 'connected'" theme="success">
 						{{
 							i18n.baseText('settings.externalSecrets.provider.testConnection.success', {
 								interpolate: {
