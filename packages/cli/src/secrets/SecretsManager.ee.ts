@@ -13,6 +13,7 @@ import { getLogger } from '@/Logger';
 
 import type { IDataObject } from 'n8n-workflow';
 import { InfisicalProvider } from './providers/infisical';
+import { EXTERNAL_SECRETS_UPDATE_INTERVAL } from './constants';
 
 const logger = getLogger();
 
@@ -30,6 +31,8 @@ export class ExternalSecretsManager {
 
 	initialized = false;
 
+	updateInterval: NodeJS.Timer;
+
 	constructor(private settingsRepo: SettingsRepository) {}
 
 	async init(): Promise<void> {
@@ -40,10 +43,18 @@ export class ExternalSecretsManager {
 					this.initialized = true;
 					resolve();
 					this.initializingPromise = undefined;
+					this.updateInterval = setInterval(
+						async () => this.updateSecrets(),
+						EXTERNAL_SECRETS_UPDATE_INTERVAL,
+					);
 				});
 			}
 			return this.initializingPromise;
 		}
+	}
+
+	shutdown() {
+		clearInterval(this.updateInterval);
 	}
 
 	private async getEncryptionKey(): Promise<string> {
