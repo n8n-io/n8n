@@ -38,19 +38,22 @@ const shouldDisplay = computed(() => {
 
 	if (useUIStore().banners.v1.dismissed) return false;
 
-	const HIDDEN_AT: string[] = [
-		VIEWS.SIGNIN,
-		VIEWS.NEW_WORKFLOW,
-		VIEWS.WORKFLOW,
-		VIEWS.EXECUTION_HOME,
-		VIEWS.EXECUTION_PREVIEW,
+	const VIEWABLE_AT: string[] = [
+		VIEWS.HOMEPAGE,
+		VIEWS.COLLECTION,
+		VIEWS.TEMPLATE,
+		VIEWS.TEMPLATES,
+		VIEWS.CREDENTIALS,
+		VIEWS.VARIABLES,
+		VIEWS.WORKFLOWS,
+		VIEWS.EXECUTIONS,
 	];
 
 	const { name } = useRoute();
 
-	if (name && HIDDEN_AT.includes(name)) return false;
+	if (name && VIEWABLE_AT.includes(name)) return true;
 
-	return true;
+	return false;
 });
 </script>
 
