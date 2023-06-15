@@ -12,18 +12,11 @@ export class AlienVaultApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Access Token',
+			displayName: 'OTX Key',
 			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
-		},
-		{
-			displayName: 'Base URL',
-			name: 'baseUrl',
-			type: 'string',
-			default: '',
-			description: 'Base URL of your AlienVault instance',
 		},
 	];
 
@@ -38,8 +31,8 @@ export class AlienVaultApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}',
-			url: '/api/v1/pulses/subscribed?page=1',
+			baseURL: 'https://otx.alienvault.com',
+			url: '/api/v1/user/me',
 		},
 	};
 }
