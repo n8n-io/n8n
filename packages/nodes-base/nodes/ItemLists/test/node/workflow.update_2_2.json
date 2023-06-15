@@ -1,13 +1,13 @@
 {
-	"name": "My workflow 5",
+	"name": "item_list 2.2",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "4736c103-a9c7-4659-8025-6c1828ec6f49",
+			"id": "f2d01806-a457-4a3a-8bd9-aeb005aecb99",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-820, 940]
+			"position": [-80, 820]
 		},
 		{
 			"parameters": {
@@ -22,45 +22,53 @@
 				},
 				"options": {}
 			},
-			"id": "969176ce-ea1e-413d-b403-4307ed7731da",
+			"id": "b0dbb504-d111-49ee-a904-1ece920a2e7a",
 			"name": "Item Lists1",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 2.2,
-			"position": [-220, 480]
+			"position": [520, 360]
 		},
 		{
 			"parameters": {
 				"jsCode": "const data = {\n  entry1: {\n    id: 1,\n    info: 'some info 1',\n  },\n  entry2: {\n    id: 2,\n    info: 'some info 2',\n  },\n  entry3: {\n    id: 3,\n    info: 'some info 3',\n  },\n};\n\n\nconst data2 = [\n  'a', 'b', 'c'\n];\n\nconst data3 = {\n  a: 1,\n  b: 2,\n  c: 3,\n};\n\nreturn {data, data2, data3, data4: null, tag: 'bar'};"
 			},
-			"id": "4636f35a-e053-41f8-8844-597049107033",
+			"id": "64fa7b5c-c85c-4dd8-8863-11d6e0ee8426",
 			"name": "Code1",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [-580, 940]
+			"position": [160, 820]
 		},
 		{
 			"parameters": {
 				"fieldToSplitOut": "data2, tag",
+				"include": "selectedOtherFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "data4"
+						}
+					]
+				},
 				"options": {
-					"destinationFieldName": "extracted"
+					"destinationFieldName": "fromArray, singleField"
 				}
 			},
-			"id": "c9e74949-bb30-438a-bc67-e7ffd1c6f122",
+			"id": "80b46f60-19c2-4aec-a232-901b54bdb7c0",
 			"name": "Item Lists",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 2.2,
-			"position": [-220, 860]
+			"position": [520, 780]
 		},
 		{
 			"parameters": {
 				"fieldToSplitOut": "data3, data2, data",
 				"options": {}
 			},
-			"id": "2bdad932-2109-435a-bfd6-a42a9f438200",
+			"id": "c2bbf08c-4571-4d28-a95d-82b0dd22edd9",
 			"name": "Item Lists2",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 2.2,
-			"position": [-220, 680]
+			"position": [520, 560]
 		},
 		{
 			"parameters": {
@@ -68,30 +76,86 @@
 				"include": "allOtherFields",
 				"options": {}
 			},
-			"id": "34723b9f-c453-4f50-9813-3237a01a4bef",
+			"id": "ef10bb23-43e1-4e48-b8b7-c634e4c41b56",
 			"name": "Item Lists3",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 2.2,
-			"position": [-220, 1060]
+			"position": [520, 1180]
 		},
 		{
 			"parameters": {
 				"fieldToSplitOut": " tag, data4",
-				"options": {}
+				"options": {
+					"destinationFieldName": "entry1, entry2"
+				}
 			},
-			"id": "855152ec-abea-4878-92dc-92338e9ae29b",
+			"id": "cd083969-5c27-47f6-9eb2-aa52fc2f5cb2",
 			"name": "Item Lists4",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 2.2,
-			"position": [-220, 1280],
+			"position": [520, 1400],
 			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"fieldToSplitOut": "data2",
+				"include": "selectedOtherFields",
+				"fieldsToInclude": {
+					"fields": [
+						{
+							"fieldName": "data4"
+						}
+					]
+				},
+				"options": {
+					"destinationFieldName": "fromArray"
+				}
+			},
+			"id": "866154c7-2967-44d7-a278-1600752749d3",
+			"name": "Item Lists5",
+			"type": "n8n-nodes-base.itemLists",
+			"typeVersion": 2.2,
+			"position": [520, 960]
 		}
 	],
 	"pinData": {
 		"Item Lists1": [
 			{
 				"json": {
-					"tag": "bar",
+					"data": {
+						"id": 1,
+						"info": "some info 1"
+					},
+					"data2": "a",
+					"tag": "bar"
+				}
+			},
+			{
+				"json": {
+					"data": {
+						"id": 2,
+						"info": "some info 2"
+					},
+					"data2": "b",
+					"tag": "bar"
+				}
+			},
+			{
+				"json": {
+					"data": {
+						"id": 3,
+						"info": "some info 3"
+					},
+					"data2": "c",
+					"tag": "bar"
+				}
+			}
+		],
+		"Item Lists2": [
+			{
+				"json": {
+					"data3": 1,
+					"data2": "a",
 					"data": {
 						"id": 1,
 						"info": "some info 1"
@@ -100,7 +164,8 @@
 			},
 			{
 				"json": {
-					"tag": "bar",
+					"data3": 2,
+					"data2": "b",
 					"data": {
 						"id": 2,
 						"info": "some info 2"
@@ -109,101 +174,53 @@
 			},
 			{
 				"json": {
-					"tag": "bar",
+					"data3": 3,
+					"data2": "c",
 					"data": {
 						"id": 3,
 						"info": "some info 3"
 					}
-				}
-			},
-			{
-				"json": {
-					"tag": "bar",
-					"data2": "a"
-				}
-			},
-			{
-				"json": {
-					"tag": "bar",
-					"data2": "b"
-				}
-			},
-			{
-				"json": {
-					"tag": "bar",
-					"data2": "c"
-				}
-			}
-		],
-		"Item Lists2": [
-			{
-				"json": {
-					"data3": 1
-				}
-			},
-			{
-				"json": {
-					"data3": 2
-				}
-			},
-			{
-				"json": {
-					"data3": 3
-				}
-			},
-			{
-				"json": {
-					"data2": "a"
-				}
-			},
-			{
-				"json": {
-					"data2": "b"
-				}
-			},
-			{
-				"json": {
-					"data2": "c"
-				}
-			},
-			{
-				"json": {
-					"id": 1,
-					"info": "some info 1"
-				}
-			},
-			{
-				"json": {
-					"id": 2,
-					"info": "some info 2"
-				}
-			},
-			{
-				"json": {
-					"id": 3,
-					"info": "some info 3"
 				}
 			}
 		],
 		"Item Lists": [
 			{
 				"json": {
-					"extracted": "a"
+					"fromArray": "a",
+					"singleField": "bar",
+					"data4": null
 				}
 			},
 			{
 				"json": {
-					"extracted": "b"
+					"fromArray": "b",
+					"data4": null
 				}
 			},
 			{
 				"json": {
-					"extracted": "c"
+					"fromArray": "c",
+					"data4": null
+				}
+			}
+		],
+		"Item Lists5": [
+			{
+				"json": {
+					"fromArray": "a",
+					"data4": null
 				}
 			},
 			{
 				"json": {
-					"extracted": "bar"
+					"fromArray": "b",
+					"data4": null
+				}
+			},
+			{
+				"json": {
+					"fromArray": "c",
+					"data4": null
 				}
 			}
 		],
@@ -224,87 +241,9 @@
 							"info": "some info 3"
 						}
 					},
-					"data3": {
-						"a": 1,
-						"b": 2,
-						"c": 3
-					},
 					"data4": null,
 					"tag": "bar",
-					"data2": "a"
-				}
-			},
-			{
-				"json": {
-					"data": {
-						"entry1": {
-							"id": 1,
-							"info": "some info 1"
-						},
-						"entry2": {
-							"id": 2,
-							"info": "some info 2"
-						},
-						"entry3": {
-							"id": 3,
-							"info": "some info 3"
-						}
-					},
-					"data3": {
-						"a": 1,
-						"b": 2,
-						"c": 3
-					},
-					"data4": null,
-					"tag": "bar",
-					"data2": "b"
-				}
-			},
-			{
-				"json": {
-					"data": {
-						"entry1": {
-							"id": 1,
-							"info": "some info 1"
-						},
-						"entry2": {
-							"id": 2,
-							"info": "some info 2"
-						},
-						"entry3": {
-							"id": 3,
-							"info": "some info 3"
-						}
-					},
-					"data3": {
-						"a": 1,
-						"b": 2,
-						"c": 3
-					},
-					"data4": null,
-					"tag": "bar",
-					"data2": "c"
-				}
-			},
-			{
-				"json": {
-					"data": {
-						"entry1": {
-							"id": 1,
-							"info": "some info 1"
-						},
-						"entry2": {
-							"id": 2,
-							"info": "some info 2"
-						},
-						"entry3": {
-							"id": 3,
-							"info": "some info 3"
-						}
-					},
-					"data2": ["a", "b", "c"],
-					"data4": null,
-					"tag": "bar",
+					"data2": "a",
 					"data3": 1
 				}
 			},
@@ -324,9 +263,9 @@
 							"info": "some info 3"
 						}
 					},
-					"data2": ["a", "b", "c"],
 					"data4": null,
 					"tag": "bar",
+					"data2": "b",
 					"data3": 2
 				}
 			},
@@ -346,9 +285,9 @@
 							"info": "some info 3"
 						}
 					},
-					"data2": ["a", "b", "c"],
 					"data4": null,
 					"tag": "bar",
+					"data2": "c",
 					"data3": 3
 				}
 			}
@@ -356,12 +295,8 @@
 		"Item Lists4": [
 			{
 				"json": {
-					"tag": "bar"
-				}
-			},
-			{
-				"json": {
-					"data4": null
+					"entry1": "bar",
+					"entry2": null
 				}
 			}
 		]
@@ -405,6 +340,11 @@
 						"node": "Item Lists4",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Item Lists5",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -412,10 +352,10 @@
 	},
 	"active": false,
 	"settings": {},
-	"versionId": "f800fde0-74a9-472c-84cc-a67306835888",
-	"id": "25",
+	"versionId": "1f311937-f825-4bda-a39e-e27c6ffe5906",
+	"id": "170",
 	"meta": {
-		"instanceId": "6ebec4953fe56f1c009e7c3b107578b375137523af057073c0b5da17350651bd"
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
 	},
 	"tags": []
 }
