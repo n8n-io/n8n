@@ -1173,6 +1173,8 @@ export class Server extends AbstractServer {
 							const { workflowId, status, finished } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
 								Object.assign(findOptions.where, { workflowId });
+							} else {
+								Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 							}
 							if (status) {
 								Object.assign(findOptions.where, { status: In(status) });
