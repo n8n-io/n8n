@@ -553,6 +553,14 @@ export class Webhook implements INodeType {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
+		} else if (authentication === 'nocoDBWebhookAuth') {
+			const esaKey = headers['esa-key'];
+			if (!esaKey) {
+				return authorizationError(resp, realm, 401, 'esa-key is missing');
+			}
+			if (esaKey !== process.env.NOCODB_ESA_KEY) {
+				return authorizationError(resp, realm, 401, 'esa-key is invalid');
+			}
 		}
 
 		const mimeType = headers['content-type'] ?? 'application/json';
