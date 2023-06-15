@@ -13,8 +13,8 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
-const versionControlDocsUrl = 'https://docs.n8n.io/environments/version-control/';
-const versionControlDocsSetupUrl = versionControlDocsUrl + 'setup/';
+const versionControlDocsUrl = ref('https://docs.n8n.io/environments/version-control/');
+const versionControlDocsSetupUrl = computed(() => versionControlDocsUrl.value + 'setup/');
 const isConnected = ref(false);
 
 const onConnect = async () => {
