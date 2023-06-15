@@ -416,11 +416,13 @@ export class Server extends AbstractServer {
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
 
-		const setting = await Db.collections.Settings.findOneByOrFail({
+		const setting = await Db.collections.Settings.findOneBy({
 			key: 'ui.banners.v1.dismissed',
 		});
 
-		this.frontendSettings.banners.v1.dismissed = setting.value === 'true';
+		if (setting) {
+			this.frontendSettings.banners.v1.dismissed = setting.value === 'true';
+		}
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
