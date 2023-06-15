@@ -313,6 +313,7 @@ export class Server extends AbstractServer {
 				advancedExecutionFilters: false,
 				variables: false,
 				versionControl: false,
+				auditLogs: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
