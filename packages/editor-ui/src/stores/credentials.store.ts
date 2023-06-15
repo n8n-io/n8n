@@ -317,7 +317,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const rootStore = useRootStore();
 			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
 			if (deleted) {
-				Vue.delete(this.credentials, id);
+				const { [id]: deletedCredential, ...rest } = this.credentials;
+				this.credentials = rest;
 			}
 		},
 		async oAuth2Authorize(data: ICredentialsResponse): Promise<string> {

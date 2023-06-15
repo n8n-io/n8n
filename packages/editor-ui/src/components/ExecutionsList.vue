@@ -439,7 +439,9 @@ export default defineComponent({
 		},
 		handleCheckboxChanged(executionId: string) {
 			if (this.selectedItems[executionId]) {
-				Vue.delete(this.selectedItems, executionId);
+				const { [executionId]: removedSelectedItem, ...remainingSelectedItems } =
+					this.selectedItems;
+				this.selectedItems = remainingSelectedItems;
 			} else {
 				this.selectedItems = {
 					...this.selectedItems,

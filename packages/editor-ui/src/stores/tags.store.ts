@@ -58,7 +58,8 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 			});
 		},
 		deleteTag(id: string): void {
-			Vue.delete(this.tags, id);
+			const { [id]: deleted, ...rest } = this.tags;
+			this.tags = rest;
 		},
 
 		async fetchAll(params?: { force?: boolean; withUsageCount?: boolean }): Promise<ITag[]> {
