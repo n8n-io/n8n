@@ -198,6 +198,7 @@ export class VersionControlGitService {
 			throw new Error('Git is not initialized');
 		}
 		await this.git.checkout(branch);
+		await this.git.branch([`--set-upstream-to=${VERSION_CONTROL_ORIGIN}/${branch}`, branch]);
 		return this.getBranches();
 	}
 
