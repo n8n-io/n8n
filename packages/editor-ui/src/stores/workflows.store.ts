@@ -58,7 +58,6 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
-import Vue from 'vue';
 
 import { useRootStore } from './n8nRoot.store';
 import {
