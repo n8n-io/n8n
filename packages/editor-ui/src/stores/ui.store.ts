@@ -345,9 +345,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setBanners(
-			banners: Record<string, { dismissed: boolean; mode: 'permanent' | 'temporary' }>,
-		): void {
+		setBanners(banners: UIState['banners']): void {
 			Vue.set(this, 'banners', banners);
 		},
 		setMode(name: string, mode: string): void {
