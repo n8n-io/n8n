@@ -112,16 +112,14 @@ export class VersionControlImportService {
 						},
 					});
 
-					const { name, type, data, id } = credential;
+					const { name, type, data, id, nodesAccess } = credential;
 					const newCredentialObject = new Credentials({ id, name }, type, []);
 					if (existingCredential?.data) {
 						newCredentialObject.data = existingCredential.data;
 					} else {
 						newCredentialObject.setData(data, encryptionKey);
 					}
-					if (existingCredential?.nodesAccess) {
-						newCredentialObject.nodesAccess = existingCredential.nodesAccess;
-					}
+					newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
 
 					LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
 					await transactionManager.upsert(CredentialsEntity, newCredentialObject, ['id']);

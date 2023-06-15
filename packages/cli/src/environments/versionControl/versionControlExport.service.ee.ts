@@ -315,6 +315,7 @@ export class VersionControlExportService {
 						name: sharedCredential.credentials.name,
 						type: sharedCredential.credentials.type,
 						data: sanitizedData,
+						nodesAccess: sharedCredential.credentials.nodesAccess,
 					};
 					LoggerProxy.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
 					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
