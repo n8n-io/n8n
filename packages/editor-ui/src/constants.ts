@@ -377,6 +377,7 @@ export const enum VIEWS {
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	VERSION_CONTROL = 'VersionControl',
+	AUDIT_LOGS = 'AuditLogs',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -444,6 +445,7 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	VersionControl = 'versionControl',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { paramCase, snakeCase } from 'change-case';
 
 import { createHash } from 'crypto';
@@ -9,73 +10,81 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
+import { bucketFields, bucketOperations } from './BucketDescription';
 
-import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
+import { folderFields, folderOperations } from './FolderDescription';
 
-import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
+import { fileFields, fileOperations } from './FileDescription';
 
-import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
+import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import type { Readable } from 'stream';
 
-export class S3 implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'S3',
-		name: 's3',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:s3.png',
-		group: ['output'],
-		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to any S3-compatible service',
-		defaults: {
-			name: 'S3',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 's3',
-				required: true,
+// Minimum size 5MB for multipart upload in S3
+const UPLOAD_CHUNK_SIZE = 5120 * 1024;
+
+export class AwsS3V2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			version: 2,
+			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+			description: 'Sends data to AWS S3',
+			defaults: {
+				name: 'AWS S3',
 			},
-		],
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Bucket',
-						value: 'bucket',
-					},
-					{
-						name: 'File',
-						value: 'file',
-					},
-					{
-						name: 'Folder',
-						value: 'folder',
-					},
-				],
-				default: 'file',
-			},
-			// BUCKET
-			...bucketOperations,
-			...bucketFields,
-			// FOLDER
-			...folderOperations,
-			...folderFields,
-			// UPLOAD
-			...fileOperations,
-			...fileFields,
-		],
-	};
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'aws',
+					required: true,
+				},
+			],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{
+							name: 'Bucket',
+							value: 'bucket',
+						},
+						{
+							name: 'File',
+							value: 'file',
+						},
+						{
+							name: 'Folder',
+							value: 'folder',
+						},
+					],
+					default: 'file',
+				},
+				// BUCKET
+				...bucketOperations,
+				...bucketFields,
+				// FOLDER
+				...folderOperations,
+				...folderFields,
+				// UPLOAD
+				...fileOperations,
+				...fileFields,
+			],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -85,19 +94,12 @@ export class S3 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
+			let headers: IDataObject = {};
 			try {
-				const headers: IDataObject = {};
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
-						let credentials;
-
-						try {
-							credentials = await this.getCredentials('s3');
-						} catch (error) {
-							throw new NodeApiError(this.getNode(), error as JsonObject);
-						}
-
+						const credentials = await this.getCredentials('aws');
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
@@ -143,40 +145,59 @@ export class S3 implements INodeType {
 							const builder = new Builder();
 							data = builder.buildObject(body);
 						}
-						responseData = await s3ApiRequestSOAP.call(
+						responseData = await awsApiRequestREST.call(
 							this,
-							`${name}`,
+							`${name}.s3`,
 							'PUT',
 							'',
 							data,
 							qs,
 							headers,
 						);
-
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-						// returnData.push({ success: true });
 					}
+
+					// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+					if (operation === 'delete') {
+						const name = this.getNodeParameter('name', i) as string;
+
+						responseData = await awsApiRequestREST.call(
+							this,
+							`${name}.s3`,
+							'DELETE',
+							'',
+							'',
+							{},
+							headers,
+						);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListAllMyBucketsResult.Buckets.Bucket',
-								'',
+								's3',
 								'GET',
 								'',
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListAllMyBucketsResult.Buckets.Bucket',
-								'',
+								's3',
 								'GET',
 								'',
 								'',
@@ -205,8 +226,8 @@ export class S3 implements INodeType {
 							qs['encoding-type'] = additionalFields.encodingType as string;
 						}
 
-						if (additionalFields.delmiter) {
-							qs.delimiter = additionalFields.delmiter as string;
+						if (additionalFields.delimiter) {
+							qs.delimiter = additionalFields.delimiter as string;
 						}
 
 						if (additionalFields.fetchOwner) {
@@ -223,17 +244,17 @@ export class S3 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._ as string;
 
 						if (returnAll) {
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListBucketResult.Contents',
-								bucketName,
+								`${bucketName}.s3`,
 								'GET',
 								'',
 								'',
@@ -244,9 +265,9 @@ export class S3 implements INodeType {
 							);
 						} else {
 							qs['max-keys'] = this.getNodeParameter('limit', 0);
-							responseData = await s3ApiRequestSOAP.call(
+							responseData = await awsApiRequestREST.call(
 								this,
-								bucketName,
+								`${bucketName}.s3`,
 								'GET',
 								'',
 								'',
@@ -257,17 +278,11 @@ export class S3 implements INodeType {
 							);
 							responseData = responseData.ListBucketResult.Contents;
 						}
-
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-						// if (Array.isArray(responseData)) {
-						// 	returnData.push.apply(returnData, responseData);
-						// } else {
-						// 	returnData.push(responseData);
-						// }
 					}
 				}
 				if (resource === 'folder') {
@@ -289,15 +304,15 @@ export class S3 implements INodeType {
 								additionalFields.storageClass as string,
 							).toUpperCase();
 						}
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(
+						responseData = await awsApiRequestREST.call(
 							this,
-							bucketName,
+							`${bucketName}.s3`,
 							'PUT',
 							path,
 							'',
@@ -311,23 +326,22 @@ export class S3 implements INodeType {
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 					if (operation === 'delete') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const folderKey = this.getNodeParameter('folderKey', i) as string;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAPAllItems.call(
+						responseData = await awsApiRequestRESTAllItems.call(
 							this,
 							'ListBucketResult.Contents',
-							bucketName,
+							`${bucketName}.s3`,
 							'GET',
 							'/',
 							'',
@@ -339,9 +353,9 @@ export class S3 implements INodeType {
 
 						// folder empty then just delete it
 						if (responseData.length === 0) {
-							responseData = await s3ApiRequestSOAP.call(
+							responseData = await awsApiRequestREST.call(
 								this,
-								bucketName,
+								`${bucketName}.s3`,
 								'DELETE',
 								`/${folderKey}`,
 								'',
@@ -377,9 +391,9 @@ export class S3 implements INodeType {
 
 							headers['Content-Type'] = 'application/xml';
 
-							responseData = await s3ApiRequestSOAP.call(
+							responseData = await awsApiRequestREST.call(
 								this,
-								bucketName,
+								`${bucketName}.s3`,
 								'POST',
 								'/',
 								data,
@@ -391,7 +405,6 @@ export class S3 implements INodeType {
 
 							responseData = { deleted: responseData.DeleteResult.Deleted };
 						}
-
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
@@ -414,17 +427,17 @@ export class S3 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._;
 
 						if (returnAll) {
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListBucketResult.Contents',
-								bucketName,
+								`${bucketName}.s3`,
 								'GET',
 								'',
 								'',
@@ -435,10 +448,10 @@ export class S3 implements INodeType {
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListBucketResult.Contents',
-								bucketName,
+								`${bucketName}.s3`,
 								'GET',
 								'',
 								'',
@@ -456,13 +469,12 @@ export class S3 implements INodeType {
 							if (qs.limit) {
 								responseData = responseData.splice(0, qs.limit as number);
 							}
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
-
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData as IDataObject[]),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
 					}
 				}
 				if (resource === 'file') {
@@ -552,15 +564,15 @@ export class S3 implements INodeType {
 
 						const destination = `/${destinationParts.slice(2, destinationParts.length).join('/')}`;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(
+						responseData = await awsApiRequestREST.call(
 							this,
-							bucketName,
+							`${bucketName}.s3`,
 							'PUT',
 							destination,
 							'',
@@ -570,11 +582,10 @@ export class S3 implements INodeType {
 							region as string,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject),
+							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-						// returnData.push(responseData.CopyObjectResult);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
@@ -587,19 +598,19 @@ export class S3 implements INodeType {
 						if (fileKey.substring(fileKey.length - 1) === '/') {
 							throw new NodeOperationError(
 								this.getNode(),
-								'Downloding a whole directory is not yet supported, please provide a file key',
+								'Downloading a whole directory is not yet supported, please provide a file key',
 							);
 						}
 
-						let region = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						let region = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						region = region.LocationConstraint._;
 
-						const response = await s3ApiRequestREST.call(
+						const response = await awsApiRequestREST.call(
 							this,
-							bucketName,
+							`${bucketName}.s3`,
 							'GET',
 							`/${fileKey}`,
 							'',
@@ -619,11 +630,11 @@ export class S3 implements INodeType {
 							binary: {},
 						};
 
-						if (items[i].binary !== undefined) {
+						if (items[i].binary !== undefined && newItem.binary) {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary!, items[i].binary);
+							Object.assign(newItem.binary, items[i].binary);
 						}
 
 						items[i] = newItem;
@@ -650,15 +661,15 @@ export class S3 implements INodeType {
 							qs.versionId = options.versionId as string;
 						}
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(
+						responseData = await awsApiRequestREST.call(
 							this,
-							bucketName,
+							`${bucketName}.s3`,
 							'DELETE',
 							`/${fileKey}`,
 							'',
@@ -667,13 +678,11 @@ export class S3 implements INodeType {
 							{},
 							region as string,
 						);
-
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
-						// returnData.push({ success: true });
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
@@ -693,17 +702,17 @@ export class S3 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
 
 						const region = responseData.LocationConstraint._;
 
 						if (returnAll) {
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListBucketResult.Contents',
-								bucketName,
+								`${bucketName}.s3`,
 								'GET',
 								'',
 								'',
@@ -714,10 +723,10 @@ export class S3 implements INodeType {
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await s3ApiRequestSOAPAllItems.call(
+							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'ListBucketResult.Contents',
-								bucketName,
+								`${bucketName}.s3`,
 								'GET',
 								'',
 								'',
@@ -735,13 +744,12 @@ export class S3 implements INodeType {
 							if (qs.limit) {
 								responseData = responseData.splice(0, qs.limit as number);
 							}
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
-
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData as IDataObject[]),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'upload') {
@@ -751,72 +759,76 @@ export class S3 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];
-						let path = '/';
+						let path = '';
 						let body;
 
-						if (additionalFields.requesterPays) {
-							headers['x-amz-request-payer'] = 'requester';
-						}
+						const multipartHeaders: IDataObject = {};
+						const neededHeaders: IDataObject = {};
 
+						if (additionalFields.requesterPays) {
+							neededHeaders['x-amz-request-payer'] = 'requester';
+						}
 						if (additionalFields.parentFolderKey) {
-							path = `/${additionalFields.parentFolderKey}/`;
+							path = `${additionalFields.parentFolderKey}/${fileName}`;
+						} else {
+							path = `${fileName}`;
 						}
 						if (additionalFields.storageClass) {
-							headers['x-amz-storage-class'] = snakeCase(
+							multipartHeaders['x-amz-storage-class'] = snakeCase(
 								additionalFields.storageClass as string,
 							).toUpperCase();
 						}
+
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							multipartHeaders['x-amz-acl'] = paramCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
-							headers['x-amz-grant-full-control'] = '';
+							multipartHeaders['x-amz-grant-full-control'] = '';
 						}
 						if (additionalFields.grantRead) {
-							headers['x-amz-grant-read'] = '';
+							multipartHeaders['x-amz-grant-read'] = '';
 						}
 						if (additionalFields.grantReadAcp) {
-							headers['x-amz-grant-read-acp'] = '';
+							multipartHeaders['x-amz-grant-read-acp'] = '';
 						}
 						if (additionalFields.grantWriteAcp) {
-							headers['x-amz-grant-write-acp'] = '';
+							multipartHeaders['x-amz-grant-write-acp'] = '';
 						}
 						if (additionalFields.lockLegalHold) {
-							headers['x-amz-object-lock-legal-hold'] = (additionalFields.lockLegalHold as boolean)
-								? 'ON'
-								: 'OFF';
+							multipartHeaders['x-amz-object-lock-legal-hold'] =
+								(additionalFields.lockLegalHold as boolean) ? 'ON' : 'OFF';
 						}
 						if (additionalFields.lockMode) {
-							headers['x-amz-object-lock-mode'] = (
+							multipartHeaders['x-amz-object-lock-mode'] = (
 								additionalFields.lockMode as string
 							).toUpperCase();
 						}
 						if (additionalFields.lockRetainUntilDate) {
-							headers['x-amz-object-lock-retain-until-date'] =
+							multipartHeaders['x-amz-object-lock-retain-until-date'] =
 								additionalFields.lockRetainUntilDate as string;
 						}
 						if (additionalFields.serverSideEncryption) {
-							headers['x-amz-server-side-encryption'] =
+							neededHeaders['x-amz-server-side-encryption'] =
 								additionalFields.serverSideEncryption as string;
 						}
 						if (additionalFields.encryptionAwsKmsKeyId) {
-							headers['x-amz-server-side-encryption-aws-kms-key-id'] =
+							neededHeaders['x-amz-server-side-encryption-aws-kms-key-id'] =
 								additionalFields.encryptionAwsKmsKeyId as string;
 						}
 						if (additionalFields.serverSideEncryptionContext) {
-							headers['x-amz-server-side-encryption-context'] =
+							neededHeaders['x-amz-server-side-encryption-context'] =
 								additionalFields.serverSideEncryptionContext as string;
 						}
 						if (additionalFields.serversideEncryptionCustomerAlgorithm) {
-							headers['x-amz-server-side-encryption-customer-algorithm'] =
+							neededHeaders['x-amz-server-side-encryption-customer-algorithm'] =
 								additionalFields.serversideEncryptionCustomerAlgorithm as string;
 						}
 						if (additionalFields.serversideEncryptionCustomerKey) {
-							headers['x-amz-server-side-encryption-customer-key'] =
+							neededHeaders['x-amz-server-side-encryption-customer-key'] =
 								additionalFields.serversideEncryptionCustomerKey as string;
 						}
 						if (additionalFields.serversideEncryptionCustomerKeyMD5) {
-							headers['x-amz-server-side-encryption-customer-key-MD5'] =
+							neededHeaders['x-amz-server-side-encryption-customer-key-MD5'] =
 								additionalFields.serversideEncryptionCustomerKeyMD5 as string;
 						}
 						if (tagsValues) {
@@ -824,77 +836,213 @@ export class S3 implements INodeType {
 							tagsValues.forEach((o: IDataObject) => {
 								tags.push(`${o.key}=${o.value}`);
 							});
-							headers['x-amz-tagging'] = tags.join('&');
+							multipartHeaders['x-amz-tagging'] = tags.join('&');
 						}
-
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						// Get the region of the bucket
+						responseData = await awsApiRequestREST.call(this, `${bucketName}.s3`, 'GET', '', '', {
 							location: '',
 						});
-
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
-							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							let uploadData: Buffer | Readable;
+							multipartHeaders['Content-Type'] = binaryPropertyData.mimeType;
+							if (binaryPropertyData.id) {
+								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id, UPLOAD_CHUNK_SIZE);
+								const createMultiPartUpload = await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'POST',
+									`/${path}?uploads`,
+									body,
+									qs,
+									{ ...neededHeaders, ...multipartHeaders },
+									{},
+									region as string,
+								);
 
-							headers['Content-Type'] = binaryData.mimeType;
+								const uploadId = createMultiPartUpload.InitiateMultipartUploadResult.UploadId;
+								let part = 1;
+								for await (const chunk of uploadData) {
+									const chunkBuffer = await this.helpers.binaryToBuffer(chunk as Readable);
+									const listHeaders: IDataObject = {
+										'Content-Length': chunk.length,
+										'Content-MD5': createHash('MD5').update(chunkBuffer).digest('base64'),
+										...neededHeaders,
+									};
+									try {
+										await awsApiRequestREST.call(
+											this,
+											`${bucketName}.s3`,
+											'PUT',
+											`/${path}?partNumber=${part}&uploadId=${uploadId}`,
+											chunk,
+											qs,
+											listHeaders,
+											{},
+											region as string,
+										);
+										part++;
+									} catch (error) {
+										try {
+											await awsApiRequestREST.call(
+												this,
+												`${bucketName}.s3`,
+												'DELETE',
+												`/${path}?uploadId=${uploadId}`,
+											);
+										} catch (err) {
+											throw new NodeOperationError(this.getNode(), err as Error);
+										}
+										if (error.response?.status !== 308) throw error;
+									}
+								}
 
-							headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+								const listParts = (await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'GET',
+									`/${path}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
+									'',
+									qs,
+									{ ...neededHeaders },
+									{},
+									region as string,
+								)) as {
+									ListPartsResult: {
+										Part:
+											| Array<{
+													ETag: string;
+													PartNumber: number;
+											  }>
+											| {
+													ETag: string;
+													PartNumber: number;
+											  };
+									};
+								};
+								if (!Array.isArray(listParts.ListPartsResult.Part)) {
+									body = {
+										CompleteMultipartUpload: {
+											$: {
+												xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+											},
+											Part: {
+												ETag: listParts.ListPartsResult.Part.ETag,
+												PartNumber: listParts.ListPartsResult.Part.PartNumber,
+											},
+										},
+									};
+								} else {
+									body = {
+										CompleteMultipartUpload: {
+											$: {
+												xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+											},
+											Part: listParts.ListPartsResult.Part.map((Part) => {
+												return {
+													ETag: Part.ETag,
+													PartNumber: Part.PartNumber,
+												};
+											}),
+										},
+									};
+								}
+								const builder = new Builder();
+								const data = builder.buildObject(body);
+								const completeUpload = (await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'POST',
+									`/${path}?uploadId=${uploadId}`,
+									data,
+									qs,
+									{
+										...neededHeaders,
+										'Content-MD5': createHash('md5').update(data).digest('base64'),
+										'Content-Type': 'application/xml',
+									},
+									{},
+									region as string,
+								)) as {
+									CompleteMultipartUploadResult: {
+										Location: string;
+										Bucket: string;
+										Key: string;
+										ETag: string;
+									};
+								};
+								responseData = {
+									...completeUpload.CompleteMultipartUploadResult,
+								};
+							} else {
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+									i,
+									binaryPropertyName,
+								);
 
-							responseData = await s3ApiRequestSOAP.call(
-								this,
-								bucketName,
-								'PUT',
-								`${path}${fileName || binaryData.fileName}`,
-								body,
-								qs,
-								headers,
-								{},
-								region as string,
+								body = binaryDataBuffer;
+								headers = { ...neededHeaders, ...multipartHeaders };
+								headers['Content-Type'] = binaryPropertyData.mimeType;
+
+								headers['Content-MD5'] = createHash('md5').update(body).digest('base64');
+
+								responseData = await awsApiRequestREST.call(
+									this,
+									`${bucketName}.s3`,
+									'PUT',
+									`/${path || binaryPropertyData.fileName}`,
+									body,
+									qs,
+									headers,
+									{},
+									region as string,
+								);
+							}
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData as IDataObject),
+								{ itemData: { item: i } },
 							);
+							returnData.push(...executionData);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 
 							body = Buffer.from(fileContent, 'utf8');
 
+							headers = { ...neededHeaders, ...multipartHeaders };
+
 							headers['Content-Type'] = 'text/html';
 
 							headers['Content-MD5'] = createHash('md5').update(fileContent).digest('base64');
 
-							responseData = await s3ApiRequestSOAP.call(
+							responseData = await awsApiRequestREST.call(
 								this,
-								bucketName,
+								`${bucketName}.s3`,
 								'PUT',
-								`${path}${fileName}`,
+								`/${path}`,
 								body,
 								qs,
-								headers,
+								{ ...headers },
 								{},
 								region as string,
 							);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ success: true }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
-
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ success: true }),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-						// returnData.push({ success: true });
 					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					if (resource === 'file' && operation === 'download') {
-						items[i].json = { error: error.message };
-					} else {
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-						// returnData.push({ error: error.message });
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
@@ -903,8 +1051,8 @@ export class S3 implements INodeType {
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
+		} else {
+			return this.prepareOutputData(returnData);
 		}
-
-		return this.prepareOutputData(returnData);
 	}
 }

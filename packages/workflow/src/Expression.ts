@@ -39,6 +39,18 @@ tmpl.tmpl.errorHandler = (error: Error) => {
 	}
 };
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
+
+const fnConstructors = {
+	sync: Function.prototype.constructor,
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	async: AsyncFunction.prototype.constructor,
+	mock: () => {
+		throw new ExpressionError('Arbitrary code execution detected');
+	},
+};
+
 export class Expression {
 	workflow: Workflow;
 
@@ -315,6 +327,9 @@ export class Expression {
 		data: IWorkflowDataProxyData,
 	): tmpl.ReturnValue | undefined {
 		try {
+			[Function, AsyncFunction].forEach(({ prototype }) =>
+				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
+			);
 			return tmpl.tmpl(expression, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
@@ -352,6 +367,11 @@ export class Expression {
 
 				throw new Error(match.groups.msg);
 			}
+		} finally {
+			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
+			Object.defineProperty(AsyncFunction.prototype, 'constructor', {
+				value: fnConstructors.async,
+			});
 		}
 		return null;
 	}
