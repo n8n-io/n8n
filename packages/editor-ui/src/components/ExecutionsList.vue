@@ -282,7 +282,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
@@ -439,7 +439,9 @@ export default defineComponent({
 		},
 		handleCheckboxChanged(executionId: string) {
 			if (this.selectedItems[executionId]) {
-				Vue.delete(this.selectedItems, executionId);
+				const { [executionId]: removedSelectedItem, ...remainingSelectedItems } =
+					this.selectedItems;
+				this.selectedItems = remainingSelectedItems;
 			} else {
 				this.selectedItems = {
 					...this.selectedItems,

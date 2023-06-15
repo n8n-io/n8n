@@ -158,7 +158,7 @@
 
 <script lang="ts">
 import type { PropType } from 'vue';
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type {
 	INodeTypeDescription,
@@ -529,8 +529,8 @@ export default defineComponent({
 				// Data is on top level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
-					Vue.delete(this.nodeValues, lastNamePart);
+					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = this.nodeValues;
+					this.nodeValues = remainingNodeValues;
 				} else {
 					// Value should be set
 					this.nodeValues = {
@@ -542,18 +542,21 @@ export default defineComponent({
 				// Data is on lower level
 				if (value === null) {
 					// Property should be deleted
-					// @ts-ignore
 					let tempValue = get(this.nodeValues, nameParts.join('.')) as
 						| INodeParameters
 						| INodeParameters[];
-					Vue.delete(tempValue as object, lastNamePart as string);
+
+					const { [lastNamePart]: removedNodeValue, ...remainingNodeValues } = tempValue;
+					tempValue = remainingNodeValues;
 
 					if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
 						// If a value from an array got delete and no values are left
 						// delete also the parent
 						lastNamePart = nameParts.pop();
 						tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters;
-						Vue.delete(tempValue as object, lastNamePart as string);
+						const { [lastNamePart]: removedArrayNodeValue, ...remainingArrayNodeValues } =
+							tempValue;
+						tempValue = remainingArrayNodeValues;
 					}
 				} else {
 					// Value should be set
