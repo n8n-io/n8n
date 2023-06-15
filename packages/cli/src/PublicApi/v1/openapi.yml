@@ -1,7 +1,7 @@
 ---
 openapi: 3.0.0
 info:
-  title: n8n Public API11
+  title: n8n Public API
   description: n8n Public API
   termsOfService: https://n8n.io/legal/terms
   contact:
