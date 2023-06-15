@@ -946,7 +946,7 @@ export class WorkflowDataProxy {
 				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
 					if (that.workflow.getNode(nodeName)) {
 						throw createExpressionError(`no data, execute "${nodeName}" node first`);
-				}
+					}
 					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
