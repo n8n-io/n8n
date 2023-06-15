@@ -86,14 +86,20 @@ export async function driveSearchWithDefault(
 ): Promise<INodeListSearchResult> {
 	const drives = await driveSearch.call(this, filter, paginationToken);
 
-	const results: INodeListSearchItems[] = [
-		{
-			name: RLC_DRIVE_DEFAULT,
-			value: RLC_DRIVE_DEFAULT,
-			url: 'https://drive.google.com/drive/my-drive',
-		},
-		...drives.results,
-	];
+	let results: INodeListSearchItems[] = [];
+
+	if (filter && !RLC_DRIVE_DEFAULT.toLowerCase().includes(filter.toLowerCase())) {
+		results = drives.results;
+	} else {
+		results = [
+			{
+				name: RLC_DRIVE_DEFAULT,
+				value: RLC_DRIVE_DEFAULT,
+				url: 'https://drive.google.com/drive/my-drive',
+			},
+			...drives.results,
+		];
+	}
 
 	return {
 		results,
@@ -163,15 +169,28 @@ export async function folderSearchWithDefault(
 ): Promise<INodeListSearchResult> {
 	const folders = await folderSearch.call(this, filter, paginationToken);
 
-	const results: INodeListSearchItems[] = [
-		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			name: '/ (Root folder)',
-			value: RLC_FOLDER_DEFAULT,
-			url: 'https://drive.google.com/drive',
-		},
-		...folders.results,
-	];
+	let results: INodeListSearchItems[] = [];
+	const rootDefaultDisplayName = '/ (Root folder)';
+
+	if (
+		filter &&
+		!(
+			RLC_FOLDER_DEFAULT.toLowerCase().includes(filter.toLowerCase()) ||
+			rootDefaultDisplayName.toLowerCase().includes(filter.toLowerCase())
+		)
+	) {
+		results = folders.results;
+	} else {
+		results = [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: rootDefaultDisplayName,
+				value: RLC_FOLDER_DEFAULT,
+				url: 'https://drive.google.com/drive',
+			},
+			...folders.results,
+		];
+	}
 
 	return {
 		results,

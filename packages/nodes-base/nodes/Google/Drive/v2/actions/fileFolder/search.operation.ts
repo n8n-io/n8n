@@ -265,20 +265,22 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const filter = this.getNodeParameter('filter', i, {}) as SearchFilter;
 
 	let driveId = '';
+	let folderId = '';
 	const returnedTypes: string[] = [];
 
 	if (Object.keys(filter)?.length) {
-		if (filter.folderId && filter.folderId.value !== RLC_FOLDER_DEFAULT) {
-			let value;
+		if (filter.folderId) {
 			if (filter.folderId.mode === 'url') {
-				value = this.getNodeParameter('filter.folderId', i, undefined, {
+				folderId = this.getNodeParameter('filter.folderId', i, undefined, {
 					extractValue: true,
 				}) as string;
 			} else {
-				value = filter.folderId.value;
+				folderId = filter.folderId.value;
 			}
+		}
 
-			query.push(`'${value}' in parents`);
+		if (folderId && folderId !== RLC_FOLDER_DEFAULT) {
+			query.push(`'${folderId}' in parents`);
 		}
 
 		if (filter.driveId) {
@@ -329,6 +331,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	};
 
 	updateDriveScopes(qs, driveId);
+
+	if (!driveId && folderId === RLC_FOLDER_DEFAULT) {
+		qs.corpora = 'user';
+		qs.spaces = 'drive';
+		qs.includeItemsFromAllDrives = false;
+		qs.supportsAllDrives = false;
+	}
 
 	const returnAll = this.getNodeParameter('returnAll', i, false);
 
