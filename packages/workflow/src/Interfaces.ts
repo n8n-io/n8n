@@ -2113,6 +2113,7 @@ export interface IN8nUISettings {
 		advancedExecutionFilters: boolean;
 		variables: boolean;
 		versionControl: boolean;
+		auditLogs: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
