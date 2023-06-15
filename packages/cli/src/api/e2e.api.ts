@@ -112,6 +112,7 @@ export const e2eController = Router();
 
 e2eController.post('/db/reset', async (req, res) => {
 	await resetLogStreaming();
+	await Db.collections.Execution.query('VACUUM;');
 	await truncateAll();
 	await setupUserManagement();
 
