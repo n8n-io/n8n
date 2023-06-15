@@ -10,7 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 import get from 'lodash.get';
 import isEmpty from 'lodash.isempty';
@@ -847,10 +847,8 @@ return 0;`,
 						let arrayToSplit;
 						if (!disableDotNotation) {
 							arrayToSplit = get(item, fieldToSplitOut);
-							unset(item, fieldToSplitOut);
 						} else {
 							arrayToSplit = item[fieldToSplitOut];
-							delete item[fieldToSplitOut];
 						}
 
 						if (arrayToSplit === undefined) {
@@ -919,7 +917,15 @@ return 0;`,
 						}
 
 						if (include === 'allOtherFields') {
-							newItem = { ...item, ...splitEntry };
+							const itemCopy = deepCopy(item);
+							for (const fieldToSplitOut of fieldsToSplitOut) {
+								if (!disableDotNotation) {
+									unset(itemCopy, fieldToSplitOut);
+								} else {
+									delete itemCopy[fieldToSplitOut];
+								}
+							}
+							newItem = { ...itemCopy, ...splitEntry };
 						}
 
 						if (include === 'selectedOtherFields') {
