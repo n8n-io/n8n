@@ -92,7 +92,7 @@ const properties: INodeProperties[] = [
 			{
 				...folderRLC,
 				description:
-					'The folder you want to search in. By default, the root folder of the drive is used.',
+					'The folder you want to search in. By default, the root folder of the drive is used. If you select a folder other than the root folder, only the direct children will be included.',
 				required: false,
 			},
 			{
