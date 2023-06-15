@@ -13,6 +13,8 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
+const versionControlDocsUrl = ref('https://docs.n8n.io/environments/version-control/');
+const versionControlDocsSetupUrl = computed(() => versionControlDocsUrl.value + 'setup/');
 const isConnected = ref(false);
 
 const onConnect = async () => {
@@ -188,7 +190,7 @@ const refreshBranches = async () => {
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
 				<i18n path="settings.versionControl.description">
 					<template #link>
-						<a href="#" target="_blank">
+						<a :href="versionControlDocsSetupUrl" target="_blank">
 							{{ locale.baseText('settings.versionControl.description.link') }}
 						</a>
 					</template>
@@ -279,7 +281,7 @@ const refreshBranches = async () => {
 				<n8n-notice type="info" class="mt-s">
 					<i18n path="settings.versionControl.sshKeyDescription">
 						<template #link>
-							<a href="#" target="_blank">{{
+							<a :href="versionControlDocsSetupUrl" target="_blank">{{
 								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
 							}}</a>
 						</template>
@@ -344,7 +346,7 @@ const refreshBranches = async () => {
 								<strong>{{ locale.baseText('settings.versionControl.readonly.bold') }}</strong>
 							</template>
 							<template #link>
-								<a href="#" target="_blank">
+								<a :href="versionControlDocsSetupUrl" target="_blank">
 									{{ locale.baseText('settings.versionControl.readonly.link') }}
 								</a>
 							</template>
