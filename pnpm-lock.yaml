@@ -806,6 +806,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^5.16.5
         version: 5.16.5
+      '@testing-library/user-event':
+        specifier: ^14.4.3
+        version: 14.4.3(@testing-library/dom@7.31.2)
       '@testing-library/vue':
         specifier: ^5.8.3
         version: 5.8.3(vue-template-compiler@2.7.14)(vue@2.7.14)
@@ -11041,6 +11044,7 @@ packages:
   /consolidate@0.15.1(react-dom@18.2.0)(react@17.0.2):
     resolution: {integrity: sha512-DW46nrsMJgy9kqAbPt5rKaCr7uFtpo4mSUvLHIUbJEjm0vo+aY5QLwBUq3FK4tRnJr/X0Psc0C4jf/h+HtXSMw==}
     engines: {node: '>= 0.10.0'}
+    deprecated: Please upgrade to consolidate v1.0.0+ as it has been modernized with several long-awaited fixes implemented. Maintenance is supported by Forward Email at https://forwardemail.net ; follow/watch https://github.com/ladjs/consolidate for updates and release changelog
     peerDependencies:
       arc-templates: ^0.5.3
       atpl: '>=0.7.6'
