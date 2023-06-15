@@ -69,11 +69,13 @@ export async function execute(
 			const options = this.getNodeParameter('options', 0, {});
 
 			if (options.downloadFields) {
-				return await downloadRecordAttachments.call(
+				const itemWithAttachments = await downloadRecordAttachments.call(
 					this,
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
+				returnData.push(...itemWithAttachments);
+				continue;
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

@@ -183,19 +183,6 @@ export const insertUpdateOptions: INodeProperties[] = [
 				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
-						'/dataMode': ['autoMapInputData'],
-					},
-				},
-				default: '',
-				description: 'Comma-separated list of fields in input to ignore when updating',
-			},
-			{
-				displayName: 'Ignore Fields From Input',
-				name: 'ignoreFields',
-				type: 'string',
-				requiresDataPath: 'multiple',
-				displayOptions: {
-					show: {
 						'/columns.mappingMode': ['autoMapInputData'],
 					},
 				},
