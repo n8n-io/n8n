@@ -54,6 +54,7 @@ import { useCloudPlanStore } from './cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { dismissV1BannerPermanently } from '@/api/ui';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -144,6 +145,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
+		banners: {
+			v1: {
+				dismissed: false,
+				mode: 'temporary',
+			},
+		},
 		isPageLoading: true,
 		currentView: '',
 		mainPanelPosition: 0.5,
@@ -338,6 +345,11 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
+		setBanners(
+			banners: Record<string, { dismissed: boolean; mode: 'permanent' | 'temporary' }>,
+		): void {
+			Vue.set(this, 'banners', banners);
+		},
 		setMode(name: string, mode: string): void {
 			Vue.set(this.modals[name], 'mode', mode);
 		},
@@ -480,6 +492,22 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
+		},
+		async dismissBanner(bannerType: 'v1', mode: 'temporary' | 'permanent'): Promise<void> {
+			if (mode === 'permanent') {
+				await dismissV1BannerPermanently(useRootStore().getRestApiContext);
+				this.banners[bannerType].dismissed = true;
+				this.banners[bannerType].mode = 'permanent';
+				return;
+			}
+
+			this.banners[bannerType].dismissed = true;
+			this.banners[bannerType].mode = 'temporary';
+		},
+		restoreBanner(bannerType: 'v1'): void {
+			if (this.banners[bannerType].dismissed && this.banners[bannerType].mode === 'temporary') {
+				this.banners[bannerType].dismissed = false;
+			}
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();

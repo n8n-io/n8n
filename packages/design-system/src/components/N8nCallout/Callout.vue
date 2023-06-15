@@ -61,7 +61,7 @@ export default defineComponent({
 			];
 		},
 		getIcon(): string {
-			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
+			if (!this.icon && Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
 				return CALLOUT_DEFAULT_ICONS[this.theme];
 			}
 

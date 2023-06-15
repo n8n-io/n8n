@@ -220,6 +220,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
+			if (settings.banners.v1.dismissed) {
+				useUIStore().setBanners({ v1: { dismissed: true, mode: 'permanent' } });
+			}
+
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
 		stopShowingSetupPage(): void {

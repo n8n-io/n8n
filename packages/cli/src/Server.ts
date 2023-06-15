@@ -316,6 +316,11 @@ export class Server extends AbstractServer {
 			variables: {
 				limit: 0,
 			},
+			banners: {
+				v1: {
+					dismissed: false,
+				},
+			},
 		};
 	}
 
@@ -402,7 +407,7 @@ export class Server extends AbstractServer {
 	/**
 	 * Returns the current settings for the frontend
 	 */
-	getSettingsForFrontend(): IN8nUISettings {
+	async getSettingsForFrontend(): Promise<IN8nUISettings> {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			authenticationMethod: getCurrentAuthenticationMethod(),
@@ -410,6 +415,12 @@ export class Server extends AbstractServer {
 				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 				config.getEnv('deployment.type').startsWith('desktop_') === false,
 		});
+
+		const setting = await Db.collections.Settings.findOneByOrFail({
+			key: 'ui.banners.v1.dismissed',
+		});
+
+		this.frontendSettings.banners.v1.dismissed = setting.value === 'true';
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {

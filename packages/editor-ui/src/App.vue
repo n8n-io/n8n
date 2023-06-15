@@ -9,6 +9,7 @@
 				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
+			<V1Banner />
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
@@ -30,6 +31,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
+import V1Banner from '@/components/V1Banner.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
@@ -60,6 +62,7 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
+		V1Banner,
 	},
 	mixins: [newVersions, userHelpers],
 	setup(props) {
@@ -278,12 +281,12 @@ export default defineComponent({
 
 .header {
 	grid-area: header;
-	z-index: 999;
+	z-index: 99;
 }
 
 .sidebar {
 	grid-area: sidebar;
 	height: 100vh;
-	z-index: 999;
+	z-index: 99;
 }
 </style>
