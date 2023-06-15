@@ -65,6 +65,7 @@ const shouldDisplay = computed(() => {
 	a {
 		text-decoration: underline;
 	}
+
 	.xmark {
 		cursor: pointer;
 	}
