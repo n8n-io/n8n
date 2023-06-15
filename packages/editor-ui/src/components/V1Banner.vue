@@ -1,5 +1,11 @@
 <template>
-	<n8n-callout v-if="shouldDisplay" theme="warning" icon="info-circle" :class="$style['v1-banner']">
+	<n8n-callout
+		v-if="shouldDisplay"
+		theme="warning"
+		icon="info-circle"
+		override-icon
+		:class="$style['v1-banner']"
+	>
 		<span v-html="locale.baseText('banners.v1.message')"></span>
 		{{ '' }}
 		<a v-if="isInstanceOwner" @click="dismissBanner('v1', 'permanent')">
