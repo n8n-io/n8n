@@ -854,19 +854,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				uiStore.lastSelectedNode = nameData.new;
 			}
 
-			this.nodeMetadata = { ...this.nodeMetadata, [nameData.new]: this.nodeMetadata[nameData.old] };
-			Vue.delete(this.nodeMetadata, nameData.old);
+			const { [nameData.old]: removed, ...rest } = this.nodeMetadata;
+			this.nodeMetadata = { ...rest, [nameData.new]: this.nodeMetadata[nameData.old] };
 
 			if (this.workflow.pinData && this.workflow.pinData.hasOwnProperty(nameData.old)) {
+				const { [nameData.old]: renamed, ...restPinData } = this.workflow.pinData;
 				this.workflow = {
 					...this.workflow,
 					pinData: {
-						...this.workflow.pinData,
-						[nameData.new]: this.workflow.pinData[nameData.old],
+						...restPinData,
+						[nameData.new]: renamed,
 					},
 				};
-
-				Vue.delete(this.workflow.pinData!, nameData.old);
 			}
 
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
@@ -911,8 +910,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					return true;
 				}
 
-				// @ts-ignore
-				Vue.delete(node.issues, nodeIssueData.type);
+				const { [nodeIssueData.type]: removedNodeIssue, ...remainingNodeIssues } = node.issues;
+				this.updateNodeAtIndex(nodeIndex, {
+					issues: remainingNodeIssues,
+				});
 			} else {
 				if (node.issues === undefined) {
 					this.updateNodeAtIndex(nodeIndex, {
@@ -945,10 +946,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		removeNode(node: INodeUi): void {
-			Vue.delete(this.nodeMetadata, node.name);
+			const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = this.nodeMetadata;
+			this.nodeMetadata = remainingNodeMetadata;
 
 			if (this.workflow.pinData && this.workflow.pinData.hasOwnProperty(node.name)) {
-				Vue.delete(this.workflow.pinData, node.name);
+				const { [node.name]: removedPinData, ...remainingPinData } = this.workflow.pinData;
+				this.workflow = {
+					...this.workflow,
+					pinData: remainingPinData,
+				};
 			}
 
 			for (let i = 0; i < this.workflow.nodes.length; i++) {
@@ -1094,7 +1100,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (this.workflowExecutionData === null || !this.workflowExecutionData.data) {
 				return;
 			}
-			Vue.delete(this.workflowExecutionData.data.resultData.runData, nodeName);
+
+			const { [nodeName]: removedRunData, ...remainingRunData } =
+				this.workflowExecutionData.data.resultData.runData;
+			this.workflowExecutionData = {
+				...this.workflowExecutionData,
+				data: {
+					...this.workflowExecutionData.data,
+					resultData: {
+						...this.workflowExecutionData.data.resultData,
+						runData: remainingRunData,
+					},
+				},
+			};
 		},
 
 		pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
