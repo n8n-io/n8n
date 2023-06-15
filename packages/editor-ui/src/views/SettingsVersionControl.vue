@@ -188,7 +188,7 @@ const refreshBranches = async () => {
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
 				<i18n path="settings.versionControl.description">
 					<template #link>
-						<a href="#" target="_blank">
+						<a href="https://docs.n8n.io/environments/version-control/setup/" target="_blank">
 							{{ locale.baseText('settings.versionControl.description.link') }}
 						</a>
 					</template>
