@@ -23,14 +23,15 @@ export class CiscoUmbrellaApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Username',
-			name: 'username',
+			displayName: 'Api Key',
+			name: 'apiKey',
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-unobscured-sensitive-input
 			type: 'string',
 			default: '',
 		},
 		{
-			displayName: 'Password',
-			name: 'password',
+			displayName: 'Secret',
+			name: 'secret',
 			type: 'string',
 			typeOptions: {
 				password: true,
@@ -43,31 +44,36 @@ export class CiscoUmbrellaApi implements ICredentialType {
 	// is empty or is expired
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		// make reques to get session token
-		const url = 'https://api.umbrella.com/auth/v2';
-		const { id } = (await this.helpers.httpRequest({
+		const url = 'https://api.umbrella.com';
+		const { access_token } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${url.endsWith('/') ? url.slice(0, -1) : url}/api/session`,
-			body: {
-				username: credentials.username,
-				password: credentials.password,
+			url: `${
+				url.endsWith('/') ? url.slice(0, -1) : url
+			}/auth/v2/token?grant_type=client_credentials`,
+			auth: {
+				username: credentials.apiKey as string,
+				password: credentials.secret as string,
 			},
-		})) as { id: string };
-		return { sessionToken: id };
+			headers: {
+				'Content-Type': 'x-www-form-urlencoded',
+			},
+		})) as { access_token: string };
+		return { sessionToken: access_token };
 	}
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorizaton: '=Basic {{$credentials.sessionToken}}',
+				Authorization: '=Bearer {{$credentials.sessionToken}}',
 			},
 		},
 	};
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.umbrella.com/deployments/v2',
-			url: '/networks',
+			baseURL: 'https://api.umbrella.com',
+			url: '/users',
 		},
 	};
 }
