@@ -5,7 +5,7 @@ import { existsSync } from 'fs';
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
-import set from 'lodash.set';
+import set from 'lodash/set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import type {
 	ICredentialType,

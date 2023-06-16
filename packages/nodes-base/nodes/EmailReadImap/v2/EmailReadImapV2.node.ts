@@ -20,8 +20,8 @@ import { connect as imapConnect, getParts } from 'imap-simple';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
 
-import isEmpty from 'lodash.isempty';
-import find from 'lodash.find';
+import isEmpty from 'lodash/isEmpty';
+import find from 'lodash/find';
 import type { ICredentialsDataImap } from '../../../credentials/Imap.credentials';
 import { isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 

@@ -42,7 +42,7 @@ import {
 	WorkflowHooks,
 } from 'n8n-workflow';
 
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import type { FindOptionsWhere } from 'typeorm';
 import { LessThanOrEqual, In } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';

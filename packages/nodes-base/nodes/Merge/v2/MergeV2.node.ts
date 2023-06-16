@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 
-import merge from 'lodash.merge';
+import merge from 'lodash/merge';
 
 import type {
 	IExecuteFunctions,
