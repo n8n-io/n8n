@@ -71,14 +71,14 @@ export class ArcSightOAuth2Api implements ICredentialType {
 				password: credentials.password,
 				grant_type: 'password',
 			},
+			auth: {
+				username: credentials.clientId as string,
+				password: credentials.clientSecret as string,
+			},
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
-				Authorization: `Basic ${Buffer.from(
-					`${credentials.clientId}':'${credentials.clientSecret}`,
-				).toString('base64')}`,
 			},
 		});
-		console.log(token);
 		return { sessionToken: token };
 	}
 
@@ -86,14 +86,14 @@ export class ArcSightOAuth2Api implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '= Bearer{{$credentials.sessionToken}}',
+				Authorization: '=Bearer {{$credentials.sessionToken}}',
 			},
 		},
 	};
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://={{$credentials?.url}}',
+			baseURL: '={{$credentials?.url}}',
 			url: '/arcmc/rest-api-docs',
 		},
 	};
