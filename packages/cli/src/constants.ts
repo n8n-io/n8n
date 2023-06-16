@@ -87,3 +87,6 @@ export const enum LICENSE_QUOTAS {
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
+
+export const USER_MANAGEMENT_DOCS_URL =
+	'https://docs.n8n.io/hosting/authentication/user-management-self-hosted';

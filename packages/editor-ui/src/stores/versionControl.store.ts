@@ -1,6 +1,5 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import type { IDataObject } from 'n8n-workflow';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as vcApi from '@/api/versionControl';
@@ -16,7 +15,7 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 	);
 
 	const preferences = reactive<VersionControlPreferences>({
-		currentBranch: '',
+		branchName: '',
 		branches: [],
 		authorName: '',
 		authorEmail: '',
@@ -27,42 +26,38 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		publicKey: '',
 	});
 
-	const state = reactive({
-		branches: [] as string[],
-		currentBranch: '',
-		authorName: '',
-		authorEmail: '',
-		repositoryUrl: '',
-		sshKey: '',
+	const state = reactive<{
+		commitMessage: string;
+	}>({
 		commitMessage: 'commit message',
 	});
 
-	const initSsh = async (data: IDataObject) => {
-		state.sshKey = await vcApi.initSsh(rootStore.getRestApiContext, data);
-	};
-
-	const initRepository = async () => {
-		const { branches, currentBranch } = await vcApi.initRepository(rootStore.getRestApiContext);
-		state.branches = branches;
-		state.currentBranch = currentBranch;
-	};
-
-	const sync = async (data: { commitMessage: string }) => {
+	const pushWorkfolder = async (data: { commitMessage: string; fileNames?: string[] }) => {
 		state.commitMessage = data.commitMessage;
-		return vcApi.sync(rootStore.getRestApiContext, { message: data.commitMessage });
+		await vcApi.pushWorkfolder(rootStore.getRestApiContext, {
+			message: data.commitMessage,
+			...(data.fileNames ? { fileNames: data.fileNames } : {}),
+		});
 	};
-	const getConfig = async () => {
-		const { remoteRepository, name, email, currentBranch } = await vcApi.getConfig(
-			rootStore.getRestApiContext,
-		);
-		state.repositoryUrl = remoteRepository;
-		state.authorName = name;
-		state.authorEmail = email;
-		state.currentBranch = currentBranch;
+
+	const pullWorkfolder = async (force: boolean) => {
+		await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
 	};
 
 	const setPreferences = (data: Partial<VersionControlPreferences>) => {
 		Object.assign(preferences, data);
+	};
+
+	const makePreferencesAction =
+		(action: typeof vcApi.savePreferences | typeof vcApi.updatePreferences) =>
+		async (preferences: Partial<VersionControlPreferences>) => {
+			const data = await action(rootStore.getRestApiContext, preferences);
+			setPreferences(data);
+		};
+
+	const getBranches = async () => {
+		const data = await vcApi.getBranches(rootStore.getRestApiContext);
+		setPreferences(data);
 	};
 
 	const getPreferences = async () => {
@@ -70,21 +65,46 @@ export const useVersionControlStore = defineStore('versionControl', () => {
 		setPreferences(data);
 	};
 
-	const savePreferences = async (preferences: Partial<VersionControlPreferences>) => {
-		const data = await vcApi.setPreferences(rootStore.getRestApiContext, preferences);
-		setPreferences(data);
+	const savePreferences = makePreferencesAction(vcApi.savePreferences);
+
+	const updatePreferences = makePreferencesAction(vcApi.updatePreferences);
+
+	const disconnect = async (keepKeyPair: boolean) => {
+		await vcApi.disconnect(rootStore.getRestApiContext, keepKeyPair);
+		setPreferences({ connected: false, branches: [] });
+	};
+
+	const generateKeyPair = async () => {
+		await vcApi.generateKeyPair(rootStore.getRestApiContext);
+		const data = await vcApi.getPreferences(rootStore.getRestApiContext); // To be removed once the API is updated
+
+		preferences.publicKey = data.publicKey;
+
+		return { publicKey: data.publicKey };
+	};
+
+	const getStatus = async () => {
+		return vcApi.getStatus(rootStore.getRestApiContext);
+	};
+
+	const getAggregatedStatus = async () => {
+		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
 	};
 
 	return {
 		isEnterpriseVersionControlEnabled,
 		state,
 		preferences,
-		initSsh,
-		initRepository,
-		sync,
-		getConfig,
+		pushWorkfolder,
+		pullWorkfolder,
 		getPreferences,
 		setPreferences,
+		generateKeyPair,
+		getBranches,
 		savePreferences,
+		updatePreferences,
+		disconnect,
+		getStatus,
+		getAggregatedStatus,
 	};
 });

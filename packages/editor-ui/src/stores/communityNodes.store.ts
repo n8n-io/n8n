@@ -86,7 +86,8 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 			);
 		},
 		removePackageByName(name: string): void {
-			Vue.delete(this.installedPackages, name);
+			const { [name]: removedPackage, ...remainingPackages } = this.installedPackages;
+			this.installedPackages = remainingPackages;
 		},
 		updatePackageObject(newPackage: PublicInstalledPackage) {
 			this.installedPackages[newPackage.packageName] = newPackage;
