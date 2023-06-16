@@ -31,7 +31,7 @@ export class OktaApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: 'SSW ={{$credentials.accessToken}}',
+				Authorization: '=SSW {{$credentials.accessToken}}',
 			},
 		},
 	};

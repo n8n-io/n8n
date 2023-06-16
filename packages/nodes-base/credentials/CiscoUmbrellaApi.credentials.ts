@@ -59,7 +59,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorizaton: 'Basic ={{$credentials.sessionToken}}',
+				Authorizaton: '=Basic {{$credentials.sessionToken}}',
 			},
 		},
 	};

@@ -86,7 +86,7 @@ export class ArcSightOAuth2Api implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: 'Bearer ={{$credentials.sessionToken}}',
+				Authorization: '= Bearer{{$credentials.sessionToken}}',
 			},
 		},
 	};
