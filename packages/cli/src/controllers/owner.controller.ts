@@ -151,10 +151,19 @@ export class OwnerController {
 
 	@Post('/dismiss-v1')
 	async dismissBanner() {
-		await this.settingsRepository.update(
-			{ key: 'ui.banners.v1.dismissed' },
-			{ value: JSON.stringify(true) },
-		);
+		const key = 'ui.banners.v1.dismissed';
+		const value = JSON.stringify(true);
+
+		const setting = await this.settingsRepository.findOneBy({ key });
+
+		if (setting) {
+			await this.settingsRepository.update({ key }, { value });
+
+			return { success: true };
+		}
+
+		const newSetting = this.settingsRepository.create({ key, value, loadOnStartup: true });
+		await this.settingsRepository.save(newSetting);
 
 		return { success: true };
 	}
