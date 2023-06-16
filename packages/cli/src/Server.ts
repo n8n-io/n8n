@@ -407,7 +407,7 @@ export class Server extends AbstractServer {
 	/**
 	 * Returns the current settings for the frontend
 	 */
-	async getSettingsForFrontend(): Promise<IN8nUISettings> {
+	getSettingsForFrontend(): IN8nUISettings {
 		// refresh user management status
 		Object.assign(this.frontendSettings.userManagement, {
 			authenticationMethod: getCurrentAuthenticationMethod(),
