@@ -2,11 +2,11 @@ import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
-import get from 'lodash.get';
-import omit from 'lodash.omit';
-import set from 'lodash.set';
-import split from 'lodash.split';
-import unset from 'lodash.unset';
+import get from 'lodash/get';
+import omit from 'lodash/omit';
+import set from 'lodash/set';
+import split from 'lodash/split';
+import unset from 'lodash/unset';
 import { Credentials, UserSettings } from 'n8n-core';
 import type {
 	WorkflowExecuteMode,
