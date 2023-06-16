@@ -153,8 +153,11 @@ export class SplitInBatchesV2 implements INodeType {
 		nodeContext.noItemsLeft = nodeContext.items.length === 0;
 
 		if (returnItems.length === 0) {
+			nodeContext.done = true;
 			return [[], nodeContext.processedItems];
 		}
+
+		nodeContext.done = false;
 
 		return [returnItems, []];
 	}
