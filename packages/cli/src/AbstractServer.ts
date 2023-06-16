@@ -7,10 +7,7 @@ import bodyParser from 'body-parser';
 import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
-import type { RedisOptions } from 'ioredis';
-
 import type { WebhookHttpMethod } from 'n8n-workflow';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -27,6 +24,7 @@ import { corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { RedisService } from './services/RedisService';
 
 const emptyBuffer = Buffer.alloc(0);
 
@@ -181,50 +179,9 @@ export abstract class AbstractServer {
 	// IORedis automatically pings redis and tries to reconnect
 	// We will be using a retryStrategy to control how and when to exit.
 	private async setupRedisChecks() {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const { default: Redis } = await import('ioredis');
-
-		let lastTimer = 0;
-		let cumulativeTimeout = 0;
-		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
-		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-
-		const redis = new Redis({
-			host,
-			port,
-			db,
-			username,
-			password,
-			retryStrategy: (): number | null => {
-				const now = Date.now();
-				if (now - lastTimer > 30000) {
-					// Means we had no timeout at all or last timeout was temporary and we recovered
-					lastTimer = now;
-					cumulativeTimeout = 0;
-				} else {
-					cumulativeTimeout += now - lastTimer;
-					lastTimer = now;
-					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-						Logger.error(
-							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-						);
-						process.exit(1);
-					}
-				}
-				return 500;
-			},
-		});
-
-		redis.on('close', () => {
-			Logger.warn('Redis unavailable - trying to reconnect...');
-		});
-
-		redis.on('error', (error) => {
-			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-				Logger.warn('Error with Redis: ', error);
-			}
-		});
+		const redisService = Container.get(RedisService);
+		await redisService.init();
+		await redisService.subscribeToEventLog();
 	}
 
 	// ----------------------------------------

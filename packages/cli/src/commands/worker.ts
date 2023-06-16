@@ -23,11 +23,16 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@/databases/repositories';
+import type Redis from 'ioredis';
+import { RedisService } from '../services/RedisService';
+import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
 
 	static examples = ['$ n8n worker --concurrency=5'];
+
+	static redis: Redis;
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -232,6 +237,17 @@ export class Worker extends BaseCommand {
 		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
+		await this.initRedis();
+	}
+
+	async initRedis() {
+		const redisService = Container.get(RedisService);
+		await redisService.init();
+		await redisService.publishToEventLog(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+			}),
+		);
 	}
 
 	async run() {
