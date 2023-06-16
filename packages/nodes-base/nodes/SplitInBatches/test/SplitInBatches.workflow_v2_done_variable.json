@@ -1,13 +1,13 @@
 {
-	"name": "New Split in Batches - Issue",
+	"name": "My workflow 91",
 	"nodes": [
 		{
 			"parameters": {},
-			"id": "ccadc44b-5813-4e74-8692-a7c4c304824f",
+			"id": "75920640-6f1e-41dc-b8c0-bc2f21c823a5",
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [-320, 620]
+			"position": [740, 1100]
 		},
 		{
 			"parameters": {
@@ -20,57 +20,57 @@
 					]
 				}
 			},
-			"id": "7531de27-3977-4131-a786-07425bae9d5d",
+			"id": "ca59e1fe-83df-4cf8-9cbb-d3ea6a8a7247",
 			"name": "No Items Left",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [1260, 1080]
+			"position": [2320, 1560]
 		},
 		{
 			"parameters": {
 				"batchSize": 1,
 				"options": {}
 			},
-			"id": "ae2830e6-cafb-4e75-919d-e779ec7c8066",
+			"id": "21991c05-c919-405b-a0d7-e1dafa5a5e74",
 			"name": "Split In Batches 1",
 			"type": "n8n-nodes-base.splitInBatches",
-			"typeVersion": 2.1,
-			"position": [160, 440]
+			"typeVersion": 2,
+			"position": [1220, 840]
 		},
 		{
 			"parameters": {
 				"batchSize": 1,
 				"options": {
-					"reset": "={{ $node[\"Split In Batches 1_2\"].context[\"noItemsLeft\"] }}"
+					"reset": "={{ $node[\"Split In Batches 1_2\"].context[\"done\"] }}"
 				}
 			},
-			"id": "94c7054b-678e-4c89-9ead-b9a7b5d94a8a",
+			"id": "3b3ecf28-b865-4995-a34d-587047b9887a",
 			"name": "Split In Batches 1_2",
 			"type": "n8n-nodes-base.splitInBatches",
-			"typeVersion": 2.1,
-			"position": [780, 500]
+			"typeVersion": 2,
+			"position": [1840, 900]
 		},
 		{
 			"parameters": {
-				"content": "# V2.1",
-				"height": 109.07102593010146
+				"content": "# V2 with done branch and \"done\" variable",
+				"height": 221.18781425126934
 			},
-			"id": "4949f05f-b1aa-4c32-b058-9e66fab678e9",
+			"id": "558ca8c2-1d75-44c1-81ee-8614e1bdc36a",
 			"name": "Sticky Note",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [-400, 448.92897406989846]
+			"position": [660, 816.8121857487308]
 		},
 		{
 			"parameters": {
-				"content": "# V2",
+				"content": "# V2 with IF",
 				"height": 113.61217587373169
 			},
-			"id": "e7ead0b9-98ad-4e3f-8e7d-e6f2a1054b34",
+			"id": "08957c26-00d4-459b-9497-7b0636086575",
 			"name": "Sticky Note4",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [-400, 840]
+			"position": [660, 1320]
 		},
 		{
 			"parameters": {
@@ -83,22 +83,22 @@
 					]
 				}
 			},
-			"id": "2b22d18a-1ea9-4da4-8bfe-81cd0dd99ba9",
+			"id": "a38109ba-672e-4bd0-ac66-e243d53d2252",
 			"name": "No Items Left2",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [1260, 840]
+			"position": [2320, 1320]
 		},
 		{
 			"parameters": {
-				"content": "# V1",
+				"content": "# V1 with IF",
 				"height": 113.61217587373169
 			},
-			"id": "2562b44e-c6fd-4fdb-a51f-6f1a767fcccf",
+			"id": "d5f45e34-21f6-4dc0-bf54-2bbbea561aed",
 			"name": "Sticky Note8",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [-400, 1080]
+			"position": [660, 1560]
 		},
 		{
 			"parameters": {
@@ -111,11 +111,11 @@
 					]
 				}
 			},
-			"id": "84b2e9fe-1578-421d-9993-0a700d2ed999",
+			"id": "1787b55b-4e33-4034-8043-33d21e78cd30",
 			"name": "IF",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [1480, 1060]
+			"position": [2540, 1540]
 		},
 		{
 			"parameters": {
@@ -128,145 +128,145 @@
 					]
 				}
 			},
-			"id": "d73d73a8-e01c-42c8-b126-0a61cc1f6efa",
+			"id": "e149b5d7-7a7f-4939-88e4-789e987cf280",
 			"name": "IF1",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [1480, 820]
+			"position": [2540, 1300]
 		},
 		{
 			"parameters": {
 				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
 			},
-			"id": "d8012d72-ee44-4145-b531-1abcf005cf8a",
+			"id": "cf21ca09-ca2e-4334-a6ea-e7453d8598ca",
 			"name": "Mock Data 1",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [-60, 440]
+			"position": [1000, 840]
 		},
 		{
 			"parameters": {
 				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
 			},
-			"id": "8983afa4-3b04-4f75-9800-20ce3f911d14",
+			"id": "2a62fdd8-5e6c-468b-88af-bddd0475ff4a",
 			"name": "Mock Data 1_2",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [520, 420]
+			"position": [1580, 820]
 		},
 		{
 			"parameters": {
 				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
 			},
-			"id": "d574fd58-b998-4a29-804d-4de1e91a64a2",
+			"id": "f4b7b020-7d07-4aff-a99b-f0d6bfe656ff",
 			"name": "Mock Data 2",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [-60, 800]
+			"position": [1000, 1280]
 		},
 		{
 			"parameters": {
 				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
 			},
-			"id": "eaef2f79-6edd-480f-94f8-98aa25e9a800",
+			"id": "9f9e4c1f-5dfc-45f6-ac48-ccd02d42e54c",
 			"name": "Mock Data 2_2",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [520, 780]
+			"position": [1580, 1260]
 		},
 		{
 			"parameters": {
 				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
 			},
-			"id": "2300fc3a-a12c-42ea-8bd8-2e05031b87b7",
+			"id": "d20015b3-6e15-4094-bd18-c62be7fbcf9e",
 			"name": "Mock Data 3",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [-60, 1080]
+			"position": [1000, 1560]
 		},
 		{
 			"parameters": {
 				"jsCode": "return [\n  {\n    key: '10_' + $runIndex\n  },\n  {\n    key: '11_' + $runIndex\n  },\n  {\n    key: '12_' + $runIndex\n  },\n  {\n    key: '13_' + $runIndex\n  },\n  {\n    key: '14_' + $runIndex\n  },\n];"
 			},
-			"id": "deddc7e3-1723-4b20-b5df-ab4883ad08a4",
+			"id": "9b8f1472-3913-44ae-9e8c-e8bf01d5ea3c",
 			"name": "Mock Data 3_2",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 1,
-			"position": [520, 1080]
+			"position": [1580, 1560]
 		},
 		{
 			"parameters": {},
-			"id": "e5ef9a06-9504-4a6b-9391-11b662df9fc7",
+			"id": "11b6d860-ce7b-4e5c-b5eb-5ec4387092c1",
 			"name": "Results 1",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [340, 520]
+			"position": [1400, 920]
 		},
 		{
 			"parameters": {
 				"jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Some Operation 2\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);\n"
 			},
-			"id": "ad9fb558-ec37-4fc6-b593-8bb0605809e3",
+			"id": "84277fcb-2749-49f3-83f3-7132848f3a0b",
 			"name": "Result 2",
 			"type": "n8n-nodes-base.code",
-			"position": [1800, 800],
+			"position": [2860, 1280],
 			"typeVersion": 1
 		},
 		{
 			"parameters": {
 				"jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Some Operation 3\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);\n"
 			},
-			"id": "ecddfb63-8316-4d6d-9ad5-fb44d1f9695e",
+			"id": "fd9de431-a537-44a6-a4e2-68825768bb1d",
 			"name": "Result 3",
 			"type": "n8n-nodes-base.code",
-			"position": [1800, 1040],
+			"position": [2860, 1520],
 			"typeVersion": 1
 		},
 		{
 			"parameters": {},
-			"id": "6de7b063-6995-42f7-927d-f2490db7334f",
+			"id": "9a62eed8-9c40-4763-92e9-9633b77a37cf",
 			"name": "Some Operation 1",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [1040, 480]
+			"position": [2100, 880]
 		},
 		{
 			"parameters": {},
-			"id": "0c56f03d-a8e0-482d-be77-b9ac9a53012e",
+			"id": "cb35f9e6-7379-484b-b770-5eecba535a83",
 			"name": "Some Operation 2",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [1040, 840]
+			"position": [2100, 1320]
 		},
 		{
 			"parameters": {},
-			"id": "49faa06f-1625-4ff1-81a6-06947445f17b",
+			"id": "62a66c9d-2a66-4c77-b4a2-0db89574074d",
 			"name": "Some Operation 3",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [1040, 1080]
+			"position": [2100, 1560]
 		},
 		{
 			"parameters": {
 				"batchSize": 1,
 				"options": {}
 			},
-			"id": "fc6ba4b9-9780-4ae7-8a02-69535fb419ec",
+			"id": "2ac3d20c-8891-4854-bca1-188f0e9542ac",
 			"name": "Split In Batches 3",
 			"type": "n8n-nodes-base.splitInBatches",
 			"typeVersion": 1,
-			"position": [160, 1080]
+			"position": [1220, 1560]
 		},
 		{
 			"parameters": {
 				"batchSize": 1,
 				"options": {}
 			},
-			"id": "4c667500-c653-43e8-a4b7-49758cec20f1",
+			"id": "d37b3b09-1255-486d-99ed-cffcc9f87548",
 			"name": "Split In Batches 2",
 			"type": "n8n-nodes-base.splitInBatches",
 			"typeVersion": 2,
-			"position": [160, 800]
+			"position": [1220, 1280]
 		},
 		{
 			"parameters": {
@@ -275,11 +275,11 @@
 					"reset": "={{ $node[\"Split In Batches 3_2\"].context[\"noItemsLeft\"] }}"
 				}
 			},
-			"id": "f84116dd-e294-4bdf-af87-5fa53708d73f",
+			"id": "89a74a96-e3f7-4306-b68b-fa82254ccca3",
 			"name": "Split In Batches 3_2",
 			"type": "n8n-nodes-base.splitInBatches",
 			"typeVersion": 1,
-			"position": [780, 1080]
+			"position": [1840, 1560]
 		},
 		{
 			"parameters": {
@@ -288,11 +288,11 @@
 					"reset": "={{ $node[\"Split In Batches 2_2\"].context[\"noItemsLeft\"] }}"
 				}
 			},
-			"id": "32e254be-53ba-4ede-9680-2d8f347ff93c",
+			"id": "2cc3f863-e388-494f-ba9d-e18ac28df5ee",
 			"name": "Split In Batches 2_2",
 			"type": "n8n-nodes-base.splitInBatches",
 			"typeVersion": 2,
-			"position": [780, 860]
+			"position": [1840, 1340]
 		}
 	],
 	"pinData": {
@@ -729,8 +729,8 @@
 	},
 	"active": false,
 	"settings": {},
-	"versionId": "c519e655-532d-4d30-9b95-46fb54dd7c2b",
-	"id": "1122",
+	"versionId": "027162aa-0b6a-4cd5-9bf6-345b70c83f2d",
+	"id": "1124",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
 	},
