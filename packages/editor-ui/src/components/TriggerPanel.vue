@@ -94,6 +94,7 @@
 					:class="$style.accordion"
 					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
 					:description="executionsHelp"
+					:eventBus="executionsHelpEventBus"
 					@click="onLinkClick"
 				></n8n-info-accordion>
 			</div>
@@ -118,6 +119,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { N8nInfoAccordion } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 type HelpRef = InstanceType<typeof N8nInfoAccordion>;
 
@@ -128,6 +130,11 @@ export default defineComponent({
 		NodeExecuteButton,
 		CopyInput,
 		NodeIcon,
+	},
+	data: () => {
+		return {
+			executionsHelpEventBus: createEventBus(),
+		};
 	},
 	props: {
 		nodeName: {
@@ -351,7 +358,7 @@ export default defineComponent({
 	methods: {
 		expandExecutionHelp() {
 			if (this.$refs.help) {
-				(this.$refs.help as HelpRef).$emit('expand');
+				this.executionsHelpEventBus.emit('expand');
 			}
 		},
 		onLinkClick(e: MouseEvent) {

@@ -19,8 +19,8 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
-	// N8nInfoAccordion,
-	// N8nInfoTip,
+	N8nInfoAccordion,
+	N8nInfoTip,
 	// N8nInput,
 	// N8nInputLabel,
 	// N8nInputNumber,
@@ -56,7 +56,6 @@ import {
 
 export const N8nPlugin: Plugin<{}> = {
 	install: (app) => {
-		// app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-dropdown', N8nActionDropdown);
 		app.component('n8n-action-toggle', N8nActionToggle);
@@ -75,7 +74,8 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-heading', N8nHeading);
 		app.component('n8n-icon', N8nIcon);
 		app.component('n8n-icon-button', N8nIconButton);
-		// app.component('n8n-info-tip', N8nInfoTip);
+		app.component('n8n-info-accordion', N8nInfoAccordion);
+		app.component('n8n-info-tip', N8nInfoTip);
 		// app.component('n8n-input', N8nInput);
 		// app.component('n8n-input-label', N8nInputLabel);
 		// app.component('n8n-input-number', N8nInputNumber);

@@ -18,6 +18,8 @@ module.exports = {
 		'../src/components/N8nHeading/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nIcon/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nIconButton/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nInfoAccordion/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nInfoTip/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nText/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nPopover/*.stories.@(js|jsx|ts|tsx)',
 		'../src/components/N8nTooltip/*.stories.@(js|jsx|ts|tsx)',
