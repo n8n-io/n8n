@@ -20,7 +20,7 @@ import lt from 'lodash.lt';
 import merge from 'lodash.merge';
 import pick from 'lodash.pick';
 import reduce from 'lodash.reduce';
-import set from 'lodash.set';
+import { set } from 'lodash';
 import unset from 'lodash.unset';
 
 const compareItems = (

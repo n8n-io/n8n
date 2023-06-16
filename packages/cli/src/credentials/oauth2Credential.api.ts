@@ -4,7 +4,7 @@ import Csrf from 'csrf';
 import express from 'express';
 import get from 'lodash.get';
 import omit from 'lodash.omit';
-import set from 'lodash.set';
+import { set } from 'lodash';
 import split from 'lodash.split';
 import unset from 'lodash.unset';
 import { Credentials, UserSettings } from 'n8n-core';

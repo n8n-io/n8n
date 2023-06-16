@@ -13,7 +13,7 @@ import type {
 } from './mongoDb.types';
 
 import get from 'lodash.get';
-import set from 'lodash.set';
+import { set } from 'lodash';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string

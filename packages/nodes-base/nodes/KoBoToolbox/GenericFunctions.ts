@@ -9,7 +9,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import set from 'lodash.set';
+import { set } from 'lodash';
 import concat from 'lodash.concat';
 import split from 'lodash.split';
 import every from 'lodash.every';

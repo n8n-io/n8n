@@ -13,7 +13,7 @@ import { Converter } from 'showdown';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
 import isEmpty from 'lodash.isempty';
-import set from 'lodash.set';
+import { set } from 'lodash';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {

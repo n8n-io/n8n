@@ -7,7 +7,7 @@ import isEmpty from 'lodash.isempty';
 import omit from 'lodash.omit';
 import unset from 'lodash.unset';
 import { cloneDeep } from 'lodash';
-import set from 'lodash.set';
+import { set } from 'lodash';
 import union from 'lodash.union';
 import { fuzzyCompare } from '../../utils/utilities';
 

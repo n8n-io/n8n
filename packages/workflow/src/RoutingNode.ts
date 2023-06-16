@@ -11,7 +11,7 @@
 /* eslint-disable no-restricted-syntax */
 import get from 'lodash.get';
 import merge from 'lodash.merge';
-import set from 'lodash.set';
+import { set } from 'lodash';
 
 import type {
 	ICredentialDataDecryptedObject,
