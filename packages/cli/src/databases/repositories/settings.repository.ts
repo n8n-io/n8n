@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import { DataSource, Repository } from 'typeorm';
 import { Settings } from '../entities/Settings';
+import config from '@/config';
 
 @Service()
 export class SettingsRepository extends Repository<Settings> {
@@ -16,5 +17,7 @@ export class SettingsRepository extends Repository<Settings> {
 		} else {
 			await this.save({ key, value, loadOnStartup });
 		}
+
+		if (loadOnStartup) config.set('ui.banners.v1.dismissed', true);
 	}
 }
