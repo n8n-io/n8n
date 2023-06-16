@@ -36,7 +36,6 @@ import { CreateExecutionMetadataTable1679416281777 } from './1679416281777-Creat
 import { CreateVariables1677501636752 } from './1677501636752-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
-import { AddV1BannerSetting1681134145998 } from './1681134145998-AddV1BannerSetting';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -76,7 +75,6 @@ const sqliteMigrations: Migration[] = [
 	CreateExecutionMetadataTable1679416281777,
 	AddUserActivatedProperty1681134145996,
 	RemoveSkipOwnerSetup1681134145997,
-	AddV1BannerSetting1681134145998,
 ];
 
 export { sqliteMigrations };
