@@ -4,15 +4,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../utils/utilities';
 
-import type { SetField } from './utils';
-import { prepareEntry, prepareItem } from './utils';
-
-import set from 'lodash.set';
-
-type ManualModeOptions = {
-	dotNotation?: boolean;
-	ignoreConversionErrors?: boolean;
-};
+import { prepareEntry, prepareItem } from './helpers/utils';
+import type { SetField, SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -146,38 +139,6 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Include Other Input Fields Too',
-		name: 'includeOtherFields',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to include all input fields along with added or edited fields',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [
-			{
-				displayName: 'Dot Notation',
-				name: 'dotNotation',
-				type: 'boolean',
-				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description:
-					'By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }. If that is not intended this can be deactivated, it will then set { "a.b": value } instead.',
-			},
-			{
-				displayName: 'Ignore Type Conversion Errors',
-				name: 'ignoreConversionErrors',
-				type: 'boolean',
-				default: false,
-				description: "Whether to ignore field type errors. Affected values will be set to 'null'.",
-			},
-		],
-	},
 ];
 
 const displayOptions = {
@@ -192,32 +153,20 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	i: number,
-	includeOtherFields: boolean,
+	options: SetNodeOptions,
 ) {
 	try {
-		const { dotNotation, ignoreConversionErrors } = this.getNodeParameter(
-			'options',
-			i,
-			{},
-		) as ManualModeOptions;
 		const fields = this.getNodeParameter('fields.values', i, []) as SetField[];
 
-		const setData: IDataObject = {};
+		const newData: IDataObject = {};
 		const node = this.getNode();
 
-		if (dotNotation === false) {
-			for (const entry of fields) {
-				const { name, value } = prepareEntry(entry, node, i, ignoreConversionErrors);
-				setData[name] = value;
-			}
-		} else {
-			for (const entry of fields) {
-				const { name, value } = prepareEntry(entry, node, i, ignoreConversionErrors);
-				set(setData, name, value);
-			}
+		for (const entry of fields) {
+			const { name, value } = prepareEntry(entry, node, i, options.ignoreConversionErrors);
+			newData[name] = value;
 		}
 
-		return prepareItem(items[i], setData, includeOtherFields, dotNotation);
+		return prepareItem.call(this, i, items[i], newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: error.message } };

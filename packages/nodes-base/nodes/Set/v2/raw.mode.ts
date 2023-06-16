@@ -1,8 +1,11 @@
 import type { IExecuteFunctions } from 'n8n-core';
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
 import { updateDisplayOptions } from '../../../utils/utilities';
-import { parseJsonParameter, prepareItem } from './utils';
+
+import { parseJsonParameter, prepareItem } from './helpers/utils';
+import type { SetNodeOptions } from './helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -14,13 +17,6 @@ const properties: INodeProperties[] = [
 			rows: 5,
 		},
 		default: '{\n  "key": "value"\n}',
-	},
-	{
-		displayName: 'Include Other Input Fields Too',
-		name: 'includeOtherFields',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to include all input fields along with added or edited fields',
 	},
 ];
 
@@ -36,13 +32,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	i: number,
-	includeOtherFields: boolean,
+	options: SetNodeOptions,
 ) {
 	try {
 		const json = this.getNodeParameter('json', i) as string;
-		const setData = parseJsonParameter(json, this.getNode(), i);
+		const newData = parseJsonParameter(json, this.getNode(), i);
 
-		return prepareItem(items[i], setData, includeOtherFields);
+		return prepareItem.call(this, i, items[i], newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: error.message } };
