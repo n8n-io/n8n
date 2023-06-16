@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-        run: npm install --prefix=.github/scripts --no-package-lock
+      - run: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Check for test files
         run: node .github/actions/check-tests.mjs
