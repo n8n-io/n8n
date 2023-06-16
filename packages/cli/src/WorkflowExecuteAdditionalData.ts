@@ -71,6 +71,9 @@ import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from './databases/repositories';
+import { RedisService } from './services/RedisService';
+import { EventMessageWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
+import { EventMessageNode } from './eventbus/EventMessageClasses/EventMessageNode';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -735,9 +738,65 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	return {
-		nodeExecuteBefore: [],
-		nodeExecuteAfter: [],
-		workflowExecuteBefore: [],
+		nodeExecuteBefore: [
+			async function (nodeName: string): Promise<void> {
+				// const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
+				const redisService = Container.get(RedisService);
+				await redisService.publishToEventLog(
+					new EventMessageNode({
+						eventName: 'n8n.node.started',
+						payload: {
+							executionId: this.executionId,
+							nodeName,
+							workflowId: this.workflowData.id?.toString(),
+							workflowName: this.workflowData.name,
+							// nodeType: nodeInWorkflow?.type,
+						},
+					}),
+				);
+			},
+		],
+		nodeExecuteAfter: [
+			async function (
+				this: WorkflowHooks,
+				nodeName: string,
+				data: ITaskData,
+				executionData: IRunExecutionData,
+			): Promise<void> {
+				const nodeInWorkflow = this.workflowData.nodes.find((node) => node.name === nodeName);
+				const redisService = Container.get(RedisService);
+				await redisService.publishToEventLog(
+					new EventMessageNode({
+						eventName: 'n8n.node.finished',
+						payload: {
+							executionId: this.executionId,
+							nodeName,
+							workflowId: this.workflowData.id?.toString(),
+							workflowName: this.workflowData.name,
+							nodeType: nodeInWorkflow?.type,
+						},
+					}),
+				);
+			},
+		],
+		workflowExecuteBefore: [
+			async function (workflow: Workflow, data: IRunExecutionData): Promise<void> {
+				const redisService = Container.get(RedisService);
+				await redisService.publishToEventLog(
+					new EventMessageWorkflow({
+						eventName: 'n8n.workflow.started',
+						id: workflow.id as string,
+						payload: {
+							executionId: this.executionId,
+							workflowId: workflow.id as string,
+							isManual: false,
+							workflowName: workflow.name,
+							metaData: data.resultData?.metadata,
+						},
+					}),
+				);
+			},
+		],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -763,8 +822,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					const workflowHasCrashed = fullRunData.status === 'crashed';
 					const workflowWasCanceled = fullRunData.status === 'canceled';
+					const workflowHasError = !!fullRunData.data.resultData?.error;
 					const workflowDidSucceed =
-						!fullRunData.data.resultData.error && !workflowHasCrashed && !workflowWasCanceled;
+						!workflowHasError && !workflowHasCrashed && !workflowWasCanceled;
 					let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 					if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 					if (workflowWasCanceled) workflowStatusFinal = 'canceled';
@@ -806,13 +866,64 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					);
 
 					// For reasons(tm) the execution status is not updated correctly in the first update, so has to be written again (tbd)
-
+					// TODO: investigate why this is the case
 					await Container.get(ExecutionRepository).updateExistingExecution(this.executionId, {
 						status: fullExecutionData.status,
 					});
 
+					const redisService = Container.get(RedisService);
+					if (fullExecutionData.status === 'success') {
+						await redisService.publishToEventLog(
+							new EventMessageWorkflow({
+								eventName: 'n8n.workflow.success',
+								id: this.executionId,
+								payload: {
+									executionId: this.executionId,
+									success: true,
+									// userId: this.workflowData.,
+									workflowId: this.workflowData.id as string,
+									isManual: false,
+									workflowName: this.workflowData.name,
+									metaData: fullRunData.data?.resultData?.metadata,
+								},
+							}),
+						);
+					} else {
+						let errorNodeName = 'unknown';
+						let errorNodeId = 'unknown';
+						let errorMessage = 'unknown';
+						let errorNodeType = 'unknown';
+						if (fullRunData?.data?.resultData?.error) {
+							if ('node' in fullRunData?.data?.resultData?.error) {
+								errorNodeName = fullRunData.data.resultData.error.node?.name || 'unknown';
+								errorNodeType = fullRunData.data.resultData.error.node?.type || 'unknown';
+								errorNodeId = fullRunData.data.resultData.error.node?.id || 'unknown';
+							}
+							errorMessage = fullRunData.data.resultData.error.message || 'unknown';
+						}
+						await redisService.publishToEventLog(
+							new EventMessageWorkflow({
+								eventName: 'n8n.workflow.failed',
+								id: this.executionId,
+								payload: {
+									executionId: this.executionId,
+									success: false,
+									// userId: this.workflowData.,
+									workflowId: this.workflowData.id as string,
+									lastNodeExecuted: fullRunData?.data.resultData?.lastNodeExecuted,
+									errorNodeType,
+									errorNodeId,
+									errorMessage,
+									isManual: false,
+									workflowName: this.workflowData.name,
+									metaData: fullRunData.data?.resultData?.metadata,
+								},
+							}),
+						);
+					}
+
 					try {
-						if (fullRunData.data.resultData.metadata) {
+						if (fullRunData.data.resultData?.metadata) {
 							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
 						}
 					} catch (e) {
