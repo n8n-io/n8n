@@ -26,52 +26,15 @@ export class KibanaApi implements ICredentialType {
 			placeholder: '5601',
 		},
 		{
-			displayName: 'Authentication Type',
-			name: 'authenticationType',
-			type: 'options',
-			options: [
-				{
-					name: 'API Token',
-					value: 'apiToken',
-				},
-				{
-					name: 'Basic Auth',
-					value: 'basicAuth',
-				},
-			],
-			default: 'apiToken',
-		},
-		{
-			displayName: 'apiToken',
-			name: 'apiToken',
-			type: 'string',
-			displayOptions: {
-				show: {
-					authenticationType: ['apiToken'],
-				},
-			},
-			default: '',
-		},
-		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
-			displayOptions: {
-				show: {
-					authenticationType: ['basicAuth'],
-				},
-			},
 			default: '',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
-			displayOptions: {
-				show: {
-					authenticationType: ['basicAuth'],
-				},
-			},
 			typeOptions: { password: true },
 			default: '',
 		},
@@ -92,7 +55,7 @@ export class KibanaApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$apiUrl}}:={{$port}}',
+			baseURL: '={{$credentials?.apiUrl}}:{{$credentials.port}}',
 			url: '/api/features',
 		},
 	};
