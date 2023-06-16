@@ -776,9 +776,14 @@ export default defineComponent({
 
 				if (!nodeErrorFound && data.data.resultData.error.stack) {
 					// Display some more information for now in console to make debugging easier
-					// TODO: Improve this in the future by displaying in UI
 					console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
 					console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showError.workflowError'),
+						message: data.data.resultData.error.message,
+						type: 'error',
+						duration: 0,
+					});
 				}
 			}
 			if ((data as IExecutionsSummary).waitTill) {
