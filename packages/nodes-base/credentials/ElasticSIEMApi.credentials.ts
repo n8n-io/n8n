@@ -42,7 +42,11 @@ export class ElasticSIEMApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'kbn-xsrf': '={{$credentials.username}}:={{$credentials.password}}',
+				'kbn-xsrf': 'true',
+			},
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
 			},
 		},
 	};
