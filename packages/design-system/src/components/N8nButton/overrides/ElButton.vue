@@ -1,5 +1,5 @@
 <template>
-	<n8n-button ref="button" v-bind="attrs" v-on="$listeners">
+	<n8n-button ref="button" v-bind="attrs" v-bind="$attrs">
 		<slot />
 	</n8n-button>
 </template>

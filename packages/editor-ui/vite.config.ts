@@ -1,5 +1,5 @@
-import vue from '@vitejs/plugin-vue2';
-import path, { resolve } from 'path';
+import vue from '@vitejs/plugin-vue';
+import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
@@ -63,7 +63,7 @@ const alias = [
 	},
 	{
 		find: /element-ui\/(packages|lib)\/button$/,
-		replacement: path.resolve(
+		replacement: resolve(
 			__dirname,
 			'..',
 			'design-system/src/components/N8nButton/overrides/ElButton.ts',

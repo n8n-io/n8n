@@ -5,7 +5,7 @@
 		:class="['n8n-input', ...classes]"
 		:autoComplete="autocomplete"
 		ref="innerInput"
-		v-on="$listeners"
+		v-bind="$attrs"
 		:name="name"
 	>
 		<template #prepend>

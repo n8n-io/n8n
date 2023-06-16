@@ -14,7 +14,7 @@
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-bind="$attrs">
 					<n8n-menu-item
 						v-for="item in upperMenuItems"
 						:key="item.id"
@@ -29,7 +29,7 @@
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
 				<slot name="beforeLowerMenu"></slot>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-bind="$attrs">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
 						:key="item.id"

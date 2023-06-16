@@ -1,5 +1,5 @@
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nColorPicker from './ColorPicker.vue';
 
 export default {
@@ -44,7 +44,7 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 		color: null,
 	}),
 	template:
-		'<n8n-color-picker v-model="color" v-bind="$props" @input="onInput" @change="onChange" @active-change="onActiveChange" />',
+		'<n8n-color-picker v-model="color" v-bind="args" @input="onInput" @change="onChange" @active-change="onActiveChange" />',
 	methods,
 });
 

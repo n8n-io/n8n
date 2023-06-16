@@ -1,5 +1,5 @@
 import N8nNodeCreatorNode from './NodeCreatorNode.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Modules/Node Creator Node',
@@ -12,7 +12,7 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nNodeCreatorNode,
 	},
 	template: `
-		<n8n-node-creator-node v-bind="$props">
+		<n8n-node-creator-node v-bind="args">
 			<template v-slot:icon>
 				<img src="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/cartman.svg" />
 			</template>
@@ -39,7 +39,7 @@ const PanelTemplate: StoryFn = (args, { argTypes }) => ({
 		};
 	},
 	template: `
-		<n8n-node-creator-node v-bind="$props" :isPanelActive="isPanelActive" @click.capture="isPanelActive = true">
+		<n8n-node-creator-node v-bind="args" :isPanelActive="isPanelActive" @click.capture="isPanelActive = true">
 			<template v-slot:icon>
 				<img src="https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/cartman.svg" />
 			</template>

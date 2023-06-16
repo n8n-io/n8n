@@ -5,7 +5,7 @@
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
 		aria-live="polite"
-		v-on="$listeners"
+		v-bind="$attrs"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
 			<n8n-spinner v-if="loading" :size="size" />

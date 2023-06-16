@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container" v-on="$listeners">
+	<div :class="$style.container" v-bind="$attrs">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"

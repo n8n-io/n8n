@@ -1,4 +1,4 @@
-import vue from '@vitejs/plugin-vue2';
+import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
@@ -11,7 +11,6 @@ export default mergeConfig(
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
-				'vue2-boring-avatars': require.resolve('vue2-boring-avatars'),
 			},
 		},
 		build: {

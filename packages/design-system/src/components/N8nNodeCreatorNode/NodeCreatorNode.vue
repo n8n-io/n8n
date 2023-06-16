@@ -4,7 +4,7 @@
 			[$style.creatorNode]: true,
 			[$style.hasAction]: !showActionArrow,
 		}"
-		v-on="$listeners"
+		v-bind="$attrs"
 		v-bind="$attrs"
 	>
 		<div :class="$style.nodeIcon">

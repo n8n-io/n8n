@@ -1,5 +1,5 @@
 import N8nNotice from './Notice.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Notice',
@@ -18,7 +18,7 @@ const SlotTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nNotice,
 	},
 	template:
-		'<n8n-notice v-bind="$props">This is a notice! Thread carefully from this point forward.</n8n-notice>',
+		'<n8n-notice v-bind="args">This is a notice! Thread carefully from this point forward.</n8n-notice>',
 });
 
 const PropTemplate: StoryFn = (args, { argTypes }) => ({
@@ -26,7 +26,7 @@ const PropTemplate: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nNotice,
 	},
-	template: '<n8n-notice v-bind="$props"/>',
+	template: '<n8n-notice v-bind="args"/>',
 });
 
 export const Warning = SlotTemplate.bind({});

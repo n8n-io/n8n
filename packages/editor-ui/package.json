@@ -40,7 +40,7 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
     "@fortawesome/free-regular-svg-icons": "^6.1.1",
     "@fortawesome/free-solid-svg-icons": "^5.15.3",
-    "@fortawesome/vue-fontawesome": "^2.0.10",
+    "@fortawesome/vue-fontawesome": "^3.0.3",
     "@jsplumb/browser-ui": "^5.13.2",
     "@jsplumb/common": "^5.13.2",
     "@jsplumb/connector-bezier": "^5.13.2",
@@ -68,12 +68,12 @@
     "timeago.js": "^4.0.2",
     "uuid": "^8.3.2",
     "v-click-outside": "^3.1.2",
-    "vue": "^2.7.14",
+    "vue": "^3.3.4",
     "vue-agile": "^2.0.0",
-    "vue-i18n": "^8.26.7",
+    "vue-i18n": "^9.2.2",
     "vue-infinite-loading": "^2.4.5",
     "vue-json-pretty": "1.9.3",
-    "vue-router": "^3.6.5",
+    "vue-router": "^4.2.2",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
     "xss": "^1.0.14"
@@ -84,7 +84,7 @@
     "@sentry/vite-plugin": "^0.4.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/user-event": "^14.4.3",
-    "@testing-library/vue": "^5.8.3",
+    "@testing-library/vue": "^6.6.1",
     "@types/canvas-confetti": "^1.6.0",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
@@ -93,6 +93,7 @@
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "^8.3.2",
+    "@vitejs/plugin-vue": "^4.2.3",
     "miragejs": "^0.1.47"
   }
 }

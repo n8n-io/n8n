@@ -1,59 +1,58 @@
-const path = require('path');
+const { mergeConfig } = require('vite');
+const { resolve } = require('path');
 
-/**
- * @type {import('@storybook/types').StorybookConfig}
- */
 module.exports = {
-	framework: {
-		name: '@storybook/vue-webpack5',
-		options: {},
-	},
-	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.{ts,js}'],
+	stories: [
+		'../src/styleguide/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nActionBox/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nActionDropdown/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nActionToggle/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nAlert/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nAvatar/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nBadge/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nBlockUi/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nButton/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nCallout/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nCard/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nDatatable/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nHeading/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nIcon/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nIconButton/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nText/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nPopover/*.stories.@(js|jsx|ts|tsx)',
+		'../src/components/N8nTooltip/*.stories.@(js|jsx|ts|tsx)',
+	],
 	addons: [
+		'@storybook/addon-styling',
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',
-		{
-			name: '@storybook/addon-postcss',
-			options: {
-				postcssLoaderOptions: {
-					implementation: require('postcss'),
-				},
-			},
-		},
-		'storybook-addon-themes',
+		// Disabled until this is actually used rather otherwise its a blank tab
+		// '@storybook/addon-interactions',
+		'@storybook/addon-a11y',
+		'storybook-dark-mode',
 	],
-	webpackFinal: async (config) => {
-		config.module.rules.push({
-			test: /\.scss$/,
-			oneOf: [
-				{
-					resourceQuery: /module/,
-					use: [
-						'vue-style-loader',
-						{
-							loader: 'css-loader',
-							options: {
-								modules: {
-									localIdentName: '[path][name]__[local]--[hash:base64:5]',
-								},
-							},
-						},
-						'sass-loader',
-					],
-					include: path.resolve(__dirname, '../'),
-				},
-				{
-					use: ['vue-style-loader', 'css-loader', 'sass-loader'],
-					include: path.resolve(__dirname, '../'),
-				},
-			],
+	staticDirs: ['../public'],
+	framework: {
+		name: '@storybook/vue3-vite',
+		options: {},
+	},
+	disableTelemetry: true,
+	async viteFinal(config, { configType }) {
+		// return the customized config
+		return mergeConfig(config, {
+			// customize the Vite config here
+			resolve: {
+				alias: [
+					{
+						find: /^@n8n-design-system\//,
+						replacement: `${resolve(__dirname, '..')}/src/`,
+					},
+				],
+			},
+			define: { 'process.env': {} },
 		});
-
-		config.resolve.alias = {
-			...config.resolve.alias,
-			'@/': path.resolve(__dirname, '../src/'),
-		};
-
-		return config;
+	},
+	docs: {
+		autodocs: true,
 	},
 };

@@ -1,5 +1,5 @@
 import N8nTree from './Tree.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Tree',
@@ -11,7 +11,7 @@ export const Default: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nTree,
 	},
-	template: `<n8n-tree v-bind="$props">
+	template: `<n8n-tree v-bind="args">
 		<template v-slot:label="{ label }">
 			<span>{{ label }}</span>
 		</template>

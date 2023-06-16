@@ -1,5 +1,5 @@
 import N8nCard from './Card.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nButton from '../N8nButton/Button.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nText from '../N8nText/Text.vue';
@@ -14,7 +14,7 @@ export const Default: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nCard,
 	},
-	template: '<n8n-card v-bind="$props">This is a card.</n8n-card>',
+	template: '<n8n-card v-bind="args">This is a card.</n8n-card>',
 });
 
 export const Hoverable: StoryFn = (args, { argTypes }) => ({
@@ -25,7 +25,7 @@ export const Hoverable: StoryFn = (args, { argTypes }) => ({
 		N8nText,
 	},
 	template: `<div style="width: 140px; text-align: center;">
-		<n8n-card v-bind="$props">
+		<n8n-card v-bind="args">
 			<n8n-icon icon="plus" size="xlarge" />
 			<n8n-text size="large" class="mt-2xs">Add</n8n-text>
 		</n8n-card>
@@ -44,7 +44,7 @@ export const WithSlots: StoryFn = (args, { argTypes }) => ({
 		N8nIcon,
 		N8nText,
 	},
-	template: `<n8n-card v-bind="$props">
+	template: `<n8n-card v-bind="args">
 		<template slot="prepend">
 			<n8n-icon icon="check" size="large" />
 		</template>

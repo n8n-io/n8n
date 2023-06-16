@@ -10,12 +10,11 @@
 			<slot name="prepend" />
 		</div>
 		<el-select
-			v-bind="$props"
-			:value="value"
+			v-bind="{ ...$props, ...$attrs }"
+			:modelValue="modelValue"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			v-on="$listeners"
 			ref="innerSelect"
 		>
 			<template #prefix>
@@ -32,7 +31,7 @@
 </template>
 
 <script lang="ts">
-import { Select as ElSelect } from 'element-ui';
+import { ElSelect } from 'element-plus';
 import { defineComponent } from 'vue';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
@@ -49,7 +48,8 @@ export default defineComponent({
 		ElSelect,
 	},
 	props: {
-		value: {},
+		...ElSelect.props,
+		modelValue: {},
 		size: {
 			type: String,
 			default: 'large',

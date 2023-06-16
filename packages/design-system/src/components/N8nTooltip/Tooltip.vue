@@ -1,5 +1,5 @@
 <template>
-	<el-tooltip v-bind="$attrs">
+	<el-tooltip v-bind="{ ...$props, ...$attrs }">
 		<template v-for="(_, slotName) in $slots" #[slotName]>
 			<slot :name="slotName" />
 			<div
@@ -22,7 +22,7 @@
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import { Tooltip as ElTooltip } from 'element-ui';
+import { ElTooltip } from 'element-plus';
 import type { IN8nButton } from '@/types';
 import N8nButton from '../N8nButton';
 
@@ -34,6 +34,7 @@ export default defineComponent({
 		N8nButton,
 	},
 	props: {
+		...ElTooltip.props,
 		justifyButtons: {
 			type: String,
 			default: 'flex-end',

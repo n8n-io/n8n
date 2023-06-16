@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import type { PluginObject } from 'vue';
+import type { Plugin } from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
 import type { INodeTranslationHeaders } from '@/Interface';
@@ -500,13 +500,13 @@ export class I18nClass {
 
 const loadedLanguages = ['en'];
 
-function setLanguage(language: string) {
+async function setLanguage(language: string) {
 	i18nInstance.locale = language;
 	axios.defaults.headers.common['Accept-Language'] = language;
 	document!.querySelector('html')!.setAttribute('lang', language);
 
 	// update n8n design system and element ui
-	locale.use(language);
+	await locale.use(language);
 
 	return language;
 }
@@ -599,9 +599,9 @@ export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 
 export const i18n: I18nClass = new I18nClass();
 
-export const I18nPlugin: PluginObject<{}> = {
-	install(app): void {
-		locale.use('en');
+export const I18nPlugin: Plugin<{}> = {
+	async install(app) {
+		await locale.use('en');
 		locale.i18n((key: string, options?: { interpolate: object }) =>
 			i18nInstance.t(key, options && options.interpolate),
 		);

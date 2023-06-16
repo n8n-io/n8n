@@ -1,7 +1,7 @@
 import N8nInput from './Input.vue';
 import N8nIcon from '../N8nIcon';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Input',
@@ -36,12 +36,13 @@ const methods = {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nInput,
 	},
 	template:
-		'<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />',
+		'<n8n-input v-bind="args" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />',
 	data() {
 		return {
 			val: '',
@@ -61,7 +62,7 @@ const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nInput,
 	},
 	template:
-		'<div class="multi-container"> <n8n-input size="xlarge" v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" size="medium" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" size="small" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="$props" v-model="val" size="mini" @input="onInput" @change="onChange" @focus="onFocus" /> </div> ',
+		'<div class="multi-container"> <n8n-input size="xlarge" v-bind="args" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" size="medium" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" size="small" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" /> <n8n-input v-bind="args" v-model="val" size="mini" @input="onInput" @change="onChange" @focus="onFocus" /> </div> ',
 	methods,
 	data() {
 		return {
@@ -89,7 +90,7 @@ const WithPrefix: StoryFn = (args, { argTypes }) => ({
 		N8nInput,
 	},
 	template:
-		'<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="prefix" /></n8n-input>',
+		'<n8n-input v-bind="args" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="prefix" /></n8n-input>',
 	data() {
 		return {
 			val: '',
@@ -110,7 +111,7 @@ const WithSuffix: StoryFn = (args, { argTypes }) => ({
 		N8nInput,
 	},
 	template:
-		'<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="suffix" /></n8n-input>',
+		'<n8n-input v-bind="args" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="suffix" /></n8n-input>',
 	data() {
 		return {
 			val: '',
