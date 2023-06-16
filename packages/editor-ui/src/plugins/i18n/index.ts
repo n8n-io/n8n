@@ -1,4 +1,5 @@
 import Vue from 'vue';
+import type { PluginObject } from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
 import type { INodeTranslationHeaders } from '@/Interface';
@@ -16,25 +17,13 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 Vue.use(VueI18n);
-locale.use('en');
 
-export let i18n: I18nClass;
-
-export function I18nPlugin(vue: typeof Vue): void {
-	i18n = new I18nClass();
-
-	Object.defineProperty(vue, '$locale', {
-		get() {
-			return i18n;
-		},
-	});
-
-	Object.defineProperty(vue.prototype, '$locale', {
-		get() {
-			return i18n;
-		},
-	});
-}
+export const i18nInstance = new VueI18n({
+	locale: 'en',
+	fallbackLocale: 'en',
+	messages: { en: englishBaseText },
+	silentTranslationWarn: true,
+});
 
 export class I18nClass {
 	private get i18n(): VueI18n {
@@ -509,17 +498,6 @@ export class I18nClass {
 	};
 }
 
-export const i18nInstance = new VueI18n({
-	locale: 'en',
-	fallbackLocale: 'en',
-	messages: { en: englishBaseText },
-	silentTranslationWarn: true,
-});
-
-locale.i18n((key: string, options?: { interpolate: object }) =>
-	i18nInstance.t(key, options && options.interpolate),
-);
-
 const loadedLanguages = ['en'];
 
 function setLanguage(language: string) {
@@ -618,6 +596,29 @@ export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 		Object.assign(i18nInstance.messages[language], { headers }),
 	);
 }
+
+export const i18n: I18nClass = new I18nClass();
+
+export const I18nPlugin: PluginObject<{}> = {
+	install(app): void {
+		locale.use('en');
+		locale.i18n((key: string, options?: { interpolate: object }) =>
+			i18nInstance.t(key, options && options.interpolate),
+		);
+
+		Object.defineProperty(app, '$locale', {
+			get() {
+				return i18n;
+			},
+		});
+
+		Object.defineProperty(app.prototype, '$locale', {
+			get() {
+				return i18n;
+			},
+		});
+	},
+};
 
 // ----------------------------------
 //             typings
