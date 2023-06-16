@@ -1,5 +1,4 @@
 import type { PluginObject } from 'vue';
-import Fragment from 'vue-fragment';
 import VueAgile from 'vue-agile';
 
 import 'regenerator-runtime/runtime';
@@ -16,7 +15,6 @@ export const GlobalComponentsPlugin: PluginObject<{}> = {
 
 		app.component('enterprise-edition', EnterpriseEdition);
 
-		app.use(Fragment.Plugin);
 		app.use(VueAgile);
 		app.use(ElementUI);
 		app.use(N8nPlugin);
