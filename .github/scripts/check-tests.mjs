@@ -48,7 +48,7 @@ const program = async () => {
 	const changedFiles = await execAsync(changedFilesCommand).then(({stdout}) => stdout.toString().trim().split('\n'));
 
   // Get all .spec.ts and .test.ts files from the packages
-	const specAndTestTsFiles = await glob('../../packages/*/**/__test__/*.{spec,test}.ts');
+	const specAndTestTsFiles = await glob('../../packages/*/**/{test,__tests__}/*.{spec,test}.ts');
 	const specAndTestTsFilesNames = specAndTestTsFiles.map(file => path.parse(file).name.replace(/\.(test|spec)/, ''));
 
   // Filter out the .ts and .vue files from the changed files, .ts files with any kind of function declaration or class
