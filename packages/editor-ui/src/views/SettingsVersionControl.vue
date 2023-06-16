@@ -13,8 +13,9 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
-const versionControlDocsUrl = ref('https://docs.n8n.io/environments/version-control/');
-const versionControlDocsSetupUrl = computed(() => versionControlDocsUrl.value + 'setup/');
+const versionControlDocsSetupUrl = computed(() =>
+	locale.baseText('settings.versionControl.docs.setup.url'),
+);
 const isConnected = ref(false);
 
 const onConnect = async () => {
