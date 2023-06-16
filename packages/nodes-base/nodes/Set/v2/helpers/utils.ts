@@ -105,16 +105,16 @@ export const prepareEntry = (
 	const entryValue = entry[entry.type];
 	const name = entry.name;
 
-	if (ignoreErrors) {
-		return { name, value: entryValue === undefined ? null : entryValue };
-	}
-
 	const validationResult = validateFieldType(name, entryValue, entry.type);
 
 	if (!validationResult.valid) {
-		throw new NodeOperationError(node, validationResult.errorMessage as string, {
-			itemIndex,
-		});
+		if (ignoreErrors) {
+			validationResult.newValue = entryValue;
+		} else {
+			throw new NodeOperationError(node, validationResult.errorMessage as string, {
+				itemIndex,
+			});
+		}
 	}
 
 	const value = validationResult.newValue === undefined ? null : validationResult.newValue;
