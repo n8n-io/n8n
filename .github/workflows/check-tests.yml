@@ -1,0 +1,23 @@
+name: Check Test Files
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Use Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+      - run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Check for test files
+        run: node .github/actions/check-tests.mjs

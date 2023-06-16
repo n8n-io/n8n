@@ -1,6 +1,9 @@
 {
   "dependencies": {
-    "semver": "^7.3.8",
-    "conventional-changelog-cli": "^2.2.2"
+    "@babel/parser": "^7.22.5",
+    "@babel/traverse": "^7.22.5",
+    "conventional-changelog-cli": "^2.2.2",
+    "glob": "^10.2.7",
+    "semver": "^7.3.8"
   }
 }
