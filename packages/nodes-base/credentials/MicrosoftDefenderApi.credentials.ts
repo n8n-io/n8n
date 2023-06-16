@@ -1,9 +1,9 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftDefenderApi implements ICredentialType {
-	name = 'microsofDefenderApi';
+	name = 'microsoftDefenderApi';
 
-	displayName = 'Microsof Defender API';
+	displayName = 'Microsoft Defender API';
 
 	extends = ['microsoftOAuth2Api'];
 
