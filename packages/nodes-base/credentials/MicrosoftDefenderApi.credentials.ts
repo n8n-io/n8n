@@ -9,6 +9,8 @@ export class MicrosoftDefenderApi implements ICredentialType {
 
 	documentationUrl = 'microsoft';
 
+	icon = 'file:Microsoft.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
