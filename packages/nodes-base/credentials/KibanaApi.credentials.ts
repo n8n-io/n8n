@@ -10,6 +10,8 @@ export class KibanaApi implements ICredentialType {
 
 	displayName = 'Kibana API';
 
+	icon = 'file:Kibana.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API URL',

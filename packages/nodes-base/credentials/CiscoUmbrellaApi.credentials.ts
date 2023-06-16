@@ -12,6 +12,8 @@ export class CiscoUmbrellaApi implements ICredentialType {
 
 	displayName = 'Cisco Umbrella API';
 
+	icon = 'file:Cisco.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
@@ -43,7 +45,6 @@ export class CiscoUmbrellaApi implements ICredentialType {
 	// method will only be called if "sessionToken" (the expirable property)
 	// is empty or is expired
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		// make reques to get session token
 		const url = 'https://api.umbrella.com';
 		const { access_token } = (await this.helpers.httpRequest({
 			method: 'POST',

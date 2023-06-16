@@ -12,6 +12,8 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 
 	displayName = 'CrowdStrike OAuth2 API';
 
+	icon = 'file:CrowdStrike.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',

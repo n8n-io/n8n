@@ -10,6 +10,8 @@ export class OktaApi implements ICredentialType {
 
 	displayName = 'Okta API';
 
+	icon = 'file:Okta.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Okta Domain',

@@ -10,6 +10,8 @@ export class AlienVaultApi implements ICredentialType {
 
 	displayName = 'AlienVault API';
 
+	icon = 'file:AlienVault.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'OTX Key',
