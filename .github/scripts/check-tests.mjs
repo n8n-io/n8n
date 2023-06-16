@@ -53,7 +53,13 @@ const program = async () => {
 
   // Filter out the .ts and .vue files from the changed files, .ts files with any kind of function declaration or class
 	const changedVueFiles = changedFiles.filter(file => file.endsWith('.vue'));
-	const changedTsFilesWithFunction = await filterAsync(async file => file.endsWith('.ts') && await hasFunctionOrClass(file), changedFiles);
+	const changedTsFilesWithFunction = await filterAsync(
+		async filePath =>
+			filePath.endsWith('.ts') &&
+			!(await glob('../../packages/*/**/{test,__tests__}/*.ts')).includes(filePath) &&
+			await hasFunctionOrClass(filePath),
+		changedFiles
+	);
 
 
   // For each .ts or .vue file, check if there's a corresponding .test.ts or .spec.ts file in the repository
