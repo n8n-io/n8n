@@ -975,7 +975,9 @@ export default defineComponent({
 
 <style lang="scss">
 .node-settings {
-	overflow: clip;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 	background-color: var(--color-background-xlight);
 	height: 100%;
 	width: 100%;
@@ -1007,7 +1009,6 @@ export default defineComponent({
 	}
 
 	.node-parameters-wrapper {
-		height: 91%;
 		overflow-y: auto;
 		padding: 0 20px 200px 20px;
 	}
