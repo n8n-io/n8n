@@ -51,20 +51,26 @@ async function pullWorkfolder() {
 	try {
 		await versionControlStore.pullWorkfolder(false);
 	} catch (error) {
-		const confirm = await message.confirm(
-			i18n.baseText('settings.versionControl.modals.pull.description'),
-			i18n.baseText('settings.versionControl.modals.pull.title'),
-			{
-				confirmButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.save'),
-				cancelButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.cancel'),
-			},
-		);
+		const errorResponse = error.response;
 
-		try {
-			if (confirm === 'confirm') {
-				await versionControlStore.pullWorkfolder(true);
+		if (errorResponse?.status === 409) {
+			const confirm = await message.confirm(
+				i18n.baseText('settings.versionControl.modals.pull.description'),
+				i18n.baseText('settings.versionControl.modals.pull.title'),
+				{
+					confirmButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.save'),
+					cancelButtonText: i18n.baseText('settings.versionControl.modals.pull.buttons.cancel'),
+				},
+			);
+
+			try {
+				if (confirm === 'confirm') {
+					await versionControlStore.pullWorkfolder(true);
+				}
+			} catch (error) {
+				toast.showError(error, 'Error');
 			}
-		} catch (error) {
+		} else {
 			toast.showError(error, 'Error');
 		}
 	} finally {
