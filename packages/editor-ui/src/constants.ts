@@ -379,6 +379,7 @@ export const enum VIEWS {
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	VERSION_CONTROL = 'VersionControl',
+	AUDIT_LOGS = 'AuditLogs',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -447,6 +448,7 @@ export const enum EnterpriseEditionFeature {
 	Saml = 'saml',
 	VersionControl = 'versionControl',
 	ExternalSecrets = 'externalSecrets',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

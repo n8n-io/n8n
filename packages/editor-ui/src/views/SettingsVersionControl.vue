@@ -13,6 +13,9 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
+const versionControlDocsSetupUrl = computed(() =>
+	locale.baseText('settings.versionControl.docs.setup.url'),
+);
 const isConnected = ref(false);
 
 const onConnect = async () => {
@@ -188,7 +191,7 @@ const refreshBranches = async () => {
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
 				<i18n path="settings.versionControl.description">
 					<template #link>
-						<a href="#" target="_blank">
+						<a :href="versionControlDocsSetupUrl" target="_blank">
 							{{ locale.baseText('settings.versionControl.description.link') }}
 						</a>
 					</template>
@@ -219,6 +222,7 @@ const refreshBranches = async () => {
 						@click="onDisconnect"
 						size="large"
 						icon="trash"
+						data-test-id="version-control-disconnect-button"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
 				</div>
@@ -278,7 +282,7 @@ const refreshBranches = async () => {
 				<n8n-notice type="info" class="mt-s">
 					<i18n path="settings.versionControl.sshKeyDescription">
 						<template #link>
-							<a href="#" target="_blank">{{
+							<a :href="versionControlDocsSetupUrl" target="_blank">{{
 								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
 							}}</a>
 						</template>
@@ -291,9 +295,10 @@ const refreshBranches = async () => {
 				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
+				data-test-id="version-control-connect-button"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
-			<div v-if="isConnected">
+			<div v-if="isConnected" data-test-id="version-control-connected-content">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
@@ -307,6 +312,7 @@ const refreshBranches = async () => {
 							size="medium"
 							filterable
 							@input="onSelect"
+							data-test-id="version-control-branch-select"
 						>
 							<n8n-option
 								v-for="b in versionControlStore.preferences.branches"
@@ -328,6 +334,7 @@ const refreshBranches = async () => {
 								square
 								:class="$style.refreshBranches"
 								@click="refreshBranches"
+								data-test-id="version-control-refresh-branches-button"
 							/>
 						</n8n-tooltip>
 					</div>
@@ -340,7 +347,7 @@ const refreshBranches = async () => {
 								<strong>{{ locale.baseText('settings.versionControl.readonly.bold') }}</strong>
 							</template>
 							<template #link>
-								<a href="#" target="_blank">
+								<a :href="versionControlDocsSetupUrl" target="_blank">
 									{{ locale.baseText('settings.versionControl.readonly.link') }}
 								</a>
 							</template>
@@ -358,6 +365,7 @@ const refreshBranches = async () => {
 						@click="onSave"
 						size="large"
 						:disabled="!versionControlStore.preferences.branchName"
+						data-test-id="version-control-save-settings-button"
 						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
 					>
 				</div>

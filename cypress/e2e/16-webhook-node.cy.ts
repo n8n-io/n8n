@@ -1,6 +1,7 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { cowBase64 } from '../support/binaryTestFiles';
+import { BACKEND_BASE_URL } from '../constants';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -83,7 +84,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
-		cy.request(method, '/webhook-test/' + webhookPath).then((response) => {
+		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			ndv.getters.outputPanel().contains('headers');
 		});
@@ -98,12 +99,10 @@ describe('Webhook Trigger node', async () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
 
-		cy.window().then(
-			(win) => {
-				// @ts-ignore
-				win.preventNodeViewBeforeUnload = true;
-			},
-		);
+		cy.window().then((win) => {
+			// @ts-ignore
+			win.preventNodeViewBeforeUnload = true;
+		});
 	});
 
 	it('should listen for a GET request', () => {
@@ -154,7 +153,7 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.eq(1234);
 		});
@@ -172,7 +171,7 @@ describe('Webhook Trigger node', async () => {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(201);
 		});
 	});
@@ -201,7 +200,7 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.eq(1234);
 		});
@@ -246,7 +245,7 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(Object.keys(response.body).includes('data')).to.be.true;
 		});
@@ -263,7 +262,7 @@ describe('Webhook Trigger node', async () => {
 		});
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.be.undefined;
 		});
@@ -287,7 +286,7 @@ describe('Webhook Trigger node', async () => {
 		cy.wait(waitForWebhook);
 		cy.request({
 			method: 'GET',
-			url: '/webhook-test/' + webhookPath,
+			url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 			auth: {
 				user: 'username',
 				pass: 'password',
@@ -300,7 +299,7 @@ describe('Webhook Trigger node', async () => {
 			.then(() => {
 				cy.request({
 					method: 'GET',
-					url: '/webhook-test/' + webhookPath,
+					url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 					auth: {
 						user: 'test',
 						pass: 'test',
@@ -330,7 +329,7 @@ describe('Webhook Trigger node', async () => {
 		cy.wait(waitForWebhook);
 		cy.request({
 			method: 'GET',
-			url: '/webhook-test/' + webhookPath,
+			url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 			headers: {
 				test: 'wrong',
 			},
@@ -342,7 +341,7 @@ describe('Webhook Trigger node', async () => {
 			.then(() => {
 				cy.request({
 					method: 'GET',
-					url: '/webhook-test/' + webhookPath,
+					url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 					headers: {
 						test: 'test',
 					},

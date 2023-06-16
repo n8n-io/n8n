@@ -43,6 +43,7 @@ import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsVersionControl from './views/SettingsVersionControl.vue';
 import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
+import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
 import { usePostHog } from './stores/posthog.store';
 
 Vue.use(Router);
@@ -736,6 +737,31 @@ export const routes = [
 						},
 						deny: {
 							role: [ROLE.Member],
+						},
+					},
+				},
+			},
+			{
+				path: 'audit-logs',
+				name: VIEWS.AUDIT_LOGS,
+				components: {
+					settingsView: SettingsAuditLogs,
+				},
+				meta: {
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties(route: Route) {
+							return {
+								feature: 'audit-logs',
+							};
+						},
+					},
+					permissions: {
+						allow: {
+							role: [ROLE.Owner],
+						},
+						deny: {
+							shouldDeny: () => !window.localStorage.getItem('audit-logs'),
 						},
 					},
 				},
