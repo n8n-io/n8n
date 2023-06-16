@@ -37,7 +37,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {

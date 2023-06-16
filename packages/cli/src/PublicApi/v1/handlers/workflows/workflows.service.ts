@@ -1,6 +1,6 @@
 import type { FindManyOptions, UpdateResult } from 'typeorm';
 import { In } from 'typeorm';
-import intersection from 'lodash.intersection';
+import intersection from 'lodash/intersection';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 

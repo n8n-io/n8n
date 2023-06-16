@@ -17,7 +17,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { DateTime } from 'luxon';
 
-import isEmpty from 'lodash.isempty';
+import isEmpty from 'lodash/isEmpty';
 
 export interface IEmail {
 	from?: string;

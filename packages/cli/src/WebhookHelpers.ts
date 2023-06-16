@@ -14,7 +14,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
 import type express from 'express';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import stream from 'stream';
 import { promisify } from 'util';
 
