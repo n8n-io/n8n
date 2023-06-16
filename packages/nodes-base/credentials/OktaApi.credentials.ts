@@ -19,7 +19,7 @@ export class OktaApi implements ICredentialType {
 			placeholder: 'https://dev-123456.okta.com',
 		},
 		{
-			displayName: 'SSW Access Token',
+			displayName: 'SSWS Access Token',
 			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
@@ -31,15 +31,15 @@ export class OktaApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=SSW {{$credentials.accessToken}}',
+				Authorization: '=SSWS {{$credentials.accessToken}}',
 			},
 		},
 	};
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'oktaDomain',
-			url: '/governance/api/v1/campaigns',
+			baseURL: '={{$credentials.oktaDomain}}',
+			url: '/api/v1/api-tokens',
 		},
 	};
 }
