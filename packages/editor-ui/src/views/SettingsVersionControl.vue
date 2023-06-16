@@ -2,8 +2,7 @@
 import { computed, reactive, onBeforeMount, ref } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
 import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
-import { useVersionControlStore } from '@/stores/versionControl.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore, useVersionControlStore } from '@/stores';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
 
@@ -14,6 +13,9 @@ const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
+const versionControlDocsSetupUrl = computed(() =>
+	locale.baseText('settings.versionControl.docs.setup.url'),
+);
 const isConnected = ref(false);
 
 const onConnect = async () => {
@@ -67,10 +69,11 @@ const onDisconnect = async () => {
 const onSave = async () => {
 	loadingService.startLoading();
 	try {
-		await Promise.all([
-			versionControlStore.setBranch(versionControlStore.preferences.branchName),
-			versionControlStore.setBranchReadonly(versionControlStore.preferences.branchReadOnly),
-		]);
+		await versionControlStore.updatePreferences({
+			branchName: versionControlStore.preferences.branchName,
+			branchReadOnly: versionControlStore.preferences.branchReadOnly,
+			branchColor: versionControlStore.preferences.branchColor,
+		});
 		toast.showMessage({
 			title: locale.baseText('settings.versionControl.saved.title'),
 			type: 'success',
@@ -92,7 +95,7 @@ const goToUpgrade = () => {
 	uiStore.goToUpgrade('version-control', 'upgrade-version-control');
 };
 
-onBeforeMount(async () => {
+onBeforeMount(() => {
 	if (versionControlStore.preferences.connected) {
 		isConnected.value = true;
 		void versionControlStore.getBranches();
@@ -162,6 +165,18 @@ async function refreshSshKey() {
 		toast.showError(error, locale.baseText('settings.versionControl.refreshSshKey.error.title'));
 	}
 }
+
+const refreshBranches = async () => {
+	try {
+		await versionControlStore.getBranches();
+		toast.showMessage({
+			title: locale.baseText('settings.versionControl.refreshBranches.success'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, locale.baseText('settings.versionControl.refreshBranches.error'));
+	}
+};
 </script>
 
 <template>
@@ -176,7 +191,7 @@ async function refreshSshKey() {
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
 				<i18n path="settings.versionControl.description">
 					<template #link>
-						<a href="#" target="_blank">
+						<a :href="versionControlDocsSetupUrl" target="_blank">
 							{{ locale.baseText('settings.versionControl.description.link') }}
 						</a>
 					</template>
@@ -207,6 +222,7 @@ async function refreshSshKey() {
 						@click="onDisconnect"
 						size="large"
 						icon="trash"
+						data-test-id="version-control-disconnect-button"
 						>{{ locale.baseText('settings.versionControl.button.disconnect') }}</n8n-button
 					>
 				</div>
@@ -266,7 +282,7 @@ async function refreshSshKey() {
 				<n8n-notice type="info" class="mt-s">
 					<i18n path="settings.versionControl.sshKeyDescription">
 						<template #link>
-							<a href="#" target="_blank">{{
+							<a :href="versionControlDocsSetupUrl" target="_blank">{{
 								locale.baseText('settings.versionControl.sshKeyDescriptionLink')
 							}}</a>
 						</template>
@@ -279,29 +295,49 @@ async function refreshSshKey() {
 				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
+				data-test-id="version-control-connect-button"
 				>{{ locale.baseText('settings.versionControl.button.connect') }}</n8n-button
 			>
-			<div v-if="isConnected">
+			<div v-if="isConnected" data-test-id="version-control-connected-content">
 				<div :class="$style.group">
 					<hr />
 					<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 						locale.baseText('settings.versionControl.instanceSettings')
 					}}</n8n-heading>
 					<label>{{ locale.baseText('settings.versionControl.branches') }}</label>
-					<n8n-select
-						:value="versionControlStore.preferences.branchName"
-						class="mb-s"
-						size="medium"
-						filterable
-						@input="onSelect"
-					>
-						<n8n-option
-							v-for="b in versionControlStore.preferences.branches"
-							:key="b"
-							:value="b"
-							:label="b"
-						/>
-					</n8n-select>
+					<div :class="$style.branchSelection">
+						<n8n-select
+							:value="versionControlStore.preferences.branchName"
+							class="mb-s"
+							size="medium"
+							filterable
+							@input="onSelect"
+							data-test-id="version-control-branch-select"
+						>
+							<n8n-option
+								v-for="b in versionControlStore.preferences.branches"
+								:key="b"
+								:value="b"
+								:label="b"
+							/>
+						</n8n-select>
+						<n8n-tooltip placement="top">
+							<template #content>
+								<span>
+									{{ locale.baseText('settings.versionControl.refreshBranches.tooltip') }}
+								</span>
+							</template>
+							<n8n-button
+								size="small"
+								type="tertiary"
+								icon="sync"
+								square
+								:class="$style.refreshBranches"
+								@click="refreshBranches"
+								data-test-id="version-control-refresh-branches-button"
+							/>
+						</n8n-tooltip>
+					</div>
 					<n8n-checkbox
 						v-model="versionControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
@@ -311,24 +347,25 @@ async function refreshSshKey() {
 								<strong>{{ locale.baseText('settings.versionControl.readonly.bold') }}</strong>
 							</template>
 							<template #link>
-								<a href="#" target="_blank">
+								<a :href="versionControlDocsSetupUrl" target="_blank">
 									{{ locale.baseText('settings.versionControl.readonly.link') }}
 								</a>
 							</template>
 						</i18n>
 					</n8n-checkbox>
 				</div>
-				<!-- <div :class="$style.group">
+				<div :class="$style.group">
 					<label>{{ locale.baseText('settings.versionControl.color') }}</label>
 					<div>
 						<n8n-color-picker size="small" v-model="versionControlStore.preferences.branchColor" />
 					</div>
-				</div> -->
+				</div>
 				<div :class="[$style.group, 'pt-s']">
 					<n8n-button
 						@click="onSave"
 						size="large"
 						:disabled="!versionControlStore.preferences.branchName"
+						data-test-id="version-control-save-settings-button"
 						>{{ locale.baseText('settings.versionControl.button.save') }}</n8n-button
 					>
 				</div>
@@ -354,6 +391,11 @@ async function refreshSshKey() {
 	padding: 0 0 var(--spacing-s);
 	width: 100%;
 	display: block;
+
+	hr {
+		margin: 0 0 var(--spacing-xl);
+		border: 1px solid var(--color-foreground-light);
+	}
 
 	label {
 		display: inline-block;
@@ -414,8 +456,13 @@ async function refreshSshKey() {
 	}
 }
 
-hr {
-	margin: 0 0 var(--spacing-xl);
-	border: 1px solid var(--color-foreground-light);
+.branchSelection {
+	display: flex;
+
+	button.refreshBranches {
+		height: 36px;
+		width: 36px;
+		margin-left: var(--spacing-xs);
+	}
 }
 </style>

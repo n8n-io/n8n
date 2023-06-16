@@ -87,7 +87,7 @@
 				<code-node-editor
 					v-if="editorType === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:value="node.parameters.jsCode"
+					:value="value"
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
@@ -97,7 +97,7 @@
 
 				<html-editor
 					v-else-if="editorType === 'htmlEditor'"
-					:html="node.parameters.html"
+					:html="value"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
 					:disableExpressionColoring="!isHtmlNode(node)"
@@ -107,7 +107,7 @@
 
 				<sql-editor
 					v-else-if="editorType === 'sqlEditor'"
-					:query="node.parameters.query"
+					:query="value"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChangedDebounced"
@@ -513,10 +513,10 @@ export default defineComponent({
 		};
 	},
 	watch: {
-		dependentParametersValues() {
+		async dependentParametersValues() {
 			// Reload the remote parameters whenever a parameter
 			// on which the current field depends on changes
-			void this.loadRemoteParameterOptions();
+			await this.loadRemoteParameterOptions();
 		},
 		value() {
 			if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
