@@ -79,7 +79,7 @@ import {
 	validateFieldType,
 } from 'n8n-workflow';
 
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { Agent } from 'https';
 import { IncomingMessage } from 'http';
 import { stringify } from 'qs';
@@ -92,7 +92,7 @@ import type {
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import crypto, { createHmac } from 'crypto';
-import get from 'lodash.get';
+import get from 'lodash/get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
