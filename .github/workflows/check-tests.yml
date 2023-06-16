@@ -24,4 +24,4 @@ jobs:
       - run: npm install --prefix=.github/scripts --no-package-lock
 
       - name: Check for test files
-        run: node .github/actions/check-tests.mjs
+        run: node .github/scripts/check-tests.mjs
