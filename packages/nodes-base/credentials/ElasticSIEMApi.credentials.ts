@@ -53,7 +53,7 @@ export class ElasticSIEMApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.apiUrl}}:={{$credentials.port}}',
+			baseURL: '={{$credentials.apiUrl}}:{{$credentials.port}}',
 			url: 'api/detection_engine/tags',
 		},
 	};
