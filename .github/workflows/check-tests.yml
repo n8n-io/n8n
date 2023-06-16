@@ -3,6 +3,10 @@ name: Check Test Files
 on:
   pull_request:
     branches:
+      - '**'
+      - '!release/*'
+  pull_request_target:
+    branches:
       - master
 
 jobs:
