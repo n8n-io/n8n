@@ -36,6 +36,8 @@ import {
 
 import set from 'lodash.set';
 
+type BodyWithQuery = { query: [IDataObject] };
+
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive',
@@ -571,12 +573,10 @@ export class TheHive implements INodeType {
 								],
 							};
 
-							//@ts-ignore
-							prepareSortQuery(options.sort, body);
+							prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'alerts';
@@ -972,12 +972,10 @@ export class TheHive implements INodeType {
 								],
 							};
 
-							//@ts-ignore
-							prepareSortQuery(options.sort, body);
+							prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'observables';
@@ -1070,12 +1068,10 @@ export class TheHive implements INodeType {
 								],
 							};
 
-							//@ts-ignore
-							prepareSortQuery(options.sort, body);
+							prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'observables';
@@ -1344,12 +1340,10 @@ export class TheHive implements INodeType {
 								],
 							};
 
-							//@ts-ignore
-							prepareSortQuery(options.sort, body);
+							prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'cases';
@@ -1569,12 +1563,10 @@ export class TheHive implements INodeType {
 								],
 							};
 
-							//@ts-ignore
-							prepareSortQuery(options.sort, body);
+							prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'case-tasks';
@@ -1651,12 +1643,10 @@ export class TheHive implements INodeType {
 								],
 							};
 
-							//@ts-ignore
-							prepareSortQuery(options.sort, body);
+							prepareSortQuery(options.sort as string, body as BodyWithQuery);
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'tasks';
@@ -1865,8 +1855,7 @@ export class TheHive implements INodeType {
 							};
 
 							if (limit !== undefined) {
-								//@ts-ignore
-								prepareRangeQuery(`0-${limit}`, body);
+								prepareRangeQuery(`0-${limit}`, body as BodyWithQuery);
 							}
 
 							qs.name = 'case-task-logs';
