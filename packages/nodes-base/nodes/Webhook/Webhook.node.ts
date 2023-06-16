@@ -1,43 +1,26 @@
+/* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import type {
 	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
-	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, Node, NodeOperationError } from 'n8n-workflow';
 
 import fs from 'fs';
 import stream from 'stream';
 import { promisify } from 'util';
 import basicAuth from 'basic-auth';
-import type { Response } from 'express';
 import formidable from 'formidable';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
+import { WebhookAuthorizationError } from './error';
 
 const pipeline = promisify(stream.pipeline);
 
-function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
-	if (message === undefined) {
-		message = 'Authorization problem!';
-		if (responseCode === 401) {
-			message = 'Authorization is required!';
-		} else if (responseCode === 403) {
-			message = 'Authorization data is wrong!';
-		}
-	}
-
-	resp.writeHead(responseCode, { 'WWW-Authenticate': `Basic realm="${realm}"` });
-	resp.end(message);
-	return {
-		noWebhookResponse: true,
-	};
-}
-
-export class Webhook implements INodeType {
+export class Webhook extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
 		icon: 'file:webhook.svg',
@@ -419,187 +402,199 @@ export class Webhook implements INodeType {
 		],
 	};
 
-	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const authentication = this.getNodeParameter('authentication') as string;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-		const req = this.getRequestObject();
-		const resp = this.getResponseObject();
-		const headers = this.getHeaderData();
-		const realm = 'Webhook';
+	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const options = context.getNodeParameter('options', {}) as {
+			binaryData: boolean;
+			ignoreBots: boolean;
+			rawBody: Buffer;
+			responseData?: string;
+		};
+		const req = context.getRequestObject();
+		const resp = context.getResponseObject();
 
-		const ignoreBots = options.ignoreBots as boolean;
-		if (ignoreBots && isbot((headers as IDataObject)['user-agent'] as string)) {
-			return authorizationError(resp, realm, 403);
+		try {
+			if (options.ignoreBots && isbot(req.headers['user-agent']))
+				throw new WebhookAuthorizationError(403);
+			await this.validateAuth(context);
+		} catch (error) {
+			if (error instanceof WebhookAuthorizationError) {
+				resp.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+				resp.end(error.message);
+				return { noWebhookResponse: true };
+			}
+			throw error;
 		}
 
-		if (authentication === 'basicAuth') {
-			// Basic authorization is needed to call webhook
-			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
-			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			} catch (error) {
-				// Do nothing
-			}
-
-			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
-				// Data is not defined on node so can not authenticate
-				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
-			}
-
-			const basicAuthData = basicAuth(req);
-
-			if (basicAuthData === undefined) {
-				// Authorization data is missing
-				return authorizationError(resp, realm, 401);
-			}
-
-			if (
-				basicAuthData.name !== httpBasicAuth.user ||
-				basicAuthData.pass !== httpBasicAuth.password
-			) {
-				// Provided authentication data is wrong
-				return authorizationError(resp, realm, 403);
-			}
-		} else if (authentication === 'headerAuth') {
-			// Special header with value is needed to call webhook
-			let httpHeaderAuth: ICredentialDataDecryptedObject | undefined;
-			try {
-				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			} catch (error) {
-				// Do nothing
-			}
-
-			if (httpHeaderAuth === undefined || !httpHeaderAuth.name || !httpHeaderAuth.value) {
-				// Data is not defined on node so can not authenticate
-				return authorizationError(resp, realm, 500, 'No authentication data defined on node!');
-			}
-			const headerName = (httpHeaderAuth.name as string).toLowerCase();
-			const headerValue = httpHeaderAuth.value as string;
-
-			if (
-				!headers.hasOwnProperty(headerName) ||
-				(headers as IDataObject)[headerName] !== headerValue
-			) {
-				// Provided authentication data is wrong
-				return authorizationError(resp, realm, 403);
-			}
-		}
-
-		const mimeType = headers['content-type'] ?? 'application/json';
+		const mimeType = req.headers['content-type'] ?? 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			const form = new formidable.IncomingForm({ multiples: true });
-
-			return new Promise((resolve, _reject) => {
-				form.parse(req, async (err, data, files) => {
-					const returnItem: INodeExecutionData = {
-						binary: {},
-						json: {
-							headers,
-							params: this.getParamsData(),
-							query: this.getQueryData(),
-							body: data,
-						},
-					};
-
-					let count = 0;
-					for (const xfile of Object.keys(files)) {
-						const processFiles: formidable.File[] = [];
-						let multiFile = false;
-						if (Array.isArray(files[xfile])) {
-							processFiles.push(...(files[xfile] as formidable.File[]));
-							multiFile = true;
-						} else {
-							processFiles.push(files[xfile] as formidable.File);
-						}
-
-						let fileCount = 0;
-						for (const file of processFiles) {
-							let binaryPropertyName = xfile;
-							if (binaryPropertyName.endsWith('[]')) {
-								binaryPropertyName = binaryPropertyName.slice(0, -2);
-							}
-							if (multiFile) {
-								binaryPropertyName += fileCount++;
-							}
-							if (options.binaryPropertyName) {
-								binaryPropertyName = `${options.binaryPropertyName}${count}`;
-							}
-
-							const fileJson = file.toJSON();
-							returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
-								file.path,
-								fileJson.name || fileJson.filename,
-								fileJson.type as string,
-							);
-
-							count += 1;
-						}
-					}
-					resolve({
-						workflowData: [[returnItem]],
-					});
-				});
-			});
+			return this.handleFormData(context);
 		}
 
-		if (options.binaryData === true) {
-			const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
-
-			try {
-				await pipeline(req, fs.createWriteStream(binaryFile.path));
-
-				const returnItem: INodeExecutionData = {
-					binary: {},
-					json: {
-						headers,
-						params: this.getParamsData(),
-						query: this.getQueryData(),
-						body: this.getBodyData(),
-					},
-				};
-
-				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
-				returnItem.binary![binaryPropertyName] = await this.nodeHelpers.copyBinaryFile(
-					binaryFile.path,
-					mimeType,
-				);
-
-				return {
-					workflowData: [[returnItem]],
-				};
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error as Error);
-			} finally {
-				await binaryFile.cleanup();
-			}
+		if (options.binaryData) {
+			return this.handleBinaryData(context);
 		}
 
 		const response: INodeExecutionData = {
 			json: {
-				headers,
-				params: this.getParamsData(),
-				query: this.getQueryData(),
-				body: this.getBodyData(),
+				headers: req.headers,
+				params: req.params,
+				query: req.query,
+				body: req.body,
 			},
+			binary: options.rawBody
+				? {
+						data: {
+							data: req.rawBody.toString(BINARY_ENCODING),
+							mimeType,
+						},
+				  }
+				: undefined,
 		};
-
-		if (options.rawBody) {
-			response.binary = {
-				data: {
-					data: req.rawBody.toString(BINARY_ENCODING),
-					mimeType,
-				},
-			};
-		}
-
-		let webhookResponse: string | undefined;
-		if (options.responseData) {
-			webhookResponse = options.responseData as string;
-		}
 
 		return {
-			webhookResponse,
+			webhookResponse: options.responseData,
 			workflowData: [[response]],
 		};
+	}
+
+	private async validateAuth(context: IWebhookFunctions) {
+		const authentication = context.getNodeParameter('authentication') as string;
+		if (authentication === 'none') return;
+
+		const req = context.getRequestObject();
+		const headers = context.getHeaderData();
+
+		if (authentication === 'basicAuth') {
+			// Basic authorization is needed to call webhook
+			let expectedAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				expectedAuth = await context.getCredentials('httpBasicAuth');
+			} catch {}
+
+			if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {
+				// Data is not defined on node so can not authenticate
+				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+			}
+
+			const providedAuth = basicAuth(req);
+			// Authorization data is missing
+			if (!providedAuth) throw new WebhookAuthorizationError(401);
+
+			if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
+				// Provided authentication data is wrong
+				throw new WebhookAuthorizationError(403);
+			}
+		} else if (authentication === 'headerAuth') {
+			// Special header with value is needed to call webhook
+			let expectedAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				expectedAuth = await context.getCredentials('httpHeaderAuth');
+			} catch {}
+
+			if (expectedAuth === undefined || !expectedAuth.name || !expectedAuth.value) {
+				// Data is not defined on node so can not authenticate
+				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+			}
+			const headerName = (expectedAuth.name as string).toLowerCase();
+			const expectedValue = expectedAuth.value as string;
+
+			if (
+				!headers.hasOwnProperty(headerName) ||
+				(headers as IDataObject)[headerName] !== expectedValue
+			) {
+				// Provided authentication data is wrong
+				throw new WebhookAuthorizationError(403);
+			}
+		}
+	}
+
+	private async handleFormData(context: IWebhookFunctions) {
+		const req = context.getRequestObject();
+		const options = context.getNodeParameter('options', {}) as IDataObject;
+
+		const form = new formidable.IncomingForm({ multiples: true });
+
+		return new Promise<IWebhookResponseData>((resolve, _reject) => {
+			form.parse(req, async (err, data, files) => {
+				const returnItem: INodeExecutionData = {
+					binary: {},
+					json: {
+						headers: req.headers,
+						params: req.params,
+						query: req.query,
+						body: data,
+					},
+				};
+
+				let count = 0;
+				for (const xfile of Object.keys(files)) {
+					const processFiles: formidable.File[] = [];
+					let multiFile = false;
+					if (Array.isArray(files[xfile])) {
+						processFiles.push(...(files[xfile] as formidable.File[]));
+						multiFile = true;
+					} else {
+						processFiles.push(files[xfile] as formidable.File);
+					}
+
+					let fileCount = 0;
+					for (const file of processFiles) {
+						let binaryPropertyName = xfile;
+						if (binaryPropertyName.endsWith('[]')) {
+							binaryPropertyName = binaryPropertyName.slice(0, -2);
+						}
+						if (multiFile) {
+							binaryPropertyName += fileCount++;
+						}
+						if (options.binaryPropertyName) {
+							binaryPropertyName = `${options.binaryPropertyName}${count}`;
+						}
+
+						const fileJson = file.toJSON();
+						returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+							file.path,
+							fileJson.name || fileJson.filename,
+							fileJson.type as string,
+						);
+
+						count += 1;
+					}
+				}
+				resolve({ workflowData: [[returnItem]] });
+			});
+		});
+	}
+
+	private async handleBinaryData(context: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const req = context.getRequestObject();
+		const options = context.getNodeParameter('options', {}) as IDataObject;
+
+		const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
+
+		try {
+			await pipeline(req, fs.createWriteStream(binaryFile.path));
+
+			const returnItem: INodeExecutionData = {
+				binary: {},
+				json: {
+					headers: req.headers,
+					params: req.params,
+					query: req.query,
+					body: req.body,
+				},
+			};
+
+			const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
+			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+				binaryFile.path,
+				req.headers['content-type'] ?? 'application/octet-stream',
+			);
+
+			return { workflowData: [[returnItem]] };
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), error as Error);
+		} finally {
+			await binaryFile.cleanup();
+		}
 	}
 }
