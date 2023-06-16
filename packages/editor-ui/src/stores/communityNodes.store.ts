@@ -8,7 +8,6 @@ import { getAvailableCommunityPackageCount } from '@/api/settings';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import Vue from 'vue';
 import type { CommunityNodesState, CommunityPackageMap } from '@/Interface';
 import { STORES } from '@/constants';
 
