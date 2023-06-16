@@ -1,15 +1,15 @@
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 
@@ -23,7 +23,6 @@ export async function awsApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -42,7 +41,7 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(
@@ -55,7 +54,6 @@ export async function awsApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -69,7 +67,7 @@ export async function awsApiRequestREST(
 		region,
 	);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (error) {
 		return response;
 	}
@@ -85,7 +83,6 @@ export async function awsApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -100,7 +97,7 @@ export async function awsApiRequestSOAP(
 	);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseString(response as string, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
@@ -123,7 +120,6 @@ export async function awsApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -151,12 +147,13 @@ export async function awsApiRequestSOAPAllItems(
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName));
+				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 			} else {
-				returnData.push(get(responseData, propertyName));
+				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (
@@ -170,7 +167,7 @@ export async function awsApiRequestSOAPAllItems(
 export function keysTPascalCase(object: IDataObject) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(object)) {
-		data[pascalCase(key as string)] = object[key];
+		data[pascalCase(key)] = object[key];
 	}
 	return data;
 }

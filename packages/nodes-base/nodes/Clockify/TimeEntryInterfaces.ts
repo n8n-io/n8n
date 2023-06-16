@@ -1,4 +1,4 @@
-import { ITimeIntervalDto } from './CommonDtos';
+import type { ITimeIntervalDto } from './CommonDtos';
 
 interface ITimeEntriesDurationRequest {
 	start: string;

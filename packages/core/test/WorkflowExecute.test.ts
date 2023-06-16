@@ -1,17 +1,15 @@
-import {
-	createDeferredPromise,
-	IConnections,
-	ILogger,
-	INode,
-	IRun,
-	LoggerProxy,
-	Workflow,
-} from 'n8n-workflow';
+import type { IConnections, INode, IRun } from 'n8n-workflow';
+import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './Helpers';
+import { initLogger } from './utils';
 
 describe('WorkflowExecute', () => {
+	beforeAll(() => {
+		initLogger();
+	});
+
 	describe('run', () => {
 		const tests: Array<{
 			description: string;
@@ -1352,18 +1350,8 @@ describe('WorkflowExecute', () => {
 			},
 		];
 
-		const fakeLogger = {
-			log: () => {},
-			debug: () => {},
-			verbose: () => {},
-			info: () => {},
-			warn: () => {},
-			error: () => {},
-		} as ILogger;
-
 		const executionMode = 'manual';
 		const nodeTypes = Helpers.NodeTypes();
-		LoggerProxy.init(fakeLogger);
 
 		for (const testData of tests) {
 			test(testData.description, async () => {

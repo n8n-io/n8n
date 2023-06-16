@@ -1,24 +1,37 @@
 const { compilerOptions } = require('./tsconfig.json');
 
+const tsJestOptions = {
+	isolatedModules: true,
+	tsconfig: {
+		...compilerOptions,
+		declaration: false,
+		sourceMap: true,
+		skipLibCheck: true,
+	},
+};
+
 /** @type {import('jest').Config} */
-module.exports = {
+const config = {
 	verbose: true,
-	preset: 'ts-jest',
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
-	globals: {
-		'ts-jest': {
-			isolatedModules: true,
-			tsconfig: {
-				...compilerOptions,
-				declaration: false,
-				sourceMap: false,
-				skipLibCheck: true,
-			},
-		},
+	transform: {
+		'^.+\\.ts$': ['ts-jest', tsJestOptions],
 	},
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
+	setupFilesAfterEnv: ['jest-expect-message'],
+	collectCoverage: true,
+	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
+	collectCoverageFrom: ['src/**/*.ts'],
+	testTimeout: 10_000,
 };
+
+if (process.env.CI === 'true') {
+	config.workerIdleMemoryLimit = 1024;
+	config.coverageReporters = ['cobertura'];
+}
+
+module.exports = config;

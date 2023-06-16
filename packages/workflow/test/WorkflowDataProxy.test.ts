@@ -1,4 +1,4 @@
-import { IConnections, IExecuteData, INode, IRunExecutionData } from '@/Interfaces';
+import type { IConnections, IExecuteData, INode, IRunExecutionData } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import * as Helpers from './Helpers';
@@ -234,7 +234,7 @@ describe('WorkflowDataProxy', () => {
 			data: runExecutionData.resultData.runData[nameLastNode][0].data!,
 			node: nodes.find((node) => node.name === nameLastNode) as INode,
 			source: {
-				main: runExecutionData.resultData.runData[nameLastNode][0].source!,
+				main: runExecutionData.resultData.runData[nameLastNode][0].source,
 			},
 		};
 

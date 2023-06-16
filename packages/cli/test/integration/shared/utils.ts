@@ -1,47 +1,34 @@
+import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
-import { set } from 'lodash';
+import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-import {
+import type {
 	ICredentialType,
-	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodeTypeData,
-	INodeTypes,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy,
-	NodeHelpers,
-	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '@/UserManagement/Interfaces';
-import superagent from 'superagent';
+import { deepCopy } from 'n8n-workflow';
+import { LoggerProxy, NodeHelpers, toCronExpression } from 'n8n-workflow';
+import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import { v4 as uuid } from 'uuid';
-
+import { mock } from 'jest-mock-extended';
+import type { DeepPartial } from 'ts-essentials';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { NodeTypes } from '@/NodeTypes';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
-import { meNamespace as meEndpoints } from '@/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '@/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '@/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '@/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '@/UserManagement/routes/passwordReset';
-import { nodesController } from '@/api/nodes.api';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
@@ -49,8 +36,8 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
-import { issueJWT } from '@/UserManagement/auth/jwt';
-import { addRoutes as authMiddleware } from '@/UserManagement/routes';
+import { issueJWT } from '@/auth/jwt';
+import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -64,28 +51,73 @@ import type {
 	EndpointGroup,
 	InstalledNodePayload,
 	InstalledPackagePayload,
-	PostgresSchemaSection,
 } from './types';
+import { licenseController } from '@/license/license.controller';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	LdapController,
+	MeController,
+	NodesController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
+import { setupAuthMiddlewares } from '@/middlewares';
+import * as testDb from '../shared/testDb';
+
+import { v4 as uuid } from 'uuid';
+import { InternalHooks } from '@/InternalHooks';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { PostHogClient } from '@/posthog';
+import { variablesController } from '@/environments/variables/variables.controller';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
+import { handleLdapInit } from '@/Ldap/helpers';
+import { Push } from '@/push';
+import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
+import { SamlService } from '@/sso/saml/saml.service.ee';
+import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
+import { EventBusController } from '@/eventbus/eventBus.controller';
+import { License } from '@/License';
+import { VersionControlService } from '@/environments/versionControl/versionControl.service.ee';
+import { VersionControlController } from '@/environments/versionControl/versionControl.controller.ee';
+import { VersionControlPreferencesService } from '@/environments/versionControl/versionControlPreferences.service.ee';
+
+export const mockInstance = <T>(
+	ctor: new (...args: any[]) => T,
+	data: DeepPartial<T> | undefined = undefined,
+) => {
+	const instance = mock<T>(data);
+	Container.set(ctor, instance);
+	return instance;
+};
 
 /**
  * Initialize a test server.
- *
- * @param applyAuth Whether to apply auth middleware to test server.
- * @param endpointGroups Groups of endpoints to apply to test server.
  */
 export async function initTestServer({
-	applyAuth,
+	applyAuth = true,
 	endpointGroups,
+	enablePublicAPI = false,
 }: {
-	applyAuth: boolean;
+	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
+	enablePublicAPI?: boolean;
 }) {
+	await testDb.init();
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,
 		publicApiEndpoint: PUBLIC_API_REST_PATH_SEGMENT,
 		externalHooks: {},
 	};
+
+	const logger = getLogger();
+	LoggerProxy.init(logger);
+
+	// Mock all telemetry.
+	mockInstance(InternalHooks);
+	mockInstance(PostHogClient);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -94,7 +126,12 @@ export async function initTestServer({
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	if (applyAuth) {
-		authMiddleware.apply(testServer, [AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT]);
+		setupAuthMiddlewares(
+			testServer.app,
+			AUTHLESS_ENDPOINTS,
+			REST_PATH_SEGMENT,
+			Db.collections.User,
+		);
 	}
 
 	if (!endpointGroups) return testServer.app;
@@ -105,19 +142,23 @@ export async function initTestServer({
 		endpointGroups.includes('users') ||
 		endpointGroups.includes('passwordReset')
 	) {
-		testServer.externalHooks = ExternalHooks();
+		testServer.externalHooks = Container.get(ExternalHooks);
 	}
 
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
-		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
 		const map: Record<string, express.Router | express.Router[] | any> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
-			nodes: { controller: nodesController, path: 'nodes' },
-			publicApi: apiRouters,
+			license: { controller: licenseController, path: 'license' },
+			variables: { controller: variablesController, path: 'variables' },
 		};
+
+		if (enablePublicAPI) {
+			const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
+			map.publicApi = apiRouters;
+		}
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {
@@ -129,16 +170,101 @@ export async function initTestServer({
 	}
 
 	if (functionEndpoints.length) {
-		const map: Record<string, (this: N8nApp) => void> = {
-			me: meEndpoints,
-			users: usersEndpoints,
-			auth: authEndpoints,
-			owner: ownerEndpoints,
-			passwordReset: passwordResetEndpoints,
-		};
+		const externalHooks = Container.get(ExternalHooks);
+		const internalHooks = Container.get(InternalHooks);
+		const mailer = Container.get(UserManagementMailer);
+		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
-			map[group].apply(testServer);
+			switch (group) {
+				case 'eventBus':
+					registerController(testServer.app, config, new EventBusController());
+					break;
+				case 'auth':
+					registerController(
+						testServer.app,
+						config,
+						new AuthController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'ldap':
+					Container.get(License).isLdapEnabled = () => true;
+					await handleLdapInit();
+					const { service, sync } = LdapManager.getInstance();
+					registerController(
+						testServer.app,
+						config,
+						new LdapController(service, sync, internalHooks),
+					);
+					break;
+				case 'saml':
+					await setSamlLoginEnabled(true);
+					const samlService = Container.get(SamlService);
+					registerController(testServer.app, config, new SamlController(samlService));
+					break;
+				case 'versionControl':
+					const versionControlService = Container.get(VersionControlService);
+					const versionControlPreferencesService = Container.get(VersionControlPreferencesService);
+					registerController(
+						testServer.app,
+						config,
+						new VersionControlController(versionControlService, versionControlPreferencesService),
+					);
+					break;
+				case 'nodes':
+					registerController(
+						testServer.app,
+						config,
+						new NodesController(
+							config,
+							Container.get(LoadNodesAndCredentials),
+							Container.get(Push),
+							internalHooks,
+						),
+					);
+				case 'me':
+					registerController(
+						testServer.app,
+						config,
+						new MeController({ logger, externalHooks, internalHooks, repositories }),
+					);
+					break;
+				case 'passwordReset':
+					registerController(
+						testServer.app,
+						config,
+						new PasswordResetController({
+							config,
+							logger,
+							externalHooks,
+							internalHooks,
+							mailer,
+							repositories,
+						}),
+					);
+					break;
+				case 'owner':
+					registerController(
+						testServer.app,
+						config,
+						new OwnerController({ config, logger, internalHooks, repositories }),
+					);
+					break;
+				case 'users':
+					registerController(
+						testServer.app,
+						config,
+						new UsersController({
+							config,
+							mailer,
+							externalHooks,
+							internalHooks,
+							repositories,
+							activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
+							logger,
+						}),
+					);
+			}
 		}
 	}
 
@@ -146,23 +272,14 @@ export async function initTestServer({
 }
 
 /**
- * Pre-requisite: Mock the telemetry module before calling.
- */
-export function initTestTelemetry() {
-	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
-
-	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
-}
-
-/**
  * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
  * and `functionEndpoints` (legacy, namespaced inside a function).
  */
-const classifyEndpointGroups = (endpointGroups: string[]) => {
-	const routerEndpoints: string[] = [];
-	const functionEndpoints: string[] = [];
+const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
+	const routerEndpoints: EndpointGroup[] = [];
+	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -178,9 +295,9 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.ActiveWorkflowRunner> {
-	const workflowRunner = ActiveWorkflowRunner.getInstance();
-	workflowRunner.init();
+export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+	const workflowRunner = Container.get(ActiveWorkflowRunner);
+	await workflowRunner.init();
 	return workflowRunner;
 }
 
@@ -195,18 +312,21 @@ export function gitHubCredentialType(): ICredentialType {
 				name: 'server',
 				type: 'string',
 				default: 'https://api.github.com',
+				required: true,
 				description: 'The server to connect to. Only has to be set if Github Enterprise is used.',
 			},
 			{
 				displayName: 'User',
 				name: 'user',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 			{
 				displayName: 'Access Token',
 				name: 'accessToken',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 		],
@@ -217,20 +337,19 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	const credentialTypes = CredentialTypes();
-	await credentialTypes.init({
+	Container.get(LoadNodesAndCredentials).loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
 		},
-	});
+	};
 }
 
 /**
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	const types: INodeTypeData = {
+	Container.get(LoadNodesAndCredentials).loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {
@@ -248,7 +367,7 @@ export async function initNodeTypes() {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					return this.prepareOutputData(items);
@@ -451,7 +570,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -465,13 +584,13 @@ export async function initNodeTypes() {
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
-						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+						const options = this.getNodeParameter('options', itemIndex, {});
 
 						const newItem: INodeExecutionData = {
 							json: {},
 						};
 
-						if (keepOnlySet !== true) {
+						if (!keepOnlySet) {
 							if (item.binary !== undefined) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
@@ -480,7 +599,7 @@ export async function initNodeTypes() {
 								Object.assign(newItem.binary, item.binary);
 							}
 
-							newItem.json = JSON.parse(JSON.stringify(item.json));
+							newItem.json = deepCopy(item.json);
 						}
 
 						// Add boolean values
@@ -524,15 +643,6 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-
-	await NodeTypes().init(types);
-}
-
-/**
- * Initialize a logger for test runs.
- */
-export function initTestLogger() {
-	LoggerProxy.init(getLogger());
 }
 
 /**
@@ -546,12 +656,12 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export function initConfigFile() {
+export async function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		UserSettings.writeUserSettings(userSettings, settingsPath);
+		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
 }
 
@@ -569,7 +679,7 @@ export function createAgent(
 	const agent = request.agent(app);
 
 	if (options?.apiPath === undefined || options?.apiPath === 'internal') {
-		agent.use(prefix(REST_PATH_SEGMENT));
+		void agent.use(prefix(REST_PATH_SEGMENT));
 		if (options?.auth && options?.user) {
 			const { token } = issueJWT(options.user);
 			agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
@@ -577,10 +687,10 @@ export function createAgent(
 	}
 
 	if (options?.apiPath === 'public') {
-		agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
+		void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${options?.version}`));
 
 		if (options?.auth && options?.user.apiKey) {
-			agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
+			void agent.set({ 'X-N8N-API-KEY': options.user.apiKey });
 		}
 	}
 
@@ -597,7 +707,7 @@ export function createAuthAgent(app: express.Application) {
  * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
  */
 export function prefix(pathSegment: string) {
-	return function (request: superagent.SuperAgentRequest) {
+	return async function (request: superagent.SuperAgentRequest) {
 		const url = new URL(request.url);
 
 		// enforce consistency at call sites
@@ -635,42 +745,21 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneOrFail({
+	const { value } = await Db.collections.Settings.findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
 	return Boolean(value);
 }
 
-// ----------------------------------
-//              misc
-// ----------------------------------
+export const setInstanceOwnerSetUp = async (value: boolean) => {
+	config.set('userManagement.isInstanceOwnerSetUp', value);
 
-/**
- * Categorize array items into two groups based on whether they pass a test.
- */
-export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
-	return arr.reduce<{ pass: T[]; fail: T[] }>(
-		(acc, cur) => {
-			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
-
-			return acc;
-		},
-		{ pass: [], fail: [] },
+	await Db.collections.Settings.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: JSON.stringify(value) },
 	);
 };
-
-export function getPostgresSchemaSection(
-	schema = config.getSchema(),
-): PostgresSchemaSection | null {
-	for (const [key, value] of Object.entries(schema)) {
-		if (key === 'postgresdb') {
-			return value._cvtProperties;
-		}
-	}
-
-	return null;
-}
 
 // ----------------------------------
 //           community nodes
@@ -693,11 +782,11 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	};
 }
 
-export const emptyPackage = () => {
+export const emptyPackage = async () => {
 	const installedPackage = new InstalledPackages();
 	installedPackage.installedNodes = [];
 
-	return Promise.resolve(installedPackage);
+	return installedPackage;
 };
 
 // ----------------------------------

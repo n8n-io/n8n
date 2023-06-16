@@ -1,5 +1,5 @@
-@use "mixins/mixins";
-@use "./common/var";
+@use 'mixins/mixins';
+@use './common/var';
 
 $typeMap: (
 	primary: var.$link-primary-font-color,

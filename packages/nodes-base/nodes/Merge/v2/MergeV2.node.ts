@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
 
-import { merge } from 'lodash';
+import merge from 'lodash.merge';
 
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -12,16 +12,18 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
+import type {
+	ClashResolveOptions,
+	MatchFieldsJoinMode,
+	MatchFieldsOptions,
+	MatchFieldsOutput,
+} from './GenericFunctions';
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
 	checkInput,
 	checkMatchFieldsInput,
-	ClashResolveOptions,
 	findMatches,
-	MatchFieldsJoinMode,
-	MatchFieldsOptions,
-	MatchFieldsOutput,
 	mergeMatched,
 	selectMergeMethod,
 } from './GenericFunctions';
@@ -33,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	icon: 'fa:code-branch',
 	group: ['transform'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merges data of multiple streams once data from both is available',
 	defaults: {
@@ -120,6 +122,7 @@ const versionDescription: INodeTypeDescription = {
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'e.g. id',
 							hint: ' Enter the field name as text',
+							requiresDataPath: 'single',
 						},
 						{
 							displayName: 'Input 2 Field',
@@ -129,6 +132,7 @@ const versionDescription: INodeTypeDescription = {
 							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 							placeholder: 'e.g. id',
 							hint: ' Enter the field name as text',
+							requiresDataPath: 'single',
 						},
 					],
 				},
@@ -446,20 +450,28 @@ export class MergeV2 implements INodeType {
 				options.joinMode = joinMode;
 				options.outputDataFrom = outputDataFrom;
 
-				const input1 = checkInput(
-					this.getInputData(0),
-					matchFields.map((pair) => pair.field1 as string),
-					(options.disableDotNotation as boolean) || false,
-					'Input 1',
-				);
-				if (!input1) return [returnData];
+				const nodeVersion = this.getNode().typeVersion;
 
-				const input2 = checkInput(
-					this.getInputData(1),
-					matchFields.map((pair) => pair.field2 as string),
-					(options.disableDotNotation as boolean) || false,
-					'Input 2',
-				);
+				let input1 = this.getInputData(0);
+				let input2 = this.getInputData(1);
+				if (nodeVersion < 2.1) {
+					input1 = checkInput(
+						this.getInputData(0),
+						matchFields.map((pair) => pair.field1),
+						options.disableDotNotation || false,
+						'Input 1',
+					);
+					if (!input1) return [returnData];
+
+					input2 = checkInput(
+						this.getInputData(1),
+						matchFields.map((pair) => pair.field2),
+						options.disableDotNotation || false,
+						'Input 2',
+					);
+				} else {
+					if (!input1) return [returnData];
+				}
 
 				if (!input2 || !matchFields.length) {
 					if (

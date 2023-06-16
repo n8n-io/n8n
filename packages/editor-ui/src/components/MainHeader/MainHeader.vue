@@ -1,144 +1,165 @@
 <template>
 	<div>
-		<div :class="{'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed}">
+		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<ExecutionDetails v-if="isExecutionPage" />
-				<WorkflowDetails v-else />
-				<tab-bar v-if="onWorkflowPage && !isExecutionPage" :items="tabBarItems" :activeTab="activeHeaderTab" @select="onTabSelected"/>
+				<WorkflowDetails :readOnly="readOnly" />
+				<tab-bar
+					v-if="onWorkflowPage"
+					:items="tabBarItems"
+					:activeTab="activeHeaderTab"
+					@select="onTabSelected"
+				/>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { pushConnection } from '@/components/mixins/pushConnection';
-import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
-import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
-import TabBar from '@/components/MainHeader/TabBar.vue';
-import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS } from '@/constants';
-import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
-import { workflowHelpers } from '../mixins/workflowHelpers';
-import { Route } from 'vue-router';
+import { defineComponent } from 'vue';
+import type { Route } from 'vue-router';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
+import type { IExecutionsSummary } from 'n8n-workflow';
+import { pushConnection } from '@/mixins/pushConnection';
+import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
+import TabBar from '@/components/MainHeader/TabBar.vue';
+import {
+	MAIN_HEADER_TABS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	STICKY_NODE_TYPE,
+	VIEWS,
+} from '@/constants';
+import type { INodeUi, ITabBarItem } from '@/Interface';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useUIStore, useNDVStore, useVersionControlStore } from '@/stores';
 
-export default mixins(
-	pushConnection,
-	workflowHelpers,
-).extend({
-		name: 'MainHeader',
-		components: {
-			WorkflowDetails,
-			ExecutionDetails,
-			TabBar,
+export default defineComponent({
+	name: 'MainHeader',
+	components: {
+		WorkflowDetails,
+		TabBar,
+	},
+	mixins: [pushConnection, workflowHelpers],
+	setup(props) {
+		return {
+			...pushConnection.setup?.(props),
+			...workflowHelpers.setup?.(props),
+		};
+	},
+	data() {
+		return {
+			activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
+			workflowToReturnTo: '',
+			dirtyState: false,
+		};
+	},
+	computed: {
+		...mapStores(useNDVStore, useUIStore, useVersionControlStore),
+		tabBarItems(): ITabBarItem[] {
+			return [
+				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
+				{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
+			];
 		},
-		data() {
-			return {
-				activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
-				workflowToReturnTo: '',
-				dirtyState: false,
-			};
+		activeNode(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
-		computed: {
-			...mapStores(
-				useNDVStore,
-				useUIStore,
-			),
-			tabBarItems(): ITabBarItem[] {
-				return [
-					{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.workflow') },
-					{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
-				];
-			},
-			isExecutionPage (): boolean {
-				return this.$route.name === VIEWS.EXECUTION;
-			},
-			activeNode (): INodeUi | null {
-				return this.ndvStore.activeNode;
-			},
-			hideMenuBar(): boolean {
-				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
-			},
-			workflowName (): string {
-				return this.workflowsStore.workflowName;
-			},
-			currentWorkflow (): string {
-				return this.$route.params.name || this.workflowsStore.workflowId;
-			},
-			onWorkflowPage(): boolean {
-				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
-			},
-			activeExecution(): IExecutionsSummary {
-				return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
-			},
+		hideMenuBar(): boolean {
+			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 		},
-		mounted() {
-			this.dirtyState = this.uiStore.stateIsDirty;
-			this.syncTabsWithRoute(this.$route);
-			// Initialize the push connection
-			this.pushConnect();
+		workflowName(): string {
+			return this.workflowsStore.workflowName;
 		},
-		beforeDestroy() {
-			this.pushDisconnect();
+		currentWorkflow(): string {
+			return this.$route.params.name || this.workflowsStore.workflowId;
 		},
-		watch: {
-			$route (to, from){
-				this.syncTabsWithRoute(to);
-			},
+		onWorkflowPage(): boolean {
+			return (
+				this.$route.meta &&
+				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
+			);
 		},
-		methods: {
-			syncTabsWithRoute(route: Route): void {
-				if (route.name === VIEWS.EXECUTION_HOME || route.name === VIEWS.EXECUTIONS || route.name === VIEWS.EXECUTION_PREVIEW) {
-					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-				} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
-					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
-				}
-				const workflowName = route.params.name;
-				if (workflowName !== 'new') {
-					this.workflowToReturnTo = workflowName;
-				}
-			},
-			onTabSelected(tab: string, event: MouseEvent) {
-				switch (tab) {
-					case MAIN_HEADER_TABS.WORKFLOW:
-						if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
-							if (this.$route.name !== VIEWS.WORKFLOW) {
-								this.$router.push({
+		activeExecution(): IExecutionsSummary {
+			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
+		},
+		readOnly(): boolean {
+			return this.versionControlStore.preferences.branchReadOnly;
+		},
+	},
+	mounted() {
+		this.dirtyState = this.uiStore.stateIsDirty;
+		this.syncTabsWithRoute(this.$route);
+		// Initialize the push connection
+		this.pushConnect();
+	},
+	beforeDestroy() {
+		this.pushDisconnect();
+	},
+	watch: {
+		$route(to, from) {
+			this.syncTabsWithRoute(to);
+		},
+	},
+	methods: {
+		syncTabsWithRoute(route: Route): void {
+			if (
+				route.name === VIEWS.EXECUTION_HOME ||
+				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
+				route.name === VIEWS.EXECUTION_PREVIEW
+			) {
+				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+			} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
+				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+			}
+			const workflowName = route.params.name;
+			if (workflowName !== 'new') {
+				this.workflowToReturnTo = workflowName;
+			}
+		},
+		onTabSelected(tab: string, event: MouseEvent) {
+			switch (tab) {
+				case MAIN_HEADER_TABS.WORKFLOW:
+					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
+						if (this.$route.name !== VIEWS.WORKFLOW) {
+							void this.$router.push({
 								name: VIEWS.WORKFLOW,
 								params: { name: this.workflowToReturnTo },
 							});
-							}
-						} else {
-							if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-								this.uiStore.stateIsDirty = this.dirtyState;
-							}
 						}
-						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
-						break;
-					case MAIN_HEADER_TABS.EXECUTIONS:
-						this.dirtyState = this.uiStore.stateIsDirty;
-						this.workflowToReturnTo = this.currentWorkflow;
-						const routeWorkflowId = this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
-						if (this.activeExecution) {
-							this.$router.push({
+					} else {
+						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
+							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							this.uiStore.stateIsDirty = this.dirtyState;
+						}
+					}
+					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+					break;
+				case MAIN_HEADER_TABS.EXECUTIONS:
+					this.dirtyState = this.uiStore.stateIsDirty;
+					this.workflowToReturnTo = this.currentWorkflow;
+					const routeWorkflowId =
+						this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
+					if (this.activeExecution) {
+						this.$router
+							.push({
 								name: VIEWS.EXECUTION_PREVIEW,
 								params: { name: routeWorkflowId, executionId: this.activeExecution.id },
-							}).catch(()=>{});;
-						} else {
-							this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
-						}
-						// this.modalBus.$emit('closeAll');
-						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-						break;
-					default:
-						break;
-				}
-			},
+							})
+							.catch(() => {});
+					} else {
+						void this.$router.push({
+							name: VIEWS.EXECUTION_HOME,
+							params: { name: routeWorkflowId },
+						});
+					}
+					// this.modalBus.emit('closeAll');
+					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+					break;
+				default:
+					break;
+			}
 		},
-	});
+	},
+});
 </script>
 
 <style lang="scss">

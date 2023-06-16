@@ -18,7 +18,7 @@ const fsAccess = promisify(fs.access);
 export class New extends Command {
 	static description = 'Create new credentials/node';
 
-	static examples = [`$ n8n-node-dev new`];
+	static examples = ['$ n8n-node-dev new'];
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -10,7 +9,7 @@ export async function updateTicket(
 ): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('ticketId', index) as IDataObject;
 	const { assetId, customerId, dueDate, issueType, status, subject, ticketType, contactId } =
-		this.getNodeParameter('updateFields', index) as IDataObject;
+		this.getNodeParameter('updateFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -34,8 +33,7 @@ export async function updateTicket(
 		});
 	}
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.ticket);
+	return this.helpers.returnJsonArray(responseData.ticket as IDataObject[]);
 }

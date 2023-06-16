@@ -1,4 +1,4 @@
-import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 const colors = [
 	{
@@ -222,14 +222,15 @@ const typeMention: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex:
-								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 							errorMessage: 'Not a valid Notion Database URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
 				},
 			},
 			{
@@ -241,7 +242,8 @@ const typeMention: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 							errorMessage: 'Not a valid Notion Database ID',
 						},
 					},
@@ -258,7 +260,7 @@ const typeMention: INodeProperties[] = [
 				mentionType: ['database'],
 			},
 		},
-		description: "The Notion Database being mentioned",
+		description: 'The Notion Database being mentioned',
 	},
 	{
 		displayName: 'Range',
@@ -469,6 +471,21 @@ const textContent = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	},
 ];
 
+const imageBlock = (type: string): INodeProperties[] => [
+	{
+		displayName: 'Image URL',
+		name: 'url',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: [type],
+			},
+		},
+		default: '',
+		description: 'Image file reference',
+	},
+];
+
 const block = (blockType: string): INodeProperties[] => {
 	const data: INodeProperties[] = [];
 	switch (blockType) {
@@ -500,6 +517,9 @@ const block = (blockType: string): INodeProperties[] => {
 			break;
 		case 'child_page':
 			data.push(...title(blockType));
+			break;
+		case 'image':
+			data.push(...imageBlock(blockType));
 			break;
 		default:
 			data.push(
@@ -571,6 +591,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 					...block('child_page'),
 					...block('bulleted_list_item'),
 					...block('numbered_list_item'),
+					...block('image'),
 				],
 			},
 		],

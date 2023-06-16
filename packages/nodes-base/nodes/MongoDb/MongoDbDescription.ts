@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 /**
  * Options to be displayed
@@ -101,7 +101,7 @@ export const nodeDescription: INodeTypeDescription = {
 				},
 			},
 			default: '',
-			placeholder: `[{ "$match": { "$gt": "1950-01-01" }, ... }]`,
+			placeholder: '[{ "$match": { "$gt": "1950-01-01" }, ... }]',
 			hint: 'Learn more about aggregation pipeline <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/">here</a>',
 			required: true,
 			description: 'MongoDB aggregation pipeline query in JSON format',
@@ -123,7 +123,7 @@ export const nodeDescription: INodeTypeDescription = {
 				},
 			},
 			default: '{}',
-			placeholder: `{ "birth": { "$gt": "1950-01-01" } }`,
+			placeholder: '{ "birth": { "$gt": "1950-01-01" } }',
 			required: true,
 			description: 'MongoDB Delete query',
 		},
@@ -189,7 +189,7 @@ export const nodeDescription: INodeTypeDescription = {
 				},
 			},
 			default: '{}',
-			placeholder: `{ "birth": { "$gt": "1950-01-01" } }`,
+			placeholder: '{ "birth": { "$gt": "1950-01-01" } }',
 			required: true,
 			description: 'MongoDB Find query',
 		},

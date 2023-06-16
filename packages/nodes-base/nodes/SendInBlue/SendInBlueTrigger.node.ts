@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	IDataObject,
+import type {
 	IHookFunctions,
 	INodeType,
 	INodeTypeDescription,
@@ -19,7 +18,7 @@ export class SendInBlueTrigger implements INodeType {
 		],
 		displayName: 'SendInBlue Trigger',
 		defaults: {
-			name: 'SendInBlue-Trigger',
+			name: 'SendInBlue Trigger',
 		},
 		description: 'Starts the workflow when SendInBlue events occur',
 		group: ['trigger'],
@@ -202,7 +201,6 @@ export class SendInBlueTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -269,7 +267,7 @@ export class SendInBlueTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 					delete webhookData.hookSecret;
@@ -282,7 +280,7 @@ export class SendInBlueTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// The data to return and so start the workflow with
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

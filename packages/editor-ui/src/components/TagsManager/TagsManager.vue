@@ -7,54 +7,56 @@
 		minWidth="620px"
 		minHeight="420px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<el-row>
 				<TagsView
 					v-if="hasTags || isCreating"
 					:isLoading="isLoading"
 					:tags="tags"
-
 					@create="onCreate"
 					@update="onUpdate"
 					@delete="onDelete"
 					@disableCreate="onDisableCreate"
 				/>
-				<NoTagsView
-					@enableCreate="onEnableCreate"
-					v-else />
+				<NoTagsView @enableCreate="onEnableCreate" v-else />
 			</el-row>
 		</template>
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<n8n-button :label="$locale.baseText('tagsManager.done')" @click="close" float="right" />
 		</template>
 	</Modal>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import mixins from "vue-typed-mixins";
+import { defineComponent } from 'vue';
 
-import { ITag } from "@/Interface";
+import type { ITag } from '@/Interface';
 
-import { showMessage } from "@/components/mixins/showMessage";
-import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
-import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
-import Modal from "@/components/Modal.vue";
-import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
-import { mapStores } from "pinia";
-import { useTagsStore } from "@/stores/tags";
+import { useToast } from '@/composables';
+import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
+import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
+import Modal from '@/components/Modal.vue';
+import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
+import { mapStores } from 'pinia';
+import { useTagsStore } from '@/stores/tags.store';
+import { createEventBus } from 'n8n-design-system';
 
-export default mixins(showMessage).extend({
-	name: "TagsManager",
+export default defineComponent({
+	name: 'TagsManager',
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	created() {
-		this.tagsStore.fetchAll({force: true, withUsageCount: true});
+		void this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},
 	data() {
 		const tagIds = useTagsStore().allTags.map((tag) => tag.id);
 		return {
 			tagIds,
 			isCreating: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			TAGS_MANAGER_MODAL_KEY,
 		};
 	},
@@ -64,14 +66,13 @@ export default mixins(showMessage).extend({
 		Modal,
 	},
 	computed: {
-		...mapStores(
-			useTagsStore,
-		),
+		...mapStores(useTagsStore),
 		isLoading(): boolean {
 			return this.tagsStore.isLoading;
 		},
 		tags(): ITag[] {
-			return this.$data.tagIds.map((tagId: string) => this.tagsStore.getTagById(tagId))
+			return this.$data.tagIds
+				.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
@@ -90,9 +91,7 @@ export default mixins(showMessage).extend({
 		async onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
 			try {
 				if (!name) {
-					throw new Error(
-						this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'),
-					);
+					throw new Error(this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'));
 				}
 
 				const newTag = await this.tagsStore.create(name);
@@ -100,13 +99,12 @@ export default mixins(showMessage).extend({
 				cb(newTag);
 			} catch (error) {
 				const escapedName = escape(name);
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onCreate.title'),
-					this.$locale.baseText(
-						'tagsManager.showError.onCreate.message',
-						{ interpolate: { escapedName } },
-					) + ':',
+					this.$locale.baseText('tagsManager.showError.onCreate.message', {
+						interpolate: { escapedName },
+					}) + ':',
 				);
 				cb(null, error);
 			}
@@ -118,9 +116,7 @@ export default mixins(showMessage).extend({
 
 			try {
 				if (!name) {
-					throw new Error(
-						this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'),
-					);
+					throw new Error(this.$locale.baseText('tagsManager.tagNameCannotBeEmpty'));
 				}
 
 				if (name === oldName) {
@@ -131,19 +127,18 @@ export default mixins(showMessage).extend({
 				const updatedTag = await this.tagsStore.rename({ id, name });
 				cb(!!updatedTag);
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onUpdate.title'),
-					type: "success",
+					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(oldName);
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onUpdate.title'),
-					this.$locale.baseText(
-						'tagsManager.showError.onUpdate.message',
-						{ interpolate: { escapedName } },
-					) + ':',
+					this.$locale.baseText('tagsManager.showError.onUpdate.message', {
+						interpolate: { escapedName },
+					}) + ':',
 				);
 				cb(false, error);
 			}
@@ -156,28 +151,25 @@ export default mixins(showMessage).extend({
 			try {
 				const deleted = await this.tagsStore.delete(id);
 				if (!deleted) {
-					throw new Error(
-						this.$locale.baseText('tagsManager.couldNotDeleteTag'),
-					);
+					throw new Error(this.$locale.baseText('tagsManager.couldNotDeleteTag'));
 				}
 
 				this.$data.tagIds = this.$data.tagIds.filter((tagId: string) => tagId !== id);
 
 				cb(deleted);
 
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('tagsManager.showMessage.onDelete.title'),
-					type: "success",
+					type: 'success',
 				});
 			} catch (error) {
 				const escapedName = escape(name);
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsManager.showError.onDelete.title'),
-					this.$locale.baseText(
-						'tagsManager.showError.onDelete.message',
-						{ interpolate: { escapedName } },
-					) + ':',
+					this.$locale.baseText('tagsManager.showError.onDelete.message', {
+						interpolate: { escapedName },
+					}) + ':',
 				);
 				cb(false, error);
 			}
@@ -186,15 +178,12 @@ export default mixins(showMessage).extend({
 		onEnter() {
 			if (this.isLoading) {
 				return;
-			}
-			else if (!this.hasTags) {
+			} else if (!this.hasTags) {
 				this.onEnableCreate();
-			}
-			else {
-				this.modalBus.$emit('close');
+			} else {
+				this.modalBus.emit('close');
 			}
 		},
 	},
 });
 </script>
-

@@ -1,8 +1,6 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 export async function urlScanIoApiRequest(
 	this: IExecuteFunctions,
@@ -27,7 +25,7 @@ export async function urlScanIoApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
 }
 
 export async function handleListing(
@@ -40,12 +38,12 @@ export async function handleListing(
 
 	qs.size = 100;
 
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {
 		responseData = await urlScanIoApiRequest.call(this, 'GET', endpoint, {}, qs);
-		returnData.push(...responseData.results);
+		returnData.push(...(responseData.results as IDataObject[]));
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

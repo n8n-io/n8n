@@ -1,7 +1,11 @@
-import { IBinaryData, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from '../Constants';
-import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import { readFile, stat } from 'fs/promises';
+import type { BinaryMetadata, IBinaryData, INodeExecutionData } from 'n8n-workflow';
+import prettyBytes from 'pretty-bytes';
+import type { Readable } from 'stream';
+import { BINARY_ENCODING } from 'n8n-workflow';
+import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
+import { binaryToBuffer } from './utils';
 
 export class BinaryDataManager {
 	static instance: BinaryDataManager | undefined;
@@ -43,32 +47,78 @@ export class BinaryDataManager {
 		return BinaryDataManager.instance;
 	}
 
-	async storeBinaryData(
+	async copyBinaryFile(
 		binaryData: IBinaryData,
-		binaryBuffer: Buffer,
+		filePath: string,
 		executionId: string,
 	): Promise<IBinaryData> {
-		const retBinaryData = binaryData;
+		// If a manager handles this binary, copy over the binary file and return its reference id.
+		const manager = this.managers[this.binaryDataMode];
+		if (manager) {
+			const identifier = await manager.copyBinaryFile(filePath, executionId);
+			// Add data manager reference id.
+			binaryData.id = this.generateBinaryId(identifier);
 
-		// If a manager handles this binary, return the binary data with it's reference id.
-		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode]
-				.storeBinaryData(binaryBuffer, executionId)
-				.then((filename) => {
-					// Add data manager reference id.
-					retBinaryData.id = this.generateBinaryId(filename);
+			// Prevent preserving data in memory if handled by a data manager.
+			binaryData.data = this.binaryDataMode;
 
-					// Prevent preserving data in memory if handled by a data manager.
-					retBinaryData.data = this.binaryDataMode;
+			const fileSize = await manager.getFileSize(identifier);
+			binaryData.fileSize = prettyBytes(fileSize);
 
-					// Short-circuit return to prevent further actions.
-					return retBinaryData;
-				});
+			await manager.storeBinaryMetadata(identifier, {
+				fileName: binaryData.fileName,
+				mimeType: binaryData.mimeType,
+				fileSize,
+			});
+		} else {
+			const { size } = await stat(filePath);
+			binaryData.fileSize = prettyBytes(size);
+			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 		}
 
-		// Else fallback to storing this data in memory.
-		retBinaryData.data = binaryBuffer.toString(BINARY_ENCODING);
 		return binaryData;
+	}
+
+	async storeBinaryData(
+		binaryData: IBinaryData,
+		input: Buffer | Readable,
+		executionId: string,
+	): Promise<IBinaryData> {
+		// If a manager handles this binary, return the binary data with its reference id.
+		const manager = this.managers[this.binaryDataMode];
+		if (manager) {
+			const identifier = await manager.storeBinaryData(input, executionId);
+
+			// Add data manager reference id.
+			binaryData.id = this.generateBinaryId(identifier);
+
+			// Prevent preserving data in memory if handled by a data manager.
+			binaryData.data = this.binaryDataMode;
+
+			const fileSize = await manager.getFileSize(identifier);
+			binaryData.fileSize = prettyBytes(fileSize);
+
+			await manager.storeBinaryMetadata(identifier, {
+				fileName: binaryData.fileName,
+				mimeType: binaryData.mimeType,
+				fileSize,
+			});
+		} else {
+			const buffer = await binaryToBuffer(input);
+			binaryData.data = buffer.toString(BINARY_ENCODING);
+			binaryData.fileSize = prettyBytes(buffer.length);
+		}
+
+		return binaryData;
+	}
+
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].getBinaryStream(id, chunkSize);
+		}
+
+		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
@@ -88,28 +138,50 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
-		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(executionId);
+	getBinaryPath(identifier: string): string {
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].getBinaryPath(id);
 		}
 
-		return Promise.resolve();
+		throw new Error('Storage mode used to store binary data not available');
+	}
+
+	async getBinaryMetadata(identifier: string): Promise<BinaryMetadata> {
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].getBinaryMetadata(id);
+		}
+
+		throw new Error('Storage mode used to store binary data not available');
+	}
+
+	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
+		if (this.managers[this.binaryDataMode]) {
+			await this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(executionId);
+		}
+	}
+
+	async markDataForDeletionByExecutionIds(executionIds: string[]): Promise<void> {
+		if (this.managers[this.binaryDataMode]) {
+			await Promise.all(
+				executionIds.map(async (id) =>
+					this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(id),
+				),
+			);
+		}
 	}
 
 	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
+			await this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
 		}
-
-		return Promise.resolve();
 	}
 
 	async deleteBinaryDataByExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
-			return this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
+			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionId(executionId);
 		}
-
-		return Promise.resolve();
 	}
 
 	async duplicateBinaryData(
@@ -121,7 +193,7 @@ export class BinaryDataManager {
 				async (executionDataArray) => {
 					if (executionDataArray) {
 						return Promise.all(
-							executionDataArray.map((executionData) => {
+							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
 									return this.duplicateBinaryDataInExecData(executionData, executionId);
 								}
@@ -138,7 +210,7 @@ export class BinaryDataManager {
 			return Promise.all(returnInputData);
 		}
 
-		return Promise.resolve(inputData as INodeExecutionData[][]);
+		return inputData as INodeExecutionData[][];
 	}
 
 	private generateBinaryId(filename: string) {

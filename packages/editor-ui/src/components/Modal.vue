@@ -1,8 +1,8 @@
 <template>
 	<el-dialog
-		:visible="uiStore.isModalOpen(this.$props.name)"
+		:visible="uiStore.isModalOpen(this.name)"
 		:before-close="closeDialog"
-		:class="{'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable}"
+		:class="{ 'dialog-wrapper': true, [$style.center]: center, scrollable: scrollable }"
 		:width="width"
 		:show-close="showClose"
 		:custom-class="getCustomClass()"
@@ -10,22 +10,28 @@
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		append-to-body
+		:data-test-id="`${this.name}-modal`"
 	>
-		<template v-slot:title v-if="$scopedSlots.header">
+		<template #title v-if="$scopedSlots.header">
 			<slot name="header" v-if="!loading" />
 		</template>
-		<template v-slot:title v-else-if="title">
+		<template #title v-else-if="title">
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{title}}</n8n-heading>
+					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
 				</div>
 				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{subtitle}}</n8n-heading>
+					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
 				</div>
 			</div>
 		</template>
-		<div class="modal-content" @keydown.stop @keydown.enter="handleEnter" @keydown.esc="closeDialog">
-			<slot v-if="!loading"  name="content"/>
+		<div
+			class="modal-content"
+			@keydown.stop
+			@keydown.enter="handleEnter"
+			@keydown.esc="closeDialog"
+		>
+			<slot v-if="!loading" name="content" />
 			<div :class="$style.loader" v-else>
 				<n8n-spinner />
 			</div>
@@ -37,12 +43,14 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import { useUIStore } from '@/stores/ui';
-import { mapStores } from "pinia";
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import type { EventBus } from 'n8n-design-system';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
-	name: "Modal",
+export default defineComponent({
+	name: 'Modal',
 	props: {
 		name: {
 			type: String,
@@ -54,7 +62,7 @@ export default Vue.extend({
 			type: String,
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
 		},
 		showClose: {
 			type: Boolean,
@@ -114,15 +122,8 @@ export default Vue.extend({
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
 
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('close', () => {
-				this.closeDialog();
-			});
-
-			this.$props.eventBus.$on('closeAll', () => {
-				this.uiStore.closeAllModals();
-			});
-		}
+		this.eventBus?.on('close', this.closeDialog);
+		this.eventBus?.on('closeAll', this.uiStore.closeAllModals);
 
 		const activeElement = document.activeElement as HTMLElement;
 		if (activeElement) {
@@ -130,12 +131,14 @@ export default Vue.extend({
 		}
 	},
 	beforeDestroy() {
+		this.eventBus?.off('close', this.closeDialog);
+		this.eventBus?.off('closeAll', this.uiStore.closeAllModals);
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
 	computed: {
 		...mapStores(useUIStore),
 		styles() {
-			const styles: {[prop: string]: string} = {};
+			const styles: { [prop: string]: string } = {};
 			if (this.height) {
 				styles['--dialog-height'] = this.height;
 			}
@@ -156,7 +159,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.$props.name)) {
+			if (!this.uiStore.isModalActive(this.name)) {
 				return;
 			}
 
@@ -165,23 +168,24 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.$props.name)) {
+			if (this.uiStore.isModalActive(this.name)) {
 				this.$emit('enter');
 			}
 		},
 		async closeDialog() {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to stop modal from closing
+				if (shouldClose === false) {
+					// must be strictly false to stop modal from closing
 					return;
 				}
 			}
-			this.uiStore.closeModal(this.$props.name);
+			this.uiStore.closeModal(this.name);
 		},
 		getCustomClass() {
-			let classes = this.$props.customClass || '';
+			let classes = this.customClass || '';
 
-			if (this.$props.classic) {
+			if (this.classic) {
 				classes = `${classes} classic`;
 			}
 
@@ -223,9 +227,9 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .center {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .loader {

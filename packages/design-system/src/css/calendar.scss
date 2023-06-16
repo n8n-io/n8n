@@ -1,6 +1,6 @@
-@use "mixins/mixins";
-@use "./common/var";
-@use "button-group";
+@use 'mixins/mixins';
+@use './common/var';
+@use 'button-group';
 
 @include mixins.b(calendar) {
 	background-color: var(--color-foreground-xlight);

@@ -1,5 +1,5 @@
 <template>
-	<div :class="{'tags-container': true, focused}" @keydown.stop v-click-outside="onClickOutside">
+	<div :class="{ 'tags-container': true, focused }" @keydown.stop v-click-outside="onClickOutside">
 		<n8n-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
@@ -30,7 +30,9 @@
 			</n8n-option>
 			<n8n-option v-else-if="options.length === 0" value="message" disabled>
 				<span v-if="createEnabled">{{ $locale.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{ $locale.baseText('tagsDropdown.noMatchingTagsExist') }}</span>
+				<span v-else-if="allTags.length > 0">{{
+					$locale.baseText('tagsDropdown.noMatchingTagsExist')
+				}}</span>
 				<span v-else>{{ $locale.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
 
@@ -53,25 +55,47 @@
 </template>
 
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import { defineComponent } from 'vue';
 
-import { ITag } from "@/Interface";
-import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
+import type { ITag } from '@/Interface';
+import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
-import { showMessage } from "@/components/mixins/showMessage";
-import { mapStores } from "pinia";
-import { useUIStore } from "@/stores/ui";
-import { useTagsStore } from "@/stores/tags";
+import { useToast } from '@/composables';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui.store';
+import { useTagsStore } from '@/stores/tags.store';
+import type { EventBus } from 'n8n-design-system';
+import type { PropType } from 'vue';
+import type { N8nOption, N8nSelect } from 'n8n-design-system';
 
-const MANAGE_KEY = "__manage";
-const CREATE_KEY = "__create";
+type SelectRef = InstanceType<typeof N8nSelect>;
+type TagRef = InstanceType<typeof N8nOption>;
+type CreateRef = InstanceType<typeof N8nOption>;
 
-export default mixins(showMessage).extend({
-	name: "TagsDropdown",
-	props: ["placeholder", "currentTagIds", "createEnabled", "eventBus"],
+const MANAGE_KEY = '__manage';
+const CREATE_KEY = '__create';
+
+export default defineComponent({
+	name: 'TagsDropdown',
+	props: {
+		placeholder: {},
+		currentTagIds: {
+			type: Array as PropType<string[]>,
+			default: () => [],
+		},
+		createEnabled: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
-			filter: "",
+			filter: '',
 			MANAGE_KEY,
 			CREATE_KEY,
 			focused: false,
@@ -79,10 +103,10 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		// @ts-ignore
-		const select = (this.$refs.select && this.$refs.select.$refs && this.$refs.select.$refs.innerSelect) as (Vue | undefined);
+		const selectRef = this.$refs.select as SelectRef | undefined;
+		const select = selectRef?.$refs?.innerSelect;
 		if (select) {
-			const input = select.$refs.input as (Element | undefined);
+			const input = select.$refs.input as Element | undefined;
 			if (input) {
 				input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
 				input.addEventListener('keydown', (e: Event) => {
@@ -90,35 +114,27 @@ export default mixins(showMessage).extend({
 					// events don't bubble outside of select, so need to hook onto input
 					if (keyboardEvent.key === 'Escape') {
 						this.$emit('esc');
-					}
-					else if (keyboardEvent.key === 'Enter' && this.filter.length === 0) {
+					} else if (keyboardEvent.key === 'Enter' && this.filter.length === 0) {
 						this.$data.preventUpdate = true;
 						this.$emit('blur');
 
-						// @ts-ignore
-						if (this.$refs.select && typeof this.$refs.select.blur === 'function') {
-							// @ts-ignore
-							this.$refs.select.blur();
+						if (typeof selectRef?.blur === 'function') {
+							selectRef.blur();
 						}
 					}
 				});
 			}
 		}
 
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
-				this.focusOnInput();
-				this.focusOnTopOption();
-			});
-		}
+		this.eventBus?.on('focus', this.onBusFocus);
 
-		this.tagsStore.fetchAll();
+		void this.tagsStore.fetchAll();
+	},
+	destroyed() {
+		this.eventBus?.off('focus', this.onBusFocus);
 	},
 	computed: {
-		...mapStores(
-			useTagsStore,
-			useUIStore,
-		),
+		...mapStores(useTagsStore, useUIStore),
 		allTags(): ITag[] {
 			return this.tagsStore.allTags;
 		},
@@ -126,19 +142,20 @@ export default mixins(showMessage).extend({
 			return this.tagsStore.hasTags;
 		},
 		options(): ITag[] {
-			return this.allTags
-				.filter((tag: ITag) =>
-					tag && tag.name.toLowerCase().includes(this.$data.filter.toLowerCase()),
-				);
+			return this.allTags.filter(
+				(tag: ITag) => tag && tag.name.toLowerCase().includes(this.$data.filter.toLowerCase()),
+			);
 		},
 		appliedTags(): string[] {
-			return this.$props.currentTagIds.filter((id: string) =>
-				this.tagsStore.getTagById(id),
-			);
+			return this.currentTagIds.filter((id: string) => this.tagsStore.getTagById(id));
 		},
 	},
 	methods: {
-		filterOptions(filter = "") {
+		onBusFocus() {
+			this.focusOnInput();
+			this.focusOnTopOption();
+		},
+		filterOptions(filter = '') {
 			this.$data.filter = filter.trim();
 			this.$nextTick(() => this.focusOnTopOption());
 		},
@@ -146,64 +163,56 @@ export default mixins(showMessage).extend({
 			const name = this.$data.filter;
 			try {
 				const newTag = await this.tagsStore.create(name);
-				this.$emit("update", [...this.$props.currentTagIds, newTag.id]);
+				this.$emit('update', [...this.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
-				this.$data.filter = "";
+				this.$data.filter = '';
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('tagsDropdown.showError.title'),
-					this.$locale.baseText(
-						'tagsDropdown.showError.message',
-						{ interpolate: { name } },
-					),
+					this.$locale.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
 				);
 			}
 		},
 		onTagsUpdated(selected: string[]) {
-			const ops = selected.find(
-				(value) => value === MANAGE_KEY || value === CREATE_KEY,
-			);
+			const ops = selected.find((value) => value === MANAGE_KEY || value === CREATE_KEY);
 			if (ops === MANAGE_KEY) {
-				this.$data.filter = "";
+				this.$data.filter = '';
 				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
-				this.onCreate();
+				void this.onCreate();
 			} else {
 				setTimeout(() => {
 					if (!this.$data.preventUpdate) {
-						this.$emit("update", selected);
+						this.$emit('update', selected);
 					}
 					this.$data.preventUpdate = false;
 				}, 0);
 			}
 		},
 		focusOnTopOption() {
-			const tags = this.$refs.tag as Vue[] | undefined;
-			const create = this.$refs.create as Vue | undefined;
-			//@ts-ignore // focus on create option
-			if (create && create.hoverItem) {
-				// @ts-ignore
-				create.hoverItem();
+			const tagRefs = this.$refs.tag as TagRef[] | undefined;
+			const createRef = this.$refs.create as CreateRef | undefined;
+			// focus on create option
+			if (createRef && createRef.hoverItem) {
+				createRef.hoverItem();
 			}
-			//@ts-ignore // focus on top option after filter
-			else if (tags && tags[0] && tags[0].hoverItem) {
-				// @ts-ignore
-				tags[0].hoverItem();
+			// focus on top option after filter
+			else if (tagRefs && tagRefs[0] && tagRefs[0].hoverItem) {
+				tagRefs[0].hoverItem();
 			}
 		},
 		focusOnTag(tagId: string) {
-			const tagOptions = (this.$refs.tag as Vue[]) || [];
+			const tagOptions = (this.$refs.tag as TagRef[]) || [];
 			if (tagOptions && tagOptions.length) {
-				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
+				const added = tagOptions.find((ref) => ref.value === tagId);
 			}
 		},
 		focusOnInput() {
-			const select = (this.$refs.select) as (Vue | undefined);
-			if (select) {
-				// @ts-ignore
-				select.focusOnInput();
+			const selectRef = this.$refs.select as SelectRef | undefined;
+			if (selectRef) {
+				selectRef.focusOnInput();
 				this.focused = true;
 			}
 		},
@@ -211,8 +220,7 @@ export default mixins(showMessage).extend({
 			if (!visible) {
 				this.$data.filter = '';
 				this.focused = false;
-			}
-			else {
+			} else {
 				this.focused = true;
 			}
 		},
@@ -232,7 +240,7 @@ export default mixins(showMessage).extend({
 			// keep applied tags in sync with store
 			// for example in case tag is deleted from store
 			if (this.currentTagIds.length !== this.appliedTags.length) {
-				this.$emit("update", this.appliedTags);
+				this.$emit('update', this.appliedTags);
 			}
 		},
 	},
@@ -310,7 +318,7 @@ $--max-input-height: 60px;
 		}
 
 		&:after {
-			content: " ";
+			content: ' ';
 			display: block;
 			min-height: $--item-height;
 			width: $--dropdown-width;
@@ -347,7 +355,8 @@ $--max-input-height: 60px;
 				text-overflow: ellipsis;
 			}
 
-			&:after { // selected check
+			&:after {
+				// selected check
 				font-size: $--item-font-size !important;
 			}
 		}

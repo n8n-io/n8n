@@ -1,13 +1,13 @@
-import { IPollFunctions } from 'n8n-core';
-
-import {
+import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import type { IRecord } from './GenericFunctions';
 import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 import moment from 'moment';
@@ -28,12 +28,42 @@ export class AirtableTrigger implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableTokenApi'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'airtableApi',
+					},
+					{
+						name: 'Access Token',
+						value: 'airtableTokenApi',
+					},
+				],
+				default: 'airtableApi',
+			},
 			{
 				displayName: 'Base',
 				name: 'baseId',
@@ -163,6 +193,7 @@ export class AirtableTrigger implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 						description:
@@ -191,18 +222,13 @@ export class AirtableTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-
 		const webhookData = this.getWorkflowStaticData('node');
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
+		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const qs: IDataObject = {};
-
-		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-
-		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
-
-		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
-
-		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const endpoint = `${base}/${table}`;
 
@@ -240,11 +266,15 @@ export class AirtableTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
 			}
 
-			if (downloadAttachments === true) {
+			if (downloadAttachments) {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
 					',',
 				);
-				const data = await downloadRecordAttachments.call(this, records, downloadFieldNames);
+				const data = await downloadRecordAttachments.call(
+					this,
+					records as IRecord[],
+					downloadFieldNames,
+				);
 				return [data];
 			}
 

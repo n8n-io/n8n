@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -151,13 +150,13 @@ export class LingvaNex implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		const responseData = [];
 		for (let i = 0; i < length; i++) {
 			if (operation === 'translate') {
 				const text = this.getNodeParameter('text', i) as string;
 				const translateTo = this.getNodeParameter('translateTo', i) as string;
-				const options = this.getNodeParameter('options', i) as IDataObject;
+				const options = this.getNodeParameter('options', i);
 
 				const body: IDataObject = {
 					data: text,
@@ -167,7 +166,7 @@ export class LingvaNex implements INodeType {
 
 				Object.assign(body, options);
 
-				const response = await lingvaNexApiRequest.call(this, 'POST', `/translate`, body);
+				const response = await lingvaNexApiRequest.call(this, 'POST', '/translate', body);
 				responseData.push(response);
 			}
 		}

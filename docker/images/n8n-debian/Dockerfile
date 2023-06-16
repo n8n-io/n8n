@@ -12,7 +12,7 @@ RUN \
 # Set a custom user to not have n8n run as root
 USER root
 
-RUN npm_config_user=root npm install -g npm@latest full-icu n8n@${N8N_VERSION}
+RUN npm_config_user=root npm install -g npm@8.19.2 full-icu n8n@${N8N_VERSION}
 
 ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 

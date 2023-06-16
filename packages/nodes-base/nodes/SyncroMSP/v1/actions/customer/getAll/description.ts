@@ -1,4 +1,4 @@
-import { CustomerProperties } from '../../Interfaces';
+import type { CustomerProperties } from '../../Interfaces';
 
 export const customerGetAllDescription: CustomerProperties = [
 	{

@@ -1,3 +1,4 @@
+import type { Migration } from '@db/types';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -18,11 +19,25 @@ import { IntroducePinData1654090467022 } from './1654090467022-IntroducePinData'
 import { AddNodeIds1658932090381 } from './1658932090381-AddNodeIds';
 import { AddJsonKeyPinData1659902242948 } from './1659902242948-AddJsonKeyPinData';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
+import { WorkflowStatistics1664196174001 } from './1664196174001-WorkflowStatistics';
 import { CreateWorkflowsEditorRole1663755770893 } from './1663755770893-CreateWorkflowsEditorRole';
 import { CreateCredentialUsageTable1665484192212 } from './1665484192212-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637025 } from './1665754637025-RemoveCredentialUsageTable';
+import { AddWorkflowVersionIdColumn1669739707126 } from './1669739707126-AddWorkflowVersionIdColumn';
+import { AddTriggerCountColumn1669823906995 } from './1669823906995-AddTriggerCountColumn';
+import { RemoveWorkflowDataLoadedFlag1671726148421 } from './1671726148421-RemoveWorkflowDataLoadedFlag';
+import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
+import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
+import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
+import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
+import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
+import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
+import { UpdateRunningExecutionStatus1677236854063 } from './1677236854063-UpdateRunningExecutionStatus';
+import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-CreateExecutionMetadataTable';
+import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
+import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 
-export const postgresMigrations = [
+export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
 	WebhookModel1589476000887,
 	CreateIndexStoppedAt1594828256133,
@@ -46,4 +61,18 @@ export const postgresMigrations = [
 	CreateWorkflowsEditorRole1663755770893,
 	CreateCredentialUsageTable1665484192212,
 	RemoveCredentialUsageTable1665754637025,
+	AddWorkflowVersionIdColumn1669739707126,
+	WorkflowStatistics1664196174001,
+	AddTriggerCountColumn1669823906995,
+	RemoveWorkflowDataLoadedFlag1671726148421,
+	MessageEventBusDestinations1671535397530,
+	DeleteExecutionsWithWorkflows1673268682475,
+	CreateLdapEntities1674509946020,
+	PurgeInvalidWorkflowConnections1675940580449,
+	AddStatusToExecutions1674138566000,
+	MigrateExecutionStatus1676996103000,
+	UpdateRunningExecutionStatus1677236854063,
+	CreateExecutionMetadataTable1679416281778,
+	CreateVariables1677501636754,
+	AddUserActivatedProperty1681134145996,
 ];

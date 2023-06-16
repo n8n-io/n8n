@@ -6,7 +6,7 @@
 			id="app"
 			:class="{
 				[$style.container]: true,
-				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed
+				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
 			<div id="header" :class="$style.header">
@@ -27,47 +27,63 @@
 </template>
 
 <script lang="ts">
-import Modals from './components/Modals.vue';
-import LoadingView from './views/LoadingView.vue';
-import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
-
-import mixins from 'vue-typed-mixins';
-import { showMessage } from './components/mixins/showMessage';
-import { userHelpers } from './components/mixins/userHelpers';
-import { loadLanguage } from './plugins/i18n';
-import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from './stores/ui';
-import { useSettingsStore } from './stores/settings';
-import { useUsersStore } from './stores/users';
-import { useRootStore } from './stores/n8nRootStore';
-import { useTemplatesStore } from './stores/templates';
-import { useNodeTypesStore } from './stores/nodeTypes';
 
-export default mixins(
-	showMessage,
-	userHelpers,
-	restApi,
-	globalLinkActions,
-).extend({
+import Modals from '@/components/Modals.vue';
+import LoadingView from '@/views/LoadingView.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+
+import { userHelpers } from '@/mixins/userHelpers';
+import { loadLanguage } from '@/plugins/i18n';
+import { useGlobalLinkActions, useToast } from '@/composables';
+import {
+	useUIStore,
+	useSettingsStore,
+	useUsersStore,
+	useRootStore,
+	useTemplatesStore,
+	useNodeTypesStore,
+	useCloudPlanStore,
+	useVersionControlStore,
+	useUsageStore,
+} from '@/stores';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+import { newVersions } from '@/mixins/newVersions';
+import { useRoute } from 'vue-router/composables';
+import { useExternalHooks } from '@/composables';
+
+export default defineComponent({
 	name: 'App',
 	components: {
 		LoadingView,
 		Telemetry,
 		Modals,
 	},
+	mixins: [newVersions, userHelpers],
+	setup(props) {
+		return {
+			...useGlobalLinkActions(),
+			...useHistoryHelper(useRoute()),
+			...useToast(),
+			externalHooks: useExternalHooks(),
+			...newVersions.setup?.(props),
+		};
+	},
 	computed: {
 		...mapStores(
-				useNodeTypesStore,
-				useRootStore,
-				useSettingsStore,
-				useTemplatesStore,
-				useUIStore,
-				useUsersStore,
-			),
-		defaultLocale (): string {
+			useNodeTypesStore,
+			useRootStore,
+			useSettingsStore,
+			useTemplatesStore,
+			useUIStore,
+			useUsersStore,
+			useVersionControlStore,
+			useCloudPlanStore,
+			useUsageStore,
+		),
+		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
 		},
 	},
@@ -81,19 +97,20 @@ export default mixins(
 			try {
 				await this.settingsStore.getSettings();
 			} catch (e) {
-				this.$showToast({
+				this.showToast({
 					title: this.$locale.baseText('startupError'),
 					message: this.$locale.baseText('startupError.message'),
 					type: 'error',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 
 				throw e;
 			}
 		},
-		loginWithCookie(): void {
+		async loginWithCookie(): Promise<void> {
 			try {
-				this.usersStore.loginWithCookie();
+				await this.usersStore.loginWithCookie();
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {
@@ -102,8 +119,7 @@ export default mixins(
 			}
 			try {
 				await this.settingsStore.testTemplatesEndpoint();
-		} catch (e) {
-			}
+			} catch (e) {}
 		},
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
@@ -118,8 +134,7 @@ export default mixins(
 			this.uiStore.currentView = this.$route.name || '';
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
 				this.templatesStore.setSessionId();
-			}
-			else {
+			} else {
 				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 			}
 
@@ -132,7 +147,7 @@ export default mixins(
 					return;
 				}
 
-				this.$router.replace({ name: VIEWS.SETUP });
+				void this.$router.replace({ name: VIEWS.SETUP });
 				return;
 			}
 
@@ -146,26 +161,30 @@ export default mixins(
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
+				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 				return;
 			}
 
 			// if cannot access page and is logged in, respect signin redirect
 			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
 				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) { // protect against phishing
-					this.$router.replace(redirect);
+				if (redirect.startsWith('/')) {
+					// protect against phishing
+					void this.$router.replace(redirect);
 					return;
 				}
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
+			void this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
-			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect();
+			const redirect =
+				this.$route.meta &&
+				typeof this.$route.meta.getRedirect === 'function' &&
+				this.$route.meta.getRedirect();
 			if (redirect) {
-				this.$router.replace(redirect);
+				void this.$router.replace(redirect);
 			}
 		},
 		setTheme() {
@@ -174,6 +193,25 @@ export default mixins(
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
+		async checkForCloudPlanData(): Promise<void> {
+			try {
+				await this.cloudPlanStore.getOwnerCurrentPlan();
+				if (!this.cloudPlanStore.userIsTrialing) return;
+				await this.cloudPlanStore.getInstanceCurrentUsage();
+				this.startPollingInstanceUsageData();
+			} catch {}
+		},
+		startPollingInstanceUsageData() {
+			const interval = setInterval(async () => {
+				try {
+					await this.cloudPlanStore.getInstanceCurrentUsage();
+					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
+						clearTimeout(interval);
+						return;
+					}
+				} catch {}
+			}, CLOUD_TRIAL_CHECK_INTERVAL);
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -181,12 +219,20 @@ export default mixins(
 		this.logHiringBanner();
 		this.authenticate();
 		this.redirectIfNecessary();
+		void this.checkForNewVersions();
+		void this.checkForCloudPlanData();
+
+		if (
+			this.versionControlStore.isEnterpriseVersionControlEnabled &&
+			this.usersStore.isInstanceOwner
+		) {
+			await this.versionControlStore.getPreferences();
+		}
 
 		this.loading = false;
 
 		this.trackPage();
-		// TODO: Un-comment once front-end hooks are updated to work with pinia store
-		this.$externalHooks().run('app.mount');
+		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
@@ -200,7 +246,7 @@ export default mixins(
 			this.trackPage();
 		},
 		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
+			void loadLanguage(newLocale);
 		},
 	},
 });
@@ -214,17 +260,20 @@ export default mixins(
 
 .container {
 	display: grid;
-  grid-template-areas:
-    "sidebar header"
-    "sidebar content";
-  grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-  grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-template-areas:
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
+	grid-template-rows: fit-content($sidebar-width) 1fr;
 }
 
 .content {
+	display: flex;
 	grid-area: content;
 	overflow: auto;
 	height: 100vh;
+	width: 100%;
+	justify-content: center;
 }
 
 .header {

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
@@ -15,7 +15,7 @@ export const folderOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new mail folder in the root folder of the user\'s mailbox',
+				description: "Create a new mail folder in the root folder of the user's mailbox",
 				action: 'Create a folder',
 			},
 			{

@@ -1,64 +1,38 @@
-import { INodeType, INodeTypeData, INodeTypes, NodeHelpers } from 'n8n-workflow';
+import type { INodeTypeData } from 'n8n-workflow';
 
-class NodeTypesClass implements INodeTypes {
-	nodeTypes: INodeTypeData = {
-		'test.set': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Sets a value',
-					defaults: {
-						name: 'Set',
-						color: '#0000FF',
+/**
+ * Ensure all pending promises settle. The promise's `resolve` is placed in
+ * the macrotask queue and so called at the next iteration of the event loop
+ * after all promises in the microtask queue have settled first.
+ */
+export const flushPromises = async () => new Promise(setImmediate);
+
+export function mockNodeTypesData(
+	nodeNames: string[],
+	options?: {
+		addTrigger?: boolean;
+	},
+) {
+	return nodeNames.reduce<INodeTypeData>((acc, nodeName) => {
+		return (
+			(acc[`n8n-nodes-base.${nodeName}`] = {
+				sourcePath: '',
+				type: {
+					description: {
+						displayName: nodeName,
+						name: nodeName,
+						group: [],
+						description: '',
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
 					},
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
+					trigger: options?.addTrigger ? async () => undefined : undefined,
 				},
-			},
-		},
-	};
-
-	async init(nodeTypes: INodeTypeData): Promise<void> {
-		this.nodeTypes = nodeTypes;
-	}
-
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
-	}
-
-	getByName(nodeType: string): INodeType {
-		return this.getByNameAndVersion(nodeType);
-	}
-
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
-	}
-}
-
-let nodeTypesInstance: NodeTypesClass | undefined;
-
-export function NodeTypes(): NodeTypesClass {
-	if (nodeTypesInstance === undefined) {
-		nodeTypesInstance = new NodeTypesClass();
-	}
-
-	return nodeTypesInstance;
+			}),
+			acc
+		);
+	}, {});
 }

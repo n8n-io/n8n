@@ -16,9 +16,6 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<n8n-text size="medium">
-					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
-				</n8n-text>
 				<executions-info-accordion />
 			</div>
 		</div>
@@ -27,22 +24,19 @@
 
 <script lang="ts">
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'executions-landing-page',
 	components: {
 		ExecutionsInfoAccordion,
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useUIStore, useWorkflowsStore),
 		executionCount(): number {
 			return this.workflowsStore.currentWorkflowExecutions.length;
 		},
@@ -54,9 +48,9 @@ export default Vue.extend({
 		onSetupFirstStep(event: MouseEvent): void {
 			this.uiStore.addFirstStepOnLoad = true;
 			const workflowRoute = this.getWorkflowRoute();
-			this.$router.push(workflowRoute);
+			void this.$router.push(workflowRoute);
 		},
-		getWorkflowRoute(): { name: string, params: {}} {
+		getWorkflowRoute(): { name: string; params: {} } {
 			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;
 			if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				return { name: VIEWS.NEW_WORKFLOW, params: {} };
@@ -69,7 +63,6 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-
 .container {
 	width: 100%;
 	height: 100%;

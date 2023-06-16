@@ -1,0 +1,181 @@
+{
+	"name": "Markdown report generation",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"position": [700, 420],
+			"typeVersion": 1,
+			"id": "bc5de3f0-e5f1-4fc0-ab50-ef91bada8b35"
+		},
+		{
+			"parameters": {
+				"html": "={{ $json.data }}",
+				"options": {}
+			},
+			"id": "01b5727e-79a2-4cc1-b52f-32ea1ba67a6f",
+			"name": "Markdown1",
+			"type": "n8n-nodes-base.markdown",
+			"typeVersion": 1,
+			"position": [1200, 420]
+		},
+		{
+			"parameters": {
+				"mode": "markdownToHtml",
+				"markdown": "={{ $json.data }}",
+				"options": {
+					"completeHTMLDocument": true
+				}
+			},
+			"id": "43950238-9726-403e-a17a-a9cab8089041",
+			"name": "Markdown",
+			"type": "n8n-nodes-base.markdown",
+			"typeVersion": 1,
+			"position": [1500, 700]
+		},
+		{
+			"parameters": {
+				"jsCode": "return {\n\"data\":\n`<!doctype html> <html> <head> <title>Example Domain</title> <meta charset=\"utf-8\" /> <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /> <style type=\"text/css\"> body { background-color: #f0f0f2; margin: 0; padding: 0; font-family: -apple-system, system-ui, BlinkMacSystemFont, \"Segoe UI\", \"Open Sans\", \"Helvetica Neue\", Helvetica, Arial, sans-serif; } div { width: 600px; margin: 5em auto; padding: 2em; background-color: #fdfdff; border-radius: 0.5em; box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02); } a:link, a:visited { color: #38488f; text-decoration: none; } @media (max-width: 700px) { div { margin: 0 auto; width: auto; } } </style> </head> <body> <div> <h1>Example Domain</h1> <p>This domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.</p> <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p> </div> </body> </html>`\n};"
+			},
+			"id": "d1f890b1-c484-441f-be70-7b35959ba9b4",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [940, 420]
+		},
+		{
+			"parameters": {
+				"html": "={{ $json.data }}",
+				"options": {
+					"ignore": "h1"
+				}
+			},
+			"id": "b9f9b71d-8b27-45a3-92cc-51e1138f688b",
+			"name": "Markdown2",
+			"type": "n8n-nodes-base.markdown",
+			"typeVersion": 1,
+			"position": [1200, 220]
+		},
+		{
+			"parameters": {
+				"html": "={{ $json.data }}",
+				"options": {
+					"textReplace": {
+						"values": [
+							{
+								"pattern": "Example Domain",
+								"replacement": "REPLACED"
+							}
+						]
+					}
+				}
+			},
+			"id": "9e1f3ade-067b-40b0-b702-be077e3ab653",
+			"name": "Markdown3",
+			"type": "n8n-nodes-base.markdown",
+			"typeVersion": 1,
+			"position": [1200, 20]
+		},
+		{
+			"parameters": {
+				"mode": "markdownToHtml",
+				"markdown": "={{ $json.data }}",
+				"options": {}
+			},
+			"id": "b7db1d99-8af5-404d-aa82-14690f879b4d",
+			"name": "Markdown4",
+			"type": "n8n-nodes-base.markdown",
+			"typeVersion": 1,
+			"position": [1500, 520]
+		}
+	],
+	"pinData": {
+		"Markdown3": [
+			{
+				"json": {
+					"data": " \n\n# REPLACED\n\nThis domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.\n\n[More information...](https://www.iana.org/domains/example)"
+				}
+			}
+		],
+		"Markdown2": [
+			{
+				"json": {
+					"data": " \n\n# Example Domain\n\nThis domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.\n\n[More information...](https://www.iana.org/domains/example)"
+				}
+			}
+		],
+		"Markdown4": [
+			{
+				"json": {
+					"data": "<h1 id=\"exampledomain\">Example Domain</h1>\n<p>This domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.</p>\n<p><a href=\"https://www.iana.org/domains/example\">More information…</a></p>"
+				}
+			}
+		],
+		"Markdown": [
+			{
+				"json": {
+					"data": "<!DOCTYPE HTML>\n<html>\n<head>\n<meta charset=\"utf-8\">\n</head>\n<body>\n<h1 id=\"exampledomain\">Example Domain</h1>\n<p>This domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.</p>\n<p><a href=\"https://www.iana.org/domains/example\">More information…</a></p>\n</body>\n</html>"
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Markdown1": {
+			"main": [
+				[
+					{
+						"node": "Markdown",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Markdown4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Markdown1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Markdown2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Markdown3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "fadb0d9c-191d-461d-904c-5ce47763ae25",
+	"id": "115",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

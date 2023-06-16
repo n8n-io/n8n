@@ -1,26 +1,21 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import { runInBatches } from '@db/utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
 
-export class UpdateWorkflowCredentials1630419189837 implements MigrationInterface {
-	name = 'UpdateWorkflowCredentials1630419189837';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-
-		await queryRunner.query(`SET search_path TO ${schema};`);
-
-		const credentialsEntities = await queryRunner.query(`
+export class UpdateWorkflowCredentials1630419189837 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type
 			FROM ${tablePrefix}credentials_entity
-		`);
+		`)) as Array<{ id: string; name: string; type: string }>;
 
 		const workflowsQuery = `
 			SELECT id, nodes
@@ -42,7 +37,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -60,7 +55,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -85,7 +80,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -103,7 +98,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -131,7 +126,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 								// @ts-ignore
 								(credentials) => credentials.name === name && credentials.type === type,
 							);
-							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+							node.credentials[type] = { id: matchingCredentials?.id || null, name };
 							credentialsUpdated = true;
 						}
 					}
@@ -148,23 +143,16 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
-		await queryRunner.query(`SET search_path TO ${schema};`);
-
-		const credentialsEntities = await queryRunner.query(`
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
+		const credentialsEntities = (await queryRunner.query(`
 			SELECT id, name, type
 			FROM ${tablePrefix}credentials_entity
-		`);
+		`)) as Array<{ id: string; name: string; type: string }>;
 
 		const workflowsQuery = `
 			SELECT id, nodes
@@ -209,7 +197,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -258,7 +246,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 							{},
 						);
 
-					queryRunner.query(updateQuery, updateParams);
+					await queryRunner.query(updateQuery, updateParams);
 				}
 			});
 		});
@@ -307,7 +295,7 @@ export class UpdateWorkflowCredentials1630419189837 implements MigrationInterfac
 					{},
 				);
 
-				queryRunner.query(updateQuery, updateParams);
+				await queryRunner.query(updateQuery, updateParams);
 			}
 		});
 	}

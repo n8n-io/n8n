@@ -1,14 +1,11 @@
-/* tslint:disable:variable-name */
-
 import N8nInfoAccordion from './InfoAccordion.vue';
-import { StoryFn } from "@storybook/vue";
-import { action } from "@storybook/addon-actions";
+import type { StoryFn } from '@storybook/vue';
+import { action } from '@storybook/addon-actions';
 
 export default {
 	title: 'Atoms/Info Accordion',
 	component: N8nInfoAccordion,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},
@@ -18,7 +15,7 @@ const methods = {
 	onClick: action('click'),
 };
 
-export const Default: StoryFn = (args, {argTypes}) => ({
+export const Default: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInfoAccordion,

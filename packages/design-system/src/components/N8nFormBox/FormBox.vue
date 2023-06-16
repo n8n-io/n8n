@@ -1,20 +1,11 @@
 <template>
-	<div
-		:class="['n8n-form-box', $style.container]"
-	>
-		<div
-			v-if="title"
-			:class="$style.heading"
-		>
-			<n8n-heading
-				size="xlarge"
-			>
-			{{title}}
+	<div :class="['n8n-form-box', $style.container]">
+		<div v-if="title" :class="$style.heading">
+			<n8n-heading size="xlarge">
+				{{ title }}
 			</n8n-heading>
 		</div>
-		<div
-			:class="$style.inputsContainer"
-		>
+		<div :class="$style.inputsContainer">
 			<n8n-form-inputs
 				:inputs="inputs"
 				:eventBus="formBus"
@@ -24,16 +15,9 @@
 			/>
 		</div>
 		<div :class="$style.buttonsContainer" v-if="secondaryButtonText || buttonText">
-			<span
-				v-if="secondaryButtonText"
-				:class="$style.secondaryButtonContainer"
-			>
-				<n8n-link
-					size="medium"
-					theme="text"
-					@click="onSecondaryButtonClick"
-				>
-					{{secondaryButtonText}}
+			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
+				<n8n-link size="medium" theme="text" @click="onSecondaryButtonClick">
+					{{ secondaryButtonText }}
 				</n8n-link>
 			</span>
 			<n8n-button
@@ -45,24 +29,23 @@
 			/>
 		</div>
 		<div :class="$style.actionContainer">
-			<n8n-link
-				v-if="redirectText && redirectLink"
-				:to="redirectLink"
-			>
-				{{redirectText}}
+			<n8n-link v-if="redirectText && redirectLink" :to="redirectLink">
+				{{ redirectText }}
 			</n8n-link>
 		</div>
+		<slot></slot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
+import { createEventBus } from '../../utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-box',
 	components: {
 		N8nHeading,
@@ -73,12 +56,11 @@ export default Vue.extend({
 	props: {
 		title: {
 			type: String,
+			default: '',
 		},
 		inputs: {
 			type: Array,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		buttonText: {
 			type: String,
@@ -92,25 +74,27 @@ export default Vue.extend({
 		},
 		redirectText: {
 			type: String,
+			default: '',
 		},
 		redirectLink: {
 			type: String,
+			default: '',
 		},
 	},
 	data() {
 		return {
-			formBus: new Vue(),
+			formBus: createEventBus(),
 		};
 	},
 	methods: {
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			this.$emit('input', e);
 		},
-		onSubmit(e: {[key: string]: string}) {
+		onSubmit(e: { [key: string]: string }) {
 			this.$emit('submit', e);
 		},
 		onButtonClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		onSecondaryButtonClick(event: Event) {
 			this.$emit('secondaryClick', event);

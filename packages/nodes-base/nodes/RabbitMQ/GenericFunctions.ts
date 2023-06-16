@@ -1,12 +1,7 @@
-import { IDataObject, IExecuteFunctions, ITriggerFunctions, sleep } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 
 import * as amqplib from 'amqplib';
-
-declare module 'amqplib' {
-	interface Channel {
-		connection: amqplib.Connection;
-	}
-}
 
 export async function rabbitmqConnect(
 	this: IExecuteFunctions | ITriggerFunctions,
@@ -101,6 +96,7 @@ export async function rabbitmqConnectExchange(
 
 export class MessageTracker {
 	messages: number[] = [];
+
 	isClosing = false;
 
 	received(message: amqplib.ConsumeMessage) {

@@ -1,4 +1,4 @@
-import { ContactProperties } from '../../Interfaces';
+import type { ContactProperties } from '../../Interfaces';
 
 import { addressFixedCollection } from '../../../methods/sharedFields';
 

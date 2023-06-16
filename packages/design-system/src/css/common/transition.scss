@@ -1,4 +1,4 @@
-@use "./var";
+@use './var';
 
 .fade-in-linear-enter-active,
 .fade-in-linear-leave-active {
@@ -79,12 +79,10 @@
 }
 
 .collapse-transition {
-	transition: 0.3s height ease-in-out, 0.3s padding-top ease-in-out,
-		0.3s padding-bottom ease-in-out;
+	transition: 0.3s height ease-in-out, 0.3s padding-top ease-in-out, 0.3s padding-bottom ease-in-out;
 }
 .horizontal-collapse-transition {
-	transition: 0.3s width ease-in-out, 0.3s padding-left ease-in-out,
-		0.3s padding-right ease-in-out;
+	transition: 0.3s width ease-in-out, 0.3s padding-left ease-in-out, 0.3s padding-right ease-in-out;
 }
 
 .el-list-enter-active,

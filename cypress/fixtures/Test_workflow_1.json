@@ -1,69 +1,61 @@
 {
-  "name": "Test workflow 1",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "a2f85497-260d-4489-a957-2b7d88e2f33d",
-      "name": "On clicking 'execute'",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        220,
-        260
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
-      },
-      "id": "9493d278-1ede-47c9-bedf-92ac3a737c65",
-      "name": "Code",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 1,
-      "position": [
-        400,
-        260
-      ]
-    }
-  ],
-  "pinData": {},
-  "connections": {
-    "On clicking 'execute'": {
-      "main": [
-        [
-          {
-            "node": "Code",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code": {
-      "main": [
-        []
-      ]
-    }
-  },
-  "active": false,
-  "settings": {},
-  "hash": "a59c7b1c97b1741597afae0fcd43ebef",
-  "id": 3,
-  "meta": {
-    "instanceId": "a5280676597d00ecd0ea712da7f9cf2ce90174a791a309112731f6e44d162f35"
-  },
-  "tags": [
-    {
-      "name": "some-tag-1",
-      "createdAt": "2022-11-10T13:43:34.001Z",
-      "updatedAt": "2022-11-10T13:43:34.001Z",
-      "id": "6"
-    },
-    {
-      "name": "some-tag-2",
-      "createdAt": "2022-11-10T13:43:39.778Z",
-      "updatedAt": "2022-11-10T13:43:39.778Z",
-      "id": "7"
-    }
-  ]
+	"name": "Test workflow 1",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a2f85497-260d-4489-a957-2b7d88e2f33d",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [220, 260]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			},
+			"id": "9493d278-1ede-47c9-bedf-92ac3a737c65",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [400, 260]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [[]]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"hash": "a59c7b1c97b1741597afae0fcd43ebef",
+	"id": 3,
+	"meta": {
+		"instanceId": "a5280676597d00ecd0ea712da7f9cf2ce90174a791a309112731f6e44d162f35"
+	},
+	"tags": [
+		{
+			"name": "some-tag-1",
+			"createdAt": "2022-11-10T13:43:34.001Z",
+			"updatedAt": "2022-11-10T13:43:34.001Z",
+			"id": "6"
+		},
+		{
+			"name": "some-tag-2",
+			"createdAt": "2022-11-10T13:43:39.778Z",
+			"updatedAt": "2022-11-10T13:43:39.778Z",
+			"id": "7"
+		}
+	]
 }

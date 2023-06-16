@@ -5,8 +5,8 @@ WORKDIR /home/node
 COPY .npmrc /usr/local/etc/npmrc
 
 RUN \
-	apk add --update git graphicsmagick tini tzdata ca-certificates && \
-	npm install -g npm@latest full-icu && \
+	apk add --update git openssh graphicsmagick tini tzdata ca-certificates && \
+	npm install -g npm@8.19.2 full-icu && \
 	rm -rf /var/cache/apk/* /root/.npm /tmp/* && \
 	# Install fonts
 	apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \

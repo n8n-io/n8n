@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { ghostApiRequest, ghostApiRequestAllItems, validateJSON } from './GenericFunctions';
 
@@ -88,11 +87,11 @@ export class Ghost implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the authors to display them to user so that he can
+			// Get all the authors to display them to user so that they can
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', `/admin/users`);
+				const users = await ghostApiRequestAllItems.call(this, 'users', 'GET', '/admin/users');
 				for (const user of users) {
 					returnData.push({
 						name: user.name,
@@ -101,11 +100,11 @@ export class Ghost implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', `/admin/tags`);
+				const tags = await ghostApiRequestAllItems.call(this, 'tags', 'GET', '/admin/tags');
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
@@ -124,8 +123,8 @@ export class Ghost implements INodeType {
 		const timezone = this.getTimezone();
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const source = this.getNodeParameter('source', 0) as string;
 
 		for (let i = 0; i < length; i++) {
@@ -137,7 +136,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -154,9 +153,9 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -187,7 +186,7 @@ export class Ghost implements INodeType {
 
 							const content = this.getNodeParameter('content', i) as string;
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							const post: IDataObject = {
 								title,
@@ -243,7 +242,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -259,9 +258,9 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -286,7 +285,7 @@ export class Ghost implements INodeType {
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 
 							const post: IDataObject = {};
 
@@ -341,7 +340,7 @@ export class Ghost implements INodeType {
 					}
 				}
 
-				responseData = this.helpers.returnJsonArray(responseData);
+				responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },

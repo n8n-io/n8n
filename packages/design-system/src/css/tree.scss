@@ -1,7 +1,7 @@
-@use "mixins/mixins";
-@use "./common/var";
-@use "common/transition";
-@use "checkbox";
+@use 'mixins/mixins';
+@use './common/var';
+@use 'common/transition';
+@use 'checkbox';
 
 @include mixins.b(tree) {
 	position: relative;

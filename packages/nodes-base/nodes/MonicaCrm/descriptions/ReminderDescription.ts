@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const reminderOperations: INodeProperties[] = [
 	{
@@ -157,9 +157,6 @@ export const reminderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description about the reminder - Max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -277,9 +274,6 @@ export const reminderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description about the reminder - Max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Frequency Type',

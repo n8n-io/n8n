@@ -1,26 +1,23 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { simpleParser } from 'mailparser';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
 	IBinaryKeyData,
-	ICredentialDataDecryptedObject,
 	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { DateTime } from 'luxon';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash.isempty';
 
 export interface IEmail {
 	from?: string;
@@ -41,7 +38,8 @@ export interface IAttachments {
 	content: string;
 }
 
-const mailComposer = require('nodemailer/lib/mail-composer');
+import MailComposer from 'nodemailer/lib/mail-composer';
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -81,9 +79,9 @@ export async function googleApiRequest(
 			const credentials = await this.getCredentials('googleApi');
 			credentialType = 'googleApi';
 
-			const { access_token } = await getAccessToken.call(this, credentials);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'gmail');
 
-			(options.headers as IDataObject)['Authorization'] = `Bearer ${access_token}`;
+			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
 		}
 
 		const response = await this.helpers.requestWithAuthentication.call(
@@ -100,13 +98,13 @@ export async function googleApiRequest(
 		if (error.httpCode === '400') {
 			if (error.cause && ((error.cause.message as string) || '').includes('Invalid id value')) {
 				const resource = this.getNodeParameter('resource', 0) as string;
-				const options = {
+				const errorOptions = {
 					message: `Invalid ${resource} ID`,
 					description: `${
 						resource.charAt(0).toUpperCase() + resource.slice(1)
 					} IDs should look something like this: 182b676d244938bd`,
 				};
-				throw new NodeApiError(this.getNode(), error, options);
+				throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 			}
 		}
 
@@ -115,44 +113,44 @@ export async function googleApiRequest(
 			if (resource === 'label') {
 				resource = 'label ID';
 			}
-			const options = {
+			const errorOptions = {
 				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
 				description: '',
 			};
-			throw new NodeApiError(this.getNode(), error, options);
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 
 		if (error.httpCode === '409') {
 			const resource = this.getNodeParameter('resource', 0) as string;
 			if (resource === 'label') {
-				const options = {
-					message: `Label name exists already`,
+				const errorOptions = {
+					message: 'Label name exists already',
 					description: '',
 				};
-				throw new NodeApiError(this.getNode(), error, options);
+				throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 			}
 		}
 
 		if (error.code === 'EAUTH') {
-			const options = {
+			const errorOptions = {
 				message: error?.body?.error_description || 'Authorization error',
 				description: (error as Error).message,
 			};
-			throw new NodeApiError(this.getNode(), error, options);
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 
 		if (
 			((error.message as string) || '').includes('Bad request - please check your parameters') &&
 			error.description
 		) {
-			const options = {
+			const errorOptions = {
 				message: error.description,
-				description: ``,
+				description: '',
 			};
-			throw new NodeApiError(this.getNode(), error, options);
+			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 
-		throw new NodeApiError(this.getNode(), error, {
+		throw new NodeApiError(this.getNode(), error as JsonObject, {
 			message: error.message,
 			description: error.description,
 		});
@@ -161,23 +159,17 @@ export async function googleApiRequest(
 
 export async function parseRawEmail(
 	this: IExecuteFunctions | IPollFunctions,
-	// tslint:disable-next-line:no-any
+
 	messageData: any,
 	dataPropertyNameDownload: string,
 ): Promise<INodeExecutionData> {
-	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
-	let responseData = await simpleParser(messageEncoded);
+	const messageEncoded = Buffer.from(messageData.raw as string, 'base64').toString('utf8');
+	const responseData = await simpleParser(messageEncoded);
 
 	const headers: IDataObject = {};
-	// @ts-ignore
 	for (const header of responseData.headerLines) {
 		headers[header.key] = header.line;
 	}
-
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
@@ -196,8 +188,6 @@ export async function parseRawEmail(
 				);
 			}
 		}
-		// @ts-ignore
-		responseData.attachments = undefined;
 	}
 
 	const mailBaseData: IDataObject = {};
@@ -205,14 +195,17 @@ export async function parseRawEmail(
 	const resolvedModeAddProperties = ['id', 'threadId', 'labelIds', 'sizeEstimate'];
 
 	for (const key of resolvedModeAddProperties) {
-		// @ts-ignore
 		mailBaseData[key] = messageData[key];
 	}
 
-	responseData = Object.assign(mailBaseData, responseData);
+	const json = Object.assign({}, mailBaseData, responseData, {
+		headers,
+		headerLines: undefined,
+		attachments: undefined,
+	}) as IDataObject;
 
 	return {
-		json: responseData as unknown as IDataObject,
+		json,
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }
@@ -224,8 +217,6 @@ export async function parseRawEmail(
 
 export async function encodeEmail(email: IEmail) {
 	// https://nodemailer.com/extras/mailcomposer/#e-mail-message-fields
-	let mailBody: Buffer;
-
 	const mailOptions = {
 		from: email.from,
 		to: email.to,
@@ -257,15 +248,15 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
-	const mail = new mailComposer(mailOptions).compile();
+	const mail = new MailComposer(mailOptions).compile();
 
 	// by default the bcc headers are deleted when the mail is built.
-	// So add keepBcc flag to averride such behaviour. Only works when
+	// So add keepBcc flag to override such behaviour. Only works when
 	// the flag is set after the compilation.
-	//https://nodemailer.com/extras/mailcomposer/#bcc
+	// @ts-expect-error - https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;
 
-	mailBody = await mail.build();
+	const mailBody = await mail.build();
 
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
@@ -275,10 +266,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -286,10 +276,10 @@ export async function googleApiRequestAllItems(
 	query.maxResults = 100;
 
 	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+		responseData = await googleApiRequest.call(this, method, endpoint, body as IDataObject, query);
+		query.pageToken = responseData.nextPageToken;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
@@ -302,66 +292,64 @@ export function extractEmail(s: string) {
 	return s;
 }
 
-function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
+export const prepareTimestamp = (
+	node: INode,
+	itemIndex: number,
+	query: string,
+	dateValue: string | number | DateTime,
+	label: 'after' | 'before',
+) => {
+	if (dateValue instanceof DateTime) {
+		dateValue = dateValue.toISO();
+	}
 
-	const scopes = [
-		'https://www.googleapis.com/auth/gmail.labels',
-		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
-		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
-		'https://mail.google.com/',
-		'https://www.googleapis.com/auth/gmail.modify',
-		'https://www.googleapis.com/auth/gmail.compose',
-	];
+	let timestamp = DateTime.fromISO(dateValue as string).toSeconds();
+	const timestampLengthInMilliseconds1990 = 12;
 
-	const now = moment().unix();
+	if (typeof timestamp === 'number') {
+		timestamp = Math.round(timestamp);
+	}
 
-	credentials.email = (credentials.email as string).trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	if (
+		!timestamp &&
+		typeof dateValue === 'number' &&
+		dateValue.toString().length < timestampLengthInMilliseconds1990
+	) {
+		timestamp = dateValue;
+	}
 
-	const signature = jwt.sign(
-		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
-			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
+	if (!timestamp && (dateValue as string).length < timestampLengthInMilliseconds1990) {
+		timestamp = parseInt(dateValue as string, 10);
+	}
+
+	if (!timestamp) {
+		timestamp = Math.floor(DateTime.fromMillis(parseInt(dateValue as string, 10)).toSeconds());
+	}
+
+	if (!timestamp) {
+		const description = `'${dateValue}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
+		throw new NodeOperationError(
+			node,
+			`Invalid date/time in 'Received ${label[0].toUpperCase() + label.slice(1)}' field`,
+			{
+				description,
+				itemIndex,
 			},
-		},
-	);
+		);
+	}
 
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	//@ts-ignore
-	return this.helpers.request(options);
-}
+	if (query) {
+		query += ` ${label}:${timestamp}`;
+	} else {
+		query = `${label}:${timestamp}`;
+	}
+	return query;
+};
 
 export function prepareQuery(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	fields: IDataObject,
+	itemIndex: number,
 ) {
 	const qs: IDataObject = { ...fields };
 	if (qs.labelIds) {
@@ -391,60 +379,24 @@ export function prepareQuery(
 	}
 
 	if (qs.receivedAfter) {
-		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
-		const timestampLengthInMilliseconds1990 = 12;
-
-		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
-			timestamp = parseInt(qs.receivedAfter as string, 10);
-		}
-
-		if (!timestamp) {
-			timestamp = Math.floor(
-				DateTime.fromMillis(parseInt(qs.receivedAfter as string, 10)).toSeconds(),
-			);
-		}
-
-		if (!timestamp) {
-			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received After' field`, {
-				description,
-			});
-		}
-
-		if (qs.q) {
-			qs.q += ` after:${timestamp}`;
-		} else {
-			qs.q = `after:${timestamp}`;
-		}
+		qs.q = prepareTimestamp(
+			this.getNode(),
+			itemIndex,
+			qs.q as string,
+			qs.receivedAfter as string,
+			'after',
+		);
 		delete qs.receivedAfter;
 	}
 
 	if (qs.receivedBefore) {
-		let timestamp = DateTime.fromISO(qs.receivedBefore as string).toSeconds();
-		const timestampLengthInMilliseconds1990 = 12;
-
-		if (!timestamp && (qs.receivedBefore as string).length < timestampLengthInMilliseconds1990) {
-			timestamp = parseInt(qs.receivedBefore as string, 10);
-		}
-
-		if (!timestamp) {
-			timestamp = Math.floor(
-				DateTime.fromMillis(parseInt(qs.receivedBefore as string, 10)).toSeconds(),
-			);
-		}
-
-		if (!timestamp) {
-			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received Before' field`, {
-				description,
-			});
-		}
-
-		if (qs.q) {
-			qs.q += ` before:${timestamp}`;
-		} else {
-			qs.q = `before:${timestamp}`;
-		}
+		qs.q = prepareTimestamp(
+			this.getNode(),
+			itemIndex,
+			qs.q as string,
+			qs.receivedBefore as string,
+			'before',
+		);
 		delete qs.receivedBefore;
 	}
 
@@ -464,7 +416,7 @@ export function prepareEmailsInput(
 
 		if (email.indexOf('@') === -1) {
 			const description = `The email address '${email}' in the '${fieldName}' field isn't valid`;
-			throw new NodeOperationError(this.getNode(), `Invalid email address`, {
+			throw new NodeOperationError(this.getNode(), 'Invalid email address', {
 				description,
 				itemIndex,
 			});
@@ -504,25 +456,17 @@ export async function prepareEmailAttachments(
 	itemIndex: number,
 ) {
 	const attachmentsList: IDataObject[] = [];
-	const attachments = (options as IDataObject).attachmentsBinary as IDataObject[];
+	const attachments = options.attachmentsBinary as IDataObject[];
 
 	if (attachments && !isEmpty(attachments)) {
 		for (const { property } of attachments) {
 			for (const name of (property as string).split(',')) {
-				if (!items[itemIndex].binary || items[itemIndex].binary![name] === undefined) {
-					const description = `This node has no input field called '${name}' `;
-					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
-						description,
-						itemIndex,
-					});
-				}
-
-				const binaryData = items[itemIndex].binary![name];
+				const binaryData = this.helpers.assertBinaryData(itemIndex, name);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(itemIndex, name);
 
-				if (!items[itemIndex].binary![name] || !Buffer.isBuffer(binaryDataBuffer)) {
+				if (!Buffer.isBuffer(binaryDataBuffer)) {
 					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
-					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,
 						itemIndex,
 					});
@@ -541,27 +485,24 @@ export async function prepareEmailAttachments(
 
 export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
-		const snippet = (item.json as IDataObject).snippet as string;
+		const snippet = item.json.snippet as string;
 		if (snippet) {
-			(item.json as IDataObject).snippet = snippet.replace(
-				/&amp;|&lt;|&gt;|&#39;|&quot;/g,
-				(match) => {
-					switch (match) {
-						case '&amp;':
-							return '&';
-						case '&lt;':
-							return '<';
-						case '&gt;':
-							return '>';
-						case '&#39;':
-							return "'";
-						case '&quot;':
-							return '"';
-						default:
-							return match;
-					}
-				},
-			);
+			item.json.snippet = snippet.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
+				switch (match) {
+					case '&amp;':
+						return '&';
+					case '&lt;':
+						return '<';
+					case '&gt;':
+						return '>';
+					case '&#39;':
+						return "'";
+					case '&quot;':
+						return '"';
+					default:
+						return match;
+				}
+			});
 		}
 		return item;
 	});
@@ -625,6 +566,15 @@ export async function replayToEmail(
 	const replyToSenderOnly =
 		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
 
+	const prepareEmailString = (email: string) => {
+		if (email.includes(emailAddress as string)) return;
+		if (email.includes('<') && email.includes('>')) {
+			to += `${email}, `;
+		} else {
+			to += `<${email}>, `;
+		}
+	};
+
 	for (const header of payload.headers as IDataObject[]) {
 		if (((header.name as string) || '').toLowerCase() === 'from') {
 			const from = header.value as string;
@@ -637,14 +587,7 @@ export async function replayToEmail(
 
 		if (((header.name as string) || '').toLowerCase() === 'to' && !replyToSenderOnly) {
 			const toEmails = header.value as string;
-			toEmails.split(',').forEach((email: string) => {
-				if (email.includes(emailAddress)) return;
-				if (email.includes('<') && email.includes('>')) {
-					to += `${email}, `;
-				} else {
-					to += `<${email}>, `;
-				}
-			});
+			toEmails.split(',').forEach(prepareEmailString);
 		}
 	}
 
@@ -670,19 +613,19 @@ export async function replayToEmail(
 		threadId,
 	};
 
-	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
+	return googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(
 	this: IExecuteFunctions | IPollFunctions,
 	data: IDataObject[],
 ) {
-	const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+	const labelsData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
 		id,
 		name,
 	}));
-	return ((data as IDataObject[]) || []).map((item) => {
+	return (data || []).map((item) => {
 		if (item.labelIds) {
 			item.labels = labels.filter((label) =>
 				(item.labelIds as string[]).includes(label.id as string),

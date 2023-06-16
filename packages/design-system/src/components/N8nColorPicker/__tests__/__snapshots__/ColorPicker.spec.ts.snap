@@ -1,0 +1,269 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nColorPicker > should render with input 1`] = `
+<div>
+  <span
+    class="n8n-color-picker component"
+    data-v-dab78bb8=""
+  >
+    <div
+      class="el-color-picker el-color-picker--medium"
+      data-v-dab78bb8=""
+    >
+      <!---->
+      <div
+        class="el-color-picker__trigger"
+      >
+        <span
+          class="el-color-picker__color"
+        >
+          <span
+            class="el-color-picker__color-inner"
+            style="background-color: transparent;"
+          />
+          <span
+            class="el-color-picker__empty el-icon-close"
+          />
+        </span>
+        <span
+          class="el-color-picker__icon el-icon-arrow-down"
+          style="display: none;"
+        />
+      </div>
+      <transition-stub
+        class="el-color-picker__panel"
+        name="el-zoom-in-top"
+      >
+        <div
+          class="el-color-dropdown"
+          style="display: none;"
+        >
+          <div
+            class="el-color-dropdown__main-wrapper"
+          >
+            <div
+              class="el-color-hue-slider is-vertical"
+              style="float: right;"
+            >
+              <div
+                class="el-color-hue-slider__bar"
+              />
+              <div
+                class="el-color-hue-slider__thumb"
+                style="left: 0px; top: 0px;"
+              />
+            </div>
+            <div
+              class="el-color-svpanel"
+              style="background-color: rgb(255, 0, 0);"
+            >
+              <div
+                class="el-color-svpanel__white"
+              />
+              <div
+                class="el-color-svpanel__black"
+              />
+              <div
+                class="el-color-svpanel__cursor"
+                style="top: 0px; left: 0px;"
+              >
+                <div />
+              </div>
+            </div>
+          </div>
+          <!---->
+          <!---->
+          <div
+            class="el-color-dropdown__btns"
+          >
+            <span
+              class="el-color-dropdown__value"
+            >
+              <div
+                class="el-input el-input--mini"
+              >
+                <!---->
+                <input
+                  autocomplete="off"
+                  class="el-input__inner"
+                  type="text"
+                />
+                <!---->
+                <!---->
+                <!---->
+                <!---->
+              </div>
+            </span>
+            <button
+              class="el-button el-color-dropdown__link-btn el-button--text el-button--mini"
+              type="button"
+            >
+              <!---->
+              <!---->
+              <span>
+                
+        清空
+      
+              </span>
+            </button>
+            <button
+              class="el-button el-color-dropdown__btn el-button--default el-button--mini is-plain"
+              type="button"
+            >
+              <!---->
+              <!---->
+              <span>
+                
+        确定
+      
+              </span>
+            </button>
+          </div>
+        </div>
+      </transition-stub>
+    </div>
+    <div
+      class="el-input el-input--medium n8n-input input"
+      data-v-dab78bb8=""
+    >
+      <!---->
+      <input
+        autocomplete="off"
+        class="el-input__inner"
+        type="text"
+      />
+      <!---->
+      <!---->
+      <!---->
+      <!---->
+    </div>
+  </span>
+</div>
+`;
+
+exports[`components > N8nColorPicker > should render without input 1`] = `
+<div>
+  <span
+    class="n8n-color-picker component"
+    data-v-dab78bb8=""
+  >
+    <div
+      class="el-color-picker el-color-picker--medium"
+      data-v-dab78bb8=""
+    >
+      <!---->
+      <div
+        class="el-color-picker__trigger"
+      >
+        <span
+          class="el-color-picker__color"
+        >
+          <span
+            class="el-color-picker__color-inner"
+            style="background-color: transparent;"
+          />
+          <span
+            class="el-color-picker__empty el-icon-close"
+          />
+        </span>
+        <span
+          class="el-color-picker__icon el-icon-arrow-down"
+          style="display: none;"
+        />
+      </div>
+      <transition-stub
+        class="el-color-picker__panel"
+        name="el-zoom-in-top"
+      >
+        <div
+          class="el-color-dropdown"
+          style="display: none;"
+        >
+          <div
+            class="el-color-dropdown__main-wrapper"
+          >
+            <div
+              class="el-color-hue-slider is-vertical"
+              style="float: right;"
+            >
+              <div
+                class="el-color-hue-slider__bar"
+              />
+              <div
+                class="el-color-hue-slider__thumb"
+                style="left: 0px; top: 0px;"
+              />
+            </div>
+            <div
+              class="el-color-svpanel"
+              style="background-color: rgb(255, 0, 0);"
+            >
+              <div
+                class="el-color-svpanel__white"
+              />
+              <div
+                class="el-color-svpanel__black"
+              />
+              <div
+                class="el-color-svpanel__cursor"
+                style="top: 0px; left: 0px;"
+              >
+                <div />
+              </div>
+            </div>
+          </div>
+          <!---->
+          <!---->
+          <div
+            class="el-color-dropdown__btns"
+          >
+            <span
+              class="el-color-dropdown__value"
+            >
+              <div
+                class="el-input el-input--mini"
+              >
+                <!---->
+                <input
+                  autocomplete="off"
+                  class="el-input__inner"
+                  type="text"
+                />
+                <!---->
+                <!---->
+                <!---->
+                <!---->
+              </div>
+            </span>
+            <button
+              class="el-button el-color-dropdown__link-btn el-button--text el-button--mini"
+              type="button"
+            >
+              <!---->
+              <!---->
+              <span>
+                
+        清空
+      
+              </span>
+            </button>
+            <button
+              class="el-button el-color-dropdown__btn el-button--default el-button--mini is-plain"
+              type="button"
+            >
+              <!---->
+              <!---->
+              <span>
+                
+        确定
+      
+              </span>
+            </button>
+          </div>
+        </div>
+      </transition-stub>
+    </div>
+    <!---->
+  </span>
+</div>
+`;

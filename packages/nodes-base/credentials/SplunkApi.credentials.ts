@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SplunkApi implements ICredentialType {
 	name = 'splunkApi';
+
 	displayName = 'Splunk API';
+
 	documentationUrl = 'splunk';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Auth Token',

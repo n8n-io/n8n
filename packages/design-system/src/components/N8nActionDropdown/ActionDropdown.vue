@@ -1,43 +1,49 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect">
-			<div :class="$style.activator" @click.prevent>
-				<n8n-icon :icon="activatorIcon"/>
+		<el-dropdown
+			:placement="placement"
+			:trigger="trigger"
+			@command="onSelect"
+			ref="elementDropdown"
+		>
+			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
+				<n8n-icon :icon="activatorIcon" />
 			</div>
-			<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
-				<el-dropdown-item
-					v-for="item in items"
-					:key="item.id"
-					:command="item.id"
-					:disabled="item.disabled"
-					:divided="item.divided"
-				>
-					<div :class="{
-						[$style.itemContainer]: true,
-						[$style.hasCustomStyling]: item.customClass !== undefined,
-						[item.customClass]: item.customClass !== undefined,
-					}">
-						<span v-if="item.icon" :class="$style.icon">
-							<n8n-icon :icon="item.icon" :size="item.iconSize"/>
-						</span>
-						<span :class="$style.label">
-							{{ item.label }}
-						</span>
-					</div>
-				</el-dropdown-item>
-			</el-dropdown-menu>
+			<template #dropdown>
+				<el-dropdown-menu :class="$style.userActionsMenu">
+					<el-dropdown-item
+						v-for="item in items"
+						:key="item.id"
+						:command="item.id"
+						:disabled="item.disabled"
+						:divided="item.divided"
+					>
+						<div :class="getItemClasses(item)" :data-test-id="`workflow-menu-item-${item.id}`">
+							<span v-if="item.icon" :class="$style.icon">
+								<n8n-icon :icon="item.icon" :size="iconSize" />
+							</span>
+							<span :class="$style.label">
+								{{ item.label }}
+							</span>
+						</div>
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
-import ElDropdown from 'element-ui/lib/dropdown';
-import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
-import ElDropdownItem from 'element-ui/lib/dropdown-item';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import {
+	Dropdown as ElDropdown,
+	DropdownMenu as ElDropdownMenu,
+	DropdownItem as ElDropdownItem,
+} from 'element-ui';
 import N8nIcon from '../N8nIcon';
 
-interface IActionDropdownItem {
+export interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;
@@ -52,12 +58,12 @@ interface IActionDropdownItem {
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-dropdown',
 	components: {
-		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdown,		// eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem,	// eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,
+		ElDropdownMenu,
+		ElDropdownItem,
 		N8nIcon,
 	},
 	props: {
@@ -78,27 +84,39 @@ export default Vue.extend({
 		iconSize: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium', 'large'].includes(value),
+			validator: (value: string): boolean => ['small', 'medium', 'large'].includes(value),
 		},
 		trigger: {
 			type: String,
 			default: 'click',
-			validator: (value: string): boolean =>
-				['click', 'hover'].includes(value),
+			validator: (value: string): boolean => ['click', 'hover'].includes(value),
 		},
 	},
 	methods: {
-		onSelect(action: string) : void {
+		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
+			return {
+				[this.$style.itemContainer]: true,
+				[this.$style.hasCustomStyling]: item.customClass !== undefined,
+				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+			};
+		},
+		onSelect(action: string): void {
 			this.$emit('select', action);
+		},
+		onButtonBlur(event: FocusEvent): void {
+			const elementDropdown = this.$refs.elementDropdown as
+				| (Vue & { hide: () => void })
+				| undefined;
+			// Hide dropdown when clicking outside of current document
+			if (elementDropdown && event.relatedTarget === null) {
+				elementDropdown.hide();
+			}
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" module>
-
 .activator {
 	cursor: pointer;
 	padding: var(--spacing-2xs);
@@ -124,7 +142,9 @@ export default Vue.extend({
 	text-align: center;
 	margin-right: var(--spacing-2xs);
 
-	svg { width: 1.2em !important; }
+	svg {
+		width: 1.2em !important;
+	}
 }
 
 :global(li.is-disabled) {
@@ -132,5 +152,4 @@ export default Vue.extend({
 		color: inherit !important;
 	}
 }
-
 </style>

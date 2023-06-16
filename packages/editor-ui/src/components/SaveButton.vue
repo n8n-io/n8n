@@ -14,10 +14,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: "SaveButton",
+export default defineComponent({
+	name: 'SaveButton',
 	props: {
 		saved: {
 			type: Boolean,
@@ -70,6 +70,7 @@ export default Vue.extend({
 	font-weight: 600;
 	line-height: 12px;
 	text-align: center;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-2xs);
+	min-width: 53px;
 }
 </style>

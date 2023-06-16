@@ -1,8 +1,7 @@
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
-import { StoryFn } from '@storybook/vue';
-
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Callout',
@@ -33,7 +32,15 @@ export default {
 	},
 };
 
-const template : StoryFn = (args, { argTypes }) => ({
+interface Args {
+	theme: string;
+	icon: string;
+	default: string;
+	actions: string;
+	trailingContent: string;
+}
+
+const template: StoryFn<Args> = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nLink,
@@ -57,9 +64,7 @@ export const defaultCallout = template.bind({});
 defaultCallout.args = {
 	theme: 'success',
 	default: `
-		<n8n-text size="small" >
-			This is a default callout.
-		</n8n-text>
+		This is a default callout.
 	`,
 };
 
@@ -68,9 +73,7 @@ customCallout.args = {
 	theme: 'custom',
 	icon: 'code-branch',
 	default: `
-		<n8n-text size="small" >
-			This is a custom callout.
-		</n8n-text>
+		This is a custom callout.
 	`,
 	actions: `
 		<n8n-link size="small">
@@ -79,15 +82,12 @@ customCallout.args = {
 	`,
 };
 
-
 export const secondaryCallout = template.bind({});
 secondaryCallout.args = {
 	theme: 'secondary',
 	icon: 'thumbtack',
 	default: `
-		<n8n-text size="small">
-			This data is pinned.
-		</n8n-text>
+		This data is pinned.
 	`,
 	actions: `
 		<n8n-link theme="secondary" size="small" :bold="true" :underline="true">

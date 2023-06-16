@@ -1,14 +1,13 @@
 import N8nMenu from './Menu.vue';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import { action } from '@storybook/addon-actions';
 
 export default {
 	title: 'Atoms/Menu',
 	component: N8nMenu,
-	argTypes: {
-	},
+	argTypes: {},
 };
 
 const methods = {

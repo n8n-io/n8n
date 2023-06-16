@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { attributeFields, attributeOperations } from './AttributeDescription';
 import { contactFields, contactOperations } from './ContactDescription';
 import { emailFields, emailOperations } from './EmailDescription';

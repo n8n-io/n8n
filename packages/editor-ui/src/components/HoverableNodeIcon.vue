@@ -8,7 +8,9 @@
 	>
 		<div :class="$style.tooltip">
 			<n8n-tooltip placement="top" manual :value="showTooltip">
-				<div slot="content" v-text="nodeType.displayName"></div>
+				<template #content>
+					<div v-text="nodeType.displayName"></div>
+				</template>
 				<span />
 			</n8n-tooltip>
 		</div>
@@ -38,12 +40,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import { ITemplatesNode } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { ITemplatesNode } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 interface NodeIconData {
 	type: string;
@@ -52,7 +54,7 @@ interface NodeIconData {
 	fileBuffer?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'HoverableNodeIcon',
 	props: {
 		circle: {
@@ -74,9 +76,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		fontStyleData(): object {
 			return {
 				'max-width': this.size + 'px',

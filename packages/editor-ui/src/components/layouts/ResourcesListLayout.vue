@@ -8,9 +8,17 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<n8n-button size="large" block @click="$emit('click:add', $event)" data-test-id="resources-list-add">
-					{{ $locale.baseText(`${resourceKey}.add`) }}
-				</n8n-button>
+				<slot name="add-button">
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="$emit('click:add', $event)"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`${resourceKey}.add`) }}
+					</n8n-button>
+				</slot>
 			</div>
 
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
@@ -23,18 +31,26 @@
 		</template>
 
 		<div v-if="loading">
-			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom"/>
-			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom"/>
-			<n8n-loading :class="$style['card-loading']" variant="custom"/>
+			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
+			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
+			<n8n-loading :class="$style['card-loading']" variant="custom" />
 		</div>
 		<template v-else>
-			<div class="ph-no-capture" v-if="resources.length === 0">
+			<div v-if="resources.length === 0">
 				<slot name="empty">
 					<n8n-action-box
+						data-test-id="empty-resources-list"
 						emoji="👋"
-						:heading="$locale.baseText(usersStore.currentUser.firstName ? `${resourceKey}.empty.heading` : `${resourceKey}.empty.heading.userNotSetup`, {
-							interpolate: { name: usersStore.currentUser.firstName }
-						})"
+						:heading="
+							$locale.baseText(
+								usersStore.currentUser.firstName
+									? `${resourceKey}.empty.heading`
+									: `${resourceKey}.empty.heading.userNotSetup`,
+								{
+									interpolate: { name: usersStore.currentUser.firstName },
+								},
+							)
+						"
 						:description="$locale.baseText(`${resourceKey}.empty.description`)"
 						:buttonText="$locale.baseText(`${resourceKey}.empty.button`)"
 						buttonType="secondary"
@@ -42,7 +58,7 @@
 					/>
 				</slot>
 			</div>
-			<page-view-layout-list v-else>
+			<page-view-layout-list :overflow="type !== 'list'" v-else>
 				<template #header>
 					<div class="mb-xs">
 						<div :class="$style['filters-row']">
@@ -55,19 +71,21 @@
 								ref="search"
 								data-test-id="resources-list-search"
 							>
-								<n8n-icon icon="search" slot="prefix"/>
+								<template #prefix>
+									<n8n-icon icon="search" />
+								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
-								<n8n-select
-									v-model="sortBy"
-									size="medium"
-								>
-									<n8n-option value="lastUpdated" :label="$locale.baseText(`${resourceKey}.sort.lastUpdated`)"/>
-									<n8n-option value="lastCreated" :label="$locale.baseText(`${resourceKey}.sort.lastCreated`)"/>
-									<n8n-option value="nameAsc" :label="$locale.baseText(`${resourceKey}.sort.nameAsc`)"/>
-									<n8n-option value="nameDesc" :label="$locale.baseText(`${resourceKey}.sort.nameDesc`)"/>
+								<n8n-select v-model="sortBy" size="medium" data-test-id="resources-list-sort">
+									<n8n-option
+										v-for="sortOption in sortOptions"
+										:key="sortOption"
+										:value="sortOption"
+										:label="$locale.baseText(`${resourceKey}.sort.${sortOption}`)"
+									/>
 								</n8n-select>
 								<resource-filters-dropdown
+									v-if="showFiltersDropdown"
 									:keys="filterKeys"
 									:reset="resetFilters"
 									:value="filters"
@@ -75,65 +93,109 @@
 									@input="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
 								>
-									<template v-slot="resourceFiltersSlotProps">
+									<template #default="resourceFiltersSlotProps">
 										<slot name="filters" v-bind="resourceFiltersSlotProps" />
 									</template>
 								</resource-filters-dropdown>
 							</div>
 						</div>
 					</div>
+
+					<slot name="callout"></slot>
+
+					<div v-show="hasFilters" class="mt-xs">
+						<n8n-info-tip :bold="false">
+							{{ $locale.baseText(`${resourceKey}.filters.active`) }}
+							<n8n-link @click="resetFilters" size="small">
+								{{ $locale.baseText(`${resourceKey}.filters.active.reset`) }}
+							</n8n-link>
+						</n8n-info-tip>
+					</div>
+
+					<div class="pb-xs" />
 				</template>
 
-				<div v-show="hasFilters" class="mt-xs">
-					<n8n-info-tip :bold="false">
-						{{ $locale.baseText(`${resourceKey}.filters.active`) }}
-						<n8n-link @click="resetFilters" size="small">
-							{{ $locale.baseText(`${resourceKey}.filters.active.reset`) }}
-						</n8n-link>
-					</n8n-info-tip>
+				<slot name="preamble" />
+
+				<div
+					v-if="filteredAndSortedSubviewResources.length > 0"
+					:class="$style.listWrapper"
+					ref="listWrapperRef"
+				>
+					<n8n-recycle-scroller
+						v-if="type === 'list'"
+						data-test-id="resources-list"
+						:class="[$style.list, 'list-style-none']"
+						:items="filteredAndSortedSubviewResources"
+						:item-size="typeProps.itemSize"
+						item-key="id"
+					>
+						<template #default="{ item, updateItemSize }">
+							<slot :data="item" :updateItemSize="updateItemSize" />
+						</template>
+					</n8n-recycle-scroller>
+					<n8n-datatable
+						v-if="typeProps.columns"
+						data-test-id="resources-table"
+						:class="$style.datatable"
+						:columns="typeProps.columns"
+						:rows="filteredAndSortedSubviewResources"
+						:currentPage="currentPage"
+						:rowsPerPage="rowsPerPage"
+						@update:currentPage="setCurrentPage"
+						@update:rowsPerPage="setRowsPerPage"
+					>
+						<template #row="{ columns, row }">
+							<slot :data="row" :columns="columns" />
+						</template>
+					</n8n-datatable>
 				</div>
 
-				<div class="mt-xs mb-l">
-					<ul :class="[$style.list, 'list-style-none']" v-if="filteredAndSortedSubviewResources.length > 0">
-						<li v-for="resource in filteredAndSortedSubviewResources" :key="resource.id" class="mb-2xs">
-							<slot :data="resource" />
-						</li>
-					</ul>
-					<n8n-text color="text-base" size="medium" v-else>
-						{{ $locale.baseText(`${resourceKey}.noResults`) }}
-						<template v-if="!hasFilters && isOwnerSubview && resourcesNotOwned.length > 0">
-							<span v-if="!filters.search">
-								({{ $locale.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
-								<n8n-link @click="setOwnerSubview(false)">{{$locale.baseText(`${resourceKey}.noResults.switchToShared.link`) }}</n8n-link>)
-							</span>
-							<span v-else>
-								({{ $locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`) }}
-								<n8n-link @click="setOwnerSubview(false)">{{$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`) }}</n8n-link>)
-							</span>
-						</template>
-					</n8n-text>
-				</div>
+				<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
+					{{ $locale.baseText(`${resourceKey}.noResults`) }}
+					<template v-if="shouldSwitchToAllSubview">
+						<span v-if="!filters.search">
+							({{ $locale.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
+							<n8n-link @click="setOwnerSubview(false)">
+								{{ $locale.baseText(`${resourceKey}.noResults.switchToShared.link`) }} </n8n-link
+							>)
+						</span>
+
+						<span v-else>
+							({{
+								$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`)
+							}}
+							<n8n-link @click="setOwnerSubview(false)">
+								{{
+									$locale.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`)
+								}} </n8n-link
+							>)
+						</span>
+					</template>
+				</n8n-text>
+
+				<slot name="postamble" />
 			</page-view-layout-list>
 		</template>
 	</page-view-layout>
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
-import {IUser} from '@/Interface';
-import mixins from 'vue-typed-mixins';
-
-import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
-import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import {EnterpriseEditionFeature} from "@/constants";
-import TemplateCard from "@/components/TemplateCard.vue";
-import Vue, {PropType} from "vue";
-import {debounceHelper} from '@/components/mixins/debounce';
-import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
-import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
+
+import type { IUser } from '@/Interface';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
+import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
+import { EnterpriseEditionFeature } from '@/constants';
+import { debounceHelper } from '@/mixins/debounce';
+import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
+import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import type { N8nInput } from 'n8n-design-system';
+import type { DatatableColumn } from 'n8n-design-system';
 
 export interface IResource {
 	id: string;
@@ -153,16 +215,12 @@ interface IFilters {
 }
 
 type IResourceKeyType = 'credentials' | 'workflows';
+type SearchRef = InstanceType<typeof N8nInput>;
 
-const filterKeys = ['ownedBy', 'sharedWith'];
-
-export default mixins(
-	showMessage,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'resources-list-layout',
+	mixins: [debounceHelper],
 	components: {
-		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
 		ResourceOwnershipSelect,
@@ -173,13 +231,21 @@ export default mixins(
 			type: String,
 			default: '' as IResourceKeyType,
 		},
+		displayName: {
+			type: Function as PropType<(resource: IResource) => string>,
+			default: (resource: IResource) => resource.name,
+		},
 		resources: {
 			type: Array,
 			default: (): IResource[] => [],
 		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
-			default: () => () => Promise.resolve(),
+			default: () => async () => {},
 		},
 		filters: {
 			type: Object,
@@ -196,29 +262,53 @@ export default mixins(
 			type: Boolean,
 			default: true,
 		},
+		showFiltersDropdown: {
+			type: Boolean,
+			default: true,
+		},
+		sortFns: {
+			type: Object as PropType<Record<string, (a: IResource, b: IResource) => number>>,
+			default: (): Record<string, (a: IResource, b: IResource) => number> => ({}),
+		},
+		sortOptions: {
+			type: Array as PropType<string[]>,
+			default: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+		},
+		type: {
+			type: String as PropType<'datatable' | 'list'>,
+			default: 'list',
+		},
+		typeProps: {
+			type: Object as PropType<{ itemSize: number } | { columns: DatatableColumn[] }>,
+			default: () => ({
+				itemSize: 80,
+			}),
+		},
 	},
 	data() {
 		return {
 			loading: true,
-			isOwnerSubview: true,
-			sortBy: 'lastUpdated',
+			isOwnerSubview: false,
+			sortBy: this.sortOptions[0],
 			hasFilters: false,
+			currentPage: 1,
+			rowsPerPage: 10 as number | '*',
 			resettingFilters: false,
 			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUsersStore,
-		),
+		...mapStores(useSettingsStore, useUsersStore),
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
 			}
 
 			return (this.resources as IResource[]).filter((resource) => {
-				if (this.isOwnerSubview && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+				if (
+					this.isOwnerSubview &&
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+				) {
 					return !!(resource.ownedBy && resource.ownedBy.id === this.usersStore.currentUser?.id);
 				}
 
@@ -237,13 +327,18 @@ export default mixins(
 				}
 
 				if (this.filters.sharedWith) {
-					matches = matches && !!(resource.sharedWith && resource.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith));
+					matches =
+						matches &&
+						!!(
+							resource.sharedWith &&
+							resource.sharedWith.find((sharee) => sharee.id === this.filters.sharedWith)
+						);
 				}
 
 				if (this.filters.search) {
 					const searchString = this.filters.search.toLowerCase();
 
-					matches = matches && resource.name.toLowerCase().includes(searchString);
+					matches = matches && this.displayName(resource).toLowerCase().includes(searchString);
 				}
 
 				if (this.additionalFiltersHandler) {
@@ -256,15 +351,23 @@ export default mixins(
 			return filtered.sort((a, b) => {
 				switch (this.sortBy) {
 					case 'lastUpdated':
-						return (new Date(b.updatedAt)).valueOf() - (new Date(a.updatedAt)).valueOf();
+						return this.sortFns['lastUpdated']
+							? this.sortFns['lastUpdated'](a, b)
+							: new Date(b.updatedAt).valueOf() - new Date(a.updatedAt).valueOf();
 					case 'lastCreated':
-						return (new Date(b.createdAt)).valueOf() - (new Date(a.createdAt)).valueOf();
+						return this.sortFns['lastCreated']
+							? this.sortFns['lastCreated'](a, b)
+							: new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf();
 					case 'nameAsc':
-						return a.name.trim().localeCompare(b.name.trim());
+						return this.sortFns['nameAsc']
+							? this.sortFns['nameAsc'](a, b)
+							: this.displayName(a).trim().localeCompare(this.displayName(b).trim());
 					case 'nameDesc':
-						return b.name.localeCompare(a.name);
+						return this.sortFns['nameDesc']
+							? this.sortFns['nameDesc'](a, b)
+							: this.displayName(b).trim().localeCompare(this.displayName(a).trim());
 					default:
-						return 0;
+						return this.sortFns[this.sortBy] ? this.sortFns[this.sortBy](a, b) : 0;
 				}
 			});
 		},
@@ -273,6 +376,9 @@ export default mixins(
 				return resource.ownedBy && resource.ownedBy.id !== this.usersStore.currentUser?.id;
 			});
 		},
+		shouldSwitchToAllSubview(): boolean {
+			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
+		},
 	},
 	methods: {
 		async onMounted() {
@@ -280,6 +386,12 @@ export default mixins(
 
 			this.loading = false;
 			this.$nextTick(this.focusSearchInput);
+		},
+		setCurrentPage(page: number) {
+			this.currentPage = page;
+		},
+		setRowsPerPage(rowsPerPage: number | '*') {
+			this.rowsPerPage = rowsPerPage;
 		},
 		resetFilters() {
 			Object.keys(this.filters).forEach((key) => {
@@ -291,14 +403,16 @@ export default mixins(
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {
-				(this.$refs.search as Vue & { focus: () => void }).focus();
+				(this.$refs.search as SearchRef).focus();
 			}
 		},
 		setOwnerSubview(active: boolean) {
 			this.isOwnerSubview = active;
 		},
 		getTelemetrySubview(): string {
-			return this.$locale.baseText(`${this.resourceKey as IResourceKeyType}.menu.${this.isOwnerSubview ? 'my' : 'all'}`);
+			return this.$locale.baseText(
+				`${this.resourceKey as IResourceKeyType}.menu.${this.isOwnerSubview ? 'my' : 'all'}`,
+			);
 		},
 		sendSubviewTelemetry() {
 			this.$telemetry.track(`User changed ${this.resourceKey} sub view`, {
@@ -319,7 +433,7 @@ export default mixins(
 					return;
 				}
 
-				setTimeout(() => this.resettingFilters = false, 1500);
+				setTimeout(() => (this.resettingFilters = false), 1500);
 			}
 
 			const filters = this.filters as Record<string, string[] | string | boolean>;
@@ -346,7 +460,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.onMounted();
+		void this.onMounted();
 	},
 	watch: {
 		isOwnerSubview() {
@@ -362,9 +476,14 @@ export default mixins(
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', {debounceTime: 1000, trailing: true}, 'search');
+			void this.callDebounced(
+				'sendFiltersTelemetry',
+				{ debounceTime: 1000, trailing: true },
+				'search',
+			);
 		},
-		sortBy() {
+		sortBy(newValue) {
+			this.$emit('sort', newValue);
 			this.sendSortingTelemetry();
 		},
 	},
@@ -388,8 +507,12 @@ export default mixins(
 }
 
 .list {
-	display: flex;
-	flex-direction: column;
+	//display: flex;
+	//flex-direction: column;
+}
+
+.listWrapper {
+	height: 100%;
 }
 
 .sort-and-filter {
@@ -406,5 +529,8 @@ export default mixins(
 .card-loading {
 	height: 69px;
 }
-</style>
 
+.datatable {
+	padding-bottom: var(--spacing-s);
+}
+</style>

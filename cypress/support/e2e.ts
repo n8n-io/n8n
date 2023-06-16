@@ -13,5 +13,22 @@
 // https://on.cypress.io/configuration
 // ***********************************************************
 
-import './commands'
+import './commands';
 
+before(() => {
+	cy.resetAll();
+});
+
+// Load custom nodes and credentials fixtures
+beforeEach(() => {
+	cy.intercept('GET', '/rest/settings').as('loadSettings');
+	cy.intercept('GET', '/rest/login').as('loadLogin');
+
+	// Always intercept the request to test credentials and return a success
+	cy.intercept('POST', '/rest/credentials/test', {
+		statusCode: 200,
+		body: {
+			data: { status: 'success', message: 'Tested successfully' },
+		},
+	});
+});

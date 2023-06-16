@@ -6,13 +6,14 @@
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 77 }"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
-		<template v-slot="{ data }">
-			<credential-card :data="data"/>
+		<template #default="{ data }">
+			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
-		<template v-slot:filters="{ setKeyValue }">
+		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('credentials.filters.type')"
@@ -23,7 +24,7 @@
 				/>
 				<n8n-select
 					:value="filters.type"
-					size="small"
+					size="medium"
 					multiple
 					filterable
 					ref="typeInput"
@@ -43,44 +44,28 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
-import {ICredentialsResponse, ICredentialTypeMap, IUser} from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import { defineComponent } from 'vue';
 
-import SettingsView from './SettingsView.vue';
-import ResourcesListLayout from "@/components/layouts/ResourcesListLayout.vue";
-import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
-import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import CredentialCard from "@/components/CredentialCard.vue";
-import {ICredentialType} from "n8n-workflow";
-import TemplateCard from "@/components/TemplateCard.vue";
-import { debounceHelper } from '@/components/mixins/debounce';
-import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
-import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
-import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
-import Vue from "vue";
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import CredentialCard from '@/components/CredentialCard.vue';
+import type { ICredentialType } from 'n8n-workflow';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
+import type Vue from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useVersionControlStore } from '@/stores/versionControl.store';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
-export default mixins(
-	showMessage,
-	debounceHelper,
-).extend({
-	name: 'SettingsPersonalView',
+export default defineComponent({
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		CredentialCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
 	},
 	data() {
 		return {
@@ -90,6 +75,7 @@ export default mixins(
 				sharedWith: '',
 				type: '',
 			},
+			versionControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -98,6 +84,7 @@ export default mixins(
 			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
+			useVersionControlStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
@@ -118,7 +105,6 @@ export default mixins(
 			});
 		},
 		async initialize() {
-
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(),
 				this.credentialsStore.fetchCredentialTypes(false),
@@ -130,9 +116,13 @@ export default mixins(
 
 			await Promise.all(loadPromises);
 
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
-		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
+		onFilter(
+			resource: ICredentialsResponse,
+			filters: { type: string[]; search: string },
+			matches: boolean,
+		): boolean {
 			if (filters.type.length > 0) {
 				matches = matches && filters.type.includes(resource.type);
 			}
@@ -140,9 +130,12 @@ export default mixins(
 			if (filters.search) {
 				const searchString = filters.search.toLowerCase();
 
-				matches = matches || (
-					this.credentialTypesById[resource.type] && this.credentialTypesById[resource.type].displayName.toLowerCase().includes(searchString)
-				);
+				matches =
+					matches ||
+					(this.credentialTypesById[resource.type] &&
+						this.credentialTypesById[resource.type].displayName
+							.toLowerCase()
+							.includes(searchString));
 			}
 
 			return matches;
@@ -156,6 +149,18 @@ export default mixins(
 			this.sendFiltersTelemetry('type');
 		},
 	},
+	mounted() {
+		this.versionControlStoreUnsubscribe = this.versionControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.versionControlStoreUnsubscribe();
+	},
 });
 </script>
 
@@ -168,4 +173,3 @@ export default mixins(
 	padding: 0 !important;
 }
 </style>
-

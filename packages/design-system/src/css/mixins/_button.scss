@@ -1,6 +1,6 @@
-@use "../common/var";
+@use '../common/var';
 @use './mixins';
-@use "function";
+@use 'function';
 
 @mixin button-plain($color, $h, $s, $l) {
 	&,
@@ -14,21 +14,11 @@
 	@include mixins.when(loading) {
 		color: function.lightness($h, $s, $l, var.$button-hover-tint-percent);
 		background-color: var(--color-foreground-xlight);
-		border-color: function.lightness(
-			$h,
-			$s,
-			$l,
-			var.$button-hover-tint-percent
-		);
+		border-color: function.lightness($h, $s, $l, var.$button-hover-tint-percent);
 	}
 
 	&:active {
-		border-color: function.lightness(
-			$h,
-			$s,
-			$l,
-			-(var.$button-active-shade-percent)
-		);
+		border-color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
 		background-color: var(--color-foreground-xlight);
 		color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
 		outline: none;
@@ -46,50 +36,21 @@
 	}
 }
 
-@mixin button-variant(
-	$color,
-	$background-color,
-	$border-color,
-	$h,
-	$s,
-	$l,
-	$t,
-	$plain: true
-) {
+@mixin button-variant($color, $background-color, $border-color, $h, $s, $l, $t, $plain: true) {
 	color: $color;
 	background-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
 	border-color: hsl(var(#{$h}), var(#{$s}), var(#{$l}));
 
 	&:active {
-		background: function.lightness(
-			$h,
-			$s,
-			$l,
-			-(var.$button-active-shade-percent)
-		);
-		border-color: function.lightness(
-			$h,
-			$s,
-			$l,
-			-(var.$button-active-shade-percent)
-		);
+		background: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
+		border-color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
 		color: $color;
 		outline: none;
 	}
 
 	&.is-active {
-		background: function.lightness(
-			$h,
-			$s,
-			$l,
-			-(var.$button-active-shade-percent)
-		);
-		border-color: function.lightness(
-			$h,
-			$s,
-			$l,
-			-(var.$button-active-shade-percent)
-		);
+		background: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
+		border-color: function.lightness($h, $s, $l, -(var.$button-active-shade-percent));
 		color: $color;
 	}
 
@@ -154,17 +115,9 @@
 }
 
 @mixin button-small() {
-	@include button-size(
-		var(--spacing-3xs),
-		var(--spacing-xs),
-		var(--font-size-2xs)
-	);
+	@include button-size(var(--spacing-3xs), var(--spacing-xs), var(--font-size-2xs));
 }
 
 @mixin button-medium() {
-	@include button-size(
-		var(--spacing-2xs),
-		var(--spacing-xs),
-		var(--font-size-2xs)
-	);
+	@include button-size(var(--spacing-2xs), var(--spacing-xs), var(--font-size-2xs));
 }

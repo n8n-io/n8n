@@ -8,15 +8,8 @@
 		v-on="$listeners"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
-			<n8n-spinner
-				v-if="loading"
-				:size="size"
-			/>
-			<n8n-icon
-				v-else-if="icon"
-				:icon="icon"
-				:size="size"
-			/>
+			<n8n-spinner v-if="loading" :size="size" />
+			<n8n-icon v-else-if="icon" :icon="icon" :size="size" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
@@ -25,11 +18,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-button',
 	props: {
 		label: {
@@ -45,7 +38,7 @@ export default Vue.extend({
 			type: String,
 			default: 'medium',
 			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
+				['xmini', 'mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		loading: {
 			type: Boolean,
@@ -76,27 +69,27 @@ export default Vue.extend({
 		},
 		float: {
 			type: String,
-			validator: (value: string): boolean =>
-				['left', 'right'].includes(value),
+			validator: (value: string): boolean => ['left', 'right'].includes(value),
 		},
-	  square: {
-		  type: Boolean,
-		  default: false,
-	  },
+		square: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	components: {
 		N8nSpinner,
 		N8nIcon,
 	},
 	computed: {
-		ariaBusy(): string {
-			return this.loading ? 'true' : 'false';
+		ariaBusy(): 'true' | undefined {
+			return this.loading ? 'true' : undefined;
 		},
-		ariaDisabled(): string {
-			return this.disabled ? 'true' : 'false';
+		ariaDisabled(): 'true' | undefined {
+			return this.disabled ? 'true' : undefined;
 		},
 		classes(): string {
-			return `button ${this.$style.button} ${this.$style[this.type]}` +
+			return (
+				`button ${this.$style.button} ${this.$style[this.type]}` +
 				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
 				`${this.outline ? ` ${this.$style.outline}` : ''}` +
 				`${this.loading ? ` ${this.$style.loading}` : ''}` +
@@ -105,8 +98,9 @@ export default Vue.extend({
 				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
 				`${this.block ? ` ${this.$style.block}` : ''}` +
 				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
-				`${this.square ? ` ${this.$style.square}` : ''}`;
+				`${this.icon || this.loading ? ` ${this.$style.withIcon}` : ''}` +
+				`${this.square ? ` ${this.$style.square}` : ''}`
+			);
 		},
 	},
 });
@@ -150,7 +144,8 @@ export default Vue.extend({
 		outline: $focus-outline-width solid $button-focus-outline-color;
 	}
 
-	&:active, &.active {
+	&:active,
+	&.active {
 		color: $button-active-color;
 		border-color: $button-active-border-color;
 		background-color: $button-active-background-color;
@@ -199,7 +194,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .tertiary {
-	font-weight: var(--font-weight-regular) !important;
+	font-weight: var(--font-weight-bold) !important;
 
 	--button-background-color: var(--color-background-xlight);
 	--button-color: var(--color-text-dark);
@@ -213,7 +208,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-color: var(--color-text-dark);
 	--button-hover-border-color: var(--color-neutral-800);
 
-	--button-focus-outline-color: hsla(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l), 0.2);
+	--button-focus-outline-color: hsla(
+		var(--color-neutral-h),
+		var(--color-neutral-s),
+		var(--color-neutral-l),
+		0.2
+	);
 }
 
 .success {
@@ -227,7 +227,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-background-color: var(--color-success-450);
 	--button-hover-border-color: var(--color-success-450);
 
-	--button-focus-outline-color: hsla(var(--color-success-h), var(--color-success-s), var(--color-success-l), 0.33);
+	--button-focus-outline-color: hsla(
+		var(--color-success-h),
+		var(--color-success-s),
+		var(--color-success-l),
+		0.33
+	);
 }
 
 .warning {
@@ -241,7 +246,12 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-background-color: var(--color-warning-650);
 	--button-hover-border-color: var(--color-warning-650);
 
-	--button-focus-outline-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), 0.33);
+	--button-focus-outline-color: hsla(
+		var(--color-warning-h),
+		var(--color-warning-s),
+		var(--color-warning-l),
+		0.33
+	);
 }
 
 .danger {
@@ -256,12 +266,28 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-background-color: var(--color-danger-700);
 	--button-hover-border-color: var(--color-danger-700);
 
-	--button-focus-outline-color: hsla(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l), 0.33);
+	--button-focus-outline-color: hsla(
+		var(--color-danger-h),
+		var(--color-danger-s),
+		var(--color-danger-l),
+		0.33
+	);
 }
 
 /**
  * Sizes
  */
+
+.xmini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-3xs);
+	--button-font-size: var(--font-size-3xs);
+
+	&.square {
+		height: 22px;
+		width: 22px;
+	}
+}
 
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);
@@ -438,9 +464,16 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-active-background-color: transparent;
 }
 
+.withIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+}
+
 .icon {
 	display: inline-flex;
-  justify-content: center;
+	justify-content: center;
+	align-items: center;
 
 	svg {
 		display: block;

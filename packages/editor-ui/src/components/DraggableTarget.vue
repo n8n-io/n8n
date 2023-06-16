@@ -5,11 +5,12 @@
 </template>
 
 <script lang="ts">
-import { useNDVStore } from '@/stores/ndv';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		type: {
 			type: String,
@@ -21,8 +22,8 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		stickyOffset: {
-			type: Number,
-			default: 0,
+			type: Array as PropType<number[]>,
+			default: () => [0, 0],
 		},
 	},
 	data() {
@@ -39,9 +40,7 @@ export default Vue.extend({
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-		),
+		...mapStores(useNDVStore),
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
 		},
@@ -57,15 +56,21 @@ export default Vue.extend({
 	},
 	methods: {
 		onMouseMove(e: MouseEvent) {
-			const target = this.$refs.target as HTMLElement;
+			const targetRef = this.$refs.target as HTMLElement | undefined;
 
-			if (target && this.isDragging) {
-				const dim = target.getBoundingClientRect();
+			if (targetRef && this.isDragging) {
+				const dim = targetRef.getBoundingClientRect();
 
-				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
+				this.hovering =
+					e.clientX >= dim.left &&
+					e.clientX <= dim.right &&
+					e.clientY >= dim.top &&
+					e.clientY <= dim.bottom;
 
 				if (!this.disabled && this.sticky && this.hovering) {
-					this.ndvStore.setDraggableStickyPos([dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
+					const [xOffset, yOffset] = this.stickyOffset;
+
+					this.ndvStore.setDraggableStickyPos([dim.left + xOffset, dim.top + yOffset]);
 				}
 			}
 		},

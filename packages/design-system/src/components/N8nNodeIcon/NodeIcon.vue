@@ -2,34 +2,45 @@
 	<div class="n8n-node-icon">
 		<div
 			:class="{
-				[$style['node-icon-wrapper']]: true,
-				[$style['circle']]: this.circle,
-				[$style['disabled']]: this.disabled,
+				[$style.nodeIconWrapper]: true,
+				[$style.circle]: circle,
+				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
 			v-on="$listeners"
 		>
-			<n8n-tooltip placement="top" :disabled="!showTooltip">
+			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
-				<div v-if="type !== 'unknown'" :class="$style['icon']">
-					<img v-if="type === 'file'" :src="src" :class="$style['node-icon-image']" />
-					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+				<div v-if="type !== 'unknown'" :class="$style.icon">
+					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+					<font-awesome-icon v-else :icon="name" :class="$style.iconFa" :style="fontStyleData" />
 				</div>
-				<div v-else :class="$style['node-icon-placeholder']">
-					{{ nodeTypeName? nodeTypeName.charAt(0) : '?' }}
+				<div v-else :class="$style.nodeIconPlaceholder">
+					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
 					?
 				</div>
 			</n8n-tooltip>
+			<template v-else>
+				<div v-if="type !== 'unknown'" :class="$style.icon">
+					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
+					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+				</div>
+				<div v-else :class="$style.nodeIconPlaceholder">
+					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
+					?
+				</div>
+			</template>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-node-icon',
 	components: {
 		N8nTooltip,
@@ -39,8 +50,7 @@ export default Vue.extend({
 		type: {
 			type: String,
 			required: true,
-			validator: (value: string): boolean =>
-				['file', 'icon', 'unknown'].includes(value),
+			validator: (value: string): boolean => ['file', 'icon', 'unknown'].includes(value),
 		},
 		src: {
 			type: String,
@@ -68,12 +78,13 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		iconStyleData (): object {
-			if(!this.size) {
+		iconStyleData(): Record<string, string> {
+			if (!this.size) {
 				return {
 					color: this.color || '',
 				};
 			}
+
 			return {
 				color: this.color || '',
 				width: `${this.size}px`,
@@ -82,7 +93,11 @@ export default Vue.extend({
 				'line-height': `${this.size}px`,
 			};
 		},
-		fontStyleData (): object {
+		fontStyleData(): Record<string, string> {
+			if (!this.size) {
+				return {};
+			}
+
 			return {
 				'max-width': `${this.size}px`,
 			};
@@ -92,12 +107,12 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.node-icon-wrapper {
-	width: 26px;
-	height: 26px;
+.nodeIconWrapper {
+	width: var(--node-icon-size, 26px);
+	height: var(--node-icon-size, 26px);
 	border-radius: var(--border-radius-small);
-	color: #444;
-	line-height: 26px;
+	color: var(--node-icon-color, #444);
+	line-height: var(--node-icon-size, 26px);
 	font-size: 1.1em;
 	overflow: hidden;
 	text-align: center;
@@ -111,13 +126,17 @@ export default Vue.extend({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-}
+	pointer-events: none;
 
-.node-icon-placeholder {
+	svg {
+		max-width: 100%;
+		max-height: 100%;
+	}
+}
+.nodeIconPlaceholder {
 	text-align: center;
 }
-
-.node-icon-image {
+.nodeIconImage {
 	width: 100%;
 	max-width: 100%;
 	max-height: 100%;
@@ -130,6 +149,6 @@ export default Vue.extend({
 .disabled {
 	color: '#ccc';
 	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
-			filter: contrast(40%) brightness(1.5) grayscale(100%);
+	filter: contrast(40%) brightness(1.5) grayscale(100%);
 }
 </style>

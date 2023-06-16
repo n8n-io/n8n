@@ -1,5 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
-import {
+import type {
 	CursorPagination,
 	OffsetPagination,
 	PaginationCursorDecoded,

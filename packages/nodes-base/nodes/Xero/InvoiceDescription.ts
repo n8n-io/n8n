@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -927,9 +927,6 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Where',
 				name: 'where',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
 				description:

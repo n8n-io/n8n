@@ -1,10 +1,14 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ClickUpOAuth2Api implements ICredentialType {
 	name = 'clickUpOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'ClickUp OAuth2 API';
+
 	documentationUrl = 'clickUp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

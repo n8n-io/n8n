@@ -1,12 +1,12 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-import { IWebhookDb } from '@/Interfaces';
+import { idStringifier } from '../utils/transformers';
 
 @Entity()
 @Index(['webhookId', 'method', 'pathLength'])
-export class WebhookEntity implements IWebhookDb {
-	@Column()
-	workflowId: number;
+export class WebhookEntity {
+	@Column({ transformer: idStringifier })
+	workflowId: string;
 
 	@PrimaryColumn()
 	webhookPath: string;
@@ -18,8 +18,8 @@ export class WebhookEntity implements IWebhookDb {
 	node: string;
 
 	@Column({ nullable: true })
-	webhookId: string;
+	webhookId?: string;
 
 	@Column({ nullable: true })
-	pathLength: number;
+	pathLength?: number;
 }

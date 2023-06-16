@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class ElasticsearchApi implements ICredentialType {
 	name = 'elasticsearchApi';
+
 	displayName = 'Elasticsearch API';
+
 	documentationUrl = 'elasticsearch';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

@@ -6,24 +6,15 @@
  *
  * Location: `n8n-nodes-base.nodes.github.nodeView.<middleKey>.placeholder`
  */
-export function deriveMiddleKey(
-	path: string,
-	parameter: { name: string; type: string; },
-) {
+export function deriveMiddleKey(path: string, parameter: { name: string; type: string }) {
 	let middleKey = parameter.name;
 
-	if (
-		isTopLevelCollection(path, parameter) ||
-		isNestedInCollectionLike(path)
-	) {
+	if (isTopLevelCollection(path, parameter) || isNestedInCollectionLike(path)) {
 		const pathSegments = normalize(path).split('.');
 		middleKey = insertOptionsAndValues(pathSegments).join('.');
 	}
 
-	if (
-		isNestedCollection(path, parameter) ||
-		isFixedCollection(path, parameter)
-	) {
+	if (isNestedCollection(path, parameter) || isFixedCollection(path, parameter)) {
 		const pathSegments = [...normalize(path).split('.'), parameter.name];
 		middleKey = insertOptionsAndValues(pathSegments).join('.');
 	}

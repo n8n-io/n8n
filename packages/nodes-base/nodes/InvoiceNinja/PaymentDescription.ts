@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const paymentOperations: INodeProperties[] = [
 	{
@@ -235,9 +235,6 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 			},

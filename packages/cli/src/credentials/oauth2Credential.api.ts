@@ -1,4 +1,5 @@
-import ClientOAuth2 from 'client-oauth2';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
+import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
 import get from 'lodash.get';
@@ -7,18 +8,17 @@ import set from 'lodash.set';
 import split from 'lodash.split';
 import unset from 'lodash.unset';
 import { Credentials, UserSettings } from 'n8n-core';
-import {
-	LoggerProxy,
+import type {
 	WorkflowExecuteMode,
 	INodeCredentialsDetails,
 	ICredentialsEncrypted,
-	IDataObject,
 } from 'n8n-workflow';
+import { LoggerProxy, jsonStringify } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { RESPONSE_ERROR_MESSAGES, TEMPLATES_DIR } from '@/constants';
 import {
 	CredentialsHelper,
@@ -26,10 +26,11 @@ import {
 	getCredentialWithoutUser,
 } from '@/CredentialsHelper';
 import { getLogger } from '@/Logger';
-import { OAuthRequest } from '@/requests';
-import { externalHooks } from '@/Server';
+import type { OAuthRequest } from '@/requests';
+import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Container } from 'typedi';
 
 export const oauth2CredentialController = express.Router();
 
@@ -58,7 +59,7 @@ oauth2CredentialController.get(
 		const { id: credentialId } = req.query;
 
 		if (!credentialId) {
-			throw new ResponseHelper.ResponseError('Required credential ID is missing', undefined, 400);
+			throw new ResponseHelper.BadRequestError('Required credential ID is missing');
 		}
 
 		const credential = await getCredentialForUser(credentialId, req.user);
@@ -68,36 +69,50 @@ oauth2CredentialController.get(
 				userId: req.user.id,
 				credentialId,
 			});
-			throw new ResponseHelper.ResponseError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL, undefined, 404);
+			throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
 		let encryptionKey: string;
 		try {
 			encryptionKey = await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError((error as Error).message, undefined, 500);
+			throw new ResponseHelper.InternalServerError((error as Error).message);
 		}
+
+		const credentialType = (credential as unknown as ICredentialsEncrypted).type;
 
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
 		const credentialsHelper = new CredentialsHelper(encryptionKey);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 			credential as INodeCredentialsDetails,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			mode,
 			timezone,
 			true,
 		);
 
+		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
+		// Delete scope before applying defaults to make sure new scopes are present on reconnect
+		// Generic Oauth2 API is an exception because it needs to save the scope
+		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
+		if (
+			decryptedDataOriginal?.scope &&
+			credentialType.includes('OAuth2') &&
+			!genericOAuth2.includes(credentialType)
+		) {
+			delete decryptedDataOriginal.scope;
+		}
+
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 			decryptedDataOriginal,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			mode,
 			timezone,
 		);
 
 		const token = new Csrf();
-		// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
+		// Generate a CSRF prevention token and send it as an OAuth2 state string
 		const csrfSecret = token.secretSync();
 		const state = {
 			token: token.create(csrfSecret),
@@ -105,7 +120,7 @@ oauth2CredentialController.get(
 		};
 		const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
-		const oAuthOptions: ClientOAuth2.Options = {
+		const oAuthOptions: ClientOAuth2Options = {
 			clientId: get(oauthCredentials, 'clientId') as string,
 			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
@@ -115,14 +130,14 @@ oauth2CredentialController.get(
 			state: stateEncodedStr,
 		};
 
-		await externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+		await Container.get(ExternalHooks).run('oauth2.authenticate', [oAuthOptions]);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 
 		// Encrypt the data
 		const credentials = new Credentials(
 			credential as INodeCredentialsDetails,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			(credential as unknown as ICredentialsEncrypted).nodesAccess,
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
@@ -159,6 +174,9 @@ oauth2CredentialController.get(
 	}),
 );
 
+const renderCallbackError = (res: express.Response, message: string, reason?: string) =>
+	res.render('oauth-error-callback', { error: { message, reason } });
+
 /**
  * GET /oauth2-credential/callback
  *
@@ -173,14 +191,11 @@ oauth2CredentialController.get(
 			const { code, state: stateEncoded } = req.query;
 
 			if (!code || !stateEncoded) {
-				const errorResponse = new ResponseHelper.ResponseError(
-					`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
-						req.query,
-					)}`,
-					undefined,
-					503,
+				return renderCallbackError(
+					res,
+					'Insufficient parameters for OAuth2 callback.',
+					`Received following query parameters: ${JSON.stringify(req.query)}`,
 				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let state;
@@ -190,39 +205,21 @@ oauth2CredentialController.get(
 					token: string;
 				};
 			} catch (error) {
-				const errorResponse = new ResponseHelper.ResponseError(
-					'Invalid state format returned',
-					undefined,
-					503,
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return renderCallbackError(res, 'Invalid state format returned');
 			}
 
 			const credential = await getCredentialWithoutUser(state.cid);
 
 			if (!credential) {
-				LoggerProxy.error('OAuth2 callback failed because of insufficient permissions', {
+				const errorMessage = 'OAuth2 callback failed because of insufficient permissions';
+				LoggerProxy.error(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.ResponseError(
-					RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-					undefined,
-					404,
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return renderCallbackError(res, errorMessage);
 			}
 
-			let encryptionKey: string;
-			try {
-				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch (error) {
-				throw new ResponseHelper.ResponseError(
-					(error as IDataObject).message as string,
-					undefined,
-					500,
-				);
-			}
+			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			const mode: WorkflowExecuteMode = 'internal';
 			const timezone = config.getEnv('generic.timezone');
@@ -246,23 +243,19 @@ oauth2CredentialController.get(
 				decryptedDataOriginal.csrfSecret === undefined ||
 				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
 			) {
-				LoggerProxy.debug('OAuth2 callback state is invalid', {
+				const errorMessage = 'The OAuth2 callback state is invalid!';
+				LoggerProxy.debug(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.ResponseError(
-					'The OAuth2 callback state is invalid!',
-					undefined,
-					404,
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return renderCallbackError(res, errorMessage);
 			}
 
-			let options = {};
+			let options: Partial<ClientOAuth2Options> = {};
 
-			const oAuth2Parameters = {
+			const oAuth2Parameters: ClientOAuth2Options = {
 				clientId: get(oauthCredentials, 'clientId') as string,
-				clientSecret: get(oauthCredentials, 'clientSecret', '') as string | undefined,
+				clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
@@ -276,17 +269,19 @@ oauth2CredentialController.get(
 						client_secret: get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
+				// @ts-ignore
 				delete oAuth2Parameters.clientSecret;
 			}
 
-			await externalHooks.run('oauth2.callback', [oAuth2Parameters]);
+			await Container.get(ExternalHooks).run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
 			const oauthToken = await oAuthObj.code.getToken(
-				`${oAuth2Parameters.redirectUri}?${queryParameters}`,
+				`${oAuth2Parameters.redirectUri as string}?${queryParameters}`,
+				// @ts-ignore
 				options,
 			);
 
@@ -295,16 +290,12 @@ oauth2CredentialController.get(
 			}
 
 			if (oauthToken === undefined) {
-				LoggerProxy.error('OAuth2 callback failed: unable to get access tokens', {
+				const errorMessage = 'Unable to get OAuth2 access tokens!';
+				LoggerProxy.error(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.ResponseError(
-					'Unable to get access tokens!',
-					undefined,
-					404,
-				);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
+				return renderCallbackError(res, errorMessage);
 			}
 
 			if (decryptedDataOriginal.oauthTokenData) {
@@ -337,9 +328,12 @@ oauth2CredentialController.get(
 
 			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 		} catch (error) {
-			// Error response
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			return ResponseHelper.sendErrorResponse(res, error);
+			return renderCallbackError(
+				res,
+				(error as Error).message,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				'body' in error ? jsonStringify(error.body) : undefined,
+			);
 		}
 	},
 );

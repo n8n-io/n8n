@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class WhatsAppApi implements ICredentialType {
 	name = 'whatsAppApi';
+
 	displayName = 'WhatsApp API';
+
 	documentationUrl = 'whatsApp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',

@@ -1,21 +1,25 @@
 <template>
-	<div v-if="items" :class="{[$style.container]: true, ['tab-bar-container']: true, [$style.menuCollapsed]: mainSidebarCollapsed}">
-		<n8n-radio-buttons
-			:value="activeTab"
-			:options="items"
-			@input="onSelect"
-		/>
+	<div
+		v-if="items"
+		:class="{
+			[$style.container]: true,
+			['tab-bar-container']: true,
+			[$style.menuCollapsed]: mainSidebarCollapsed,
+		}"
+	>
+		<n8n-radio-buttons :value="activeTab" :options="items" @input="onSelect" />
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { ITabBarItem } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { ITabBarItem } from '@/Interface';
 import { MAIN_HEADER_TABS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'tab-bar',
 	data() {
 		return {
@@ -33,9 +37,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-		),
+		...mapStores(useUIStore),
 		mainSidebarCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
 		},
@@ -49,7 +51,6 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-
 .container {
 	position: absolute;
 	top: 47px;

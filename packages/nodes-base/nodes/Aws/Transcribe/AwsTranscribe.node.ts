@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 
@@ -355,8 +359,8 @@ export class AwsTranscribe implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'transcriptionJob') {
@@ -366,7 +370,7 @@ export class AwsTranscribe implements INodeType {
 						const mediaFileUri = this.getNodeParameter('mediaFileUri', i) as string;
 						const detectLang = this.getNodeParameter('detectLanguage', i) as boolean;
 
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 
 						const body: IDataObject = {
 							TranscriptionJobName: transcriptionJobName,
@@ -472,14 +476,14 @@ export class AwsTranscribe implements INodeType {
 						);
 						responseData = responseData.TranscriptionJob;
 
-						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
+						if (resolve && responseData.TranscriptionJobStatus === 'COMPLETED') {
 							responseData = await this.helpers.request({
 								method: 'GET',
 								uri: responseData.Transcript.TranscriptFileUri,
 								json: true,
 							});
 							const simple = this.getNodeParameter('simple', 0) as boolean;
-							if (simple === true) {
+							if (simple) {
 								responseData = {
 									transcript: responseData.results.transcripts
 										.map((data: IDataObject) => data.transcript)
@@ -490,20 +494,20 @@ export class AwsTranscribe implements INodeType {
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						const action = 'Transcribe.ListTranscriptionJobs';
 						const body: IDataObject = {};
 
 						if (filters.status) {
-							body['Status'] = filters.status;
+							body.Status = filters.status;
 						}
 
 						if (filters.jobNameContains) {
-							body['JobNameContains'] = filters.jobNameContains;
+							body.JobNameContains = filters.jobNameContains;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'TranscriptionJobSummaries',
@@ -514,8 +518,8 @@ export class AwsTranscribe implements INodeType {
 								{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							body['MaxResults'] = limit;
+							const limit = this.getNodeParameter('limit', i);
+							body.MaxResults = limit;
 							responseData = await awsApiRequestREST.call(
 								this,
 								'transcribe',

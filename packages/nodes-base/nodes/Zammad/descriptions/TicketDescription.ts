@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const ticketDescription: INodeProperties[] = [
 	// ----------------------------------
@@ -157,9 +157,6 @@ export const ticketDescription: INodeProperties[] = [
 						name: 'body',
 						type: 'string',
 						default: '',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 					},
 					{
 						displayName: 'Visibility',

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const dealOperations: INodeProperties[] = [
 	{
@@ -224,9 +224,6 @@ export const dealFields: INodeProperties[] = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 				description: 'This field contains details related to the deal',
@@ -449,9 +446,6 @@ export const dealFields: INodeProperties[] = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 				description: 'This field contains details related to the deal',

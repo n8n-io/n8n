@@ -1,19 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { Converter } from 'showdown';
 
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
-import { isEmpty, set } from 'lodash';
+import isEmpty from 'lodash.isempty';
+import set from 'lodash.set';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
@@ -67,9 +67,6 @@ export class Markdown implements INodeType {
 				displayName: 'Markdown',
 				name: 'markdown',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						mode: ['markdownToHtml'],
@@ -541,7 +538,7 @@ export class Markdown implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (mode === 'htmlToMarkdown') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 
 					const textReplaceOption = this.getNodeParameter(
@@ -598,7 +595,7 @@ export class Markdown implements INodeType {
 				if (mode === 'markdownToHtml') {
 					const markdown = this.getNodeParameter('markdown', i) as string;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const converter = new Converter();
 

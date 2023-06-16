@@ -1,16 +1,8 @@
 #!/bin/sh
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
-  COMMAND=$1;
-
-  if [[ "$COMMAND" == "n8n" ]]; then
-    shift
-    (cd packages/cli; exec node ./bin/n8n "$@")
-  else
-    exec node "$@"
-  fi
-
+  node "$@"
 else
-# Got started without arguments
-cd packages/cli; exec node ./bin/n8n
+  # Got started without arguments
+  n8n
 fi

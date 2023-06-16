@@ -1,10 +1,10 @@
-import { IExecuteFunctions, IPollFunctions } from 'n8n-core';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
+	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
@@ -33,7 +33,6 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query = query || {};
 
@@ -59,8 +58,8 @@ export async function apiRequest(
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-
-	return await this.helpers.requestWithAuthentication.call(this, 'airtableApi', options);
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -75,7 +74,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -88,7 +86,7 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.records);
+		returnData.push.apply(returnData, responseData.records as IDataObject[]);
 
 		query.offset = responseData.offset;
 	} while (responseData.offset !== undefined);
@@ -115,7 +113,7 @@ export async function downloadRecordAttachments(
 						encoding: null,
 					});
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
-						Buffer.from(file),
+						Buffer.from(file as string),
 						attachment.filename,
 						attachment.type,
 					);

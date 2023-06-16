@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -21,7 +19,7 @@ export async function addCustomer(
 		notificationEmail,
 		phone,
 		referredBy,
-	} = this.getNodeParameter('additionalFields', index) as IDataObject;
+	} = this.getNodeParameter('additionalFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
@@ -30,7 +28,7 @@ export async function addCustomer(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address_2 = addressData.address2;
 	}
 
@@ -49,8 +47,7 @@ export async function addCustomer(
 		referred_by: referredBy,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData.customer);
+	return this.helpers.returnJsonArray(responseData.customer as IDataObject);
 }

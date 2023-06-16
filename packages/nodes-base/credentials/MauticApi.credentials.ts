@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class MauticApi implements ICredentialType {
 	name = 'mauticApi';
+
 	displayName = 'Mautic API';
+
 	documentationUrl = 'mautic';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

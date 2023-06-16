@@ -1,8 +1,8 @@
-@use "mixins/mixins";
-@use "mixins/utils";
-@use "input-number";
-@use "tooltip";
-@use "./common/var";
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use 'input-number';
+@use 'tooltip';
+@use './common/var';
 
 @include mixins.b(slider) {
 	@include utils.utils-clearfix;

@@ -1,14 +1,34 @@
 <template>
-	<label role="radio" tabindex="-1" :class="{'n8n-radio-button': true, [$style.container]: true, [$style.hoverable]: !this.disabled}" aria-checked="true">
-		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value">
-		<div :class="{[$style.button]: true, [$style.active]: active, [$style[size]]: true, [$style.disabled]: disabled}" @click="$emit('click')">{{ label }}</div>
+	<label
+		role="radio"
+		tabindex="-1"
+		:class="{
+			'n8n-radio-button': true,
+			[$style.container]: true,
+			[$style.hoverable]: !disabled,
+		}"
+		aria-checked="true"
+	>
+		<input type="radio" tabindex="-1" autocomplete="off" :class="$style.input" :value="value" />
+		<div
+			:class="{
+				[$style.button]: true,
+				[$style.active]: active,
+				[$style[size]]: true,
+				[$style.disabled]: disabled,
+			}"
+			:data-test-id="`radio-button-${value}`"
+			@click="$emit('click')"
+		>
+			{{ label }}
+		</div>
 	</label>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-radio-button',
 	props: {
 		label: {
@@ -26,8 +46,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium'].includes(value),
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
 		},
 		disabled: {
 			type: Boolean,

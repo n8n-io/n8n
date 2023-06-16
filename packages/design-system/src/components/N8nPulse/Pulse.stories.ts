@@ -1,19 +1,16 @@
-/* tslint:disable:variable-name */
-
 import N8nPulse from './Pulse.vue';
-import { StoryFn } from "@storybook/vue";
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Pulse',
 	component: N8nPulse,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},
 };
 
-export const Default: StoryFn = (args, {argTypes}) => ({
+export const Default: StoryFn = () => ({
 	components: {
 		N8nPulse,
 	},

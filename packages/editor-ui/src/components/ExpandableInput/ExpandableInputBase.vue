@@ -1,25 +1,25 @@
 <template>
 	<!-- mock el-input element to apply styles -->
-	<div :class="{'el-input': true, 'static-size': staticSize}" :data-value="hiddenValue">
+	<div :class="{ 'el-input': true, 'static-size': staticSize }" :data-value="hiddenValue">
 		<slot></slot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: "ExpandableInputBase",
+export default defineComponent({
+	name: 'ExpandableInputBase',
 	props: ['value', 'placeholder', 'staticSize'],
 	computed: {
 		hiddenValue() {
 			let value = (this.value as string).replace(/\s/g, '.'); // force input to expand on space chars
 			if (!value) {
 				// @ts-ignore
-				value = this.$props.placeholder;
+				value = this.placeholder;
 			}
 
-			return `${value}`;  // adjust for padding
+			return `${value}`; // adjust for padding
 		},
 	},
 });
@@ -43,7 +43,6 @@ div.el-input {
 		grid-area: 1 / 2;
 		font: inherit;
 	}
-
 
 	&::after {
 		content: attr(data-value) ' ';

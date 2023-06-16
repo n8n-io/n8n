@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
-		<template v-slot:header>
+		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
@@ -13,10 +13,12 @@
 				</div>
 			</div>
 			<div :class="$style.notFound" v-else>
-				<n8n-text color="text-base">{{ $locale.baseText('templates.collectionsNotFound') }}</n8n-text>
+				<n8n-text color="text-base">{{
+					$locale.baseText('templates.collectionsNotFound')
+				}}</n8n-text>
 			</div>
 		</template>
-		<template v-if="!notFoundError" v-slot:content>
+		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
 					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">
@@ -48,35 +50,35 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import {
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
 	ITemplatesWorkflow,
 	ITemplatesWorkflowFull,
 } from '@/Interface';
 
-import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useTemplatesStore } from '@/stores/templates';
+import { useTemplatesStore } from '@/stores/templates.store';
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'TemplatesCollectionView',
+	mixins: [workflowHelpers],
 	components: {
 		TemplateDetails,
 		TemplateList,
 		TemplatesView,
 	},
 	computed: {
-		...mapStores(
-			useTemplatesStore,
-		),
+		...mapStores(useTemplatesStore),
 		collection(): null | ITemplatesCollectionFull {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
@@ -110,16 +112,16 @@ export default mixins(workflowHelpers).extend({
 				}
 			}, 50);
 		},
-		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
+		onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
 			const telemetryPayload = {
 				template_id: id,
 				wf_template_repo_session_id: this.workflowsStore.currentSessionId,
 				source: 'collection',
 			};
-			this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
+			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
 			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
@@ -130,7 +132,7 @@ export default mixins(workflowHelpers).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				void this.$router.push({ name: page, params: { id } });
 			}
 		},
 	},
@@ -138,9 +140,8 @@ export default mixins(workflowHelpers).extend({
 		collection(collection: ITemplatesCollection) {
 			if (collection) {
 				setPageTitle(`n8n - Template collection: ${collection.name}`);
-			}
-			else {
-				setPageTitle(`n8n - Templates`);
+			} else {
+				setPageTitle('n8n - Templates');
 			}
 		},
 	},

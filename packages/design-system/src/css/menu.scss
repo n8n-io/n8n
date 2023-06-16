@@ -1,7 +1,7 @@
-@use "mixins/mixins";
-@use "mixins/utils";
-@use "./common/var";
-@use "common/transition";
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use './common/var';
+@use 'common/transition';
 
 @mixin menu-item {
 	height: var.$menu-item-height;
