@@ -2,7 +2,6 @@ import { createTag, deleteTag, getTags, updateTag } from '@/api/tags';
 import { STORES } from '@/constants';
 import type { ITag, ITagsState } from '@/Interface';
 import { defineStore } from 'pinia';
-import Vue from 'vue';
 import { useRootStore } from './n8nRoot.store';
 import { useWorkflowsStore } from './workflows.store';
 

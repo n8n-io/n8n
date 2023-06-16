@@ -881,9 +881,6 @@ importers:
       vue-agile:
         specifier: ^2.0.0
         version: 2.0.0
-      vue-fragment:
-        specifier: 1.5.1
-        version: 1.5.1(vue@2.7.14)
       vue-i18n:
         specifier: ^8.26.7
         version: 8.27.2(vue@2.7.14)
@@ -21949,14 +21946,6 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
-
-  /vue-fragment@1.5.1(vue@2.7.14):
-    resolution: {integrity: sha512-ig6eES6TcMBbANW71ylB+AJgRN+Zksb3f50AxjGpAk6hMzqmeuD80qeh4LJP0jVw2dMBMjgRUfIkrvxygoRgtQ==}
-    peerDependencies:
-      vue: ^2.5.16
-    dependencies:
-      vue: 2.7.14
-    dev: false
 
   /vue-hot-reload-api@2.3.4:
     resolution: {integrity: sha512-BXq3jwIagosjgNVae6tkHzzIk6a8MHFtzAdwhnV5VlvPTFxDCvIttgSiHWjdGoTJvXtmRu5HacExfdarRcFhog==}
